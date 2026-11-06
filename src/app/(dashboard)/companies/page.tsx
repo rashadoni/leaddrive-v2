@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from "react"
+import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +21,7 @@ import { EntityBulkBar } from "@/components/entity-bulk-bar"
 import { SavedViewBar, type SavedView } from "@/components/saved-view-bar"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { useDebouncedValue } from "@/lib/client/use-debounced-value"
 
 interface Company {
   id: string
@@ -31,18 +32,20 @@ interface Company {
   city: string | null
   country: string | null
   website: string | null
-  email: string | null
-  phone: string | null
-  address: string | null
-  description: string | null
   leadStatus: string
   leadScore: number
   leadTemperature?: string
   userCount: number
-  annualRevenue?: number
   slaPolicy?: { name: string } | null
-  _count: { contacts: number; deals: number; contracts: number }
+  _count: { contacts: number; deals: number }
 }
+
+/** Cards per request — four rows of the three-column grid. */
+const PAGE_SIZE = 48
+/** The list API's ceiling for one request (LIST_VIEW_MAX_LIMIT). */
+const MAX_PAGE = 192
+/** The bulk endpoint takes at most this many ids per request. */
+const BULK_CHUNK = 100
 
 // Inline status select — Roadmap #7. Matches the enum in
 // updateCompanySchema (api/v1/companies/[id]/route.ts:17).
@@ -98,34 +101,94 @@ export default function CompaniesPage() {
   // bar — controlled key-remount pattern shared with deals/leads.
   const [statusMenuKey, setStatusMenuKey] = useState(0)
   const [categoryMenuKey, setCategoryMenuKey] = useState(0)
-  const [totalUsersApi, setTotalUsers] = useState(0)
-  const [totalContactsApi, setTotalContacts] = useState(0)
+  // `total` — companies the search and the tab match; the tab counters are
+  // over the whole category, whatever the search.
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({})
+  const [allCount, setAllCount] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
   const orgId = session?.user?.organizationId
   const userId = session?.user?.id
   const role = session?.user?.role
+  // The box follows every keystroke; the server gets the text after a pause.
+  const debouncedSearch = useDebouncedValue(search.trim())
+
+  // Search, the status tab, sort and paging run on the server. The page used
+  // to load 500 clients and search those, so the 501st could not be found.
+  const listUrl = useCallback((offset: number, limit: number) => {
+    const q = new URLSearchParams({ category: "client", view: "list", sort: sortBy, offset: String(offset), limit: String(limit) })
+    if (activeFilter !== "all") q.set("status", activeFilter)
+    if (debouncedSearch) q.set("search", debouncedSearch)
+    return `/api/v1/companies?${q.toString()}`
+  }, [activeFilter, debouncedSearch, sortBy])
+
+  const orgHeaders = useCallback(
+    (): Record<string, string> => (orgId ? { "x-organization-id": String(orgId) } : {}),
+    [orgId],
+  )
+
+  // How many cards are on screen, so a refresh after an edit keeps them
+  // (up to what one request may carry) instead of folding back to the first page.
+  const loadedRef = useRef(0)
+  // Only the newest request may write the list: a slow answer for "Ba" must
+  // not land after the answer for "Bakı".
+  const requestSeq = useRef(0)
+
+  const applyCounts = (data: { statusCounts?: Record<string, number>; allCount?: number }) => {
+    if (data.statusCounts) setStatusCounts(data.statusCounts)
+    if (data.allCount !== undefined) setAllCount(data.allCount)
+  }
 
   const fetchCompanies = useCallback(async (signal?: AbortSignal) => {
+    const seq = ++requestSeq.current
+    // A refresh (no signal) keeps what is loaded; a new query starts over.
+    const limit = signal
+      ? PAGE_SIZE
+      : Math.min(MAX_PAGE, Math.max(PAGE_SIZE, loadedRef.current))
     try {
-      const res = await fetch("/api/v1/companies?category=client&limit=500", {
-        headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
-        signal,
-      })
+      const res = await fetch(listUrl(0, limit), { headers: orgHeaders(), signal })
       const json = await res.json()
-      if (!signal?.aborted && json.success) {
+      if (seq !== requestSeq.current || signal?.aborted) return
+      if (json.success) {
         setCompanies(json.data.companies)
+        loadedRef.current = json.data.companies.length
         setTotal(json.data.total)
-        if (json.data.totalUsers !== undefined) setTotalUsers(json.data.totalUsers)
-        if (json.data.totalContacts !== undefined) setTotalContacts(json.data.totalContacts)
+        applyCounts(json.data)
       }
     } catch (err) {
       if (!signal?.aborted) console.error(err)
     } finally {
-      if (!signal?.aborted) setLoading(false)
+      if (seq === requestSeq.current && !signal?.aborted) setLoading(false)
     }
-  }, [orgId])
+  }, [listUrl, orgHeaders])
+
+  // The next PAGE_SIZE cards after the ones on screen.
+  const loadMore = async () => {
+    const seq = requestSeq.current
+    const loaded = companies.length
+    setLoadingMore(true)
+    try {
+      const res = await fetch(listUrl(loaded, PAGE_SIZE), { headers: orgHeaders() })
+      const json = await res.json()
+      if (seq !== requestSeq.current || !json.success) return
+      setCompanies(prev => {
+        // A company created or removed meanwhile shifts the pages; never show one twice.
+        const seen = new Set(prev.map(c => c.id))
+        const next = [...prev, ...json.data.companies.filter((c: Company) => !seen.has(c.id))]
+        loadedRef.current = next.length
+        return next
+      })
+      setTotal(json.data.total)
+      applyCounts(json.data)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   // Auth.js replaces the session object when it refreshes the token. Only a
-  // different person, organization or role needs a new companies request.
+  // different person, organization or role — or a new query — needs a new
+  // companies request.
   useEffect(() => {
     const controller = new AbortController()
     void fetchCompanies(controller.signal)
@@ -134,23 +197,23 @@ export default function CompaniesPage() {
 
   // Drop bulk selection on filter change — selected ids could point at
   // companies no longer in view (Phase D, mirrors deals/leads).
-  useEffect(() => { setSelectedCompanyIds(new Set()) }, [activeFilter, search])
+  useEffect(() => { setSelectedCompanyIds(new Set()) }, [activeFilter, debouncedSearch])
 
   // Bulk-action dispatcher. Same shape as deals/leads handleBulkAction.
   const handleBulkAction = async (action: string, value?: string) => {
     if (selectedCompanyIds.size === 0) return
     try {
-      const res = await fetch("/api/v1/companies/bulk", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>),
-        },
-        body: JSON.stringify({ ids: Array.from(selectedCompanyIds), action, value }),
-      })
-      if (!res.ok) {
-        const err = (await res.json().catch(() => ({})))?.error || "Bulk action failed"
-        throw new Error(err)
+      const ids = Array.from(selectedCompanyIds)
+      for (let i = 0; i < ids.length; i += BULK_CHUNK) {
+        const res = await fetch("/api/v1/companies/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...orgHeaders() },
+          body: JSON.stringify({ ids: ids.slice(i, i + BULK_CHUNK), action, value }),
+        })
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({})))?.error || "Bulk action failed"
+          throw new Error(err)
+        }
       }
       const labelKey = action === "delete"
         ? "bulkDeletedToast"
@@ -162,6 +225,8 @@ export default function CompaniesPage() {
       fetchCompanies()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Bulk action failed")
+      // Part of a chunked action may have gone through: show what is there now.
+      fetchCompanies()
     }
   }
 
@@ -197,25 +262,19 @@ export default function CompaniesPage() {
     }
   }
 
-  const filtered = companies.filter(c => {
-    if (activeFilter !== "all" && c.status !== activeFilter) return false
-    if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false
-    return true
-  }).sort((a, b) => {
-    switch (sortBy) {
-      case "name_asc": return a.name.localeCompare(b.name)
-      case "name_desc": return b.name.localeCompare(a.name)
-      case "hot_cold": { const order = { hot: 0, warm: 1, cold: 2 }; return (order[(a.leadTemperature || "cold") as keyof typeof order] ?? 2) - (order[(b.leadTemperature || "cold") as keyof typeof order] ?? 2) }
-      case "cold_hot": { const order = { cold: 0, warm: 1, hot: 2 }; return (order[(a.leadTemperature || "cold") as keyof typeof order] ?? 0) - (order[(b.leadTemperature || "cold") as keyof typeof order] ?? 0) }
-      case "contacts": return (b._count?.contacts || 0) - (a._count?.contacts || 0)
-      case "score": return (b.leadScore || 0) - (a.leadScore || 0)
-      default: return 0
-    }
-  })
+  const filtered = companies
 
-  const statusCounts: Record<string, number> = {}
-  for (const c of companies) {
-    statusCounts[c.status] = (statusCounts[c.status] || 0) + 1
+  // The list carries only what a card shows; the form needs the whole company.
+  const openEdit = async (company: Company) => {
+    try {
+      const res = await fetch(`/api/v1/companies/${company.id}`, { headers: orgHeaders() })
+      const json = await res.json()
+      if (!res.ok || !json.success) throw new Error(json.error || tc("errorNetwork"))
+      setEditData(json.data)
+      setFormOpen(true)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : tc("errorNetwork"))
+    }
   }
 
   async function confirmDelete() {
@@ -228,9 +287,6 @@ export default function CompaniesPage() {
     fetchCompanies()
   }
 
-  const activeCount = statusCounts["active"] || 0
-  const totalContacts = totalContactsApi || companies.reduce((s, c) => s + (c._count?.contacts || 0), 0)
-  const totalUsers = totalUsersApi || companies.reduce((s, c) => s + (c.userCount || 0), 0)
 
   if (loading) {
     return (
@@ -249,7 +305,7 @@ export default function CompaniesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={<>{t("title")} ({filtered.length}) <TourReplayButton tourId="companies" /> <HelpButton slug="companies" variant="label" /></>}
+        title={<>{t("title")} ({total}) <TourReplayButton tourId="companies" /> <HelpButton slug="companies" variant="label" /></>}
         description={<p className="text-sm text-muted-foreground">{t("subtitle")}</p>}
         actions={
           <Button data-tour-id="companies-new" onClick={() => { setEditData(undefined); setFormOpen(true) }}>
@@ -270,7 +326,7 @@ export default function CompaniesPage() {
           size="sm"
           onClick={() => setActiveFilter("all")}
         >
-          {t("all")} ({total})
+          {t("all")} ({allCount})
         </Button>
         {Object.entries(statusLabels).map(([key, label]) => (
           <Button
@@ -459,7 +515,7 @@ export default function CompaniesPage() {
                   )}
                   {/* Edit/Delete — always 50%, full on hover/focus (touch-friendly) */}
                   <div className="ml-auto flex items-center gap-0.5 opacity-50 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => { setEditData(company as any); setFormOpen(true) }} className="p-1 rounded hover:bg-muted" title={t("edit")}>
+                    <button onClick={() => { void openEdit(company) }} className="p-1 rounded hover:bg-muted" title={t("edit")}>
                       <Pencil className="h-3 w-3 text-muted-foreground" />
                     </button>
                     <button onClick={() => { setDeleteItem(company); setDeleteOpen(true) }} className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20" title={t("delete")}>
@@ -475,7 +531,16 @@ export default function CompaniesPage() {
         )}
       </MotionList></div>
 
-      <CompanyForm open={formOpen} onOpenChange={setFormOpen} onSaved={fetchCompanies} initialData={editData} orgId={orgId} />
+      {companies.length < total && (
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-xs text-muted-foreground">{tc("shownOf", { shown: companies.length, total })}</span>
+          <Button variant="outline" onClick={() => { void loadMore() }} disabled={loadingMore}>
+            {loadingMore ? tc("loading") : tc("loadMore")}
+          </Button>
+        </div>
+      )}
+
+      <CompanyForm open={formOpen} onOpenChange={setFormOpen} onSaved={() => fetchCompanies()} initialData={editData} orgId={orgId} />
 
       <DeleteConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={confirmDelete} title={t("deleteCompany")} itemName={deleteItem?.name} />
 
@@ -496,7 +561,7 @@ export default function CompaniesPage() {
         onOpenChange={(open) => { if (!open) setSelectedCompany(null) }}
         company={selectedCompany as any}
         orgId={orgId}
-        onSaved={fetchCompanies}
+        onSaved={() => fetchCompanies()}
       />
     </div>
   )

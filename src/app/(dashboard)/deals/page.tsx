@@ -28,6 +28,7 @@ import { toast } from "sonner"
 import { canonicalDealStage } from "@/lib/deal-stage-normalization"
 import { InfoHint } from "@/components/info-hint"
 import { bucketByCurrency, leadBucket, formatBucket, formatExtras, weightedForCurrency, currencyOf } from "@/lib/deal-money"
+import { useDebouncedValue } from "@/lib/client/use-debounced-value"
 
 interface Deal {
   id: string
@@ -48,6 +49,20 @@ interface Deal {
   _count?: { offers: number }
 }
 
+/** One stage × currency of the whole board, from the server (closed stages too). */
+interface StageTotal {
+  stage: string
+  currency: string
+  count: number
+  /** null when the role may not see deal values. */
+  value: number | null
+}
+
+/** Deals per request — what the board loaded in one go before it paged. */
+const DEALS_PAGE = 200
+/** The bulk endpoint takes at most this many ids per request. */
+const BULK_CHUNK = 100
+
 export default function DealsPage() {
   const t = useTranslations("deals")
   const tc = useTranslations("common")
@@ -56,7 +71,11 @@ export default function DealsPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const [deals, setDeals] = useState<Deal[]>([])
+  // `total` — deals the search and filters match; `stageTotals` — the whole board.
+  const [total, setTotal] = useState(0)
+  const [stageTotals, setStageTotals] = useState<StageTotal[] | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   useAutoTour("deals")
   const [formOpen, setFormOpen] = useState(false)
   const [editDeal, setEditDeal] = useState<Deal | undefined>()
@@ -71,6 +90,8 @@ export default function DealsPage() {
   const [aiError, setAiError] = useState<string | null>(null)
   const [pipelines, setPipelines] = useState<any[]>([])
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>("")
+  // Deals wait for the pipeline list; an organization without one still gets its deals.
+  const [pipelinesLoaded, setPipelinesLoaded] = useState(false)
   const [pipelineSummary, setPipelineSummary] = useState<{
     total: number
     weighted: number
@@ -106,6 +127,7 @@ export default function DealsPage() {
   // trigger without mutating event.target.value (architect P1 fix).
   const [stageMenuKey, setStageMenuKey] = useState(0)
   const orgId = session?.user?.organizationId
+  const userId = session?.user?.id
 
   const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId)
   const STAGES = (selectedPipeline?.stages || []).map((s: any) => ({
@@ -126,49 +148,120 @@ export default function DealsPage() {
         const def = json.data.find((p: any) => p.isDefault) || json.data[0]
         setSelectedPipelineId(def.id)
       }
-    } catch {}
+    } catch {} finally {
+      setPipelinesLoaded(true)
+    }
   }
 
-  const fetchDeals = async (pipelineId?: string) => {
+  // Search, the stage and offer filters, sort and paging run on the server:
+  // the board used to load 200 deals and search those, so the 201st could not
+  // be found. The analytics tab charts the whole board, so it asks without the
+  // board's filters.
+  const debouncedSearch = useDebouncedValue(search.trim())
+  const boardFiltered = tab !== "analytics"
+  const listQuery = useMemo(() => {
+    const q = new URLSearchParams({ view: "list", sort: boardFiltered ? sortBy : "newest" })
+    if (selectedPipelineId) q.set("pipelineId", selectedPipelineId)
+    if (boardFiltered) {
+      if (debouncedSearch) q.set("search", debouncedSearch)
+      if (stageFilter !== "all") q.set("stage", stageFilter)
+      if (offerFilter !== "all") q.set("hasOffer", offerFilter === "with" ? "true" : "false")
+    }
+    return q.toString()
+  }, [boardFiltered, sortBy, selectedPipelineId, debouncedSearch, stageFilter, offerFilter])
+
+  const orgHeaders = useCallback(
+    (): Record<string, string> => (orgId ? { "x-organization-id": String(orgId) } : {}),
+    [orgId],
+  )
+
+  // Only the newest request may write the board: a slow answer for "Ba" must
+  // not land after the answer for "Bakı".
+  const requestSeq = useRef(0)
+  const applyBoard = (data: any) => {
+    setTotal(data.total)
+    if (data.pipelineSummary) setPipelineSummary(data.pipelineSummary)
+    if (data.stageTotals) setStageTotals(data.stageTotals)
+  }
+
+  const fetchDeals = useCallback(async (signal?: AbortSignal) => {
+    const seq = ++requestSeq.current
     try {
-      const pid = pipelineId || selectedPipelineId
-      const url = pid ? `/api/v1/deals?limit=200&pipelineId=${pid}` : "/api/v1/deals?limit=200"
-      const res = await fetch(url, {
-        headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
+      const res = await fetch(`/api/v1/deals?${listQuery}&offset=0&limit=${DEALS_PAGE}`, {
+        headers: orgHeaders(),
+        signal,
       })
       const json = await res.json()
+      if (seq !== requestSeq.current || signal?.aborted) return
       if (json.success) {
         setDeals(json.data.deals)
-        if (json.data.pipelineSummary) setPipelineSummary(json.data.pipelineSummary)
+        applyBoard(json.data)
       }
-    } catch (err) { console.error(err) } finally { setLoading(false) }
+    } catch (err) {
+      if (!signal?.aborted) console.error(err)
+    } finally {
+      if (seq === requestSeq.current && !signal?.aborted) setLoading(false)
+    }
+  }, [listQuery, orgHeaders])
+
+  // The next DEALS_PAGE deals after the ones on the board.
+  const loadMoreDeals = async () => {
+    const seq = requestSeq.current
+    setLoadingMore(true)
+    try {
+      const res = await fetch(`/api/v1/deals?${listQuery}&offset=${deals.length}&limit=${DEALS_PAGE}`, { headers: orgHeaders() })
+      const json = await res.json()
+      if (seq !== requestSeq.current || !json.success) return
+      setDeals(prev => {
+        // A deal created or removed meanwhile shifts the pages; never show one twice.
+        const seen = new Set(prev.map(d => d.id))
+        return [...prev, ...json.data.deals.filter((d: Deal) => !seen.has(d.id))]
+      })
+      applyBoard(json.data)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingMore(false)
+    }
   }
 
-  useEffect(() => { fetchPipelines() }, [session])
-  useEffect(() => { if (selectedPipelineId) fetchDeals(selectedPipelineId) }, [selectedPipelineId])
+  // Auth.js replaces the session object on every token refresh; only another
+  // person needs the pipelines again.
+  useEffect(() => { if (userId) fetchPipelines() }, [userId])
+  useEffect(() => {
+    if (!pipelinesLoaded) return
+    const controller = new AbortController()
+    void fetchDeals(controller.signal)
+    return () => controller.abort()
+  }, [fetchDeals, pipelinesLoaded])
   // Drop selection whenever the data underneath changes (pipeline switch /
-  // tab switch) — selected ids could point at deals no longer in view.
-  useEffect(() => { setSelectedDealIds(new Set()) }, [selectedPipelineId, tab])
+  // tab switch / a new query) — selected ids could point at deals no longer in view.
+  useEffect(() => { setSelectedDealIds(new Set()) }, [selectedPipelineId, tab, listQuery])
 
   // Bulk-action dispatcher. Mirrors tasks/page.tsx handleBulkAction shape.
   const handleBulkAction = async (action: string, value?: string) => {
     if (selectedDealIds.size === 0) return
     try {
-      const res = await fetch("/api/v1/deals/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: Array.from(selectedDealIds), action, value }),
-      })
-      if (!res.ok) {
-        const err = (await res.json().catch(() => ({})))?.error || "Bulk action failed"
-        throw new Error(err)
+      const ids = Array.from(selectedDealIds)
+      for (let i = 0; i < ids.length; i += BULK_CHUNK) {
+        const res = await fetch("/api/v1/deals/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: ids.slice(i, i + BULK_CHUNK), action, value }),
+        })
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({})))?.error || "Bulk action failed"
+          throw new Error(err)
+        }
       }
       const labelKey = action === "delete" ? "bulkDeletedToast" : action === "update_stage" ? "bulkStageToast" : "bulkReassignToast"
       toast.success(t(labelKey, { count: selectedDealIds.size }))
       setSelectedDealIds(new Set())
-      if (selectedPipelineId) fetchDeals(selectedPipelineId)
+      fetchDeals()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Bulk action failed")
+      // Part of a chunked action may have gone through: show what is there now.
+      fetchDeals()
     }
   }
 
@@ -275,43 +368,12 @@ export default function DealsPage() {
     [deals],
   )
 
+  // The server has already searched, filtered and sorted. Only MEDDPICC is
+  // ordered here: its score lives in JSON, so the server sends those newest-first.
   const filteredDeals = useMemo(() => {
-    let result = [...deals]
-
-    if (search) {
-      const q = search.toLowerCase()
-      result = result.filter(d =>
-        d.name.toLowerCase().includes(q) ||
-        (d.company?.name || "").toLowerCase().includes(q) ||
-        (d.notes || "").toLowerCase().includes(q)
-      )
-    }
-
-    if (stageFilter !== "all") {
-      result = result.filter(d => d.stage === stageFilter)
-    }
-    if (offerFilter !== "all") {
-      result = result.filter(d => offerFilter === "with"
-        ? (d._count?.offers ?? 0) > 0
-        : (d._count?.offers ?? 0) === 0)
-    }
-
-    result.sort((a, b) => {
-      switch (sortBy) {
-        case "newest": return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        case "oldest": return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        case "value_desc": return b.valueAmount - a.valueAmount
-        case "value_asc": return a.valueAmount - b.valueAmount
-        case "name": return a.name.localeCompare(b.name)
-        case "probability": return b.probability - a.probability
-        case "meddpicc": return (meddpiccScores.get(b.id) ?? 0) - (meddpiccScores.get(a.id) ?? 0)
-        case "close_date": return (a.expectedClose || "9999").localeCompare(b.expectedClose || "9999")
-        default: return 0
-      }
-    })
-
-    return result
-  }, [deals, search, stageFilter, offerFilter, sortBy, meddpiccScores])
+    if (sortBy !== "meddpicc") return deals
+    return [...deals].sort((a, b) => (meddpiccScores.get(b.id) ?? 0) - (meddpiccScores.get(a.id) ?? 0))
+  }, [deals, sortBy, meddpiccScores])
 
   const kanbanDeals = filteredDeals.map(d => ({
     id: d.id,
@@ -355,7 +417,7 @@ export default function DealsPage() {
       fetchDeals()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId])
+  }, [orgId, fetchDeals])
 
   const handleDelete = async () => {
     if (!deleteId) return
@@ -369,7 +431,18 @@ export default function DealsPage() {
   // Карточки «Выиграно»/«Проиграно» над канбаном: по смыслу стадии, иначе
   // самая крупная сделка организации (CLOSED_WON) в сумму не попадает, а
   // конверсия во вкладке «Аналитика» считается от заниженного знаменателя.
-  const wonDeals = deals.filter(d => canonicalDealStage(d.stage) === "WON")
+  // Считается по серверным итогам всей воронки, а не по загруженной странице
+  // (и не по результату поиска).
+  const stageTotalRows = (stageTotals || []).map(r => ({
+    stage: r.stage,
+    valueAmount: r.value ?? 0,
+    currency: r.currency,
+    count: r.count,
+    hasValue: r.value !== null,
+  }))
+  const wonDeals = stageTotalRows.filter(r => canonicalDealStage(r.stage) === "WON")
+  // Сделок во всей воронке — заголовок и «N / всего» у поиска.
+  const boardTotal = stageTotals ? stageTotalRows.reduce((n, r) => n + r.count, 0) : total
   const lostCount = deals.filter(d => canonicalDealStage(d.stage) === "LOST").length
 
   // Деньги на этом экране группируются по валюте и НИКОГДА не складываются
@@ -422,46 +495,37 @@ export default function DealsPage() {
     // 19 сделках в заголовке, а у сегмента полосы не было подписи.
     const present = [...new Set([
       ...deals.map(d => d.stage),
+      ...stageTotalRows.map(r => r.stage),
       ...((pipelineSummary?.byStage || []).map((s: any) => s.name)),
     ])]
     if (STAGES.length === 0) return present
     const defined = STAGES.map((s: any) => s.key).filter((k: string) => present.includes(k))
     return [...defined, ...present.filter((name: string) => !defined.includes(name))]
-  }, [deals, STAGES, pipelineSummary])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deals, STAGES, pipelineSummary, stageTotals])
 
   // Стадии перечислялись на экране трижды: чипы фильтра, полоса и подпись под
-  // ней. Осталось одно место — легенда под полосой, она же и фильтр. Открытые
-  // стадии берут сумму из серверной сводки (она считает всю воронку, а не
-  // страницу на 200 записей); закрытые — из загруженных сделок, ровно как
-  // считались карточки «Выиграно» и «Проиграно» до этой правки.
+  // ней. Осталось одно место — легенда под полосой, она же и фильтр. Каждая
+  // стадия — открытая и закрытая — берёт число и сумму из серверных итогов по
+  // всей воронке (`stageTotals`), по валютам: не из загруженной страницы и не
+  // из результата поиска, иначе чип «Выиграно» обнулялся бы от фильтра.
   const legendStages = useMemo(() => {
-    const fromServer = new Map<string, { value: number; count: number }>(
-      (pipelineSummary?.byStage || []).map((s: any) => [s.name, { value: s.value, count: s.count }]),
-    )
     return stageNames.map((name: string) => {
-      const server = fromServer.get(name)
-      const stageDeals = deals.filter(d => d.stage === name)
-      if (server) {
-        // Открытая стадия: сумма серверная, то есть по всей воронке — но она
-        // сложена по всем валютам, поэтому показываем её только когда валюта
-        // на доске одна.
-        return { name, count: server.count, value: server.value, currency: pipelinePrimary.currency, showMoney: singleCurrency }
-      }
-      // Закрытая стадия: сервер её не считает. Берём загруженные сделки и —
-      // это важно — её СОБСТВЕННУЮ валюту: выигранная сделка в долларах,
-      // подписанная манатом главной воронки, это ровно тот дефект, который
-      // здесь чинится.
-      const stageBuckets = bucketByCurrency(stageDeals)
+      const rows = stageTotalRows.filter(r => r.stage === name)
+      // Своя валюта стадии: выигранная сделка в долларах, подписанная манатом
+      // главной воронки, — ровно тот дефект, который здесь чинился.
+      const stageBuckets = bucketByCurrency(rows)
       const { primary } = leadBucket(stageBuckets, pipelinePrimary.currency)
       return {
         name,
-        count: stageDeals.length,
+        count: rows.reduce((n, r) => n + r.count, 0),
         value: primary.value,
         currency: primary.currency,
-        showMoney: stageBuckets.length <= 1,
+        showMoney: stageBuckets.length <= 1 && rows.every(r => r.hasValue),
       }
     })
-  }, [stageNames, deals, pipelineSummary, pipelinePrimary.currency, singleCurrency])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageNames, stageTotals, pipelinePrimary.currency])
   const legendTotalCount = legendStages.reduce((n, stage) => n + stage.count, 0)
 
   const getStageLabel = (stage: string) => {
@@ -504,7 +568,7 @@ export default function DealsPage() {
             <HelpButton slug="deals" variant="label" />
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {t("totalDeals", { count: deals.length })}
+            {t("totalDeals", { count: boardTotal })}
           </p>
         </div>
 
@@ -738,7 +802,7 @@ export default function DealsPage() {
             </select>
             {(search || stageFilter !== "all" || offerFilter !== "all") && (
               <span className="text-xs text-muted-foreground tabular-nums">
-                {filteredDeals.length} / {deals.length}
+                {total} / {boardTotal}
               </span>
             )}
           </div>
@@ -754,7 +818,7 @@ export default function DealsPage() {
         <Button
           size="sm"
           onClick={runAiAnalysis}
-          disabled={aiLoading || deals.length === 0}
+          disabled={aiLoading || boardTotal === 0}
           className="gap-1.5"
         >
           {aiLoading ? (
@@ -1157,7 +1221,7 @@ export default function DealsPage() {
           </div>
           {filteredDeals.length > 0 && (
             <div className="px-4 py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground">
-              {filteredDeals.length}{filteredDeals.length !== deals.length ? ` / ${deals.length}` : ""} {t("totalDeals", { count: filteredDeals.length }).replace(/\d+\s*/, "")}
+              {total}{total !== boardTotal ? ` / ${boardTotal}` : ""} {t("totalDeals", { count: total }).replace(/\d+\s*/, "")}
             </div>
           )}
         </div>
@@ -1189,6 +1253,17 @@ export default function DealsPage() {
             />
           </div>
         </>
+      )}
+
+      {/* Следующие сделки по тому же запросу — доска и список показывают
+          их порциями по DEALS_PAGE, а не обрезают на двухсотой. */}
+      {tab !== "analytics" && deals.length < total && (
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-xs text-muted-foreground">{tc("shownOf", { shown: deals.length, total })}</span>
+          <Button variant="outline" onClick={() => { void loadMoreDeals() }} disabled={loadingMore}>
+            {loadingMore ? tc("loading") : tc("loadMore")}
+          </Button>
+        </div>
       )}
 
       <DealForm

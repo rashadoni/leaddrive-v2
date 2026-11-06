@@ -69,7 +69,7 @@ import CompaniesPage from "@/app/(dashboard)/companies/page"
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-const LIST_URL = "/api/v1/companies?category=client&limit=500"
+const LIST_URL = "/api/v1/companies?category=client&view=list&sort=name_asc&offset=0&limit=48"
 const fetchMock = vi.fn<typeof fetch>()
 let container: HTMLDivElement
 let root: Root

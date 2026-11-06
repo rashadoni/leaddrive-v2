@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from "react"
+import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
@@ -24,6 +24,7 @@ import { toast } from "sonner"
 import { InfoHint } from "@/components/info-hint"
 import { PageDescription } from "@/components/page-description"
 import { DidYouKnow } from "@/components/did-you-know"
+import { useDebouncedValue } from "@/lib/client/use-debounced-value"
 
 interface Contact {
   id: string
@@ -37,7 +38,8 @@ interface Contact {
   companyId: string | null
   isActive: boolean
   portalAccessEnabled: boolean
-  portalPasswordHash: string | null
+  /** Whether the contact has set a portal password (the hash never leaves the server). */
+  portalPasswordSet?: boolean
   company: { id: string; name: string } | null
   engagementScore?: number
 }
@@ -69,6 +71,21 @@ import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
 import { PageHeader } from "@/components/page-header"
 
+/** Counters over every contact the user may see; null where the role cannot see the column. */
+interface ContactStats {
+  total: number
+  active: number | null
+  withEmail: number | null
+  withPhone: number | null
+  hot: number | null
+  warm: number | null
+  cold: number | null
+}
+
+const PAGE_SIZE = 20
+/** The bulk endpoint takes at most this many ids per request. */
+const BULK_CHUNK = 100
+
 export default function ContactsPage() {
   const router = useRouter()
   const { data: session } = useSession()
@@ -82,8 +99,11 @@ export default function ContactsPage() {
   const categoryLabels = Object.fromEntries(CATEGORY_OPTIONS.map((v) => [v, categoryLabel(v)] as const))
   const [contacts, setContacts] = useState<Contact[]>([])
   useAutoTour("contacts")
+  // `total` counts the rows the search and filters match; `stats` the whole book.
   const [total, setTotal] = useState(0)
+  const [stats, setStats] = useState<ContactStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetching, setFetching] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [editData, setEditData] = useState<Record<string, any> | undefined>()
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -104,7 +124,10 @@ export default function ContactsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [importOpen, setImportOpen] = useState(false)
   const orgId = session?.user?.organizationId
-  const pageSize = 20
+  const userId = session?.user?.id
+  const pageSize = PAGE_SIZE
+  // The box follows every keystroke; the server gets the text after a pause.
+  const debouncedSearch = useDebouncedValue(search.trim())
 
   // Roadmap #20 — saved-view integration.
   const currentFiltersSnapshot = useMemo(
@@ -124,23 +147,71 @@ export default function ContactsPage() {
   const hasUrlFilterParam = !!(searchParams?.get("search") || searchParams?.get("category"))
   const onDefaultLoadGuarded = hasUrlFilterParam ? undefined : applySavedView
 
-  const fetchContacts = async () => {
+  // A new search, filter or sort starts from the first page with nothing
+  // selected. Adjusted during render, so the request goes out once, for page 1.
+  const queryKey = `${debouncedSearch}\u0000${categoryFilter}\u0000${sortBy}`
+  const [pagedQueryKey, setPagedQueryKey] = useState(queryKey)
+  if (pagedQueryKey !== queryKey) {
+    setPagedQueryKey(queryKey)
+    setPage(1)
+    setSelected(new Set())
+  }
+
+  // Search, filter, sort and paging all happen on the server: the browser
+  // used to load the first 500 contacts and search those, so the 501st could
+  // not be found at all.
+  const listQuery = useCallback((extra: Record<string, string> = {}) => {
+    const q = new URLSearchParams({ view: "list", sort: sortBy, ...extra })
+    if (debouncedSearch) q.set("search", debouncedSearch)
+    if (categoryFilter) q.set("category", categoryFilter)
+    return q.toString()
+  }, [debouncedSearch, categoryFilter, sortBy])
+
+  const orgHeaders = useCallback(
+    (): Record<string, string> => (orgId ? { "x-organization-id": String(orgId) } : {}),
+    [orgId],
+  )
+
+  // Only the newest request may write the list: a slow answer for "Ba" must
+  // not land after the answer for "Bakı".
+  const requestSeq = useRef(0)
+  const fetchContacts = useCallback(async (signal?: AbortSignal) => {
+    const seq = ++requestSeq.current
+    setFetching(true)
     try {
-      const res = await fetch("/api/v1/contacts?limit=500", {
-        headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
+      const res = await fetch(`/api/v1/contacts?${listQuery({ page: String(page), limit: String(pageSize) })}`, {
+        headers: orgHeaders(),
+        signal,
       })
       const json = await res.json()
+      if (seq !== requestSeq.current || signal?.aborted) return
       if (json.success) {
         setContacts(json.data.contacts)
         setTotal(json.data.total)
+        if (json.data.stats) setStats(json.data.stats)
+        // A delete can empty the last page: step back to the one that exists.
+        const lastPage = Math.max(1, Math.ceil(json.data.total / pageSize))
+        if (page > lastPage) setPage(lastPage)
       }
-    } catch (err) { console.error(err) } finally { setLoading(false) }
-  }
+    } catch (err) {
+      if (!signal?.aborted) console.error(err)
+    } finally {
+      if (seq === requestSeq.current && !signal?.aborted) {
+        setLoading(false)
+        setFetching(false)
+      }
+    }
+  }, [listQuery, page, pageSize, orgHeaders])
 
-  useEffect(() => { fetchContacts() }, [session])
+  // Auth.js replaces the session object on every token refresh; only another
+  // person or organization needs a new request.
+  useEffect(() => {
+    if (!userId) return
+    const controller = new AbortController()
+    void fetchContacts(controller.signal)
+    return () => controller.abort()
+  }, [fetchContacts, userId])
 
-  // Clear selection when search/sort changes
-  useEffect(() => { setSelected(new Set()) }, [search, sortBy])
 
   // Inline-edit helper — PATCH /api/v1/contacts/[id] then refetch.
   // Uses a `handled` sentinel on thrown errors so the network-error toast
@@ -209,17 +280,17 @@ export default function ContactsPage() {
     setBulkDeleting(true)
     try {
       const ids = Array.from(selected)
-      const res = await fetch("/api/v1/contacts/bulk", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>),
-        },
-        body: JSON.stringify({ ids, action, value }),
-      })
-      if (!res.ok) {
-        const err = (await res.json().catch(() => ({})))?.error || tc("errorDeleteFailed")
-        throw new Error(err)
+      // "Select all N found" can hold more ids than one bulk request takes.
+      for (let i = 0; i < ids.length; i += BULK_CHUNK) {
+        const res = await fetch("/api/v1/contacts/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...orgHeaders() },
+          body: JSON.stringify({ ids: ids.slice(i, i + BULK_CHUNK), action, value }),
+        })
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({})))?.error || tc("errorDeleteFailed")
+          throw new Error(err)
+        }
       }
       const toastKey = action === "delete"
         ? "bulkDeletedToast"
@@ -239,45 +310,20 @@ export default function ContactsPage() {
       fetchContacts()
     } catch (err: any) {
       toast.error(`${tc("error")}: ${err.message}`)
+      // Part of a chunked action may have gone through: show what is there now.
+      fetchContacts()
     } finally {
       setBulkDeleting(false)
     }
   }
 
-  const filtered = useMemo(() => {
-    let result = contacts
-    if (search) {
-      const q = search.toLowerCase()
-      result = result.filter(c =>
-        c.fullName.toLowerCase().includes(q) ||
-        (c.email || "").toLowerCase().includes(q) ||
-        (c.phone || "").toLowerCase().includes(q) ||
-        (c.company?.name || "").toLowerCase().includes(q) ||
-        (c.brand || "").toLowerCase().includes(q)
-      )
-    }
-    if (categoryFilter) {
-      result = result.filter(c => c.category === categoryFilter)
-    }
-    return [...result].sort((a, b) => {
-      switch (sortBy) {
-        case "name_asc": return a.fullName.localeCompare(b.fullName)
-        case "name_desc": return b.fullName.localeCompare(a.fullName)
-        case "company": return (a.company?.name || "zzz").localeCompare(b.company?.name || "zzz")
-        case "email": return (a.email ? 0 : 1) - (b.email ? 0 : 1)
-        case "active": return (a.isActive ? 0 : 1) - (b.isActive ? 0 : 1)
-        default: return 0
-      }
-    })
-  }, [contacts, search, sortBy, categoryFilter])
-
-  const totalPages = Math.ceil(filtered.length / pageSize)
-  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize)
+  const totalPages = Math.ceil(total / pageSize)
+  const paginated = contacts
 
   // Selection helpers
   const allPageSelected = paginated.length > 0 && paginated.every(c => selected.has(c.id))
   const somePageSelected = paginated.some(c => selected.has(c.id))
-  const allFilteredSelected = filtered.length > 0 && filtered.every(c => selected.has(c.id))
+  const allFilteredSelected = total > 0 && selected.size >= total
 
   function toggleSelectAll() {
     if (allPageSelected) {
@@ -297,8 +343,17 @@ export default function ContactsPage() {
     }
   }
 
-  function selectAllFiltered() {
-    setSelected(new Set(filtered.map(c => c.id)))
+  // Every contact the search and filters match, not only this page.
+  async function selectAllFiltered() {
+    try {
+      const res = await fetch(`/api/v1/contacts?${listQuery({ idsOnly: "1" })}`, { headers: orgHeaders() })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error || "")
+      setSelected(new Set<string>(json.data.ids))
+      if (json.data.capped) toast.info(tc("selectAllCapped", { count: json.data.ids.length }))
+    } catch (err: any) {
+      toast.error(`${tc("error")}: ${err?.message || tc("errorNetwork")}`)
+    }
   }
 
   function toggleSelect(id: string) {
@@ -338,17 +393,15 @@ export default function ContactsPage() {
       <DidYouKnow page="contacts" className="mb-4" />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children" data-tour-id="contacts-stats">
-        <ColorStatCard label={t("statTotal")} value={total} icon={<Users className="h-4 w-4" />} hint={t("hintTotalContacts")} />
-        <ColorStatCard label={t("statActive")} value={contacts.filter(c => c.isActive).length} icon={<Users className="h-4 w-4" />} hint={t("hintActiveContacts")} />
-        <ColorStatCard label={t("statWithEmail")} value={contacts.filter(c => c.email).length} icon={<Mail className="h-4 w-4" />} />
-        <ColorStatCard label={t("statWithPhone")} value={contacts.filter(c => c.phone).length} icon={<Phone className="h-4 w-4" />} />
+        <ColorStatCard label={t("statTotal")} value={stats?.total ?? total} icon={<Users className="h-4 w-4" />} hint={t("hintTotalContacts")} />
+        <ColorStatCard label={t("statActive")} value={stats?.active ?? "—"} icon={<Users className="h-4 w-4" />} hint={t("hintActiveContacts")} />
+        <ColorStatCard label={t("statWithEmail")} value={stats?.withEmail ?? "—"} icon={<Mail className="h-4 w-4" />} />
+        <ColorStatCard label={t("statWithPhone")} value={stats?.withPhone ?? "—"} icon={<Phone className="h-4 w-4" />} />
       </div>
 
       {/* Engagement Overview */}
-      {contacts.length > 0 && (() => {
-        const hot = contacts.filter(c => (c.engagementScore ?? 0) >= 50).length
-        const warm = contacts.filter(c => { const s = c.engagementScore ?? 0; return s >= 20 && s < 50 }).length
-        const cold = contacts.filter(c => (c.engagementScore ?? 0) < 20).length
+      {stats && stats.total > 0 && stats.hot !== null && stats.warm !== null && stats.cold !== null && (() => {
+        const { hot, warm, cold } = stats
         return (
           <div className="flex items-center gap-4 px-4 py-2.5 bg-muted/30 rounded-lg border border-border text-sm">
             <span className="text-muted-foreground font-medium">{te("title")}:</span>
@@ -371,14 +424,14 @@ export default function ContactsPage() {
       <EntityBulkBar
         selectedCount={selected.size}
         onClearSelection={() => setSelected(new Set())}
-        countLabel={t("selected", { count: selected.size, total: filtered.length })}
+        countLabel={t("selected", { count: selected.size, total })}
       >
         {!allFilteredSelected && (
           <button
             onClick={selectAllFiltered}
             className="text-sm text-primary hover:text-primary/80 underline"
           >
-            {t("selectAll", { count: filtered.length })}
+            {t("selectAll", { count: total })}
           </button>
         )}
 
@@ -504,13 +557,13 @@ export default function ContactsPage() {
           <Input
             placeholder={t("searchPlaceholder")}
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1) }}
+            onChange={e => setSearch(e.target.value)}
             className="pl-9"
           />
         </div>
-        <span className="text-sm text-muted-foreground">{tc("results", { count: filtered.length })}</span>
+        <span className={cn("text-sm text-muted-foreground", fetching && "opacity-60")} aria-live="polite">{tc("results", { count: total })}</span>
         <div className="flex-1" />
-        <Select value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value); setPage(1) }} className="w-[160px]">
+        <Select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="w-[160px]">
           <option value="">{t("allCategories")}</option>
           <option value="vip">{categoryLabel("vip")}</option>
           <option value="regular">{categoryLabel("regular")}</option>
@@ -622,7 +675,7 @@ export default function ContactsPage() {
                             </span>
                           )}
                           {item.portalAccessEnabled && (
-                            item.portalPasswordHash ? (
+                            item.portalPasswordSet ? (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 uppercase font-semibold">Portal</span>
                             ) : (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 uppercase font-semibold">Pending</span>
@@ -810,7 +863,7 @@ export default function ContactsPage() {
                 {/* Portal — read-only badge */}
                 <td className="px-4 py-3">
                   {item.portalAccessEnabled ? (
-                    item.portalPasswordHash ? (
+                    item.portalPasswordSet ? (
                       <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs">Portal</Badge>
                     ) : (
                       <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 text-xs">Pending</Badge>
@@ -845,20 +898,20 @@ export default function ContactsPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">
-            {tc("pageOf", { page, totalPages })}
+            {tc("pageOf", { current: page, total: totalPages })}
           </span>
           <div className="flex gap-1">
-            <Button variant="outline" size="icon" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+            <Button variant="outline" size="icon" aria-label={tc("previousPage")} onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+            <Button variant="outline" size="icon" aria-label={tc("nextPage")} onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
       )}
 
-      <ContactForm open={formOpen} onOpenChange={setFormOpen} onSaved={fetchContacts} initialData={editData} orgId={orgId} />
+      <ContactForm open={formOpen} onOpenChange={setFormOpen} onSaved={() => fetchContacts()} initialData={editData} orgId={orgId} />
       <DeleteConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={confirmDelete} title={t("deleteContact")} itemName={deleteItem?.fullName} />
       <DeleteConfirmDialog
         open={bulkDeleteOpen}
@@ -873,7 +926,7 @@ export default function ContactsPage() {
         open={importOpen}
         onOpenChange={setImportOpen}
         entityType="contacts"
-        onImported={fetchContacts}
+        onImported={() => fetchContacts()}
       />
     </div>
   )
