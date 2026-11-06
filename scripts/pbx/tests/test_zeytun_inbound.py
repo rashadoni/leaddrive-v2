@@ -2614,6 +2614,15 @@ class ArtifactTests(unittest.TestCase):
         self.assertIn("zeytun_restore_note", restore)
         self.assertEqual(ast.dump(ast.parse(restore).body[0]), ast.dump(new_methods["_context_restore_event"]))
         differences.discard("_context_restore_event")
+        # A fresh session on a pharmacy call gets 5 s to set up and to its first audio (2026-11-06).
+        recover = ast.unparse(old_methods["_fresh_recover_gemini"]).replace(
+            "min(GEMINI_LIVE_FRESH_RECOVERY_MAX_PHASE_SECONDS, GEMINI_LIVE_FRESH_RECOVERY_TIMEOUT_SECONDS)",
+            "min(GEMINI_LIVE_FRESH_RECOVERY_MAX_PHASE_SECONDS, 5.0 if self.pharmacy_preview else GEMINI_LIVE_FRESH_RECOVERY_TIMEOUT_SECONDS)", 1).replace(
+            "min(GEMINI_LIVE_FRESH_RECOVERY_MAX_PHASE_SECONDS, GEMINI_LIVE_FRESH_RECOVERY_FIRST_AUDIO_TIMEOUT_SECONDS)",
+            "min(GEMINI_LIVE_FRESH_RECOVERY_MAX_PHASE_SECONDS, 5.0 if self.pharmacy_preview else GEMINI_LIVE_FRESH_RECOVERY_FIRST_AUDIO_TIMEOUT_SECONDS)", 1)
+        self.assertEqual(recover.count("5.0 if self.pharmacy_preview"), 2)
+        self.assertEqual(ast.dump(ast.parse(recover).body[0]), ast.dump(new_methods["_fresh_recover_gemini"]))
+        differences.discard("_fresh_recover_gemini")
         for name in differences - allowed:
             original = ast.unparse(old_methods[name])
             expected = original.replace("self.is_demo_call", "(self.is_demo_call or self.pharmacy_preview)")
