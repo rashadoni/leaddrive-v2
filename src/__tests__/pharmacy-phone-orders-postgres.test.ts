@@ -538,6 +538,48 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
         where: { organizationId: ZEYTUN, externalId: NEAR } })).id })
   })
 
+  // Owner's queue task 10 (2026-11-07): the line calls the pharmacy back once the product it waited for is in stock.
+  it("calls one pharmacy back about what arrived, only when switched on and inside voice hours, never twice", async () => {
+    const waitlist = await import("@/lib/voice-agent/pharmacy/zeytun-waitlist")
+    const { placeWaitlistCallback, CALLBACK_MARKER } = await import("@/lib/voice-agent/pharmacy/zeytun-waitlist-callback")
+    const db = app as unknown as PrismaClient
+    const [YASAMAL, SOLD] = [GUID(95), "44444444-4444-4444-8444-444444444444"]
+    const channel = await admin.channelConfig.create({ data: { organizationId: ZEYTUN, channelType: "voip", configName: "Zeytun line",
+      phoneNumber: "+994120000000", isActive: true, settings: { provider: "asterisk" } } })
+    const grant = { id: "grant-line", organizationId: ZEYTUN, channelConfigId: channel.id, orderOrganizationId: ZEYTUN }
+    const dials: { toNumber: string; correlationId: string }[] = []
+    const dial = async (input: { toNumber: string; correlationId: string }) => { dials.push(input); return { success: true } }
+    const now = new Date("2026-11-03T08:00:00.000Z") // Tuesday 12:00 in Baku
+    await save(db, { organizationId: ZEYTUN, providerCallId: callId(95), callStartedAt: "2026-11-01T07:00:00.000Z", callerPhoneE164: PHONE,
+      catalog: CATALOG, lines: [{ quantity: 5, unit: "qutu", spoken: "Adefa beş qutu" }], identification: "phone_unique",
+      pharmacyName: "92 Yasamal", pharmacyGuid: YASAMAL })
+    await waitlist.recordCallWaitlist(db, { organizationId: ZEYTUN, providerCallId: callId(95), catalogScopeKey: CATALOG.scopeKey,
+      lines: [{ externalId: SOLD, itemCode: "00000001111", productName: "Adefa № 30", spokenText: "Adefa beş qutu", quantity: 5, unit: "qutu" }] })
+    await admin.pharmacyWaitlistItem.updateMany({ where: { externalId: SOLD }, data: { arrivedAt: new Date("2026-11-03T06:00:00.000Z") } })
+    // Off by default; then outside voice hours (none configured is closed).
+    expect(await placeWaitlistCallback({ db, grant, dial, now })).toEqual({ status: "off" })
+    await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: { pharmacyPhoneOrders: { waitlistCallback: { enabled: true } } } } })
+    expect(await placeWaitlistCallback({ db, grant, dial, now })).toEqual({ status: "outside_hours" })
+    const day = { enabled: true, intervals: [{ start: "09:00", end: "18:00" }] }
+    await admin.businessHours.create({ data: { organizationId: ZEYTUN, channelType: "voice", timezone: "Asia/Baku", isActive: true,
+      schedule: { mon: day, tue: day, wed: day, thu: day, fri: day } } })
+    const placed = await placeWaitlistCallback({ db, grant, dial, now })
+    expect(placed).toMatchObject({ status: "placed", items: 1 })
+    // The pharmacy's own number, from the order; the record first, with the marker the line's pilot reads.
+    expect(dials).toEqual([expect.objectContaining({ toNumber: PHONE, correlationId: placed.providerCallId })])
+    const record = await admin.callLog.findFirstOrThrow({ where: { providerCallId: placed.providerCallId } })
+    expect(record).toMatchObject({ organizationId: ZEYTUN, channelConfigId: channel.id, direction: "outbound", callMode: "ai", targetPhoneE164: PHONE })
+    expect((record.consentAudit as Record<string, unknown>)[CALLBACK_MARKER]).toMatchObject({ grantId: "grant-line", pharmacyGuid: YASAMAL,
+      items: [{ externalId: SOLD, name: "Adefa № 30" }], test: false })
+    expect(await admin.pharmacyWaitlistItem.findFirstOrThrow({ where: { externalId: SOLD } })).toMatchObject({
+      callbackCallId: placed.providerCallId, callbackStatus: "placed" })
+    // One call at a time; once over, nothing left to call about: never twice.
+    expect(await placeWaitlistCallback({ db, grant, dial, now })).toEqual({ status: "busy" })
+    await admin.callLog.updateMany({ where: { providerCallId: placed.providerCallId }, data: { endedAt: now, status: "completed" } })
+    expect(await placeWaitlistCallback({ db, grant, dial, now })).toEqual({ status: "nothing_due" })
+    expect(dials).toHaveLength(1)
+  })
+
   // Owner's client, 2026-11-06: a sold-out product the pharmacy still wants waits for it; its next call hears of it first.
   it("keeps a pharmacy's sold-out products on its waiting list and offers them, then its own products, when 1C has them again", async () => {
     const waitlist = await import("@/lib/voice-agent/pharmacy/zeytun-waitlist")

@@ -19,6 +19,7 @@ import { learnNames, type LearnedNames } from "./zeytun-learned-names"
 import { callPharmacy, lastPharmacyOrder } from "./zeytun-pharmacy-history"
 import { markWaitlistArrivals, pharmacyArrivals, recordCallWaitlist } from "./zeytun-waitlist"
 import { recoveredOrderLines } from "./zeytun-transcript-recovery"
+import { CALLBACK_MARKER, callbackMarker } from "./zeytun-waitlist-callback"
 import { combineAssortment, confirmedOrdersSource, createCallAssortments, type AssortmentSource,
   type LoadedAssortment } from "./zeytun-pharmacy-assortment"
 import { CHIRP_KEY_FILE, createChirpRecognizer, createZeytunSecondEar, type ZeytunSecondEar } from "./zeytun-chirp"
@@ -350,8 +351,11 @@ export function createInboundPilotHost(options: {
         return { status: "skipped" }
       }
       const config = parsed.data as typeof parsed.data & { orderOrganizationId: string }
-      const call = await this.loadCall(config, providerCallId) as InboundPilotOrderCall | null
-      if (!call || call.direction !== "inbound") return { status: "no_call" }
+      const raw = await this.loadCall(config, providerCallId) as (Omit<InboundPilotOrderCall, "direction"> & { direction: string }) | null
+      // The line's own call back to a pharmacy (task 10) reads as the pharmacy's call: its number is the target.
+      const callback = raw?.direction === "outbound" ? callbackMarker({ [CALLBACK_MARKER]: raw.callbackMarker }, providerCallId) : null
+      if (!raw || (raw.direction !== "inbound" && !callback)) return { status: "no_call" }
+      const call = (callback ? { ...raw, direction: "inbound", fromNumber: raw.targetPhoneE164, targetPhoneE164: raw.fromNumber } : raw) as InboundPilotOrderCall
       const orgId = config.orderOrganizationId
       const order = await runWithTenant(orgId, () => options.orders!.pharmacyPhoneOrder.findUnique({
         where: { organizationId_providerCallId: { organizationId: orgId, providerCallId } },

@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
+import type { PrismaClient } from "@prisma/client"
 import { runWithTenant } from "@/lib/rls-context"
 import { voiceOrganizationFor } from "@/lib/voip/line-numbers"
 import { AI_CONNECTED_PENDING_RESULT } from "@/lib/voice-agent/call-history"
@@ -22,6 +23,7 @@ import { recordDemoPromptApplied } from "@/lib/demo-center/call-prompt-match"
 import { recordUnansweredCallback } from "@/lib/voice-agent/callback-fallback-task"
 import type { ConversationInsight } from "@/lib/conversation-intel/types"
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
+import { callbackMarker } from "@/lib/voice-agent/pharmacy/zeytun-waitlist-callback"
 import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
@@ -816,6 +818,15 @@ async function recordInboundAiResult(params: {
   })
 }
 
+/** The order a line call left, to its managers, after the agent's last save had time to arrive. */
+function announceLineOrderLater(organizationId: string, callId: string) {
+  setTimeout(() => {
+    void import("@/lib/pharmacy-orders/manager-notice")
+      .then(({ announceCallOrder }) => announceCallOrder(prisma as unknown as PrismaClient, organizationId, callId))
+      .catch((error: unknown) => console.warn("[zeytun-line] callback order notice failed", error instanceof Error ? error.name : typeof error))
+  }, 5_000).unref?.()
+}
+
 function recoverLineOrder(callId: string, transcription: string) {
   // Loaded here, not at the top: the line's host belongs to the line process, not to every result.
   void (async () => {
@@ -1190,6 +1201,14 @@ async function handlePost(request: NextRequest) {
   // Provider/session terminal state is durable before any optional model call.
   // An unanswered call or an agent-only transcript is not a customer
   // conversation and must not be sent for sales analysis.
+  // Owner's queue task 10: the line's call back to a pharmacy about products it waited for.
+  // Its order goes to the managers as after an incoming call; no sales analysis, no callback of its own.
+  const lineCallback = callbackMarker(call.consentAudit, parsed.data.callId)
+  if (lineCallback) {
+    if (canonicalTranscript !== null && customerSpoke) recoverLineOrder(parsed.data.callId, canonicalTranscript)
+    announceLineOrderLater(lineCallback.orderOrganizationId, parsed.data.callId)
+    return NextResponse.json({ success: true, analysisStatus: "test_preview" })
+  }
   if (isPharmacyInboundPreview(call.consentAudit, parsed.data.callId)) {
     return NextResponse.json({ success: true, analysisStatus: "test_preview" })
   }

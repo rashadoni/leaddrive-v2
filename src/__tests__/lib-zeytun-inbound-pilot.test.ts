@@ -317,6 +317,37 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     return { ...f, saveOrder, handle: createInboundPilotHandler(token, { ...f.dependencies, saveOrder }) }
   }
 
+  // Owner's queue task 10 (2026-11-07): the line's own call back to a pharmacy about products it waited for.
+  describe("a call back about waited-for products", () => {
+    const marker = { version: 1, providerCallId: call.providerCallId, grantId: line.id, orderOrganizationId: line.orderOrganizationId,
+      pharmacyName: "92 Yasamal", pharmacyGuid: "3ed36d74-8c36-11e9-80cb-0894ef5e9ba2", test: false,
+      items: [{ externalId: "cccccccc-1111-4111-8111-111111111111", name: "Adefa 10 mq № 30" }] }
+    const outbound = { ...call, direction: "outbound", status: "initiated", wasAnswered: false,
+      fromNumber: "+994120000000", targetPhoneE164: "+994552223344", callbackMarker: marker }
+
+    it("opens with what arrived, for the marked call of this grant only, as the pharmacy's call", async () => {
+      const f = lineFixture()
+      const findPharmacies = vi.fn(async () => [])
+      const handle = createInboundPilotHandler(token, { ...f.dependencies, saveOrder: f.saveOrder, findPharmacies })
+      f.dependencies.loadCall.mockImplementation(async () => structuredClone(outbound))
+      const session = await (await handle(request())).json()
+      expect(session).toMatchObject({ enabled: true, opening: "Salam! Zeytun Pharmaceuticals-dan zəng edirəm, 92 Yasamal apteki ilə danışıram? "
+        + "Siz soruşmuşdunuz: Adefa 10 mq № 30 — artıq anbarımızdadır. Sifariş etmək istərdinizmi?" })
+      expect(session.prompt).toContain("<callback>")
+      // The pharmacy is found by the number called, as if it had dialled.
+      expect(findPharmacies).toHaveBeenCalledWith(expect.objectContaining({ purpose: "zeytun_line" }), "+994552223344")
+    })
+
+    it("refuses an outbound call without the marker, or with another grant's", async () => {
+      for (const callbackMarker of [null, { ...marker, grantId: "eeeeeeee-1111-4111-8111-111111111111" },
+        { ...marker, providerCallId: "ffffffff-1111-4111-8111-111111111111" }, { ...marker, items: [] }]) {
+        const f = lineFixture()
+        f.dependencies.loadCall.mockImplementation(async () => structuredClone({ ...outbound, callbackMarker }))
+        expect(await (await f.handle(request())).json()).toMatchObject({ enabled: false })
+      }
+    })
+  })
+
   it("keeps its texts inside the bridge limits and never calls the caller a test", () => {
     expect(ZEYTUN_LINE_PROMPT.length).toBeLessThanOrEqual(BRIDGE.promptChars)
     expect(ZEYTUN_LINE_OPENING.length).toBeLessThanOrEqual(500)

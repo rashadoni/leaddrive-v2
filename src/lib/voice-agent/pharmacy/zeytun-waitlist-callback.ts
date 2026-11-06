@@ -112,8 +112,10 @@ export async function placeWaitlistCallback(deps: CallbackDeps): Promise<Callbac
   const hours = await runWithTenant(grant.organizationId, () => db.businessHours.findFirst({
     where: { organizationId: grant.organizationId, channelType: "voice", isActive: true },
     select: { id: true, timezone: true, schedule: true, holidays: true, isActive: true } }))
+  // As for an AI call to a lead (manual-lead-call.ts): hours that are missing or say nothing are closed,
+  // never the helper's fail-open default for inbox auto-away.
   const open = hours?.timezone && isValidTimeZone(hours.timezone) ? evaluateBusinessHours(hours, now) : null
-  if (!open?.open) return { status: "outside_hours" }
+  if (!open?.open || (open.reason !== "inside_hours" && open.reason !== "holiday_hours")) return { status: "outside_hours" }
   const active = await runWithTenant(grant.organizationId, () => db.callLog.count({ where: { organizationId: grant.organizationId,
     channelConfigId: grant.channelConfigId, direction: "outbound", callMode: "ai", endedAt: null,
     createdAt: { gte: new Date(now.getTime() - ACTIVE_CALL_MS) } } }))
