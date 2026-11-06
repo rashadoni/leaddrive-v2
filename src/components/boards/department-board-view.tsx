@@ -22,6 +22,7 @@ import { useTranslations } from "next-intl"
 import { Loader2, Columns3, X } from "lucide-react"
 import { CANONICAL_STAGES, STAGE_LABELS, resolveLaneKey, type LaneColumn } from "@/lib/tasks/board-columns"
 import { BoardReports } from "@/components/boards/board-reports"
+import { BoardProjectTabs } from "@/components/boards/board-project-tabs"
 import { TaskDetailView } from "@/components/tasks/task-detail-view"
 
 interface DeptDivision { id: string; key: string; name: string; color: string | null }
@@ -121,6 +122,7 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
 
   return (
     <div className="flex h-full flex-col p-6">
+      <div className="-mx-5"><BoardProjectTabs currentId={division.id} /></div>
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="rounded px-2 py-0.5 text-xs font-bold tracking-wide text-white" style={{ background: division.color || "#6554C0" }}>
