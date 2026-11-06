@@ -13,10 +13,21 @@
  * Working hours are one interval per weekday. A salon keeps the same hours all
  * week, so the common answer is offered whole (a preset and one pair of time
  * fields); the per-day rows open only when the days really differ.
+ *
+ * Four things here are borrowed from the programs a salon owner has already
+ * used, because arguing with their habits buys nothing:
+ *   — the strip of steps at the top, with what each one holds and what is still
+ *     missing (Fresha and Altegio both put that list beside the form; a column
+ *     would cost the preview its width, so it lies across the top instead);
+ *   — the model writing the description (Fresha's «Generate with AI»), the one
+ *     field an owner skips;
+ *   — «save and add another», the way a price list of twenty services is
+ *     actually entered (Dikidi);
+ *   — copying one day's hours onto the rest (Calendly).
  */
-import { useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { Building2, Check, ChevronRight, CircleAlert, Clock3, Loader2, Phone, Video, Wallet } from "lucide-react"
+import { Building2, Check, ChevronRight, CircleAlert, Clock3, Copy, Loader2, Phone, Sparkles, Undo2, Video, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -67,6 +78,10 @@ const PRESETS: { key: string; days: Weekday[] }[] = [
   { key: "hoursPresetAll", days: [...WEEKDAYS] },
 ]
 const DEFAULT_INTERVAL: HoursInterval = { start: "09:00", end: "18:00" }
+/** The schema's own limits, shown as a counter once the field is in use. */
+const TITLE_MAX = 120
+const DESCRIPTION_MAX = 2000
+const STEP_IDS = ["bp-step-service", "bp-step-where", "bp-step-price", "bp-step-hosts", "bp-step-hours", "bp-step-advanced"] as const
 /** 2024-01-07 was a Sunday, so weekday "0" lands on it and "6" on the Saturday after. */
 const WEEKDAY_ANCHOR = Date.UTC(2024, 0, 7)
 const DAY_MS = 86_400_000
@@ -92,9 +107,9 @@ function Chip({ active, onClick, children, className }: { active: boolean; onCli
   )
 }
 
-function Step({ index, title, aside, children }: { index: number; title: string; aside?: ReactNode; children: ReactNode }) {
+function Step({ id, index, title, aside, children }: { id: string; index: number; title: string; aside?: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-xl border bg-card p-4 shadow-sm sm:p-5">
+    <section id={id} className="scroll-mt-24 rounded-xl border bg-card p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex flex-wrap items-center gap-2.5">
         <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[13px] font-extrabold text-primary">{index}</span>
         <h3 className="text-sm font-bold tracking-tight">{title}</h3>
@@ -102,6 +117,77 @@ function Step({ index, title, aside, children }: { index: number; title: string;
       </div>
       {children}
     </section>
+  )
+}
+
+interface StepNavItem {
+  id: string
+  label: string
+  /** What this step already holds — or what it still needs, when `missing`. */
+  note: string
+  done: boolean
+  missing: boolean
+}
+
+/**
+ * Where the owner is in the form, so the strip can follow them down the page.
+ * The topmost section still on screen wins: by ratio alone a tall step further
+ * down would steal the mark from the short one being filled in.
+ */
+function useActiveStep(ids: readonly string[]): string {
+  const [active, setActive] = useState(ids[0])
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return
+    const sections = ids.map((id) => document.getElementById(id)).filter((node): node is HTMLElement => Boolean(node))
+    if (sections.length === 0) return
+    const ratios = new Map<string, number>()
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) ratios.set(entry.target.id, entry.intersectionRatio)
+        const visible = ids.filter((id) => (ratios.get(id) ?? 0) > 0)
+        if (visible.length > 0) setActive(visible[0])
+      },
+      { rootMargin: "-88px 0px -55% 0px", threshold: [0, 0.01] },
+    )
+    for (const section of sections) observer.observe(section)
+    return () => observer.disconnect()
+  }, [ids])
+  return active
+}
+
+/** The list of steps Fresha and Altegio keep beside the form, laid across the top. */
+function StepNav({ items, active, label }: { items: StepNavItem[]; active: string; label: string }) {
+  return (
+    <nav aria-label={label} className="sticky top-0 z-20 overflow-x-auto rounded-xl border bg-card/95 p-1.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/85">
+      <ol className="flex min-w-max items-stretch gap-1">
+        {items.map((item, index) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              data-crm-filter=""
+              data-state={active === item.id ? "active" : "inactive"}
+              aria-current={active === item.id ? "step" : undefined}
+              onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="flex h-11 items-center gap-2 rounded-lg px-2.5 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-extrabold",
+                  item.missing ? "bg-destructive/10 text-destructive" : item.done ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
+                )}
+              >
+                {item.done ? <Check className="h-3.5 w-3.5" /> : index + 1}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-xs font-bold leading-tight">{item.label}</span>
+                <span className={cn("block truncate text-[11px] leading-tight", item.missing ? "font-semibold text-destructive" : "text-muted-foreground")}>{item.note}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </nav>
   )
 }
 
@@ -134,7 +220,7 @@ function previewSlots(weekly: WeeklyHours, durationMinutes: number): string[] {
 }
 
 export function BookingPageEditor({
-  draft, hosts, categories, linkBase, currency, saving, error, onChange, onSave, onCancel,
+  draft, hosts, categories, linkBase, currency, ai, saving, error, onChange, onSave, onCancel,
 }: {
   draft: BookingPageDraft
   hosts: BookingHostOption[]
@@ -143,10 +229,13 @@ export function BookingPageEditor({
   linkBase: string
   /** The code the price will be saved in — the symbol beside the field. */
   currency: string
+  /** Whether this organization may ask the model to write the description. */
+  ai: boolean
   saving: boolean
   error: string
   onChange: (draft: BookingPageDraft) => void
-  onSave: () => void
+  /** `another` keeps the owner in the form with a fresh service, prefilled from this one. */
+  onSave: (another?: boolean) => void
   onCancel: () => void
 }) {
   const t = useTranslations("booking")
@@ -164,6 +253,12 @@ export function BookingPageEditor({
   const [customDuration, setCustomDuration] = useState(!DURATIONS.includes(draft.durationMinutes))
   const [newCategory, setNewCategory] = useState(false)
   const [perDayOpen, setPerDayOpen] = useState(false)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiError, setAiError] = useState("")
+  // What the field held before the model rewrote it. Improving text the owner
+  // wrote must be undoable in one click, or nobody will dare press the button.
+  const [replaced, setReplaced] = useState<string | null>(null)
+  const activeStep = useActiveStep(STEP_IDS)
 
   const set = <K extends keyof BookingPageDraft>(key: K, value: BookingPageDraft[K]) => onChange({ ...draft, [key]: value })
 
@@ -196,6 +291,40 @@ export function BookingPageEditor({
     set("hostIds", draft.hostIds.includes(id) ? draft.hostIds.filter((hostId) => hostId !== id) : [...draft.hostIds, id])
   }
 
+  /**
+   * Ask the model for the description. Nothing is saved: the answer lands in
+   * the field, and the owner keeps it, edits it or takes the previous text
+   * back before pressing Save.
+   */
+  async function writeDescription() {
+    if (aiBusy || !draft.title.trim()) return
+    setAiBusy(true)
+    setAiError("")
+    const before = draft.description
+    const response = await fetch("/api/v1/booking-pages/describe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: draft.title.trim(),
+        category: draft.category.trim() || null,
+        durationMinutes: draft.durationMinutes,
+        locationType: draft.locationType,
+        price: draft.price.trim() || null,
+        currency,
+        current: draft.description.trim() || null,
+        locale,
+      }),
+    }).catch(() => null)
+    const body = await response?.json().catch(() => null)
+    setAiBusy(false)
+    if (!response?.ok || !body?.success || typeof body?.data?.description !== "string") {
+      setAiError(t("aiFailed"))
+      return
+    }
+    setReplaced(before.trim() ? before : null)
+    set("description", body.data.description)
+  }
+
   const missing = [
     draft.title.trim() ? null : t("missingTitle"),
     draft.hostIds.length ? null : t("missingHosts"),
@@ -206,15 +335,49 @@ export function BookingPageEditor({
   const slots = previewSlots(draft.weekly, draft.durationMinutes)
   const LocationIcon = LOCATION_ICON[draft.locationType]
   const optional = <span className="font-normal text-muted-foreground">— {t("optionalMark")}</span>
+  const symbol = getCurrencySymbol(currency)
+  const noticeHours = Math.round(draft.minNoticeMinutes / 60)
+  // What the folded step holds, shown on its own summary line: three settings
+  // nobody opens are still three settings that decide when a client may book.
+  const advancedNote = [
+    draft.bufferMinutes === 0 ? t("noBuffer") : t("minutes", { count: draft.bufferMinutes }),
+    t("hoursBefore", { count: noticeHours }),
+    t("daysAhead", { count: draft.maxDaysAhead }),
+  ].join(" · ")
+  // A tick means «nothing more is needed here», so only the three answers a
+  // service cannot be saved without can earn one. The steps that come with a
+  // working default keep their number: a tick on a step nobody has looked at
+  // would say the owner decided something they did not.
+  const stepItems: StepNavItem[] = [
+    { id: STEP_IDS[0], label: t("stepService"), done: Boolean(draft.title.trim()), missing: !draft.title.trim(), note: draft.title.trim() || t("missingTitle") },
+    { id: STEP_IDS[1], label: t("stepWhere"), done: false, missing: false, note: `${t("minutes", { count: draft.durationMinutes })} · ${t(`location_${draft.locationType}`)}` },
+    { id: STEP_IDS[2], label: t("stepPrice"), done: false, missing: false, note: draft.price.trim() ? `${draft.price.trim()} ${symbol}` : t("optionalMark") },
+    { id: STEP_IDS[3], label: t("fieldHosts"), done: chosenHosts.length > 0, missing: chosenHosts.length === 0, note: chosenHosts.length === 0 ? t("missingHosts") : chosenHosts.length === 1 ? chosenHosts[0].name : t("hostsCount", { count: chosenHosts.length }) },
+    // One pair of times only when every open day really keeps them: «6 days ·
+    // 09:00–18:00» under a week whose Saturday is shorter would be a lie.
+    { id: STEP_IDS[4], label: t("fieldHours"), done: open.length > 0, missing: open.length === 0, note: open.length === 0 ? t("missingHours") : `${t("daysCount", { count: open.length })} · ${uniform ? `${uniform.start}–${uniform.end}` : t("hoursMixed")}` },
+    { id: STEP_IDS[5], label: t("advancedTitle"), done: false, missing: false, note: advancedNote },
+  ]
+  // Altegio puts the final price and duration under the form; here they sit in
+  // the bar the eye is already on when it reaches for Save.
+  const totals = [
+    t("minutes", { count: draft.durationMinutes }),
+    draft.price.trim() ? `${draft.price.trim()} ${symbol}` : null,
+    chosenHosts.length > 1 ? t("hostsCount", { count: chosenHosts.length }) : chosenHosts[0]?.name,
+  ].filter(Boolean).join(" · ")
 
   return (
     <div className="space-y-4" data-testid="booking-page-editor">
+      <StepNav items={stepItems} active={activeStep} label={t("stepsNav")} />
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_336px]">
         <div className="space-y-4">
 
-          <Step index={1} title={t("stepService")}>
-            <Label htmlFor="bp-title">{t("fieldTitle")}</Label>
-            <Input id="bp-title" className="mt-1 h-12 text-base font-semibold" value={draft.title} placeholder={t("fieldTitlePlaceholder")} onChange={(event) => setTitle(event.target.value)} />
+          <Step id={STEP_IDS[0]} index={1} title={t("stepService")}>
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <Label htmlFor="bp-title">{t("fieldTitle")}</Label>
+              {draft.title.length > 0 ? <span className="text-xs tabular-nums text-muted-foreground">{draft.title.length}/{TITLE_MAX}</span> : null}
+            </div>
+            <Input id="bp-title" className="mt-1 h-12 text-base font-semibold" maxLength={TITLE_MAX} autoFocus={!draft.id} value={draft.title} placeholder={t("fieldTitlePlaceholder")} onChange={(event) => setTitle(event.target.value)} />
 
             {linkOpen ? (
               <div className="mt-2.5">
@@ -253,12 +416,35 @@ export function BookingPageEditor({
             </div>
 
             <div className="mt-4">
-              <Label htmlFor="bp-description">{t("fieldDescription")} {optional}</Label>
-              <Textarea id="bp-description" className="mt-1" rows={2} value={draft.description} onChange={(event) => set("description", event.target.value)} />
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <Label htmlFor="bp-description">{t("fieldDescription")} {optional}</Label>
+                {draft.description.length > 0 ? <span className="text-xs tabular-nums text-muted-foreground">{draft.description.length}/{DESCRIPTION_MAX}</span> : null}
+              </div>
+              <Textarea id="bp-description" className="mt-1" rows={2} maxLength={DESCRIPTION_MAX} value={draft.description} onChange={(event) => { setReplaced(null); set("description", event.target.value) }} />
+              {ai ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void writeDescription()}
+                    disabled={aiBusy || !draft.title.trim()}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-dashed border-input bg-card px-3 text-sm font-semibold text-primary transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:text-muted-foreground disabled:hover:border-input"
+                  >
+                    {aiBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
+                    {draft.description.trim() ? t("aiEnhance") : t("aiWrite")}
+                  </button>
+                  {replaced !== null ? (
+                    <button type="button" onClick={() => { set("description", replaced); setReplaced(null) }} className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-input bg-card px-3 text-sm font-semibold transition-colors hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <Undo2 className="h-4 w-4" aria-hidden="true" />{t("aiUndo")}
+                    </button>
+                  ) : null}
+                  <span className="text-xs text-muted-foreground">{draft.title.trim() ? t("aiHint") : t("aiNeedTitle")}</span>
+                </div>
+              ) : null}
+              {aiError ? <p className="mt-1.5 text-xs text-destructive" role="alert">{aiError}</p> : null}
             </div>
           </Step>
 
-          <Step index={2} title={t("stepWhere")}>
+          <Step id={STEP_IDS[1]} index={2} title={t("stepWhere")}>
             <Label>{t("fieldDuration")}</Label>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {DURATIONS.map((value) => (
@@ -321,7 +507,7 @@ export function BookingPageEditor({
             </div>
           </Step>
 
-          <Step index={3} title={t("stepPrice")}>
+          <Step id={STEP_IDS[2]} index={3} title={t("stepPrice")}>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <Label htmlFor="bp-price">{t("fieldPrice")} {optional}</Label>
@@ -353,6 +539,7 @@ export function BookingPageEditor({
           </Step>
 
           <Step
+            id={STEP_IDS[3]}
             index={4}
             title={t("fieldHosts")}
             aside={hosts.length > 1 ? (
@@ -371,7 +558,7 @@ export function BookingPageEditor({
             <p className="mt-2 text-xs text-muted-foreground">{t("fieldHostsHint")}</p>
           </Step>
 
-          <Step index={5} title={t("fieldHours")} aside={t("hoursOnLegend")}>
+          <Step id={STEP_IDS[4]} index={5} title={t("fieldHours")} aside={t("hoursOnLegend")}>
             <div className="flex flex-wrap gap-2">
               {PRESETS.map((preset) => {
                 const active = Boolean(uniform) && open.length === preset.days.length && preset.days.every((day) => open.includes(day))
@@ -430,13 +617,29 @@ export function BookingPageEditor({
                 {WEEK_ORDER.map((day) => {
                   const interval = draft.weekly[day][0]
                   return (
-                    <div key={day} className="grid grid-cols-[minmax(96px,140px)_1fr] items-center gap-2 text-sm">
+                    // On a phone the day stands on its own line: two time
+                    // fields and the copy button are wider than the screen is
+                    // once a weekday name sits beside them.
+                    <div key={day} className="grid grid-cols-1 gap-1 text-sm sm:grid-cols-[minmax(96px,140px)_1fr] sm:items-center sm:gap-2">
                       <span className={cn("truncate", interval ? "font-medium" : "text-muted-foreground")}>{t(`weekday_${day}`)}</span>
                       {interval ? (
                         <div className="flex items-center gap-2">
                           <Input type="time" className="h-9 w-32" value={interval.start} onChange={(event) => setDayEdge(day, "start", event.target.value)} aria-label={`${t(`weekday_${day}`)} ${t("hoursFrom")}`} />
                           <span className="text-muted-foreground">–</span>
                           <Input type="time" className="h-9 w-32" value={interval.end} onChange={(event) => setDayEdge(day, "end", event.target.value)} aria-label={`${t(`weekday_${day}`)} ${t("hoursTo")}`} />
+                          {/* Calendly's copy button: a salon that works 9–18 and
+                              10–16 on Saturday sets one row, then presses this. */}
+                          {open.length > 1 ? (
+                            <button
+                              type="button"
+                              onClick={() => set("weekly", applyWeekly(open, interval))}
+                              title={t("hoursCopy")}
+                              aria-label={`${t(`weekday_${day}`)}: ${t("hoursCopy")}`}
+                              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              <Copy className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                          ) : null}
                         </div>
                       ) : <span className="text-muted-foreground">{t("dayOff")}</span>}
                     </div>
@@ -446,11 +649,14 @@ export function BookingPageEditor({
             ) : null}
           </Step>
 
-          <details className="group rounded-xl border bg-card shadow-sm">
+          {/* Calendly folds a step down to one line with its current answer on
+              it; the three settings here are exactly that kind of step. */}
+          <details id={STEP_IDS[5]} className="group scroll-mt-24 rounded-xl border bg-card shadow-sm">
             <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2.5 p-4 text-sm font-bold sm:p-5 [&::-webkit-details-marker]:hidden">
               <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" aria-hidden="true" />
               {t("advancedTitle")}
-              <span className="ml-auto text-xs font-normal text-muted-foreground">{t("advancedHint")}</span>
+              <span className="ml-auto text-xs font-normal text-muted-foreground group-open:hidden">{advancedNote}</span>
+              <span className="ml-auto hidden text-xs font-normal text-muted-foreground group-open:inline">{t("advancedHint")}</span>
             </summary>
             <div className="grid gap-4 px-4 pb-5 sm:px-5">
               <div>
@@ -475,7 +681,8 @@ export function BookingPageEditor({
           </details>
         </div>
 
-        <aside className="space-y-3 xl:sticky xl:top-4">
+        {/* Below the strip of steps, which is sticky at the top of the page. */}
+        <aside className="space-y-3 xl:sticky xl:top-[76px]">
           <p className="px-0.5 text-[11px] font-extrabold uppercase tracking-[0.08em] text-muted-foreground">{t("previewTitle")}</p>
           <div className="overflow-hidden rounded-2xl border bg-card shadow-md">
             <div className="flex items-center gap-1.5 border-b bg-muted/40 px-3 py-2">
@@ -535,13 +742,21 @@ export function BookingPageEditor({
             <span>{t("missingPrefix")} <span className="font-bold text-foreground">{missing.join(", ")}</span></span>
           </p>
         ) : (
-          <p className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
-            <Check className="h-4 w-4 shrink-0" aria-hidden="true" />{t("readyToSave")}
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+            <span className="flex items-center gap-2 font-medium text-emerald-700 dark:text-emerald-400">
+              <Check className="h-4 w-4 shrink-0" aria-hidden="true" />{t("readyToSave")}
+            </span>
+            <span className="text-muted-foreground">{totals}</span>
           </p>
         )}
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
           <Button variant="outline" onClick={onCancel} disabled={saving}>{t("cancel")}</Button>
-          <Button onClick={onSave} disabled={saving || missing.length > 0 || !draft.slug}>
+          {/* A price list is entered in one sitting: saving must not throw the
+              owner back to the list to press «New service» twenty times. */}
+          {draft.id ? null : (
+            <Button variant="outline" onClick={() => onSave(true)} disabled={saving || missing.length > 0 || !draft.slug}>{t("saveAnother")}</Button>
+          )}
+          <Button onClick={() => onSave()} disabled={saving || missing.length > 0 || !draft.slug}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
             {t("save")}
           </Button>
