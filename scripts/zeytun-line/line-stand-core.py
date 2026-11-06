@@ -146,11 +146,20 @@ threading.Thread(target=relay_reader, daemon=True).start()
 threading.Thread(target=relay_errors, daemon=True).start()
 
 
+# A planned drop (stdin {"drop": true}): every open socket ends as a bare EOF, as Google's
+# drops do (2 % of openings, 2026-11-04), and every resume attempt after it is refused with
+# 1008, so the core falls back to a fresh session with its context restore: the case in
+# which call ac5ccd37 lost the lines it had not saved.
+live_sockets = set()
+refuse_resume = {"until": 0.0}
+
+
 class RelayWebSocket:
     """core.RealtimeWebSocket for the Gemini socket: the same calls, carried by the prod relay."""
 
     def __init__(self, host, path, headers, timeout=10, port=443, cert_sha256="", handshake_deadline=None):
         self.closed = False
+        live_sockets.add(self)
         self.socket = None
         self.n = next(ids)
         self.inbox = relay_inbox[self.n] = queue.Queue()
@@ -175,7 +184,17 @@ class RelayWebSocket:
     def send_json(self, event):
         if self.closed:
             raise EOFError("realtime websocket closed")
+        resumption = ((event.get("setup") or {}).get("sessionResumption") or {}) if isinstance(event, dict) else {}
+        if resumption.get("handle") and time.monotonic() < refuse_resume["until"]:
+            self.inbox.put({"ev": "closed", "code": 1008})
+            stand({"forced": "resume_refused"})
+            return
         relay_send({"op": "send", "id": self.n, "msg": event})
+
+    def drop(self):
+        if not self.closed:
+            self.inbox.put({"ev": "closed", "code": None})
+            relay_send({"op": "close", "id": self.n})
 
     def receive_message(self, deadline=None):
         if self.closed:
@@ -193,6 +212,7 @@ class RelayWebSocket:
         raise core.RealtimeWebSocketClosed(event["code"], core.websocket_close_category(event["code"]))
 
     def close(self):
+        live_sockets.discard(self)
         if self.closed:
             return
         self.closed = True
@@ -200,6 +220,13 @@ class RelayWebSocket:
 
 
 core.RealtimeWebSocket = RelayWebSocket
+
+# The ssh relay on prod starts in a second or two; the core's early socket of the first call
+# must not spend its deadline on that. One socket opened and closed before the listener opens.
+try:
+    RelayWebSocket("warm", "", {}, timeout=20).close()
+except Exception as error:  # the first call will say what is wrong
+    stand({"relay": "warm_failed", "detail": type(error).__name__})
 
 # ---------- the AudioSocket listener, as the service starts it ----------
 
@@ -211,8 +238,13 @@ server = core.Server((core.HOST, core.PORT), core.Handler)
 threading.Thread(target=server.serve_forever, daemon=True).start()
 stand({"ready": core.PORT, "policy": core.TECHNICAL_VOICE_POLICY_VERSION, "core": core_file.name})
 try:
-    for _ in sys.stdin:  # the stand ends the core by closing stdin
-        pass
+    for line in sys.stdin:  # the stand ends the core by closing stdin
+        command = json.loads(line) if line.strip() else {}
+        if command.get("drop"):
+            refuse_resume["until"] = time.monotonic() + float(command.get("refuse_resume_s", 10))
+            for ws in list(live_sockets):
+                ws.drop()
+            stand({"forced": "drop"})
 finally:
     server.shutdown()
     relay.stdin.close()

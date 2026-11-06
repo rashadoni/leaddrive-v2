@@ -300,6 +300,18 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(declarations[-1]["name"], "cancel_order")
         self.assertEqual(declarations[-1]["behavior"], "BLOCKING")
 
+    def test_a_fresh_session_after_a_drop_resaves_the_last_list_with_its_products(self):
+        # Owner's queue 2026-11-06, task 1: rebuilt from words alone, a save after a restore came back not found.
+        bridge, _requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
+        self.assertNotIn("last saved", bridge_module.zeytun_restore_note(bridge))
+        self.assertIn("save_order_list once, silently", bridge_module.zeytun_restore_note(None))
+        line = {"quantity": 10, "unit": "qutu", "spoken": "Ketonal ampula 10 qutu", "externalId": "8fa8a106-2080-11df-b70f-002163864387"}
+        self.assertEqual(bridge._save_order({"lines": [line]})["status"], "saved")
+        note = bridge_module.zeytun_restore_note(bridge)
+        self.assertIn('"externalId":"8fa8a106-2080-11df-b70f-002163864387"', note)
+        self.assertIn("keeping every externalId exactly", note)
+        self.assertIn('"spoken":"Ketonal ampula 10 qutu","quantity":10', note)
+
     def test_a_cancel_the_crm_took_stops_every_later_save_of_the_call(self):
         bridge, requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
         self.assertEqual(bridge._save_order({"lines": [{"quantity": 1, "unit": "qutu", "spoken": "x"}]})["status"], "saved")
@@ -1138,6 +1150,23 @@ class SpeechRelayTests(unittest.TestCase):
         state["now"] = 30.0
         self.assertFalse(relay.turn_filler_tick())
         self.assertEqual(played, [2.5])
+
+    def test_a_restore_owes_the_caller_an_answer_only_after_they_spoke(self):
+        # Task 3 (2026-11-06): a drop in silence restored as "son dediyinizi təkrar edin".
+        relay, state = self.nudge_relay()
+        self.assertFalse(relay.caller_owed())
+        relay.caller_spoke()
+        self.assertTrue(relay.caller_owed())  # speaking now
+        state["now"] = 1.0
+        relay.caller_done()
+        self.assertTrue(relay.caller_owed())  # spoke, not answered yet
+        state["now"] = 2.0
+        relay.filter(self.content("Ketonal, on qutu. Daha? ", audio=True))
+        until = time.monotonic() + 3
+        while relay.agent_audio_at is None and time.monotonic() < until:
+            time.sleep(0.01)
+        self.assertFalse(relay.caller_owed())  # answered aloud since
+        self.assertTrue(bridge_module.zeytun_caller_owed(None))  # no relay: the core's own rule
 
     def test_a_phrase_that_cut_the_agent_off_gets_a_short_ha_once(self):
         # Owner 2026-11-06: «когда перебиваешь, он начинает сразу в тишину… говорил «ага» или хмыкал».
@@ -2569,6 +2598,22 @@ class ArtifactTests(unittest.TestCase):
         self.assertIn("self._pharmacy_resume(type(error).__name__, active_ws)", receive)
         self.assertEqual(ast.dump(ast.parse(receive).body[0]), ast.dump(new_methods["receive_loop"]))
         differences.discard("receive_loop")
+        # Task 1 of the owner's queue (2026-11-06): a pharmacy call restores the whole
+        # call after a drop and saves every confirmed line first; other calls as before.
+        state = ast.unparse(old_methods["_dialog_restore_state"]).replace(
+            "ordered[-max(2, GEMINI_LIVE_CONTEXT_RESTORE_TURNS):]",
+            "ordered[-max(2, ZEYTUN_RESTORE_TURNS if self.pharmacy_preview else GEMINI_LIVE_CONTEXT_RESTORE_TURNS):]", 1)
+        self.assertIn("ZEYTUN_RESTORE_TURNS", state)
+        self.assertEqual(ast.dump(ast.parse(state).body[0]), ast.dump(new_methods["_dialog_restore_state"]))
+        differences.discard("_dialog_restore_state")
+        restore = ast.unparse(old_methods["_context_restore_event"]).replace(
+            " + obligation + ", " + (zeytun_restore_note(self.pharmacy_bridge) if self.pharmacy_preview else '') + obligation + ", 1).replace(
+            "self.is_demo_call", "(self.is_demo_call or self.pharmacy_preview)").replace(
+            "if state.get('untranscribed_caller_turn'):",
+            "if state.get('untranscribed_caller_turn') and (not self.pharmacy_preview or zeytun_caller_owed(self.pharmacy_bridge)):", 1)
+        self.assertIn("zeytun_restore_note", restore)
+        self.assertEqual(ast.dump(ast.parse(restore).body[0]), ast.dump(new_methods["_context_restore_event"]))
+        differences.discard("_context_restore_event")
         for name in differences - allowed:
             original = ast.unparse(old_methods[name])
             expected = original.replace("self.is_demo_call", "(self.is_demo_call or self.pharmacy_preview)")

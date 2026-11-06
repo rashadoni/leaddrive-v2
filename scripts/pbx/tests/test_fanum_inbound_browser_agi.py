@@ -18,6 +18,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[3]
 AGI_PATH = ROOT / "scripts" / "pbx" / "fanum-inbound-browser-agi.py"
+os.environ["FANUM_AGI_TRACE_PATH"] = ""  # the station trace file is not written by tests
 SPEC = importlib.util.spec_from_file_location("fanum_inbound_browser_agi", AGI_PATH)
 assert SPEC and SPEC.loader
 agi = importlib.util.module_from_spec(SPEC)
@@ -380,6 +381,19 @@ class InboundBrowserAgiTest(unittest.TestCase):
         finally:
             server.shutdown()
             server.server_close()
+
+    def test_the_trace_keeps_the_same_words_with_a_time_and_nothing_else(self):
+        # Task 9 (2026-11-06): why the handoff question failed, readable without sudo.
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(agi, "TRACE_PATH", str(Path(tmp) / "agi.log")):
+            with contextlib.redirect_stderr(io.StringIO()):
+                agi._safe_log("handoff_timeout")
+            agi._trace("handoff_asked")
+            lines = (Path(tmp) / "agi.log").read_text().splitlines()
+            self.assertEqual([line.split(" ", 1)[1] for line in lines], ["handoff_timeout", "handoff_asked"])
+            self.assertRegex(lines[0], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z ")
+            self.assertEqual(oct((Path(tmp) / "agi.log").stat().st_mode & 0o777), "0o644")
+        with mock.patch.object(agi, "TRACE_PATH", ""):
+            agi._trace("handoff_asked")  # off: nothing, no error
 
     def test_the_handoff_question_names_its_answer(self):
         self.assertEqual(self.http_start("handoff-true")[::2], (True, "fanum-inbound-browser: handoff_yes\n"))

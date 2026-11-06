@@ -499,6 +499,27 @@ ZEYTUN_OPENING_AUDIO_MAX = 4
 # looked a product up. A lookup still running after a second gets this, in the
 # call's voice, voiced once per process like the opening.
 ZEYTUN_WAIT_FILLER = "Hmm... bir saniyə."
+# Task 1 of the owner's queue (2026-11-06): a fresh session after a drop restores the
+# whole pharmacy call and first saves every line the conversation confirmed, silently.
+ZEYTUN_RESTORE_TURNS = 60
+
+
+def zeytun_caller_owed(bridge):
+    """True unless the line's relay knows the caller has said nothing since the agent's last audio."""
+    relay = getattr(bridge, "relay", None)
+    owed = getattr(relay, "caller_owed", None)
+    return True if owed is None else owed()
+
+
+def zeytun_restore_note(bridge):
+    """The restore's save rule, with the list the station last sent: its externalIds keep the lines
+    on their 1C products (2026-11-06 stand: a save rebuilt from the words alone came back not found)."""
+    lines = list(getattr(bridge, "last_lines", None) or [])
+    listed = json.dumps([{key: line[key] for key in ("spoken", "quantity", "unit", "externalId") if key in line}
+                         for line in lines], ensure_ascii=False, separators=(",", ":"))
+    return ("Before you speak, if any order line was confirmed in this call, call save_order_list once, silently, "
+            "with the whole list so far: " + ("the list last saved, " + listed + ", keeping every externalId exactly, "
+            if lines else "") + "with the lines and corrections the conversation confirmed after it. Never mention it. ")
 # Owner, 2026-11-06: «когда перебиваешь, он начинает сразу в тишину… например говорил «ага» или хмыкал».
 ZEYTUN_BARGE_ACK = "Hə."
 ZEYTUN_FILLER_AUDIO = {}
@@ -598,6 +619,10 @@ class ZeytunSpeechRelay:
         self.barged_at = None
         self.ack_due_at = None
         self.ack_key = None
+        # When the caller last finished a phrase, whether one is open now, when the agent's audio last went out.
+        self.caller_end_at = None
+        self.caller_speaking = False
+        self.agent_audio_at = None
         self.question_pending = False
         self.quiet_since = None
         self.nudges = 0
@@ -629,6 +654,7 @@ class ZeytunSpeechRelay:
             self.quiet_since = None
             self.caller_done_at = None
             self.ack_due_at = None
+            self.caller_speaking = True
 
     def caller_done(self):
         """The core closed a caller phrase: the agent owes an answer (TURN_FILLER_SECONDS).
@@ -637,6 +663,8 @@ class ZeytunSpeechRelay:
         with self.lock:
             now = self.clock()
             self.caller_done_at = now
+            self.caller_end_at = now
+            self.caller_speaking = False
             if (self.BARGE_ACK_SECONDS is not None and self.barged_at is not None
                     and now - self.barged_at < self.BARGE_ACK_WINDOW_SECONDS):
                 self.ack_due_at = now + self.BARGE_ACK_SECONDS
@@ -918,7 +946,20 @@ class ZeytunSpeechRelay:
         return samples.tobytes() + pcm[len(samples) * 2:]
 
     def _emit(self, content):
+        if any(isinstance(part, dict) and part.get("inlineData") for part in (content.get("modelTurn") or {}).get("parts") or []):
+            self.agent_audio_at = self.clock()
         self.inject({"serverContent": content, self.MARK: True})
+
+    def caller_owed(self):
+        """Whether the caller spoke after the agent's last audio: a restore owes them an answer.
+
+        Task 3 of the owner's queue (2026-11-06): after every drop in silence the restored
+        agent asked "son dediyinizi təkrar edin" — the core's check marks the caller's turn
+        untranscribed even when it was long answered."""
+        with self.lock:
+            if self.caller_speaking:
+                return True
+            return self.caller_end_at is not None and (self.agent_audio_at is None or self.caller_end_at > self.agent_audio_at)
 
     def _run(self):
         while self.alive():
@@ -1507,6 +1548,8 @@ class ZeytunInboundBridge:
         self.order_seq = 0
         # The call's order number once the CRM has given it (one order per call).
         self.order_number = None
+        # The list of the latest save, as sent: a fresh session after a drop resaves it (zeytun_restore_note).
+        self.last_lines = []
         self.lock = threading.Lock()
         self.pending = {}
         self.workers = threading.BoundedSemaphore(2)
@@ -2172,6 +2215,7 @@ class ZeytunInboundBridge:
             self.order_seq += 1
             seq = self.order_seq
             number = self.order_number
+            self.last_lines = list(args.get("lines") or [])
         kept = self.spool is not None and self.spool.keep(self.call_id, seq, args)
         if kept and number is not None:
             try:

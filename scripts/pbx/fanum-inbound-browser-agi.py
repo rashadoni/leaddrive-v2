@@ -108,9 +108,36 @@ class LifecycleClient(Protocol):
         ...
 
 
+# Owner's queue 2026-11-06, task 9 (transfer to a manager is broken): the
+# handoff question never reached the CRM, and why was only on stderr, which
+# Asterisk does not keep. The same fixed words go to a small file the station
+# account can read (no sudo): a UTC time and the word, nothing about the call.
+TRACE_PATH = os.environ.get("FANUM_AGI_TRACE_PATH", "/var/tmp/fanum-inbound-agi.log")
+TRACE_MAX_BYTES = 256 * 1024
+
+
+def _trace(event: str) -> None:
+    if not TRACE_PATH:
+        return
+    try:
+        path = Path(TRACE_PATH)
+        if path.exists() and path.stat().st_size > TRACE_MAX_BYTES:
+            path.replace(path.with_name(path.name + ".1"))
+        descriptor = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW, 0o644)
+        try:
+            os.fchmod(descriptor, 0o644)
+            stamp = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+            os.write(descriptor, f"{stamp} {event}\n".encode("ascii", "replace"))
+        finally:
+            os.close(descriptor)
+    except OSError:
+        pass
+
+
 def _safe_log(event: str) -> None:
     # Fixed vocabulary only.  Never interpolate URLs, tokens or call parties.
     print(f"fanum-inbound-browser: {event}", file=sys.stderr, flush=True)
+    _trace(event)
 
 
 def _unquote_env_value(value: str) -> str:
@@ -659,6 +686,7 @@ def run_mode(
         # After the AI leg the caller hears silence until Hangup(): the
         # question is bounded (HANDOFF_START_SECONDS) and not asked at all
         # for a caller who has already hung up.
+        _trace("handoff_asked")
         if _hangup_requested:
             _safe_log("handoff_skipped_hangup")
             _agi_set(output, "FANUM_HANDOFF", "0")
@@ -749,6 +777,8 @@ def main(argv: list[str]) -> int:
     signal.signal(signal.SIGHUP, _mark_hangup)
     signal.signal(signal.SIGTERM, _mark_hangup)
     agi_variables = read_agi_environment(sys.stdin)
+    if mode == "handoff":
+        _trace("handoff_started")
     try:
         client = _client_from_station_config()
     except ConfigurationError:

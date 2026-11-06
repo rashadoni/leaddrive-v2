@@ -279,6 +279,23 @@ def build(source, bridge):
             "                    self.pharmacy_agent_heard_at = time.monotonic()\n"
             "            if loud and verdict is False and (not self.pharmacy_preview or pharmacy_audible\n"
             "                    or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.4):\n")
+    # Owner's queue 2026-11-06, task 1 («qeyd etdim» without a save): a fresh
+    # session got the last 8 turns, so lines the model had confirmed earlier
+    # and not saved were gone, and its next save overwrote the order with the
+    # shorter list (line stand, pauses + a planned drop: 0 of 6 lines). The
+    # pharmacy line restores the whole call (60 turns), and the restore asks
+    # for one silent save of every confirmed line before the model speaks.
+    replace('            "turns": ordered[-max(2, GEMINI_LIVE_CONTEXT_RESTORE_TURNS):],\n',
+            '            "turns": ordered[-max(2, ZEYTUN_RESTORE_TURNS if self.pharmacy_preview\n'
+            '                                   else GEMINI_LIVE_CONTEXT_RESTORE_TURNS):],\n')
+    replace('            + obligation\n',
+            '            + (zeytun_restore_note(self.pharmacy_bridge) if self.pharmacy_preview else "")\n'
+            '            + obligation\n')
+    # Task 3 (2026-11-06): every restore after a drop in silence asked the caller to
+    # repeat; on the pharmacy line only a caller who spoke after the agent's last audio is.
+    replace('        if state.get("untranscribed_caller_turn"):\n',
+            '        if state.get("untranscribed_caller_turn") and (not self.pharmacy_preview\n'
+            '                                                     or zeytun_caller_owed(self.pharmacy_bridge)):\n')
     # Only recovery wording changes; pharmacy calls are never marked as demos.
     for phrase in ['"what they last said" if self.is_demo_call', '"question" if self.is_demo_call', '"" if self.is_demo_call',
                    'FRESH_RECOVERY_REPEAT_SENTENCES_NEUTRAL if self.is_demo_call']:
