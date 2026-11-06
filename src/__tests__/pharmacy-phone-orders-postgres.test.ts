@@ -259,6 +259,25 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     expect(created).toMatchObject({ status: "saved", created: true, number: order.number + 1 })
   })
 
+  // Owner's queue 2026-11-06, task 1b: the call ended without the final save; its transcript adds what the order lacks.
+  it("adds the transcript's missing lines to an unfinished order, leaves its own lines and tells everyone again", async () => {
+    const { recoveredOrderLines, TRANSCRIPT_LINE_MARK } = await import("@/lib/voice-agent/pharmacy/zeytun-transcript-recovery")
+    await save(app as unknown as PrismaClient, { organizationId: ZEYTUN, providerCallId: callId(6), callStartedAt: "2026-10-24T06:42:00.000Z",
+      callerPhoneE164: PHONE, identification: "test_call", catalog: CATALOG, lines: LIST.slice(0, 2), seq: 2 })
+    await admin.pharmacyPhoneOrder.updateMany({ where: { providerCallId: callId(6) }, data: { managerNotice: { status: "sent" } } })
+    const held = await admin.pharmacyPhoneOrderLine.findMany({ where: { order: { providerCallId: callId(6) } }, orderBy: { position: "asc" } })
+    const merged = recoveredOrderLines(held, [{ name: "Noşpa ampula", quantity: 10, unit: "qutu" },
+      { name: "Smekta", quantity: 4, unit: "qutu" }], () => null)
+    expect(merged).toHaveLength(3)
+    const saved = await save(app as unknown as PrismaClient, { organizationId: ZEYTUN, providerCallId: callId(6),
+      callStartedAt: "2026-10-24T06:42:00.000Z", callerPhoneE164: PHONE, identification: "test_call", catalog: CATALOG, lines: merged!, afterCall: true })
+    expect(saved).toMatchObject({ status: "saved", changed: true, notFound: [`Smekta 4 qutu${TRANSCRIPT_LINE_MARK}`] })
+    const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(6) }, include: { lines: { orderBy: { position: "asc" } } } })
+    expect(order.lines.map(line => [line.spokenText, line.quantity, line.externalId, line.status])).toEqual([
+      [LIST[0].spoken, 10, NOSPA, "resolved"], [LIST[1].spoken, 5, KETONAL, "resolved"], [`Smekta 4 qutu${TRANSCRIPT_LINE_MARK}`, 4, null, "not_found"]])
+    expect([order.managerNotice, order.finishedOnCallAt]).toEqual([null, null])
+  })
+
   it("numbers eight calls that end at once without a gap or a repeat", async () => {
     const results = await Promise.all(Array.from({ length: 8 }, (_, i) => saveCall(10 + i, [LIST[0]])))
     const numbers = results.map(result => result.number).sort()

@@ -216,7 +216,7 @@ export function activePromotion(item: { promotionAsReported?: unknown; baseUnitA
   return { buy: promotion.buy, get: promotion.get, ...(per ? { per } : {}), until: `${to.slice(0, 4)}-${to.slice(4, 6)}-${to.slice(6)}` }
 }
 /** The call's catalog as the order writer reads it: one product id, exactly. */
-function phoneOrderCatalog(catalog: InboundPilotCatalog): PhoneOrderCatalog {
+export function phoneOrderCatalog(catalog: InboundPilotCatalog): PhoneOrderCatalog {
   return {
     source: catalog.organizationId, scopeKey: catalog.scopeKey, version: catalog.version, observedAt: catalog.observedAt,
     find(externalId) {
@@ -263,6 +263,9 @@ export type InboundPilotDependencies = {
   pharmacyArrivals?: (config: LineGrant, call: InboundPilotOrderCall, catalog: InboundPilotCatalog, numberPharmacyGuid: string) => Promise<ArrivalOffer[]>
   /** Stamps waiting-list products 1C has again; warmZeytunLine calls it after each catalog refresh. */
   markWaitlistArrivals?: (config: InboundPilotConfig) => Promise<number>
+  /** Task 1b (2026-11-06): lines the transcript has and an unfinished order of the call does not (zeytun-transcript-recovery.ts). */
+  recoverOrderFromTranscript?: (providerCallId: string, transcript: string,
+    read: (transcript: string) => Promise<{ name: string; quantity: number; unit: string }[] | null>) => Promise<{ status: string; added?: number }>
   clock?: () => number
 }
 export function inboundPilotDigest(config: InboundPilotConfig) {
