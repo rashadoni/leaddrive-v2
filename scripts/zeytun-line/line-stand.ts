@@ -25,6 +25,7 @@
  *      overlap  while the assistant still speaks, 1.2 s into its reply
  *      pauses   polite, but every phrase broken at its commas by 0.8 s of silence
  *      noisy    polite, over room noise (RMS ~150) with louder bursts
+ *      room     polite, while another voice in the room talks now and then (the meeting calls of 2026-11-06)
  *  - checks: what the core heard (the CRM's call result, as hear patterns of
  *    the scenario), what it looked up and saved, the final order against the
  *    scenario, the station's own counters (speech dropped by the gate while the
@@ -69,7 +70,12 @@ type Rule = { match: string; label: string }
 type Phrase = { say: string; hear?: Rule[] }
 type Step = { n: number; phrases: Phrase[] }
 type Scenario = { voice: string; steps: Step[]; final: { spoken: string; quantity: number; label: string }[] }
-export const MANNERS = ["polite", "quick", "overlap", "pauses", "noisy"] as const
+export const MANNERS = ["polite", "quick", "overlap", "pauses", "noisy", "room"] as const
+/** "room": the meeting on 2026-11-06 (calls f0aa8998, d5155660) — other people talking near the phone. */
+const ROOM_LINES = ["Kassada növbə var, tez gəl.", "Bu qutuları rəfə düz, sonra baxarıq.", "Telefonu kim götürdü?",
+  "Sabah səhər tezdən gələcəyəm.", "O dərmanı dünən satdıq, qalmayıb."]
+const ROOM_VOICE = "Kore"
+const ROOM_GAIN = 0.35
 type Manner = (typeof MANNERS)[number]
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -264,8 +270,11 @@ class Core {
 /* ---------- one call ---------- */
 
 type PhraseResult = { step: number; say: string; startedAt: number; endedAt: number; replyAt?: number; replyGapMs?: number; overlapped: boolean }
+type Span = [number, number]
 type CallRun = {
   manner: Manner; callId: string; phrases: PhraseResult[]; caller: Buffer; agent: Buffer; stopped?: string
+  /** ms from the call's start: when the room's other voice was talking ("room"). */
+  roomSpans: Span[]
   usd: number; notes: string[]
 }
 
@@ -281,7 +290,10 @@ async function playCall(scenario: Scenario, steps: Step[], manner: Manner, port:
   const tape: Buffer[] = []
   let frameIndex = 0, closed = false
   let agentLoudAt = 0, agentStartedAt = 0, agentSpeaking = false
-  const noise = manner === "noisy" ? 150 : 0
+  const noise = manner === "noisy" ? 150 : manner === "room" ? 60 : 0
+  const roomClips = manner === "room" ? ROOM_LINES.map((line) => wavPcm(speak(line, ROOM_VOICE, opts.vertexKey, opts.cache).file)) : []
+  const roomSpans: Span[] = []
+  let roomTape: Buffer | null = null, nextRoomFrame = 150 + Math.floor(Math.random() * 200), roomIndex = 0
   // The station's trunk: a frame every 20 ms whatever happens; the core answers with its own frames.
   let buffer = Buffer.alloc(0)
   socket.on("data", (chunk: Buffer) => {
@@ -320,8 +332,19 @@ async function playCall(scenario: Scenario, steps: Step[], manner: Manner, port:
         if (head.length > FRAME) tape[0] = head.subarray(FRAME)
         else tape.shift()
       }
+      if (roomClips.length && !roomTape && frameIndex >= nextRoomFrame) {
+        roomTape = roomClips[roomIndex++ % roomClips.length]
+        roomSpans.push([frameIndex * FRAME_MS, frameIndex * FRAME_MS + (roomTape.length / FRAME) * FRAME_MS])
+      }
+      if (roomTape) {
+        for (let i = 0; i < FRAME / 2 && i * 2 < roomTape.length; i++) {
+          frame.writeInt16LE(Math.max(-32768, Math.min(32767, frame.readInt16LE(i * 2) + Math.round(roomTape.readInt16LE(i * 2) * ROOM_GAIN))), i * 2)
+        }
+        roomTape = roomTape.length > FRAME ? roomTape.subarray(FRAME) : null
+        if (!roomTape) nextRoomFrame = frameIndex + 250 + Math.floor(Math.random() * 250)
+      }
       if (noise) {
-        const room = noiseFrame(noise, true)
+        const room = noiseFrame(noise, manner === "noisy")
         for (let i = 0; i < FRAME / 2; i++) frame.writeInt16LE(Math.max(-32768, Math.min(32767, frame.readInt16LE(i * 2) + room.readInt16LE(i * 2))), i * 2)
       }
       callerFrames.push(frame)
@@ -386,7 +409,7 @@ async function playCall(scenario: Scenario, steps: Step[], manner: Manner, port:
   if (stopped) notes.push(`звонок остановлен — ${stopped}`)
   const agentTrack = Buffer.alloc(callerFrames.length * FRAME)
   for (const [index, pcm] of agentFrames) pcm.copy(agentTrack, Math.min(index * FRAME, Math.max(0, agentTrack.length - pcm.length)))
-  return { manner, callId, phrases, caller: Buffer.concat(callerFrames), agent: agentTrack, stopped, usd: spent(), notes }
+  return { manner, callId, phrases, caller: Buffer.concat(callerFrames), agent: agentTrack, stopped, usd: spent(), notes, roomSpans }
 }
 
 /* ---------- the report ---------- */
@@ -437,10 +460,18 @@ function verdict(run: CallRun, scenario: Scenario, steps: Step[], crm: StandCrm,
   const mine = core.latency.filter((l) => l.call_id === run.callId)
   const probes = mine.filter((l) => l.event === "gemini_input_probe")
   const max = (key: string) => probes.reduce((m, p) => Math.max(m, Number(p[key] ?? 0)), 0)
+  // A barge-in while the assistant spoke that came from the room's voice, not the caller.
+  const callStart = mine.find((l) => l.event === "call_start")?.t
+  const roomBarges = callStart === undefined ? 0 : mine.filter((l) => l.event === "gemini_barge_levels" && l.agent_speaking === true).filter((l) => {
+    const at = l.t - callStart
+    const caller = run.phrases.some((p) => at >= p.startedAt - 300 && at <= p.endedAt + 300)
+    return !caller && run.roomSpans.some(([a, b]) => at >= a - 300 && at <= b + 600)
+  }).length
   const counters = {
     "речь отброшена, пока ассистент «говорил» (кадры по 20 мс)": max("vetoed_while_agent_spoke"),
     "речь отброшена в тишине": max("vetoed_idle"),
     "перебивания (barge_in)": mine.filter((l) => l.event === "barge_in").length,
+    "из них голосом комнаты": roomBarges,
     "фраз аптеки (zeytun_utterance)": mine.filter((l) => l.event === "zeytun_utterance").length,
     "сессия Google оборвалась/продлена": mine.filter((l) => /resume|realtime_error|fresh_recovery/.test(String(l.event))).length,
   }
@@ -451,6 +482,7 @@ function verdict(run: CallRun, scenario: Scenario, steps: Step[], crm: StandCrm,
 const MANNER_TEXT: Record<Manner, string> = {
   polite: "вежливо: через 1 с после ассистента", quick: "быстро: через 0,25 с после ассистента",
   overlap: "внахлёст: пока ассистент ещё говорит", pauses: "с паузами 0,8 с на запятых", noisy: "в шумной комнате",
+  room: "в комнате, где рядом говорят",
 }
 const pct = (values: number[], p: number) => {
   if (!values.length) return NaN
