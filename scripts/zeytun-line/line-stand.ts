@@ -391,7 +391,13 @@ async function playCall(scenario: Scenario, steps: Step[], manner: Manner, port:
         if (heard && agentLoudAt > endedAt) {
           result.replyAt = agentStartedAt - t0
           result.replyGapMs = Math.max(0, agentStartedAt - endedAt)
-        } else notes.push(`шаг ${step.n}: ассистент молчал 12 с после «${phrase.say}»`)
+        } else if (closed) notes.push(`шаг ${step.n}: станция положила трубку после «${phrase.say}»`)
+        else notes.push(`шаг ${step.n}: ассистент молчал 12 с после «${phrase.say}»`)
+      }
+      if (opts.dropAfterStep === step.n && !closed) {
+        await until(() => closed || quietFor(1500), 20_000)
+        core.drop()
+        notes.push(`после шага ${step.n}: обрыв сессии Google по команде стенда, продление отклонено`)
       }
       if (opts.dropAfterStep === step.n && !closed) {
         await until(() => closed || quietFor(1500), 20_000)

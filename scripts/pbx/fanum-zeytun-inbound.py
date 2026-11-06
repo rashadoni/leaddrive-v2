@@ -232,6 +232,10 @@ def zeytun_speakable_text(text):
     # suffix after a hyphen joins its word ("5-dən" is "beşdən"). A decimal
     # (2,5%) and an ordinal are left as written.
     text = re.sub(r"№\s*", "nömrə ", text)
+    # Owner's queue 2026-11-06, task 8: the order number "TS-1026" was voiced
+    # "TS-min iyirmi altı", the Latin letters as the TTS liked. The letters are
+    # named as in Azerbaijani: "te-se min iyirmi altı".
+    text = re.sub(r"\bTS-(?=\d)", "te-se ", text)
     text = re.sub(r"(?<=\d)\s*(mq|ml)\b|\b(mq|ml)\b",
                   lambda m: (" " if m.group(1) else "") + ("milliqram" if (m.group(1) or m.group(2)).lower() == "mq" else "millilitr"),
                   text, flags=re.IGNORECASE)
@@ -2325,10 +2329,42 @@ class ZeytunInboundBridge:
             return {"status": "transferring", "say": self.transfer_phrase}
         return {"status": "unavailable"}
 
+    # gemini-3.8-live, USD per 1M tokens (ai.google.dev/gemini-api/docs/pricing, 2026-11-04);
+    # the same table as the line stand's (scripts/zeytun-line/stand-crm.ts PRICE).
+    LIVE_PRICE = {"textIn": 0.75, "audioIn": 3.0, "textOut": 4.5, "audioOut": 12.0}
+
+    def add_usage(self, usage):
+        """One usageMetadata of the call's Live sessions: every turn bills the whole context again."""
+        def split(details, total):
+            text = sum(d.get("tokenCount") or 0 for d in details or [] if isinstance(d, dict) and d.get("modality") == "TEXT")
+            return text, max(0, (total or 0) - text)
+        text_in, audio_in = split(usage.get("promptTokensDetails"), usage.get("promptTokenCount"))
+        text_out, audio_out = split(usage.get("responseTokensDetails"), usage.get("responseTokenCount"))
+        with self.lock:
+            totals = self.__dict__.setdefault("usage_totals", {"textIn": 0, "audioIn": 0, "textOut": 0, "audioOut": 0, "turns": 0})
+            totals["textIn"] += text_in
+            totals["audioIn"] += audio_in
+            totals["textOut"] += text_out + (usage.get("thoughtsTokenCount") or 0)
+            totals["audioOut"] += audio_out
+            totals["turns"] += 1
+
+    def log_cost(self, log):
+        """Owner's queue 2026-11-06, task 13: what the call cost in Live tokens, one line, once."""
+        with self.lock:
+            if self.__dict__.get("cost_logged"):
+                return False
+            self.cost_logged = True
+            totals = dict(self.__dict__.get("usage_totals") or {"textIn": 0, "audioIn": 0, "textOut": 0, "audioOut": 0, "turns": 0})
+        usd = sum(totals[key] * price for key, price in self.LIVE_PRICE.items()) / 1e6
+        log("call", usd=round(usd, 4), **totals)
+        return True
+
     def handle(self, event, send, current):
         """Network work never runs on the audio/event thread. send also fences
         the actual websocket/epoch under the core's existing recovery lock.
         """
+        if isinstance(event, dict) and isinstance(event.get("usageMetadata"), dict):
+            self.add_usage(event["usageMetadata"])
         cancel = event.get("toolCallCancellation")
         if isinstance(cancel, dict) and isinstance(cancel.get("ids"), list):
             with self.lock:
