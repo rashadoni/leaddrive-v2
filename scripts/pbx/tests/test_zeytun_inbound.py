@@ -312,6 +312,19 @@ class TransportTests(unittest.TestCase):
         self.assertIn("keeping every externalId exactly", note)
         self.assertIn('"spoken":"Ketonal ampula 10 qutu","quantity":10', note)
 
+    def test_the_call_cost_is_logged_once_from_every_usage(self):
+        # Task 13 (2026-11-06): what a call cost, visible on the station.
+        bridge, _requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
+        bridge.handle({"usageMetadata": {"promptTokenCount": 1000, "responseTokenCount": 200, "thoughtsTokenCount": 50,
+                                         "promptTokensDetails": [{"modality": "TEXT", "tokenCount": 800}, {"modality": "AUDIO", "tokenCount": 200}],
+                                         "responseTokensDetails": [{"modality": "AUDIO", "tokenCount": 200}]}}, lambda m: None, lambda: True)
+        bridge.handle({"usageMetadata": {"promptTokenCount": 1000}}, lambda m: None, lambda: True)
+        lines = []
+        self.assertTrue(bridge.log_cost(lambda status, **fields: lines.append((status, fields))))
+        self.assertFalse(bridge.log_cost(lambda status, **fields: lines.append((status, fields))))
+        self.assertEqual(lines, [("call", {"usd": round((800 * 0.75 + 1200 * 3 + 50 * 4.5 + 200 * 12) / 1e6, 4),
+                                           "textIn": 800, "audioIn": 1200, "textOut": 50, "audioOut": 200, "turns": 2})])
+
     def test_a_cancel_the_crm_took_stops_every_later_save_of_the_call(self):
         bridge, requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
         self.assertEqual(bridge._save_order({"lines": [{"quantity": 1, "unit": "qutu", "spoken": "x"}]})["status"], "saved")
@@ -2639,6 +2652,7 @@ class ArtifactTests(unittest.TestCase):
         # call returns exactly what the core returned before.
         record = ast.unparse(new_methods["transcript_turns"])
         self.assertIn("return zeytun_call_transcript(order, items, *heard)", record)
+        self.assertIn("log_cost(lambda status", record)
         self.assertTrue(ast.unparse(old_methods["transcript_turns"]).endswith(
             record[record.index("return [items[item_id]"):]))
         handler = ast.unparse(new_methods["_handle_current_gemini_event"])

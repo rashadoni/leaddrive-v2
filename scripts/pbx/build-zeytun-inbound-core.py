@@ -325,6 +325,10 @@ def build(source, bridge):
             heard = (set(self.truncated_items), set(self.audible_agent_items),
                      set(self.non_business_transcript_items), dict(self.dialog_turn_keys))
         if self.pharmacy_preview:
+            # Task 13 (2026-11-06): the call's Gemini usage, once, as the call's record is made.
+            log_cost = getattr(self.pharmacy_bridge, "log_cost", None)
+            if log_cost is not None:
+                log_cost(lambda status, **fields: latency("zeytun_cost", self.call_id, status=status, **fields))
             return zeytun_call_transcript(order, items, *heard)
         return [
 ''')
