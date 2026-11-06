@@ -135,11 +135,15 @@ def reader(n, ws):
 
 
 def connect(n):
-    try:
-        ws = Ws(the_key)
-    except Exception as error:  # the class name only: a message could carry the URL
-        emit({"ev": "failed", "id": n, "detail": type(error).__name__})
-        return
+    # One retry: a TLS hiccup between prod and Google (seen once, SSLError) is the stand's, not the line's.
+    for attempt in (1, 2):
+        try:
+            ws = Ws(the_key)
+            break
+        except Exception as error:  # the class name only: a message could carry the URL
+            if attempt == 2:
+                emit({"ev": "failed", "id": n, "detail": type(error).__name__})
+                return
     sockets[n] = ws
     emit({"ev": "connected", "id": n})
     threading.Thread(target=reader, args=(n, ws), daemon=True).start()
