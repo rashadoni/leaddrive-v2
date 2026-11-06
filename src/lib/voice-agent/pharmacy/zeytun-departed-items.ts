@@ -77,6 +77,8 @@ export function createDepartedSearch(items: readonly DepartedItem[]) {
   }
   return {
     size: byId.size,
+    /** The sold-out product with this 1C id, for a line the call wrote (the waiting list). */
+    byId: (externalId: string): DepartedItem | null => byId.get(externalId.toLowerCase()) ?? byId.get(externalId) ?? null,
     find(text: string, limit = 1): DepartedItem[] {
       const asked = firstWord(text)
       if (asked.length < 4 || !byId.size) return []

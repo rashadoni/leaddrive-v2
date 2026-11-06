@@ -1,0 +1,17 @@
+{
+ "about": "Owner's client 2026-11-06: a product sold out since the older snapshot (--departed-from), the pharmacy declines a substitute and wants it when it arrives: the agent says it is noted and writes it, so the CRM puts it on the waiting list. Run with --departed-from a snapshot that still had Lizpres forte. Same format as voice-scenario.json.",
+ "voice": "Charon",
+ "steps": [
+  {"n": 1, "phrases": [{"say": "Salam, Mərkəzi aptekdən zəng edirəm.", "hear": [{"label": "Mərkəzi", "match": "m[əe]rk[əe]zi"}]}], "expect": {}},
+  {"n": 2, "phrases": [{"say": "Lizpres forte, üç qutu.", "hear": [{"label": "Lizpres", "match": "l[iy]zpres|лизпрес"}]}],
+   "expect": {"tools": [{"name": "search_pharmacy_catalog", "args": "[Ll][iy]zpres|Лизпрес", "label": "искал Lizpres"}],
+    "reply": [{"match": "yoxdur|qurtarıb|bitib|qalmayıb|mövcud deyil|anbarda yox", "label": "сказал, что нет в наличии"}],
+    "noReply": [{"match": "tapa bilmədim|tapılmadı", "label": "сказал «не нашла»"}]}},
+  {"n": 3, "phrases": [{"say": "Yox, əvəzi lazım deyil. Gələndə xəbər verin, üç qutu yazın.", "hear": []}],
+   "expect": {"reply": [{"match": "gələn kimi|xəbər ver", "label": "сказал «gələn kimi xəbər verəcəyik»"}]}},
+  {"n": 4, "phrases": [{"say": "Hamısı bu, təsdiq edirəm.", "hear": []}],
+   "expect": {"tools": [{"name": "save_order_list", "args": "\"final\":true", "label": "итоговое сохранение"}]}},
+  {"n": 5, "phrases": [{"say": "Yox, sağ olun.", "hear": []}], "expect": {}}
+ ],
+ "final": [{"spoken": "[Ll][iy]zpres|Лизпрес", "quantity": 3, "label": "Lizpres forte 3 (в ожидание)"}]
+}
