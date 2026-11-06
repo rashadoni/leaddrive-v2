@@ -331,6 +331,9 @@ async function playCall(scenario: Scenario, steps: Step[], manner: Manner, port:
     }
   })()
   const quietFor = (ms: number) => !agentSpeaking && Date.now() - agentLoudAt >= ms
+  // "Hə." after a barge-in (~0.4 s) is not the answer: a caller waits for a real one, 8 s at most.
+  let lastPhraseEnd = 0
+  const answeredFor = (ms: number) => quietFor(ms) && (agentLoudAt - agentStartedAt >= 900 || Date.now() - lastPhraseEnd > 8000)
   const phrases: PhraseResult[] = []
   let stopped: string | undefined
   try {
@@ -350,12 +353,13 @@ async function playCall(scenario: Scenario, steps: Step[], manner: Manner, port:
           await until(() => closed || (agentSpeaking && Date.now() - agentStartedAt >= 1200) || quietFor(1500), 30_000)
           overlapped = agentSpeaking && agentStartedAt === replyStart
         } else {
-          await until(() => closed || quietFor(manner === "quick" ? 250 : 1000), 30_000)
+          await until(() => closed || answeredFor(manner === "quick" ? 250 : 1000), 30_000)
         }
         const startedAt = Date.now()
         tape.push(pcm)
         await until(() => closed || tape.length === 0, 60_000)
         const endedAt = Date.now()
+        lastPhraseEnd = endedAt
         const result: PhraseResult = { step: step.n, say: phrase.say, startedAt: startedAt - t0, endedAt: endedAt - t0, overlapped }
         phrases.push(result)
         // The reply: the assistant's first sound after the phrase, or 12 s of nothing.

@@ -15,6 +15,7 @@ stdout {"ev": "connected", "id": n} | {"ev": "failed", "id": n, "detail": "..."}
 import base64
 import json
 import os
+import queue
 import socket
 import ssl
 import struct
@@ -72,7 +73,8 @@ class Ws:
         head = bytes([0x81]) + (bytes([0x80 | n]) if n < 126 else bytes([0x80 | 126]) + struct.pack(">H", n)
                                  if n < 65536 else bytes([0x80 | 127]) + struct.pack(">Q", n))
         mask = os.urandom(4)
-        body = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+        # XOR as one big integer: the per-byte loop cost ~1 ms a 20 ms audio frame.
+        body = (int.from_bytes(payload, "big") ^ int.from_bytes((mask * (n // 4 + 1))[:n], "big")).to_bytes(n, "big") if n else b""
         with self.lock:
             self.sock.sendall(head + mask + body)
 
@@ -118,7 +120,20 @@ class Ws:
 
 
 sockets = {}
+outboxes = {}
 the_key = key()
+
+
+def sender(n, ws, box):
+    """One thread per socket: a socket Google stopped reading blocks only itself, never a new connect."""
+    while True:
+        msg = box.get()
+        if msg is None:
+            return
+        try:
+            ws.send(msg)
+        except Exception:
+            return
 
 
 def reader(n, ws):
@@ -145,6 +160,8 @@ def connect(n):
                 emit({"ev": "failed", "id": n, "detail": type(error).__name__})
                 return
     sockets[n] = ws
+    box = outboxes[n] = queue.Queue()
+    threading.Thread(target=sender, args=(n, ws, box), daemon=True).start()
     emit({"ev": "connected", "id": n})
     threading.Thread(target=reader, args=(n, ws), daemon=True).start()
 
@@ -154,12 +171,12 @@ for line in sys.stdin:
     n = op.get("id")
     if op["op"] == "connect":
         threading.Thread(target=connect, args=(n,), daemon=True).start()
-    elif op["op"] == "send" and n in sockets:
-        try:
-            sockets[n].send(op["msg"])
-        except Exception:
-            pass
+    elif op["op"] == "send" and n in outboxes:
+        outboxes[n].put(op["msg"])
     elif op["op"] == "close" and n in sockets:
+        box = outboxes.pop(n, None)
+        if box is not None:
+            box.put(None)
         sockets.pop(n).close()
 for ws in list(sockets.values()):
     ws.close()
