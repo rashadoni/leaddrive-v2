@@ -41,8 +41,15 @@ describe("resolveTenantLandingPath", () => {
     }
   })
 
-  it("последний рубеж — /dashboard, когда доступного меню нет вовсе", () => {
-    expect(resolveTenantLandingPath({ plan: "starter", role: "viewer", modules: {} })).toBe("/dashboard")
+  it("пустой тенант входит в «Настройки», а не на /dashboard, который ему закрыт", () => {
+    // С 2026-11-06 «Настройки» включены у каждого тенанта, поэтому меню не
+    // бывает пустым: у тенанта без единого рабочего модуля первый открываемый
+    // пункт — страница настроек. /dashboard (модуль crm) ему закрыт, и вести
+    // туда значило бы снова «вход в пустоту».
+    const landing = resolveTenantLandingPath({ plan: "starter", role: "viewer", modules: {} })
+    expect(landing.startsWith("/settings")).toBe(true)
+    expect(landingPathAllowed(landing, { plan: "starter", role: "viewer", modules: {} })).toBe(true)
+    expect(landingPathAllowed("/dashboard", { plan: "starter", role: "viewer", modules: {} })).toBe(false)
   })
 
   it("путь вне меню (например /settings/profile) не блокируется — его гейтит сам роут", () => {

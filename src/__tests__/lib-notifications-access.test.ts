@@ -518,7 +518,7 @@ describe("accessibleSections", () => {
     expect(sections).toContain("Analytics")
   })
 
-  it("viewer: empty modules → NO sections; legacy core → CRM only (group expansion)", () => {
+  it("viewer: empty modules → only always-on Settings; legacy core → CRM (group expansion)", () => {
     // MC-T4 re-tag: nav items carry group ids and none is alwaysOn — a
     // saved-empty record ({} = Clear All) grants nothing, even for viewer
     // (viewer's *:read wildcard passes the ROLE gate but not the ORG gate).
@@ -527,7 +527,8 @@ describe("accessibleSections", () => {
       plan: "enterprise",
       modules: {} as Record<string, boolean>,
     }
-    expect(accessibleSections(cleared)).toEqual([])
+    // …except Settings, which is always on (2026-11-06).
+    expect(accessibleSections(cleared)).toEqual(["Settings"])
     // Legacy-shaped record: core → crm via 3b expansion → CRM section only.
     const ctx = {
       role: "viewer" as const,

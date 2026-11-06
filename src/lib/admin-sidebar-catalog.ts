@@ -16,7 +16,7 @@
  * resolves it via `useTranslations("nav")`, exactly like the sidebar.
  */
 import { navItems, NAV_GROUP_ORDER, type NavItem } from "./nav-items"
-import { withRequiredModules, type ModuleId } from "./modules"
+import { MODULE_REGISTRY, withRequiredModules, type ModuleId } from "./modules"
 import { EDITABLE_TENANT_CAPABILITIES, type EditableTenantCapability, type TenantEditorCapabilities } from "./tenant-editor-entitlements"
 import { isCrmCapabilityAvailable } from "./crm-product-availability"
 import {
@@ -210,7 +210,9 @@ export const TENANT_MODULE_SECTIONS: TenantModuleSection[] = NAV_GROUP_ORDER.map
       const id = EDITABLE_TENANT_CAPABILITIES.find((id) => id === capability)
       if (!id || !isCrmCapabilityAvailable(id)) return []
       control = { kind: "capability", id }
-    } else if (item.module) {
+    } else if (item.module && !MODULE_REGISTRY[item.module]?.alwaysOn) {
+      // An always-on module (Settings) has no switch: hasModule grants it
+      // whatever the editor saves, so a switch would only look like it works.
       control = { kind: "module", id: item.module }
     } else return []
     return [{ control, tKey: item.tKey, href: item.href, ...(item.feature ? { feature: item.feature } : {}) }]
