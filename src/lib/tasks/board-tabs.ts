@@ -22,7 +22,7 @@ export interface TabDivision {
   _count?: { tasks?: number } | null
 }
 
-export interface PlaceTab { id: string; name: string; active: boolean }
+export interface PlaceTab { id: string; name: string; active: boolean; isDepartment: boolean }
 export interface ProjectTab { id: string; name: string; count: number | null; active: boolean }
 export interface BoardTabRows {
   places: PlaceTab[]
@@ -45,7 +45,7 @@ export function boardTabRows(divisions: readonly TabDivision[], currentId: strin
   const places = divisions
     .filter((division) => !parentOf(division))
     .sort(byOrder)
-    .map((division) => ({ id: division.id, name: division.name, active: division.id === placeId }))
+    .map((division) => ({ id: division.id, name: division.name, active: division.id === placeId, isDepartment: Boolean(division.isDepartment) }))
 
   if (!departmentId) return { places, projects: null }
   const items = divisions
