@@ -184,7 +184,8 @@ describe("reconcileModulesWithFeatures (editor is authoritative for module visib
     })
     const org = { plan: "enterprise", modules: merged }
     for (const g of GROUP_MODULE_IDS) {
-      expect(hasModule(org, g), g).toBe(g === "omnichannel")
+      // Settings is always on (2026-11-06): the editor cannot take Users away from a tenant admin.
+      expect(hasModule(org, g), g).toBe(g === "omnichannel" || g === "settings")
     }
   })
 })

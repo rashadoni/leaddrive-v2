@@ -71,7 +71,13 @@ export const MODULE_REGISTRY: Record<ModuleId, ModuleDefinition> = {
   "public-sector":  { name: "Public Sector Cloud", requires: [] },
   media:            { name: "Media Cloud",         requires: [] },
   energy:           { name: "Energy & Utilities",  requires: [] },
-  settings:         { name: "Settings",            requires: [] },
+  // Always on (owner, 2026-11-06). Settings is where a tenant's admin adds
+  // people, resets passwords and turns on «Голос» — not a product a tenant
+  // buys. Biznesdoktor was saved in the tenant editor with this off, and its
+  // admin had no Settings block at all: no users, no voice switch, nothing to
+  // fix it with from inside the tenant. Who inside a tenant sees which settings
+  // page is the role gate's job (permissionScope/allowedRoles), not this one.
+  settings:         { name: "Settings",            requires: [], alwaysOn: true },
 
   /* ── Cross-cutting add-on flags ── */
   ai:               { name: "Da Vinci AI",      requires: [] },

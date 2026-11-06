@@ -725,13 +725,12 @@ describe("activeNavBase — one selected destination", () => {
   })
 
   it("ignores items the org cannot see, so a rendered item still wins", () => {
-    // Org without the `settings` module: /settings/users is not rendered, so
-    // its URL must select nothing. (Other /settings/* items survive here —
-    // /settings/pipelines belongs to the base `sales` module — but none of them
-    // is an ancestor of /settings/users, so none may win it.)
+    // Org without the `analytics` module: /reports/builder is not rendered, so
+    // its URL must select nothing. (Settings used to be the example; it is
+    // always on since 2026-11-06.)
     const limited = accessibleNavItems({ plan: "enterprise", role: "admin", modules: { crm: true } })
-    expect(limited.some((i) => i.href === "/settings/users")).toBe(false)
-    expect(activeNavBase(limited, "/settings/users")).toBe("")
+    expect(limited.some((i) => i.href.startsWith("/reports"))).toBe(false)
+    expect(activeNavBase(limited, "/reports/builder")).toBe("")
   })
 })
 

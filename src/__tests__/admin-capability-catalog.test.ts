@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
 import { navItems } from "@/lib/nav-items"
+import { MODULE_REGISTRY } from "@/lib/modules"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import {
   CAPABILITY_SECTIONS,
@@ -108,7 +109,8 @@ describe("admin capability catalog", () => {
     expect(new Set(hrefs).size).toBe(hrefs.length)
     expect(new Set(hrefs)).toEqual(new Set(navItems.filter((item) => {
       const capability = item.capability ?? item.tenantCapability
-      return capability ? isCrmCapabilityAvailable(capability) : Boolean(item.module)
+      // An always-on module (Settings) has no switch in the editor.
+      return capability ? isCrmCapabilityAvailable(capability) : Boolean(item.module && !MODULE_REGISTRY[item.module].alwaysOn)
     }).map((item) => item.href)))
     expect(TENANT_MODULE_CONTROLS.map((control) => control.id)).not.toContain("workforce-hrm")
   })
