@@ -363,7 +363,9 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(ZEYTUN_LINE_PROMPT).toContain("Never say how free goods are added or billed")
     // Owner's call 2026-10-29 (TS-1005): the promotion went unsaid, "numero dos" passed for yes,
     // ampoules were written after "cream", prices came unasked, the pharmacy kept its case ending.
-    expect(ZEYTUN_LINE_PROMPT).toContain("say the offer in that same reply")
+    expect(ZEYTUN_LINE_PROMPT).toContain("the first reply naming it says the offer (also beside a question about another product)")
+    // Rehearsal 2026-11-06 (4347170e): "on min" heard as "10 milli", all three Mezim strengths listed again.
+    expect(ZEYTUN_LINE_PROMPT).toContain("min is a thousand) is that one: ask \"10 000?\", never list all")
     expect(ZEYTUN_LINE_PROMPT).toContain("(unclear is not yes: ask again)")
     expect(ZEYTUN_LINE_PROMPT).toContain("if they named two different forms, ask which one before writing it")
     expect(ZEYTUN_LINE_PROMPT).toContain("never unasked when confirming a line")
