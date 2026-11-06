@@ -9,12 +9,12 @@
  * The choice lives in localStorage on purpose: it is a per-viewer convenience,
  * not shared state, and a blocked or empty storage only means the default.
  */
-export type BoardView = "board" | "list" | "calendar" | "members" | "reports"
+export type BoardView = "board" | "list" | "calendar" | "notes" | "members" | "reports"
 
 export const DEFAULT_BOARD_VIEW: BoardView = "list"
 
-/** In tab order (Bordio: Tasks, Calendar, Members; then the CRM reports). */
-export const BOARD_VIEWS: readonly BoardView[] = ["board", "list", "calendar", "members", "reports"]
+/** In tab order (Bordio: Tasks, Calendar, Notes, Members; then the CRM reports). */
+export const BOARD_VIEWS: readonly BoardView[] = ["board", "list", "calendar", "notes", "members", "reports"]
 
 export function boardViewStorageKey(divisionId: string): string {
   return `ld.board-view.${divisionId}`

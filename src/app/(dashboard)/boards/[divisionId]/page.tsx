@@ -43,6 +43,7 @@ import { fetchAllBoardTasks } from "@/lib/tasks/fetch-board-tasks"
 import { BOARD_VIEWS, DEFAULT_BOARD_VIEW, browserStorage, readBoardView, rememberBoardView, type BoardView } from "@/lib/tasks/board-view"
 import { BoardCalendar } from "@/components/boards/board-calendar"
 import { BoardMembersPanel } from "@/components/boards/board-members-panel"
+import { BoardNotesPanel } from "@/components/boards/board-notes-panel"
 import { BoardReports } from "@/components/boards/board-reports"
 import { BoardProjectTabs } from "@/components/boards/board-project-tabs"
 import { DepartmentBoardView } from "@/components/boards/department-board-view"
@@ -668,7 +669,7 @@ function BoardInner() {
             onClick={() => setView(v)}
             className="rounded-t px-3 py-1.5 text-sm font-medium"
           >
-            {v === "board" ? t("boardView") : v === "list" ? tc("list") : v === "calendar" ? t("calendarTab") : v === "members" ? t("membersTab") : t("reportsTab")}
+            {v === "board" ? t("boardView") : v === "list" ? tc("list") : v === "calendar" ? t("calendarTab") : v === "notes" ? t("notesTab") : v === "members" ? t("membersTab") : t("reportsTab")}
           </button>
         ))}
       </div>
@@ -784,6 +785,8 @@ function BoardInner() {
       {activeView === "calendar" && (
         <BoardCalendar tasks={filtered} onOpenTask={setOpenTaskId} />
       )}
+
+      {activeView === "notes" && <BoardNotesPanel divisionId={divisionId} />}
 
       {activeView === "members" && (
         <BoardMembersPanel
