@@ -573,34 +573,38 @@ function BoardInner() {
     <BoardActionsCtx.Provider value={boardActions}>
     <div style={{ background: C.page, minHeight: "100%", color: C.text }} className="flex flex-col">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-5 pt-4 pb-2">
-        <div className="flex items-center gap-3">
-          <div className="min-w-0">
-            <Link href="/boards" className="text-xs font-medium transition-colors hover:underline" style={{ color: C.sub }}>
-              {t("boardsTitle")}
-            </Link>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2" style={{ color: C.text }}>{division?.name ?? "Board"} <HelpButton slug="board-view" variant="label" /></h1>
-              {division?.key && (
-                <span
-                  className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
-                  style={{ background: C.card, border: `1px solid ${C.border}`, color: C.sub }}
-                >
-                  {division.key}
-                </span>
-              )}
-            </div>
+      {/* <main> already pads the page (p-3 … lg:p-8), so no top padding here —
+          pt-4 on top of it left an empty band above the breadcrumb. The board
+          switcher sits on the title's line and already names the key, so the
+          key badge only shows when there is nothing to switch to (the title,
+          the badge and the switcher used to repeat the same name three times). */}
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 px-5 pb-3">
+        <div className="min-w-0">
+          <Link href="/boards" className="text-xs font-medium transition-colors hover:underline" style={{ color: C.sub }}>
+            {t("boardsTitle")}
+          </Link>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: C.text }}>{division?.name ?? "Board"}</h1>
+            <HelpButton slug="board-view" variant="label" />
+            {divisions.length > 1 ? (
+              <select
+                value={divisionId}
+                onChange={(e) => router.push(`/boards/${e.target.value}`)}
+                aria-label={t("boardsTitle")}
+                className="h-8 max-w-[18rem] truncate rounded-md border px-2 text-xs"
+                style={{ borderColor: C.input, background: C.card, color: C.text }}
+              >
+                {divisions.map((d) => <option key={d.id} value={d.id}>{d.key} — {d.name}</option>)}
+              </select>
+            ) : division?.key ? (
+              <span
+                className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
+                style={{ background: C.card, border: `1px solid ${C.border}`, color: C.sub }}
+              >
+                {division.key}
+              </span>
+            ) : null}
           </div>
-          {divisions.length > 1 && (
-            <select
-              value={divisionId}
-              onChange={(e) => router.push(`/boards/${e.target.value}`)}
-              className="rounded border px-2 py-1 text-xs"
-              style={{ borderColor: C.input, background: C.card, color: C.text }}
-            >
-              {divisions.map((d) => <option key={d.id} value={d.id}>{d.key} — {d.name}</option>)}
-            </select>
-          )}
         </div>
         <div className="flex items-center gap-2">
           <button
