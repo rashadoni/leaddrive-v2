@@ -85,6 +85,7 @@ describe("a model decision, checked against the salon's own lists", () => {
     dates: ["2026-11-07", "2026-11-08"],
     liveOffers: [{ id: "offer-1", label: "Saturday 11:30 · Leyla · Haircut" }],
     timezone: TZ,
+    closedDates: [],
     today: "2026-11-07",
   }
 

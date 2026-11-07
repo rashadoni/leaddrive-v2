@@ -400,7 +400,7 @@ function asService(page: { price: unknown } & Omit<ServiceContext, "price">): Se
 
 const SERVICE_SELECT = { id: true, title: true, durationMinutes: true, bufferMinutes: true, minNoticeMinutes: true, maxDaysAhead: true, weekly: true, hostIds: true, price: true, priceCurrency: true, category: true, locationText: true } as const
 
-async function sendOffers(input: BookingTurnInput, service: ServiceContext, request: OfferRequest, context: { timezone: string; hosts: { id: string; name: string }[]; greet: boolean; prefix?: string; replaces?: string }, now: Date): Promise<boolean> {
+async function sendOffers(input: BookingTurnInput, service: ServiceContext, request: OfferRequest, context: { timezone: string; closedDates: readonly string[]; hosts: { id: string; name: string }[]; greet: boolean; prefix?: string; replaces?: string }, now: Date): Promise<boolean> {
   const { choices, exact } = await findChoices(input, service, request, context.timezone, context.closedDates, now)
   // Nothing free at all is a promise only a person can make.
   if (!choices.length) return false
@@ -534,7 +534,7 @@ async function bookOffer(input: BookingTurnInput, offerId: string, rules: Autono
   const request = readRequest(offer.request)
   const language = request?.language ?? "az"
   const words = WORDS[language]
-  const { timezone } = await orgContext(input.organizationId)
+  const { timezone, closedDates } = await orgContext(input.organizationId)
 
   // Outside the salon's rules the time is held, not booked: the client keeps
   // their place and a person decides. The hold runs to the meeting itself —
@@ -582,7 +582,7 @@ async function bookOffer(input: BookingTurnInput, offerId: string, rules: Autono
     const page = await prisma.bookingPage.findFirst({ where: { organizationId: input.organizationId, id: offer.bookingPageId, isActive: true }, select: SERVICE_SELECT })
     if (!page || !request) return false
     const hosts = await activeHosts(input.organizationId, page.hostIds)
-    return sendOffers(input, asService({ ...page, hostIds: page.hostIds.filter((id) => hosts.some((host) => host.id === id)) }), request, { timezone, hosts, greet: false, prefix: words.taken }, now)
+    return sendOffers(input, asService({ ...page, hostIds: page.hostIds.filter((id) => hosts.some((host) => host.id === id)) }), request, { timezone, closedDates, hosts, greet: false, prefix: words.taken }, now)
   }
   // Only the tap that moved the offer to «booked» confirms: a racing second
   // tap replays the same booking and stays quiet.
@@ -774,14 +774,14 @@ async function answerReminder(input: BookingTurnInput, reminder: { action: Remin
   // of them is taken.
   const page = await prisma.bookingPage.findFirst({ where: { organizationId: input.organizationId, id: booking.bookingPageId, isActive: true }, select: SERVICE_SELECT })
   if (!page) return false
-  const { timezone } = await orgContext(input.organizationId)
+  const { timezone, closedDates } = await orgContext(input.organizationId)
   const hosts = await activeHosts(input.organizationId, page.hostIds)
   const request: OfferRequest = {
     text: "", serviceId: page.id, date: null, partOfDay: "any", notBefore: null, notAfter: null,
     hostId: booking.hostUserId, language,
   }
   return sendOffers(input, asService({ ...page, hostIds: page.hostIds.filter((id) => hosts.some((host) => host.id === id)) }), request,
-    { timezone, hosts, greet: false, replaces: booking.id }, now)
+    { timezone, closedDates, hosts, greet: false, replaces: booking.id }, now)
 }
 
 /**
@@ -829,5 +829,5 @@ export async function handleWhatsAppBookingTurn(input: BookingTurnInput): Promis
     text: input.text.slice(0, 300), serviceId: decision.serviceId, date: decision.date, partOfDay: decision.partOfDay,
     notBefore: decision.notBefore, notAfter: decision.notAfter, hostId: decision.hostId, language: decision.language,
   }
-  return { handled: await sendOffers(input, service, request, { timezone: context.timezone, hosts: context.hosts, greet }, now) }
+  return { handled: await sendOffers(input, service, request, { timezone: context.timezone, closedDates: context.closedDates, hosts: context.hosts, greet }, now) }
 }
