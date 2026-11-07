@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
 
 type Agent = { id: string; name: string }
 type Scope = "all" | "selected"
@@ -67,22 +66,21 @@ export function CustomerEtaAgentChoice({
   return (
     <div className="space-y-2 border-l-2 border-muted pl-3" data-setting-row="customerEtaAgentScope">
       <div className="text-xs font-semibold">{ts("lblCustomerEtaAgents")}</div>
-      <div role="radiogroup" aria-label={ts("lblCustomerEtaAgents")} className="inline-flex rounded-md border border-border p-0.5 text-xs">
+      <div role="radiogroup" aria-label={ts("lblCustomerEtaAgents")} className="inline-flex gap-1">
         {(["selected", "all"] as const).map((option) => (
-          <button
+          <Button
             key={option}
             type="button"
             role="radio"
             aria-checked={chosenScope === option}
+            variant={chosenScope === option ? "selected" : "outline"}
+            size="sm"
+            className="h-7 px-3"
             disabled={disabled}
             onClick={() => onScopeChange(option)}
-            className={cn(
-              "rounded px-3 py-1.5 transition-colors disabled:cursor-not-allowed",
-              chosenScope === option ? "bg-primary font-semibold text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-            )}
           >
             {ts(option === "selected" ? "optCustomerEtaAgentsSelected" : "optCustomerEtaAgentsAll")}
-          </button>
+          </Button>
         ))}
       </div>
       {chosenScope === "selected" ? (
