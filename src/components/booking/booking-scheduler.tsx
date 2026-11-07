@@ -43,6 +43,9 @@ export interface PublicBookingPage {
   chosenHostId?: string | null
   /** The lowest price, when the masters differ and none is chosen yet. */
   priceFrom?: string | null
+  /** Extras the service offers, and the ones already ticked. */
+  addOns?: { id: string; name: string; price: string | null; durationMinutes: number }[]
+  chosenAddOnIds?: string[]
   timezone: string
 }
 
@@ -54,6 +57,8 @@ export interface BookingRequest {
   note: string
   /** The master the customer chose, where the service offers the choice. */
   hostUserId?: string
+  /** The extras they ticked. */
+  addOnIds?: string[]
 }
 
 export interface BookingConfirmation {
@@ -118,7 +123,7 @@ export function BookingSummary({ page }: { page: PublicBookingPage }) {
 }
 
 export function BookingScheduler({
-  page, days, onBook, staff = false, initialStartsAt = null, onStartChange, onHostChange,
+  page, days, onBook, staff = false, initialStartsAt = null, onStartChange, onHostChange, onAddOnsChange,
 }: {
   page: PublicBookingPage
   days: DaySlots[]
@@ -126,6 +131,8 @@ export function BookingScheduler({
   onBook: (request: BookingRequest) => Promise<BookResult>
   /** Asks for the free times of one master; null = whoever is free. */
   onHostChange?: (hostId: string | null) => void
+  /** Asks for the free times of the visit with these extras on it. */
+  onAddOnsChange?: (addOnIds: string[]) => void
   /** A time already chosen elsewhere — a free window on the day's rail. */
   initialStartsAt?: string | null
   /** Lets the screen around the form draw the time being taken. */
@@ -152,7 +159,7 @@ export function BookingScheduler({
     if (!startsAt || !canSubmit) return
     setBusy(true)
     setError("")
-    const result = await onBook({ startsAt, ...form, hostUserId: page.chosenHostId ?? undefined })
+    const result = await onBook({ startsAt, ...form, hostUserId: page.chosenHostId ?? undefined, addOnIds: page.chosenAddOnIds })
     setBusy(false)
     if (result.ok) {
       setConfirmed(result.booking)
@@ -195,6 +202,36 @@ export function BookingScheduler({
                 )
               })}
             </div>
+          </div>
+        ) : null}
+        {/* Ticking one changes the price and the length of the visit, so the
+            times are asked for again — a slot cut for 45 minutes cannot hold a
+            visit of 60. */}
+        {!staff && onAddOnsChange && page.addOns && page.addOns.length > 0 && !startsAt ? (
+          <div>
+            <p className="text-sm font-semibold">{t("addOnsPick")}</p>
+            <ul className="mt-2 space-y-1.5">
+              {page.addOns.map((addOn) => {
+                const taken = (page.chosenAddOnIds ?? []).includes(addOn.id)
+                return (
+                  <li key={addOn.id}>
+                    <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-sm transition-colors hover:border-foreground/25">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 shrink-0 accent-foreground"
+                        checked={taken}
+                        onChange={() => onAddOnsChange(taken
+                          ? (page.chosenAddOnIds ?? []).filter((id) => id !== addOn.id)
+                          : [...(page.chosenAddOnIds ?? []), addOn.id])}
+                      />
+                      <span className="min-w-0 flex-1 truncate">{addOn.name}</span>
+                      {addOn.durationMinutes > 0 ? <span className="shrink-0 text-xs text-muted-foreground">+{t("minutes", { count: addOn.durationMinutes })}</span> : null}
+                      {addOn.price ? <span className="shrink-0 font-semibold tabular-nums">{servicePriceLabel({ price: addOn.price, priceCurrency: page.priceCurrency ?? null }, locale)}</span> : null}
+                    </label>
+                  </li>
+                )
+              })}
+            </ul>
           </div>
         ) : null}
         {days.length === 0 ? (

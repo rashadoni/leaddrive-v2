@@ -13,6 +13,7 @@ import { assertBookingInterval, bookingRules } from "./commands"
 import { BookingCommandError } from "./command-error"
 import { computeSlots, findSlot } from "./availability"
 import { hostService } from "./host-variants"
+import { addOnTotals, parseAddOns, selectedAddOns } from "./add-ons"
 import { activeHosts, orgContext, loadBusyByHost, bookingCancelUrl, hashBookingToken, type BookingInput, type CreateBookingResult } from "./book"
 import { bookingHostWhere, bookingScope } from "./access"
 import type { BookingAccess } from "./access"
@@ -55,9 +56,16 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
   // not the service's. With nobody named, the service's own duration stands —
   // exactly as before this existed.
   const chosenHostId = input.hostUserId && page.hostIds.includes(input.hostUserId) ? input.hostUserId : null
-  const serviceOf = (row: typeof page, hostId: string) =>
-    hostService({ price: row.price === null ? null : String(row.price), durationMinutes: row.durationMinutes, hostVariants: row.hostVariants }, hostId)
-  const rules = { ...bookingRules(page, org.timezone), ...(chosenHostId ? { durationMinutes: serviceOf(page, chosenHostId).durationMinutes } : {}) }
+  // The extras are taken from the service, never from the request: an id the
+  // service does not offer adds neither minutes nor money.
+  const visitOf = (row: typeof page, hostId: string | null) => {
+    const base = hostId
+      ? hostService({ price: row.price === null ? null : String(row.price), durationMinutes: row.durationMinutes, hostVariants: row.hostVariants }, hostId)
+      : { price: row.price === null ? null : String(row.price), durationMinutes: row.durationMinutes }
+    const chosen = selectedAddOns(parseAddOns(row.addOns), input.addOnIds ?? [])
+    return { ...addOnTotals(base, chosen), addOns: chosen }
+  }
+  const rules = { ...bookingRules(page, org.timezone), durationMinutes: visitOf(page, chosenHostId).durationMinutes }
   const from = now, to = new Date(now.getTime() + (page.maxDaysAhead + 2) * 86400_000)
   const checkedAt = Date.now()
   // A customer-facing booking respects the holds of other conversations; a
@@ -101,7 +109,10 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
             // who is taking them: a salon that raises a service tomorrow, or
             // charges differently per master, must not rewrite what yesterday
             // cost.
-            price: serviceOf(currentPage, hostId).price, priceCurrency: currentPage.priceCurrency, repeatCycleDays: currentPage.repeatCycleDays },
+            price: visitOf(currentPage, hostId).price, priceCurrency: currentPage.priceCurrency, repeatCycleDays: currentPage.repeatCycleDays,
+            // What the customer actually took, by name and price as they stood
+            // that day: renaming an extra later must not rewrite this visit.
+            addOns: visitOf(currentPage, hostId).addOns },
           adAttribution: input.attribution ? input.attribution as Prisma.InputJsonValue : undefined,
         } })
         const event = await appendBookingEvent(tx, row, "created", access?.userId ?? null)

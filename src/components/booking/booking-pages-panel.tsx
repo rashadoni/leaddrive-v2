@@ -14,10 +14,12 @@ import { BookingPageEditor, type BookingHostOption, type BookingPageDraft } from
 import { BookingWhatsAppCard } from "@/components/booking/booking-whatsapp-card"
 import { defaultWeeklyHours, parseWeeklyHours } from "@/lib/booking/availability"
 import { parseHostVariants } from "@/lib/booking/host-variants"
+import { parseAddOns } from "@/lib/booking/add-ons"
 import { bookingSlug, groupByCategory, servicePriceLabel } from "@/lib/booking/service"
 
-interface PageRow extends Omit<BookingPageDraft, "description" | "locationText" | "price" | "category" | "repeatCycleDays" | "hostVariants"> {
+interface PageRow extends Omit<BookingPageDraft, "description" | "locationText" | "price" | "category" | "repeatCycleDays" | "hostVariants" | "addOns"> {
   hostVariants: unknown
+  addOns: unknown
   id: string
   description: string | null
   locationText: string | null
@@ -45,6 +47,7 @@ function newDraft(hostIds: string[]): BookingPageDraft {
     locationText: "",
     hostIds,
     hostVariants: {},
+    addOns: [],
     weekly: defaultWeeklyHours(),
     price: "",
     category: "",
@@ -167,6 +170,7 @@ export function BookingPagesPanel() {
       locationText: page.locationText ?? "",
       hostIds: page.hostIds,
       hostVariants: parseHostVariants(page.hostVariants),
+      addOns: parseAddOns(page.addOns),
       weekly: parseWeeklyHours(page.weekly) ?? defaultWeeklyHours(),
       price: page.price ?? "",
       category: page.category ?? "",

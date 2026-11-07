@@ -20,6 +20,7 @@ import { connectedCalendars } from "@/lib/calendar/accounts"
 import { calendarBusy } from "@/lib/calendar/events"
 import { connectedCalendarKey } from "@/lib/calendar/providers"
 import { BookingCommandError } from "./command-error"
+import { addOnTotals, parseAddOns, selectedAddOns } from "./add-ons"
 import { hasHostVariants, hostService, servicePriceSpan } from "./host-variants"
 import { bookingHostWhere } from "./access"
 import { isValidTimezone } from "@/lib/timezone"
@@ -197,7 +198,7 @@ function windowOf(rules: BookingRules, now: Date): { from: Date; to: Date } {
  * price. A service where every master charges the same never asks: who is free
  * stays the server's business, as it always was.
  */
-export async function publicBookingView(orgId: string, pageId: string, now = new Date(), hostId?: string | null) {
+export async function publicBookingView(orgId: string, pageId: string, now = new Date(), hostId?: string | null, addOnIds: readonly string[] = []) {
   const page = await prisma.bookingPage.findFirst({ where: { id: pageId, organizationId: orgId, isActive: true } })
   if (!page) return null
   const org = await orgContext(orgId)
@@ -206,7 +207,12 @@ export async function publicBookingView(orgId: string, pageId: string, now = new
   const chosen = hostId && hosts.some((host) => host.id === hostId) ? hostId : null
   const offered = chosen ? hosts.filter((host) => host.id === chosen) : hosts
   const chosenService = chosen ? hostService(service, chosen) : null
-  const rules = { ...rulesOf(page, org.timezone), ...(chosenService ? { durationMinutes: chosenService.durationMinutes } : {}) }
+  // The extras take time as well as money: the slot is cut for the whole
+  // visit, or the master is double-booked for the half nobody counted.
+  const addOns = parseAddOns(page.addOns)
+  const takenAddOns = selectedAddOns(addOns, addOnIds)
+  const visit = addOnTotals(chosenService ?? { price: page.price === null ? null : String(page.price), durationMinutes: page.durationMinutes }, takenAddOns)
+  const rules = { ...rulesOf(page, org.timezone), durationMinutes: visit.durationMinutes }
   const { from, to } = windowOf(rules, now)
   const busy = await loadBusyByHost(orgId, offered.map((host) => host.id), from, to, org.timezone, { holds: {} })
   const days: DaySlots[] = computeSlots({ rules, hostIds: offered.map((host) => host.id), busyByHost: busy, now })
@@ -217,10 +223,10 @@ export async function publicBookingView(orgId: string, pageId: string, now = new
       orgName: org.name,
       title: page.title,
       description: page.description,
-      durationMinutes: chosenService?.durationMinutes ?? page.durationMinutes,
+      durationMinutes: visit.durationMinutes,
       locationType: page.locationType as "office" | "phone" | "online",
       locationText: page.locationText,
-      price: chosenService ? chosenService.price : span.varies ? null : (page.price === null ? null : String(page.price)),
+      price: chosenService || takenAddOns.length > 0 ? visit.price : span.varies ? null : (page.price === null ? null : String(page.price)),
       priceCurrency: page.priceCurrency,
       /** Set only when masters differ and none is chosen yet: «from 25». */
       priceFrom: !chosen && span.varies ? span.min : null,
@@ -230,6 +236,9 @@ export async function publicBookingView(orgId: string, pageId: string, now = new
         ? hosts.map((host) => ({ id: host.id, name: host.name, ...hostService(service, host.id) }))
         : [],
       chosenHostId: chosen,
+      /** What the service offers to add, and what the customer has ticked. */
+      addOns,
+      chosenAddOnIds: takenAddOns.map((addOn) => addOn.id),
       timezone: org.timezone,
     },
     // Which host is free is the server's business, not the customer's — unless
@@ -243,6 +252,8 @@ export interface BookingInput {
   idempotencyKey?: string
   recoverySecret?: string
   hostUserId?: string
+  /** Extras the customer ticked; unknown ids are ignored, never charged. */
+  addOnIds?: string[]
   startsAt: string
   name: string
   phone: string
