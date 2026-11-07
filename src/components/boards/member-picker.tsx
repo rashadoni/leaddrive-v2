@@ -18,7 +18,8 @@ export const MEMBER_FLAGS = {
 // (403 module gate / 500 / network) left `users` empty forever and the picker
 // showed an endless "loading" row with no hint anything went wrong.
 export type PickerState = "loading" | "error" | "ready"
-export function MemberPicker({ users, state, selected, onToggle }: { users: OrgUser[]; state: PickerState; selected: Set<string>; onToggle: (id: string) => void }) {
+/** `fullHeight`: the whole list in the page flow — for a page tab; a dialog keeps its short scrolling list. */
+export function MemberPicker({ users, state, selected, onToggle, fullHeight = false }: { users: OrgUser[]; state: PickerState; selected: Set<string>; onToggle: (id: string) => void; fullHeight?: boolean }) {
   const t = useTranslations("board")
   const [q, setQ] = useState("")
   const filtered = useMemo(() => {
@@ -44,7 +45,7 @@ export function MemberPicker({ users, state, selected, onToggle }: { users: OrgU
           className="w-full bg-transparent py-1.5 text-sm outline-none"
         />
       </div>
-      <div className="max-h-44 overflow-y-auto rounded-md border">
+      <div className={fullHeight ? "rounded-md border" : "max-h-44 overflow-y-auto rounded-md border"}>
         {state === "loading" ? (
           <p className="px-3 py-2 text-sm text-muted-foreground">{t("loading")}</p>
         ) : state === "error" ? (

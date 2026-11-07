@@ -93,6 +93,7 @@ export function BoardMembersPanel({ divisionId, parentDivisionId, parentName }: 
         users={users}
         state={usersState}
         selected={members}
+        fullHeight
         onToggle={(id) => setMembers((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })}
       />
       <div className="mt-3 flex items-center gap-3">
