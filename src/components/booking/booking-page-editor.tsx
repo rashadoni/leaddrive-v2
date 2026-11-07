@@ -93,8 +93,36 @@ const STEP_IDS = ["bp-step-service", "bp-step-where", "bp-step-price", "bp-step-
 const WEEKDAY_ANCHOR = Date.UTC(2024, 0, 7)
 const DAY_MS = 86_400_000
 
-/** A selected choice, in the shared CRM chip style (crm-workspace.css). */
-function Chip({ active, onClick, children, className }: { active: boolean; onClick: () => void; children: ReactNode; className?: string }) {
+/**
+ * A selected choice, in the shared CRM chip style (crm-workspace.css).
+ *
+ * `filled` opts one group out of that style and into the colour the week strip
+ * already uses — for the two questions where the answer is the whole point of
+ * the step (how long, and where), the grey-on-grey selected state read as no
+ * selection at all. Everything else stays in the house style, or this screen
+ * would be the only one in the CRM that marks a choice differently.
+ */
+const CHIP_BASE = cn(
+  "inline-flex min-h-10 items-center gap-2 rounded-full border border-input bg-card px-3.5 text-sm text-muted-foreground transition-colors",
+  "hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+)
+
+function Chip({ active, onClick, children, className, filled }: { active: boolean; onClick: () => void; children: ReactNode; className?: string; filled?: boolean }) {
+  // The colour role is written out, not spread in: the source guard reads the
+  // attribute, and an attribute it cannot read is an attribute that is not there.
+  if (filled) {
+    return (
+      <button
+        type="button"
+        data-crm-color-role="toggle"
+        aria-pressed={active}
+        onClick={onClick}
+        className={cn(CHIP_BASE, active && "border-primary bg-primary font-bold text-primary-foreground shadow-[0_8px_18px_-12px_hsl(var(--primary))] hover:border-primary", className)}
+      >
+        {children}
+      </button>
+    )
+  }
   return (
     <button
       type="button"
@@ -102,12 +130,7 @@ function Chip({ active, onClick, children, className }: { active: boolean; onCli
       data-state={active ? "active" : "inactive"}
       aria-pressed={active}
       onClick={onClick}
-      className={cn(
-        "inline-flex min-h-10 items-center gap-2 rounded-full border border-input bg-card px-3.5 text-sm text-muted-foreground transition-colors",
-        "hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        active && "text-foreground",
-        className,
-      )}
+      className={cn(CHIP_BASE, active && "text-foreground", className)}
     >
       {children}
     </button>
@@ -526,7 +549,7 @@ export function BookingPageEditor({
             <Label>{t("fieldDuration")}</Label>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {DURATIONS.map((value) => (
-                <Chip key={value} active={!customDuration && draft.durationMinutes === value} onClick={() => { setCustomDuration(false); set("durationMinutes", value) }}>{t("minutes", { count: value })}</Chip>
+                <Chip key={value} filled active={!customDuration && draft.durationMinutes === value} onClick={() => { setCustomDuration(false); set("durationMinutes", value) }}>{t("minutes", { count: value })}</Chip>
               ))}
               <button
                 type="button"
@@ -558,21 +581,21 @@ export function BookingPageEditor({
                     <button
                       key={value}
                       type="button"
-                      data-crm-filter=""
-                      data-state={active ? "active" : "inactive"}
+                      data-crm-color-role="toggle"
                       aria-pressed={active}
                       onClick={() => set("locationType", value)}
                       className={cn(
                         "flex items-center gap-2.5 rounded-xl border border-input bg-card p-3 text-left transition-colors",
                         "hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        active && "border-primary bg-primary text-primary-foreground shadow-[0_10px_20px_-14px_hsl(var(--primary))]",
                       )}
                     >
                       {/* The icon takes the accent only on the chosen one: three
                           tinted squares in a row say nothing about the choice. */}
-                      <span aria-hidden="true" className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}><Icon className="h-4 w-4" /></span>
+                      <span aria-hidden="true" className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground")}><Icon className="h-4 w-4" /></span>
                       <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold text-foreground">{t(`location_${value}`)}</span>
-                        <span className="block truncate text-xs text-muted-foreground">{t(`locHint_${value}`)}</span>
+                        <span className={cn("block truncate text-sm font-semibold", active ? "text-primary-foreground" : "text-foreground")}>{t(`location_${value}`)}</span>
+                        <span className={cn("block truncate text-xs", active ? "text-primary-foreground/80" : "text-muted-foreground")}>{t(`locHint_${value}`)}</span>
                       </span>
                     </button>
                   )
