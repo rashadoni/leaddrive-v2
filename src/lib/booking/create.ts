@@ -65,7 +65,7 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
     const chosen = selectedAddOns(parseAddOns(row.addOns), input.addOnIds ?? [])
     return { ...addOnTotals(base, chosen), addOns: chosen }
   }
-  const rules = { ...bookingRules(page, org.timezone), durationMinutes: visitOf(page, chosenHostId).durationMinutes }
+  const rules = { ...bookingRules(page, org.timezone, org.closedDates), durationMinutes: visitOf(page, chosenHostId).durationMinutes }
   const from = now, to = new Date(now.getTime() + (page.maxDaysAhead + 2) * 86400_000)
   const checkedAt = Date.now()
   // A customer-facing booking respects the holds of other conversations; a

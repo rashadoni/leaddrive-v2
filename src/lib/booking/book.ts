@@ -21,6 +21,7 @@ import { calendarBusy } from "@/lib/calendar/events"
 import { connectedCalendarKey } from "@/lib/calendar/providers"
 import { BookingCommandError } from "./command-error"
 import { addOnTotals, parseAddOns, selectedAddOns } from "./add-ons"
+import { closedDateSet, readClosedDates } from "./closed-dates"
 import { hasHostVariants, hostService, servicePriceSpan } from "./host-variants"
 import { bookingHostWhere } from "./access"
 import { isValidTimezone } from "@/lib/timezone"
@@ -72,7 +73,7 @@ export async function findBookingByToken(token: string): Promise<{ orgId: string
   return row ? { orgId: row.organizationId, bookingId: row.id } : null
 }
 
-export async function orgContext(orgId: string): Promise<{ name: string; timezone: string }> {
+export async function orgContext(orgId: string): Promise<{ name: string; timezone: string; closedDates: string[] }> {
   const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { name: true, settings: true } })
   const settings = (org?.settings ?? {}) as Record<string, unknown>
   const invoice = (settings.invoice ?? {}) as Record<string, unknown>
@@ -80,12 +81,16 @@ export async function orgContext(orgId: string): Promise<{ name: string; timezon
   return {
     name: (typeof invoice.companyName === "string" && invoice.companyName.trim()) || org?.name || "",
     timezone: timezone && isValidTimezone(timezone) ? timezone : DEFAULT_BOOKING_TIMEZONE,
+    // The days the salon does not work. They belong to the organization, so
+    // they travel with its name and its clock rather than with each service.
+    closedDates: [...closedDateSet(readClosedDates(org?.settings))],
   }
 }
 
-function rulesOf(page: PageRow, timezone: string): BookingRules {
+function rulesOf(page: PageRow, timezone: string, closedDates: readonly string[] = []): BookingRules {
   return {
     timezone,
+    closedDates,
     durationMinutes: page.durationMinutes,
     bufferMinutes: page.bufferMinutes,
     minNoticeMinutes: page.minNoticeMinutes,
@@ -212,7 +217,7 @@ export async function publicBookingView(orgId: string, pageId: string, now = new
   const addOns = parseAddOns(page.addOns)
   const takenAddOns = selectedAddOns(addOns, addOnIds)
   const visit = addOnTotals(chosenService ?? { price: page.price === null ? null : String(page.price), durationMinutes: page.durationMinutes }, takenAddOns)
-  const rules = { ...rulesOf(page, org.timezone), durationMinutes: visit.durationMinutes }
+  const rules = { ...rulesOf(page, org.timezone, org.closedDates), durationMinutes: visit.durationMinutes }
   const { from, to } = windowOf(rules, now)
   const busy = await loadBusyByHost(orgId, offered.map((host) => host.id), from, to, org.timezone, { holds: {} })
   const days: DaySlots[] = computeSlots({ rules, hostIds: offered.map((host) => host.id), busyByHost: busy, now })

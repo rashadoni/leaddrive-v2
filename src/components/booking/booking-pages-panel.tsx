@@ -6,8 +6,10 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { CalendarCheck, Check, Copy, CopyPlus, Pencil, Plus } from "lucide-react"
+import { CalendarCheck, CalendarOff, Check, Copy, CopyPlus, Pencil, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Hint } from "@/components/hint"
 import { BookingPageEditor, type BookingHostOption, type BookingPageDraft } from "@/components/booking/booking-page-editor"
@@ -15,6 +17,7 @@ import { BookingWhatsAppCard } from "@/components/booking/booking-whatsapp-card"
 import { defaultWeeklyHours, parseWeeklyHours } from "@/lib/booking/availability"
 import { parseHostVariants } from "@/lib/booking/host-variants"
 import { parseAddOns } from "@/lib/booking/add-ons"
+import { parseClosedDates, type ClosedDate } from "@/lib/booking/closed-dates"
 import { bookingSlug, groupByCategory, servicePriceLabel } from "@/lib/booking/service"
 
 interface PageRow extends Omit<BookingPageDraft, "description" | "locationText" | "price" | "category" | "repeatCycleDays" | "hostVariants" | "addOns"> {
@@ -69,7 +72,7 @@ function nextDraft(previous: BookingPageDraft): BookingPageDraft {
   return { ...previous, id: undefined, title: "", slug: "", description: "", price: "" }
 }
 
-async function fetchBookingPages(): Promise<{ pages: PageRow[]; users: BookingHostOption[]; linkBase: string; currency: string; ai?: boolean } | null> {
+async function fetchBookingPages(): Promise<{ pages: PageRow[]; users: BookingHostOption[]; linkBase: string; currency: string; ai?: boolean; closedDates?: unknown } | null> {
   const response = await fetch("/api/v1/booking-pages", { cache: "no-store" }).catch(() => null)
   const body = await response?.json().catch(() => null)
   return body?.success ? body.data : null
@@ -83,6 +86,13 @@ export function BookingPagesPanel() {
   const [linkBase, setLinkBase] = useState("")
   const [currency, setCurrency] = useState("")
   const [ai, setAi] = useState(false)
+  // The days the whole salon is closed. They belong to the organization, so
+  // they are saved on their own as soon as one is added or removed — there is
+  // no service being edited to save them with.
+  const [closedDates, setClosedDates] = useState<ClosedDate[]>([])
+  const [closedDraft, setClosedDraft] = useState({ date: "", note: "" })
+  const [closedBusy, setClosedBusy] = useState(false)
+  const [closedError, setClosedError] = useState("")
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState<BookingPageDraft | null>(null)
   // A fresh form is a fresh editor: its own state (whether the link still
@@ -103,6 +113,7 @@ export function BookingPagesPanel() {
         setLinkBase(data.linkBase.replace(/^https?:\/\//, ""))
         setCurrency(data.currency ?? "")
         setAi(Boolean(data.ai))
+        setClosedDates(parseClosedDates(data.closedDates))
       } else {
         setError(t("errLoad"))
       }
@@ -147,6 +158,35 @@ export function BookingPagesPanel() {
       setDraft(null)
     }
     load()
+  }
+
+  async function saveClosedDates(next: ClosedDate[]) {
+    const before = closedDates
+    setClosedDates(next)
+    setClosedBusy(true)
+    setClosedError("")
+    const response = await fetch("/api/v1/booking-pages/closed-dates", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dates: next }),
+    }).catch(() => null)
+    const body = await response?.json().catch(() => null)
+    setClosedBusy(false)
+    if (!response?.ok || !body?.success) {
+      // The list on screen is what the salon believes; a failed save must not
+      // leave it claiming a day is closed when the server never heard it.
+      setClosedDates(before)
+      setClosedError(t("closedFailed"))
+      return
+    }
+    setClosedDates(parseClosedDates(body.data?.closedDates))
+  }
+
+  function addClosedDate() {
+    const date = closedDraft.date.trim()
+    if (!date || closedDates.some((entry) => entry.date === date)) return
+    setClosedDraft({ date: "", note: "" })
+    void saveClosedDates([...closedDates, { date, note: closedDraft.note.trim() || null }].sort((left, right) => left.date.localeCompare(right.date)))
   }
 
   async function copy(url: string) {
@@ -227,6 +267,58 @@ export function BookingPagesPanel() {
           </Button>
         </div>
       )}
+
+      {/* Calendly's date-specific hours, in the half a salon actually says:
+          closed. One list for the whole organization — a holiday marked on
+          twenty services is nineteen chances to miss one. */}
+      {!draft ? (
+        <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h2 className="flex items-center gap-2 text-[17px] font-bold tracking-tight">
+              <CalendarOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />{t("closedTitle")}
+            </h2>
+            <p className="text-[13px] text-muted-foreground">{t("closedHint")}</p>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-end gap-2">
+            <div>
+              <Label htmlFor="closed-date" className="text-xs">{t("closedDate")}</Label>
+              <Input id="closed-date" type="date" className="mt-1 h-10 w-44" value={closedDraft.date} onChange={(event) => setClosedDraft({ ...closedDraft, date: event.target.value })} />
+            </div>
+            <div className="min-w-[180px] flex-1">
+              <Label htmlFor="closed-note" className="text-xs">{t("closedNote")}</Label>
+              <Input id="closed-note" className="mt-1 h-10" maxLength={80} placeholder={t("closedNotePlaceholder")} value={closedDraft.note} onChange={(event) => setClosedDraft({ ...closedDraft, note: event.target.value })} />
+            </div>
+            <Button variant="outline" onClick={addClosedDate} disabled={!closedDraft.date || closedBusy}>
+              <Plus className="h-4 w-4" aria-hidden="true" />{t("closedAdd")}
+            </Button>
+          </div>
+
+          {closedError ? <p className="mt-2 text-xs text-destructive" role="alert">{closedError}</p> : null}
+
+          {closedDates.length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">{t("closedEmpty")}</p>
+          ) : (
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {closedDates.map((entry) => (
+                <li key={entry.date} className="inline-flex min-h-10 items-center gap-2 rounded-full border bg-card px-3 text-sm">
+                  <span className="font-semibold tabular-nums">{entry.date}</span>
+                  {entry.note ? <span className="max-w-[180px] truncate text-muted-foreground">{entry.note}</span> : null}
+                  <button
+                    type="button"
+                    aria-label={`${t("removeAction")}: ${entry.date}`}
+                    disabled={closedBusy}
+                    onClick={() => void saveClosedDates(closedDates.filter((other) => other.date !== entry.date))}
+                    className="text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
 
       {!draft ? <BookingWhatsAppCard services={pages.map(({ id, title, price, priceCurrency }) => ({ id, title, price, priceCurrency }))} hosts={users} /> : null}
 
