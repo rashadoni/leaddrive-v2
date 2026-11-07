@@ -13,7 +13,12 @@
  * booking says the customer took.
  */
 
-export interface ServiceAddOn {
+/**
+ * A type alias, not an interface, on purpose: only an alias gets the implicit
+ * index signature Prisma's JSON input type asks for, and the booking snapshot
+ * stores these as JSON.
+ */
+export type ServiceAddOn = {
   /** Stable handle; a booking keeps this, not the name. */
   id: string
   name: string
