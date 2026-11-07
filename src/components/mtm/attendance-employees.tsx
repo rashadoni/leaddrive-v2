@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
@@ -64,16 +64,25 @@ export function MtmAttendanceEmployees() {
   // The list filters on every keystroke; the address (a server round trip in
   // the app router) follows the pause in typing.
   const addressSearch = useDebouncedValue(search)
-  const query = useMemo(() => {
+  const listQuery = useCallback((text: string) => {
     const next = new URLSearchParams({ tab: "employees" })
-    if (addressSearch.trim()) next.set("q", addressSearch.trim())
+    if (text.trim()) next.set("q", text.trim())
     if (department) next.set("team", department)
     if (participation !== "ALL") next.set("show", participation)
     if (timeFilter !== "ALL") next.set("time", timeFilter)
     if (page) next.set("page", String(page + 1))
     return next.toString()
-  }, [addressSearch, department, participation, timeFilter, page])
-  useEffect(() => { if (`?${query}` !== `?${params.toString()}`) router.replace(`${pathname}?${query}`, { scroll: false }) }, [query, params, pathname, router])
+  }, [department, participation, timeFilter, page])
+  const query = useMemo(() => listQuery(addressSearch), [listQuery, addressSearch])
+  // Opening an employee within the pause must not be undone by the address
+  // catching up: that late replace would win over the navigation and drop the
+  // person back on the list (#1396, 2026-11-07). Once a row's link is followed,
+  // the list stops writing the address; «back» already carries the typed search.
+  const leaving = useRef(false)
+  const followRow = (event: ReactMouseEvent) => {
+    if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && (event.target as Element).closest?.("a[href^='/mtm/attendance/people/']")) leaving.current = true
+  }
+  useEffect(() => { if (!leaving.current && `?${query}` !== `?${params.toString()}`) router.replace(`${pathname}?${query}`, { scroll: false }) }, [query, params, pathname, router])
 
   const needle = search.trim().toLocaleLowerCase(locale), digits = search.replace(/\D/g, "")
   const matches = (employee: Employee) => !needle || [employee.name, employee.position, employee.personnelNumber, employee.departmentName, employee.teamName].some(value => value?.toLocaleLowerCase(locale).includes(needle))
@@ -106,7 +115,7 @@ export function MtmAttendanceEmployees() {
     return [employee.personnelNumber && `№ ${employee.personnelNumber}`, employee.position, hire && p("employeeSince", { date: date(hire.date) })].filter(Boolean).join(" · ")
   }
   const reset = () => setPage(0)
-  const back = encodeURIComponent(`/mtm/attendance/people?${query}`)
+  const back = encodeURIComponent(`/mtm/attendance/people?${listQuery(search)}`)
 
   return <div className="space-y-5" data-testid="attendance-employees">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-semibold tracking-tight">{t("employeesTitle")}</h1><p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("employeesIntro")}</p></div>{!denied && <div className="flex flex-wrap items-start gap-2">
@@ -117,7 +126,7 @@ export function MtmAttendanceEmployees() {
     {loading && !directory && <p role="status" className="text-sm text-muted-foreground">{t("employeesLoading")}</p>}
     {error && <p role="alert" className="max-w-prose text-sm text-destructive">{t(error)}</p>}
     {directory && !denied && <MtmAttendanceTimeRollout employees={active} onShowMissing={unit => { setDepartment(unit); setTimeFilter("OUT"); setParticipation("ALL"); reset() }} />}
-    {directory && !denied && <section className="space-y-4 rounded-2xl border bg-card p-5" data-testid="employees-roster" aria-label={t("employeesRoster")}>
+    {directory && !denied && <section className="space-y-4 rounded-2xl border bg-card p-5" data-testid="employees-roster" aria-label={t("employeesRoster")} onClickCapture={followRow}>
       <div className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_14rem_14rem_12rem]">
         <div className="space-y-1.5"><label htmlFor="employee-search" className="text-sm font-medium">{p("employeesSearchLabel")}</label>
           <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
