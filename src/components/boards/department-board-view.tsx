@@ -19,11 +19,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
-import { Loader2, Columns3, X } from "lucide-react"
+import { Loader2, Columns3 } from "lucide-react"
 import { CANONICAL_STAGES, STAGE_LABELS, resolveLaneKey, type LaneColumn } from "@/lib/tasks/board-columns"
 import { BoardReports } from "@/components/boards/board-reports"
 import { BoardProjectTabs } from "@/components/boards/board-project-tabs"
-import { TaskDetailView } from "@/components/tasks/task-detail-view"
+import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
 
 interface DeptDivision { id: string; key: string; name: string; color: string | null }
 interface SectionLite { id: string; key: string; name: string; color: string | null; parentDivisionId?: string | null; _count?: { tasks: number } }
@@ -228,24 +228,14 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
         </>
       )}
 
-      {/* Task detail modal (shared component; full edit/move happens here) */}
+      {/* The task card — Bordio-style panel on the right; it reads the task's own board stages. */}
       {openTaskId && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-6" onClick={() => { setOpenTaskId(null); loadTasks() }}>
-          <div className="relative my-4 w-full max-w-5xl rounded-lg bg-card shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => { setOpenTaskId(null); loadTasks() }} aria-label={t("cancel")} className="absolute right-3 top-3 z-10 rounded p-1.5 text-muted-foreground hover:bg-black/5">
-              <X className="h-5 w-5" />
-            </button>
-            <div className="max-h-[88vh] overflow-y-auto p-5 sm:p-6">
-              <TaskDetailView
-                taskIdProp={openTaskId}
-                modal
-                boardColumns={CANONICAL_STAGES.map((s) => ({ key: s, label: STAGE_LABELS[s] }))}
-                onClose={() => { setOpenTaskId(null); loadTasks() }}
-                onMutated={() => loadTasks()}
-              />
-            </div>
-          </div>
-        </div>
+        <TaskPanel
+          taskId={openTaskId}
+          canEdit
+          onClose={() => { setOpenTaskId(null); loadTasks() }}
+          onMutated={() => loadTasks()}
+        />
       )}
     </div>
   )

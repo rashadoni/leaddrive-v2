@@ -36,7 +36,7 @@ import {
   type DragStartEvent, type DragEndEvent,
 } from "@dnd-kit/core"
 import { CSS } from "@dnd-kit/utilities"
-import { TaskDetailView } from "@/components/tasks/task-detail-view"
+import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
 import { InlineTasksTable, type InlineTask, type InlineUser } from "@/components/tasks/inline-tasks-table"
 import { resolveLaneKey } from "@/lib/tasks/board-columns"
 import { fetchAllBoardTasks } from "@/lib/tasks/fetch-board-tasks"
@@ -829,34 +829,14 @@ function BoardInner() {
           detail/edit UI (shared <TaskDetailView>) over the board. Closing
           refetches so edits (status, title, assignee, delete) reflect on the board. */}
       {openTaskId && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-6"
-          onClick={() => { setOpenTaskId(null); loadTasks().catch(() => {}); setReportsReloadKey((k) => k + 1) }}
-        >
-          <div
-            data-crm-dialog="" className="relative my-4 w-full max-w-5xl rounded-lg border border-border shadow-xl"
-            style={{ background: C.card }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => { setOpenTaskId(null); loadTasks().catch(() => {}); setReportsReloadKey((k) => k + 1) }}
-              aria-label={t("cancel")}
-              className="absolute right-3 top-3 z-10 rounded p-1.5 hover:bg-black/5"
-              style={{ color: C.sub }}
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <div className="max-h-[88vh] overflow-y-auto p-5 sm:p-6">
-              <TaskDetailView
-                taskIdProp={openTaskId}
-                modal
-                boardColumns={visibleColumns.map((c) => ({ key: c.mapsToStatus, label: c.label, columnKey: c.key }))}
-                onClose={() => { setOpenTaskId(null); loadTasks().catch(() => {}); setReportsReloadKey((k) => k + 1) }}
-                onMutated={() => loadTasks().catch(() => {})}
-              />
-            </div>
-          </div>
-        </div>
+        <TaskPanel
+          taskId={openTaskId}
+          columns={visibleColumns.map((c) => ({ key: c.mapsToStatus, label: c.label, columnKey: c.key }))}
+          path={[divisions.find((d) => d.id === division?.parentDivisionId)?.name, division?.name].filter(Boolean).join(" / ")}
+          canEdit={myRole !== "viewer"}
+          onClose={() => { setOpenTaskId(null); loadTasks().catch(() => {}); setReportsReloadKey((k) => k + 1) }}
+          onMutated={() => loadTasks().catch(() => {})}
+        />
       )}
     </div>
     </BoardActionsCtx.Provider>

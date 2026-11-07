@@ -1,0 +1,155 @@
+// @vitest-environment jsdom
+/**
+ * The Bordio-style task card (owner, 2026-11-07), rendered with the real
+ * Russian copy against a fake API: the fields and the board path show, the
+ * title is renamed in place, a subtask is added on Enter, a message with an
+ * @-mention sends the mentioned id, following and the timer call their
+ * endpoints, and the time line reads in words.
+ */
+import { act, createElement } from "react"
+import { createRoot, type Root } from "react-dom/client"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { readFileSync } from "node:fs"
+
+type Messages = { [key: string]: string | Messages }
+const ru = JSON.parse(readFileSync("messages/ru.json", "utf8")) as Messages
+vi.mock("next-intl", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next-intl")>()
+  return {
+    useTranslations: (namespace?: string) =>
+      actual.createTranslator({ locale: "ru", messages: ru as never, namespace: namespace as never }),
+    useLocale: () => "ru",
+  }
+})
+
+import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
+
+;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+const TASK = {
+  id: "t1", divisionId: "b1", title: "Vebsayt reklamları", description: "", status: "in_progress", priority: "critical", type: "digital_marketing",
+  taskKey: "DPHARMA-53", dueDate: "2026-12-04T19:59:59.000Z", startDate: null, assignedTo: "s", assignee: { id: "s", name: "Sabina Hasanova" },
+  collaborators: [], reporterId: "n", reporter: { id: "n", name: "Nazrin Shirinova" }, creator: { id: "s", name: "Sabina Hasanova" },
+  tags: ["meta"], estimatedHours: null, recurrenceRule: null, customFields: { brand: "Pharmastore" },
+  checklist: [{ id: "c1", title: "pixel quraşdırılması", completed: true, sortOrder: 0, assignedTo: "s", assignee: { id: "s", name: "Sabina Hasanova" }, dueDate: null }],
+  attachments: [], createdAt: "2025-12-02T10:33:15.785Z",
+}
+const FEED = {
+  items: [
+    { kind: "event", id: "e1", at: "2026-03-05T11:18:00.000Z", user: { id: "s", name: "Sabina Hasanova" }, action: "due_date_changed", oldValue: null, newValue: "2026-03-12T19:59:59.000Z", text: null },
+    { kind: "message", id: "m1", at: "2026-03-19T11:17:00.000Z", user: { id: "s", name: "Sabina Hasanova" }, text: "birbaşa reklamları aktivləşdirdim", mentions: [], system: false },
+    { kind: "event", id: "e2", at: "2026-11-03T11:04:00.000Z", user: { id: "s", name: "Sabina Hasanova" }, action: "external_event", oldValue: null, newValue: null, text: "completed the subtask: pixel quraşdırılması" },
+  ],
+  followers: [{ id: "a", name: "Aytan" }, { id: "s", name: "Sabina Hasanova" }],
+  following: false,
+}
+
+let container: HTMLDivElement
+let root: Root
+const calls: string[] = []
+const timer: { running: { startedAt: string } | null } = { running: null }
+beforeEach(() => {
+  calls.length = 0
+  timer.running = null
+  container = document.createElement("div")
+  document.body.appendChild(container)
+  root = createRoot(container)
+  vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+    const method = init?.method ?? "GET"
+    const body = typeof init?.body === "string" ? init.body : ""
+    calls.push(`${method} ${url} ${body}`.trim())
+    const json = (data: unknown) => new Response(JSON.stringify({ success: true, data }))
+    if (url === "/api/v1/tasks/t1" && method === "GET") return json(TASK)
+    if (url === "/api/v1/tasks/t1/time") {
+      if (method === "POST" && body.includes('"start"')) timer.running = { startedAt: new Date().toISOString() }
+      return json({ entries: [], totalMinutes: 90, running: timer.running })
+    }
+    if (url === "/api/v1/tasks/t1/feed") return json(FEED)
+    if (url === "/api/v1/users/assignable") return json([{ id: "s", name: "Sabina Hasanova" }, { id: "n", name: "Nazrin Shirinova" }, { id: "a", name: "Aytan Mushkurova" }])
+    if (url.startsWith("/api/v1/custom-fields")) return json([{ fieldName: "brand", isActive: true, options: ["Zeytun", "Pharmastore"] }])
+    if (url.startsWith("/api/v1/task-types")) return json([{ id: "1", name: "digital_marketing", displayName: "DIGITAL MARKETING", color: "#000", sortOrder: 0, isActive: true }])
+    return json({})
+  }))
+})
+afterEach(() => {
+  act(() => root.unmount())
+  container.remove()
+  vi.unstubAllGlobals()
+})
+
+const flush = () => act(async () => { for (let i = 0; i < 8; i += 1) await Promise.resolve() })
+const type = async (el: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+  const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value")!.set!
+  await act(async () => {
+    setter.call(el, value)
+    el.setSelectionRange?.(value.length, value.length)
+    el.dispatchEvent(new Event("input", { bubbles: true }))
+  })
+}
+const press = (el: Element, key: string) => act(async () => { el.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })) })
+const click = (el: Element | null | undefined) => act(async () => { (el as HTMLElement).dispatchEvent(new MouseEvent("click", { bubbles: true })) })
+const byText = (selector: string, text: string) => [...container.querySelectorAll(selector)].find((el) => el.textContent?.includes(text))
+
+async function open() {
+  await act(async () => {
+    root.render(createElement(TaskPanel, {
+      taskId: "t1", path: "Digital Marketing / Pharmastore", canEdit: true, onClose: () => {}, onMutated: () => {},
+      columns: [{ key: "todo", label: "New task", columnKey: "c_todo" }, { key: "in_progress", label: "In progress", columnKey: "c_ip" }, { key: "done", label: "Completed", columnKey: "c_done" }],
+    }))
+  })
+  await flush()
+}
+
+describe("task card panel", () => {
+  it("shows the fields, the board path, subtasks with their people, and a time line in words", async () => {
+    await open()
+    const text = container.textContent ?? ""
+    expect(text).toContain("Digital Marketing / Pharmastore / DPHARMA-53")
+    expect(text).toContain("Поставил")
+    expect((container.querySelector("textarea") as HTMLTextAreaElement).value).toBe("Vebsayt reklamları")
+    const status = [...container.querySelectorAll("select")].find((s) => [...s.options].some((o) => o.text === "Completed"))!
+    expect(status.value).toBe("in_progress")
+    expect(text).toContain("#meta")
+    expect(text).toContain("потрачено 1:30")
+    expect(text).toContain("pixel quraşdırılması")
+    expect(text).toContain("Sabina Hasanova поставил(а) срок 12 мар. 2026 г.")
+    expect(text).toContain("Sabina Hasanova completed the subtask: pixel quraşdırılması")
+    expect(text).toContain("2 подписчика")
+  })
+
+  it("renames in place, adds a subtask on Enter, follows, and starts the timer", async () => {
+    await open()
+    const title = container.querySelector("textarea") as HTMLTextAreaElement
+    await type(title, "Vebsayt reklamları — GA4")
+    await act(async () => { title.dispatchEvent(new FocusEvent("blur")); title.dispatchEvent(new FocusEvent("focusout", { bubbles: true })) })
+    await flush()
+    expect(calls).toContain('PATCH /api/v1/tasks/t1 {"title":"Vebsayt reklamları — GA4"}')
+
+    const add = container.querySelector('input[placeholder="+ подзадача (Enter)"]') as HTMLInputElement
+    await type(add, "ga4 quraşdırılması")
+    await press(add, "Enter")
+    await flush()
+    expect(calls).toContain('POST /api/v1/tasks/t1/checklist {"title":"ga4 quraşdırılması"}')
+
+    await click(byText("button", "Следить"))
+    await flush()
+    expect(calls).toContain("POST /api/v1/tasks/t1/followers {}")
+
+    await click(byText("button", "Таймер"))
+    await flush()
+    expect(calls).toContain('POST /api/v1/tasks/t1/time {"action":"start"}')
+    expect(byText("button", "Стоп")).toBeTruthy()
+  })
+
+  it("sends a message with the @-mentioned person's id", async () => {
+    await open()
+    const box = container.querySelector('textarea[placeholder="Сообщение… @ — упомянуть"]') as HTMLTextAreaElement
+    await type(box, "bax @naz")
+    const option = byText("[role=listbox] button", "Nazrin Shirinova")!
+    await act(async () => { option.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })) })
+    expect(box.value).toBe("bax @Nazrin Shirinova ")
+    await click(byText("button", "Отправить"))
+    await flush()
+    expect(calls).toContain('POST /api/v1/tasks/t1/comments {"content":"bax @Nazrin Shirinova","mentions":["n"]}')
+  })
+})
