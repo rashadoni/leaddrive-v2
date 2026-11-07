@@ -40,12 +40,17 @@ export function enforcedAccessLevel(roleId: string, scope: string): AccessLevel 
 export const HIDEABLE_MODULE_SCOPES: Record<UserHideableId, readonly string[]> = {
   crm: ["companies", "contacts", "projects"],
   boards: ["tasks"],
-  sales: ["deals", "leads", "offers"],
+  // Meetings (/meetings) sit in the Sales group and hide with it; their scope is
+  // special-cased in checkPermission (nobody deletes, viewer has none), so the
+  // matrix lists it rather than letting «Satış» imply it.
+  sales: ["deals", "leads", "offers", "bookings"],
   contracts: ["contracts"],
   marketing: ["campaigns", "journeys", "segments", "events"],
   loyalty: ["loyalty"],
   omnichannel: ["inbox"],
-  social: ["social"],
+  // The legal contour is admin-only (viewer reads) — its own row, so a manager's
+  // «Sosial monitorinq» does not read as including the legal cases.
+  social: ["social", "social-legal"],
   voip: ["voip"],
   support: ["tickets", "kb"],
   finance: ["invoices", "finance", "budgeting", "profitability", "pricing"],

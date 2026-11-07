@@ -15,8 +15,11 @@ import { useTranslations } from "next-intl"
 import { HelpButton } from "@/components/help/help-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
-import { enforcedAccessLevel, type AccessLevel } from "@/lib/user-access-summary"
-import { isCrmCapabilityAvailable } from "@/lib/crm-product-availability"
+import { enforcedAccessLevel, HIDEABLE_MODULE_SCOPES, type AccessLevel } from "@/lib/user-access-summary"
+import { hasModule } from "@/lib/modules"
+import { orgFromSession } from "@/lib/nav-items"
+import { tenantHideableModules, USER_HIDEABLE_MODULE_IDS } from "@/lib/user-module-access"
+import { userModuleOptions } from "@/lib/user-module-options"
 
 
 interface RoleConfig {
@@ -24,27 +27,14 @@ interface RoleConfig {
   name: string
   color: string
   isSystem: boolean
+  // false for an organization's own role: the permission engine does not
+  // enforce it, so it cannot be given to anybody (see GET /settings/roles).
+  assignable?: boolean
 }
 
-// Grouped module list — each module is a permission scope in permissions.ts,
-// and the matrix below is read straight from that file's role table.
-const MODULE_GROUPS: { label: string; modules: string[] }[] = [
-  { label: "crm",       modules: ["companies", "contacts", "deals", "leads", "tasks"] },
-  { label: "sales",     modules: ["contracts", "offers", "pricing"] },
-  { label: "marketing", modules: ["campaigns", "journeys", "segments", "events"] },
-  { label: "loyalty",   modules: ["loyalty"] },
-  { label: "comm",      modules: ["inbox", "voip", "social"] },
-  { label: "support",   modules: ["tickets", "kb"] },
-  { label: "finance",   modules: ["invoices", "finance", "budgeting", "profitability"] },
-  { label: "erp",       modules: ["projects"] },
-  { label: "field",     modules: ["mtm", "workforce"] },
-  { label: "ai",        modules: ["ai"] },
-  { label: "analytics", modules: ["reports"] },
-  { label: "admin",     modules: ["settings", "users", "audit"] },
-]
+/** One block of the table: a tick from the user card and the scopes behind it. */
+interface MatrixGroup { id: string; label: string; scopes: readonly string[] }
 
-const MODULES: string[] = MODULE_GROUPS.flatMap(g => g.modules)
-  .filter((module) => module !== "workforce" || isCrmCapabilityAvailable("workforce-hrm"))
 const MODULE_HINT_KEYS: Partial<Record<string, string>> = {
   loyalty: "moduleHint_loyalty",
   // A manager reads `users` and has no `settings`: without these two lines the
@@ -54,6 +44,9 @@ const MODULE_HINT_KEYS: Partial<Record<string, string>> = {
   // The row is named after its menu entry, which says nothing about payment
   // orders or bank accounts — the things an admin is actually deciding about.
   finance: "moduleHint_finance",
+  // checkPermission special-cases meetings: no role deletes them, and the
+  // viewer — who reads everything else — does not see them.
+  bookings: "moduleHint_bookings",
 }
 
 // The matrix asks `enforcedAccessLevel` — `checkPermission` underneath, the
@@ -104,6 +97,26 @@ export default function RolesSettingsPage() {
   const { data: session } = useSession()
   const t = useTranslations("settings")
   const tc = useTranslations("common")
+  const tn = useTranslations("nav")
+  // The table is grouped exactly like the ticks on the user card — same names,
+  // same order, same scopes (HIDEABLE_MODULE_SCOPES) — and lists only what this
+  // organization has. It used to keep its own grouping, list modules the tenant
+  // never bought and leave Meetings out (audit, owner 2026-11-07). Not memoized:
+  // the session object changes identity on every read anyway.
+  const sessionUser = session?.user
+  const isSuperadmin = sessionUser?.role === "superadmin"
+  const org = orgFromSession(sessionUser)
+  const matrixGroups: MatrixGroup[] = [
+    ...userModuleOptions(
+      isSuperadmin ? USER_HIDEABLE_MODULE_IDS : tenantHideableModules(org),
+      (key) => tn(key as never),
+    ).map((option) => ({ id: option.id, label: option.label, scopes: HIDEABLE_MODULE_SCOPES[option.id] })),
+    ...(isSuperadmin || hasModule(org, "ai") ? [{ id: "ai", label: t("module_ai"), scopes: ["ai"] }] : []),
+    // Settings has no tick: only the role opens it.
+    { id: "settings", label: tn("groups.Settings" as never), scopes: ["settings", "users", "audit"] },
+  ]
+  const scopeLabel = (group: MatrixGroup, scope: string) =>
+    t.has(`module_${scope}`) ? t(`module_${scope}` as never) : group.label
   useAutoTour("roles")
   const [roles, setRoles] = useState<RoleConfig[]>([])
   const [userCounts, setUserCounts] = useState<Record<string, number>>({})
@@ -152,6 +165,10 @@ export default function RolesSettingsPage() {
     setDeleteRoleId(null)
     await fetchData()
   }
+
+  // Built-in roles are named in the reader's language, as on the users page;
+  // an organization's own role keeps the name it was given.
+  const roleLabel = (role: RoleConfig) => t.has(`role_${role.id}`) ? t(`role_${role.id}` as never) : role.name
 
   const accessLabel = (level: AccessLevel): string => {
     switch (level) {
@@ -218,7 +235,7 @@ export default function RolesSettingsPage() {
                 <div key={role.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card">
                   <Badge className={`${getColorBg(role.color)} gap-1`}>
                     <Icon className="h-3 w-3" />
-                    {role.name}
+                    {roleLabel(role)}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     {userCounts[role.id] || 0} {t("usersCount")}
@@ -229,7 +246,9 @@ export default function RolesSettingsPage() {
                   {!role.isSystem && (
                     <button
                       type="button"
-                      onClick={() => { setDeleteRoleId(role.id); setDeleteRoleName(role.name) }}
+                      onClick={() => { setDeleteRoleId(role.id); setDeleteRoleName(roleLabel(role)) }}
+                      title={t("deleteRole")}
+                      aria-label={`${t("deleteRole")}: ${roleLabel(role)}`}
                       className="text-muted-foreground hover:text-destructive transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -258,11 +277,16 @@ export default function RolesSettingsPage() {
                       <div className="flex flex-col items-center gap-1">
                         <Badge className={`${getColorBg(role.color)} gap-1 text-[10px]`}>
                           <Icon className="h-3 w-3" />
-                          {role.name}
+                          {roleLabel(role)}
                         </Badge>
                         <span className="text-[10px] text-muted-foreground font-normal">
                           {userCounts[role.id] || 0} {t("usersCount")}
                         </span>
+                        {role.assignable === false && (
+                          <span className="text-[10px] font-normal text-amber-700 dark:text-amber-400" title={t("roleNotAssignableHint")}>
+                            {t("roleNotAssignable")}
+                          </span>
+                        )}
                       </div>
                     </th>
                   )
@@ -270,33 +294,47 @@ export default function RolesSettingsPage() {
               </tr>
             </thead>
             <tbody>
-              {MODULES.map((mod, idx) => (
-                <tr key={mod} className={idx % 2 === 0 ? "bg-muted/30" : ""}>
-                  <td className="py-2.5 px-3 font-medium sticky left-0 bg-inherit z-10">
-                    <div>{t(`module_${mod}`)}</div>
-                    {MODULE_HINT_KEYS[mod] && (
-                      <p className="mt-0.5 max-w-[260px] text-[11px] font-normal leading-snug text-muted-foreground">
-                        {t(MODULE_HINT_KEYS[mod]!)}
-                      </p>
-                    )}
-                  </td>
-                  {roles.map(role => {
-                    const level = enforcedLevel(role.id, mod)
-                    const style = ACCESS_STYLES[level]
-                    const IconEl = style.icon
-                    return (
-                      <td key={role.id} className="py-2.5 px-2">
-                        <div className="flex justify-center">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${style.className}`}>
-                            <IconEl className="h-3 w-3" />
-                            {accessLabel(level)}
-                          </span>
-                        </div>
+              {matrixGroups.map((group) => {
+                // A tick with one scope is one row named after the tick; with
+                // several, a heading row and one row per scope under it.
+                const single = group.scopes.length === 1
+                return [
+                  !single && (
+                    <tr key={`${group.id}-head`} className="border-t bg-muted/50" data-matrix-group={group.id}>
+                      <td colSpan={roles.length + 1} className="sticky left-0 py-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        {group.label}
                       </td>
-                    )
-                  })}
-                </tr>
-              ))}
+                    </tr>
+                  ),
+                  ...group.scopes.map((mod) => (
+                    <tr key={`${group.id}-${mod}`} className={single ? "border-t" : ""} data-matrix-scope={mod}>
+                      <td className={`py-2.5 font-medium sticky left-0 bg-card z-10 ${single ? "px-3" : "pl-6 pr-3"}`}>
+                        <div>{single ? group.label : scopeLabel(group, mod)}</div>
+                        {MODULE_HINT_KEYS[mod] && (
+                          <p className="mt-0.5 max-w-[260px] text-[11px] font-normal leading-snug text-muted-foreground">
+                            {t(MODULE_HINT_KEYS[mod]!)}
+                          </p>
+                        )}
+                      </td>
+                      {roles.map(role => {
+                        const level = enforcedLevel(role.id, mod)
+                        const style = ACCESS_STYLES[level]
+                        const IconEl = style.icon
+                        return (
+                          <td key={role.id} className="py-2.5 px-2">
+                            <div className="flex justify-center">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${style.className}`}>
+                                <IconEl className="h-3 w-3" />
+                                {accessLabel(level)}
+                              </span>
+                            </div>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )),
+                ]
+              })}
             </tbody>
           </table>
         </CardContent>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { passwordPolicyError } from "@/lib/password-policy"
+import { passwordPolicyError, passwordRuleChecks } from "@/lib/password-policy"
 
 describe("passwordPolicyError", () => {
   it("rejects missing and non-string values", () => {
@@ -44,5 +44,32 @@ describe("passwordPolicyError", () => {
 
   it("supports non-ASCII upper/lower letters inside the bcrypt boundary", () => {
     expect(passwordPolicyError("Şifrə!Güclü42")).toBeNull()
+  })
+})
+
+// The user form shows these rules while the password is typed (owner,
+// 2026-11-07: "show at the moment of typing whether it fits, not after Create").
+// A checklist that turns all green for a password the server then refuses would
+// be worse than none, so the two must agree on every input.
+describe("passwordRuleChecks agrees with passwordPolicyError", () => {
+  const corpus = [
+    "", "a", "Cedar!Orbit-4829", "Password123!", "password123!", "lowercase1!only",
+    "UPPERCASE1!ONLY", "NoNumbers!Here", "NoSpecial123Here", "Cedar Orbit!4829",
+    `Aa1!${"x".repeat(7)}`, `Aa1!${"x".repeat(8)}`, `Aa1!${"x".repeat(68)}`, `Aa1!${"x".repeat(69)}`,
+    `Aa1!${"​".repeat(8)}`, `Aa1!${"́".repeat(8)}`, "Şifrə!2026Bakı", "ПарольДлинный1!", `Aa1!${"я".repeat(35)}`,
+    "Ədəd-Qutu-12345", "Aa1! bbbbbbbbb", "Tab\tTab1!Aaaaaa",
+  ]
+  it.each(corpus)("%j", (password) => {
+    const checks = passwordRuleChecks(password)
+    expect(Object.values(checks).every(Boolean)).toBe(passwordPolicyError(password) === null)
+  })
+
+  it("names the rule that fails", () => {
+    expect(passwordRuleChecks("Cedar!Orbit-4829")).toEqual({
+      length: true, uppercase: true, lowercase: true, digit: true, special: true,
+      noSpaces: true, notTooLong: true, notCommon: true,
+    })
+    expect(passwordRuleChecks("cedarorbit")).toMatchObject({ length: false, uppercase: false, digit: false, special: false, lowercase: true })
+    expect(passwordRuleChecks("Password123!").notCommon).toBe(false)
   })
 })
