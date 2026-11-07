@@ -25,7 +25,12 @@ const SUB = "hsl(var(--muted-foreground))"
 const CARD = "hsl(var(--card))"
 const LINE = "hsl(var(--muted-foreground) / 0.35)"
 
-export function BoardProjectTabs({ currentId, divisions }: { currentId: string; divisions?: readonly TabDivision[] }) {
+export function BoardProjectTabs({ currentId, divisions, loading = false }: {
+  currentId: string
+  divisions?: readonly TabDivision[]
+  /** The caller is still reading `divisions`: hold the tabs' place. */
+  loading?: boolean
+}) {
   const t = useTranslations("board")
   const [fetched, setFetched] = useState<TabDivision[] | null>(null)
 
@@ -34,13 +39,18 @@ export function BoardProjectTabs({ currentId, divisions }: { currentId: string; 
     let alive = true
     fetch("/api/v1/divisions")
       .then((res) => (res.ok ? res.json() : null))
-      .then((json) => { if (alive && json?.data?.divisions) setFetched(json.data.divisions) })
-      .catch(() => {})
+      .then((json) => { if (alive) setFetched(Array.isArray(json?.data?.divisions) ? json.data.divisions : []) })
+      .catch(() => { if (alive) setFetched([]) })
     return () => { alive = false }
   }, [divisions])
 
   const list = divisions ?? fetched
   const rows = useMemo(() => (list ? boardTabRows(list, currentId) : null), [list, currentId])
+  // Until the board list is read, a grey stand-in of the same height holds the
+  // tabs' place. Without it the tabs arrived after the table had been drawn and
+  // pushed the whole board 112 px down (measured on prod 2026-11-07: CLS 0.136
+  // of the page's 0.137, at 3.4 s, when the page waited for all tasks first).
+  if (loading || (!divisions && fetched === null)) return <BoardProjectTabsPlaceholder />
   // One board and nowhere else to go: nothing to switch between.
   if (!rows || (rows.places.length < 2 && !rows.projects)) return null
 
@@ -78,6 +88,20 @@ export function BoardProjectTabs({ currentId, divisions }: { currentId: string; 
           ))}
         </nav>
       )}
+    </div>
+  )
+}
+
+/** Same box as the two rows of tabs (43 px tiles, 46 px project row), in grey. */
+function BoardProjectTabsPlaceholder() {
+  return (
+    <div className="flex flex-col gap-3 px-5 pb-3" data-testid="board-project-tabs-placeholder" aria-hidden="true">
+      <div className="flex flex-wrap items-center gap-2 animate-pulse motion-reduce:animate-none">
+        {[160, 190, 150].map((width) => (
+          <div key={width} className="h-[43px] rounded-lg bg-muted" style={{ width }} />
+        ))}
+      </div>
+      <div className="h-[46px] rounded-lg animate-pulse bg-muted/60 motion-reduce:animate-none" />
     </div>
   )
 }
