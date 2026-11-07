@@ -104,6 +104,18 @@ const DAY_MS = 86_400_000
  * selection at all. Everything else stays in the house style, or this screen
  * would be the only one in the CRM that marks a choice differently.
  */
+/**
+ * A faint surface under a group of controls.
+ *
+ * Everything on one white plane reads as text on paper, whatever the shadows
+ * do — that is where the flatness comes from, not from the corner radius. A
+ * light fill under the choices puts the white fields on top of something, so
+ * the sheet, the panel and the field become three depths instead of one.
+ */
+function Panel({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn("rounded-xl bg-muted/40 p-3.5", className)}>{children}</div>
+}
+
 const CHIP_BASE = cn(
   "inline-flex min-h-10 items-center gap-2 rounded-full border border-input bg-card px-3.5 text-sm text-muted-foreground transition-colors",
   "hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -604,7 +616,7 @@ export function BookingPageEditor({
 
           <Section id={STEP_IDS[1]} title={t("stepWhere")}>
             <Label>{t("fieldDuration")}</Label>
-            <div className="mt-1.5 flex flex-wrap gap-2">
+            <Panel className="mt-1.5 flex flex-wrap gap-2">
               {DURATIONS.map((value) => (
                 <Chip key={value} filled active={!customDuration && draft.durationMinutes === value} onClick={() => { setCustomDuration(false); set("durationMinutes", value) }}>{t("minutes", { count: value })}</Chip>
               ))}
@@ -626,11 +638,11 @@ export function BookingPageEditor({
                   <span className="text-sm text-muted-foreground">{t("durationCustom").toLocaleLowerCase()}</span>
                 </span>
               ) : null}
-            </div>
+            </Panel>
 
             <div className="mt-6">
               <Label>{t("fieldLocation")}</Label>
-              <div className="mt-1.5 grid gap-2 sm:grid-cols-3">
+              <Panel className="mt-1.5 grid gap-2 sm:grid-cols-3">
                 {LOCATIONS.map((value) => {
                   const Icon = LOCATION_ICON[value]
                   const active = draft.locationType === value
@@ -657,7 +669,7 @@ export function BookingPageEditor({
                     </button>
                   )
                 })}
-              </div>
+              </Panel>
             </div>
 
             <div className="mt-6">
@@ -768,7 +780,7 @@ export function BookingPageEditor({
               <button type="button" className="font-semibold underline-offset-4 hover:text-foreground hover:underline" onClick={() => set("hostIds", hosts.map((host) => host.id))}>{t("hostsAll")}</button>
             ) : null}
           >
-            <div className="flex flex-wrap gap-2">
+            <Panel className="flex flex-wrap gap-2">
               {hosts.map((host) => (
                 <Chip key={host.id} active={draft.hostIds.includes(host.id)} onClick={() => toggleHost(host.id)} className="min-h-11 py-1 pl-1.5">
                   <BookingAvatar name={host.name} className="h-7 w-7 text-[11px]" />
@@ -776,7 +788,7 @@ export function BookingPageEditor({
                   {draft.hostIds.includes(host.id) ? <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" /> : null}
                 </Chip>
               ))}
-            </div>
+            </Panel>
             <p className="mt-2 text-xs text-muted-foreground">{t("fieldHostsHint")}</p>
 
             {/* Altegio, Square and Dikidi all carry this: the senior master
@@ -829,6 +841,7 @@ export function BookingPageEditor({
           </Section>
 
           <Section id={STEP_IDS[5]} title={t("fieldHours")} aside={t("hoursOnLegend")}>
+            <Panel>
             <div className="flex flex-wrap gap-2">
               {PRESETS.map((preset) => {
                 const active = Boolean(uniform) && open.length === preset.days.length && preset.days.every((day) => open.includes(day))
@@ -876,6 +889,8 @@ export function BookingPageEditor({
                 </span>
               </div>
             )}
+
+            </Panel>
 
             <button type="button" className="mt-4 text-[13px] font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline" onClick={() => setPerDayOpen(!perDay)}>
               {perDay ? t("hoursPerDayClose") : t("hoursPerDay")}
