@@ -24,7 +24,7 @@ const receipt = { version: 1, status: 'RUNNING', startedAt: new Date().toISOStri
   headSha: process.env.BOOKING_ROLE_HEAD_SHA, checkedSha: process.env.GITHUB_SHA,
   environment: 'ephemeral hosted PostgreSQL16 / production Next bundle / real credentials and native Chromium',
   syntheticDataOnly: true, productionMutation: false, authenticationMocked: false,
-  cases: [], blockedNetwork: [], blockedPublicFontAssets: 0, uiPreferenceRequests: 0, cspDiagnosticRequests: 0, toursDismissed: 0, limitations: [
+  cases: [], blockedNetwork: [], blockedPublicFontAssets: 0, uiPreferenceRequests: 0, cspDiagnosticRequests: 0, webVitalsRequests: 0, toursDismissed: 0, limitations: [
     'Disposable stand proof, not live production employee/coordinator acceptance',
     'Login uses real CSRF/credentials callback, not visual login-form testing',
     'Synthetic pre-cutover Booking rows; read-only UI, not public create/provider delivery acceptance',
@@ -33,6 +33,7 @@ const receipt = { version: 1, status: 'RUNNING', startedAt: new Date().toISOStri
     'No full accessibility, load or disaster-recovery certification; service worker disabled in stand',
     'External public font assets are blocked; screenshots may use fallback fonts',
     'Normal synthetic-user navigation preferences/login metadata may update; Booking/Task business facts must remain unchanged',
+    'Browser diagnostics that write no row (CSP reports, page-speed beacons) are allowed through and counted, not treated as mutations',
   ] };
 const bindings = ['scripts/booking/role-browser-evidence.mjs', 'scripts/booking/role-browser-contract.mjs',
   'scripts/booking/role-browser-checks.mjs', 'scripts/booking/role-browser-crypto.mjs',
@@ -189,6 +190,14 @@ async function view(user) {
     }
     if (url.origin === base.origin && url.pathname === '/api/v1/public/csp-report' && request.method() === 'POST') {
       receipt.cspDiagnosticRequests++;
+      return route.continue();
+    }
+    // The page-speed beacon, like the CSP report: a diagnostic sink that
+    // writes one log line and no row (src/app/api/v1/public/web-vitals).
+    // sendBeacon fires on its own while a tab is closing, so this POST is the
+    // browser measuring itself, not the run changing anything.
+    if (url.origin === base.origin && url.pathname === '/api/v1/public/web-vitals' && request.method() === 'POST') {
+      receipt.webVitalsRequests++;
       return route.continue();
     }
     if (['fonts.googleapis.com', 'fonts.gstatic.com'].includes(url.hostname) && request.method() === 'GET'
@@ -361,6 +370,7 @@ try {
   assert.equal(receipt.blockedNetwork.length, 0, 'Unexpected external or mutation request attempted');
   pass('business-facts-unchanged-and-no-browser-provider-or-business-mutation-requests', {
     uiPreferenceRequests: receipt.uiPreferenceRequests, cspDiagnosticRequests: receipt.cspDiagnosticRequests,
+    webVitalsRequests: receipt.webVitalsRequests,
   });
   stage = 'runtime-key-loading';
   const runtimeLog = await readFile(`${process.env.RUNNER_TEMP}/booking-sandbox-app.log`, 'utf8');
