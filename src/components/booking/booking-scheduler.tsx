@@ -188,14 +188,17 @@ export function BookingScheduler({
                   <button
                     key={host?.id ?? "any"}
                     type="button"
+                    data-crm-color-role="toggle"
                     aria-pressed={active}
                     onClick={() => onHostChange(host?.id ?? null)}
-                    className={`min-h-11 rounded-full border px-4 text-sm transition-colors ${active ? "border-foreground bg-muted font-semibold text-foreground" : "text-muted-foreground hover:border-foreground/25 hover:text-foreground"}`}
+                    className={`min-h-11 rounded-full border px-4 text-sm transition-colors ${active
+                      ? "border-primary bg-primary font-bold text-primary-foreground shadow-[0_8px_18px_-12px_hsl(var(--primary))]"
+                      : "bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
                   >
                     {host === null ? t("anyHost") : (
                       <span className="inline-flex items-center gap-1.5">
                         {host.name}
-                        {host.price ? <span className="text-xs text-muted-foreground">· {servicePriceLabel({ price: host.price, priceCurrency: page.priceCurrency ?? null }, locale)}</span> : null}
+                        {host.price ? <span className={`text-xs ${active ? "text-primary-foreground/80" : "text-muted-foreground"}`}>· {servicePriceLabel({ price: host.price, priceCurrency: page.priceCurrency ?? null }, locale)}</span> : null}
                       </span>
                     )}
                   </button>
@@ -215,17 +218,17 @@ export function BookingScheduler({
                 const taken = (page.chosenAddOnIds ?? []).includes(addOn.id)
                 return (
                   <li key={addOn.id}>
-                    <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-sm transition-colors hover:border-foreground/25">
+                    <label className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-colors ${taken ? "border-primary bg-primary/10 font-semibold" : "bg-card hover:border-primary/40"}`}>
                       <input
                         type="checkbox"
-                        className="h-4 w-4 shrink-0 accent-foreground"
+                        className="h-[18px] w-[18px] shrink-0 accent-[hsl(var(--primary))]"
                         checked={taken}
                         onChange={() => onAddOnsChange(taken
                           ? (page.chosenAddOnIds ?? []).filter((id) => id !== addOn.id)
                           : [...(page.chosenAddOnIds ?? []), addOn.id])}
                       />
                       <span className="min-w-0 flex-1 truncate">{addOn.name}</span>
-                      {addOn.durationMinutes > 0 ? <span className="shrink-0 text-xs text-muted-foreground">+{t("minutes", { count: addOn.durationMinutes })}</span> : null}
+                      {addOn.durationMinutes > 0 ? <span className={`shrink-0 text-xs ${taken ? "text-primary" : "text-muted-foreground"}`}>+{t("minutes", { count: addOn.durationMinutes })}</span> : null}
                       {addOn.price ? <span className="shrink-0 font-semibold tabular-nums">{servicePriceLabel({ price: addOn.price, priceCurrency: page.priceCurrency ?? null }, locale)}</span> : null}
                     </label>
                   </li>
@@ -286,12 +289,15 @@ export function BookingScheduler({
                   <button
                     key={item.date}
                     type="button"
+                    data-crm-color-role="toggle"
                     onClick={() => setDate(item.date)}
                     aria-pressed={item.date === date}
-                    className={`rounded-lg border px-2 py-2 text-left text-sm transition-colors ${item.date === date ? "border-primary bg-primary/5 font-semibold text-primary" : "hover:border-primary/50"}`}
+                    className={`rounded-xl border px-3 py-2.5 text-left text-sm transition-colors ${item.date === date
+                      ? "border-primary bg-primary font-bold text-primary-foreground shadow-[0_8px_18px_-12px_hsl(var(--primary))]"
+                      : "bg-card hover:border-primary/40 hover:bg-primary/5"}`}
                   >
                     <span className="block capitalize">{format.day(item.date)}</span>
-                    <span className="block text-xs font-normal text-muted-foreground">{t("freeCount", { count: item.slots.length })}</span>
+                    <span className={`block text-xs font-normal ${item.date === date ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{t("freeCount", { count: item.slots.length })}</span>
                   </button>
                 ))}
               </div>
@@ -305,7 +311,7 @@ export function BookingScheduler({
                       key={slot.startsAt}
                       type="button"
                       onClick={() => chooseStart(slot.startsAt)}
-                      className="rounded-lg border px-2 py-2.5 text-sm font-medium tabular-nums hover:border-primary hover:text-primary"
+                      className="min-h-11 rounded-xl border bg-card px-2 py-2.5 text-sm font-semibold tabular-nums transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground"
                     >
                       {format.time(slot.startsAt)}
                     </button>
