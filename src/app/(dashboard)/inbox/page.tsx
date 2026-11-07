@@ -2597,7 +2597,7 @@ export default function InboxV2Page() {
                         {typeof m.mediaUrl === "string" && m.mediaUrl && (
                           isImagePreview(m.messageType, m.mediaUrl) ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={m.mediaUrl} alt="attachment" className="mb-1 max-h-48 rounded-lg object-cover" />
+                            <img loading="lazy" decoding="async" src={m.mediaUrl} alt="attachment" className="mb-1 max-h-48 rounded-lg object-cover" />
                           ) : (
                             <a href={m.mediaUrl} target="_blank" rel="noopener noreferrer" className="mb-1 flex items-center gap-1.5 text-xs underline">
                               <Paperclip className="h-3.5 w-3.5" /> Attachment
@@ -3343,7 +3343,7 @@ export default function InboxV2Page() {
                       >
                         {a.type === "image" ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={a.url} alt="attachment" className="h-8 w-8 rounded object-cover shrink-0" />
+                          <img loading="lazy" decoding="async" src={a.url} alt="attachment" className="h-8 w-8 rounded object-cover shrink-0" />
                         ) : (
                           <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
                         )}

@@ -922,7 +922,7 @@ function AppTile({
         {app.iconUrl ? (
           // Custom icon URLs are vendor-controlled catalog rows curated by us.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={app.iconUrl} alt="" className="h-11 w-11 rounded-lg object-cover" />
+          <img loading="lazy" decoding="async" src={app.iconUrl} alt="" className="h-11 w-11 rounded-lg object-cover" />
         ) : (
           <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-lg", presentation.tone)}>
             <Icon className="h-5 w-5" />

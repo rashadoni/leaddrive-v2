@@ -59,6 +59,12 @@ const nextConfig: NextConfig = {
   // successfully and crash the inbox in the browser. Nothing here guards that;
   // the guard is the blocking TS2304/TS2307/TS1xxx grep in pr-checks.yml.
   typescript: { ignoreBuildErrors: true },
+  // next/image answers with AVIF where the browser takes it (~20-30% smaller
+  // than WebP at the same look) and WebP otherwise; the original format only
+  // for a browser that accepts neither. sharp is already a dependency.
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
   serverExternalPackages: ["@prisma/client", ".prisma/client"],
   // d3-force is ESM-only; transpile it through the app pipeline so the KPI-Arena
   // bubble component's client bundle/manifest is generated cleanly under

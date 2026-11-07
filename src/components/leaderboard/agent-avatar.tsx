@@ -32,7 +32,7 @@ export function AgentAvatar({
   const [failed, setFailed] = useState(false)
   if (src && !failed) {
     return (
-      <img
+      <img loading="lazy" decoding="async"
         src={src}
         alt=""
         onError={() => setFailed(true)}

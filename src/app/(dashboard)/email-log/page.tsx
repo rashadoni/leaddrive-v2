@@ -14,6 +14,7 @@ import { HelpButton } from "@/components/help/help-button"
 import { sanitizeRichHtml } from "@/lib/sanitize"
 
 import { useLocale } from "next-intl"
+import { useDebouncedValue } from "@/lib/client/use-debounced-value"
 
 interface EmailLogEntry {
   id: string
@@ -78,13 +79,14 @@ export default function EmailLogPage() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const limit = 30
+  const debouncedSearch = useDebouncedValue(search)
 
   const fetchLogs = useCallback(async () => {
     if (!orgId) return
     setLoading(true)
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) })
-      if (search) params.set("search", search)
+      if (debouncedSearch) params.set("search", debouncedSearch)
       if (filterStatus) params.set("status", filterStatus)
       if (filterDirection) params.set("direction", filterDirection)
 
@@ -99,7 +101,7 @@ export default function EmailLogPage() {
       }
     } catch (err) { console.error(err) }
     setLoading(false)
-  }, [orgId, page, search, filterStatus, filterDirection])
+  }, [orgId, page, debouncedSearch, filterStatus, filterDirection])
 
   useEffect(() => { fetchLogs() }, [fetchLogs])
 

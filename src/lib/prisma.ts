@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import { logOperationalFailure } from "./telemetry/operational-failure"
+import { attachSlowQueryLog, slowQueryClientOptions, slowQueryThresholdMs } from "./telemetry/slow-db-query"
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
@@ -24,7 +25,14 @@ try {
 }
 const globalForPrisma = globalThis as unknown as { prisma: InstanceType<typeof PrismaClientClass> }
 
-const basePrisma = globalForPrisma.prisma ?? new PrismaClientClass()
+// Statements slower than DB_SLOW_QUERY_MS go to the out-log as
+// {"evt":"slow_query",…} lines (src/lib/telemetry/slow-db-query.ts).
+const slowQueryMs = slowQueryThresholdMs()
+const basePrisma = globalForPrisma.prisma ?? (() => {
+  const client = new PrismaClientClass(slowQueryClientOptions(slowQueryMs))
+  attachSlowQueryLog(client, slowQueryMs)
+  return client
+})()
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = basePrisma
 

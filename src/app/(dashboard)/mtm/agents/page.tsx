@@ -309,7 +309,7 @@ export default function MtmAgentsPage() {
   const avatar = (agent: any, size: "sm" | "md") => {
     const box = size === "md" ? "h-10 w-10" : "h-8 w-8"
     return agent.avatar
-      ? <img src={agent.avatar} alt="" className={`${box} rounded-full object-cover`} />
+      ? <img loading="lazy" decoding="async" src={agent.avatar} alt="" className={`${box} rounded-full object-cover`} />
       : <div className={`${box} rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold`}>{agent.name?.charAt(0)?.toUpperCase()}</div>
   }
   const appBadge = (app: { state: "active" | "quiet" | "never"; lastSignalAt: string | null } | undefined) => app ? (
