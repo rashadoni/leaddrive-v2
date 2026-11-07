@@ -37,7 +37,7 @@ export const GET = withRlsAuth("bookings", "read", async (req: NextRequest, auth
         busy.set(host.id, [...external.intervals, ...internal.map((row) => ({ start: row.startsAt, end: row.endsAt, bufferBeforeMinutes: row.bufferBefore, bufferAfterMinutes: row.bufferAfter }))])
       }
     }
-    const days = computeSlots({ rules: bookingRules(page, org.timezone), hostIds: hosts.map((host) => host.id), busyByHost: busy, now: new Date() }).filter((item) => item.date === f.day)
+    const days = computeSlots({ rules: bookingRules(page, org.timezone, org.closedDates), hostIds: hosts.map((host) => host.id), busyByHost: busy, now: new Date() }).filter((item) => item.date === f.day)
     if (!days.length && "unavailableHostIds" in busy && (busy.unavailableHostIds as Set<string>).size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
     // The staff day view draws the hours a host is taken but has no meeting
     // of this section in — a CRM task with a time, their calendar. Only the

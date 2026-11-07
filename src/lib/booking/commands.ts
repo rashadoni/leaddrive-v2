@@ -10,6 +10,7 @@ import { BookingCommandError } from "./command-error"
 import { bookingHostWhere } from "./access"
 import type { BookingAccess } from "./access"
 import { computeSlots, defaultWeeklyHours, findSlot, parseWeeklyHours, type BookingRules } from "./availability"
+import { readClosedDates } from "./closed-dates"
 import { bookingCalendarBusy } from "./calendar-busy"
 import { appendBookingEvent, ensureBookingBaseline, type BookingEvent } from "./events"
 import { queueBookingEffects, ensureLegacyBinding } from "./integration-intents"
@@ -32,8 +33,8 @@ async function permitted(tx: Prisma.TransactionClient, access: BookingAccess, ho
   return Boolean(await tx.bookingCoordinatorGrant.findFirst({ where: { organizationId: access.orgId, coordinatorUserId: access.userId, hostUserId: hostId, canManage: true }, select: { id: true } }))
 }
 
-export function bookingRules(page: { durationMinutes: number; bufferMinutes: number; minNoticeMinutes: number; maxDaysAhead: number; weekly: unknown }, timezone: string): BookingRules {
-  return { timezone, durationMinutes: page.durationMinutes, bufferMinutes: page.bufferMinutes, minNoticeMinutes: page.minNoticeMinutes, maxDaysAhead: page.maxDaysAhead, weekly: parseWeeklyHours(page.weekly) ?? defaultWeeklyHours() }
+export function bookingRules(page: { durationMinutes: number; bufferMinutes: number; minNoticeMinutes: number; maxDaysAhead: number; weekly: unknown }, timezone: string, closedDates: readonly string[] = []): BookingRules {
+  return { timezone, durationMinutes: page.durationMinutes, bufferMinutes: page.bufferMinutes, minNoticeMinutes: page.minNoticeMinutes, maxDaysAhead: page.maxDaysAhead, weekly: parseWeeklyHours(page.weekly) ?? defaultWeeklyHours(), closedDates }
 }
 
 export async function runBookingCommand(access: BookingAccess, id: string, input: BookingCommandInput) {
@@ -53,6 +54,8 @@ export async function runBookingCommand(access: BookingAccess, id: string, input
   if (prior) return prior.responseBody as { id: string; version: number }
   const org = await prisma.organization.findUnique({ where: { id: access.orgId }, select: { settings: true } })
   const timezone = organizationTimezone(org?.settings) || "Asia/Baku"
+  // A day the salon is closed is closed for a move too, not only for a new booking.
+  const closedDates = readClosedDates(org?.settings).map((entry) => entry.date)
   let preflight: Awaited<ReturnType<typeof bookingCalendarBusy>> | null = null
   if (input.operation === "reschedule") {
     if (!input.startsAt) throw new BookingCommandError("INVALID_INPUT", 400)
@@ -92,7 +95,7 @@ export async function runBookingCommand(access: BookingAccess, id: string, input
       const connected = await connectedCalendarsOf(tx, hostId)
       if (!currentPage || currentPage.version !== page.version || Date.now() - preflight.checkedAt > 15000 || connectedCalendarKey(connected) !== preflight.accountKey) throw new BookingCommandError("AVAILABILITY_CHANGED")
       if (!currentHost || !currentPage.hostIds.includes(hostId)) throw new BookingCommandError("INVALID_HOST", 400)
-      const rules = bookingRules(currentPage, timezone)
+      const rules = bookingRules(currentPage, timezone, closedDates)
       if (!findSlot(computeSlots({ rules, hostIds: [hostId], busyByHost: new Map([[hostId, preflight.intervals]]), now }), input.startsAt)) throw new BookingCommandError("SLOT_TAKEN")
       const startsAt = new Date(input.startsAt), endsAt = new Date(startsAt.getTime() + currentPage.durationMinutes * 60_000)
       await assertBookingInterval(tx, access.orgId, hostId, startsAt, endsAt, currentPage.bufferMinutes, id)

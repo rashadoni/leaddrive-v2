@@ -209,6 +209,8 @@ interface DecisionContext {
   dates: string[]
   liveOffers: { id: string; label: string }[]
   timezone: string
+  /** Days the salon does not work at all; the agent must not offer them. */
+  closedDates: string[]
   today: string
 }
 
@@ -366,12 +368,12 @@ function readRequest(value: unknown): OfferRequest | null {
  * window, and the following days at any time. `exact` says the first stage
  * answered — the client got what they asked for.
  */
-async function findChoices(input: BookingTurnInput, service: ServiceContext, request: OfferRequest, timezone: string, now: Date): Promise<{ choices: OfferChoice[]; exact: boolean }> {
+async function findChoices(input: BookingTurnInput, service: ServiceContext, request: OfferRequest, timezone: string, closedDates: readonly string[], now: Date): Promise<{ choices: OfferChoice[]; exact: boolean }> {
   const hosts = await activeHosts(input.organizationId, service.hostIds)
   if (!hosts.length) return { choices: [], exact: false }
   const to = new Date(now.getTime() + (service.maxDaysAhead + 2) * 86400_000)
   const busy = await loadBusyByHost(input.organizationId, hosts.map((host) => host.id), now, to, timezone, { holds: { exceptConversationId: input.conversationId } })
-  const days = computeSlots({ rules: bookingRules(service, timezone), hostIds: hosts.map((host) => host.id), busyByHost: busy, now })
+  const days = computeSlots({ rules: bookingRules(service, timezone, closedDates), hostIds: hosts.map((host) => host.id), busyByHost: busy, now })
   const part = PART_OF_DAY[request.partOfDay]
   const window: [number, number] = [clockMinutes(request.notBefore) ?? part[0], clockMinutes(request.notAfter) ?? part[1]]
   const whole: [number, number] = [0, 24 * 60]
@@ -398,8 +400,8 @@ function asService(page: { price: unknown } & Omit<ServiceContext, "price">): Se
 
 const SERVICE_SELECT = { id: true, title: true, durationMinutes: true, bufferMinutes: true, minNoticeMinutes: true, maxDaysAhead: true, weekly: true, hostIds: true, price: true, priceCurrency: true, category: true, locationText: true } as const
 
-async function sendOffers(input: BookingTurnInput, service: ServiceContext, request: OfferRequest, context: { timezone: string; hosts: { id: string; name: string }[]; greet: boolean; prefix?: string; replaces?: string }, now: Date): Promise<boolean> {
-  const { choices, exact } = await findChoices(input, service, request, context.timezone, now)
+async function sendOffers(input: BookingTurnInput, service: ServiceContext, request: OfferRequest, context: { timezone: string; closedDates: readonly string[]; hosts: { id: string; name: string }[]; greet: boolean; prefix?: string; replaces?: string }, now: Date): Promise<boolean> {
+  const { choices, exact } = await findChoices(input, service, request, context.timezone, context.closedDates, now)
   // Nothing free at all is a promise only a person can make.
   if (!choices.length) return false
   const words = WORDS[request.language]
@@ -446,7 +448,7 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
 }
 
 async function loadContext(input: BookingTurnInput, now: Date): Promise<(DecisionContext & { orgName: string }) | null> {
-  const [{ name: orgName, timezone }, pages] = await Promise.all([
+  const [{ name: orgName, timezone, closedDates }, pages] = await Promise.all([
     orgContext(input.organizationId),
     prisma.bookingPage.findMany({
       where: { organizationId: input.organizationId, isActive: true },
@@ -475,7 +477,7 @@ async function loadContext(input: BookingTurnInput, now: Date): Promise<(Decisio
     id: offer.id,
     label: `${dayLabel(offer.startsAt.toISOString(), "en", timezone)} ${clock(offer.startsAt.toISOString(), timezone)} · ${hosts.find((host) => host.id === offer.hostUserId)?.name ?? "?"} · ${services.find((service) => service.id === offer.bookingPageId)?.title ?? "?"}`,
   }))
-  return { orgName, services, hosts: hosts.map(({ id, name }) => ({ id, name })), dates, liveOffers, timezone, today }
+  return { orgName, services, hosts: hosts.map(({ id, name }) => ({ id, name })), dates, liveOffers, timezone, closedDates, today }
 }
 
 async function decide(input: BookingTurnInput, context: DecisionContext, history: { direction: string; body: string | null }[]): Promise<BookingDecision> {
@@ -532,7 +534,7 @@ async function bookOffer(input: BookingTurnInput, offerId: string, rules: Autono
   const request = readRequest(offer.request)
   const language = request?.language ?? "az"
   const words = WORDS[language]
-  const { timezone } = await orgContext(input.organizationId)
+  const { timezone, closedDates } = await orgContext(input.organizationId)
 
   // Outside the salon's rules the time is held, not booked: the client keeps
   // their place and a person decides. The hold runs to the meeting itself —
@@ -580,7 +582,7 @@ async function bookOffer(input: BookingTurnInput, offerId: string, rules: Autono
     const page = await prisma.bookingPage.findFirst({ where: { organizationId: input.organizationId, id: offer.bookingPageId, isActive: true }, select: SERVICE_SELECT })
     if (!page || !request) return false
     const hosts = await activeHosts(input.organizationId, page.hostIds)
-    return sendOffers(input, asService({ ...page, hostIds: page.hostIds.filter((id) => hosts.some((host) => host.id === id)) }), request, { timezone, hosts, greet: false, prefix: words.taken }, now)
+    return sendOffers(input, asService({ ...page, hostIds: page.hostIds.filter((id) => hosts.some((host) => host.id === id)) }), request, { timezone, closedDates, hosts, greet: false, prefix: words.taken }, now)
   }
   // Only the tap that moved the offer to «booked» confirms: a racing second
   // tap replays the same booking and stays quiet.
@@ -772,14 +774,14 @@ async function answerReminder(input: BookingTurnInput, reminder: { action: Remin
   // of them is taken.
   const page = await prisma.bookingPage.findFirst({ where: { organizationId: input.organizationId, id: booking.bookingPageId, isActive: true }, select: SERVICE_SELECT })
   if (!page) return false
-  const { timezone } = await orgContext(input.organizationId)
+  const { timezone, closedDates } = await orgContext(input.organizationId)
   const hosts = await activeHosts(input.organizationId, page.hostIds)
   const request: OfferRequest = {
     text: "", serviceId: page.id, date: null, partOfDay: "any", notBefore: null, notAfter: null,
     hostId: booking.hostUserId, language,
   }
   return sendOffers(input, asService({ ...page, hostIds: page.hostIds.filter((id) => hosts.some((host) => host.id === id)) }), request,
-    { timezone, hosts, greet: false, replaces: booking.id }, now)
+    { timezone, closedDates, hosts, greet: false, replaces: booking.id }, now)
 }
 
 /**
@@ -827,5 +829,5 @@ export async function handleWhatsAppBookingTurn(input: BookingTurnInput): Promis
     text: input.text.slice(0, 300), serviceId: decision.serviceId, date: decision.date, partOfDay: decision.partOfDay,
     notBefore: decision.notBefore, notAfter: decision.notAfter, hostId: decision.hostId, language: decision.language,
   }
-  return { handled: await sendOffers(input, service, request, { timezone: context.timezone, hosts: context.hosts, greet }, now) }
+  return { handled: await sendOffers(input, service, request, { timezone: context.timezone, closedDates: context.closedDates, hosts: context.hosts, greet }, now) }
 }

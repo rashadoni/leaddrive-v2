@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { bookingDb as prisma } from "@/lib/booking/db"
 import { withRlsAuth } from "@/lib/with-rls"
 import { orgHasModule } from "@/lib/api-auth"
+import { readClosedDates } from "@/lib/booking/closed-dates"
 import { bookingPageUrl } from "@/lib/booking/book"
 import { bookingAccess, bookingHostWhere } from "@/lib/booking/access"
 import { bookingPageSchema, pageAddOnsData, pageHostVariantsData, pagePhotoData, pagePriceData, slugTaken } from "@/lib/booking/page-input"
@@ -18,7 +19,7 @@ export const GET = withRlsAuth("bookings", "read", async (_req, auth) => {
   if (access instanceof NextResponse) return access
   if (!access.administrator) return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 })
   const orgId = auth.orgId
-  const [pages, users, upcoming, currency, aiModule] = await Promise.all([
+  const [pages, users, upcoming, currency, aiModule, organization] = await Promise.all([
     prisma.bookingPage.findMany({ where: { organizationId: orgId }, orderBy: { createdAt: "asc" } }),
     prisma.user.findMany({ where: bookingHostWhere(orgId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.booking.groupBy({
@@ -32,12 +33,15 @@ export const GET = withRlsAuth("bookings", "read", async (_req, auth) => {
     // is "USD" in the bundle whatever the server runs on.
     resolveOrgDefaultCurrency(orgId),
     orgHasModule(orgId, "ai"),
+    prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } }),
   ])
   return NextResponse.json({
     success: true,
     data: {
       linkBase: bookingPageUrl("").replace(/\/$/, ""),
       currency,
+      /** Days the whole salon is closed — they belong to the organization. */
+      closedDates: readClosedDates(organization?.settings),
       // Whether the form may offer to write the description. Both halves are
       // server-side facts: the organisation's module, and whether this host can
       // reach the model at all.

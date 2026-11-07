@@ -35,6 +35,11 @@ export interface BookingRules {
   minNoticeMinutes: number
   maxDaysAhead: number
   weekly: WeeklyHours
+  /**
+   * Days the organization does not work at all («YYYY-MM-DD»), whatever the
+   * weekly hours say. A holiday beats the timetable.
+   */
+  closedDates?: readonly string[]
 }
 
 export interface BusyInterval {
@@ -202,8 +207,11 @@ export function computeSlots(input: {
   const today = dateInputValueInTimezone(now, rules.timezone)
   const days: DaySlots[] = []
 
+  const closed = new Set(rules.closedDates ?? [])
   for (let offset = 0; offset <= rules.maxDaysAhead; offset += 1) {
     const date = addDays(today, offset)
+    // A day the salon is closed offers nothing, however open the week looks.
+    if (closed.has(date)) continue
     const slots: Slot[] = []
     for (const interval of rules.weekly[weekdayOf(date)] ?? []) {
       const from = minutesOfDay(interval.start)
