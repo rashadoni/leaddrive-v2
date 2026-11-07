@@ -27,7 +27,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { ArrowLeft, Building2, Check, ChevronRight, CircleAlert, Clock3, Copy, Link2, Loader2, Phone, Plus, Sparkles, Undo2, Video, Wallet } from "lucide-react"
+import { ArrowLeft, Building2, Check, ChevronRight, CircleAlert, Clock3, Copy, Link2, Loader2, Phone, Plus, Sparkles, Trash2, Undo2, Video, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -37,6 +37,7 @@ import { BookingAvatar } from "@/components/booking/booking-day-timeline"
 import { applyWeekly, openWeekdays, uniformInterval, WEEKDAYS, type HoursInterval, type Weekday, type WeeklyHours } from "@/lib/booking/availability"
 import { bookingSlug, REPEAT_CYCLE_DAYS } from "@/lib/booking/service"
 import { servicePriceSpan, type HostVariants } from "@/lib/booking/host-variants"
+import { addOnId, type ServiceAddOn } from "@/lib/booking/add-ons"
 import { getCurrencySymbol } from "@/lib/currency"
 import { cn } from "@/lib/utils"
 
@@ -56,6 +57,8 @@ export interface BookingPageDraft {
   hostIds: string[]
   /** What single masters charge and how long they take, where they differ. */
   hostVariants: HostVariants
+  /** Extras the customer may add when booking this service. */
+  addOns: ServiceAddOn[]
   weekly: WeeklyHours
   bufferMinutes: number
   minNoticeMinutes: number
@@ -85,7 +88,7 @@ const DEFAULT_INTERVAL: HoursInterval = { start: "09:00", end: "18:00" }
 /** The schema's own limits, shown as a counter once the field is in use. */
 const TITLE_MAX = 120
 const DESCRIPTION_MAX = 2000
-const STEP_IDS = ["bp-step-service", "bp-step-where", "bp-step-price", "bp-step-hosts", "bp-step-hours", "bp-step-advanced"] as const
+const STEP_IDS = ["bp-step-service", "bp-step-where", "bp-step-price", "bp-step-addons", "bp-step-hosts", "bp-step-hours", "bp-step-advanced"] as const
 /** 2024-01-07 was a Sunday, so weekday "0" lands on it and "6" on the Saturday after. */
 const WEEKDAY_ANCHOR = Date.UTC(2024, 0, 7)
 const DAY_MS = 86_400_000
@@ -307,6 +310,16 @@ export function BookingPageEditor({
     set("hostIds", draft.hostIds.includes(id) ? draft.hostIds.filter((hostId) => hostId !== id) : [...draft.hostIds, id])
   }
 
+  function addAddOn() {
+    set("addOns", [...draft.addOns, { id: addOnId(draft.addOns), name: "", price: null, durationMinutes: 0 }])
+  }
+  function setAddOn(id: string, patch: Partial<ServiceAddOn>) {
+    set("addOns", draft.addOns.map((addOn) => (addOn.id === id ? { ...addOn, ...patch } : addOn)))
+  }
+  function removeAddOn(id: string) {
+    set("addOns", draft.addOns.filter((addOn) => addOn.id !== id))
+  }
+
   /**
    * What one master charges, or how long they take. An empty field is «as the
    * service says» — not zero: a master with no answer keeps the service's own,
@@ -389,9 +402,10 @@ export function BookingPageEditor({
     { id: STEP_IDS[0], label: t("stepService"), missing: !draft.title.trim(), value: draft.category.trim() },
     { id: STEP_IDS[1], label: t("idxWhere"), missing: false, value: t("minutes", { count: draft.durationMinutes }) },
     { id: STEP_IDS[2], label: t("stepPrice"), missing: false, value: priceLabel || "—" },
-    { id: STEP_IDS[3], label: t("idxHosts"), missing: chosenHosts.length === 0, value: String(chosenHosts.length) },
-    { id: STEP_IDS[4], label: t("fieldHours"), missing: open.length === 0, value: open.length === 0 ? "" : t("daysCount", { count: open.length }) },
-    { id: STEP_IDS[5], label: t("advancedTitle"), missing: false, value: "" },
+    { id: STEP_IDS[3], label: t("addOnsTitle"), missing: false, value: draft.addOns.length ? String(draft.addOns.length) : "—" },
+    { id: STEP_IDS[4], label: t("idxHosts"), missing: chosenHosts.length === 0, value: String(chosenHosts.length) },
+    { id: STEP_IDS[5], label: t("fieldHours"), missing: open.length === 0, value: open.length === 0 ? "" : t("daysCount", { count: open.length }) },
+    { id: STEP_IDS[6], label: t("advancedTitle"), missing: false, value: "" },
   ]
   // Altegio puts the final price and duration under the form; here they sit in
   // the bar the eye is already on when it reaches for Save.
@@ -604,8 +618,71 @@ export function BookingPageEditor({
             </div>
           </Section>
 
+          {/* Fresha's «service add-ons»: the treatment that goes with the cut.
+              Each one costs money AND takes time — a visit that charges for
+              the extra without holding the chair double-books the master. */}
+          <Section id={STEP_IDS[3]} title={t("addOnsTitle")} hint={t("addOnsHint")}>
+            {draft.addOns.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t("addOnsEmpty")}</p>
+            ) : (
+              <div className="space-y-2.5">
+                {draft.addOns.map((addOn) => (
+                  <div key={addOn.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                    <Input
+                      className="h-10"
+                      value={addOn.name}
+                      maxLength={60}
+                      placeholder={t("addOnNamePlaceholder")}
+                      aria-label={t("addOnName")}
+                      onChange={(event) => setAddOn(addOn.id, { name: event.target.value })}
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="relative inline-flex">
+                        <Input
+                          className="h-10 w-28 pr-7 tabular-nums"
+                          inputMode="decimal"
+                          value={addOn.price ?? ""}
+                          placeholder="—"
+                          aria-label={`${addOn.name || t("addOnName")}: ${t("fieldPrice")}`}
+                          onChange={(event) => setAddOn(addOn.id, { price: event.target.value.trim() ? event.target.value.replace(/[^\d.,]/g, "").slice(0, 12) : null })}
+                        />
+                        <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs font-semibold text-muted-foreground">{symbol}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground">+</span>
+                        <Input
+                          className="h-10 w-20 tabular-nums"
+                          inputMode="numeric"
+                          value={addOn.durationMinutes ? String(addOn.durationMinutes) : ""}
+                          placeholder="0"
+                          aria-label={`${addOn.name || t("addOnName")}: ${t("fieldDuration")}`}
+                          onChange={(event) => setAddOn(addOn.id, { durationMinutes: Math.max(0, Math.min(240, Number(event.target.value.replace(/\D/g, "")) || 0)) })}
+                        />
+                        <span className="text-xs text-muted-foreground">{t("minutesShort")}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeAddOn(addOn.id)}
+                        aria-label={`${t("delete")}: ${addOn.name || t("addOnName")}`}
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={addAddOn}
+              disabled={draft.addOns.length >= 12}
+              className="mt-3 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-input bg-card px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            ><Plus className="h-3.5 w-3.5" aria-hidden="true" />{t("addOnAdd")}</button>
+          </Section>
+
           <Section
-            id={STEP_IDS[3]}
+            id={STEP_IDS[4]}
             title={t("fieldHosts")}
             aside={hosts.length > 1 ? (
               <button type="button" className="font-semibold underline-offset-4 hover:text-foreground hover:underline" onClick={() => set("hostIds", hosts.map((host) => host.id))}>{t("hostsAll")}</button>
@@ -671,7 +748,7 @@ export function BookingPageEditor({
             ) : null}
           </Section>
 
-          <Section id={STEP_IDS[4]} title={t("fieldHours")} aside={t("hoursOnLegend")}>
+          <Section id={STEP_IDS[5]} title={t("fieldHours")} aside={t("hoursOnLegend")}>
             <div className="flex flex-wrap gap-2">
               {PRESETS.map((preset) => {
                 const active = Boolean(uniform) && open.length === preset.days.length && preset.days.every((day) => open.includes(day))
@@ -764,7 +841,7 @@ export function BookingPageEditor({
 
           {/* Calendly folds a step down to one line with its current answer on
               it; the three settings here are exactly that kind of step. */}
-          <details id={STEP_IDS[5]} className="group scroll-mt-24">
+          <details id={STEP_IDS[6]} className="group scroll-mt-24">
             <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2.5 px-5 py-6 text-[19px] font-bold tracking-tight sm:px-8 [&::-webkit-details-marker]:hidden">
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden="true" />
               {t("advancedTitle")}
@@ -812,6 +889,16 @@ export function BookingPageEditor({
                 <div className="flex items-center gap-2"><LocationIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" /><dd className="min-w-0 truncate">{t(`location_${draft.locationType}`)}{draft.locationText.trim() ? ` · ${draft.locationText.trim()}` : ""}</dd></div>
                 {priceLabel ? <div className="flex items-center gap-2"><Wallet className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" /><dd className="font-bold tabular-nums">{priceLabel}</dd></div> : null}
               </dl>
+              {draft.addOns.filter((addOn) => addOn.name.trim()).length > 0 ? (
+                <ul className="mt-3 space-y-1 border-t pt-2.5">
+                  {draft.addOns.filter((addOn) => addOn.name.trim()).map((addOn) => (
+                    <li key={addOn.id} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="truncate text-muted-foreground">+ {addOn.name.trim()}</span>
+                      <span className="shrink-0 font-semibold tabular-nums">{addOn.price ? `${addOn.price} ${symbol}` : ""}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 {chosenHosts.slice(0, 4).map((host) => <BookingAvatar key={host.id} name={host.name} className="h-7 w-7 text-[11px]" />)}
                 <span className="text-xs text-muted-foreground">

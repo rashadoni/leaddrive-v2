@@ -23608,6 +23608,9 @@ model BookingPage {
   repeatCycleDays  Int?
   /// Users who take these meetings; a booking goes to one of them.
   hostIds          String[]
+  /// Extras a customer may add when booking, each with its own price and
+  /// minutes: [{ "id": "a1", "name": "Saç baxımı", "price": "15", "durationMinutes": 15 }].
+  addOns           Json?
   /// What a single master charges for this service and how long they take:
   /// { "<userId>": { "price": "40", "durationMinutes": 45 } }. A missing master
   /// or a missing field means the service's own price and duration.

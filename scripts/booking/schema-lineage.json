@@ -19,6 +19,12 @@
       "migration": "20261129090000_booking_page_host_variants",
       "bookingAdditive": true,
       "note": "What a single master charges for a service and how long they take: one nullable JSON column on booking_pages. A release that does not know it reads every page exactly as before."
+    },
+    {
+      "schemaHash": "dec0bb6d19b4644c27857baaba6b49823571838134e482e6b8ff0ea9f4e59ff6",
+      "migration": "20261130090000_booking_page_add_ons",
+      "bookingAdditive": true,
+      "note": "Extras a customer may add to a service, each with its own price and minutes: one nullable JSON column on booking_pages. A release that does not know it serves every page as before."
     }
   ]
 }
