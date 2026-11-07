@@ -5,4 +5,5 @@ export {
   PASSWORD_MIN_GRAPHEMES,
   generateStrongTemporaryPassword,
   passwordPolicyError,
+  passwordRuleChecks,
 } from "../../scripts/password-policy.mjs"

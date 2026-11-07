@@ -122,7 +122,7 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
     } = parsed.data
 
     const passwordError = passwordPolicyError(password)
-    if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 })
+    if (passwordError) return NextResponse.json({ error: passwordError, code: "PASSWORD_POLICY" }, { status: 400 })
 
     // Check plan user limit
     const limitCheck = await checkUserLimit(orgId)
@@ -135,7 +135,7 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
       where: { organizationId: orgId, email },
     })
     if (existing) {
-      return NextResponse.json({ error: "User with this email already exists" }, { status: 409 })
+      return NextResponse.json({ error: "User with this email already exists", code: "EMAIL_TAKEN" }, { status: 409 })
     }
 
     // Validate role. Previously any unrecognized role was silently coerced to

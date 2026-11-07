@@ -302,3 +302,92 @@ describe("user card — the employee card behind Route & Field", () => {
     expect(cardWrites()).toEqual([])
   })
 })
+
+// Audit of the section, owner 2026-11-07: «нет галочки снять со всех» and «при
+// наборе не показывает, что именно не соблюдается».
+const type = async (input: HTMLInputElement | null, value: string) => {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value)
+    input?.dispatchEvent(new Event("input", { bubbles: true }))
+  })
+}
+const allModules = () => document.querySelector<HTMLInputElement>('[data-testid="user-modules-all"] input')
+const ticks = () => Object.fromEntries(Object.entries(rows()).filter(([, [tick]]) => tick !== null).map(([label, [tick]]) => [label, tick]))
+const ruleStates = () => Object.fromEntries([...document.querySelectorAll<HTMLElement>('[data-testid="password-rules"] li')]
+  .map((rule) => [rule.dataset.rule, rule.dataset.state]))
+
+describe("user card — every module with one tick", () => {
+  it("takes every module off at once, then one can be ticked back", async () => {
+    await openCard()
+    await act(async () => { allModules()?.click() }) // some on → all on
+    expect(Object.values(ticks()).every(Boolean)).toBe(true)
+    expect(allModules()?.checked).toBe(true)
+
+    await act(async () => { allModules()?.click() }) // all on → all off
+    expect(Object.values(ticks()).some(Boolean)).toBe(false)
+    expect(block().textContent).toContain("Не отмечен ни один модуль")
+
+    const sales = [...block().querySelectorAll("li")].find((row) => row.textContent?.includes("Продажи"))
+    await act(async () => { sales?.querySelector<HTMLInputElement>("input")?.click() })
+    expect(Object.entries(ticks()).filter(([, on]) => on).map(([label]) => label)).toEqual(["Продажи"])
+    expect(allModules()?.indeterminate).toBe(true)
+    expect(document.querySelector('[data-testid="user-modules-all"]')?.textContent).toContain("отмечено 1 из 5")
+
+    await save()
+    const sent = writes.find((write) => write.method === "PUT")?.body as { hiddenModules: string[] }
+    expect(sent.hiddenModules).not.toContain("sales")
+    expect(sent.hiddenModules).toEqual(expect.arrayContaining(["crm", "finance", "mtm"]))
+  })
+})
+
+describe("new user — the password says what is missing while it is typed", () => {
+  async function openNew() {
+    cards = []
+    await act(async () => { root.render(createElement(TooltipProvider, null, createElement(UsersPage))) })
+    await settle()
+    const add = [...document.querySelectorAll("button")].find((button) => button.textContent?.includes("Добавить"))
+    await act(async () => { add?.click() })
+    await settle()
+  }
+  const password = () => document.querySelector<HTMLInputElement>("#password")
+
+  it("shows the rules, ticks them as they are met, and can show the password", async () => {
+    await openNew()
+    expect(password()?.type).toBe("password")
+    expect(ruleStates()).toEqual({ length: "todo", uppercase: "todo", lowercase: "todo", digit: "todo", special: "todo" })
+
+    await type(password(), "zeytun 2026")
+    expect(ruleStates()).toEqual({
+      length: "bad", uppercase: "bad", lowercase: "ok", digit: "ok", special: "bad", noSpaces: "bad",
+    })
+
+    const eye = [...document.querySelectorAll("button")].find((button) => button.getAttribute("aria-label") === "Показать пароль")
+    await act(async () => { eye?.click() })
+    expect(password()?.type).toBe("text")
+
+    await type(password(), "Zeytun-2026-Baku")
+    expect(document.querySelector('[data-testid="password-rules"]')?.textContent).toBe("Пароль подходит")
+  })
+
+  it("does not send a password the server would refuse, and says so next to the button", async () => {
+    await openNew()
+    await type(document.querySelector<HTMLInputElement>("#name"), "Aytan")
+    await type(document.querySelector<HTMLInputElement>("#email"), "aytan@zeytun.az")
+    await type(password(), "Zeytun2026")
+    const create = [...document.querySelectorAll("button")].find((button) => button.textContent?.includes("Создать"))
+    await act(async () => { create?.closest("form")?.requestSubmit() })
+    await settle()
+
+    expect(writes.filter((write) => write.method === "POST")).toEqual([])
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain("Пароль не подходит")
+  })
+
+  it("a generated password passes and is shown so it can be handed over", async () => {
+    await openNew()
+    const generate = [...document.querySelectorAll("button")].find((button) => button.textContent?.includes("Сгенерировать"))
+    await act(async () => { generate?.click() })
+    expect(password()?.type).toBe("text")
+    expect(password()?.value.length).toBeGreaterThanOrEqual(12)
+    expect(document.querySelector('[data-testid="password-rules"]')?.textContent).toBe("Пароль подходит")
+  })
+})

@@ -17,6 +17,22 @@ import { orgStageVocabulary } from "@/lib/deal-stage-vocabulary"
 import { moduleDisabledResponse, orgHasModule } from "@/lib/api-auth"
 import { normalizeHiddenModules, parseHiddenModulesInput, roleIgnoresModuleMask } from "@/lib/user-module-access"
 
+/**
+ * The organization's other working administrators. A change that leaves none —
+ * the last admin demoted, switched off or deleted — leaves nobody who can open
+ * Settings, give access back or create a user, and nothing inside the tenant
+ * can undo it (owner, 2026-11-07, audit of «Пользователи»).
+ */
+async function otherActiveAdmins(orgId: string, userId: string): Promise<number> {
+  return prisma.user.count({
+    where: { organizationId: orgId, role: "admin", isActive: true, anonymizedAt: null, id: { not: userId } },
+  })
+}
+const LAST_ADMIN_ERROR = {
+  error: "This is the organization's last active administrator. Make someone else an administrator first.",
+  code: "LAST_ADMIN",
+} as const
+
 const updateUserSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   email: z.string().trim().toLowerCase().max(320).email().optional(),
@@ -115,6 +131,22 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
       )
     }
 
+    // An administrator switching their own account off is locked out at once,
+    // with nobody necessarily left to switch it back on.
+    if (parsed.data.isActive === false && existing.isActive && id === authResult.userId) {
+      return NextResponse.json(
+        { error: "You cannot deactivate your own account", code: "SELF_DEACTIVATE" },
+        { status: 409 },
+      )
+    }
+    const losesAdmin = existing.role === "admin" && existing.isActive && !existing.anonymizedAt && (
+      (parsed.data.role !== undefined && parsed.data.role !== "admin")
+      || parsed.data.isActive === false
+    )
+    if (losesAdmin && await otherActiveAdmins(orgId, id) === 0) {
+      return NextResponse.json(LAST_ADMIN_ERROR, { status: 409 })
+    }
+
     // Validate role — but only when it actually CHANGES, so editing other
     // fields (phone, name, 2FA resets) never fails for a user who already holds
     // an extended/custom role. Only enforce-able roles may be newly assigned;
@@ -134,7 +166,7 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
       const dup = await prisma.user.findFirst({
         where: { organizationId: orgId, email: parsed.data.email, id: { not: id } },
       })
-      if (dup) return NextResponse.json({ error: "Email already in use" }, { status: 409 })
+      if (dup) return NextResponse.json({ error: "Email already in use", code: "EMAIL_TAKEN" }, { status: 409 })
     }
 
     const updateData: Prisma.UserUpdateInput = {}
@@ -307,6 +339,15 @@ export const DELETE = withRlsSessionAuth(async (_req: NextRequest, authResult, {
     })
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 })
     if (user.anonymizedAt) return NextResponse.json({ error: "User not found" }, { status: 404 })
+    // Deleting is anonymizing, and it cannot be undone: an administrator who
+    // clicks their own row would erase their own login and hand their work to
+    // themselves.
+    if (id === authResult.userId) {
+      return NextResponse.json({ error: "You cannot delete your own account", code: "SELF_DELETE" }, { status: 409 })
+    }
+    if (user.role === "admin" && user.isActive && await otherActiveAdmins(orgId, id) === 0) {
+      return NextResponse.json(LAST_ADMIN_ERROR, { status: 409 })
+    }
 
     // Не `delete`. Пользователя нельзя удалить физически: на него ссылаются
     // четыре таблицы под триггером «только добавление»

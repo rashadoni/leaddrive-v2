@@ -153,6 +153,10 @@ export default function RolesSettingsPage() {
     await fetchData()
   }
 
+  // Built-in roles are named in the reader's language, as on the users page;
+  // an organization's own role keeps the name it was given.
+  const roleLabel = (role: RoleConfig) => t.has(`role_${role.id}`) ? t(`role_${role.id}` as never) : role.name
+
   const accessLabel = (level: AccessLevel): string => {
     switch (level) {
       case "full": return t("accessFull")
@@ -218,7 +222,7 @@ export default function RolesSettingsPage() {
                 <div key={role.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card">
                   <Badge className={`${getColorBg(role.color)} gap-1`}>
                     <Icon className="h-3 w-3" />
-                    {role.name}
+                    {roleLabel(role)}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     {userCounts[role.id] || 0} {t("usersCount")}
@@ -229,7 +233,9 @@ export default function RolesSettingsPage() {
                   {!role.isSystem && (
                     <button
                       type="button"
-                      onClick={() => { setDeleteRoleId(role.id); setDeleteRoleName(role.name) }}
+                      onClick={() => { setDeleteRoleId(role.id); setDeleteRoleName(roleLabel(role)) }}
+                      title={t("deleteRole")}
+                      aria-label={`${t("deleteRole")}: ${roleLabel(role)}`}
                       className="text-muted-foreground hover:text-destructive transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -258,7 +264,7 @@ export default function RolesSettingsPage() {
                       <div className="flex flex-col items-center gap-1">
                         <Badge className={`${getColorBg(role.color)} gap-1 text-[10px]`}>
                           <Icon className="h-3 w-3" />
-                          {role.name}
+                          {roleLabel(role)}
                         </Badge>
                         <span className="text-[10px] text-muted-foreground font-normal">
                           {userCounts[role.id] || 0} {t("usersCount")}

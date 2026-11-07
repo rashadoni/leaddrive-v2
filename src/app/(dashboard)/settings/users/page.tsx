@@ -14,7 +14,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "
 import { StatCard } from "@/components/stat-card"
 import {
   Users, Plus, Pencil, Trash2, Shield, ShieldCheck, Eye,
-  EyeOff, Headphones, KeyRound, Loader2, UserCheck, UserX, AlertTriangle,
+  Headphones, KeyRound, Loader2, UserCheck, UserX, AlertTriangle,
 } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { formatDate } from "@/lib/format-date"
@@ -26,6 +26,13 @@ import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
 import { PageHeader } from "@/components/page-header"
 import { ReviewerAccessPanel } from "@/components/settings/reviewer-access-panel"
+import {
+  PasswordActions,
+  PasswordInput,
+  PasswordRules,
+  generateTemporaryPassword,
+  passwordIsAcceptable,
+} from "@/components/settings/password-field"
 import { orgFromSession } from "@/lib/nav-items"
 import {
   roleIgnoresModuleMask,
@@ -127,6 +134,22 @@ type UserPayload = {
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
 
+// E.164: "+", a non-zero digit, then 6–14 more. The same pattern the API checks,
+// so the red border while typing and the refusal on save never disagree.
+const PHONE_PATTERN = /^\+[1-9]\d{6,14}$/
+
+type Translate = ReturnType<typeof useTranslations>
+/**
+ * The API answers in English; a refusal it names with a `code` the admin reads
+ * in their own language instead (an «Email already in use» on an Azerbaijani
+ * screen is the sort of thing this page used to show).
+ */
+function apiErrorText(tu: Translate, json: { error?: unknown; code?: unknown } | null, fallback: string): string {
+  const code = typeof json?.code === "string" ? json.code : ""
+  if (code && tu.has(`error_${code}`)) return tu(`error_${code}` as never)
+  return typeof json?.error === "string" && json.error ? json.error : fallback
+}
+
 /** An employee card as GET /api/v1/mtm/agents lists it — the fields the user card reads. */
 interface FieldCard {
   id: string
@@ -154,33 +177,33 @@ type Loc = "en" | "ru" | "az"
 const USER_FORM_COPY: Record<Loc, Record<string, string>> = {
   en: {
     emailHint: "Used for login and notifications. Changing it changes where this user signs in.",
-    passwordCreateHint: "Set a temporary password. The user can change it after logging in.",
+    passwordCreateHint: "Set a temporary password and pass it to the person. They can change it after signing in.",
     passwordEditHint: "Leave blank to keep the current password. Fill only when resetting access.",
     passwordEditPlaceholder: "Leave blank to keep current password",
-    roleHint: "Role controls permissions across the tenant. Use Viewer for read-only access.",
+    roleHint: "The role decides what this person may do in each module. Viewer only looks.",
     departmentHint: "Optional. Helps filter users and understand team ownership.",
     activeHint: "Inactive users cannot log in, but their historical records remain assigned.",
-    maxTicketsHint: "Maximum open support tickets assigned to this agent at once.",
+    maxTicketsHint: "How many open tickets may be assigned to this person at once.",
   },
   ru: {
     emailHint: "Используется для входа и уведомлений. Изменение email меняет адрес входа пользователя.",
-    passwordCreateHint: "Задайте временный пароль. Пользователь сможет изменить его после входа.",
+    passwordCreateHint: "Задайте временный пароль и передайте его сотруднику. После входа он сможет его сменить.",
     passwordEditHint: "Оставьте пустым, чтобы сохранить текущий пароль. Заполняйте только для сброса доступа.",
     passwordEditPlaceholder: "Оставьте пустым, чтобы не менять пароль",
-    roleHint: "Роль управляет правами в tenant. Viewer подходит для read-only доступа.",
+    roleHint: "Роль решает, что человек может делать в каждом модуле. «Наблюдатель» только смотрит.",
     departmentHint: "Необязательно. Помогает фильтровать пользователей и понимать принадлежность к команде.",
     activeHint: "Неактивные пользователи не могут войти, но исторические записи остаются за ними.",
-    maxTicketsHint: "Максимум открытых support tickets, назначенных агенту одновременно.",
+    maxTicketsHint: "Сколько открытых тикетов можно назначить этому человеку одновременно.",
   },
   az: {
     emailHint: "Giriş və bildirişlər üçün istifadə olunur. Email dəyişəndə istifadəçinin giriş ünvanı da dəyişir.",
-    passwordCreateHint: "Müvəqqəti şifrə təyin edin. İstifadəçi daxil olduqdan sonra dəyişə bilər.",
+    passwordCreateHint: "Müvəqqəti şifrə təyin edib əməkdaşa verin. Daxil olduqdan sonra onu dəyişə bilər.",
     passwordEditHint: "Cari şifrə qalsınsa boş saxlayın. Yalnız girişi sıfırlamaq üçün doldurun.",
     passwordEditPlaceholder: "Şifrəni dəyişməmək üçün boş saxlayın",
-    roleHint: "Rol tenant üzrə icazələri idarə edir. Yalnız oxumaq üçün Viewer istifadə edin.",
+    roleHint: "Rol bu şəxsin hər modulda nə edə biləcəyini müəyyən edir. «Müşahidəçi» yalnız baxır.",
     departmentHint: "İstəyə bağlıdır. İstifadəçiləri filterləməyə və komanda sahibliklərini anlamağa kömək edir.",
     activeHint: "Deaktiv istifadəçilər daxil ola bilməz, amma tarixi qeydlər onlara bağlı qalır.",
-    maxTicketsHint: "Agentə eyni anda təyin edilə biləcək maksimum açıq support ticket sayı.",
+    maxTicketsHint: "Bu şəxsə eyni anda təyin edilə biləcək açıq tiketlərin sayı.",
   },
 }
 
@@ -259,9 +282,20 @@ function UserFormDialog({
       : tu("accessSettings_personalPlus", { pages: settingsAccess.pages.map((key) => tn(key as never)).join(", ") })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  // Modules this tenant has that the person keeps; the "all modules" tick reads it.
+  const shownModuleCount = moduleOptions.filter((option) => !form.hiddenModules.includes(option.id)).length
+  const setAllModules = (shown: boolean) => setForm((f) => {
+    const optionIds: string[] = moduleOptions.map((option) => option.id)
+    // Ids outside this tenant's list are left as they were: the tick is about
+    // what the admin can see here.
+    const outside = f.hiddenModules.filter((id) => !optionIds.includes(id))
+    return { ...f, hiddenModules: shown ? outside : [...outside, ...optionIds] }
+  })
 
   useEffect(() => {
     if (open) {
+      setShowPassword(false)
       setForm({
         name: editUser?.name || "",
         email: editUser?.email || "",
@@ -341,8 +375,13 @@ function UserFormDialog({
     // Phone is optional, but if present it must be valid E.164 (+ and 7-15 digits).
     // Catching this client-side prevents a round-trip to the backend and gives
     // a focused error message right next to the field.
-    if (form.phone !== "" && !/^\+[1-9]\d{6,14}$/.test(form.phone)) {
+    if (form.phone !== "" && !PHONE_PATTERN.test(form.phone)) {
       setError(tu("phoneInvalidError"))
+      setSaving(false)
+      return
+    }
+    if (!isEdit && !passwordIsAcceptable(form.password)) {
+      setError(tu("passwordNotAcceptable"))
       setSaving(false)
       return
     }
@@ -372,9 +411,9 @@ function UserFormDialog({
         },
         body: JSON.stringify(payload),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || tc("errorUpdateFailed"))
-      const savedUserId: string | undefined = isEdit ? editUser!.id : json.data?.id
+      const json = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(apiErrorText(tu, json, tc("errorUpdateFailed")))
+      const savedUserId: string | undefined = isEdit ? editUser!.id : json?.data?.id
       try {
         if (savedUserId) await applyFieldCard(savedUserId)
       } catch (cardError) {
@@ -399,7 +438,6 @@ function UserFormDialog({
           <DialogTitle>{isEdit ? tu("editUser") : tu("addUser")}</DialogTitle>
         </DialogHeader>
         <DialogContent>
-          {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
           <div className="grid gap-4">
             <div>
               <Label htmlFor="name">{tu("fieldName")}</Label>
@@ -413,18 +451,26 @@ function UserFormDialog({
             {!isEdit && (
               <div>
                 <Label htmlFor="password">{tu("fieldPassword")}</Label>
-                <Input
+                <PasswordInput
                   id="password"
                   name="new-user-password"
-                  type="password"
                   value={form.password}
-                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                  required
-                  minLength={12}
-                  maxLength={72}
-                  autoComplete="new-password"
+                  onChange={(password) => setForm(f => ({ ...f, password }))}
+                  visible={showPassword}
+                  onToggleVisible={() => setShowPassword((shown) => !shown)}
+                  describedBy="new-user-password-rules"
+                  invalid={form.password !== "" && !passwordIsAcceptable(form.password)}
                 />
                 <p className="text-xs text-muted-foreground mt-1">{c.passwordCreateHint}</p>
+                <PasswordActions
+                  value={form.password}
+                  onGenerate={() => {
+                    setForm(f => ({ ...f, password: generateTemporaryPassword() }))
+                    // A generated password has to be read to be handed over.
+                    setShowPassword(true)
+                  }}
+                />
+                <PasswordRules id="new-user-password-rules" password={form.password} />
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">
@@ -471,15 +517,15 @@ function UserFormDialog({
                   if (v.indexOf("+") > 0) v = v.replace(/\+/g, "")
                   setForm((f) => ({ ...f, phone: v.slice(0, 16) }))
                 }}
-                aria-invalid={form.phone !== "" && !/^\+\d{7,15}$/.test(form.phone)}
+                aria-invalid={form.phone !== "" && !PHONE_PATTERN.test(form.phone)}
                 className={
-                  form.phone !== "" && !/^\+\d{7,15}$/.test(form.phone)
+                  form.phone !== "" && !PHONE_PATTERN.test(form.phone)
                     ? "border-destructive focus-visible:ring-destructive"
                     : undefined
                 }
               />
               <p className="text-xs text-muted-foreground mt-1">{tu("hintPhone")}</p>
-              {form.phone !== "" && !/^\+\d{7,15}$/.test(form.phone) && (
+              {form.phone !== "" && !PHONE_PATTERN.test(form.phone) && (
                 <p className="text-xs text-destructive mt-1">{tu("phoneFormatError")}</p>
               )}
             </div>
@@ -496,6 +542,33 @@ function UserFormDialog({
                   <p className="text-sm font-medium">{tu("accessResultTitle")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{tu("accessResultHint")}</p>
                 </div>
+                {/* One tick for every module (owner, 2026-11-07: to leave one
+                    module the admin had to untick the rest one by one). Ticked
+                    when all are on; a click then takes them all off. */}
+                {!moduleMaskIgnored && moduleOptions.length > 1 && (
+                  <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-3 py-2" data-testid="user-modules-all">
+                    <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={shownModuleCount === moduleOptions.length}
+                        ref={(box) => {
+                          if (box) box.indeterminate = shownModuleCount > 0 && shownModuleCount < moduleOptions.length
+                        }}
+                        onChange={() => setAllModules(shownModuleCount !== moduleOptions.length)}
+                        className="h-4 w-4 rounded border-input"
+                      />
+                      {tu("moduleSelectAll")}
+                    </label>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {tu("moduleSelectedCount", { selected: shownModuleCount, total: moduleOptions.length })}
+                    </span>
+                  </div>
+                )}
+                {!moduleMaskIgnored && moduleOptions.length > 0 && shownModuleCount === 0 && (
+                  <p className="border-b border-border bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                    {tu("moduleNoneSelectedWarning")}
+                  </p>
+                )}
                 <ul className="divide-y divide-border">
                   {moduleOptions.map((option) => {
                     const access = moduleAccessOutcome(form.role, form.hiddenModules, option.id)
@@ -659,6 +732,13 @@ function UserFormDialog({
             </div>
           </div>
         </DialogContent>
+        {/* Next to the button, not above the form: the form scrolls, and an
+            error printed at its top was out of sight when Create was pressed. */}
+        {error && (
+          <div role="alert" className="mx-6 mt-3 rounded bg-red-50 p-2 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
+            {error}
+          </div>
+        )}
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tu("cancel")}</Button>
           <Button type="submit" disabled={saving}>
@@ -720,6 +800,10 @@ function ResetPasswordDialog({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     setError("")
+    if (!passwordIsAcceptable(password)) {
+      setError(tu("passwordNotAcceptable"))
+      return
+    }
     if (password !== confirmPassword) {
       setError(tu("passwordMismatch"))
       return
@@ -748,7 +832,7 @@ function ResetPasswordDialog({
       }
       const result = await response.json().catch(() => null)
       if (!response.ok || !result) {
-        throw new Error(result?.error || tu("passwordResetFailed"))
+        throw new Error(apiErrorText(tu, result, tu("passwordResetFailed")))
       }
       if (isSelf) {
         toast.success(tu("passwordResetSelfSuccess"))
@@ -808,30 +892,28 @@ function ResetPasswordDialog({
           <div className="grid gap-4">
             <div>
               <Label htmlFor={`reset-password-${user.id}`}>{tu("passwordNew")}</Label>
-              <div className="relative">
-                <Input
-                  id={`reset-password-${user.id}`}
-                  name={`reset-password-${user.id}`}
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  onKeyDown={updateCapsLock}
-                  onKeyUp={updateCapsLock}
-                  autoComplete="new-password"
-                  minLength={12}
-                  maxLength={72}
-                  required
-                  className="pr-11"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((current) => !current)}
-                  aria-label={showPassword ? tu("hidePassword") : tu("showPassword")}
-                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+              <PasswordInput
+                id={`reset-password-${user.id}`}
+                name={`reset-password-${user.id}`}
+                value={password}
+                onChange={setPassword}
+                visible={showPassword}
+                onToggleVisible={() => setShowPassword((current) => !current)}
+                onKeyDown={updateCapsLock}
+                onKeyUp={updateCapsLock}
+                describedBy={`reset-password-rules-${user.id}`}
+                invalid={password !== "" && !passwordIsAcceptable(password)}
+              />
+              <PasswordActions
+                value={password}
+                onGenerate={() => {
+                  const generated = generateTemporaryPassword()
+                  setPassword(generated)
+                  setConfirmPassword(generated)
+                  setShowPassword(true)
+                }}
+              />
+              <PasswordRules id={`reset-password-rules-${user.id}`} password={password} />
             </div>
 
             <div>
@@ -845,10 +927,16 @@ function ResetPasswordDialog({
                 onKeyDown={updateCapsLock}
                 onKeyUp={updateCapsLock}
                 autoComplete="new-password"
-                minLength={12}
-                maxLength={72}
                 required
+                aria-invalid={confirmPassword !== "" && confirmPassword !== password || undefined}
               />
+              {confirmPassword !== "" && (
+                confirmPassword === password ? (
+                  <p className="mt-1 text-xs text-green-700 dark:text-green-400">{tu("passwordsMatch")}</p>
+                ) : (
+                  <p className="mt-1 text-xs text-destructive">{tu("passwordMismatch")}</p>
+                )
+              )}
             </div>
 
             {capsLock && (
@@ -980,23 +1068,47 @@ export default function UsersSettingsPage() {
       method: "DELETE",
       headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
     })
-    if (!res.ok) {
-      const json = await res.json()
-      throw new Error(json.error || tc("errorDeleteFailed"))
+    const json = await res.json().catch(() => null)
+    if (!res.ok) throw new Error(apiErrorText(tu, json, tc("errorDeleteFailed")))
+    // The route hands the person's open work to whoever deleted them. Say how
+    // much, so dozens of deals turning up in one's own list is not a surprise.
+    const handover = json?.handover && typeof json.handover === "object"
+      ? Object.values(json.handover as Record<string, unknown>).reduce<number>((sum, n) => sum + (typeof n === "number" ? n : 0), 0)
+      : 0
+    toast.success(handover > 0
+      ? tu("deletedWithHandover", { name: deleteName, count: handover })
+      : tu("deletedDone", { name: deleteName }))
+    fetchUsers()
+  }
+
+  // Every switch in the table goes through here, so a refusal (the last
+  // administrator, one's own account) is read out instead of the switch just
+  // springing back without a word.
+  const updateUser = async (user: User, body: Record<string, unknown>) => {
+    try {
+      const res = await fetch(`/api/v1/users/${user.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>),
+        },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => null)
+        toast.error(apiErrorText(tu, json, tc("errorUpdateFailed")))
+      }
+    } catch (err) {
+      toast.error(errorMessage(err))
     }
     fetchUsers()
   }
 
   const handleToggleActive = async (user: User) => {
-    await fetch(`/api/v1/users/${user.id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>),
-      },
-      body: JSON.stringify({ isActive: !user.isActive }),
-    })
-    fetchUsers()
+    // Switching someone off signs them out at once; one stray click on a status
+    // badge should not do that.
+    if (user.isActive && !confirm(tu("deactivateConfirm", { name: user.name }))) return
+    await updateUser(user, { isActive: !user.isActive })
   }
 
   const activeCount = users.filter(u => u.isActive).length
@@ -1047,7 +1159,10 @@ export default function UsersSettingsPage() {
           variant="ghost"
           size="icon"
           className="h-8 w-8"
-          title={tu("deleteAction")}
+          // Deleting is irreversible anonymization; one's own row would erase
+          // one's own login. The API refuses it too.
+          disabled={item.id === session?.user?.id}
+          title={item.id === session?.user?.id ? tu("error_SELF_DELETE") : tu("deleteAction")}
           aria-label={tu("deleteUserNamed", { name: item.name })}
           onClick={(e) => {
             e.stopPropagation()
@@ -1129,14 +1244,12 @@ export default function UsersSettingsPage() {
           className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
             item.isAvailable ? "bg-green-500" : "bg-muted-foreground/40"
           }`}
+          title={tu("availableTooltip")}
+          aria-label={tu("availableTooltip")}
+          aria-pressed={item.isAvailable}
           onClick={async (e) => {
             e.stopPropagation()
-            await fetch(`/api/v1/users/${item.id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>) },
-              body: JSON.stringify({ isAvailable: !item.isAvailable }),
-            })
-            fetchUsers()
+            await updateUser(item, { isAvailable: !item.isAvailable })
           }}
         >
           <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${
@@ -1154,6 +1267,7 @@ export default function UsersSettingsPage() {
             ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
             : "bg-muted text-muted-foreground"
           }`}
+          title={item.isActive ? tu("statusDeactivateHint") : tu("statusActivateHint")}
           onClick={() => handleToggleActive(item)}
         >
           {item.isActive ? tu("statusActive") : tu("statusInactive")}
@@ -1212,12 +1326,7 @@ export default function UsersSettingsPage() {
                 e.stopPropagation()
                 if (!item.totpEnabled) return
                 if (!confirm(tu("totpResetConfirm"))) return
-                await fetch(`/api/v1/users/${item.id}`, {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>) },
-                  body: JSON.stringify({ resetTotp: true }),
-                })
-                fetchUsers()
+                await updateUser(item, { resetTotp: true })
               }}
             >
               TOTP {item.totpEnabled ? "✓" : "—"}
@@ -1239,12 +1348,7 @@ export default function UsersSettingsPage() {
                 e.stopPropagation()
                 if (!item.smsAuthEnabled) return
                 if (!confirm(tu("smsResetConfirm"))) return
-                await fetch(`/api/v1/users/${item.id}`, {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>) },
-                  body: JSON.stringify({ resetSms: true }),
-                })
-                fetchUsers()
+                await updateUser(item, { resetSms: true })
               }}
             >
               SMS {item.smsAuthEnabled ? "✓" : "—"}
@@ -1253,17 +1357,14 @@ export default function UsersSettingsPage() {
             <button data-crm-color-role="toggle"
               type="button"
               title={tu("require2faTooltip")}
+              aria-label={tu("require2faTooltip")}
+              aria-pressed={item.require2fa || anyMethodActive}
               className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors ${
                 item.require2fa || anyMethodActive ? "bg-green-500" : "bg-muted-foreground/40"
               }`}
               onClick={async (e) => {
                 e.stopPropagation()
-                await fetch(`/api/v1/users/${item.id}`, {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>) },
-                  body: JSON.stringify({ require2fa: !(item.require2fa || anyMethodActive) }),
-                })
-                fetchUsers()
+                await updateUser(item, { require2fa: !(item.require2fa || anyMethodActive) })
               }}
             >
               <span className={`pointer-events-none inline-block h-3 w-3 rounded-full bg-white shadow transform transition-transform ${
@@ -1293,17 +1394,14 @@ export default function UsersSettingsPage() {
           <button data-crm-color-role="toggle"
             type="button"
             title={tu("voiceEnabledTooltip")}
+            aria-label={tu("voiceEnabledTooltip")}
+            aria-pressed={!!item.voiceEnabled}
             className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors ${
               item.voiceEnabled ? "bg-primary" : "bg-muted-foreground/40"
             }`}
             onClick={async (e) => {
               e.stopPropagation()
-              await fetch(`/api/v1/users/${item.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>) },
-                body: JSON.stringify({ voiceEnabled: !item.voiceEnabled }),
-              })
-              fetchUsers()
+              await updateUser(item, { voiceEnabled: !item.voiceEnabled })
             }}
           >
             <span className={`pointer-events-none inline-block h-3 w-3 rounded-full bg-white shadow transform transition-transform ${
@@ -1430,6 +1528,7 @@ export default function UsersSettingsPage() {
         onOpenChange={(open) => { if (!open) setDeleteId(null) }}
         onConfirm={handleDelete}
         title={tu("deleteTitle")}
+        description={tu("deleteDescription", { name: deleteName })}
         itemName={deleteName}
       />
     </div>

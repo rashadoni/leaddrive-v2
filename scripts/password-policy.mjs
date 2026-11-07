@@ -23,6 +23,32 @@ function compromisedPasswords() {
 }
 
 /**
+ * Each requirement of the policy, met or not — for a form that shows them while
+ * the password is typed. `passwordPolicyError` below accepts a password exactly
+ * when every entry here is true (pinned by password-policy.test.ts), so the
+ * checklist cannot promise a password the server then refuses.
+ *
+ * @param {string} password
+ * @returns {{ length: boolean, uppercase: boolean, lowercase: boolean, digit: boolean, special: boolean, noSpaces: boolean, notTooLong: boolean, notCommon: boolean }}
+ */
+export function passwordRuleChecks(password) {
+  const value = typeof password === "string" ? password : ""
+  let graphemes = 0
+  for (const _segment of GRAPHEME_SEGMENTER.segment(value)) graphemes++
+  return {
+    length: graphemes >= PASSWORD_MIN_GRAPHEMES,
+    uppercase: /\p{Lu}/u.test(value),
+    lowercase: /\p{Ll}/u.test(value),
+    digit: /\p{Nd}/u.test(value),
+    special: /[\p{P}\p{S}]/u.test(value),
+    noSpaces: !/[\p{C}\p{Z}]/u.test(value),
+    notTooLong: value.length <= PASSWORD_MAX_UTF8_BYTES
+      && new TextEncoder().encode(value).length <= PASSWORD_MAX_UTF8_BYTES,
+    notCommon: !compromisedPasswords().has(value.toLowerCase()),
+  }
+}
+
+/**
  * @param {unknown} password
  * @returns {string | null}
  */
