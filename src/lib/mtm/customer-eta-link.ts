@@ -33,6 +33,30 @@ export function customerEtaChannel(value: unknown): CustomerEtaChannel {
   return value === "whatsapp" ? "whatsapp" : "sms"
 }
 
+/** At most this many agents can be chosen by name; more than a company has is a broken request. */
+export const CUSTOMER_ETA_MAX_AGENTS = 1000
+
+/** The chosen agents as stored: ids, each once, nothing that is not an id. */
+export function coerceCustomerEtaAgentIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  const ids = value.filter((id): id is string => typeof id === "string" && id.length > 0 && id.length <= 64)
+  return [...new Set(ids)].slice(0, CUSTOMER_ETA_MAX_AGENTS)
+}
+
+/**
+ * Whether the bot writes to this agent's customers (owner, 2026-11-07: «пока
+ * не хочу всем включать»): every agent's while the company chose «all» — the
+ * setting as it was before the choice existed — or only the chosen agents',
+ * and nobody's while none is chosen. The switch itself is asked separately.
+ */
+export function customerEtaForAgent(
+  settings: { customerEtaAgentScope?: unknown; customerEtaAgentIds?: unknown },
+  agentId: string,
+): boolean {
+  if (settings.customerEtaAgentScope !== "selected") return true
+  return coerceCustomerEtaAgentIds(settings.customerEtaAgentIds).includes(agentId)
+}
+
 /**
  * The WhatsApp template the company has to have approved on its own number.
  * A first message to a customer who has not written goes only as a template

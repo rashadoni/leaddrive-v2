@@ -20,6 +20,8 @@ import { connectedCalendars } from "@/lib/calendar/accounts"
 import { calendarBusy } from "@/lib/calendar/events"
 import { connectedCalendarKey } from "@/lib/calendar/providers"
 import { BookingCommandError } from "./command-error"
+import { addOnTotals, parseAddOns, selectedAddOns } from "./add-ons"
+import { hasHostVariants, hostService, servicePriceSpan } from "./host-variants"
 import { bookingHostWhere } from "./access"
 import { isValidTimezone } from "@/lib/timezone"
 import type { AdAttribution } from "@/lib/ad-conversions/attribution"
@@ -188,30 +190,59 @@ function windowOf(rules: BookingRules, now: Date): { from: Date; to: Date } {
 }
 
 /** What the public page shows. Runs under the page's tenant scope. */
-export async function publicBookingView(orgId: string, pageId: string, now = new Date()) {
+/**
+ * The public page and its free times.
+ *
+ * `hostId` is the master the customer picked. It only ever narrows what is
+ * offered — to that master's own hours, their own duration and their own
+ * price. A service where every master charges the same never asks: who is free
+ * stays the server's business, as it always was.
+ */
+export async function publicBookingView(orgId: string, pageId: string, now = new Date(), hostId?: string | null, addOnIds: readonly string[] = []) {
   const page = await prisma.bookingPage.findFirst({ where: { id: pageId, organizationId: orgId, isActive: true } })
   if (!page) return null
   const org = await orgContext(orgId)
-  const rules = rulesOf(page, org.timezone)
   const hosts = await activeHosts(orgId, page.hostIds)
+  const service = { price: page.price === null ? null : String(page.price), durationMinutes: page.durationMinutes, hostVariants: page.hostVariants }
+  const chosen = hostId && hosts.some((host) => host.id === hostId) ? hostId : null
+  const offered = chosen ? hosts.filter((host) => host.id === chosen) : hosts
+  const chosenService = chosen ? hostService(service, chosen) : null
+  // The extras take time as well as money: the slot is cut for the whole
+  // visit, or the master is double-booked for the half nobody counted.
+  const addOns = parseAddOns(page.addOns)
+  const takenAddOns = selectedAddOns(addOns, addOnIds)
+  const visit = addOnTotals(chosenService ?? { price: page.price === null ? null : String(page.price), durationMinutes: page.durationMinutes }, takenAddOns)
+  const rules = { ...rulesOf(page, org.timezone), durationMinutes: visit.durationMinutes }
   const { from, to } = windowOf(rules, now)
-  const busy = await loadBusyByHost(orgId, hosts.map((host) => host.id), from, to, org.timezone, { holds: {} })
-  const days: DaySlots[] = computeSlots({ rules, hostIds: hosts.map((host) => host.id), busyByHost: busy, now })
+  const busy = await loadBusyByHost(orgId, offered.map((host) => host.id), from, to, org.timezone, { holds: {} })
+  const days: DaySlots[] = computeSlots({ rules, hostIds: offered.map((host) => host.id), busyByHost: busy, now })
   if (!days.length && busy.unavailableHostIds.size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
+  const span = servicePriceSpan(service, hosts.map((host) => host.id))
   return {
     page: {
       orgName: org.name,
       title: page.title,
       description: page.description,
-      durationMinutes: page.durationMinutes,
+      durationMinutes: visit.durationMinutes,
       locationType: page.locationType as "office" | "phone" | "online",
       locationText: page.locationText,
-      price: page.price === null ? null : String(page.price),
+      price: chosenService || takenAddOns.length > 0 ? visit.price : span.varies ? null : (page.price === null ? null : String(page.price)),
       priceCurrency: page.priceCurrency,
+      /** Set only when masters differ and none is chosen yet: «from 25». */
+      priceFrom: !chosen && span.varies ? span.min : null,
       hostNames: hosts.map((host) => host.name),
+      /** Offered only where the answer changes the price or the duration. */
+      hosts: hasHostVariants(service, hosts.map((host) => host.id))
+        ? hosts.map((host) => ({ id: host.id, name: host.name, ...hostService(service, host.id) }))
+        : [],
+      chosenHostId: chosen,
+      /** What the service offers to add, and what the customer has ticked. */
+      addOns,
+      chosenAddOnIds: takenAddOns.map((addOn) => addOn.id),
       timezone: org.timezone,
     },
-    // Which host is free is the server's business, not the customer's.
+    // Which host is free is the server's business, not the customer's — unless
+    // the customer named one, and then it is only that one.
     days: days.map((day) => ({ date: day.date, slots: day.slots.map(({ startsAt, endsAt }) => ({ startsAt, endsAt, hostIds: [] })) })),
   }
 }
@@ -221,6 +252,8 @@ export interface BookingInput {
   idempotencyKey?: string
   recoverySecret?: string
   hostUserId?: string
+  /** Extras the customer ticked; unknown ids are ignored, never charged. */
+  addOnIds?: string[]
   startsAt: string
   name: string
   phone: string

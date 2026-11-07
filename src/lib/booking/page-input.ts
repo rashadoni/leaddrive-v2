@@ -3,10 +3,13 @@
  * and update, so a page can never be saved in a shape the public page cannot
  * compute free time from.
  */
+import { Prisma } from "@prisma/client"
 import { z } from "zod"
 import { bookingDb as prisma } from "./db"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { parseWeeklyHours } from "./availability"
+import { normalizeAddOns } from "./add-ons"
+import { normalizeHostVariants } from "./host-variants"
 import { resolveOrgDefaultCurrency } from "@/lib/org-default-currency"
 
 export const bookingPageSchema = z.object({
@@ -20,6 +23,22 @@ export const bookingPageSchema = z.object({
   locationType: z.enum(["office", "phone", "online"]),
   locationText: z.string().trim().max(300).optional().nullable(),
   hostIds: z.array(z.string().min(1).max(64)).min(1, "HOSTS_REQUIRED").max(20),
+  /**
+   * What single masters charge and how long they take, when they differ from
+   * the service. Shape only here: which masters count and what counts as a
+   * difference is `normalizeHostVariants`, so the rule lives in one place.
+   */
+  hostVariants: z.record(z.string().min(1).max(64), z.object({
+    price: z.union([z.string().max(20), z.number()]).nullable().optional(),
+    durationMinutes: z.number().int().nullable().optional(),
+  })).nullable().optional(),
+  /** Extras the customer may add; shape only — `normalizeAddOns` is the rule. */
+  addOns: z.array(z.object({
+    id: z.string().min(1).max(40),
+    name: z.string().max(60),
+    price: z.union([z.string().max(20), z.number()]).nullable().optional(),
+    durationMinutes: z.number().int().optional(),
+  })).max(12).nullable().optional(),
   /** What the service costs. The currency is not the form's business — the route stamps the organisation's own. */
   price: z.number().min(0).max(1_000_000_000).nullable().optional(),
   category: z.string().trim().max(60).nullable().optional(),
@@ -43,6 +62,26 @@ export type BookingPageInput = z.infer<typeof bookingPageSchema>
 export async function pagePriceData(orgId: string, price: number | null | undefined): Promise<{ price: number | null; priceCurrency: string | null }> {
   if (price === null || price === undefined) return { price: null, priceCurrency: null }
   return { price, priceCurrency: await resolveOrgDefaultCurrency(orgId) }
+}
+
+/**
+ * The per-master differences as the column should hold them: only masters who
+ * still take this service, and only where they really differ from it. A
+ * service where everybody agrees stores SQL NULL, so «no differences» looks
+ * the same as it did before this column existed.
+ */
+export function pageHostVariantsData(input: BookingPageInput): Prisma.InputJsonValue | typeof Prisma.DbNull {
+  const variants = normalizeHostVariants(input.hostVariants, input.hostIds, {
+    price: input.price === null || input.price === undefined ? null : String(input.price),
+    durationMinutes: input.durationMinutes,
+  })
+  return Object.keys(variants).length > 0 ? (variants as Prisma.InputJsonValue) : Prisma.DbNull
+}
+
+/** The extras as the column should hold them; nothing to add means SQL NULL. */
+export function pageAddOnsData(input: BookingPageInput): Prisma.InputJsonValue | typeof Prisma.DbNull {
+  const addOns = normalizeAddOns(input.addOns)
+  return addOns.length > 0 ? (addOns as unknown as Prisma.InputJsonValue) : Prisma.DbNull
 }
 
 /** Slugs are unique across organizations (the URL names no tenant). */

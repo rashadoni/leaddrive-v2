@@ -11,8 +11,12 @@ import type { DaySlots } from "@/lib/booking/availability"
 import { bookingRequestIdentity, completeBookingRequest } from "@/lib/booking/client-identity"
 import { collectAdAttribution } from "@/lib/ad-conversions/collect"
 
-async function fetchBookingPage(slug: string): Promise<{ page: PublicBookingPage; days: DaySlots[] } | null> {
-  const response = await fetch(`/api/v1/public/booking/${encodeURIComponent(slug)}`, { cache: "no-store" })
+async function fetchBookingPage(slug: string, hostId: string | null, addOnIds: string[]): Promise<{ page: PublicBookingPage; days: DaySlots[] } | null> {
+  const query = new URLSearchParams()
+  if (hostId) query.set("host", hostId)
+  if (addOnIds.length > 0) query.set("addons", addOnIds.join(","))
+  const search = query.toString()
+  const response = await fetch(`/api/v1/public/booking/${encodeURIComponent(slug)}${search ? `?${search}` : ""}`, { cache: "no-store" })
   if (response.status === 404) return null
   const body = await response.json()
   if (!response.ok || !body.success) throw new Error("booking availability unavailable")
@@ -27,9 +31,15 @@ export default function PublicBookingPage() {
   const locale = useLocale()
   const [data, setData] = useState<{ page: PublicBookingPage; days: DaySlots[] } | null>(null)
   const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading")
+  // The master the customer picked. Their free times are not ours to guess:
+  // the server answers with that master's hours, length and price.
+  const [hostId, setHostId] = useState<string | null>(null)
+  // The extras they ticked; the server answers with the price and the free
+  // times of the whole visit, not of the bare service.
+  const [addOnIds, setAddOnIds] = useState<string[]>([])
 
   const load = useCallback(() => {
-    void fetchBookingPage(slug).then((result) => {
+    void fetchBookingPage(slug, hostId, addOnIds).then((result) => {
       if (result) {
         setData(result)
         setState("ready")
@@ -37,7 +47,7 @@ export default function PublicBookingPage() {
         setState("missing")
       }
     }).catch(() => setState("error"))
-  }, [slug])
+  }, [slug, hostId, addOnIds])
 
   useEffect(load, [load])
 
@@ -78,7 +88,7 @@ export default function PublicBookingPage() {
               <p className="mt-2 text-sm text-muted-foreground">{t("notFoundDesc")}</p>
             </div>
           ) : (
-            <BookingScheduler page={data.page} days={data.days} onBook={book} />
+            <BookingScheduler page={data.page} days={data.days} onBook={book} onHostChange={setHostId} onAddOnsChange={setAddOnIds} />
           )}
         </section>
       </main>

@@ -33,6 +33,19 @@ export interface PublicBookingPage {
   price?: string | null
   priceCurrency?: string | null
   hostNames: string[]
+  /**
+   * The masters a customer may choose between, with what each one charges and
+   * how long they take. Empty where everybody charges the same — then who is
+   * free stays the server's business and nothing is asked.
+   */
+  hosts?: { id: string; name: string; price: string | null; durationMinutes: number }[]
+  /** The master already chosen; null = whoever is free. */
+  chosenHostId?: string | null
+  /** The lowest price, when the masters differ and none is chosen yet. */
+  priceFrom?: string | null
+  /** Extras the service offers, and the ones already ticked. */
+  addOns?: { id: string; name: string; price: string | null; durationMinutes: number }[]
+  chosenAddOnIds?: string[]
   timezone: string
 }
 
@@ -42,6 +55,10 @@ export interface BookingRequest {
   phone: string
   email: string
   note: string
+  /** The master the customer chose, where the service offers the choice. */
+  hostUserId?: string
+  /** The extras they ticked. */
+  addOnIds?: string[]
 }
 
 export interface BookingConfirmation {
@@ -85,13 +102,16 @@ export function BookingSummary({ page }: { page: PublicBookingPage }) {
   const t = useTranslations("booking")
   const locale = useLocale()
   const price = servicePriceLabel(page, locale)
+  // Masters disagree and none is chosen yet: «from 25» is the only honest
+  // number before the customer says who they want.
+  const from = !price && page.priceFrom ? servicePriceLabel({ price: page.priceFrom, priceCurrency: page.priceCurrency ?? null }, locale) : null
   return (
     <aside className="space-y-4 border-b pb-5 md:border-b-0 md:border-r md:pb-0 md:pr-6">
       <p className="text-sm font-medium text-muted-foreground">{page.orgName}</p>
       <h1 id="booking-title" className="text-2xl font-bold tracking-tight">{page.title}</h1>
       <ul className="space-y-2 text-sm text-muted-foreground">
         <li className="flex items-center gap-2"><Clock className="h-4 w-4 shrink-0" aria-hidden="true" />{t("minutes", { count: page.durationMinutes })}</li>
-        {price ? <li className="flex items-center gap-2 font-semibold text-foreground"><Wallet className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{price}</li> : null}
+        {price || from ? <li className="flex items-center gap-2 font-semibold text-foreground"><Wallet className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{price ?? t("previewFrom", { price: from ?? "" })}</li> : null}
         <li className="flex items-center gap-2"><LocationIcon type={page.locationType} />{page.locationText || t(`location_${page.locationType}`)}</li>
         {page.hostNames.length > 0 ? (
           <li className="flex items-center gap-2"><User className="h-4 w-4 shrink-0" aria-hidden="true" />{page.hostNames.join(", ")}</li>
@@ -103,18 +123,23 @@ export function BookingSummary({ page }: { page: PublicBookingPage }) {
 }
 
 export function BookingScheduler({
-  page, days, onBook, staff = false, initialStartsAt = null, onStartChange,
+  page, days, onBook, staff = false, initialStartsAt = null, onStartChange, onHostChange, onAddOnsChange,
 }: {
   page: PublicBookingPage
   days: DaySlots[]
   staff?: boolean
   onBook: (request: BookingRequest) => Promise<BookResult>
+  /** Asks for the free times of one master; null = whoever is free. */
+  onHostChange?: (hostId: string | null) => void
+  /** Asks for the free times of the visit with these extras on it. */
+  onAddOnsChange?: (addOnIds: string[]) => void
   /** A time already chosen elsewhere — a free window on the day's rail. */
   initialStartsAt?: string | null
   /** Lets the screen around the form draw the time being taken. */
   onStartChange?: (startsAt: string | null) => void
 }) {
   const t = useTranslations("booking")
+  const locale = useLocale()
   const format = useBookingFormat(page.timezone)
   const [date, setDate] = useState<string | null>(days[0]?.date ?? null)
   const [startsAt, setStartsAt] = useState<string | null>(initialStartsAt)
@@ -134,7 +159,7 @@ export function BookingScheduler({
     if (!startsAt || !canSubmit) return
     setBusy(true)
     setError("")
-    const result = await onBook({ startsAt, ...form })
+    const result = await onBook({ startsAt, ...form, hostUserId: page.chosenHostId ?? undefined, addOnIds: page.chosenAddOnIds })
     setBusy(false)
     if (result.ok) {
       setConfirmed(result.booking)
@@ -152,6 +177,63 @@ export function BookingScheduler({
           its own fields; repeating them here was the same four lines twice. */}
       {staff ? null : <BookingSummary page={page} />}
       <section className="min-w-0 space-y-5" aria-label={t("chooseTime")}>
+        {/* Asked only where the answer changes the price or the length. */}
+        {!staff && onHostChange && page.hosts && page.hosts.length > 0 && !startsAt ? (
+          <div>
+            <p className="text-sm font-semibold">{t("pickHost")}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {[null, ...page.hosts].map((host) => {
+                const active = (page.chosenHostId ?? null) === (host?.id ?? null)
+                return (
+                  <button
+                    key={host?.id ?? "any"}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => onHostChange(host?.id ?? null)}
+                    className={`min-h-11 rounded-full border px-4 text-sm transition-colors ${active ? "border-foreground bg-muted font-semibold text-foreground" : "text-muted-foreground hover:border-foreground/25 hover:text-foreground"}`}
+                  >
+                    {host === null ? t("anyHost") : (
+                      <span className="inline-flex items-center gap-1.5">
+                        {host.name}
+                        {host.price ? <span className="text-xs text-muted-foreground">· {servicePriceLabel({ price: host.price, priceCurrency: page.priceCurrency ?? null }, locale)}</span> : null}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+        {/* Ticking one changes the price and the length of the visit, so the
+            times are asked for again — a slot cut for 45 minutes cannot hold a
+            visit of 60. */}
+        {!staff && onAddOnsChange && page.addOns && page.addOns.length > 0 && !startsAt ? (
+          <div>
+            <p className="text-sm font-semibold">{t("addOnsPick")}</p>
+            <ul className="mt-2 space-y-1.5">
+              {page.addOns.map((addOn) => {
+                const taken = (page.chosenAddOnIds ?? []).includes(addOn.id)
+                return (
+                  <li key={addOn.id}>
+                    <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-sm transition-colors hover:border-foreground/25">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 shrink-0 accent-foreground"
+                        checked={taken}
+                        onChange={() => onAddOnsChange(taken
+                          ? (page.chosenAddOnIds ?? []).filter((id) => id !== addOn.id)
+                          : [...(page.chosenAddOnIds ?? []), addOn.id])}
+                      />
+                      <span className="min-w-0 flex-1 truncate">{addOn.name}</span>
+                      {addOn.durationMinutes > 0 ? <span className="shrink-0 text-xs text-muted-foreground">+{t("minutes", { count: addOn.durationMinutes })}</span> : null}
+                      {addOn.price ? <span className="shrink-0 font-semibold tabular-nums">{servicePriceLabel({ price: addOn.price, priceCurrency: page.priceCurrency ?? null }, locale)}</span> : null}
+                    </label>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ) : null}
         {days.length === 0 ? (
           <div className="rounded-lg border p-6 text-center">
             <CalendarClock className="mx-auto h-7 w-7 text-muted-foreground" aria-hidden="true" />

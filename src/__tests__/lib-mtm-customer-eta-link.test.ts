@@ -6,10 +6,12 @@
  */
 import { describe, expect, it } from "vitest"
 import {
+  coerceCustomerEtaAgentIds,
   customerEtaArrivesAt,
   customerEtaCountryCode,
   customerEtaDue,
   customerEtaFailure,
+  customerEtaForAgent,
   customerEtaLanguage,
   customerEtaPhone,
   customerEtaRecipient,
@@ -95,5 +97,27 @@ describe("in what words", () => {
     expect(customerEtaTemplateLanguageMissing("(#131026) Message undeliverable")).toBe(false)
     expect(customerEtaTemplateLanguageMissing("network error")).toBe(false)
     expect(customerEtaTemplateLanguageMissing(undefined)).toBe(false)
+  })
+})
+
+describe("whose customers", () => {
+  it("every agent's while the company chose «all» — and while it chose nothing, as before the choice existed", () => {
+    expect(customerEtaForAgent({}, "a-1")).toBe(true)
+    expect(customerEtaForAgent({ customerEtaAgentScope: "all", customerEtaAgentIds: [] }, "a-1")).toBe(true)
+    expect(customerEtaForAgent({ customerEtaAgentScope: "all", customerEtaAgentIds: ["a-2"] }, "a-1")).toBe(true)
+  })
+
+  it("only the chosen agents' when the company chose «selected», and nobody's while none is chosen", () => {
+    expect(customerEtaForAgent({ customerEtaAgentScope: "selected", customerEtaAgentIds: ["a-1", "a-3"] }, "a-1")).toBe(true)
+    expect(customerEtaForAgent({ customerEtaAgentScope: "selected", customerEtaAgentIds: ["a-1", "a-3"] }, "a-2")).toBe(false)
+    expect(customerEtaForAgent({ customerEtaAgentScope: "selected", customerEtaAgentIds: [] }, "a-1")).toBe(false)
+    expect(customerEtaForAgent({ customerEtaAgentScope: "selected" }, "a-1")).toBe(false)
+    expect(customerEtaForAgent({ customerEtaAgentScope: "selected", customerEtaAgentIds: "a-1" }, "a-1")).toBe(false)
+  })
+
+  it("keeps the chosen ids as ids, each once", () => {
+    expect(coerceCustomerEtaAgentIds(["a-1", "a-1", "", 7, null, "a-2"])).toEqual(["a-1", "a-2"])
+    expect(coerceCustomerEtaAgentIds("a-1")).toEqual([])
+    expect(coerceCustomerEtaAgentIds(["x".repeat(65)])).toEqual([])
   })
 })

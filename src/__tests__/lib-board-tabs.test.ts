@@ -13,8 +13,8 @@ const BOARDS: TabDivision[] = [
 describe("boardTabRows", () => {
   it("lists the folders and stand-alone boards on the first row, the open folder's projects on the second", () => {
     const rows = boardTabRows(BOARDS, "dig-ph")
-    expect(rows.places.map((tab) => [tab.name, tab.active])).toEqual([
-      ["Ümumi Marketinq", false], ["Digital Marketing", true], ["Traditional Marketing", false],
+    expect(rows.places.map((tab) => [tab.name, tab.active, tab.isDepartment])).toEqual([
+      ["Ümumi Marketinq", false, false], ["Digital Marketing", true, true], ["Traditional Marketing", false, true],
     ])
     expect(rows.projects).toEqual({
       departmentId: "dig",

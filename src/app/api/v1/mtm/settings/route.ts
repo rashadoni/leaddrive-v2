@@ -20,6 +20,7 @@ import { parseMtmVisitEvaluationQuestions } from "@/lib/mtm/visit-evaluation-que
 import { mtmSettingValuesEqual, validateMtmSettingChanges } from "@/lib/mtm/settings-validation"
 import { AGENT_PERMISSION_ADMIN_ONLY_KEYS } from "@/lib/mtm/agent-permissions"
 import { locationShareLinkAliveWhere } from "@/lib/mtm/location-share-link"
+import { CUSTOMER_ETA_MAX_AGENTS, coerceCustomerEtaAgentIds } from "@/lib/mtm/customer-eta-link"
 import { ATTENDANCE_OUTSIDE_RULE_KEY, saveAttendanceOutsideRule } from "@/lib/mtm/attendance-outside-rule"
 import { ATTENDANCE_RISK_SETTING_KEYS, saveAttendanceRiskPolicy } from "@/lib/mtm/attendance-risk-policy"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
@@ -163,6 +164,23 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
         return NextResponse.json({ error: questions.error, code: "MTM_VISIT_EVALUATION_QUESTIONS_INVALID", key: "visitEvaluationQuestions" }, { status: 400 })
       }
       body.visitEvaluationQuestions = questions.data
+    }
+    // «Агент едет к вам» for the chosen agents only: ids of this company's
+    // agents, each once. An id that is not one of them is refused rather than
+    // dropped — the page showed a name, and a silently missing name would
+    // leave a customer waiting for a message nobody will send.
+    if (body.customerEtaAgentIds !== undefined) {
+      const ids = body.customerEtaAgentIds
+      const wellFormed = Array.isArray(ids) && ids.length <= CUSTOMER_ETA_MAX_AGENTS
+        && ids.every((id) => typeof id === "string" && id.length > 0 && id.length <= 64)
+      const unique = wellFormed ? coerceCustomerEtaAgentIds(ids) : []
+      const known = unique.length
+        ? await prisma.mtmAgent.count({ where: { organizationId: orgId, id: { in: unique } } })
+        : 0
+      if (!wellFormed || known !== unique.length) {
+        return NextResponse.json({ error: "Choose agents of this company", code: "MTM_CUSTOMER_ETA_AGENTS_INVALID", key: "customerEtaAgentIds" }, { status: 400 })
+      }
+      body.customerEtaAgentIds = unique
     }
     if (body.timezone !== undefined && !isValidTimezone(body.timezone)) {
       return NextResponse.json({ error: "Invalid IANA timezone" }, { status: 400 })

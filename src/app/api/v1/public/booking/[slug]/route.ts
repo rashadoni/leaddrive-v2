@@ -12,12 +12,16 @@ import { IdempotencyConflictError } from "@/lib/event-platform/errors"
 import { readAttribution } from "@/lib/ad-conversions/attribution"
 
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const found = await findBookingPageBySlug(slug)
   if (!found) return NextResponse.json({ error: "Not found" }, { status: 404 })
   try {
-    const view = await runWithTenant(found.orgId, () => publicBookingView(found.orgId, found.pageId))
+    // «?host=» is the master the customer picked on the page itself.
+    const query = new URL(req.url).searchParams
+    const host = query.get("host")
+    const addOnIds = (query.get("addons") ?? "").split(",").map((id) => id.trim()).filter(Boolean).slice(0, 12)
+    const view = await runWithTenant(found.orgId, () => publicBookingView(found.orgId, found.pageId, new Date(), host, addOnIds))
     if (!view) return NextResponse.json({ error: "Not found" }, { status: 404 })
     return NextResponse.json({ success: true, data: view }, { headers: { "Cache-Control": "no-store" } })
   } catch (e) {
@@ -45,6 +49,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
       phone: parsed.data.phone,
       email: parsed.data.email || null,
       note: parsed.data.note || null,
+      hostUserId: parsed.data.hostUserId || undefined,
+      addOnIds: parsed.data.addOnIds,
       attribution: readAttribution(parsed.data.attribution, { userAgent: req.headers.get("user-agent") }),
     }))
     if (result.ok) return NextResponse.json({ success: true, data: result.booking }, { status: 201 })

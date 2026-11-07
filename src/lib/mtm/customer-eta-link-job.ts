@@ -26,6 +26,7 @@ import {
   customerEtaCountryCode,
   customerEtaDue,
   customerEtaFailure,
+  customerEtaForAgent,
   customerEtaLanguage,
   customerEtaRecipient,
   customerEtaSmsText,
@@ -78,6 +79,7 @@ export async function prepareCustomerEtaLink(
 ): Promise<CustomerEtaOutcome> {
   const settings = await getMtmSettings(organizationId)
   if (settings.customerEtaLinksEnabled !== true) return "none"
+  if (!customerEtaForAgent(settings, agentId)) return "none"
   const channel = customerEtaChannel(settings.customerEtaLinkChannel)
   const timezone = locationShareLinkTimezone(settings.timezone)
 
@@ -235,13 +237,21 @@ async function claimCustomerEtaLink(input: {
 }): Promise<string | null> {
   try {
     return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const kept = await tx.$queryRaw<{ value: unknown }[]>`
-        SELECT "value" FROM "mtm_settings"
+      // The switch and whose customers it is for, as they are now: a save
+      // that switched it off, or took this agent off the list, waits for
+      // this link or is read here.
+      const kept = await tx.$queryRaw<{ key: string; value: unknown }[]>`
+        SELECT "key", "value" FROM "mtm_settings"
         WHERE "organizationId" = ${input.organizationId}
-          AND "key" = 'customerEtaLinksEnabled'
+          AND "key" IN ('customerEtaLinksEnabled', 'customerEtaAgentScope', 'customerEtaAgentIds')
         FOR SHARE
       `
-      if (coerceMtmBooleanSetting(kept[0]?.value, MTM_SETTING_DEFAULTS.customerEtaLinksEnabled) !== true) return null
+      const stored = (key: string) => kept.find((row) => row.key === key)?.value
+      if (coerceMtmBooleanSetting(stored("customerEtaLinksEnabled"), MTM_SETTING_DEFAULTS.customerEtaLinksEnabled) !== true) return null
+      if (!customerEtaForAgent({
+        customerEtaAgentScope: stored("customerEtaAgentScope") ?? MTM_SETTING_DEFAULTS.customerEtaAgentScope,
+        customerEtaAgentIds: stored("customerEtaAgentIds"),
+      }, input.agentId)) return null
       const row = await tx.mtmLocationShareLink.create({
         data: {
           organizationId: input.organizationId,

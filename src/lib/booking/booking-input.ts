@@ -9,6 +9,12 @@ export const bookSchema = z.object({
   phone: z.string().trim().regex(/^\+?[\d\s()-]{7,24}$/, "Invalid phone"),
   email: z.string().trim().email().max(200).optional().or(z.literal("")),
   note: z.string().trim().max(1000).optional(),
+  // The master the customer picked, where the service lets them pick. An
+  // unknown id is refused by the command, not accepted and ignored.
+  hostUserId: z.string().min(1).max(64).optional(),
+  // Extras the customer ticked. Unknown ids are dropped by the command, so a
+  // forged list can add neither time nor money.
+  addOnIds: z.array(z.string().min(1).max(40)).max(12).optional(),
   // Left empty by people; filled by form-filling bots.
   website: z.string().max(200).optional(),
   // Ad click ids and UTM tags from the page address (src/lib/ad-conversions).

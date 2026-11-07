@@ -6,7 +6,7 @@ import { readPrivate } from "./zeytun-private-file"
 import { ZeytunAvailableBalances } from "./zeytun-available-balances"
 import { createDepartedSearch } from "./zeytun-departed-items"
 import { ZeytunSnapshotStore } from "./zeytun-snapshot-store"
-import { inboundPilotDigest, isLineGrant, type InboundPilotCall, type InboundPilotConfig, type InboundPilotDependencies,
+import { inboundPilotConfigSchema, inboundPilotDigest, isLineGrant, phoneOrderCatalog, type InboundPilotCall, type InboundPilotConfig, type InboundPilotDependencies,
   type InboundPilotOrderCall } from "./zeytun-inbound-pilot"
 import type { ZeytunCallDatabase } from "./zeytun-call-loader"
 import { cancelPhoneOrderFromCall, confirmedPhoneOrderLines, orderedPhoneOrderProducts, savePhoneOrderFromCall } from "./phone-orders"
@@ -18,6 +18,8 @@ import { readLineSpeech } from "./zeytun-line-speech"
 import { learnNames, type LearnedNames } from "./zeytun-learned-names"
 import { callPharmacy, lastPharmacyOrder } from "./zeytun-pharmacy-history"
 import { markWaitlistArrivals, pharmacyArrivals, recordCallWaitlist } from "./zeytun-waitlist"
+import { recoveredOrderLines } from "./zeytun-transcript-recovery"
+import { CALLBACK_MARKER, callbackMarker } from "./zeytun-waitlist-callback"
 import { combineAssortment, confirmedOrdersSource, createCallAssortments, type AssortmentSource,
   type LoadedAssortment } from "./zeytun-pharmacy-assortment"
 import { CHIRP_KEY_FILE, createChirpRecognizer, createZeytunSecondEar, type ZeytunSecondEar } from "./zeytun-chirp"
@@ -226,7 +228,8 @@ export function createInboundPilotHost(options: {
         return tx.$queryRaw<Array<Omit<InboundPilotCall, "startedAt" | "endedAt"> & { startedAt: Date; endedAt: Date | null }>>`
           WITH candidates AS (
             SELECT id, "organizationId", "channelConfigId", "providerCallId", provider, direction, "callMode", status,
-              "wasAnswered", "endedAt", "startedAt", "fromNumber", "targetPhoneE164", "handoffState"
+              "wasAnswered", "endedAt", "startedAt", "fromNumber", "targetPhoneE164", "handoffState",
+              "consentAudit"->'pharmacyWaitlistCallback' AS "callbackMarker"
             FROM call_logs WHERE "organizationId"=${config.organizationId} AND provider='asterisk' AND "providerCallId"=${callId} LIMIT 2
           ) SELECT c.* FROM candidates c
           JOIN organizations org ON org.id=c."organizationId" AND org."isActive"=true
@@ -336,6 +339,47 @@ export function createInboundPilotHost(options: {
       pharmacyAssortment: (config, call) => assortments.get(call.providerCallId, () => loadAssortment(config, call)),
     } satisfies Pick<InboundPilotDependencies, "pharmacyAssortment"> : {}),
     pharmacyHints: (config) => knownPharmacies(config)?.hints ?? [],
+    /**
+     * Task 1b of the owner's queue (2026-11-06): the call is over and its order is
+     * unfinished (no final save) or missing; what the transcript says the pharmacy
+     * ordered and the order lacks is added for a manager, from the transcript.
+     */
+    async recoverOrderFromTranscript(providerCallId, transcript, read) {
+      if (!options.orders || !transcript.trim()) return { status: "skipped" }
+      const parsed = inboundPilotConfigSchema.safeParse(await this.loadConfig())
+      if (!parsed.success || !isLineGrant(parsed.data) || !parsed.data.orderOrganizationId || !(await allowedOrganization(parsed.data))) {
+        return { status: "skipped" }
+      }
+      const config = parsed.data as typeof parsed.data & { orderOrganizationId: string }
+      const raw = await this.loadCall(config, providerCallId) as (Omit<InboundPilotOrderCall, "direction"> & { direction: string }) | null
+      // The line's own call back to a pharmacy (task 10) reads as the pharmacy's call: its number is the target.
+      const callback = raw?.direction === "outbound" ? callbackMarker({ [CALLBACK_MARKER]: raw.callbackMarker }, providerCallId) : null
+      if (!raw || (raw.direction !== "inbound" && !callback)) return { status: "no_call" }
+      const call = (callback ? { ...raw, direction: "inbound", fromNumber: raw.targetPhoneE164, targetPhoneE164: raw.fromNumber } : raw) as InboundPilotOrderCall
+      const orgId = config.orderOrganizationId
+      const order = await runWithTenant(orgId, () => options.orders!.pharmacyPhoneOrder.findUnique({
+        where: { organizationId_providerCallId: { organizationId: orgId, providerCallId } },
+        select: { status: true, finishedOnCallAt: true, erpState: true, revision: true, stationRevision: true,
+          lines: { orderBy: { position: "asc" }, select: { spokenText: true, productName: true, externalId: true, quantity: true, unit: true } } },
+      }))
+      if (order && (order.status !== "pending_review" || order.finishedOnCallAt || order.erpState !== null || order.revision !== order.stationRevision)) {
+        return { status: "not_needed" }
+      }
+      const lines = await read(transcript)
+      if (!lines?.length) return { status: "nothing_read" }
+      const catalog = await this.loadCatalog(config)
+      const merged = recoveredOrderLines(order?.lines ?? [], lines,
+        (name) => catalog.search({ text: name }).candidates[0]?.externalId ?? null)
+      if (!merged) return { status: "nothing_new" }
+      const saved = await saveFromCall(config, call, { organizationId: orgId, providerCallId, callStartedAt: call.startedAt,
+        catalog: phoneOrderCatalog(catalog), lines: merged, afterCall: true })
+      if (saved.status !== "saved") return { status: saved.status }
+      if (saved.changed && options.announceOrder) {
+        void options.announceOrder(orgId, providerCallId)
+          .catch((error: unknown) => console.warn("[zeytun-line] transcript order notice failed", error instanceof Error ? error.name : typeof error))
+      }
+      return { status: "saved", added: merged.length - (order?.lines.length ?? 0) }
+    },
     /** Stamps the waiting list's products 1C has again (warmZeytunLine, after each catalog refresh). */
     async markWaitlistArrivals(config: InboundPilotConfig): Promise<number> {
       if (!options.orders || !isLineGrant(config) || !config.orderOrganizationId || !(await allowedOrganization(config))) return 0

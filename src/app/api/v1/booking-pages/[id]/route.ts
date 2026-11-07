@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { bookingDb as prisma } from "@/lib/booking/db"
 import { withRlsAuth } from "@/lib/with-rls"
 import { bookingAccess, bookingHostWhere } from "@/lib/booking/access"
-import { bookingPageSchema, pagePriceData, slugTaken } from "@/lib/booking/page-input"
+import { bookingPageSchema, pageAddOnsData, pageHostVariantsData, pagePriceData, slugTaken } from "@/lib/booking/page-input"
 
 export const PATCH = withRlsAuth("bookings", "write", async (req: NextRequest, auth, { params }: { params: Promise<{ id: string }> }) => {
   const access = await bookingAccess(auth)
@@ -25,6 +25,8 @@ export const PATCH = withRlsAuth("bookings", "write", async (req: NextRequest, a
       await tx.bookingPage.updateMany({ where: { id, organizationId: auth.orgId }, data: {
         ...input,
         ...(await pagePriceData(auth.orgId, input.price)),
+        hostVariants: pageHostVariantsData(input),
+        addOns: pageAddOnsData(input),
         category: input.category || null,
         repeatCycleDays: input.repeatCycleDays ?? null,
         weekly: input.weekly as unknown as Prisma.InputJsonValue,

@@ -12,8 +12,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Hint } from "@/components/hint"
 import { BookingPageEditor, type BookingHostOption, type BookingPageDraft } from "@/components/booking/booking-page-editor"
 import { defaultWeeklyHours, parseWeeklyHours } from "@/lib/booking/availability"
+import { parseHostVariants } from "@/lib/booking/host-variants"
+import { parseAddOns } from "@/lib/booking/add-ons"
 
-interface PageRow extends Omit<BookingPageDraft, "description" | "locationText" | "price" | "category" | "repeatCycleDays"> {
+interface PageRow extends Omit<BookingPageDraft, "description" | "locationText" | "price" | "category" | "repeatCycleDays" | "hostVariants" | "addOns"> {
+  hostVariants: unknown
+  addOns: unknown
   id: string
   description: string | null
   locationText: string | null
@@ -39,6 +43,8 @@ function newDraft(hostIds: string[]): BookingPageDraft {
     locationType: "office",
     locationText: "",
     hostIds,
+    hostVariants: {},
+    addOns: [],
     weekly: defaultWeeklyHours(),
     price: "",
     category: "",
@@ -130,6 +136,8 @@ export default function BookingSettingsPage() {
       locationType: page.locationType,
       locationText: page.locationText ?? "",
       hostIds: page.hostIds,
+      hostVariants: parseHostVariants(page.hostVariants),
+      addOns: parseAddOns(page.addOns),
       weekly: parseWeeklyHours(page.weekly) ?? defaultWeeklyHours(),
       price: page.price ?? "",
       category: page.category ?? "",
@@ -170,6 +178,11 @@ export default function BookingSettingsPage() {
               hosts={users}
               categories={[...new Set(pages.map((page) => page.category?.trim()).filter((name): name is string => Boolean(name)))].sort()}
               linkBase={linkBase}
+              // This screen never read the organisation's currency or the AI
+              // module, and the editor must not guess either: no symbol and no
+              // «write it for me» beats a wrong symbol and a dead button.
+              currency=""
+              ai={false}
               saving={saving}
               error={error}
               onChange={setDraft}
