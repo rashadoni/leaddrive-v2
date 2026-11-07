@@ -21,7 +21,6 @@ import { DidYouKnow } from "@/components/did-you-know"
 import { useDebouncedValue } from "@/lib/client/use-debounced-value"
 import { EventsAnalytics } from "@/components/events/events-analytics"
 import { cn } from "@/lib/utils"
-import { useDebouncedValue } from "@/lib/client/use-debounced-value"
 
 const STATUS_STYLES: Record<string, string> = {
   planned: "bg-blue-100 text-blue-700",
