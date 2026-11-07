@@ -9,6 +9,7 @@ import { bookingDb as prisma } from "./db"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { parseWeeklyHours } from "./availability"
 import { normalizeAddOns } from "./add-ons"
+import { bookingPhotoPath } from "./service-photo"
 import { normalizeHostVariants } from "./host-variants"
 import { resolveOrgDefaultCurrency } from "@/lib/org-default-currency"
 
@@ -32,6 +33,8 @@ export const bookingPageSchema = z.object({
     price: z.union([z.string().max(20), z.number()]).nullable().optional(),
     durationMinutes: z.number().int().nullable().optional(),
   })).nullable().optional(),
+  /** A path under /uploads/booking-photos; `bookingPhotoPath` is the rule. */
+  photoUrl: z.string().max(300).nullable().optional(),
   /** Extras the customer may add; shape only — `normalizeAddOns` is the rule. */
   addOns: z.array(z.object({
     id: z.string().min(1).max(40),
@@ -76,6 +79,11 @@ export function pageHostVariantsData(input: BookingPageInput): Prisma.InputJsonV
     durationMinutes: input.durationMinutes,
   })
   return Object.keys(variants).length > 0 ? (variants as Prisma.InputJsonValue) : Prisma.DbNull
+}
+
+/** The picture, or none: never an address this CRM did not write itself. */
+export function pagePhotoData(input: BookingPageInput): string | null {
+  return bookingPhotoPath(input.photoUrl)
 }
 
 /** The extras as the column should hold them; nothing to add means SQL NULL. */

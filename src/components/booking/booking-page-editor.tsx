@@ -27,7 +27,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { ArrowLeft, Building2, Check, ChevronRight, CircleAlert, Clock3, Copy, Link2, Loader2, Phone, Plus, Sparkles, Trash2, Undo2, Video, Wallet } from "lucide-react"
+import { ArrowLeft, Building2, Check, ChevronRight, CircleAlert, Clock3, Copy, ImagePlus, Link2, Loader2, Phone, Plus, Sparkles, Trash2, Undo2, Video, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -59,6 +59,8 @@ export interface BookingPageDraft {
   hostVariants: HostVariants
   /** Extras the customer may add when booking this service. */
   addOns: ServiceAddOn[]
+  /** A path under /uploads/booking-photos, or none. */
+  photoUrl: string | null
   weekly: WeeklyHours
   bufferMinutes: number
   minNoticeMinutes: number
@@ -295,6 +297,8 @@ export function BookingPageEditor({
   const [newCategory, setNewCategory] = useState(false)
   const [perDayOpen, setPerDayOpen] = useState(false)
   const [perHostOpen, setPerHostOpen] = useState(false)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [photoError, setPhotoError] = useState("")
   const [aiBusy, setAiBusy] = useState(false)
   const [aiError, setAiError] = useState("")
   // What the field held before the model rewrote it. Improving text the owner
@@ -331,6 +335,27 @@ export function BookingPageEditor({
   }
   function toggleHost(id: string) {
     set("hostIds", draft.hostIds.includes(id) ? draft.hostIds.filter((hostId) => hostId !== id) : [...draft.hostIds, id])
+  }
+
+  /**
+   * The file goes to the server, which decodes it and writes a plain raster of
+   * its own; what comes back is the path the service stores. Nothing is saved
+   * until the owner presses Save, so a picture picked and then abandoned stays
+   * a file nobody references.
+   */
+  async function uploadPhoto(file: File) {
+    setPhotoBusy(true)
+    setPhotoError("")
+    const body = new FormData()
+    body.append("file", file)
+    const response = await fetch("/api/v1/booking-pages/photo", { method: "POST", body }).catch(() => null)
+    const payload = await response?.json().catch(() => null)
+    setPhotoBusy(false)
+    if (!response?.ok || !payload?.success || typeof payload?.data?.url !== "string") {
+      setPhotoError(t(payload?.code === "TOO_LARGE" ? "photoTooLarge" : payload?.code === "WRONG_TYPE" ? "photoWrongType" : "photoFailed"))
+      return
+    }
+    set("photoUrl", payload.data.url)
   }
 
   function addAddOn() {
@@ -543,6 +568,38 @@ export function BookingPageEditor({
               ) : null}
               {aiError ? <p className="mt-1.5 text-xs text-destructive" role="alert">{aiError}</p> : null}
             </div>
+
+            {/* Square and Booksy both sell with a picture; the client sees it
+                on the link before anything else. */}
+            <div className="mt-6">
+              <Label>{t("photoTitle")} {optional}</Label>
+              <div className="mt-1.5 flex flex-wrap items-center gap-3">
+                {draft.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={draft.photoUrl} alt="" className="h-20 w-20 shrink-0 rounded-xl border object-cover" />
+                ) : (
+                  <span aria-hidden="true" className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-dashed border-input text-muted-foreground">
+                    <ImagePlus className="h-5 w-5" />
+                  </span>
+                )}
+                <label className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full border border-input bg-card px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground focus-within:ring-2 focus-within:ring-ring">
+                  <input
+                    type="file"
+                    className="sr-only"
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={photoBusy}
+                    onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadPhoto(file) }}
+                  />
+                  {photoBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ImagePlus className="h-4 w-4" aria-hidden="true" />}
+                  {draft.photoUrl ? t("photoReplace") : t("photoAdd")}
+                </label>
+                {draft.photoUrl ? (
+                  <button type="button" onClick={() => set("photoUrl", null)} className="text-[13px] font-semibold text-muted-foreground underline-offset-4 hover:text-destructive hover:underline">{t("removeAction")}</button>
+                ) : null}
+                <span className="text-xs text-muted-foreground">{t("photoHint")}</span>
+              </div>
+              {photoError ? <p className="mt-1.5 text-xs text-destructive" role="alert">{photoError}</p> : null}
+            </div>
           </Section>
 
           <Section id={STEP_IDS[1]} title={t("stepWhere")}>
@@ -686,7 +743,7 @@ export function BookingPageEditor({
                       <button
                         type="button"
                         onClick={() => removeAddOn(addOn.id)}
-                        aria-label={`${t("delete")}: ${addOn.name || t("addOnName")}`}
+                        aria-label={`${t("removeAction")}: ${addOn.name || t("addOnName")}`}
                         className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -903,6 +960,10 @@ export function BookingPageEditor({
               <span aria-hidden="true" className="h-2 w-2 rounded-full bg-border" />
               <span className="ml-1 truncate text-[11px] text-muted-foreground">{linkBase}/{draft.slug || "…"}</span>
             </div>
+            {draft.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={draft.photoUrl} alt="" className="h-32 w-full object-cover" />
+            ) : null}
             <div className="p-5">
               {draft.category.trim() ? <span className="inline-block rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-primary">{draft.category.trim()}</span> : null}
               <h4 className={cn("mt-2 text-lg font-extrabold tracking-tight", draft.title.trim() ? "" : "text-muted-foreground")}>{draft.title.trim() || t("previewNoTitle")}</h4>

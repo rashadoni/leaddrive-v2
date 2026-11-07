@@ -10,7 +10,7 @@ import { withRlsAuth } from "@/lib/with-rls"
 import { orgHasModule } from "@/lib/api-auth"
 import { bookingPageUrl } from "@/lib/booking/book"
 import { bookingAccess, bookingHostWhere } from "@/lib/booking/access"
-import { bookingPageSchema, pageAddOnsData, pageHostVariantsData, pagePriceData, slugTaken } from "@/lib/booking/page-input"
+import { bookingPageSchema, pageAddOnsData, pageHostVariantsData, pagePhotoData, pagePriceData, slugTaken } from "@/lib/booking/page-input"
 import { resolveOrgDefaultCurrency } from "@/lib/org-default-currency"
 
 export const GET = withRlsAuth("bookings", "read", async (_req, auth) => {
@@ -72,6 +72,7 @@ export const POST = withRlsAuth("bookings", "write", async (req: NextRequest, au
         ...(await pagePriceData(auth.orgId, input.price)),
         hostVariants: pageHostVariantsData(input),
         addOns: pageAddOnsData(input),
+        photoUrl: pagePhotoData(input),
         category: input.category || null,
         repeatCycleDays: input.repeatCycleDays ?? null,
         weekly: input.weekly as unknown as Prisma.InputJsonValue,
