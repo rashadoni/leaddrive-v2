@@ -40,7 +40,7 @@ import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
 import { InlineTasksTable, type InlineTask, type InlineUser } from "@/components/tasks/inline-tasks-table"
 import { resolveLaneKey } from "@/lib/tasks/board-columns"
 import { fetchAllBoardTasks } from "@/lib/tasks/fetch-board-tasks"
-import { BOARD_VIEWS, DEFAULT_BOARD_VIEW, browserStorage, readBoardView, rememberBoardView, type BoardView } from "@/lib/tasks/board-view"
+import { BOARD_VIEWS, DEFAULT_BOARD_VIEW, type BoardView } from "@/lib/tasks/board-view"
 import { BoardCalendar } from "@/components/boards/board-calendar"
 import { BoardMembersPanel } from "@/components/boards/board-members-panel"
 import { BoardNotesPanel } from "@/components/boards/board-notes-panel"
@@ -197,18 +197,14 @@ function BoardInner() {
   const [showCreate, setShowCreate] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [openTaskId, setOpenTaskId] = useState<string | null>(null) // task open in the detail modal
-  // Opens as the table, like a Bordio project; a person's own pick is kept per board (src/lib/tasks/board-view.ts).
-  // Read after mount, not in the initializer: the server render has no localStorage.
-  const [view, setViewState] = useState<BoardView>(DEFAULT_BOARD_VIEW)
-  useEffect(() => {
-    setViewState(readBoardView(divisionId, browserStorage()))
-  }, [divisionId])
-  const setView = useCallback((next: BoardView) => {
-    setViewState(next)
-    rememberBoardView(divisionId, next, browserStorage())
-  }, [divisionId])
-  // «Üzvlər» is for the roles that may manage a board; anyone else whose saved
-  // view is that tab gets the table.
+  // Every board opens as the table, exactly like a Bordio project (owner,
+  // 2026-11-07: boards opened in different views — a remembered pick per board
+  // showed one as Kanban, another as the calendar). A tab chosen here lasts
+  // while this board is open; another board starts from the table again.
+  const [picked, setPicked] = useState<{ board: string; view: BoardView }>({ board: divisionId, view: DEFAULT_BOARD_VIEW })
+  const view: BoardView = picked.board === divisionId ? picked.view : DEFAULT_BOARD_VIEW
+  const setView = useCallback((next: BoardView) => setPicked({ board: divisionId, view: next }), [divisionId])
+  // «Üzvlər» is for the roles that may manage a board.
   const activeView: BoardView = view === "members" && !canManageBoard ? DEFAULT_BOARD_VIEW : view
   const [reportsReloadKey, setReportsReloadKey] = useState(0)
   const [showAllDone, setShowAllDone] = useState(false) // DONE column expanded in-place (vs navigating away)
