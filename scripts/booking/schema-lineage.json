@@ -25,6 +25,12 @@
       "migration": "20261130090000_booking_page_add_ons",
       "bookingAdditive": true,
       "note": "Extras a customer may add to a service, each with its own price and minutes: one nullable JSON column on booking_pages. A release that does not know it serves every page as before."
+    },
+    {
+      "schemaHash": "68f85a20deab253724e91100433e1d4f5988727d85967a2fb9217b20afad4687",
+      "migration": "20261201090000_booking_page_photo",
+      "bookingAdditive": true,
+      "note": "A picture of the service on its public page: one nullable column on booking_pages holding a path under /uploads/booking-photos."
     }
   ]
 }

@@ -223,6 +223,7 @@ export async function publicBookingView(orgId: string, pageId: string, now = new
       orgName: org.name,
       title: page.title,
       description: page.description,
+      photoUrl: page.photoUrl,
       durationMinutes: visit.durationMinutes,
       locationType: page.locationType as "office" | "phone" | "online",
       locationText: page.locationText,

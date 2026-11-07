@@ -26,6 +26,8 @@ export interface PublicBookingPage {
   orgName: string
   title: string
   description: string | null
+  /** A path under /uploads/booking-photos; absent where a view has none. */
+  photoUrl?: string | null
   durationMinutes: number
   locationType: "office" | "phone" | "online"
   locationText: string | null
@@ -107,6 +109,10 @@ export function BookingSummary({ page }: { page: PublicBookingPage }) {
   const from = !price && page.priceFrom ? servicePriceLabel({ price: page.priceFrom, priceCurrency: page.priceCurrency ?? null }, locale) : null
   return (
     <aside className="space-y-4 border-b pb-5 md:border-b-0 md:border-r md:pb-0 md:pr-6">
+      {page.photoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={page.photoUrl} alt="" className="h-40 w-full rounded-xl border object-cover" />
+      ) : null}
       <p className="text-sm font-medium text-muted-foreground">{page.orgName}</p>
       <h1 id="booking-title" className="text-2xl font-bold tracking-tight">{page.title}</h1>
       <ul className="space-y-2 text-sm text-muted-foreground">

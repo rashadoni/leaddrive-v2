@@ -65,7 +65,9 @@ SKIP_PATHS=(call-recordings)
 # and tenant-file-readers-guard.test.ts names each one with its reason). They
 # are copied like everything else — this list only keeps them out of the count
 # of plain files that should NOT be plain.
-PLAIN_BY_DESIGN=(logos email-images social-logos social-media-previews)
+# booking-photos: pictures of services, shown on the public booking link to
+# people who are not signed in — sealing them would make the page unreadable.
+PLAIN_BY_DESIGN=(logos email-images social-logos social-media-previews booking-photos)
 
 MODE=""
 RECIPIENT="${UPLOADS_OFFSITE_AGE_RECIPIENT:-}"
