@@ -60,7 +60,27 @@ export const externalTaskSchema = z.strictObject({
   checklist: z.array(z.strictObject({
     title: z.string().trim().min(1).max(500),
     completed: z.boolean(),
+    // Bordio subtasks have their own assignee and deadline (2026-11-07).
+    assigneeEmail: email.nullable().optional(),
+    dueDate: isoDate.nullable().optional(),
+    completedAt: isoDate.nullable().optional(),
   })).max(200).default([]),
+  // Bordio-style card fields (2026-11-07). Absent = leave as it is on a re-run.
+  startDate: isoDate.nullable().optional(),
+  reporterEmail: email.nullable().optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+  followerEmails: z.array(email).max(50).optional(),
+  estimatedMinutes: z.number().int().min(0).max(100_000).nullable().optional(),
+  // The other tool's own history of the task («changed the due date to …»),
+  // shown in the card's time line in its words. `externalId` keeps a re-run
+  // from writing an event twice.
+  events: z.array(z.strictObject({
+    externalId: z.string().min(1).max(120),
+    at: isoDate,
+    actorEmail: email.nullable().optional(),
+    actorName: z.string().trim().max(200).nullable().optional(),
+    text: z.string().trim().min(1).max(2000),
+  })).max(1000).optional(),
   comments: z.array(z.strictObject({
     authorEmail: email.nullable().optional(),
     authorName: z.string().trim().max(200).nullable().optional(),
@@ -77,6 +97,10 @@ export const externalImportSchema = z.strictObject({
   allowUnmatched: z.boolean().default(false),
   // Move tasks this source already put on another board of the organization.
   relocate: z.boolean().default(false),
+  // On tasks already brought over: rebuild the subtasks from the payload (with
+  // their assignees and deadlines) and add the events not written yet.
+  // Messages are never touched again.
+  refreshDetails: z.boolean().default(false),
   tasks: z.array(externalTaskSchema).min(1).max(EXTERNAL_IMPORT_MAX_TASKS),
 })
 
@@ -145,6 +169,10 @@ export async function importExternalTasks(
   for (const task of input.tasks) {
     task.assigneeEmails.forEach(want)
     want(task.creatorEmail)
+    want(task.reporterEmail)
+    task.followerEmails?.forEach(want)
+    task.checklist.forEach((item) => want(item.assigneeEmail))
+    task.events?.forEach((event) => want(event.actorEmail))
     task.comments.forEach((comment) => want(comment.authorEmail))
   }
   const users = wanted.size === 0 ? [] : await tx.user.findMany({
@@ -271,6 +299,46 @@ export async function importExternalTasks(
       completedAt,
       assignedTo,
       boardColumnKey: laneFor(task.status, division.boardColumns),
+      ...(task.startDate !== undefined ? { startDate: task.startDate ? new Date(task.startDate) : null } : {}),
+      ...(task.reporterEmail !== undefined ? { reporterId: userId(task.reporterEmail) } : {}),
+      ...(task.tags !== undefined ? { tags: [...new Set(task.tags)] } : {}),
+      ...(task.estimatedMinutes !== undefined
+        ? { estimatedHours: task.estimatedMinutes ? Math.round((task.estimatedMinutes / 60) * 100) / 100 : null }
+        : {}),
+    }
+    const writeChecklist = (taskId: string) => tx.taskChecklist.createMany({
+      data: task.checklist.map((item, sortOrder) => ({
+        organizationId, taskId, title: item.title, completed: item.completed, sortOrder,
+        assignedTo: userId(item.assigneeEmail),
+        dueDate: item.dueDate ? new Date(item.dueDate) : null,
+        completedAt: item.completed ? new Date(item.completedAt ?? task.completedAt ?? task.createdAt ?? now) : null,
+      })),
+    })
+    const writeDetails = async (taskId: string, isNew: boolean) => {
+      const followers = [...new Set((task.followerEmails ?? []).map(userId).filter((id): id is string => Boolean(id)))]
+      if (followers.length > 0) {
+        await tx.taskFollower.createMany({ data: followers.map((id) => ({ organizationId, taskId, userId: id })), skipDuplicates: true })
+      }
+      if (!isNew && input.refreshDetails) {
+        await tx.taskChecklist.deleteMany({ where: { organizationId, taskId } })
+        if (task.checklist.length > 0) await writeChecklist(taskId)
+      }
+      if (task.events?.length) {
+        const written = isNew ? [] : await tx.taskActivity.findMany({
+          where: { organizationId, taskId, action: "external_event" },
+          select: { metadata: true },
+        })
+        const seen = new Set(written.map((row) => (row.metadata as { externalEventId?: string } | null)?.externalEventId).filter(Boolean))
+        const fresh = task.events.filter((event) => !seen.has(event.externalId))
+        if (fresh.length > 0) {
+          await tx.taskActivity.createMany({
+            data: fresh.map((event) => ({
+              organizationId, taskId, userId: userId(event.actorEmail), action: "external_event", createdAt: new Date(event.at),
+              metadata: { importedFrom: input.source, externalEventId: event.externalId, text: event.text, actorName: event.actorName ?? null },
+            })),
+          })
+        }
+      }
     }
 
     const previous = existingById.get(task.externalId)
@@ -308,6 +376,7 @@ export async function importExternalTasks(
           skipDuplicates: true,
         })
       }
+      await writeDetails(previous.id, false)
       continue
     }
 
@@ -335,13 +404,8 @@ export async function importExternalTasks(
         skipDuplicates: true,
       })
     }
-    if (task.checklist.length > 0) {
-      await tx.taskChecklist.createMany({
-        data: task.checklist.map((item, sortOrder) => ({
-          organizationId, taskId: created.id, title: item.title, completed: item.completed, sortOrder,
-        })),
-      })
-    }
+    if (task.checklist.length > 0) await writeChecklist(created.id)
+    await writeDetails(created.id, true)
     if (task.comments.length > 0) {
       await tx.taskComment.createMany({
         data: task.comments.map((comment) => {

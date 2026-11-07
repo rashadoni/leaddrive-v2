@@ -78,6 +78,11 @@ export const updateTaskCommandSchema = z.object({
   // Co-assignees (replace-set; [] clears). Primary stays assignedTo; ids must
   // be org members (validated in the command); the primary is filtered out.
   collaboratorIds: z.array(z.string()).max(20).optional(),
+  // Bordio-style card (2026-11-07): when work starts, who set the task (apart
+  // from its author), free tags.
+  startDate:    z.string().nullable().optional(),
+  reporterId:   z.string().nullable().optional(),
+  tags:         z.array(z.string().trim().min(1).max(40)).max(20).optional(),
   expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
 })
 

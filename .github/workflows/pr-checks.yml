@@ -474,7 +474,7 @@ jobs:
         # task list pages through a board past 200 without losing a card.
         # Board notes («Qeydlər»): read by the board's people, written by those
         # who may edit it, invisible to anyone else; table under FORCE RLS.
-        run: npx vitest run src/__tests__/task-external-import-postgres.test.ts src/__tests__/board-notes-postgres.test.ts
+        run: npx vitest run src/__tests__/task-external-import-postgres.test.ts src/__tests__/board-notes-postgres.test.ts src/__tests__/task-card-postgres.test.ts
         env:
           TASK_EXTERNAL_IMPORT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           TASK_EXTERNAL_IMPORT_DB_GATE: required

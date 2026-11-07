@@ -273,6 +273,16 @@ export async function updateTaskCommand(
   if (data.dueDate !== undefined) {
     data.dueDate = data.dueDate ? new Date(data.dueDate as string) : null
   }
+  if (data.startDate !== undefined) {
+    data.startDate = data.startDate ? new Date(data.startDate as string) : null
+  }
+  if (parsed.data.reporterId) {
+    const reporter = await db.user.findFirst({ where: { id: parsed.data.reporterId, organizationId: orgId }, select: { id: true } })
+    if (!reporter) throw validationError("reporterId must be a member of this organization")
+  }
+  if (parsed.data.tags !== undefined) {
+    data.tags = [...new Set(parsed.data.tags.map((tag) => tag.trim()).filter(Boolean))]
+  }
   if (data.recurrenceEndAt !== undefined) {
     data.recurrenceEndAt = data.recurrenceEndAt ? new Date(data.recurrenceEndAt as string) : null
   }
@@ -312,6 +322,16 @@ export async function updateTaskCommand(
     acts.push({ action: "assignee_changed", oldValue: existing.assignedTo, newValue: parsed.data.assignedTo ?? null })
   if (parsed.data.title !== undefined && parsed.data.title !== existing.title)
     acts.push({ action: "title_changed", oldValue: existing.title, newValue: parsed.data.title ?? null })
+  // The card's time line (Bordio-style feed) also tells about dates, priority and the reporter.
+  const iso = (value: unknown) => (value instanceof Date ? value.toISOString() : null)
+  if (data.dueDate !== undefined && iso(data.dueDate) !== iso(existing.dueDate))
+    acts.push({ action: "due_date_changed", oldValue: iso(existing.dueDate), newValue: iso(data.dueDate) })
+  if (data.startDate !== undefined && iso(data.startDate) !== iso(existing.startDate))
+    acts.push({ action: "start_date_changed", oldValue: iso(existing.startDate), newValue: iso(data.startDate) })
+  if (parsed.data.priority !== undefined && parsed.data.priority !== existing.priority)
+    acts.push({ action: "priority_changed", oldValue: existing.priority, newValue: parsed.data.priority })
+  if (parsed.data.reporterId !== undefined && parsed.data.reporterId !== existing.reporterId)
+    acts.push({ action: "reporter_changed", oldValue: existing.reporterId, newValue: parsed.data.reporterId ?? null })
 
   const write = async (tx: Prisma.TransactionClient): Promise<Task> => {
     if (expectedDate) {
@@ -340,6 +360,17 @@ export async function updateTaskCommand(
     if (acts.length) {
       await tx.taskActivity.createMany({
         data: acts.map((a) => ({ organizationId: orgId, taskId, userId: userId || null, ...a })),
+      })
+    }
+    // A new assignee or reporter follows the task from now on (Bordio does the same).
+    const newFollowers = [
+      parsed.data.assignedTo && parsed.data.assignedTo !== existing.assignedTo ? parsed.data.assignedTo : null,
+      parsed.data.reporterId && parsed.data.reporterId !== existing.reporterId ? parsed.data.reporterId : null,
+    ].filter((id): id is string => Boolean(id))
+    if (newFollowers.length > 0) {
+      await tx.taskFollower.createMany({
+        data: newFollowers.map((followerId) => ({ organizationId: orgId, taskId, userId: followerId })),
+        skipDuplicates: true,
       })
     }
     return updated

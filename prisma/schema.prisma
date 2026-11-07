@@ -146,6 +146,8 @@ model Organization {
   divisions        Division[]
   boardPermissions BoardPermission[]
   boardNotes       BoardNote[]
+  taskFollowers    TaskFollower[]
+  taskTimeEntries  TaskTimeEntry[]
   boardColumns     BoardColumn[]
   taskActivities   TaskActivity[]
 
@@ -821,6 +823,10 @@ model User {
   // Jira-style Kanban board
   boardPermissions BoardPermission[]
   boardNotes       BoardNote[]       @relation("BoardNoteAuthor")
+  reportedTasks    Task[]            @relation("TaskReporter")
+  checklistItems   TaskChecklist[]   @relation("TaskChecklistAssignee")
+  taskFollows      TaskFollower[]    @relation("TaskFollows")
+  taskTimeEntries  TaskTimeEntry[]   @relation("TaskTimeEntries")
   taskActivities   TaskActivity[]
   headedDivisions  Division[]        @relation("DivisionHead")
 
@@ -1919,6 +1925,15 @@ model Task {
   // in "My tasks" and on their boards. Managed via collaboratorIds on the
   // tasks POST/PATCH routes (replace-set semantics).
   collaborators      TaskCollaborator[]
+  // Bordio-style card (owner, 2026-11-07): start date, the person who set the
+  // task (Bordio «Reporter», apart from its author), free tags, followers and
+  // logged time.
+  startDate          DateTime?
+  reporterId         String?
+  reporter           User?              @relation("TaskReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  tags               String[]           @default([])
+  followers          TaskFollower[]
+  timeEntries        TaskTimeEntry[]
 
   // Architect P1 — concurrent-completion race protection. Two PATCHes
   // hitting `complete` on the same recurring task simultaneously would
@@ -1969,10 +1984,53 @@ model TaskChecklist {
   title          String
   completed      Boolean      @default(false)
   sortOrder      Int          @default(0)
+  // A subtask has its own assignee and deadline (Bordio subtasks).
+  assignedTo     String?
+  assignee       User?        @relation("TaskChecklistAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+  dueDate        DateTime?
+  completedAt    DateTime?
   createdAt      DateTime     @default(now())
 
   @@index([taskId])
   @@map("task_checklists")
+}
+
+/// Who follows a task (Bordio «Following»): told about new messages and changes.
+model TaskFollower {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  taskId         String
+  task           Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation("TaskFollows", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([taskId, userId])
+  @@index([organizationId, userId])
+  @@map("task_followers")
+}
+
+/// Time spent on a task (Bordio «Start timer» / «Log time»). A running timer is
+/// a row without `endedAt`; one per person (partial unique index in the migration).
+model TaskTimeEntry {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  taskId         String
+  task           Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?        @relation("TaskTimeEntries", fields: [userId], references: [id], onDelete: SetNull)
+  source         String       @default("manual") // timer | manual
+  startedAt      DateTime
+  endedAt        DateTime?
+  minutes        Int?
+  note           String?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, taskId])
+  @@index([userId, endedAt])
+  @@map("task_time_entries")
 }
 
 model TaskComment {
@@ -1985,6 +2043,8 @@ model TaskComment {
   user           User?        @relation("TaskComments", fields: [userId], references: [id], onDelete: SetNull)
   content        String
   isSystem       Boolean      @default(false) // system-generated activity log entries
+  // Users @-mentioned in the message; each is told and starts following the task.
+  mentions       String[]     @default([])
   createdAt      DateTime     @default(now())
 
   @@index([taskId])

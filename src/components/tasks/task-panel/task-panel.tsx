@@ -1,0 +1,430 @@
+"use client"
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useLocale, useTranslations } from "next-intl"
+import {
+  Calendar, CalendarClock, ChevronsUp, Clock, Hourglass, Link2, MoreHorizontal, Paperclip, Play, Repeat, Square, Tag, Trash2, X,
+} from "lucide-react"
+import { useTaskTypes } from "@/components/tasks/use-task-types"
+import { ConfirmDialog } from "@/components/delete-confirm-dialog"
+import { formatDate } from "@/lib/format-date"
+import { TaskPanelFeed } from "@/components/tasks/task-panel/task-panel-feed"
+import { TaskPanelSubtasks, endOfDayIso, type Subtask } from "@/components/tasks/task-panel/task-panel-subtasks"
+
+/**
+ * The task card as a panel on the right of the board — Bordio's card (owner,
+ * 2026-11-07: «Как в Bordio, с макетом» → «да, сделай»). Left: the fields,
+ * each changed where it stands; the action chips (file, timer, write time,
+ * tag, repeat); the description; subtasks with their own people and dates.
+ * Right: the time line and the message box (task-panel-feed.tsx).
+ * The board stays visible to the left; Escape or ✕ closes.
+ */
+
+interface Person { id: string; name: string; avatar?: string | null }
+interface PanelTask {
+  id: string
+  divisionId: string | null
+  title: string
+  description: string | null
+  status: string
+  priority: string
+  type: string | null
+  taskKey: string | null
+  dueDate: string | null
+  startDate: string | null
+  assignedTo: string | null
+  assignee: Person | null
+  collaborators: { user: Person }[]
+  reporterId: string | null
+  reporter: Person | null
+  creator: { id: string; name: string } | null
+  tags: string[]
+  estimatedHours: string | number | null
+  recurrenceRule: string | null
+  customFields: Record<string, unknown> | null
+  checklist: Subtask[]
+  attachments: { id: string; fileName: string; originalName: string }[]
+  createdAt: string
+}
+interface TimeSummary { totalMinutes: number; running: { startedAt: string } | null }
+export interface PanelColumn { key: string; label: string; columnKey?: string }
+
+const PRIORITIES = ["low", "medium", "high", "urgent", "critical"] as const
+const REPEATS = ["", "daily", "weekly", "monthly", "yearly"] as const
+const dayInput = (iso: string | null | undefined) => {
+  if (!iso) return ""
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+/** «1:30» — hours and minutes, the same in every language. */
+const hoursText = (minutes: number) => `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`
+
+export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canEdit, onClose, onMutated }: {
+  taskId: string
+  /** The board's stages; without them (department view) the panel reads the task's own board. */
+  columns?: readonly PanelColumn[]
+  /** «Digital Marketing / Pharmastore» — where the task lives. */
+  path?: string
+  canEdit: boolean
+  onClose: () => void
+  onMutated: () => void
+}) {
+  const t = useTranslations("taskPanel")
+  const locale = useLocale()
+  const { types } = useTaskTypes(true)
+  const [task, setTask] = useState<PanelTask | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [people, setPeople] = useState<Person[]>([])
+  const [brandOptions, setBrandOptions] = useState<string[] | null>(null)
+  const [time, setTime] = useState<TimeSummary | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [tagDraft, setTagDraft] = useState<string | null>(null)
+  const [logDraft, setLogDraft] = useState<string | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const reload = useCallback(() => setReloadKey((key) => key + 1), [])
+  const [boardInfo, setBoardInfo] = useState<{ columns: PanelColumn[]; path: string } | null>(null)
+  const taskBoard = task?.divisionId ?? null
+  const needBoard = !givenColumns?.length && Boolean(taskBoard)
+  useEffect(() => {
+    if (!needBoard || !taskBoard) return
+    let alive = true
+    fetch("/api/v1/divisions", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!alive) return
+        const list = (json?.data?.divisions ?? []) as { id: string; name: string; parentDivisionId?: string | null; boardColumns?: { key: string; label: string; mapsToStatus: string }[] }[]
+        const board = list.find((d) => d.id === taskBoard)
+        if (!board) return
+        setBoardInfo({
+          columns: (board.boardColumns ?? []).map((c) => ({ key: c.mapsToStatus, label: c.label, columnKey: c.key })),
+          path: [list.find((d) => d.id === board.parentDivisionId)?.name, board.name].filter(Boolean).join(" / "),
+        })
+      })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [needBoard, taskBoard])
+  const columns: readonly PanelColumn[] = useMemo(
+    () => (givenColumns?.length ? givenColumns : boardInfo?.columns ?? []),
+    [givenColumns, boardInfo],
+  )
+  const path = givenPath || boardInfo?.path
+
+  useEffect(() => {
+    let alive = true
+    Promise.all([
+      fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}`, { credentials: "include" }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))),
+      fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/time`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]).then(([taskJson, timeJson]) => {
+      if (!alive) return
+      const loaded = taskJson.data as PanelTask
+      setTask(loaded)
+      setTitle(loaded.title)
+      setDescription(loaded.description ?? "")
+      setTime(timeJson?.data ?? null)
+      setFailed(false)
+    }).catch(() => { if (alive) setFailed(true) })
+    return () => { alive = false }
+  }, [taskId, reloadKey])
+
+  useEffect(() => {
+    let alive = true
+    Promise.all([
+      fetch("/api/v1/users/assignable", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/v1/custom-fields?entityType=task", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]).then(([usersJson, fieldsJson]) => {
+      if (!alive) return
+      setPeople((usersJson?.data ?? []) as Person[])
+      const brand = ((fieldsJson?.data ?? []) as { fieldName: string; options?: string[]; isActive?: boolean }[]).find((f) => f.fieldName === "brand" && f.isActive !== false)
+      setBrandOptions(brand?.options ?? null)
+    })
+    return () => { alive = false }
+  }, [])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [onClose])
+
+  const running = Boolean(time?.running)
+  useEffect(() => {
+    if (!running) return
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [running])
+
+  const patch = useCallback(async (fields: Record<string, unknown>) => {
+    setError(null)
+    const res = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(fields),
+    }).catch(() => null)
+    if (!res?.ok) {
+      const json = await res?.json().catch(() => null)
+      setError(json?.error ?? t("saveFailed"))
+    }
+    reload()
+    onMutated()
+  }, [taskId, reload, onMutated, t])
+
+  const timeAction = async (body: Record<string, unknown>) => {
+    const res = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/time`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body),
+    }).catch(() => null)
+    if (res?.ok) setTime((await res.json()).data)
+    else setError(t("saveFailed"))
+    reload()
+  }
+
+  const upload = async (file: File) => {
+    const form = new FormData()
+    form.append("file", file)
+    const res = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/files`, { method: "POST", credentials: "include", body: form }).catch(() => null)
+    if (!res?.ok) setError(t("uploadFailed"))
+    reload()
+  }
+
+  const statusLabel = useCallback((value: string) => columns.find((c) => c.key === value)?.label ?? value, [columns])
+  const statusValue = useMemo(() => (task ? columns.find((c) => c.key === task.status)?.key ?? task.status : ""), [columns, task])
+  const runningSeconds = time?.running ? Math.max(0, Math.floor((now - new Date(time.running.startedAt).getTime()) / 1000)) : 0
+  const people4mention = useMemo(() => people.map((p) => ({ id: p.id, name: p.name })), [people])
+
+  const field = (label: string, control: React.ReactNode, icon?: React.ReactNode) => (
+    <>
+      <span className="flex items-center gap-1.5 py-1 text-sm text-muted-foreground">{icon}{label}</span>
+      <div className="min-w-0 py-1 text-sm">{control}</div>
+    </>
+  )
+  const selectClass = "w-full max-w-xs rounded-md border border-transparent bg-transparent px-1.5 py-1 hover:border-border focus:border-border disabled:opacity-70"
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label={task?.title ?? t("task")}>
+      <button type="button" aria-label={t("close")} onClick={onClose} className="hidden flex-1 bg-black/25 md:block" />
+      <div className="flex h-full w-full max-w-[1120px] flex-col overflow-hidden border-l bg-background shadow-2xl md:w-[88vw]" data-crm-dialog="">
+        {failed ? (
+          <div className="p-6">
+            <p className="text-sm text-destructive">{t("loadFailed")}</p>
+            <button type="button" onClick={onClose} className="mt-3 rounded-md border px-3 py-1.5 text-sm">{t("close")}</button>
+          </div>
+        ) : !task ? (
+          <p className="p-6 text-sm text-muted-foreground">{t("loading")}</p>
+        ) : (
+          <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+            <div className="min-h-0 overflow-y-auto border-r px-6 py-4" data-testid="task-panel">
+              <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="min-w-0 truncate">{path ? `${path} / ` : ""}<b className="font-semibold text-foreground">{task.taskKey ?? ""}</b></span>
+                <div className="relative ml-auto flex items-center gap-1">
+                  <button type="button" aria-label={t("more")} onClick={() => setMenuOpen((v) => !v)} className="rounded p-1.5 hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>
+                  {menuOpen && (
+                    <div className="absolute right-0 top-8 z-10 min-w-40 rounded-md border bg-background py-1 shadow-lg">
+                      <a href={`/tasks/${task.id}`} className="block px-3 py-1.5 text-sm hover:bg-muted">{t("openFull")}</a>
+                      {canEdit && (
+                        <button type="button" onClick={() => { setMenuOpen(false); setConfirmDelete(true) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-destructive hover:bg-muted">
+                          <Trash2 className="h-4 w-4" /> {t("delete")}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <button type="button" aria-label={t("copyLink")} onClick={() => void navigator.clipboard?.writeText(`${window.location.origin}/tasks/${task.id}`)} className="rounded p-1.5 hover:bg-muted"><Link2 className="h-4 w-4" /></button>
+                  <button type="button" aria-label={t("close")} onClick={onClose} className="rounded p-1.5 hover:bg-muted"><X className="h-5 w-5" /></button>
+                </div>
+              </div>
+
+              <textarea
+                value={title}
+                readOnly={!canEdit}
+                onChange={(e) => setTitle(e.target.value)}
+                onBlur={() => { if (title.trim() && title.trim() !== task.title) void patch({ title: title.trim() }); else setTitle(task.title) }}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLTextAreaElement).blur() } }}
+                rows={Math.max(1, Math.ceil(title.length / 48))}
+                className="mb-3 w-full resize-none rounded-md border border-transparent bg-transparent px-1 text-xl font-semibold leading-snug hover:border-border focus:border-border focus:outline-none"
+              />
+
+              {error && <p className="mb-2 text-sm text-destructive">{error}</p>}
+
+              <div className="grid grid-cols-[9.5rem_minmax(0,1fr)] items-center gap-x-3">
+                {field(t("status"), (
+                  <select disabled={!canEdit} value={statusValue} onChange={(e) => {
+                    const column = columns.find((c) => c.key === e.target.value)
+                    void patch({ status: e.target.value, ...(column?.columnKey ? { boardColumnKey: column.columnKey } : {}) })
+                  }} className={selectClass}>
+                    {columns.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                    {!columns.some((c) => c.key === task.status) && <option value={task.status}>{task.status}</option>}
+                  </select>
+                ))}
+                {field(t("dueDate"), (
+                  <input type="date" disabled={!canEdit} value={dayInput(task.dueDate)} onChange={(e) => void patch({ dueDate: endOfDayIso(e.target.value) })} className={selectClass} />
+                ), <Calendar className="h-4 w-4" />)}
+                {field(t("startDate"), (
+                  <input type="date" disabled={!canEdit} value={dayInput(task.startDate)} onChange={(e) => void patch({ startDate: e.target.value ? new Date(`${e.target.value}T00:00:00`).toISOString() : null })} className={selectClass} />
+                ), <CalendarClock className="h-4 w-4" />)}
+                {field(t("priority"), (
+                  <select disabled={!canEdit} value={task.priority} onChange={(e) => void patch({ priority: e.target.value })} className={selectClass}>
+                    {PRIORITIES.map((p) => <option key={p} value={p}>{t(`priorities.${p}` as never)}</option>)}
+                  </select>
+                ), <ChevronsUp className="h-4 w-4" />)}
+                {field(t("assignee"), (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <select disabled={!canEdit} value={task.assignedTo ?? ""} onChange={(e) => void patch({ assignedTo: e.target.value || null })} className={`${selectClass} max-w-[12rem]`}>
+                      <option value="">{t("nobody")}</option>
+                      {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                    {task.collaborators.map(({ user }) => (
+                      <span key={user.id} className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs">
+                        {user.name}
+                        {canEdit && <button type="button" aria-label={t("remove")} onClick={() => void patch({ collaboratorIds: task.collaborators.map((c) => c.user.id).filter((id) => id !== user.id) })}><X className="h-3 w-3" /></button>}
+                      </span>
+                    ))}
+                    {canEdit && (
+                      <select value="" aria-label={t("addPerson")} onChange={(e) => { if (e.target.value) void patch({ collaboratorIds: [...task.collaborators.map((c) => c.user.id), e.target.value] }) }} className="rounded-md border border-dashed bg-transparent px-1.5 py-0.5 text-xs text-muted-foreground">
+                        <option value="">+ {t("addPerson")}</option>
+                        {people.filter((p) => p.id !== task.assignedTo && !task.collaborators.some((c) => c.user.id === p.id)).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    )}
+                  </div>
+                ))}
+                {field(t("reporter"), (
+                  <select disabled={!canEdit} value={task.reporterId ?? ""} onChange={(e) => void patch({ reporterId: e.target.value || null })} className={selectClass}>
+                    <option value="">{task.creator ? t("reporterIsAuthor", { name: task.creator.name }) : t("nobody")}</option>
+                    {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                ))}
+                {field(t("type"), (
+                  <select disabled={!canEdit} value={task.type ?? ""} onChange={(e) => void patch({ type: e.target.value })} className={selectClass}>
+                    {types.map((type) => <option key={type.name} value={type.name}>{type.displayName}</option>)}
+                    {task.type && !types.some((type) => type.name === task.type) && <option value={task.type}>{task.type}</option>}
+                  </select>
+                ))}
+                {brandOptions && field(t("brand"), (
+                  <select disabled={!canEdit} value={String(task.customFields?.brand ?? "")} onChange={(e) => void patch({ customFields: { brand: e.target.value || null } })} className={selectClass}>
+                    <option value="">—</option>
+                    {brandOptions.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
+                  </select>
+                ))}
+                {field(t("estimate"), (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="number" min={0} step={0.5} disabled={!canEdit}
+                      defaultValue={task.estimatedHours === null ? "" : String(Number(task.estimatedHours))}
+                      key={`est-${task.estimatedHours}`}
+                      onBlur={(e) => { const v = e.target.value === "" ? null : Number(e.target.value); if (v !== (task.estimatedHours === null ? null : Number(task.estimatedHours))) void patch({ estimatedHours: v }) }}
+                      className="w-20 rounded-md border bg-transparent px-1.5 py-0.5"
+                    />
+                    <span className="text-muted-foreground">{t("hoursShort")}</span>
+                    <span className="text-muted-foreground">· {t("spent")} {hoursText((time?.totalMinutes ?? 0) + Math.floor(runningSeconds / 60))}</span>
+                  </div>
+                ), <Clock className="h-4 w-4" />)}
+                {task.tags.length > 0 && field(t("tags"), (
+                  <div className="flex flex-wrap gap-1.5">
+                    {task.tags.map((tag) => (
+                      <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
+                        #{tag}
+                        {canEdit && <button type="button" aria-label={t("remove")} onClick={() => void patch({ tags: task.tags.filter((x) => x !== tag) })}><X className="h-3 w-3" /></button>}
+                      </span>
+                    ))}
+                  </div>
+                ), <Tag className="h-4 w-4" />)}
+                {task.recurrenceRule && field(t("repeat"), <span>{t(`repeats.${task.recurrenceRule.split(":")[0]}` as never)}</span>, <Repeat className="h-4 w-4" />)}
+              </div>
+
+              {canEdit && (
+                <div className="my-4 flex flex-wrap items-center gap-2">
+                  <input ref={fileRef} type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); e.target.value = "" }} />
+                  <button type="button" data-crm-button="" onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm"><Paperclip className="h-4 w-4" /> {t("attach")}</button>
+                  {time?.running ? (
+                    <button type="button" data-crm-button="" onClick={() => void timeAction({ action: "stop" })} className="inline-flex items-center gap-1.5 rounded-md border border-primary px-2.5 py-1 text-sm text-primary">
+                      <Square className="h-4 w-4" /> {t("stopTimer")} {String(Math.floor(runningSeconds / 3600)).padStart(2, "0")}:{String(Math.floor((runningSeconds % 3600) / 60)).padStart(2, "0")}:{String(runningSeconds % 60).padStart(2, "0")}
+                    </button>
+                  ) : (
+                    <button type="button" data-crm-button="" onClick={() => void timeAction({ action: "start" })} className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm"><Play className="h-4 w-4" /> {t("startTimer")}</button>
+                  )}
+                  {logDraft === null ? (
+                    <button type="button" data-crm-button="" onClick={() => setLogDraft("")} className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm"><Hourglass className="h-4 w-4" /> {t("logTime")}</button>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-sm">
+                      <input autoFocus type="number" min={1} placeholder={t("minutes")} value={logDraft} onChange={(e) => setLogDraft(e.target.value)} className="w-20 bg-transparent outline-none" />
+                      <button type="button" onClick={() => { const m = Number(logDraft); if (m > 0) void timeAction({ action: "log", minutes: Math.round(m) }); setLogDraft(null) }} className="font-medium text-primary">{t("save")}</button>
+                      <button type="button" aria-label={t("cancel")} onClick={() => setLogDraft(null)}><X className="h-3.5 w-3.5" /></button>
+                    </span>
+                  )}
+                  {tagDraft === null ? (
+                    <button type="button" data-crm-button="" onClick={() => setTagDraft("")} className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm"><Tag className="h-4 w-4" /> {t("addTag")}</button>
+                  ) : (
+                    <input
+                      autoFocus value={tagDraft} placeholder={t("tagPlaceholder")}
+                      onChange={(e) => setTagDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && tagDraft.trim()) { void patch({ tags: [...task.tags, tagDraft.trim().replace(/^#/, "")] }); setTagDraft(null) }
+                        if (e.key === "Escape") setTagDraft(null)
+                      }}
+                      onBlur={() => setTagDraft(null)}
+                      className="w-36 rounded-md border px-2 py-1 text-sm"
+                    />
+                  )}
+                  <label className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm">
+                    <Repeat className="h-4 w-4" />
+                    <select value={(task.recurrenceRule ?? "").split(":")[0]} aria-label={t("repeat")} onChange={(e) => void patch({ recurrenceRule: e.target.value || null })} className="bg-transparent outline-none">
+                      {REPEATS.map((rule) => <option key={rule} value={rule}>{rule ? t(`repeats.${rule}` as never) : t("noRepeat")}</option>)}
+                    </select>
+                  </label>
+                </div>
+              )}
+
+              <section className="border-t pt-4">
+                <h3 className="mb-2 text-sm font-semibold">{t("description")}</h3>
+                <textarea
+                  value={description}
+                  readOnly={!canEdit}
+                  onChange={(e) => setDescription(e.target.value)}
+                  onBlur={() => { if (description !== (task.description ?? "")) void patch({ description }) }}
+                  rows={Math.max(3, description.split("\n").length + 1)}
+                  placeholder={canEdit ? t("descriptionPlaceholder") : ""}
+                  className="w-full resize-none rounded-md border border-transparent bg-transparent px-1 text-sm leading-6 hover:border-border focus:border-border focus:outline-none"
+                />
+              </section>
+
+              {task.attachments.length > 0 && (
+                <section className="border-t py-3">
+                  <h3 className="mb-2 text-sm font-semibold">{t("files")}</h3>
+                  <ul className="flex flex-col gap-1">
+                    {task.attachments.map((file) => (
+                      <li key={file.id}><a href={`/uploads/tasks/${file.fileName}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm hover:underline"><Paperclip className="h-3.5 w-3.5" />{file.originalName}</a></li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              <TaskPanelSubtasks taskId={task.id} items={task.checklist} people={people} canEdit={canEdit} onChanged={() => { reload(); onMutated() }} />
+
+              <p className="mt-6 text-xs text-muted-foreground">
+                {t("createdBy", { name: task.creator?.name ?? "—", date: formatDate(task.createdAt, locale, { day: "numeric", month: "short", year: "numeric" }) })}
+              </p>
+            </div>
+
+            <div className="min-h-0">
+              <TaskPanelFeed taskId={task.id} people={people4mention} statusLabel={statusLabel} reloadKey={reloadKey} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        itemName={task?.title}
+        onConfirm={async () => {
+          const res = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}`, { method: "DELETE", credentials: "include" })
+          if (!res.ok) throw new Error(t("saveFailed"))
+          onMutated()
+          onClose()
+        }}
+      />
+    </div>
+  )
+}

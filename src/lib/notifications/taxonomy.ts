@@ -158,6 +158,9 @@ export const NOTIFICATION_KINDS: NotificationKind[] = (
     { kind: "booking.cancelled", entityType: "booking" },
     { kind: "task.created",     entityType: "task" },
     { kind: "task.completed",   entityType: "task" },
+    // Bordio-style task card (2026-11-07): a message on a task you follow, and an @-mention.
+    { kind: "task.comment",     entityType: "task" },
+    { kind: "task.mentioned",   entityType: "task" },
     { kind: "deal.created",     entityType: "deal" },
     { kind: "deal.won",         entityType: "deal" },
     { kind: "deal.lost",        entityType: "deal" },
