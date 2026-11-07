@@ -5493,7 +5493,12 @@
     "replyLanguageEn": "English only",
     "portalAddEmail": "Add email first",
     "portalEmailReadiness": "Add an email address to the contact, then enable portal access.",
-    "portalBulkReadiness": "{count} selected contacts need an email address or an active CRM profile. Edit them or remove them from this selection."
+    "portalBulkReadiness": "{count} selected contacts need an email address or an active CRM profile. Edit them or remove them from this selection.",
+    "module_bookings": "Meetings",
+    "module_social-legal": "Social monitoring legal cases",
+    "moduleHint_bookings": "No role can delete meetings; Viewer does not see them.",
+    "roleNotAssignable": "cannot be assigned",
+    "roleNotAssignableHint": "The organization's own role: the system does not enforce its rights, so it cannot be given to a user."
   },
   "approvalDelegates": {
     "title": "Approval Delegation",

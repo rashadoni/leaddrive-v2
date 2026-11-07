@@ -43,7 +43,7 @@ describe("what one person gets — modules", () => {
     expect(sales.outcome).toBe("mixed")
     expect(sales.parts).toEqual([
       { level: "full", scopes: ["deals"] },
-      { level: "edit", scopes: ["leads", "offers"] },
+      { level: "edit", scopes: ["leads", "offers", "bookings"] },
     ])
   })
 
@@ -56,12 +56,26 @@ describe("what one person gets — modules", () => {
     expect(finance.parts[finance.parts.length - 1].level).toBe("none")
   })
 
-  it("a viewer reads every module and changes none", () => {
-    expect([...new Set(Object.values(outcomes("viewer")))]).toEqual(["view"])
+  // Meetings are the one exception in checkPermission: no role deletes them and
+  // the viewer's read-everything wildcard does not reach them. Since they are
+  // listed under Sales (audit 2026-11-07), the card says so instead of
+  // promising «everything» there.
+  it("a viewer reads every module and changes none — except Meetings, which they do not see", () => {
+    const result = outcomes("viewer")
+    expect([...new Set(Object.entries(result).filter(([id]) => id !== "sales").map(([, outcome]) => outcome))]).toEqual(["view"])
+    expect(moduleAccessOutcome("viewer", [], "sales").parts).toEqual([
+      { level: "view", scopes: ["deals", "leads", "offers"] },
+      { level: "none", scopes: ["bookings"] },
+    ])
   })
 
-  it("an admin gets everything whatever ticks are stored on the row", () => {
-    expect([...new Set(Object.values(outcomes("admin", ROUTE_AND_FIELD_ONLY)))]).toEqual(["full"])
+  it("an admin gets everything whatever ticks are stored on the row — Meetings without delete", () => {
+    const result = outcomes("admin", ROUTE_AND_FIELD_ONLY)
+    expect([...new Set(Object.entries(result).filter(([id]) => id !== "sales").map(([, outcome]) => outcome))]).toEqual(["full"])
+    expect(moduleAccessOutcome("admin", [], "sales").parts).toEqual([
+      { level: "full", scopes: ["deals", "leads", "offers"] },
+      { level: "edit", scopes: ["bookings"] },
+    ])
   })
 
   it("a role the engine does not know gets nothing in any visible module", () => {
@@ -173,6 +187,21 @@ describe("the card's rows cannot drift from enforcement or from the copy", () =>
       }
     }
     expect(misfiled).toEqual([])
+  })
+
+  // Audit 2026-11-07: «Görüşlər» (/meetings) had a sidebar page and its own rule
+  // in checkPermission, and no row anywhere — the role table said nothing about
+  // who may book. A page that names a permission scope is now listed under its tick.
+  it("lists every scope a sidebar page is gated by", () => {
+    const missing: string[] = []
+    for (const item of navItems) {
+      if (!item.permissionScope) continue
+      const id = hideableIdForGateModule(PERMISSION_MODULE_TO_MODULE_ID[item.permissionScope] ?? item.permissionScope)
+      // Settings pages have no tick; the table lists settings/users/audit itself.
+      if (!(USER_HIDEABLE_MODULE_IDS as readonly string[]).includes(id)) continue
+      if (!HIDEABLE_MODULE_SCOPES[id as UserHideableId].includes(item.permissionScope)) missing.push(`${item.tKey}: ${item.permissionScope} under ${id}`)
+    }
+    expect(missing).toEqual([])
   })
 
   it.each(["en", "ru", "az"])("%s has every label a row can show", (locale) => {

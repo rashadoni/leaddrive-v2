@@ -5493,7 +5493,12 @@
     "replyLanguageEn": "Yalnız ingilis dili",
     "portalAddEmail": "Əvvəlcə e-poçt əlavə edin",
     "portalEmailReadiness": "Kontakta e-poçt əlavə edin, sonra portal girişini aktivləşdirin.",
-    "portalBulkReadiness": "Seçilmiş {count} kontakt üçün e-poçt və ya aktiv CRM profili lazımdır. Onları dəyişin və ya seçimdən çıxarın."
+    "portalBulkReadiness": "Seçilmiş {count} kontakt üçün e-poçt və ya aktiv CRM profili lazımdır. Onları dəyişin və ya seçimdən çıxarın.",
+    "module_bookings": "Görüşlər",
+    "module_social-legal": "Sosial monitorinqin hüquqi işləri",
+    "moduleHint_bookings": "Heç bir rol görüşləri silə bilməz; «Müşahidəçi» onları görmür.",
+    "roleNotAssignable": "təyin etmək olmur",
+    "roleNotAssignableHint": "Təşkilatın öz rolu: sistem onun hüquqlarını tətbiq etmir, ona görə istifadəçiyə vermək olmur."
   },
   "approvalDelegates": {
     "title": "Təsdiqlə Nümayəndəlik",

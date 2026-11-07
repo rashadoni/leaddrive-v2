@@ -169,7 +169,7 @@ describe("user card — what this person gets", () => {
     await act(async () => { sales?.querySelector<HTMLInputElement>("input")?.click() })
 
     expect(rows()["Продажи"]).toEqual([
-      true, "По-разному", "Сделки, Лиды: всё, включая удаление · Предложения: просмотр и правка",
+      true, "По-разному", "Сделки, Лиды: всё, включая удаление · Предложения, Встречи: просмотр и правка",
     ])
   })
 
@@ -183,7 +183,8 @@ describe("user card — what this person gets", () => {
     await choose(role, "admin")
     const admin = rows()
     expect([...new Set(Object.values(admin).map(([tick]) => tick))]).toEqual([null])
-    expect(admin["Продажи"]).toEqual([null, "Всё, включая удаление", null])
+    // Meetings: nobody deletes them, the admin included (checkPermission).
+    expect(admin["Продажи"]).toEqual([null, "По-разному", "Сделки, Лиды, Предложения: всё, включая удаление · Встречи: просмотр и правка"])
     expect(admin["Маршруты и поле · Персонал"]).toEqual([
       null, "Всё, включая удаление", "Администратор видит всё поле без карточки сотрудника.",
     ])
