@@ -35,6 +35,9 @@ const PLAIN_BY_DESIGN = new Map<string, string>([
 const PLAIN_WRITERS = new Map<string, string>([
   // Served without a session (email clients, login page): encryption would protect nothing.
   ["app/api/v1/admin/upload-logo/route.ts", "public tenant logos"],
+  // The booking link is opened by people who are not signed in, so a sealed
+  // picture of the service would show them nothing (lib/booking/service-photo.ts).
+  ["app/api/v1/booking-pages/photo/route.ts", "pictures of services on the public booking page"],
   ["app/api/v1/email-templates/upload-image/route.ts", "public email images"],
   ["app/api/v1/social/monitoring-profiles/[id]/logo/route.ts", "brand logos of monitored profiles"],
   // Deleted right after the SMTP send.
