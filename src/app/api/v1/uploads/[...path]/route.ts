@@ -110,6 +110,8 @@ const MIME: Record<string, string> = {
   txt:  "text/plain",
   zip:  "application/zip",
   rar:  "application/vnd.rar",
+  // Voice notes on tasks (Bordio, 2026-11-07) play in the browser; .msg stays a download.
+  ogg:  "audio/ogg",
 }
 
 function mimeFor(filename: string): string {

@@ -21,6 +21,14 @@ describe("validateUploadBytes", () => {
     expect(validateUploadBytes("text/plain", bytes(0x68, 0x69, 0x00))).toContain("binary")
   })
 
+  it("accepts a PowerPoint, an Ogg voice note and an Outlook message by their own signatures", () => {
+    expect(validateUploadBytes("application/vnd.openxmlformats-officedocument.presentationml.presentation", bytes(0x50, 0x4b, 0x03, 0x04))).toBeNull()
+    expect(validateUploadBytes("audio/ogg", text("OggS\u0000"))).toBeNull()
+    expect(validateUploadBytes("audio/ogg", text("<html>"))).toContain("Ogg")
+    expect(validateUploadBytes("application/vnd.ms-outlook", bytes(0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1))).toBeNull()
+    expect(validateUploadBytes("application/vnd.ms-outlook", text("From: x"))).toContain("legacy Office")
+  })
+
   it("accepts ZIP-based Office signatures", () => {
     expect(validateUploadBytes("application/vnd.openxmlformats-officedocument.wordprocessingml.document", bytes(0x50, 0x4b, 0x03, 0x04))).toBeNull()
   })
