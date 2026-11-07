@@ -38,7 +38,8 @@ export function enforcedAccessLevel(roleId: string, scope: string): AccessLevel 
  * gate does not put it in.
  */
 export const HIDEABLE_MODULE_SCOPES: Record<UserHideableId, readonly string[]> = {
-  crm: ["companies", "contacts", "tasks", "projects"],
+  crm: ["companies", "contacts", "projects"],
+  boards: ["tasks"],
   sales: ["deals", "leads", "offers"],
   contracts: ["contracts"],
   marketing: ["campaigns", "journeys", "segments", "events"],

@@ -50,7 +50,7 @@ export const POST = withRlsAuth("tasks", "write", async (req, auth, { params }: 
     )
     if (!result.dryRun) {
       logAudit(auth.orgId, "import", "division", id, parsed.data.source, {
-        newValue: { source: parsed.data.source, created: result.created, updated: result.updated },
+        newValue: { source: parsed.data.source, created: result.created, updated: result.updated, moved: result.moved },
       })
     }
     return NextResponse.json({ success: true, data: result })

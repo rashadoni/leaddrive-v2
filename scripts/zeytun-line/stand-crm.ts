@@ -112,7 +112,9 @@ export function historyFor(catalog: InboundPilotCatalog, spec: HistorySpec): Pha
 
 /** secondEar: the line's Chirp (voice-stand.ts); without it the session does not ask the station for phrases.
  * learned: what confirmed orders taught the line (chain-stand.ts --hints ordered); without it the stand's line has learned nothing. */
-export function crmFor(catalog: InboundPilotCatalog, saves: Save[], history?: PharmacyHistory, secondEar?: ZeytunSecondEar, learned?: LearnedNames) {
+export function crmFor(catalog: InboundPilotCatalog, saves: Save[], history?: PharmacyHistory, secondEar?: ZeytunSecondEar, learned?: LearnedNames,
+  /** The products the stand's pharmacy orders, most ordered first (line-stand.ts --usual): a known pharmacy. */
+  usual?: readonly string[]) {
   const token = randomUUID().replaceAll("-", "")
   const now = Date.now()
   const config = {
@@ -136,6 +138,7 @@ export function crmFor(catalog: InboundPilotCatalog, saves: Save[], history?: Ph
     ...(history ? { pharmacyHistory: async () => history } : {}),
     ...(secondEar ? { secondEar } : {}),
     ...(learned ? { learnedNames: () => learned } : {}),
+    ...(usual?.length ? { pharmacyAssortment: () => ({ ordered: usual, ids: new Set(usual), sources: ["stand"] }) } : {}),
     // The order writer's answer, without a database: the CRM's own line resolution.
     saveOrder: async (_config, _call, orderCatalog, lines, _pharmacy, delivery) => {
       const resolved = resolvePhoneOrderLines(orderCatalog, lines)

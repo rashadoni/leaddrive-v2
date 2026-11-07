@@ -36,12 +36,25 @@ export const NEW_VOCAB_GROUP_IDS = [
 export const ADDON_FLAG_IDS = ["ai", "voip"] as const
 export type AddonFlagId = (typeof ADDON_FLAG_IDS)[number]
 
-export type ModuleId = GroupModuleId | AddonFlagId | "sms-otp"
+/**
+ * Boards (tasks, boards, task templates) — a module of its own ONLY for the
+ * per-user mask (owner, 2026-11-06: «выдели отдельно доску как модуль, чтоб мог
+ * отдельно выдавать разрешение только на этот модуль»). A tenant never toggles
+ * it: it follows `crm` (see hasModule), so no tenant record, plan or editor
+ * knows it. What it adds is a separate tick on the user card — a person can
+ * keep the boards without CRM, or CRM without the boards.
+ */
+export const BOARDS_MODULE_ID = "boards" as const
+export type DerivedModuleId = typeof BOARDS_MODULE_ID
+
+export type ModuleId = GroupModuleId | AddonFlagId | "sms-otp" | DerivedModuleId
 
 interface ModuleDefinition {
   name: string
   requires: ModuleId[]
   alwaysOn?: boolean
+  /** Follows another module for the tenant; never offered as a tenant feature (see BOARDS_MODULE_ID). */
+  derived?: boolean
 }
 
 export const MODULE_REGISTRY: Record<ModuleId, ModuleDefinition> = {
@@ -78,6 +91,9 @@ export const MODULE_REGISTRY: Record<ModuleId, ModuleDefinition> = {
   // fix it with from inside the tenant. Who inside a tenant sees which settings
   // page is the role gate's job (permissionScope/allowedRoles), not this one.
   settings:         { name: "Settings",            requires: [], alwaysOn: true },
+
+  /* ── Derived: follows `crm` for the tenant, split off only by the per-user mask ── */
+  boards:           { name: "Boards",              requires: [], derived: true },
 
   /* ── Cross-cutting add-on flags ── */
   ai:               { name: "Da Vinci AI",      requires: [] },
@@ -393,6 +409,14 @@ export function reconcileModulesWithFeatures(
  * "always true" plan-default branch here silently leaks paid modules.
  */
 export function hasModule(org: OrgModuleContext, moduleId: ModuleId): boolean {
+  // 0. Boards follow CRM for the tenant. An explicit boolean is written only by
+  //    the per-user mask (applyUserModuleMask), which is what lets a person keep
+  //    the boards with CRM hidden, or the other way round.
+  if (moduleId === BOARDS_MODULE_ID) {
+    const explicit = org.modules?.[BOARDS_MODULE_ID]
+    return typeof explicit === "boolean" ? explicit : hasModule(org, "crm")
+  }
+
   // 1. Always-on modules (core CRM, sms-otp) are never gateable.
   if (MODULE_REGISTRY[moduleId]?.alwaysOn) return true
 

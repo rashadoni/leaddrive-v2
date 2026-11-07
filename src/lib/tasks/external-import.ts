@@ -25,7 +25,12 @@ import { STATUS_TO_STAGE } from "@/lib/tasks/board-columns"
  *  - `externalSource` + `externalId` make a second run update the tasks it
  *    already brought (title, status, dates, people) instead of adding copies.
  *    Comments and checklist items are written only when the task is created, so
- *    a re-run cannot duplicate them.
+ *    a re-run cannot duplicate them;
+ *  - a task already brought onto ANOTHER board is refused, unless the caller
+ *    says `relocate`: then it moves here (Bordio's projects became their own
+ *    boards after the first run had put everything on one — owner, 2026-11-06).
+ *    It takes this board's next key, its old key stays reserved, and the move
+ *    is written to the task's history.
  */
 
 export const EXTERNAL_IMPORT_MAX_TASKS = 200
@@ -70,6 +75,8 @@ export const externalImportSchema = z.strictObject({
   // Import even though some e-mails match nobody in the organization: those
   // people are left off (an unmatched comment author is named in the text).
   allowUnmatched: z.boolean().default(false),
+  // Move tasks this source already put on another board of the organization.
+  relocate: z.boolean().default(false),
   tasks: z.array(externalTaskSchema).min(1).max(EXTERNAL_IMPORT_MAX_TASKS),
 })
 
@@ -84,6 +91,8 @@ export interface ExternalImportResult {
   dryRun: boolean
   created: number
   updated: number
+  /** Of `updated`: tasks that move here from another board (`relocate`). */
+  moved: number
   /** E-mails in the payload that match nobody in the organization, with how often they occur. */
   unmatchedEmails: Record<string, number>
   /** Task types / brands that do not exist yet (created by a real run). */
@@ -120,7 +129,7 @@ export async function importExternalTasks(
 
   const division = await tx.division.findFirst({
     where: { id: divisionId, organizationId, isActive: true },
-    select: { id: true, key: true, isDepartment: true, boardColumns: { select: { key: true, mapsToStatus: true } } },
+    select: { id: true, key: true, name: true, isDepartment: true, boardColumns: { select: { key: true, mapsToStatus: true } } },
   })
   if (!division) throw new ExternalImportError("Board not found", 404)
   if (division.isDepartment) throw new ExternalImportError("A department holds no tasks — import into one of its sections", 400)
@@ -169,18 +178,24 @@ export async function importExternalTasks(
 
   const existing = await tx.task.findMany({
     where: { organizationId, externalSource: input.source, externalId: { in: ids } },
-    select: { id: true, externalId: true, divisionId: true, customFields: true, deletedAt: true },
+    select: { id: true, externalId: true, divisionId: true, taskKey: true, customFields: true, deletedAt: true },
   })
   const existingById = new Map(existing.map((task) => [task.externalId!, task]))
-  const elsewhere = existing.find((task) => task.divisionId !== division.id)
-  if (elsewhere) {
-    throw new ExternalImportError(`Task ${elsewhere.externalId} was already imported onto another board`, 409)
+  const elsewhere = existing.filter((task) => task.divisionId !== division.id)
+  if (elsewhere.length > 0 && !input.relocate) {
+    throw new ExternalImportError(`Task ${elsewhere[0].externalId} was already imported onto another board`, 409)
   }
+  const fromBoards = elsewhere.length === 0 ? [] : await tx.division.findMany({
+    where: { organizationId, id: { in: [...new Set(elsewhere.map((task) => task.divisionId).filter((id): id is string => Boolean(id)))] } },
+    select: { id: true, name: true },
+  })
+  const boardName = new Map(fromBoards.map((board) => [board.id, board.name]))
 
   const base: ExternalImportResult = {
     dryRun: input.dryRun,
     created: ids.filter((id) => !existingById.has(id)).length,
     updated: existingById.size,
+    moved: elsewhere.length,
     unmatchedEmails,
     newTaskTypes,
     newBrands,
@@ -263,7 +278,29 @@ export async function importExternalTasks(
       const customFields = { ...((previous.customFields as Record<string, unknown> | null) ?? {}) }
       if (task.brand) customFields[BRAND_FIELD_NAME] = task.brand
       else delete customFields[BRAND_FIELD_NAME]
-      await tx.task.update({ where: { id: previous.id }, data: { ...fields, customFields: customFields as Prisma.InputJsonValue } })
+      const moving = previous.divisionId !== division.id
+      await tx.task.update({
+        where: { id: previous.id },
+        data: {
+          ...fields,
+          customFields: customFields as Prisma.InputJsonValue,
+          ...(moving ? { divisionId: division.id, taskKey: `${division.key}-${nextNumber++}`, boardPosition: nextPosition } : {}),
+        },
+      })
+      if (moving) {
+        nextPosition += POSITION_STEP
+        await tx.taskActivity.create({
+          data: {
+            organizationId,
+            taskId: previous.id,
+            userId: actorUserId,
+            action: "board_changed",
+            oldValue: (previous.divisionId && boardName.get(previous.divisionId)) ?? null,
+            newValue: division.name,
+            metadata: { importedFrom: input.source, externalId: task.externalId, previousTaskKey: previous.taskKey },
+          },
+        })
+      }
       await tx.taskCollaborator.deleteMany({ where: { taskId: previous.id } })
       if (collaboratorIds.length > 0) {
         await tx.taskCollaborator.createMany({

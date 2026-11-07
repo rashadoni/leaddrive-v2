@@ -1,4 +1,8 @@
-import { hasModule, type GroupModuleId, type ModuleId } from "./modules"
+import { hasModule, type DerivedModuleId, type GroupModuleId, type ModuleId } from "./modules"
+
+// modules.ts BOARDS_MODULE_ID, spelled out: several suites mock "./modules" with
+// a fixed export list, and this file is imported by the auth layer they test.
+const BOARDS_MODULE_ID: DerivedModuleId = "boards"
 import { isTenantCapabilityEnabled, type FieldTenantCapabilityId } from "./tenant-capabilities"
 
 /**
@@ -31,7 +35,7 @@ import { isTenantCapabilityEnabled, type FieldTenantCapabilityId } from "./tenan
  * keeps the `mtm` id: that is the toggle the superadmin's tenant editor shows.
  */
 export const WORKFORCE_HIDEABLE_ID = "workforce-hrm"
-export type UserHideableId = GroupModuleId | typeof WORKFORCE_HIDEABLE_ID
+export type UserHideableId = GroupModuleId | typeof WORKFORCE_HIDEABLE_ID | DerivedModuleId
 
 /**
  * `settings` is deliberately not hideable. Its scope is not only the settings
@@ -54,8 +58,17 @@ const HIDEABLE_GROUP_IDS = [
 /** Every group-module the mask pins: the hideable ones and `settings`. */
 const MASKED_GROUP_IDS: readonly GroupModuleId[] = [...HIDEABLE_GROUP_IDS, "settings"]
 
+/**
+ * Boards sit right after CRM: they used to be part of the CRM tick and are the
+ * one thing a person can now keep without it (owner, 2026-11-06 — the Zeytun
+ * marketing team works on a board and needs nothing else). Hiding CRM no longer
+ * hides the boards; the migration 20261128090000_user_hidden_boards gave every
+ * person who had CRM hidden the boards tick too, so nobody gained anything.
+ */
 export const USER_HIDEABLE_MODULE_IDS: readonly UserHideableId[] = [
-  ...HIDEABLE_GROUP_IDS,
+  "crm",
+  BOARDS_MODULE_ID,
+  ...HIDEABLE_GROUP_IDS.filter((id) => id !== "crm"),
   WORKFORCE_HIDEABLE_ID,
 ]
 
@@ -128,7 +141,7 @@ export function tenantHideableModules(org: OrgModuleFields): UserHideableId[] {
   return USER_HIDEABLE_MODULE_IDS.filter((id) => {
     if (id === "mtm") return isTenantCapabilityEnabled("route-field", org) || hasModule(org, "mtm")
     if (id === WORKFORCE_HIDEABLE_ID) return isTenantCapabilityEnabled("workforce-hrm", org)
-    return hasModule(org, id as ModuleId)
+    return hasModule(org, id as ModuleId) // boards: follows crm
   })
 }
 
@@ -166,6 +179,9 @@ export function applyUserModuleMask(
   }))
 
   const result: Record<string, boolean> = { ...(org.modules ?? {}) }
+  // Boards first and always explicit: left implicit they would follow the
+  // pinned `crm` below, and hiding CRM would take them away too.
+  result[BOARDS_MODULE_ID] = !hiddenSet.has(BOARDS_MODULE_ID) && hasModule(org, BOARDS_MODULE_ID)
   for (const id of MASKED_GROUP_IDS) {
     result[id] = !hiddenSet.has(id) && hasModule(org, id)
   }

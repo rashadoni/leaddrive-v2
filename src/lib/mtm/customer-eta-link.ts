@@ -53,8 +53,28 @@ export function customerEtaChannel(value: unknown): CustomerEtaChannel {
  *       they arrive.
  *
  * Without it Meta refuses, and the link is marked FAILED with Meta's words.
+ *
+ * Azerbaijani is the one language the template must have; the others are
+ * the company's choice. Zeytun keeps only az (the owner, 2026-11-03: «русский
+ * шаблон убери обязательно»), so an agent whose app speaks Russian is sent
+ * in Azerbaijani — see customerEtaTemplateLanguageMissing.
  */
 export const CUSTOMER_ETA_WHATSAPP_TEMPLATE = "mtm_agent_on_the_way"
+
+/** The language every company's template has, and the one a message falls back to. */
+export const CUSTOMER_ETA_TEMPLATE_FALLBACK_LOCALE: Locale = "az"
+
+/**
+ * Whether Meta refused because the template has no version in the language
+ * asked for — (#132001) «Template name does not exist in the translation».
+ * Only that refusal is tried again in Azerbaijani: anything else (a wrong
+ * number, a paused template, the network) would fail the same way twice, or
+ * worse, reach the customer twice.
+ */
+export function customerEtaTemplateLanguageMissing(error: unknown): boolean {
+  const text = typeof error === "string" ? error : error instanceof Error ? error.message : ""
+  return /\b132001\b|does not exist in the translation/i.test(text)
+}
 
 /** What {{3}} says when the roads gave no time. Meta refuses an empty variable. */
 const UNKNOWN_TIME: Record<Locale, string> = { az: "dəqiqləşdirilir", ru: "уточняется", en: "to be confirmed" }

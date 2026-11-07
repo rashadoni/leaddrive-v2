@@ -88,8 +88,8 @@ const PROVIDERS: Array<{ id: ProviderKey; label: string; note: string }> = [
   { id: "apify", label: "Apify", note: "Adapter-based collection" },
 ]
 
-const FEATURE_MODULES = (Object.entries(MODULE_REGISTRY) as [ModuleId, { name: string; alwaysOn?: boolean }][])
-  .filter(([, definition]) => !definition.alwaysOn)
+const FEATURE_MODULES = (Object.entries(MODULE_REGISTRY) as [ModuleId, { name: string; alwaysOn?: boolean; derived?: boolean }][])
+  .filter(([, definition]) => !definition.alwaysOn && !definition.derived)
   .map(([id, definition]) => ({ id, label: definition.name }))
 
 function splitList(value: string): string[] {

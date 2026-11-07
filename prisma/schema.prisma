@@ -145,6 +145,7 @@ model Organization {
   // Jira-style Kanban board (Division + per-user BoardPermission + task audit)
   divisions        Division[]
   boardPermissions BoardPermission[]
+  boardNotes       BoardNote[]
   boardColumns     BoardColumn[]
   taskActivities   TaskActivity[]
 
@@ -819,6 +820,7 @@ model User {
 
   // Jira-style Kanban board
   boardPermissions BoardPermission[]
+  boardNotes       BoardNote[]       @relation("BoardNoteAuthor")
   taskActivities   TaskActivity[]
   headedDivisions  Division[]        @relation("DivisionHead")
 
@@ -2038,6 +2040,7 @@ model Division {
 
   tasks            Task[]
   boardPermissions BoardPermission[]
+  notes            BoardNote[]
   boardColumns     BoardColumn[]
 
   @@unique([organizationId, key])
@@ -2125,6 +2128,27 @@ model BoardColumn {
   @@index([organizationId])
   @@index([divisionId, sortOrder])
   @@map("board_columns")
+}
+
+/// «Qeydlər» on a board — Bordio's Notes tool (owner, 2026-11-06): the team's
+/// notes for one board. Read by anyone who may see the board, written by anyone
+/// who may edit its tasks (src/lib/tasks/board-notes.ts).
+model BoardNote {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  divisionId     String
+  division       Division     @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  title          String
+  content        String       @default("")
+  createdById    String?
+  createdBy      User?        @relation("BoardNoteAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, divisionId, updatedAt])
+  @@map("board_notes")
 }
 
 // Task audit log (spec calls it "Activity"). Named TaskActivity to avoid
@@ -23584,6 +23608,10 @@ model BookingPage {
   repeatCycleDays  Int?
   /// Users who take these meetings; a booking goes to one of them.
   hostIds          String[]
+  /// What a single master charges for this service and how long they take:
+  /// { "<userId>": { "price": "40", "durationMinutes": 45 } }. A missing master
+  /// or a missing field means the service's own price and duration.
+  hostVariants     Json?
   /// { "0".."6": [{ start: "HH:mm", end: "HH:mm" }] } on the organization's clock, 0 = Sunday.
   weekly           Json
   isActive         Boolean      @default(true)

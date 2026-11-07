@@ -530,6 +530,11 @@ const QUANTITY_WORDS = new Set([
 const FORM_TIP = 0.1
 
 const SPOKEN = createSpokenForms((word) => foldSpelling(word).join(""))
+/** Whether a request already says a form ("ampula", "həb") or a strength (a number): then no variant is chosen for the caller. */
+export function namesFormOrStrength(text: string): boolean {
+  const words = text.match(/[\p{L}\p{M}]+|\d+/gu) ?? []
+  return words.some((word) => /^\d+$/u.test(word) || SPOKEN.formOf(word) !== null)
+}
 
 /** Letter words of a normalized label, with hyphenated names also joined:
  * the feed writes "No-şpa", a recognizer hears "Noşpa". */

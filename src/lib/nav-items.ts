@@ -188,7 +188,7 @@ export const navItems: NavItem[] = [
   // "/tasks" (Tapşırıqlar) intentionally removed from the menu — boards are the
   // primary task surface now. The page + /tasks/[id] detail still exist (board
   // cards link to the detail; the DONE-overflow links to /tasks), just unlinked.
-  { module: "crm", href: "/boards", icon: Columns3, tKey: "boards", group: "CRM" },
+  { module: "boards", href: "/boards", icon: Columns3, tKey: "boards", group: "CRM" },
   // ── Sales ────────────────────────────────────────────────────────────────
   // Dedicated Sales group/module (1 группа = 1 модуль): the seller's daily path
   // — leads → deals → quotes (CPQ) → sequences (cadences) → forecast — plus the
@@ -437,7 +437,7 @@ export const navItems: NavItem[] = [
   // intake-forms / approval-rules above. The /settings landing no longer
   // duplicates these as tiles.
   // CRM — pipelines/quotas/territories moved to the Sales group (see top of array).
-  { module: "crm", href: "/settings/task-templates", icon: FileText, tKey: "taskTemplates", group: "CRM" },
+  { module: "boards", href: "/settings/task-templates", icon: FileText, tKey: "taskTemplates", group: "CRM" },
   // NB: custom-fields + currencies deliberately NOT moved — LEGACY_MODULE_MAP
   // (modules.ts:67) classifies both as `settings` (org-level, cross-cutting:
   // currencies drive deal/invoice amounts, custom-fields span every entity), so
@@ -625,6 +625,19 @@ export function accessibleNavItems(org: OrgNavContext): NavItem[] {
     && isNavItemRoleAllowed(org, item)
     && isNavItemOrgSettingEnabled(org, item)
   )
+}
+
+/**
+ * A person who has nothing but the boards (owner, 2026-11-06: «тем, кому выдан
+ * доступ только на этот модуль, боковая панель убиралась»): every page their
+ * menu would list, the personal Settings block aside, belongs to the boards
+ * module. The layout then drops the sidebar and opens the boards instead of the
+ * CRM home. Admins are never restricted, so never boards-only.
+ */
+export function isBoardsOnlyWorkspace(org: OrgNavContext): boolean {
+  if (org.role === "admin" || org.role === "superadmin") return false
+  const work = accessibleNavItems(org).filter((item) => item.group !== "Settings")
+  return work.length > 0 && work.every((item) => item.module === "boards")
 }
 
 /**

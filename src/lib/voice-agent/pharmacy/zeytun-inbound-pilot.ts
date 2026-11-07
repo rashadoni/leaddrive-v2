@@ -17,6 +17,7 @@ import type { DepartedSearch } from "./zeytun-departed-items"
 import type { ArrivedItem } from "./zeytun-arrived-items"
 import type { ArrivalOffer, WaitlistLine } from "./zeytun-waitlist"
 import { CHIRP_PHRASE_LIMIT, pairHeard, UTTERANCE_MAX_BYTES, UTTERANCE_MIN_BYTES, type ZeytunSecondEar } from "./zeytun-chirp"
+import { namesFormOrStrength } from "./name-search"
 import { CALLBACK_MARKER, callbackMarker, callbackNote, callbackOpening, type CallbackMarker } from "./zeytun-waitlist-callback"
 
 const id = z.string().trim().min(1).max(128)
@@ -217,6 +218,22 @@ export function activePromotion(item: { promotionAsReported?: unknown; baseUnitA
   if (!promotion) return null
   const per = spokenUnit(item), to = promotion.to
   return { buy: promotion.buy, get: promotion.get, ...(per ? { per } : {}), until: `${to.slice(0, 4)}-${to.slice(4, 6)}-${to.slice(6)}` }
+}
+/** The first word of a product's name, folded: what tells one brand's variants from another brand. */
+function brandWord(item: { name: string; nameAz?: string | null }) {
+  return (item.nameAz ?? item.name).toLocaleLowerCase("az").split(/[^\p{L}\p{N}-]+/u).find(word => word.length >= 3) ?? ""
+}
+/**
+ * Task 11 (2026-11-06): among the returned candidates, the only variant of its name the calling
+ * pharmacy orders (its assortment) is marked usual. Two of its variants on the list, or none: no mark.
+ */
+export function markUsualVariant<T extends { externalId: string; name: string; nameAz?: string | null }>(items: T[],
+  ordered: readonly string[] | null): Array<T & { usual?: true }> {
+  if (!ordered?.length) return items
+  const own = new Set(ordered)
+  const counts = new Map<string, number>()
+  for (const item of items) if (own.has(item.externalId)) counts.set(brandWord(item), (counts.get(brandWord(item)) ?? 0) + 1)
+  return items.map(item => own.has(item.externalId) && counts.get(brandWord(item)) === 1 ? { ...item, usual: true as const } : item)
 }
 /** The call's catalog as the order writer reads it: one product id, exactly. */
 export function phoneOrderCatalog(catalog: InboundPilotCatalog): PhoneOrderCatalog {
@@ -433,7 +450,8 @@ export const ZEYTUN_LINE_PROMPT = [
   ["Never guess: if a name was unclear, ask to repeat it; on a repeat or correction, search again and drop the earlier guess. Never name or add a medicine, brand, form, strength or pack the caller did not say or a lookup did not return. Never pick a manufacturer or variant the caller did not clearly name.",
     "Never guess: if a name was unclear, ask to repeat it; on a correction, search again and drop the earlier guess. Never add a medicine, form, strength, pack or manufacturer the caller did not say or a lookup did not return."],
   ["When names are similar, ask only the missing distinguishing detail (strength, form, pack, manufacturer or item code), never one already given; a name match alone verifies none of them. If only one item matches, do not ask about other manufacturers. If asked which manufacturers or variants exist, name up to three from the latest lookup with the strength and form given; listPrice only if asked.",
-    "When names are similar, ask only the missing detail (strength, form, pack, manufacturer or item code), never one already given. If only one item matches, do not ask about manufacturers. Asked which variants exist, name up to three from the latest lookup."],
+    // Task 11 (2026-11-06; line stand: 6 of 10 products asked "ampula or həb?"): the variant this pharmacy orders.
+    "When names are similar, ask only the missing detail (strength, form, pack, manufacturer or item code), never one already given. If only one item matches, do not ask about manufacturers. Asked which variants exist, name up to three from the latest lookup. A candidate marked usual is the one variant of that name this pharmacy orders: if the caller gave no form or strength, write it without asking, naming its form and strength; they may correct it."],
   ["Keep each quantity in the caller's unit (qutu, ədəd, ampula, flakon); never convert. A correction (\"not 10, 15 boxes\") replaces the number, keeps the unit, never adds. Never change mg, ml, pack size or units by assumption.",
     "Keep each quantity in the caller's unit (qutu, ədəd, ampula, flakon); never convert or assume mg, ml or pack size. A correction (\"not 10, 15 boxes\") replaces the number, keeps the unit, never adds."],
   ["If lookup fails, tell the caller you cannot verify that item and retain their wording for review; the line stays unresolved.",
@@ -957,9 +975,16 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
       const extra = soldOut.length + heardShown.length + usual.length
       // Nothing found by the model's words but something sold out or by Chirp's: there are candidates to offer.
       const status = !shown.length && extra ? "candidates_only" : result.status
+      // Owner's queue 2026-11-06, task 11 (line stand: 6 of 10 products asked "ampula or həb?"): the one
+      // variant of a name this pharmacy orders, among the returned ones, is marked usual; the agent writes it.
+      const marked = markUsualVariant([...shown.map(candidate), ...soldOut, ...heardShown, ...usual], assortment?.ordered ?? null)
+      // The stand: with the flag alone the model still asked "tablet or ampula?". When the caller said no
+      // form or strength and one variant of the name is this pharmacy's, it comes first and needs no narrowing.
+      const chosen = input.query.text && !namesFormOrStrength(input.query.text) ? marked.filter(item => item.usual) : []
+      const listed = chosen.length === 1 ? [chosen[0], ...marked.filter(item => item !== chosen[0])] : marked
       return searchResponse({ status, mode: "owner_inbound_preview", customerVerified: false,
-        candidateCount: result.candidateCount, needsNarrowing: result.candidateCount + extra > 1,
-        candidates: [...shown.map(candidate), ...soldOut, ...heardShown, ...usual],
+        candidateCount: result.candidateCount, needsNarrowing: chosen.length === 1 ? false : result.candidateCount + extra > 1,
+        candidates: listed,
         catalog: { version: catalog.version, observedAt: catalog.observedAt, sourceGeneratedAt: null, coverage: "unverified" },
         ...searchRestrictions })
     } catch { return searchResponse({ enabled: false, error: "pilot_unavailable", candidates: [], ...searchRestrictions }, 503) }

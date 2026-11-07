@@ -17,7 +17,7 @@ describe("event-platform governance catalog", () => {
     ].sort()
     const actual = EVENT_DOMAIN_CATALOG.flatMap(({ scopes }) => scopes).sort()
 
-    expect(Object.keys(MODULE_REGISTRY)).toHaveLength(20)
+    expect(Object.keys(MODULE_REGISTRY)).toHaveLength(21)
     expect(BUSINESS_UNGATED_EVENT_SCOPES).toHaveLength(7)
     expect([...BUSINESS_UNGATED_EVENT_SCOPES].sort()).toEqual(
       [...INTENTIONALLY_UNGATED]

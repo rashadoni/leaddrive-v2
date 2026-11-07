@@ -19,6 +19,7 @@ import {
   locationShareLinkTodayWorkDate,
 } from "@/lib/mtm/location-share-link"
 import {
+  CUSTOMER_ETA_TEMPLATE_FALLBACK_LOCALE,
   CUSTOMER_ETA_WHATSAPP_TEMPLATE,
   customerEtaArrivesAt,
   customerEtaChannel,
@@ -28,6 +29,7 @@ import {
   customerEtaLanguage,
   customerEtaRecipient,
   customerEtaSmsText,
+  customerEtaTemplateLanguageMissing,
   customerEtaWhatsAppVariables,
   nextCustomerEtaStop,
 } from "@/lib/mtm/customer-eta-link"
@@ -170,25 +172,33 @@ export async function prepareCustomerEtaLink(
     })
     if (!made) return "none"
 
-    const words = {
+    const wordsIn = (language: typeof locale) => ({
       organization: agent.organization.name,
       agent: agent.name,
-      time: arrivesAt ? formatTime(arrivesAt, locale, { hour: "2-digit", minute: "2-digit", timeZone: timezone }) : null,
-      url: buildLocationShareLinkUrl(token, locale),
-    }
+      time: arrivesAt ? formatTime(arrivesAt, language, { hour: "2-digit", minute: "2-digit", timeZone: timezone }) : null,
+      url: buildLocationShareLinkUrl(token, language),
+    })
+    const sendTemplate = (language: typeof locale) => senders.sendWhatsAppTemplate({
+      to,
+      templateName: CUSTOMER_ETA_WHATSAPP_TEMPLATE,
+      // The template's language, named: without it a template that is
+      // not in the synced table would go as en_US, which it is not.
+      languageCode: language,
+      variables: customerEtaWhatsAppVariables(language, wordsIn(language)),
+      organizationId,
+    })
     let result: { success: boolean; error?: string }
     try {
-      result = channel === "whatsapp"
-        ? await senders.sendWhatsAppTemplate({
-            to,
-            templateName: CUSTOMER_ETA_WHATSAPP_TEMPLATE,
-            // The template's language, named: without it a template that is
-            // not in the synced table would go as en_US, which it is not.
-            languageCode: locale,
-            variables: customerEtaWhatsAppVariables(locale, words),
-            organizationId,
-          })
-        : await senders.sendSms({ to, message: customerEtaSmsText(locale, words), organizationId })
+      if (channel === "whatsapp") {
+        result = await sendTemplate(locale)
+        // The company's template has no version in the agent's language
+        // (Zeytun keeps only az): the customer gets the Azerbaijani one.
+        if (!result.success && locale !== CUSTOMER_ETA_TEMPLATE_FALLBACK_LOCALE && customerEtaTemplateLanguageMissing(result.error)) {
+          result = await sendTemplate(CUSTOMER_ETA_TEMPLATE_FALLBACK_LOCALE)
+        }
+      } else {
+        result = await senders.sendSms({ to, message: customerEtaSmsText(locale, wordsIn(locale)), organizationId })
+      }
     } catch (error) {
       result = { success: false, error: customerEtaFailure(error) }
     }

@@ -96,10 +96,11 @@ pgDescribe("«агент едет к вам» on a real Postgres", () => {
   let sms: SmsCall[]
   let whatsapp: WaCall[]
   let smsAnswer: { success: boolean; error?: string }
+  let waAnswer: (call: WaCall) => { success: boolean; messageId?: string; error?: string }
 
   const senders = () => ({
     sendSms: vi.fn(async (call: SmsCall) => { sms.push(call); return smsAnswer }),
-    sendWhatsAppTemplate: vi.fn(async (call: WaCall) => { whatsapp.push(call); return { success: true, messageId: "wamid.1" } }),
+    sendWhatsAppTemplate: vi.fn(async (call: WaCall) => { whatsapp.push(call); return waAnswer(call) }),
     // Twenty minutes by the roads.
     roadTable: vi.fn(async () => ({ seconds: [[0, 1200], [1200, 0]], metres: [[0, 2400], [2400, 0]] })),
   })
@@ -131,6 +132,7 @@ pgDescribe("«агент едет к вам» on a real Postgres", () => {
     sms = []
     whatsapp = []
     smsAnswer = { success: true }
+    waAnswer = () => ({ success: true, messageId: "wamid.1" })
     resetTrips()
     // Each case starts from a company that never touched the settings, and
     // from no agent on shift: the job looks at every organization.
@@ -356,6 +358,31 @@ pgDescribe("«агент едет к вам» on a real Postgres", () => {
     expect(variables[2]).toMatch(/^\d{2}:\d{2}$/)
     expect(tokenIn(variables[3])?.[2]).toBe("az")
     expect((await linksOf(stopId))[0]).toMatchObject({ deliveryChannel: "whatsapp", deliveryStatus: "SENT" })
+  })
+
+  it("by WhatsApp to an agent whose app speaks Russian, from a company whose template is only in Azerbaijani: the Azerbaijani one", async () => {
+    // Zeytun keeps the template in az alone (the owner, 2026-11-03). Meta's
+    // own words for a language the template does not have.
+    await switchOn("whatsapp")
+    waAnswer = (call) => call.languageCode === "az"
+      ? { success: true, messageId: "wamid.az" }
+      : { success: false, error: "(#132001) Template name does not exist in the translation" }
+    const { stopId } = await agentOnTheWay({ contactPhones: { whatsappPhone: "+994 55 999 88 77" }, appLanguage: "ru" })
+    expect((await tick()).sent).toBe(1)
+    expect(whatsapp.map((call) => call.languageCode)).toEqual(["ru", "az"])
+    const variables = whatsapp[1].variables as string[]
+    expect(tokenIn(variables[3])?.[2]).toBe("az")
+    expect((await linksOf(stopId))[0]).toMatchObject({ deliveryStatus: "SENT", deliveryError: null, revokedAt: null })
+    expect((await open(tokenIn(variables[3])![1])).status).toBe(200)
+  })
+
+  it("does not try a second language when Meta refused for any other reason", async () => {
+    await switchOn("whatsapp")
+    waAnswer = () => ({ success: false, error: "(#131026) Message undeliverable" })
+    const { stopId } = await agentOnTheWay({ contactPhones: { whatsappPhone: "+994 55 999 88 77" }, appLanguage: "ru" })
+    expect((await tick()).failed).toBe(1)
+    expect(whatsapp.map((call) => call.languageCode)).toEqual(["ru"])
+    expect((await linksOf(stopId))[0]).toMatchObject({ deliveryStatus: "FAILED" })
   })
 
   it("a message that did not go leaves a link that opens nothing, says why without the number, and is not tried again", async () => {

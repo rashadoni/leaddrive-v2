@@ -7,13 +7,17 @@ import { CAPABILITY_GATED_PERMISSION_SCOPES, PERMISSION_MODULE_TO_MODULE_ID, ROU
 
 const GROUPS = new Set<string>(GROUP_MODULE_IDS)
 const FLAGS = new Set<string>([...ADDON_FLAG_IDS, "sms-otp"])
+// Derived modules gate like a group (they are in MODULE_REGISTRY) but follow one
+// for the tenant: boards follow crm (modules.ts BOARDS_MODULE_ID).
+const DERIVED = new Set<string>(Object.entries(MODULE_REGISTRY).filter(([, d]) => (d as { derived?: boolean }).derived).map(([id]) => id))
 
 /** A scope counts as classified iff: translates (pre-membership!) to a group/flag,
  *  is itself a group/flag (identity), or is intentionally ungated. */
-// NOTE: relies on PERMISSION_MODULE_TO_MODULE_ID === spread of LEGACY_MODULE_MAP (permissions.ts) — if an alias is ever added to one map only, this invariant silently weakens.
+// NOTE: PERMISSION_MODULE_TO_MODULE_ID is the spread of LEGACY_MODULE_MAP plus ONE override, `tasks → boards`
+// (permissions.ts); the test below pins that, so any other alias added to one map only fails here.
 function classified(scope: string): boolean {
   const translated = (PERMISSION_MODULE_TO_MODULE_ID as Record<string, string>)[scope] ?? scope
-  if (GROUPS.has(translated) || FLAGS.has(translated)) return true
+  if (GROUPS.has(translated) || FLAGS.has(translated) || DERIVED.has(translated)) return true
   if (INTENTIONALLY_UNGATED.has(scope)) return true
   if (CAPABILITY_GATED_PERMISSION_SCOPES.has(scope as never)) return true
   return false
@@ -37,6 +41,12 @@ function explicitRequireAuthScopes(): Set<string> {
 }
 
 describe("module-catalog totality (blocking invariant)", () => {
+  it("the live gate is the legacy map plus exactly one override: tasks answer to boards", () => {
+    const overrides = Object.entries(PERMISSION_MODULE_TO_MODULE_ID).filter(([scope, id]) => (LEGACY_MODULE_MAP as Record<string, string>)[scope] !== id)
+    expect(overrides).toEqual([["tasks", "boards"]])
+    expect([...DERIVED]).toEqual(["boards"])
+  })
+
   it("every scope in the full gate universe is classified", () => {
     const universe = new Set<string>([
       ...Object.keys(MODULE_REGISTRY),
