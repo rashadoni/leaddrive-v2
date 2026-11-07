@@ -190,6 +190,9 @@ function BoardInner() {
 
   const [division, setDivision] = useState<Division | null>(null)
   const [divisions, setDivisions] = useState<Division[]>([])
+  // The tabs above the board come from the board list; it is shown as soon as
+  // it arrives, not after every task has loaded (BoardProjectTabs holds the place).
+  const [divisionsLoaded, setDivisionsLoaded] = useState(false)
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -245,16 +248,16 @@ function BoardInner() {
     setLoading(true)
     setError(null)
     try {
-      const [divRes] = await Promise.all([
-        fetch("/api/v1/divisions", { credentials: "include" }),
-        loadTasks(),
-      ])
-      if (divRes.ok) {
-        const dj = await divRes.json()
-        const list: Division[] = dj?.data?.divisions ?? []
-        setDivisions(list)
-        setDivision(list.find((d) => d.id === divisionId) ?? null)
-      }
+      const readDivisions = fetch("/api/v1/divisions", { credentials: "include" })
+        .then(async (divRes) => {
+          if (!divRes.ok) return
+          const dj = await divRes.json()
+          const list: Division[] = dj?.data?.divisions ?? []
+          setDivisions(list)
+          setDivision(list.find((d) => d.id === divisionId) ?? null)
+        })
+        .finally(() => setDivisionsLoaded(true))
+      await Promise.all([readDivisions, loadTasks()])
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load board")
     } finally {
@@ -588,7 +591,7 @@ function BoardInner() {
     <BoardActionsCtx.Provider value={boardActions}>
     <div style={{ background: C.page, minHeight: "100%", color: C.text }} className="flex flex-col">
       {/* Folders and projects (Bordio's sidebar) as tabs — src/components/boards/board-project-tabs.tsx */}
-      <BoardProjectTabs currentId={divisionId} divisions={divisions} />
+      <BoardProjectTabs currentId={divisionId} divisions={divisions} loading={!divisionsLoaded} />
       {/* Header */}
       {/* <main> already pads the page (p-3 … lg:p-8), so no top padding here —
           pt-4 on top of it left an empty band above the breadcrumb. The board
