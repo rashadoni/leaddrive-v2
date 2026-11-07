@@ -51,7 +51,7 @@ describe("typecheck gate", () => {
   it("passes a clean run", () => {
     const r = runGate("", "0")
     expect(r.status).toBe(0)
-    expect(r.output).toContain("No syntax, missing-module or undefined-name errors")
+    expect(r.output).toContain("No syntax, missing-module, undefined-name or duplicate-name errors")
   })
 
   it("passes a run whose only errors are in the tolerated baseline", () => {
@@ -68,6 +68,16 @@ describe("typecheck gate", () => {
   it("blocks a missing module and a syntax error", () => {
     expect(runGate("src/a.ts(1,1): error TS2307: Cannot find module './nope'.\n", "2").status).toBe(1)
     expect(runGate("src/a.ts(9,3): error TS1308: 'await' expressions are only allowed within async functions.\n", "1").status).toBe(1)
+  })
+
+  // 2026-11-07: an import written twice passed this gate, merged, and broke
+  // the production build of main ("Identifier has already been declared").
+  it("blocks one name declared twice in a module", () => {
+    const twice = runGate("src/app/(dashboard)/events/page.tsx(21,10): error TS2300: Duplicate identifier 'useDebouncedValue'.\n", "2")
+    expect(twice.status).toBe(1)
+    expect(twice.output).toContain("TS2300")
+    expect(runGate("src/a.ts(4,7): error TS2451: Cannot redeclare block-scoped variable 'x'.\n", "2").status).toBe(1)
+    expect(runGate("src/a.ts(9,7): error TS2440: Import declaration conflicts with local declaration of 'y'.\n", "2").status).toBe(1)
   })
 
   // The four cases the gate used to wave through.

@@ -38,7 +38,15 @@ readonly CODE_FILE="${2:?usage: check-typecheck-gate.sh <log-file> <exit-code-fi
 #   TS2304 / TS2552 a name that does not exist. This one does NOT stop the
 #                   build, because next.config sets typescript.ignoreBuildErrors;
 #                   it ships and throws ReferenceError in the browser instead.
-readonly BLOCKING='error (TS1[0-9]{3}|TS2307|TS2304|TS2552):'
+#   TS2300 / TS2451 / TS2440
+#                   one name declared twice in a module (an import twice, two
+#                   `const`s, an import and a local). An ES module may not do
+#                   that: the bundler refuses the file and `next build` dies.
+#                   2026-11-07, #1396: `useDebouncedValue` imported twice in
+#                   events/page.tsx; this job printed TS2300, PR checks do not
+#                   build, the PR merged green and every deploy from main failed
+#                   until #1409.
+readonly BLOCKING='error (TS1[0-9]{3}|TS2307|TS2304|TS2552|TS2300|TS2451|TS2440):'
 
 inconclusive() {
   printf 'typecheck gate: %s\n' "$1" >&2
@@ -73,4 +81,4 @@ if grep -Eq "$BLOCKING" "$LOG"; then
   exit 1
 fi
 
-echo "Typecheck completed (exit $code). No syntax, missing-module or undefined-name errors."
+echo "Typecheck completed (exit $code). No syntax, missing-module, undefined-name or duplicate-name errors."
