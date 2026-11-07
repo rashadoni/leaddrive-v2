@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { Loader2, Plus } from "lucide-react"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
+import { formatDateTime } from "@/lib/format-date"
 
 interface Note {
   id: string
@@ -52,7 +53,7 @@ export function BoardNotesPanel({ divisionId }: { divisionId: string }) {
   const dirty = isNew
     ? draft.title.trim().length > 0 || draft.content.length > 0
     : !!selected && (draft.title !== selected.title || draft.content !== selected.content)
-  const formatDate = (iso: string) => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso))
+  const formatDate = (iso: string) => formatDateTime(iso, locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
 
   const open = (note: Note) => { setSelectedId(note.id); setDraft({ title: note.title, content: note.content }); setMessage(null) }
   const startNew = () => { setSelectedId("new"); setDraft({ title: "", content: "" }); setMessage(null) }
