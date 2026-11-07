@@ -5,7 +5,7 @@ import { Plus, Search, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 
 type Agent = { id: string; name: string }
@@ -159,14 +159,15 @@ function AgentPicker({ agents, chosen, onCancel, onDone }: {
           ))}
           {shown.length === 0 ? <div className="px-2 py-3 text-sm text-muted-foreground">{ts("customerEtaAgentsEmpty")}</div> : null}
         </div>
-        <div className="flex items-center justify-between gap-3 pt-1">
-          <span className="text-xs text-muted-foreground">{ts("customerEtaAgentsCount", { count: ticked.size, total: agents.length })}</span>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={onCancel}>{ts("cancel")}</Button>
-            <Button type="button" onClick={done}>{ts("btnCustomerEtaAgentsDone")}</Button>
-          </div>
-        </div>
       </DialogContent>
+      {/* Below the list, not at its end: with thirty agents «Готово» was a scroll away. */}
+      <DialogFooter className="items-center justify-between">
+        <span className="text-xs text-muted-foreground">{ts("customerEtaAgentsCount", { count: ticked.size, total: agents.length })}</span>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" onClick={onCancel}>{ts("cancel")}</Button>
+          <Button type="button" onClick={done}>{ts("btnCustomerEtaAgentsDone")}</Button>
+        </div>
+      </DialogFooter>
     </Dialog>
   )
 }
