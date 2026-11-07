@@ -84,6 +84,15 @@ export function maskCustomerPhones(payload: unknown, orgId: string, secret: stri
   return visit(payload)
 }
 
+/**
+ * Whether this principal reads customer phones masked. A route that searches
+ * or sorts by a phone column must not do it for them either: a search for a
+ * number answers "this contact has it" as plainly as the number itself would.
+ */
+export function customerPhonesHiddenFrom(auth: AuthResult | null): boolean {
+  return isPhoneRestrictedPrincipal(auth) && auth?.hideCustomerPhoneForOperators === true
+}
+
 /** Must run inside the existing tenant scope, after authorization and before handler execution.
  * All three RLS wrappers share this boundary, including alternate read and JSON write routes.
  * Files/exports cannot be reliably scrubbed; do not generate or expose them to restricted users. */

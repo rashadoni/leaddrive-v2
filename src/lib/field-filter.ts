@@ -163,6 +163,19 @@ export function filterEntityFields<T extends Record<string, any>>(
 }
 
 /**
+ * Whether `role` may see `field` of this entity — the same rule as
+ * filterEntityFields, for one column. A list that searches, sorts or counts by
+ * a column has to ask this first: matching a hidden phone number tells the
+ * searcher whose number it is just as well as printing it would.
+ */
+export function isFieldVisible(permissions: Record<string, string>, role: string, field: string): boolean {
+  if (NEVER_RETURNED.has(field)) return false
+  if (isAdmin(role)) return true
+  const access = permissions[field]
+  return !access || access === "visible" || access === "editable"
+}
+
+/**
  * Filter writable fields for POST/PUT requests.
  * Only "editable" fields (or fields without explicit permission) pass through.
  * Admin always writes everything.

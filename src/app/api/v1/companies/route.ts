@@ -1,10 +1,19 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
+import type { Prisma } from "@prisma/client"
 import { z } from "zod"
 import { prisma, logAudit } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { createNotification } from "@/lib/notifications"
 import { routeNewCompanyToTerritories } from "@/lib/territory-routing"
-import { getFieldPermissions, filterEntityFields, filterWritableFields } from "@/lib/field-filter"
+import { getFieldPermissions, filterEntityFields, filterWritableFields, isFieldVisible } from "@/lib/field-filter"
+import {
+  LIST_IDS_MAX,
+  LIST_VIEW_MAX_LIMIT,
+  containsInsensitive,
+  isListView,
+  listPaging,
+  listSearchTerm,
+} from "@/lib/list-view"
 import { applyRecordFilter } from "@/lib/sharing-rules"
 import { nonNegativeFinancialAmountSchema } from "@/lib/validation/numeric"
 import { voenInput } from "@/lib/companies/az-taxpayer-registry"
@@ -27,31 +36,127 @@ const createCompanySchema = z.object({
   director: z.string().max(200).nullable().optional(),
 })
 
+/** What a company card on the list screen shows — and nothing else (`view=list`). */
+const COMPANY_LIST_SELECT = {
+  id: true,
+  name: true,
+  industry: true,
+  city: true,
+  website: true,
+  status: true,
+  category: true,
+  leadStatus: true,
+  leadScore: true,
+  leadTemperature: true,
+  userCount: true,
+  slaPolicy: { select: { id: true, name: true } },
+  _count: { select: { contacts: true, deals: true } },
+} satisfies Prisma.CompanySelect
+
+/*
+ * «Hot → Cold» sorts by the score, because that is what the card's HOT / WARM /
+ * COLD badge is drawn from (≥ 70 / ≥ 40 / below). The separate, hand-set
+ * `leadTemperature` column has no order Postgres can sort by without a CASE.
+ */
+const COMPANY_LIST_SORTS: Record<string, Prisma.CompanyOrderByWithRelationInput[]> = {
+  name_asc: [{ name: "asc" }],
+  name_desc: [{ name: "desc" }],
+  hot_cold: [{ leadScore: "desc" }, { name: "asc" }],
+  cold_hot: [{ leadScore: "asc" }, { name: "asc" }],
+  score: [{ leadScore: "desc" }, { name: "asc" }],
+  contacts: [{ contacts: { _count: "desc" } }, { name: "asc" }],
+}
+
+const COMPANY_STATUSES = new Set(["active", "inactive", "prospect"])
+
+/** Pickers across the app ask for up to 500 companies; nothing asks for more. */
+const LEGACY_MAX_LIMIT = 500
+
 export const GET = withRlsAuth("companies", "read", async (req, auth) => {
   const { orgId, role, userId } = auth
 
   const { searchParams } = new URL(req.url)
-  const search = searchParams.get("search") || ""
-  const page = parseInt(searchParams.get("page") || "1")
-  const limit = parseInt(searchParams.get("limit") || "50")
+  const listView = isListView(searchParams)
+  const search = listSearchTerm(searchParams)
+  const { page, limit, skip } = listPaging(searchParams, {
+    defaultLimit: 50,
+    maxLimit: listView ? LIST_VIEW_MAX_LIMIT : LEGACY_MAX_LIMIT,
+  })
   const category = searchParams.get("category") // client, partner, prospect, all
+  const status = searchParams.get("status") || ""
+  if (status && !COMPANY_STATUSES.has(status)) {
+    return NextResponse.json({ error: "Invalid status" }, { status: 400 })
+  }
 
   try {
+    const categoryWhere = category && category !== "all" ? { category } : { category: { not: "partner" } }
+
+    // The screen's tabs count every status of the chosen category, whatever
+    // is typed in the search box — the same set the "All" tab shows.
+    const tabsWhere = (await applyRecordFilter(orgId, userId, role, "company", {
+      organizationId: orgId,
+      ...categoryWhere,
+    })) as Prisma.CompanyWhereInput
+
     let where: any = {
       organizationId: orgId,
-      ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}),
-      ...(category && category !== "all" ? { category } : { category: { not: "partner" } }),
+      ...(search ? { name: containsInsensitive(search) } : {}),
+      ...categoryWhere,
+      ...(status ? { status } : {}),
     }
 
     // Apply record-level sharing rules
     where = await applyRecordFilter(orgId, userId, role, "company", where)
+
+    if (listView && searchParams.get("idsOnly") === "1") {
+      const rows = await prisma.company.findMany({ where, select: { id: true }, orderBy: { id: "asc" }, take: LIST_IDS_MAX })
+      return NextResponse.json({ success: true, data: { ids: rows.map((r) => r.id), capped: rows.length === LIST_IDS_MAX } })
+    }
+
+    // Field permissions decide the visible columns, and a sort by a hidden
+    // score would leak its order — that sort falls back to the name.
+    const fieldPerms = await getFieldPermissions(orgId, role, "company")
+
+    if (listView) {
+      const sortKey = searchParams.get("sort") || ""
+      const scoreSort = sortKey === "hot_cold" || sortKey === "cold_hot" || sortKey === "score"
+      const sort = (scoreSort && !isFieldVisible(fieldPerms, role, "leadScore") ? undefined : COMPANY_LIST_SORTS[sortKey])
+        ?? COMPANY_LIST_SORTS.name_asc
+      const [companies, total, byStatus] = await Promise.all([
+        prisma.company.findMany({
+          where,
+          skip,
+          take: limit,
+          // id last: equal names must not swap places between two pages.
+          orderBy: [...sort, { id: "asc" }],
+          select: COMPANY_LIST_SELECT,
+        }),
+        prisma.company.count({ where }),
+        prisma.company.groupBy({ by: ["status"], where: tabsWhere, _count: { _all: true } }),
+      ])
+      const statusCounts: Record<string, number> = {}
+      for (const row of byStatus) statusCounts[row.status] = row._count._all
+      const allCount = Object.values(statusCounts).reduce((n, c) => n + c, 0)
+      return NextResponse.json({
+        success: true,
+        data: {
+          companies: companies.map((c) => filterEntityFields(c, fieldPerms, role)),
+          total,
+          page,
+          limit,
+          search,
+          statusCounts,
+          allCount,
+        },
+      })
+    }
 
     const baseWhere = { organizationId: orgId, category: { not: "partner" } }
 
     const [companies, total, agg] = await Promise.all([
       prisma.company.findMany({
         where,
-        skip: (page - 1) * limit,
+        skip,
         take: limit,
         orderBy: { name: "asc" },
         include: {
@@ -68,7 +173,6 @@ export const GET = withRlsAuth("companies", "read", async (req, auth) => {
     ])
 
     // Apply field-level permissions
-    const fieldPerms = await getFieldPermissions(orgId, role, "company")
     const filteredCompanies = companies.map((c: any) => filterEntityFields(c, fieldPerms, role))
 
     const totalUsers = agg._sum.userCount || 0

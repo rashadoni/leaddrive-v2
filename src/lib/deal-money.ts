@@ -27,6 +27,8 @@ export interface MoneyBucket {
 export interface MoneyRow {
   valueAmount: number
   currency?: string | null
+  /** How many deals the row stands for: 1 for a deal, more for a server total. */
+  count?: number
 }
 
 /** The currency a row belongs to — one rule, used by every grouping here. */
@@ -45,11 +47,12 @@ export function bucketByCurrency(rows: MoneyRow[], fallback: string = DEFAULT_CU
     const currency = currencyOf(row, fallback)
     const value = Number.isFinite(row.valueAmount) ? row.valueAmount : 0
     const bucket = byCode.get(currency)
+    const count = row.count ?? 1
     if (bucket) {
       bucket.value += value
-      bucket.count++
+      bucket.count += count
     } else {
-      byCode.set(currency, { currency, value, count: 1 })
+      byCode.set(currency, { currency, value, count })
     }
   }
   return [...byCode.values()].sort(

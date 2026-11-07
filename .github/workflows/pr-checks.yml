@@ -455,6 +455,18 @@ jobs:
           COMPANY_VOEN_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           COMPANY_VOEN_DB_GATE: required
 
+      - name: CRM list view database gate
+        # The contacts, companies and deals screens search, filter, sort and
+        # page on the server (view=list): a record past the first 500 is
+        # found, pages do not overlap, counters cover the whole book, another
+        # organization never leaks in, and a column the role may not see is
+        # not searchable either. Real Postgres, because `%`/`_` in a search
+        # term were wildcards under Prisma and only a database shows it.
+        run: npx vitest run src/__tests__/crm-list-view-postgres.test.ts
+        env:
+          CRM_LIST_VIEW_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          CRM_LIST_VIEW_DB_GATE: required
+
       - name: Task import database gate
         # Another tool's tasks onto a board (Bordio → Zeytun, 2026-11-06) on a
         # real Postgres: deadlines, people, comments land where the CRM keeps

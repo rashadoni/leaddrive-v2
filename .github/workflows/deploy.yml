@@ -548,6 +548,14 @@ jobs:
           COMPANY_VOEN_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           COMPANY_VOEN_DB_GATE: required
 
+      - name: CRM list view database gate
+        # Same gate as in pr-checks: the contacts, companies and deals lists
+        # searched and paged on the server (see the test's header).
+        run: npx vitest run src/__tests__/crm-list-view-postgres.test.ts
+        env:
+          CRM_LIST_VIEW_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          CRM_LIST_VIEW_DB_GATE: required
+
       - name: Task import database gate
         # Same gate as in pr-checks: another tool's tasks onto a board and the
         # board's paging past 200 tasks (see the test's header).
