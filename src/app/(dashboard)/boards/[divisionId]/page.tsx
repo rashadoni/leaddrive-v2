@@ -672,9 +672,13 @@ function BoardInner() {
 
       {activeView === "board" && (
         <>
-      {/* Toolbar (sticky, single row) */}
+      {/* Toolbar (sticky). It sticks to the very top of the scrolling <main>: a
+          negative top equal to main's padding (p-3 / sm:p-4 / lg:p-8), or the
+          cards showed through the padding band above it; z-20 keeps the cards'
+          own z-10 «⋯» buttons under it (owner, 2026-11-07: «что это за
+          безобразие, когда скролю вниз»). */}
       <div
-        className="sticky top-0 z-10 flex flex-wrap items-center gap-2 px-5 py-2"
+        className="sticky -top-3 z-20 flex flex-wrap items-center gap-2 px-5 py-2 sm:-top-4 lg:-top-8"
         style={{ background: C.page, borderBottom: `1px solid ${C.border}` }}
       >
         <button onClick={() => setMine((v) => !v)} className="inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs" style={pill(mine)}>
