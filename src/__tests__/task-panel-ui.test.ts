@@ -38,7 +38,7 @@ const FEED = {
   items: [
     { kind: "event", id: "e1", at: "2026-03-05T11:18:00.000Z", user: { id: "s", name: "Sabina Hasanova" }, action: "due_date_changed", oldValue: null, newValue: "2026-03-12T19:59:59.000Z", text: null },
     { kind: "message", id: "m1", at: "2026-03-19T11:17:00.000Z", user: { id: "s", name: "Sabina Hasanova" }, text: "birbaşa reklamları aktivləşdirdim", mentions: [], system: false },
-    { kind: "event", id: "e2", at: "2026-11-03T11:04:00.000Z", user: { id: "s", name: "Sabina Hasanova" }, action: "external_event", oldValue: null, newValue: null, text: "completed the subtask: pixel quraşdırılması" },
+    { kind: "event", id: "e2", at: "2026-11-03T11:04:00.000Z", user: null, action: "external_event", oldValue: null, newValue: null, text: "Sabina Hasanova completed the subtask: pixel quraşdırılması" },
   ],
   followers: [{ id: "a", name: "Aytan" }, { id: "s", name: "Sabina Hasanova" }],
   following: false,
