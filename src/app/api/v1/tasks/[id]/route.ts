@@ -21,9 +21,10 @@ export const GET = withRls(async (_req, { orgId, session }, { params }: { params
     include: {
       assignee: { select: { id: true, name: true, avatar: true } },
       creator: { select: { id: true, name: true } },
+      reporter: { select: { id: true, name: true, avatar: true } },
       project: { select: { id: true, name: true, color: true } },
       collaborators: { select: { user: { select: { id: true, name: true, avatar: true } } } },
-      checklist: { orderBy: { sortOrder: "asc" } },
+      checklist: { orderBy: { sortOrder: "asc" }, include: { assignee: { select: { id: true, name: true, avatar: true } } } },
       attachments: { orderBy: { createdAt: "desc" } },
       comments: {
         orderBy: { createdAt: "desc" },
@@ -55,7 +56,7 @@ export const GET = withRls(async (_req, { orgId, session }, { params }: { params
   if (task.divisionId) {
     const accessible = await getAccessibleDivisionIds(prisma, orgId, session?.userId || "", role as Role)
     const onBoard = accessible === "all" || accessible.includes(task.divisionId)
-    const isMine = task.assignedTo === session?.userId || task.createdBy === session?.userId
+    const isMine = task.assignedTo === session?.userId || task.createdBy === session?.userId || task.reporterId === session?.userId
     if (!onBoard && !isMine) return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 

@@ -551,7 +551,7 @@ jobs:
       - name: Task import database gate
         # Same gate as in pr-checks: another tool's tasks onto a board and the
         # board's paging past 200 tasks (see the test's header).
-        run: npx vitest run src/__tests__/task-external-import-postgres.test.ts src/__tests__/board-notes-postgres.test.ts
+        run: npx vitest run src/__tests__/task-external-import-postgres.test.ts src/__tests__/board-notes-postgres.test.ts src/__tests__/task-card-postgres.test.ts
         env:
           TASK_EXTERNAL_IMPORT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           TASK_EXTERNAL_IMPORT_DB_GATE: required
