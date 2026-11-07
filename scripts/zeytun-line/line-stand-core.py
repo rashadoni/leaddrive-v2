@@ -146,6 +146,30 @@ threading.Thread(target=relay_reader, daemon=True).start()
 threading.Thread(target=relay_errors, daemon=True).start()
 
 
+# How long the model takes, after the station closed a caller phrase (activityEnd), to its first
+# audio, its first transcript text and its first tool call: whether the TTS waits for text that
+# lags the model's own audio (owner's queue task 4, 2026-11-07).
+turn_clock = {"end": None, "audio": None, "text": None, "tool": None}
+
+
+def note_turn(msg):
+    end = turn_clock.get("end")
+    if end is None or not isinstance(msg, dict):
+        return
+    now = time.monotonic()
+    content = msg.get("serverContent") or {}
+    parts = (content.get("modelTurn") or {}).get("parts") or []
+    if turn_clock["audio"] is None and any(isinstance(p, dict) and p.get("inlineData") for p in parts):
+        turn_clock["audio"] = round((now - end) * 1000)
+    if turn_clock["text"] is None and (content.get("outputTranscription") or {}).get("text"):
+        turn_clock["text"] = round((now - end) * 1000)
+    if turn_clock["tool"] is None and msg.get("toolCall"):
+        turn_clock["tool"] = round((now - end) * 1000)
+    if turn_clock["audio"] is not None and turn_clock["text"] is not None:
+        stand({"turn_timing": {k: turn_clock[k] for k in ("audio", "text", "tool")}})
+        turn_clock["end"] = None
+
+
 # A planned drop (stdin {"drop": true}): every open socket ends as a bare EOF, as Google's
 # drops do (2 % of openings, 2026-11-04), and every resume attempt after it is refused with
 # 1008, so the core falls back to a fresh session with its context restore: the case in
@@ -191,6 +215,9 @@ class RelayWebSocket:
             self.inbox.put({"ev": "closed", "code": 1008})
             stand({"forced": "resume_refused"})
             return
+        if isinstance(event, dict) and (event.get("realtimeInput") or {}).get("activityEnd") is not None:
+            # Where the caller's phrase closed: what follows is timed from here (turn_timing).
+            turn_clock.update(end=time.monotonic(), audio=None, text=None, tool=None)
         relay_send({"op": "send", "id": self.n, "msg": event})
 
     def drop(self):
@@ -207,6 +234,7 @@ class RelayWebSocket:
         except queue.Empty:
             raise socket.timeout("timed out")
         if event["ev"] == "msg":
+            note_turn(event["msg"])
             if not self.first_seen:
                 # How long the provider took to its first message (setupComplete): the core gives a fresh session 2.5 s.
                 self.first_seen = True

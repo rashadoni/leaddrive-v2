@@ -234,8 +234,8 @@ def zeytun_speakable_text(text):
     text = re.sub(r"№\s*", "nömrə ", text)
     # Owner's queue 2026-11-06, task 8: the order number "TS-1026" was voiced
     # "TS-min iyirmi altı", the Latin letters as the TTS liked. The letters are
-    # named as in Azerbaijani: "te-se min iyirmi altı".
-    text = re.sub(r"\bTS-(?=\d)", "te-se ", text)
+    # named as the owner says them (2026-11-07: «правильно звучание Te eS»): "Te-eS min iyirmi altı".
+    text = re.sub(r"\bTS-(?=\d)", "Te-eS ", text)
     text = re.sub(r"(?<=\d)\s*(mq|ml)\b|\b(mq|ml)\b",
                   lambda m: (" " if m.group(1) else "") + ("milliqram" if (m.group(1) or m.group(2)).lower() == "mq" else "millilitr"),
                   text, flags=re.IGNORECASE)
@@ -525,7 +525,8 @@ def zeytun_restore_note(bridge):
             "with the whole list so far: " + ("the list last saved, " + listed + ", keeping every externalId exactly, "
             if lines else "") + "with the lines and corrections the conversation confirmed after it. Never mention it. ")
 # Owner, 2026-11-06: «когда перебиваешь, он начинает сразу в тишину… например говорил «ага» или хмыкал».
-ZEYTUN_BARGE_ACK = "Hə."
+# Owner, 2026-11-07: «не Hə. — это не тактично; аха. Это уже не слово, а сигнал того, что слушаю».
+ZEYTUN_BARGE_ACK = "Aha."
 ZEYTUN_FILLER_AUDIO = {}
 
 
@@ -600,7 +601,7 @@ class ZeytunSpeechRelay:
     # Owner, 2026-11-06: «когда перебиваешь, он начинает сразу в тишину». The
     # caller who cut the agent off hears it stop at once, then ~2.5 s of
     # nothing while the model and the TTS answer. Only after such a phrase:
-    # "Hə." in the line's voice, BARGE_ACK_SECONDS after the station closed
+    # "Aha." in the line's voice, BARGE_ACK_SECONDS after the station closed
     # it, if the answer has not begun and nothing plays. Once per phrase, never
     # within FILLER_EVERY_SECONDS of a filler. None turns it off.
     BARGE_ACK_SECONDS = 0.3
@@ -619,7 +620,7 @@ class ZeytunSpeechRelay:
         # Set by the core: True while the line still plays the agent's audio.
         self.playing = playing or (lambda: False)
         self.caller_done_at = None
-        # When the agent was last cut off by the caller (interrupted), and when "Hə." is due.
+        # When the agent was last cut off by the caller (interrupted), and when "Aha." is due.
         self.barged_at = None
         self.ack_due_at = None
         self.ack_key = None
@@ -663,7 +664,7 @@ class ZeytunSpeechRelay:
     def caller_done(self):
         """The core closed a caller phrase: the agent owes an answer (TURN_FILLER_SECONDS).
 
-        A phrase that cut the agent off also owes the caller "Hə." (BARGE_ACK_SECONDS)."""
+        A phrase that cut the agent off also owes the caller "Aha." (BARGE_ACK_SECONDS)."""
         with self.lock:
             now = self.clock()
             self.caller_done_at = now
@@ -761,7 +762,7 @@ class ZeytunSpeechRelay:
         return True
 
     def prefetch_filler(self, text=ZEYTUN_WAIT_FILLER):
-        """Voice the wait filler (or "Hə.", ZEYTUN_BARGE_ACK) in the background, once per process and voice."""
+        """Voice the wait filler (or "Aha.", ZEYTUN_BARGE_ACK) in the background, once per process and voice."""
         key = (getattr(self.tts, "voice", None), getattr(self.tts, "url", "").split("?")[0],
                getattr(self.tts, "style", None), text)
         if text == ZEYTUN_BARGE_ACK:
