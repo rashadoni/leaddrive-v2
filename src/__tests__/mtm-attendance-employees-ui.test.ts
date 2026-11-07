@@ -89,6 +89,35 @@ describe("Personnel → Employees list", () => {
     expect(rows()[0].querySelector("a")!.getAttribute("href")).toContain(`back=${encodeURIComponent("/mtm/attendance/people?tab=employees&show=EXCLUDED")}`)
   })
 
+  // #1396 put the address behind a 300 ms pause in typing. A click on «Card»
+  // inside that pause started the navigation, and the late router.replace then
+  // won and dropped the person back on the list (E2E browser-employment-record,
+  // 2026-11-07). The click must stop the list writing the address, and «back»
+  // must carry what was typed, not what the address had caught up to.
+  it("opening an employee right after typing is not undone by the address catching up", async () => {
+    await render()
+    vi.useFakeTimers()
+    try {
+      await edit("employee-search", "Aylin"); expect(names()).toEqual(["Aylin Demo"])
+      const link = rows()[0].querySelector<HTMLAnchorElement>(`a[aria-label="${pt("employeeEditNamed", { name: "Aylin Demo" })}"]`)!
+      expect(link.getAttribute("href")).toBe(`/mtm/attendance/people/employee-aylin?back=${encodeURIComponent("/mtm/attendance/people?tab=employees&q=Aylin")}`)
+      replace.mockClear()
+      await act(async () => { link.addEventListener("click", event => event.preventDefault(), { once: true }); link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 })) })
+      await act(async () => { vi.advanceTimersByTime(1000) })
+      expect(replace).not.toHaveBeenCalled()
+    } finally { vi.useRealTimers() }
+  })
+
+  it("still writes the search into the address after the pause when nobody leaves", async () => {
+    await render()
+    vi.useFakeTimers()
+    try {
+      await edit("employee-search", "Aylin")
+      await act(async () => { vi.advanceTimersByTime(1000) })
+      expect(replace.mock.calls.at(-1)![0]).toBe("/mtm/attendance/people?tab=employees&q=Aylin")
+    } finally { vi.useRealTimers() }
+  })
+
   it("opens with the search and filters the address carries", async () => {
     navigation.params = new URLSearchParams("tab=employees&q=Aylin&team=team-centre")
     await render()
