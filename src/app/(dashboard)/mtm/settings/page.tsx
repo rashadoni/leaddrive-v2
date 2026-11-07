@@ -22,6 +22,7 @@ import { ContactDictionarySettings } from "./contact-dictionary-settings"
 import { OrganizationAttributePackageSettings } from "./organization-attribute-package-settings"
 import { RouteTargetTypeSettings } from "./route-target-type-settings"
 import { VisitEvaluationQuestionSettings } from "./visit-evaluation-question-settings"
+import { CustomerEtaAgentChoice } from "./customer-eta-agent-choice"
 import { COMMON_TIMEZONES } from "@/lib/timezone"
 import type { MtmRouteTargetType } from "@/lib/mtm/route-target-types"
 import type { MtmVisitEvaluationQuestion } from "@/lib/mtm/visit-evaluation-questions"
@@ -689,6 +690,15 @@ export default function MtmSettingsPage() {
             </div>
           )
         })() : null}
+        {item.key === "customerEtaLinksEnabled" && switchOn ? (
+          <CustomerEtaAgentChoice
+            scope={settings.customerEtaAgentScope}
+            agentIds={settings.customerEtaAgentIds}
+            disabled={disabled}
+            onScopeChange={(scope) => updateSetting("customerEtaAgentScope", scope)}
+            onAgentIdsChange={(ids) => updateSetting("customerEtaAgentIds", ids)}
+          />
+        ) : null}
         {item.notes ? (
           <div className="space-y-3 border-l-2 border-muted pl-3">
             {item.notes.map((note) => (

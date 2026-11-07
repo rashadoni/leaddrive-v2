@@ -13,6 +13,7 @@ import {
   MTM_CONTACT_SPECIALTY_DEFAULTS,
 } from "@/lib/mtm/contact-specialties"
 import { coerceMtmContactClasses, MTM_CONTACT_CLASS_DEFAULTS } from "@/lib/mtm/contact-classes"
+import { coerceCustomerEtaAgentIds } from "@/lib/mtm/customer-eta-link"
 import {
   coerceMtmRouteTargetTypes,
   MTM_ROUTE_TARGET_TYPE_DEFAULTS,
@@ -99,6 +100,12 @@ export const MTM_SETTING_DEFAULTS = {
   // with the approved template CUSTOMER_ETA_WHATSAPP_TEMPLATE.
   customerEtaLinksEnabled: false,
   customerEtaLinkChannel: "sms",
+  // Whose customers get it (owner, 2026-11-07: «пока не хочу всем включать»):
+  // «all» — every agent's, as it was; «selected» — only the agents in
+  // customerEtaAgentIds, and nobody's while that list is empty. Below the
+  // switch on the same row of the settings page, not a second switch.
+  customerEtaAgentScope: "all",
+  customerEtaAgentIds: [] as string[],
 
   // Route-deviation (POST /mobile/location)
   deviationThresholdMeters: 500,             // distance from polyline that triggers alert
@@ -263,6 +270,9 @@ function coerce<K extends keyof MtmSettingsShape>(
     }
     if (key === "visitEvaluationQuestions") {
       return coerceMtmVisitEvaluationQuestions(raw) as MtmSettingsShape[K]
+    }
+    if (key === "customerEtaAgentIds") {
+      return coerceCustomerEtaAgentIds(raw) as MtmSettingsShape[K]
     }
     return (Array.isArray(raw) ? raw : fallback) as MtmSettingsShape[K]
   }

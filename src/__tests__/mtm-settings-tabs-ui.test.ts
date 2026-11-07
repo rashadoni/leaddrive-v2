@@ -61,6 +61,13 @@ const page = ru.mtmSettingsPage as Record<string, string>
 let stored: Record<string, unknown> = {}
 let writes: Record<string, unknown>[] = []
 let refuse: { status: number; body: unknown } | null = null
+// The company's agents, as /api/v1/mtm/agents lists them.
+const fieldAgents = [
+  { id: "a-2", name: "Günay İbadova", status: "ACTIVE" },
+  { id: "a-1", name: "Seymur Məmmədov", status: "ACTIVE" },
+  { id: "a-3", name: "Rasim Həsənov", status: "ACTIVE" },
+  { id: "a-9", name: "Uvolen Agent", status: "INACTIVE" },
+]
 
 let root: Root
 let container: HTMLDivElement
@@ -128,6 +135,7 @@ beforeEach(() => {
         return reply(200, { success: true, data: { policies: [], access: { kind: "admin", canWriteOrganizationWide: true, writableTeamIds: null } } })
       }
       if (url.includes("/mtm/settings")) return reply(200, { success: true, data: stored })
+      if (url.includes("/mtm/agents")) return reply(200, { success: true, data: { agents: fieldAgents } })
       return reply(200, { success: true, data: { teams: [], agents: [], customers: [] } })
     }
     const body = JSON.parse(init?.body ?? "{}") as Record<string, unknown>
@@ -464,6 +472,75 @@ describe("the bot's «агент едет к вам» link, in the live map card
     expect(settingRow("customerEtaLinkChannel").textContent).toContain(page.hintCustomerEtaLinkChannelWhatsapp)
     await pressSave()
     expect(writes).toEqual([{ [KEY]: true, customerEtaLinkChannel: "whatsapp" }])
+  })
+})
+
+/**
+ * Owner, 2026-11-07: «пока не хочу всем включать» — mock-up approved with
+ * «Давай». Under the switch, on its own row: «Только выбранным» / «Всем
+ * агентам», the chosen names with a cross each, and the list with ticks
+ * behind «Выбрать агентов». One save sends what changed.
+ */
+describe("whose customers get «агент едет к вам», under the same switch", () => {
+  const KEY = "customerEtaLinksEnabled"
+  const choice = () => settingRow("customerEtaAgentScope")
+  const radio = (label: string) => [...choice().querySelectorAll('[role="radio"]')].find((button) => button.textContent === label) as HTMLButtonElement
+  const chips = () => [...container.querySelectorAll('[data-testid="customer-eta-chosen-agents"] [data-agent-id]')].map((chip) => chip.textContent)
+  const press = async (element: Element) => { await act(async () => { (element as HTMLElement).click() }) }
+  const buttonSaying = (root: ParentNode, text: string) => [...root.querySelectorAll("button")].find((button) => button.textContent?.includes(text)) as HTMLButtonElement
+
+  it("is not there while the switch is off, and is «Всем агентам» — as it always was — once it is on", async () => {
+    await open()
+    expect(choice()).toBeNull()
+    await openTab("alerts")
+    await flip(KEY)
+    await settle()
+    expect(radio(page.optCustomerEtaAgentsAll).getAttribute("aria-checked")).toBe("true")
+    expect(choice().textContent).toContain(page.hintCustomerEtaAgentsAll)
+    expect(container.querySelector('[data-testid="customer-eta-chosen-agents"]')).toBeNull()
+  })
+
+  it("«Только выбранным»: nobody yet, says so; the list offers the company's active agents; «Готово» shows the names, and one save sends all three", async () => {
+    await open()
+    await openTab("alerts")
+    await flip(KEY)
+    await settle()
+    await press(radio(page.optCustomerEtaAgentsSelected))
+    expect(choice().textContent).toContain(page.hintCustomerEtaAgentsNone)
+    expect(chips()).toEqual([])
+
+    await press(buttonSaying(choice(), page.btnCustomerEtaChooseAgents))
+    const list = container.querySelector('[data-testid="customer-eta-agent-list"]') as HTMLElement
+    expect([...list.querySelectorAll("label")].map((row) => row.textContent)).toEqual(["Günay İbadova", "Rasim Həsənov", "Seymur Məmmədov"])
+    await press(list.querySelector('input[aria-label="Seymur Məmmədov"]') as HTMLInputElement)
+    await press(list.querySelector('input[aria-label="Günay İbadova"]') as HTMLInputElement)
+    await press(buttonSaying(document, page.btnCustomerEtaAgentsDone))
+    expect(container.querySelector('[data-testid="customer-eta-agent-list"]')).toBeNull()
+    expect(chips()).toEqual(["Günay İbadova", "Seymur Məmmədov"])
+    expect(choice().textContent).toContain(page.hintCustomerEtaAgentsSelected)
+
+    await pressSave()
+    expect(writes).toEqual([{ [KEY]: true, customerEtaAgentScope: "selected", customerEtaAgentIds: ["a-2", "a-1"] }])
+  })
+
+  it("a name's cross takes that agent off, and «Отмена» in the list changes nothing", async () => {
+    stored = { ...MTM_SETTING_DEFAULTS, [KEY]: true, customerEtaAgentScope: "selected", customerEtaAgentIds: ["a-1", "a-3"] }
+    await open()
+    await openTab("alerts")
+    await settle()
+    expect(chips()).toEqual(["Seymur Məmmədov", "Rasim Həsənov"])
+
+    await press(buttonSaying(choice(), page.btnCustomerEtaChooseAgents))
+    const list = container.querySelector('[data-testid="customer-eta-agent-list"]') as HTMLElement
+    await press(list.querySelector('input[aria-label="Günay İbadova"]') as HTMLInputElement)
+    await press(buttonSaying(document, page.cancel))
+    expect(chips()).toEqual(["Seymur Məmmədov", "Rasim Həsənov"])
+    expect(saveBar().hidden).toBe(true)
+
+    await press(choice().querySelector(`[aria-label="${page.customerEtaAgentRemove.replace("{name}", "Rasim Həsənov")}"]`) as HTMLButtonElement)
+    expect(chips()).toEqual(["Seymur Məmmədov"])
+    await pressSave()
+    expect(writes).toEqual([{ customerEtaAgentIds: ["a-1"] }])
   })
 })
 

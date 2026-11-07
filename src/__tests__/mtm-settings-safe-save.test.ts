@@ -429,6 +429,33 @@ describe("PUT /api/v1/mtm/settings — safe save", () => {
       expect((await refused.json()).key).toBe("customerEtaLinkChannel")
     })
 
+    it("takes whose customers as «all» or «selected», and the chosen agents only as this company's", async () => {
+      expect((await UpdateSettings(put({ customerEtaAgentScope: "selected" }))).status).toBe(200)
+      const scope = await UpdateSettings(put({ customerEtaAgentScope: "some" }))
+      expect(scope.status).toBe(400)
+      expect((await scope.json()).key).toBe("customerEtaAgentScope")
+
+      // Two agents asked (one twice), both found in this company: stored once each.
+      vi.mocked(prisma.mtmAgent.count).mockResolvedValueOnce(2 as never)
+      expect((await UpdateSettings(put({ customerEtaAgentIds: ["agent-1", "agent-2", "agent-1"] }))).status).toBe(200)
+      expect(vi.mocked(prisma.mtmAgent.count)).toHaveBeenLastCalledWith({ where: { organizationId: ORG, id: { in: ["agent-1", "agent-2"] } } })
+      const stored = vi.mocked(prisma.mtmSetting.upsert).mock.calls
+        .map((call) => (call[0] as { create: { key: string; value: unknown } }).create)
+        .filter((row) => row.key === "customerEtaAgentIds")
+      expect(stored.at(-1)?.value).toEqual(["agent-1", "agent-2"])
+
+      // One of them is not this company's: refused, nothing written.
+      vi.mocked(prisma.mtmSetting.upsert).mockClear()
+      vi.mocked(prisma.mtmAgent.count).mockResolvedValueOnce(1 as never)
+      const foreign = await UpdateSettings(put({ customerEtaAgentIds: ["agent-1", "agent-of-another-company"] }))
+      expect(foreign.status).toBe(400)
+      expect(await foreign.json()).toMatchObject({ code: "MTM_CUSTOMER_ETA_AGENTS_INVALID", key: "customerEtaAgentIds" })
+      expect(upsertedKeys()).toEqual([])
+      expect((await UpdateSettings(put({ customerEtaAgentIds: "agent-1" }))).status).toBe(400)
+      // Nobody chosen is a choice too.
+      expect((await UpdateSettings(put({ customerEtaAgentIds: [] }))).status).toBe(200)
+    })
+
     it("says on the journal's one row how many links the save ended — and writes no row per link", async () => {
       switchedOn()
       as("manager")
