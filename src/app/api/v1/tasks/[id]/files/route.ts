@@ -25,11 +25,18 @@ const ALLOWED_TYPES = [
   "image/gif",
   "text/plain",
   "text/csv",
+  // Bordio moved over (2026-11-07): presentations, voice notes and Outlook
+  // messages were attached to the tasks in work and were refused here.
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-powerpoint",
+  "audio/ogg",
+  "application/vnd.ms-outlook",
 ]
 // Extension whitelist — defends even if the client-supplied MIME is spoofed.
 const SAFE_EXTENSIONS = new Set([
   ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
   ".png", ".jpg", ".jpeg", ".gif", ".webp", ".txt", ".csv", ".zip", ".rar",
+  ".ogg", ".msg",
 ])
 
 export const GET = withRlsAuth("tasks", "read", async (req, auth, { params }: { params: Promise<{ id: string }> }) => {

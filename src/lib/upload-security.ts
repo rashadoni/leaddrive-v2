@@ -49,10 +49,15 @@ export function validateUploadBytes(mimeType: string, bytes: Uint8Array): string
   if (normalized === "application/zip" || normalized.includes("officedocument")) {
     return hasZipSignature(bytes) ? null : "File content is not a valid ZIP-based document"
   }
+  if (normalized === "audio/ogg") {
+    return startsWith(bytes, [0x4f, 0x67, 0x67, 0x53]) ? null : "File content is not a valid Ogg audio file"
+  }
   if ([
     "application/msword",
     "application/vnd.ms-excel",
     "application/vnd.ms-powerpoint",
+    // An Outlook .msg is the same compound-file container as legacy Office.
+    "application/vnd.ms-outlook",
   ].includes(normalized)) {
     return startsWith(bytes, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])
       ? null
