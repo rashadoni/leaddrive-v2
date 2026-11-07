@@ -18,6 +18,7 @@ import type { ArrivedItem } from "./zeytun-arrived-items"
 import type { ArrivalOffer, WaitlistLine } from "./zeytun-waitlist"
 import { CHIRP_PHRASE_LIMIT, pairHeard, UTTERANCE_MAX_BYTES, UTTERANCE_MIN_BYTES, type ZeytunSecondEar } from "./zeytun-chirp"
 import { namesFormOrStrength } from "./name-search"
+import { CALLBACK_MARKER, callbackMarker, callbackNote, callbackOpening, type CallbackMarker } from "./zeytun-waitlist-callback"
 
 const id = z.string().trim().min(1).max(128)
 const hash = z.string().regex(/^[a-f0-9]{64}$/)
@@ -70,6 +71,8 @@ const callSchema = z.strictObject({
   targetPhoneE164: z.string(),
   /** The AI handing this call to a person; "returned" when nobody answered. */
   handoffState: z.enum(["requested", "ringing", "connected", "returned"]).nullish(),
+  /** consentAudit's waitlist-callback marker (zeytun-waitlist-callback.ts); null on every other call. */
+  callbackMarker: z.unknown().nullish(),
 })
 export type InboundPilotCall = z.infer<typeof callSchema>
 /** A call that is over, whose list the station is still delivering: it
@@ -580,7 +583,29 @@ function matchingCallIdentity(call: Pick<InboundPilotOrderCall, "organizationId"
 }
 function eligibleCall(raw: unknown, config: InboundPilotConfig, callId: string, now: number) {
   const parsed = callSchema.safeParse(raw)
-  return parsed.success && matchingCallIdentity(parsed.data, config, callId, now) ? parsed.data : null
+  return parsed.success && matchingCallIdentity(parsed.data, config, callId, now) ? parsed.data : callbackCall(raw, config, callId, now)
+}
+/**
+ * Owner's queue task 10 (2026-11-07): the line's own outbound call back to a pharmacy about products
+ * it waited for. Only with the marker the CRM wrote for this grant before dialling. Inside the pilot it
+ * reads as the pharmacy's call: the pharmacy's number in fromNumber, the line's in targetPhoneE164.
+ */
+const callbackCallSchema = callSchema.extend({
+  direction: z.literal("outbound"), status: z.enum(["initiated", "ringing", "answering", "answered", "in-progress"]),
+  wasAnswered: z.boolean(),
+})
+function callbackCall(raw: unknown, config: InboundPilotConfig, callId: string, now: number): InboundPilotCall | null {
+  if (!isLineGrant(config)) return null
+  const parsed = callbackCallSchema.safeParse(raw)
+  if (!parsed.success) return null
+  const marker = callbackMarker({ [CALLBACK_MARKER]: parsed.data.callbackMarker }, callId)
+  if (!marker || marker.grantId !== config.id || marker.orderOrganizationId !== config.orderOrganizationId) return null
+  const call: InboundPilotCall = { ...parsed.data, direction: "inbound", status: "in-progress", wasAnswered: true,
+    fromNumber: parsed.data.targetPhoneE164, targetPhoneE164: parsed.data.fromNumber }
+  return matchingCallIdentity(call, config, callId, now) ? call : null
+}
+function callbackOf(call: InboundPilotOrderCall): CallbackMarker | null {
+  return callbackMarker({ [CALLBACK_MARKER]: call.callbackMarker }, call.providerCallId)
 }
 function endedCall(raw: unknown, config: InboundPilotConfig, callId: string, now: number) {
   const parsed = endedCallSchema.safeParse(raw)
@@ -761,7 +786,7 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         // Owner's client, 2026-11-06: what this pharmacy waited for or orders and 1C has again
         // (zeytun-waitlist.ts). Only the pharmacy the caller's number alone names; a slow or
         // failed read, or a prompt without room for it, costs the call nothing.
-        if (isLineGrant(config) && candidates.length === 1 && dependencies.pharmacyArrivals) {
+        if (isLineGrant(config) && candidates.length === 1 && dependencies.pharmacyArrivals && !call.callbackMarker) {
           const offers = await withinMs(dependencies.pharmacyArrivals(config, call, catalog, candidates[0].guid), ARRIVALS_WAIT_MS)
             .catch(() => null)
           const note = offers?.length ? arrivalsNote(offers) : ""
@@ -777,7 +802,14 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
           console.log("[zeytun-line] speech", JSON.stringify({ own: (Object.keys(speech) as (keyof LineSpeech)[]).filter(key => speech[key]),
             notesKept: prompt.includes("<company_notes>") }))
         }
-        const opening = !line ? ZEYTUN_INBOUND_OPENING
+        // A callback about waited-for products (task 10): its own opening and facts; the arrivals note is the same news.
+        const callback = line ? callbackOf(call) : null
+        if (callback) {
+          const note = callbackNote(callback)
+          if (prompt.length + note.length <= LINE_PROMPT_MAX_CHARS) prompt += note
+          console.log("[zeytun-line] callback", JSON.stringify({ call: call.providerCallId, items: callback.items.length, test: callback.test }))
+        }
+        const opening = !line ? ZEYTUN_INBOUND_OPENING : callback ? callbackOpening(callback)
           : call.handoffState === "returned" ? ZEYTUN_LINE_RETURN_OPENING : lineOpening(speech.greeting, candidates)
         return searchResponse({ enabled: true, variant: "pharmacy_inbound_preview", prompt,
           opening, closing: line && speech.closing ? speech.closing : ZEYTUN_INBOUND_CLOSING, ...ZEYTUN_INBOUND_VOICE, speech: ZEYTUN_INBOUND_SPEECH,
