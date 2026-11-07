@@ -400,6 +400,30 @@ pgDescribe("«агент едет к вам» on a real Postgres", () => {
     expect(sms).toHaveLength(1)
   })
 
+  // Owner, 2026-11-07: «пока не хочу всем включать» — the company names the agents.
+  it("for the chosen agents only: their customers get it, the others' do not, and nobody's while none is chosen", async () => {
+    await switchOn()
+    await setting("customerEtaAgentScope", "selected")
+    const chosen = await agentOnTheWay()
+    const other = await agentOnTheWay()
+    expect((await tick()).sent).toBe(0)
+    expect(sms).toEqual([])
+    expect(await linksOf(chosen.stopId)).toEqual([])
+
+    await setting("customerEtaAgentIds", [chosen.agentId])
+    expect((await tick()).sent).toBe(1)
+    expect(sms).toHaveLength(1)
+    expect(sms[0].message).toContain(`Elçin Məmmədov ${chosen.agentId.replace("agent-", "")} `)
+    expect(await linksOf(chosen.stopId)).toHaveLength(1)
+    expect(await linksOf(other.stopId)).toEqual([])
+
+    // «Всем агентам» again: the other agent's customer gets his one message too.
+    await setting("customerEtaAgentScope", "all")
+    expect((await tick()).sent).toBe(1)
+    expect(await linksOf(other.stopId)).toHaveLength(1)
+    expect(sms).toHaveLength(2)
+  })
+
   it("answers to its own switch: the managers' switch off leaves it working, its own switch off ends it", async () => {
     await switchOn()
     await agentOnTheWay()

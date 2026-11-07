@@ -40,6 +40,8 @@ export type MtmNumericSettingKey = keyof typeof MTM_SETTING_NUMBER_RANGES
 export const MTM_SETTING_CHOICES = {
   // How the bot sends «агент едет к вам» (customer-eta-link.ts).
   customerEtaLinkChannel: ["sms", "whatsapp"],
+  // Whose customers it is for: everybody's, or the chosen agents' only.
+  customerEtaAgentScope: ["all", "selected"],
 } as const satisfies Record<string, readonly string[]>
 
 export const MTM_SETTING_ERROR_CODES = {
