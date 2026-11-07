@@ -187,7 +187,7 @@ export function BookingScheduler({
         {!staff && onHostChange && page.hosts && page.hosts.length > 0 && !startsAt ? (
           <div>
             <p className="text-sm font-semibold">{t("pickHost")}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-2 rounded-xl bg-muted/40 p-3">
               {[null, ...page.hosts].map((host) => {
                 const active = (page.chosenHostId ?? null) === (host?.id ?? null)
                 return (
@@ -219,7 +219,7 @@ export function BookingScheduler({
         {!staff && onAddOnsChange && page.addOns && page.addOns.length > 0 && !startsAt ? (
           <div>
             <p className="text-sm font-semibold">{t("addOnsPick")}</p>
-            <ul className="mt-2 space-y-1.5">
+            <ul className="mt-2 space-y-1.5 rounded-xl bg-muted/40 p-3">
               {page.addOns.map((addOn) => {
                 const taken = (page.chosenAddOnIds ?? []).includes(addOn.id)
                 return (
@@ -290,7 +290,7 @@ export function BookingScheduler({
             {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
             <div>
               <h2 className="mb-2 text-sm font-semibold">{t("chooseDay")}</h2>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
+              <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted/40 p-2.5 sm:grid-cols-4 lg:grid-cols-5">
                 {days.map((item) => (
                   <button
                     key={item.date}
@@ -302,8 +302,8 @@ export function BookingScheduler({
                       ? "border-primary bg-primary font-bold text-primary-foreground shadow-[0_8px_18px_-12px_hsl(var(--primary))]"
                       : "bg-card hover:border-primary/40 hover:bg-primary/5"}`}
                   >
-                    <span className="block capitalize">{format.day(item.date)}</span>
-                    <span className={`block text-xs font-normal ${item.date === date ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{t("freeCount", { count: item.slots.length })}</span>
+                    <span className="block truncate capitalize">{format.day(item.date)}</span>
+                    <span className={`block truncate text-xs font-normal ${item.date === date ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{t("freeCount", { count: item.slots.length })}</span>
                   </button>
                 ))}
               </div>
@@ -311,7 +311,7 @@ export function BookingScheduler({
             {day ? (
               <div>
                 <h2 className="mb-2 text-sm font-semibold">{t("chooseTime")}</h2>
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted/40 p-3 sm:grid-cols-4 lg:grid-cols-6">
                   {day.slots.map((slot) => (
                     <button
                       key={slot.startsAt}
