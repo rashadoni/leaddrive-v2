@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { localDayKey, monthWeeks, tasksByDueDay } from "@/lib/tasks/board-calendar"
+import { formatDate, formatWeekday } from "@/lib/format-date"
 
 export interface CalendarTask {
   id: string
@@ -31,11 +32,12 @@ export function BoardCalendar({ tasks, onOpenTask }: { tasks: readonly CalendarT
 
   const weeks = useMemo(() => monthWeeks(cursor.year, cursor.month), [cursor])
   const { byDay, undated } = useMemo(() => tasksByDueDay(tasks), [tasks])
-  const title = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(new Date(cursor.year, cursor.month, 1))
-  const weekdays = useMemo(() => {
-    const format = new Intl.DateTimeFormat(locale, { weekday: "short" })
-    return Array.from({ length: 7 }, (_, i) => format.format(new Date(2026, 10, 2 + i))) // 2 Nov 2026 is a Monday
-  }, [locale])
+  // format-date, not Intl: browsers without Azerbaijani ICU data print «2026 M11» and English weekdays.
+  const title = formatDate(new Date(cursor.year, cursor.month, 1), locale, { month: "long", year: "numeric" })
+  const weekdays = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => formatWeekday(new Date(2026, 10, 2 + i), locale)), // 2 Nov 2026 is a Monday
+    [locale],
+  )
 
   const shift = (delta: number) => setCursor(({ year, month }) => {
     const at = new Date(year, month + delta, 1)

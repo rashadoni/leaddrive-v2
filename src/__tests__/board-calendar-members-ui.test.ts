@@ -13,12 +13,13 @@ import { readFileSync } from "node:fs"
 
 type Messages = { [key: string]: string | Messages }
 const ru = JSON.parse(readFileSync("messages/ru.json", "utf8")) as Messages
+const locale = vi.hoisted(() => ({ current: "ru" }))
 vi.mock("next-intl", async (importOriginal) => {
   const actual = await importOriginal<typeof import("next-intl")>()
   return {
     useTranslations: (namespace?: string) =>
       actual.createTranslator({ locale: "ru", messages: ru as never, namespace: namespace as never }),
-    useLocale: () => "ru",
+    useLocale: () => locale.current,
   }
 })
 
@@ -60,6 +61,7 @@ describe("Təqvim", () => {
     await act(async () => { root.render(createElement(BoardCalendar, { tasks, onOpenTask: (id: string) => opened.push(id) })) })
 
     expect(container.textContent).toContain("ноябрь 2026")
+    expect(container.textContent).not.toMatch(/M11/)
     expect(dayCell("2026-11-12")?.textContent).toContain("Insert Jurnal")
     await click([...dayCell("2026-11-12")!.querySelectorAll("button")].find((b) => b.textContent === "Insert Jurnal"))
     expect(opened).toEqual(["t1"])
@@ -73,6 +75,19 @@ describe("Təqvim", () => {
     const late = [...dayCell("2026-11-03")!.querySelectorAll("button")][0]
     expect(late.className).toContain("text-red-700")
     expect(container.textContent).toContain("У 1 задачи нет срока")
+  })
+})
+
+describe("Təqvim in Azerbaijani", () => {
+  // Chrome without Azerbaijani ICU data printed «2026 M11» and English weekdays (owner's screen, 2026-11-07).
+  it("names the month and weekdays in Azerbaijani whatever the browser's ICU data", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date(2026, 10, 6, 12, 0, 0))
+    locale.current = "az"
+    await act(async () => { root.render(createElement(BoardCalendar, { tasks: [], onOpenTask: () => {} })) })
+    expect(container.querySelector("h2")?.textContent).toBe("noyabr 2026")
+    expect(container.textContent).toContain("b.e.")
+    locale.current = "ru"
   })
 })
 
