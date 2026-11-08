@@ -56,6 +56,10 @@ export interface WorkspaceBooking {
   bookingPage: { title: string; locationType: string; locationText: string | null; timezone?: string | null; price?: string | null; priceCurrency?: string | null; repeatCycleDays?: number | null }
   /** Where the meeting came from: «public_link», «staff» or «whatsapp». */
   source?: string
+  /** What this visit was asked to leave to hold the time, and where it stands. */
+  depositAmount?: string | null
+  depositStatus?: string | null
+  depositPaidAt?: string | null
   /** When the client themselves said they are coming, after a reminder. */
   clientConfirmedAt?: string | null
   remindedDayAt?: string | null

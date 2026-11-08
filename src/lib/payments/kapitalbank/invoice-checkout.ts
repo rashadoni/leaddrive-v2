@@ -25,7 +25,6 @@ import { randomUUID } from "crypto"
 import type { InvoiceItem, Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
-import { decryptForTenantBound, encryptForTenantBound } from "@/lib/crypto/tenant-pii-encryption"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { locales, type Locale } from "@/i18n/routing"
 import { afterInvoicePaymentRecorded, recordInvoicePaymentInTx } from "@/lib/invoices/record-invoice-payment"
@@ -37,9 +36,16 @@ import {
   KapitalBankError,
 } from "./client"
 import { loadKapitalConfig } from "./config"
+import {
+  ONLINE_PAYMENT_CURRENCY,
+  encodeOrderPassword,
+  readOrderHppUrl,
+  readOrderPassword,
+  readOrderTestMode,
+} from "./order-metadata"
+import { applyDepositPaymentInTx } from "@/lib/booking/deposit-checkout"
 
-/** Kapital Bank merchant accounts settle in manats. */
-export const ONLINE_PAYMENT_CURRENCY = "AZN"
+export { ONLINE_PAYMENT_CURRENCY }
 
 /** A bank order this young is offered again instead of opening a new one. */
 const REUSE_ORDER_MS = 15 * 60 * 1000
@@ -47,8 +53,6 @@ const REUSE_ORDER_MS = 15 * 60 * 1000
 const ABANDON_ORDER_MS = 48 * 60 * 60 * 1000
 
 const NOT_PAYABLE_STATUSES = new Set(["cancelled", "refunded"])
-
-const ORDER_PASSWORD_AAD = { table: "payment_intents", column: "metadata.orderPassword" } as const
 
 export type OnlinePaymentUnavailable = "not_configured" | "inactive" | "currency" | "nothing_due" | "status"
 
@@ -167,25 +171,6 @@ export async function publicInvoiceView(orgId: string, invoiceId: string) {
   }
 }
 
-function readOrderPassword(orgId: string, metadata: unknown): string | null {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null
-  const value = (metadata as Record<string, unknown>).orderPassword
-  if (typeof value !== "string" || !value) return null
-  return decryptForTenantBound(orgId, ORDER_PASSWORD_AAD.table, ORDER_PASSWORD_AAD.column, value)
-}
-
-function readHppUrl(metadata: unknown): string | null {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null
-  const value = (metadata as Record<string, unknown>).hppUrl
-  return typeof value === "string" && value ? value : null
-}
-
-function readTestMode(metadata: unknown): boolean | null {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null
-  const value = (metadata as Record<string, unknown>).testMode
-  return typeof value === "boolean" ? value : null
-}
-
 export type StartCheckoutResult =
   | { ok: true; url: string }
   | { ok: false; reason: OnlinePaymentUnavailable | "not_found" | "bank_error" }
@@ -225,9 +210,9 @@ export async function startInvoiceCheckout(input: {
     orderBy: { createdAt: "desc" },
     select: { externalRef: true, metadata: true },
   })
-  if (recent?.externalRef && readTestMode(recent.metadata) === config.isTestMode) {
+  if (recent?.externalRef && readOrderTestMode(recent.metadata) === config.isTestMode) {
     const password = readOrderPassword(orgId, recent.metadata)
-    const hppUrl = readHppUrl(recent.metadata)
+    const hppUrl = readOrderHppUrl(recent.metadata)
     if (password && hppUrl) {
       return { ok: true, url: kapitalPaymentPageUrl({ id: recent.externalRef, password, hppUrl }) }
     }
@@ -265,7 +250,7 @@ export async function startInvoiceCheckout(input: {
         source: "invoice_link",
         hppUrl: order.hppUrl,
         testMode: config.isTestMode,
-        orderPassword: encryptForTenantBound(orgId, ORDER_PASSWORD_AAD.table, ORDER_PASSWORD_AAD.column, order.password),
+        orderPassword: encodeOrderPassword(orgId, order.password),
       },
     },
   })
@@ -285,6 +270,8 @@ export async function settleKapitalOrder(input: {
   orderId: string
   /** Limit the lookup to one invoice (the return link names it). */
   invoiceId?: string
+  /** Limit the lookup to one meeting, for a deposit paid from its own link. */
+  bookingId?: string
 }): Promise<SettleOutcome> {
   const { orgId } = input
   const intent = await prisma.paymentIntent.findFirst({
@@ -293,9 +280,10 @@ export async function settleKapitalOrder(input: {
       externalRef: input.orderId,
       provider: { type: "kapitalbank" },
       ...(input.invoiceId ? { invoiceId: input.invoiceId } : {}),
+      ...(input.bookingId ? { bookingId: input.bookingId } : {}),
     },
     select: {
-      id: true, status: true, amount: true, currency: true, invoiceId: true,
+      id: true, status: true, amount: true, currency: true, invoiceId: true, bookingId: true,
       providerId: true, metadata: true, createdAt: true, externalRef: true,
     },
   })
@@ -306,7 +294,7 @@ export async function settleKapitalOrder(input: {
   const config = await loadKapitalConfig(orgId)
   const password = readOrderPassword(orgId, intent.metadata)
   if (!config || config.providerId !== intent.providerId || !password) return "open"
-  const isTestMode = readTestMode(intent.metadata) ?? config.isTestMode
+  const isTestMode = readOrderTestMode(intent.metadata) ?? config.isTestMode
 
   let bankOrder
   try {
@@ -350,6 +338,26 @@ export async function settleKapitalOrder(input: {
   if (bankOrder.currency.toUpperCase() !== intent.currency.toUpperCase() || paidAmount <= 0) {
     console.error("[kapitalbank] paid order does not match its intent", { intentId: intent.id, currency: bankOrder.currency })
     return "open"
+  }
+
+  // A deposit holds a meeting, not an invoice: the money is put on the
+  // meeting itself, inside the same claim, so the return page and the cron
+  // cannot both record it.
+  if (intent.bookingId) {
+    try {
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        const claimed = await tx.paymentIntent.updateMany({
+          where: { id: intent.id, organizationId: orgId, status: "processing" },
+          data: { status: "succeeded", succeededAt: new Date() },
+        })
+        if (claimed.count !== 1) return
+        await applyDepositPaymentInTx(tx, { orgId, bookingId: intent.bookingId as string, paidAt: new Date() })
+      })
+    } catch (error) {
+      console.error("[kapitalbank] recording a paid deposit failed", { intentId: intent.id, error })
+      return "open"
+    }
+    return "paid"
   }
 
   let recorded: Awaited<ReturnType<typeof recordInvoicePaymentInTx>> | null = null

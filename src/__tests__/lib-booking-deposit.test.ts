@@ -20,6 +20,18 @@ describe("what the service asks for", () => {
     expect(depositDue(depositPolicy({ depositAmount: 10.5 }), null)).toBe("10.5")
   })
 
+  it("takes a fixed sum the database hands back as a Decimal", () => {
+    // `depositAmount` is a Decimal column, so this is what production passes
+    // in — not the string a test would reach for first. Reading only strings
+    // and numbers made every fixed-sum deposit ask for nothing.
+    const decimal = { toString: () => "15.00" }
+    expect(depositDue(depositPolicy({ depositAmount: decimal }), "40")).toBe("15")
+    expect(asksDeposit(depositPolicy({ depositAmount: decimal }))).toBe(true)
+    // A value whose text is not an amount is still nothing.
+    expect(depositPolicy({ depositAmount: {} }).amount).toBeNull()
+    expect(depositPolicy({ depositAmount: [] }).amount).toBeNull()
+  })
+
   it("takes a share of what the visit actually costs", () => {
     expect(depositDue(depositPolicy({ depositPercent: 25 }), "40")).toBe("10")
     expect(depositDue(depositPolicy({ depositPercent: 30 }), "55")).toBe("16.5")

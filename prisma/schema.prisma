@@ -13630,6 +13630,13 @@ model PaymentIntent {
    */
   invoiceId      String?
   /**
+   * Optional linkage — the meeting whose deposit this charge holds. A plain
+   * column like `invoiceId` and `contactId` beside it: the booking models are
+   * frozen by the release contract, and a relation field would move their
+   * hash without a single column of SQL behind it.
+   */
+  bookingId      String?
+  /**
    * Payment method type snapshot — "card" / "bank" / "wallet" / etc.
    */
   paymentMethod  String?
@@ -13649,6 +13656,7 @@ model PaymentIntent {
   @@index([organizationId, providerId])
   @@index([subscriptionId])
   @@index([invoiceId])
+  @@index([bookingId])
   @@index([contactId])
   @@map("payment_intents")
 }

@@ -12,7 +12,10 @@
  * kept; a person pays it back, and the CRM only says that they should.
  */
 
-export type DepositStatus = "awaiting" | "paid" | "refund_due" | "kept"
+export type DepositStatus = "awaiting" | "paid" | "refund_due" | "kept" | "refunded"
+
+/** What a person may do to a deposit by hand, from the meeting's card. */
+export type DepositAction = "paid" | "refunded"
 
 export interface DepositPolicy {
   /** A fixed sum, as text; null when the share is used or nothing is asked. */
@@ -32,8 +35,16 @@ function trimMoney(text: string): string {
 
 function cleanAmount(value: unknown): string | null {
   if (typeof value === "number" && Number.isFinite(value) && value > 0 && value <= MAX_AMOUNT) return trimMoney(value.toFixed(2))
-  if (typeof value !== "string") return null
-  const text = value.trim().replace(",", ".")
+  // The column is `Decimal`, and that is what the database hands back: a
+  // fixed-sum deposit arrives here as a Decimal object, not as a string.
+  // Reading only strings and numbers is how «15 ₼» quietly became «no deposit
+  // at all» — the share worked, because its column is an integer. Anything
+  // whose text is not a plain amount still falls through to null below.
+  const raw = typeof value === "string" ? value
+    : typeof value === "object" && value !== null ? String(value)
+      : null
+  if (raw === null) return null
+  const text = raw.trim().replace(",", ".")
   if (!/^\d{1,10}(\.\d{1,2})?$/.test(text)) return null
   const amount = Number(text)
   return Number.isFinite(amount) && amount > 0 && amount <= MAX_AMOUNT ? trimMoney(text) : null
@@ -93,4 +104,23 @@ export function depositAfterCancel(
 /** Whether the salon is still waiting for this visit's money. */
 export function depositOutstanding(booking: { depositStatus?: string | null }): boolean {
   return booking.depositStatus === "awaiting"
+}
+
+/**
+ * The deposit a manager marks by hand — cash on the counter, a transfer that
+ * arrived, a refund they sent back.
+ *
+ * Each action has exactly one state it may start from, and the answer is
+ * null everywhere else. That is the whole point: a second press of «received»
+ * on a visit already paid, or «sent back» on a deposit the salon kept, must
+ * change nothing rather than quietly rewrite what happened to the money.
+ */
+export function depositTransition(current: string | null | undefined, action: DepositAction): DepositStatus | null {
+  if (action === "paid") return current === "awaiting" ? "paid" : null
+  return current === "refund_due" ? "refunded" : null
+}
+
+/** Whether the salon still owes this cancelled visit's deposit back. */
+export function depositRefundOwed(booking: { depositStatus?: string | null }): boolean {
+  return booking.depositStatus === "refund_due"
 }

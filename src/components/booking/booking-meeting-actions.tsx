@@ -3,15 +3,17 @@
 import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useQuery } from "@tanstack/react-query"
-import { CalendarDays, X } from "lucide-react"
+import { CalendarDays, Check, Undo2, Wallet, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CrmSection } from "@/components/ui/crm-section"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { bookingRequestIdentity } from "@/lib/booking/client-identity"
+import { servicePriceLabel } from "@/lib/booking/service"
 import { dateInputValueInTimezone } from "@/lib/timezone"
-import { formatTime } from "@/lib/format-date"
+import { formatDate, formatTime } from "@/lib/format-date"
+import { cn } from "@/lib/utils"
 import type { DaySlots } from "@/lib/booking/availability"
 import type { WorkspaceBooking } from "./booking-workspace"
 
@@ -76,5 +78,62 @@ export function BookingMeetingActions({ booking, context, onSaved }: { booking: 
       {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
       <div className="flex flex-wrap gap-2"><Button variant={mode === "cancel" ? "destructive" : "default"} className="h-auto whitespace-normal py-2.5" onClick={() => void submit()} disabled={busy || mode === "reschedule" && (!startsAt || availability.isFetching || availability.isError)}>{busy ? t("saving") : t("saveMeeting")}</Button><Button variant="ghost" className="h-auto whitespace-normal py-2.5" disabled={busy} onClick={() => { setMode(null); setError("") }}>{t("cancel")}</Button></div>
     </div>}
+  </CrmSection>
+}
+
+const DEPOSIT_STATE_KEYS: Record<string, string> = {
+  awaiting: "depositStateAwaiting", paid: "depositStatePaid", refund_due: "depositStateRefundDue",
+  kept: "depositStateKept", refunded: "depositStateRefunded",
+}
+
+/**
+ * The deposit on one meeting: what it is, where it stands, and the one press
+ * that moves it.
+ *
+ * Money is never moved from here. The client pays the salon — in cash, by
+ * transfer, or by card from their own link — and this button is a person
+ * saying that it happened. Which is why there is exactly one button at a
+ * time, and why a state with nothing to say shows no button at all: «received»
+ * on a visit already paid would be a manager rewriting the record of money.
+ */
+export function BookingDepositAction({ booking, onSaved }: { booking: WorkspaceBooking; onSaved: () => void }) {
+  const t = useTranslations("booking"), locale = useLocale()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState("")
+  const status = booking.depositStatus ?? null
+  if (!status || !booking.depositAmount) return null
+  const amount = servicePriceLabel({ price: booking.depositAmount, priceCurrency: booking.bookingPage.priceCurrency ?? null }, locale) ?? booking.depositAmount
+  const action = booking.canManage && status === "awaiting" ? "paid" : booking.canManage && status === "refund_due" ? "refunded" : null
+
+  async function submit(deposit: "paid" | "refunded") {
+    setBusy(true); setError("")
+    const payload = { operation: "deposit" as const, deposit, version: booking.version, reason: "", note: "", notifyCustomer: false }
+    try {
+      const identity = await bookingRequestIdentity(`deposit:${booking.id}:${deposit}`, payload)
+      const response = await fetch(`/api/v1/bookings/${encodeURIComponent(booking.id)}/actions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, idempotencyKey: identity.idempotencyKey }) })
+      const body = await response.json()
+      if (!response.ok || !body.success) { setError(t(BOOKING_ERROR_KEYS[body.code] ?? "errSave")); return }
+      onSaved()
+    } catch { setError(t("commandUnconfirmed")) } finally { setBusy(false) }
+  }
+
+  return <CrmSection title={t("depositState")} aria-label={t("depositState")}>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <span className="inline-flex items-center gap-2 text-base font-bold tabular-nums"><Wallet aria-hidden="true" className="h-4 w-4 text-muted-foreground" />{amount}</span>
+      <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold",
+        status === "paid" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+          : status === "refund_due" ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
+            : "bg-muted text-muted-foreground")}>
+        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />{t(DEPOSIT_STATE_KEYS[status] ?? "depositStateAwaiting")}
+      </span>
+      {status === "paid" && booking.depositPaidAt ? <span className="text-xs text-muted-foreground">{t("depositPaidOn", { date: formatDate(booking.depositPaidAt, locale, { day: "numeric", month: "long" }) })}</span> : null}
+    </div>
+    {action ? <>
+      <p className="mt-2 text-sm text-muted-foreground">{t(action === "paid" ? "depositManualHint" : "depositRefundHint")}</p>
+      <Button className="mt-3 h-auto w-full whitespace-normal py-2.5 sm:w-auto" disabled={busy} onClick={() => void submit(action)}>
+        {action === "paid" ? <Check aria-hidden="true" /> : <Undo2 aria-hidden="true" />}{t(action === "paid" ? "depositReceived" : "depositSendBack")}
+      </Button>
+    </> : null}
+    {error ? <p role="alert" className="mt-2 text-sm text-destructive">{error}</p> : null}
   </CrmSection>
 }

@@ -11,18 +11,20 @@ import { bookingHostWhere } from "./access"
 import type { BookingAccess } from "./access"
 import { computeSlots, defaultWeeklyHours, findSlot, parseWeeklyHours, type BookingRules } from "./availability"
 import { readClosedDates } from "./closed-dates"
-import { depositAfterCancel, depositPolicy } from "./deposit"
+import { depositAfterCancel, depositPolicy, depositTransition } from "./deposit"
 import { bookingCalendarBusy } from "./calendar-busy"
 import { appendBookingEvent, ensureBookingBaseline, type BookingEvent } from "./events"
 import { queueBookingEffects, ensureLegacyBinding } from "./integration-intents"
 
 export const bookingCommandInput = z.object({
-  operation: z.enum(["cancel", "reschedule", "outcome"]),
+  operation: z.enum(["cancel", "reschedule", "outcome", "deposit"]),
   version: z.number().int().nonnegative(),
   idempotencyKey: z.string().min(16).max(100).regex(/^[a-zA-Z0-9_-]+$/),
   startsAt: z.string().datetime({ offset: true }).optional(),
   hostUserId: z.string().min(1).max(64).optional(),
   outcome: z.enum(["completed", "no_show"]).optional(),
+  /** «The money arrived» / «we sent it back» — see the deposit branch below. */
+  deposit: z.enum(["paid", "refunded"]).optional(),
   note: z.string().trim().max(2000).default(""),
   reason: z.string().trim().max(500).default(""),
   notifyCustomer: z.boolean().default(true),
@@ -97,6 +99,17 @@ export async function runBookingCommand(access: BookingAccess, id: string, input
         if (!coordinator || !input.reason) throw new BookingCommandError("CORRECTION_REQUIRES_REASON", 403)
       }
       change = { status: input.outcome, outcomeNote: input.note || null }; type = row.status === "confirmed" ? input.outcome : "outcome_corrected"
+    } else if (input.operation === "deposit") {
+      // The deposit is money, so the card may only say what actually happened
+      // to it: «received» from awaiting, «sent back» from a refund the salon
+      // owes. Everything else is refused rather than rewritten — including a
+      // second press of the same button. A cancelled visit is on purpose still
+      // open to this: owing the money back is exactly what cancelling left.
+      if (!input.deposit) throw new BookingCommandError("INVALID_INPUT", 400)
+      const next = depositTransition(row.depositStatus, input.deposit)
+      if (!next) throw new BookingCommandError("INVALID_STATE")
+      change = { depositStatus: next, ...(next === "paid" ? { depositPaidAt: now } : {}) }
+      type = next === "paid" ? "deposit_paid" : "deposit_refunded"
     } else {
       if (row.status !== "confirmed" || row.startsAt <= now || !preflight || !input.startsAt) throw new BookingCommandError("INVALID_STATE")
       const currentPage = await tx.bookingPage.findFirst({ where: { id: page.id, organizationId: access.orgId } })
@@ -117,7 +130,11 @@ export async function runBookingCommand(access: BookingAccess, id: string, input
     const event = await appendBookingEvent(tx, row, type, access.userId === "customer" ? null : access.userId)
     row = await tx.booking.update({ where: { id }, data: { version: event.version } })
     if (input.reason || input.operation === "outcome" && input.note) await tx.bookingChangeNote.create({ data: { eventId: event.eventId, organizationId: access.orgId, bookingId: id, data: { reason: input.reason, note: input.operation === "outcome" ? input.note : "" } } })
-    await queueBookingEffects(tx, row, event.eventId, { customerNotice: input.notifyCustomer, secretId: row.secretId ?? undefined })
+    // The deposit changes no time, no master and no place, so it sends no
+    // effects: the calendar has nothing new to hold, and a confirmation email
+    // saying «подтверждено» for the third time is how a salon teaches its
+    // clients to ignore its mail. The ledger event above is the record.
+    if (input.operation !== "deposit") await queueBookingEffects(tx, row, event.eventId, { customerNotice: input.notifyCustomer, secretId: row.secretId ?? undefined })
     const result = { id, version: row.version }
     await storeCommandReceipt(tx, { ...identity, responseStatus: 200, responseBody: result, eventIds: [event.eventId] })
     return result
