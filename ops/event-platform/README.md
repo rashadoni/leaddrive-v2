@@ -28,7 +28,7 @@ aggregate stay ordered on one partition.
 
 ## Included assets
 
-- `topics.v1.json` is the machine-readable catalog for all 27 product domains.
+- `topics.v1.json` is the machine-readable catalog for all 28 product domains.
   It expands each domain into events, incident replay, and quarantine topics,
   plus five control/effect/audit topics. Every topic inherits replication
   factor 3, minimum ISR 2, and disabled unclean leader election. Domain event
@@ -126,7 +126,7 @@ every token; validation must reject any remaining placeholder.
 1. Run `node scripts/ci/test-event-platform-assets.mjs` in the exact release
    commit.
 2. Expand `topics.v1.json`; have capacity and domain owners approve partition
-   counts because Kafka partitions cannot be reduced. Create all 86 topics and
+   counts because Kafka partitions cannot be reduced. Create all 89 topics and
    verify their effective broker configs before granting producer access.
 3. Register the base envelope first, then the five pilot subjects and their
    references. Set and verify BACKWARD_TRANSITIVE compatibility per subject.

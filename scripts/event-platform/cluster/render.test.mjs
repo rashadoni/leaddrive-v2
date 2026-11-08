@@ -19,11 +19,11 @@ function parse(text) {
   }))
 }
 
-test('catalog expands to the 86 governed topics with effective safety configs', () => {
+test('catalog expands to the 89 governed topics with effective safety configs', () => {
   const topics = expandCatalog(catalog, 'prod')
-  assert.equal(topics.length, 86)
-  assert.equal(new Set(topics.map((t) => t.name)).size, 86)
-  assert.equal(topics.reduce((sum, t) => sum + t.partitions, 0), 1416)
+  assert.equal(topics.length, 89)
+  assert.equal(new Set(topics.map((t) => t.name)).size, 89)
+  assert.equal(topics.reduce((sum, t) => sum + t.partitions, 0), 1446)
   for (const topic of topics) {
     assert.match(topic.name, /^ld\.prod\./)
     assert.equal(topic.replicationFactor, 3)
