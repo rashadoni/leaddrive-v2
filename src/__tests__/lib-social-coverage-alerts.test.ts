@@ -392,6 +392,86 @@ describe("social coverage alerts", () => {
     }))
   })
 
+  // Prod 2026-11-08: thirty LeadDrive Inc. sources broken since July raised
+  // the same stale_source alert every day, each with a push to every admin —
+  // 253 notifications in a week, none read.
+  describe("a breakage alerts once, not every day", () => {
+    const now = new Date("2026-11-08T12:00:00.000Z")
+    const brokenSince = new Date("2026-07-17T11:45:00.000Z")
+    const brokenSource = {
+      id: "src-blocked",
+      organizationId: "org-1",
+      platform: "facebook",
+      sourceType: "search_url",
+      status: "limited",
+      lastSuccessfulAt: brokenSince,
+      lastCheckedAt: new Date("2026-11-08T06:00:00.000Z"),
+      lastError: "source_route_plan_blocked",
+    }
+    const staleKey = "stale_source:src-blocked:24h"
+
+    it("stays silent when the same breakage was already raised", async () => {
+      findSources.mockResolvedValue([brokenSource])
+      findUsers.mockResolvedValue([{ id: "admin-1" }])
+      // Raised two days ago, still broken since July: the same breakage.
+      findAlerts.mockResolvedValue([
+        { metadata: { dedupeKey: staleKey }, createdAt: new Date("2026-11-06T09:00:00.000Z") },
+      ] as never)
+
+      const result = await runSocialCoverageSloChecks({ organizationId: "org-1", now })
+
+      expect(result.created).toBe(0)
+      expect(createAlert).not.toHaveBeenCalled()
+      expect(createNotification).not.toHaveBeenCalled()
+    })
+
+    it("reminds once a month while the breakage lasts", async () => {
+      findSources.mockResolvedValue([brokenSource])
+      findUsers.mockResolvedValue([{ id: "admin-1" }])
+      findAlerts.mockResolvedValue([
+        { metadata: { dedupeKey: staleKey }, createdAt: new Date("2026-10-08T09:00:00.000Z") },
+      ] as never)
+
+      const result = await runSocialCoverageSloChecks({ organizationId: "org-1", now })
+
+      expect(createAlert).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ metadata: expect.objectContaining({ dedupeKey: staleKey }) }),
+      }))
+      expect(result.notifiedAdmins).toBe(1)
+    })
+
+    it("alerts at once when a source that recovered breaks again", async () => {
+      findSources.mockResolvedValue([{
+        ...brokenSource,
+        lastSuccessfulAt: new Date("2026-11-07T06:00:00.000Z"),
+        lastError: "youtube_rate_limited",
+      }])
+      findUsers.mockResolvedValue([{ id: "admin-1" }])
+      // The earlier alert belongs to the breakage before that success.
+      findAlerts.mockResolvedValue([
+        { metadata: { dedupeKey: staleKey }, createdAt: new Date("2026-11-06T09:00:00.000Z") },
+      ] as never)
+
+      const result = await runSocialCoverageSloChecks({ organizationId: "org-1", now })
+
+      expect(result.created).toBeGreaterThan(0)
+      expect(result.notifiedAdmins).toBe(1)
+    })
+
+    it("revives a fail-closed source once a day, not every six hours", async () => {
+      findSources.mockResolvedValue([
+        { ...brokenSource, id: "src-blocked-7h", lastCheckedAt: new Date("2026-11-08T05:00:00.000Z") },
+        { ...brokenSource, id: "src-blocked-25h", lastCheckedAt: new Date("2026-11-07T11:00:00.000Z") },
+      ])
+      updateSources.mockResolvedValue({ count: 1 })
+
+      await runSocialCoverageSloChecks({ organizationId: "org-1", now })
+
+      expect(updateSources).toHaveBeenCalledTimes(1)
+      expect(updateSources.mock.calls[0][0].where).toMatchObject({ id: { in: ["src-blocked-25h"] } })
+    })
+  })
+
   it("waits for coverage notifications before releasing the SLO run", async () => {
     const now = new Date("2026-07-18T12:00:00.000Z")
     findSources.mockResolvedValue([{
@@ -439,8 +519,8 @@ describe("social coverage alerts", () => {
       lastError: null,
     }])
     findAlerts.mockResolvedValue([
-      { metadata: { dedupeKey: `stale_source:src-1:24h` } },
-    ])
+      { metadata: { dedupeKey: `stale_source:src-1:24h` }, createdAt: new Date("2026-07-18T09:00:00.000Z") },
+    ] as never)
 
     const result = await runSocialCoverageSloChecks({ organizationId: "org-1", now })
 

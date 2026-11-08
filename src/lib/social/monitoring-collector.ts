@@ -612,6 +612,9 @@ export function effectiveCadenceMinutes(source: MonitoringSourceForRun): number 
   return Math.max(15, Math.min(source.cadenceMinutes, ...expandedCadences))
 }
 
+export const ROUTE_PLAN_BLOCKED_ERROR = "source_route_plan_blocked"
+export const ROUTE_PLAN_BLOCKED_RETRY_MS = 24 * 60 * 60_000
+
 export function monitoringSourceDueState(
   source: MonitoringSourceForRun,
   recentRuns: RecentRun[],
@@ -630,7 +633,15 @@ export function monitoringSourceDueState(
     return { dueAt: null, due: true, reason: "never_checked", backoffMultiplier, cadenceMinutes }
   }
 
-  const dueAt = new Date(source.lastCheckedAt.getTime() + cadenceMinutes * backoffMultiplier * 60_000)
+  // A source whose every route is fail-closed (`source_route_plan_blocked`:
+  // no verified adapter for what it asks) cannot collect until configuration
+  // changes, and each attempt recompiles its plans twice. On prod (2026-11-08)
+  // thirty such sources, blocked since July, ran ~100 times a day and found
+  // nothing. Once a day is enough to notice a configuration that now fits.
+  const waitMs = recentRuns[0]?.error === ROUTE_PLAN_BLOCKED_ERROR
+    ? Math.max(cadenceMinutes * backoffMultiplier * 60_000, ROUTE_PLAN_BLOCKED_RETRY_MS)
+    : cadenceMinutes * backoffMultiplier * 60_000
+  const dueAt = new Date(source.lastCheckedAt.getTime() + waitMs)
   return {
     dueAt,
     due: dueAt.getTime() <= now.getTime(),
@@ -2138,7 +2149,7 @@ async function runSafeCollector(
     newCount: 0,
     duplicateCount: 0,
     ignoredCount: 0,
-    error: "source_route_plan_blocked",
+    error: ROUTE_PLAN_BLOCKED_ERROR,
     rawStats: { failClosed: true, blockedRoutes: plans.map((plan: { id: string; reason: string }) => ({ id: plan.id, reason: plan.reason })) },
   }
   if (options.targetScenarioId) {

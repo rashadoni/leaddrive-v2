@@ -21,6 +21,11 @@ export interface SocialCoverageAlertCandidate {
   message: string
   dedupeKey: string
   metadata: Record<string, unknown>
+  /**
+   * An alert with the same dedupe key written at or after this moment means
+   * the finding was already raised. Unset keeps the original 24-hour window.
+   */
+  suppressIfAlertedSince?: Date
 }
 
 export interface SocialCoverageSourceInput {
@@ -177,15 +182,29 @@ async function writeSocialCoverageAlertsWithinFence(
   candidates: SocialCoverageAlertCandidate[],
   now: Date,
 ): Promise<number> {
-  const existing = await prisma.aiAlert.findMany({
+  const defaultSince = new Date(now.getTime() - 24 * 3600000)
+  const sinceFor = (candidate: SocialCoverageAlertCandidate) =>
+    candidate.suppressIfAlertedSince ?? defaultSince
+  const windowStart = new Date(Math.min(...candidates.map(candidate => sinceFor(candidate).getTime())))
+  const existing: Array<{ metadata: unknown; createdAt: Date }> = await prisma.aiAlert.findMany({
     where: {
       organizationId,
       type: "social_coverage_rule",
-      createdAt: { gte: new Date(now.getTime() - 24 * 3600000) },
+      createdAt: { gte: windowStart },
     },
-    select: { metadata: true },
+    select: { metadata: true, createdAt: true },
   })
-  const fresh = filterDuplicateCoverageAlertCandidates(candidates, existing)
+  const latestByKey = new Map<string, number>()
+  for (const alert of existing) {
+    const key = String(asRecord(alert.metadata).dedupeKey || "")
+    if (!key) continue
+    const at = alert.createdAt.getTime()
+    if (at > (latestByKey.get(key) ?? -Infinity)) latestByKey.set(key, at)
+  }
+  const fresh = candidates.filter(candidate => {
+    const latest = latestByKey.get(candidate.dedupeKey)
+    return latest === undefined || latest < sinceFor(candidate).getTime()
+  })
   for (const candidate of fresh) {
     await prisma.aiAlert.create({
       data: {
