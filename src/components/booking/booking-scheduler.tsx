@@ -322,8 +322,8 @@ export function BookingScheduler({
                       className="min-h-11 rounded-xl border bg-card px-2 py-2.5 text-sm font-semibold tabular-nums transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground"
                     >
                       <span className="block">{format.time(slot.startsAt)}</span>
-                      {(page.capacity ?? 1) > 1 && typeof (slot as { seatsLeft?: number }).seatsLeft === "number" ? (
-                        <span className="block text-[11px] font-normal opacity-75">{t("seatsLeft", { count: (slot as { seatsLeft?: number }).seatsLeft })}</span>
+                      {(page.capacity ?? 1) > 1 && slot.seatsLeft !== undefined ? (
+                        <span className="block text-[11px] font-normal opacity-75">{t("seatsLeft", { count: slot.seatsLeft })}</span>
                       ) : null}
                     </button>
                   ))}

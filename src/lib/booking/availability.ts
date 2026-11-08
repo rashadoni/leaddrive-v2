@@ -63,6 +63,11 @@ export interface Slot {
   endsAt: string
   /** Hosts free for this slot, in the order given. */
   hostIds: string[]
+  /**
+   * Seats still free, for a class. `computeSlots` never sets it — free time
+   * does not know about seats; the public view counts them and fills it in.
+   */
+  seatsLeft?: number
 }
 
 export interface DaySlots {
