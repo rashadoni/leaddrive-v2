@@ -29268,7 +29268,13 @@
       "dealTitle": "Deal name",
       "dealStage": "Deal stage",
       "dealValue": "Deal amount",
-      "createCompany": "Create the company too"
+      "createCompany": "Create the company too",
+      "content": "Message",
+      "checklistItemId": "Subtask",
+      "completed": "Done",
+      "minutes": "Minutes",
+      "date": "Date",
+      "note": "Note"
     },
     "values": {
       "status": {
@@ -29341,7 +29347,11 @@
         "move_deal_stage": "Move deal",
         "create_deal": "Create deal",
         "convert_lead_to_deal": "Convert lead into deal",
-        "create_company": "Create client company"
+        "create_company": "Create client company",
+        "add_task_comment": "Message in the task",
+        "add_task_checklist_item": "Add a subtask",
+        "set_task_checklist_item_done": "Tick off a subtask",
+        "log_task_time": "Log time"
       },
       "confirm": {
         "create_task": "Create task",
@@ -29352,7 +29362,11 @@
         "move_deal_stage": "Move the deal",
         "create_deal": "Create deal",
         "convert_lead_to_deal": "Convert into deal",
-        "create_company": "Create company"
+        "create_company": "Create company",
+        "add_task_comment": "Post message",
+        "add_task_checklist_item": "Add subtask",
+        "set_task_checklist_item_done": "Save",
+        "log_task_time": "Log time"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "A similar record already exists:",

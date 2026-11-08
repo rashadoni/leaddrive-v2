@@ -61,7 +61,11 @@ export type VoiceProposeResolution =
       | "DEAL_TARGET_REQUIRED"
       | "DEAL_STAGE_NOT_FOUND"
       | "DEAL_STAGE_AMBIGUOUS"
-    field: "assigneeName" | "leadName" | "companyName" | "contactName" | "taskTitle" | "dealName" | "status" | "stage"
+      | "CHECKLIST_ITEM_NOT_FOUND"
+      | "CHECKLIST_ITEM_AMBIGUOUS"
+    field:
+      | "assigneeName" | "leadName" | "companyName" | "contactName" | "taskTitle" | "dealName" | "status" | "stage"
+      | "itemTitle"
     candidates: readonly Readonly<{ id: string; label: string }>[]
   }>
   | Readonly<{ kind: "invalid"; issues: readonly Readonly<{ path: string; message: string }>[] }>
@@ -299,6 +303,15 @@ async function resolveEntryStage(auth: AuthResult): Promise<string | null> {
 }
 
 type TaskRow = Readonly<{ id: string; title: string }>
+
+/** Инструменты, у которых цель — одна задача: словами или открытая на экране. */
+const TASK_TARGET_TOOLS: ReadonlySet<string> = new Set([
+  "propose_update_task",
+  "propose_add_task_comment",
+  "propose_add_task_checklist_item",
+  "propose_set_task_checklist_item_done",
+  "propose_log_task_time",
+])
 type DealRow = Readonly<{ id: string; name: string }>
 
 /** One task by the title the user spoke, among the tasks this user may see. */
@@ -317,6 +330,33 @@ async function resolveTaskByTitle(auth: AuthResult, spokenTitle: string) {
     (rows as TaskRow[]).map((row: TaskRow) => ({ id: row.id, label: row.title })),
     spokenTitle,
   )
+}
+
+/**
+ * Одна подзадача ЭТОЙ задачи по названию, которое сказал человек.
+ *
+ * Ищется только среди подзадач уже найденной задачи — та же задача, что
+ * покажет квитанция. Не нашлось по вхождению («отметь, что ga4 настроен», а
+ * подзадача «ga4 quraşdırılması») — вопрос со списком подзадач задачи, а не
+ * отказ: человек выберет из того, что есть, а не будет угадывать формулировку.
+ */
+async function resolveChecklistItem(auth: AuthResult, taskId: string, spokenTitle: string) {
+  const byTitle = await prisma.taskChecklist.findMany({
+    where: { organizationId: auth.orgId, taskId, title: { contains: spokenTitle, mode: "insensitive" } },
+    select: { id: true, title: true },
+    orderBy: { sortOrder: "asc" },
+    take: MAX_CANDIDATES + 1,
+  }) as TaskRow[]
+  if (byTitle.length > 0) {
+    return matchNamedRecord(byTitle.map((row) => ({ id: row.id, label: row.title })), spokenTitle)
+  }
+  const all = await prisma.taskChecklist.findMany({
+    where: { organizationId: auth.orgId, taskId },
+    select: { id: true, title: true },
+    orderBy: { sortOrder: "asc" },
+    take: MAX_CANDIDATES,
+  }) as TaskRow[]
+  return { ok: false as const, ambiguous: false, candidates: all.map((row) => ({ id: row.id, label: row.title })) }
 }
 
 /** One deal by the name the user spoke, among the deals this user may see. */
@@ -438,6 +478,7 @@ export async function resolveVoiceProposal(
       || key === "relateToCurrentRecord"
       || key === "taskTitle"
       || key === "dealName"
+      || key === "itemTitle"
     ) continue
     payload[key] = value
   }
@@ -505,7 +546,7 @@ export async function resolveVoiceProposal(
     payload.dealTitle = label
   }
 
-  if (tool === "propose_update_task") {
+  if (TASK_TARGET_TOOLS.has(tool)) {
     if (typeof args.taskTitle === "string") {
       const task = await resolveTaskByTitle(auth, args.taskTitle)
       if (!task.ok) {
@@ -522,7 +563,7 @@ export async function resolveVoiceProposal(
     } else {
       return { kind: "clarify", code: "TASK_TARGET_REQUIRED", field: "taskTitle", candidates: [] }
     }
-    if (typeof args.status === "string") {
+    if (tool === "propose_update_task" && typeof args.status === "string") {
       const status = await taskStatusFor(auth, targetEntityId, args.status)
       if (!status) {
         return {
@@ -532,6 +573,22 @@ export async function resolveVoiceProposal(
       }
       payload.status = status
     }
+  }
+
+  if (tool === "propose_set_task_checklist_item_done" && targetEntityId) {
+    const item = await resolveChecklistItem(auth, targetEntityId, String(args.itemTitle ?? ""))
+    if (!item.ok) {
+      return {
+        kind: "clarify",
+        code: item.ambiguous ? "CHECKLIST_ITEM_AMBIGUOUS" : "CHECKLIST_ITEM_NOT_FOUND",
+        field: "itemTitle",
+        // Названия, как везде: модель идентификатора не получает.
+        candidates: item.candidates.map((candidate) => ({ id: candidate.label, label: candidate.label })),
+      }
+    }
+    payload.checklistItemId = item.id
+    // «Отметь подзадачу» — это «сделано»; снова открыть — только сказанным false.
+    payload.completed = args.completed === false ? false : true
   }
 
   if (tool === "propose_update_deal" || tool === "propose_move_deal_stage") {

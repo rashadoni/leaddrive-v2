@@ -5,6 +5,7 @@ import { getOrgModuleContext } from "@/lib/api-auth"
 import { moduleContextForUser } from "@/lib/user-module-access"
 import { prisma, logAudit } from "@/lib/prisma"
 import { applyRecordFilter } from "@/lib/sharing-rules"
+import { openTaskFor } from "@/lib/tasks/task-access"
 import { companyDuplicateNeedle } from "@/lib/crm-commands/company/create-company"
 import { checkPermission } from "@/lib/permissions"
 import { hasModule } from "@/lib/modules"
@@ -666,7 +667,16 @@ async function resolveTaskTarget(auth: AuthResult, targetEntityId: string): Prom
       updatedAt: true,
     },
   })
-  if (!task) {
+  // Плюс правило самой карточки задачи (`openTaskFor`): задача чужой доски,
+  // где человек не исполнитель, не автор и не подписчик, для него не
+  // существует — ни на экране, ни в голосовой квитанции. Без этого квитанция
+  // показала бы задачу, а отказ пришёл бы только на кнопке.
+  if (!task || !await openTaskFor(prisma, {
+    organizationId: auth.orgId,
+    userId: auth.userId,
+    role: auth.role,
+    taskId: task.id,
+  })) {
     throw new AiVoiceActionDraftError("TARGET_NOT_FOUND", "The target record was not found", 404)
   }
   return {
@@ -757,10 +767,12 @@ function resolveDraftTarget(
 }
 
 /** Preview fields whose value is an id of another record, and where to name it. */
-const REFERENCE_FIELDS: Readonly<Record<string, "user" | "company" | "contact">> = {
+const REFERENCE_FIELDS: Readonly<Record<string, "user" | "company" | "contact" | "checklistItem">> = {
   assignedTo: "user",
   companyId: "company",
   contactId: "contact",
+  // Подзадача, которую отмечают голосом: в квитанции — её название.
+  checklistItemId: "checklistItem",
 }
 
 /**
@@ -775,7 +787,12 @@ async function labelPreviewReferences(
   auth: AuthResult,
   preview: AiVoiceActionPreview,
 ): Promise<AiVoiceActionPreview> {
-  const wanted = { user: new Set<string>(), company: new Set<string>(), contact: new Set<string>() }
+  const wanted = {
+    user: new Set<string>(),
+    company: new Set<string>(),
+    contact: new Set<string>(),
+    checklistItem: new Set<string>(),
+  }
   for (const field of preview.fields) {
     const kind = REFERENCE_FIELDS[field.key]
     if (!kind) continue
@@ -783,9 +800,9 @@ async function labelPreviewReferences(
       if (typeof value === "string" && value) wanted[kind].add(value)
     }
   }
-  if (wanted.user.size + wanted.company.size + wanted.contact.size === 0) return preview
+  if (wanted.user.size + wanted.company.size + wanted.contact.size + wanted.checklistItem.size === 0) return preview
 
-  const [users, companies, contacts] = await Promise.all([
+  const [users, companies, contacts, checklistItems] = await Promise.all([
     wanted.user.size
       ? prisma.user.findMany({
         where: { organizationId: auth.orgId, id: { in: [...wanted.user] } },
@@ -804,6 +821,12 @@ async function labelPreviewReferences(
         select: { id: true, fullName: true },
       })
       : [],
+    wanted.checklistItem.size
+      ? prisma.taskChecklist.findMany({
+        where: { organizationId: auth.orgId, id: { in: [...wanted.checklistItem] } },
+        select: { id: true, title: true },
+      })
+      : [],
   ])
   const names = {
     user: new Map<string, string>(
@@ -815,6 +838,9 @@ async function labelPreviewReferences(
     ),
     contact: new Map<string, string>(
       (contacts as { id: string; fullName: string }[]).map((row) => [row.id, row.fullName]),
+    ),
+    checklistItem: new Map<string, string>(
+      (checklistItems as { id: string; title: string }[]).map((row) => [row.id, row.title]),
     ),
   }
   return {
@@ -967,6 +993,18 @@ async function bindTarget(
       "The lead has already been converted",
       409,
     )
+  }
+
+  // Сообщение, подзадача, время: к версии задачи не привязываются (см.
+  // bindExpectedUpdatedAt в реестре). Цель — та же проверенная задача.
+  if (!definition.target.bindExpectedUpdatedAt) {
+    return {
+      normalizedPayload,
+      targetEntityType: target.entityType,
+      targetEntityId: target.id,
+      expectedUpdatedAt: null,
+      previewContext: targetPreviewContext(target),
+    }
   }
 
   const requestedVersion = typeof normalizedPayload.expectedUpdatedAt === "string"

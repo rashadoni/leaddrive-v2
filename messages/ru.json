@@ -29268,7 +29268,13 @@
       "dealTitle": "Название сделки",
       "dealStage": "Стадия сделки",
       "dealValue": "Сумма сделки",
-      "createCompany": "Создать и компанию"
+      "createCompany": "Создать и компанию",
+      "content": "Сообщение",
+      "checklistItemId": "Подзадача",
+      "completed": "Выполнена",
+      "minutes": "Минут",
+      "date": "Дата",
+      "note": "Примечание"
     },
     "values": {
       "status": {
@@ -29341,7 +29347,11 @@
         "move_deal_stage": "Сменить этап",
         "create_deal": "Создать сделку",
         "convert_lead_to_deal": "Превратить лид в сделку",
-        "create_company": "Создать клиента-компанию"
+        "create_company": "Создать клиента-компанию",
+        "add_task_comment": "Сообщение в задаче",
+        "add_task_checklist_item": "Добавить подзадачу",
+        "set_task_checklist_item_done": "Отметить подзадачу",
+        "log_task_time": "Записать время"
       },
       "confirm": {
         "create_task": "Создать задачу",
@@ -29352,7 +29362,11 @@
         "move_deal_stage": "Перевести сделку",
         "create_deal": "Создать сделку",
         "convert_lead_to_deal": "Превратить в сделку",
-        "create_company": "Создать компанию"
+        "create_company": "Создать компанию",
+        "add_task_comment": "Отправить сообщение",
+        "add_task_checklist_item": "Добавить подзадачу",
+        "set_task_checklist_item_done": "Сохранить отметку",
+        "log_task_time": "Записать время"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "Похожая запись уже есть:",

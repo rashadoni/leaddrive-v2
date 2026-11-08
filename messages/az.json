@@ -29264,7 +29264,13 @@
       "dealTitle": "Sövdələşmənin adı",
       "dealStage": "Sövdələşmə mərhələsi",
       "dealValue": "Sövdələşmə məbləği",
-      "createCompany": "Şirkəti də yarat"
+      "createCompany": "Şirkəti də yarat",
+      "content": "Mesaj",
+      "checklistItemId": "Alt tapşırıq",
+      "completed": "Tamamlanıb",
+      "minutes": "Dəqiqə",
+      "date": "Tarix",
+      "note": "Qeyd"
     },
     "values": {
       "status": {
@@ -29337,7 +29343,11 @@
         "move_deal_stage": "Mərhələni dəyiş",
         "create_deal": "Sövdələşmə yarat",
         "convert_lead_to_deal": "Lidi sövdələşməyə çevir",
-        "create_company": "Müştəri şirkəti yarat"
+        "create_company": "Müştəri şirkəti yarat",
+        "add_task_comment": "Tapşırıqda mesaj",
+        "add_task_checklist_item": "Alt tapşırıq əlavə et",
+        "set_task_checklist_item_done": "Alt tapşırığı qeyd et",
+        "log_task_time": "Vaxtı yaz"
       },
       "confirm": {
         "create_task": "Tapşırıq yarat",
@@ -29348,7 +29358,11 @@
         "move_deal_stage": "Sövdələşməni keçir",
         "create_deal": "Sövdələşmə yarat",
         "convert_lead_to_deal": "Sövdələşməyə çevir",
-        "create_company": "Şirkət yarat"
+        "create_company": "Şirkət yarat",
+        "add_task_comment": "Mesajı göndər",
+        "add_task_checklist_item": "Alt tapşırıq əlavə et",
+        "set_task_checklist_item_done": "Qeydi saxla",
+        "log_task_time": "Vaxtı yaz"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "Oxşar qeyd artq mövcuddur:",

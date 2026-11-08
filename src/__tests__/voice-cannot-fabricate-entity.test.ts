@@ -22,6 +22,7 @@ const DB_IDS = {
   contact: "db-contact-0001",
   task: "db-task-0001",
   deal: "db-deal-0001",
+  checklistItem: "db-checklist-0001",
 } as const
 
 const mocks = vi.hoisted(() => ({
@@ -34,6 +35,7 @@ const mocks = vi.hoisted(() => ({
   pipeline: vi.fn(),
   stage: vi.fn(),
   stages: vi.fn(),
+  checklist: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -46,6 +48,7 @@ vi.mock("@/lib/prisma", () => ({
     contact: { findMany: mocks.contacts },
     pipeline: { findFirst: mocks.pipeline },
     pipelineStage: { findFirst: mocks.stage, findMany: mocks.stages },
+    taskChecklist: { findMany: mocks.checklist },
   },
 }))
 vi.mock("@/lib/sharing-rules", () => ({
@@ -69,7 +72,7 @@ const auth = {
 const POISON = "clxpoisoned0000000000001"
 
 /** Fields the CRM reads as a reference to another record. */
-const REFERENCE_FIELDS = ["assignedTo", "companyId", "contactId", "relatedId", "pipelineId", "campaignId"]
+const REFERENCE_FIELDS = ["assignedTo", "companyId", "contactId", "relatedId", "pipelineId", "campaignId", "checklistItemId"]
 
 /** Every string argument each tool accepts, filled with the poison. */
 const POISONED_ARGS: Record<VoiceProposeToolName, Record<string, unknown>> = {
@@ -105,6 +108,12 @@ const POISONED_ARGS: Record<VoiceProposeToolName, Record<string, unknown>> = {
   propose_create_company: {
     name: POISON, industry: POISON, address: POISON, city: POISON, country: POISON, description: POISON,
   },
+  // Работа внутри задачи (2026-11-08): задача и подзадача — только словами,
+  // и находит их сервер среди своих строк.
+  propose_add_task_comment: { taskTitle: POISON, content: POISON },
+  propose_add_task_checklist_item: { taskTitle: POISON, title: POISON, assigneeName: POISON },
+  propose_set_task_checklist_item_done: { taskTitle: POISON, itemTitle: POISON },
+  propose_log_task_time: { taskTitle: POISON, minutes: 30, note: POISON },
 }
 
 beforeEach(() => {
@@ -115,6 +124,7 @@ beforeEach(() => {
   mocks.contacts.mockResolvedValue([{ id: DB_IDS.contact, fullName: POISON }])
   mocks.tasks.mockResolvedValue([{ id: DB_IDS.task, title: POISON, divisionId: null }])
   mocks.deals.mockResolvedValue([{ id: DB_IDS.deal, name: POISON }])
+  mocks.checklist.mockResolvedValue([{ id: DB_IDS.checklistItem, title: POISON }])
   mocks.pipeline.mockResolvedValue({ id: "db-pipeline-0001" })
   mocks.stage.mockResolvedValue(null)
   mocks.stages.mockResolvedValue([

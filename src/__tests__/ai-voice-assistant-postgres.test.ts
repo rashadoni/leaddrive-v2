@@ -2402,4 +2402,195 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
       expect(await activeReceipt()).toBeNull()
     })
   })
+
+  /**
+   * Работа ВНУТРИ задачи голосом (владелец 2026-11-08: «всё, что работник и
+   * начальник делают руками в CRM — через голосового помощника»).
+   *
+   * В Zeytun за 60 дней руками написано больше тысячи сообщений в задачах и
+   * сотни подзадач — самая частая ручная работа в CRM. Сценарии ведут одну
+   * задачу так, как её ведут люди: сообщение коллеге, подзадача на человека,
+   * отметка подзадачи словами, записанное время — и то, чего голос делать не
+   * должен: чужая доска, выдуманная подзадача, «устаревшая» квитанция там, где
+   * она устареть не может.
+   */
+  describe("сценарий: работа внутри задачи", () => {
+    const TASK = "Anbar hesabatı"
+    let taskId = ""
+
+    beforeAll(async () => {
+      const task = await bypass(() => prisma.task.create({
+        data: { organizationId: ORG, title: TASK, assignedTo: "user-colleague", createdBy: USER },
+      }))
+      taskId = task.id
+      // Лейла следит за задачей — ей и должно прийти сообщение.
+      await bypass(() => prisma.taskFollower.create({
+        data: { organizationId: ORG, taskId, userId: "user-colleague" },
+      }))
+    })
+
+    it("сообщение в открытой задаче: автор начинает следить, подписчику уходит уведомление", async () => {
+      const receipt = await propose(
+        "propose_add_task_comment",
+        { content: "Hesabatı cümə günü göndər" },
+        { screen: { recordType: "task", recordId: taskId } },
+      )
+      expect(receipt.status).toBe(201)
+      // Квитанция говорит, В КАКОЙ задаче, и что именно уйдёт.
+      expect(receipt.body.data!.preview).toMatchObject({ target: { id: taskId, label: TASK } })
+      expect(previewField(receipt.body.data!, "content")).toBe("Hesabatı cümə günü göndər")
+      // До подтверждения в задаче ничего нет.
+      expect(await bypass(() => prisma.taskComment.count({ where: { taskId } }))).toBe(0)
+
+      const committed = await pressCreate(receipt.body.data!)
+      expect(committed.status).toBe(200)
+
+      const comments = await bypass(() => prisma.taskComment.findMany({ where: { taskId } }))
+      expect(comments.map((comment) => [comment.userId, comment.content]))
+        .toEqual([[USER, "Hesabatı cümə günü göndər"]])
+      expect(await bypass(() => prisma.taskFollower.count({ where: { taskId, userId: USER } }))).toBe(1)
+
+      // Уведомление уходит после коммита и в фоне — ждём его, а не угадываем.
+      let notified = 0
+      for (let attempt = 0; attempt < 40 && notified === 0; attempt += 1) {
+        notified = await bypass(() => prisma.notification.count({
+          where: { organizationId: ORG, userId: "user-colleague", entityType: "task", entityId: taskId },
+        }))
+        if (notified === 0) await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+      expect(notified).toBe(1)
+      // Автору о собственном сообщении не сообщают.
+      expect(await bypass(() => prisma.notification.count({
+        where: { organizationId: ORG, userId: USER, entityType: "task", entityId: taskId },
+      }))).toBe(0)
+    })
+
+    it("подзадача на человека по имени, со сроком; отметка словами — одна строка в ленте", async () => {
+      const added = await propose("propose_add_task_checklist_item", {
+        taskTitle: TASK,
+        title: "Rəfləri saymaq",
+        assigneeName: "Leyla",
+        dueDate: "2026-11-12",
+      })
+      expect(added.status).toBe(201)
+      expect((await pressCreate(added.body.data!)).status).toBe(200)
+      const item = await bypass(() => prisma.taskChecklist.findFirstOrThrow({ where: { taskId } }))
+      expect([item.title, item.assignedTo, item.completed, item.dueDate?.toISOString().slice(0, 10)])
+        .toEqual(["Rəfləri saymaq", "user-colleague", false, "2026-11-12"])
+
+      // «Отметь, что рэфляри посчитали»: подзадачу сервер находит по словам.
+      const ticked = await propose("propose_set_task_checklist_item_done", { taskTitle: TASK, itemTitle: "rəfləri" })
+      expect(ticked.status).toBe(201)
+      // В квитанции — название подзадачи, а не её идентификатор.
+      const field = ticked.body.data!.preview.fields!.find((candidate) => candidate.key === "checklistItemId") as
+        { after: unknown; afterLabel?: string }
+      expect([field.after, field.afterLabel]).toEqual([item.id, "Rəfləri saymaq"])
+      expect(previewField(ticked.body.data!, "completed")).toBe(true)
+      expect((await pressCreate(ticked.body.data!)).status).toBe(200)
+
+      const done = await bypass(() => prisma.taskChecklist.findFirstOrThrow({ where: { id: item.id } }))
+      expect(done.completed).toBe(true)
+      expect(done.completedAt).not.toBeNull()
+      const lines = async () => bypass(() => prisma.taskActivity.count({
+        where: { taskId, action: "subtask_completed" },
+      }))
+      expect(await lines()).toBe(1)
+
+      // Повторная отметка того, что уже отмечено, ленту не засоряет.
+      const again = await propose("propose_set_task_checklist_item_done", { taskTitle: TASK, itemTitle: "rəfləri" })
+      expect((await pressCreate(again.body.data!)).status).toBe(200)
+      expect(await lines()).toBe(1)
+
+      // Сама задача не закрыта: подзадача — не задача.
+      expect((await bypass(() => prisma.task.findFirstOrThrow({ where: { id: taskId } }))).status).not.toBe("completed")
+    })
+
+    it("подзадачу, которой нет, не угадывает: спрашивает со списком тех, что есть", async () => {
+      const missing = await propose("propose_set_task_checklist_item_done", { taskTitle: TASK, itemTitle: "Kassanı bağlamaq" })
+      expect(missing.status).toBe(200)
+      expect(missing.body.needsClarification).toBe(true)
+      expect(missing.body.code).toBe("CHECKLIST_ITEM_NOT_FOUND")
+      expect(missing.body.candidates).toContain("Rəfləri saymaq")
+      expect(await activeReceipt()).toBeNull()
+    })
+
+    it("время: «полтора часа» записывается как 90 минут от имени говорящего", async () => {
+      const receipt = await propose("propose_log_task_time", { taskTitle: TASK, minutes: 90, note: "inventar" })
+      expect(receipt.status).toBe(201)
+      expect((await pressCreate(receipt.body.data!)).status).toBe(200)
+      const entries = await bypass(() => prisma.taskTimeEntry.findMany({ where: { taskId } }))
+      expect(entries.map((entry) => [entry.userId, entry.minutes, entry.source, entry.note]))
+        .toEqual([[USER, 90, "manual", "inventar"]])
+    })
+
+    it("чужая правка задачи не делает сообщение «устаревшим» — а правку самой задачи делает", async () => {
+      const message = await propose("propose_add_task_comment", { taskTitle: TASK, content: "Yoxladım" })
+      const change = await propose("propose_update_task", { taskTitle: TASK, priority: "high" })
+      expect(change.status).toBe(201)
+      // Пока квитанции висели, коллега перенёс срок.
+      await bypass(() => prisma.task.update({ where: { id: taskId }, data: { dueDate: new Date("2026-11-20") } }))
+
+      // Правка полей задачи — устарела: голос не затирает чужую правку.
+      expect((await pressCreate(change.body.data!)).status).toBe(409)
+
+      // Сообщение в ней — нет: срок задачи не делает сообщение неверным.
+      const again = await propose("propose_add_task_comment", { taskTitle: TASK, content: "Yoxladım" })
+      expect(again.body.data!.id).not.toBe(message.body.data!.id)
+      expect((await pressCreate(again.body.data!)).status).toBe(200)
+      expect(await bypass(() => prisma.taskComment.count({ where: { taskId, content: "Yoxladım" } }))).toBe(1)
+    })
+
+    it("задачи чужой доски для голоса нет — как и для экрана", async () => {
+      await bypass(async () => {
+        await prisma.division.create({ data: { id: "division-closed", organizationId: ORG, key: "FN", name: "Maliyyə" } })
+        await prisma.task.create({
+          data: { id: "task-closed", organizationId: ORG, title: "Büdcə planı", divisionId: "division-closed" },
+        })
+      })
+      // Менеджер: правила видимости записей показывают ему все задачи
+      // организации, и отсечь эту может только правило доски (openTaskFor).
+      auth.userId = "user-colleague"
+      ;(auth as { role: string }).role = "manager"
+      try {
+        const managerSession = await bypass(() => prisma.voiceSession.create({
+          data: {
+            organizationId: ORG,
+            userId: "user-colleague",
+            status: "active",
+            reservedSeconds: 600,
+            expiresAt: new Date(Date.now() + 600_000),
+          },
+        }))
+        const refused = await propose(
+          "propose_add_task_comment",
+          { content: "Baxdım" },
+          { voiceSessionId: managerSession.id, screen: { recordType: "task", recordId: "task-closed" } },
+        )
+        expect(refused.status).toBe(404)
+        expect(await bypass(() => prisma.taskComment.count({ where: { taskId: "task-closed" } }))).toBe(0)
+        expect(await bypass(() => prisma.aiActionIntent.count({ where: { voiceSessionId: managerSession.id } }))).toBe(0)
+      } finally {
+        auth.userId = USER
+        ;(auth as { role: string }).role = "admin"
+      }
+    })
+
+    it("всё, что сказано про задачу, видно на её экране — те же записи, что от кнопок", async () => {
+      // Экран читает сообщения, подзадачи и время своими маршрутами; голосовые
+      // записи обязаны быть среди них, а не в каком-то своём месте.
+      const comments = await import("@/app/api/v1/tasks/[id]/comments/route")
+      const checklist = await import("@/app/api/v1/tasks/[id]/checklist/route")
+      const time = await import("@/app/api/v1/tasks/[id]/time/route")
+      const params = { params: Promise.resolve({ id: taskId }) }
+      const messages = await (await comments.GET(get(`/api/v1/tasks/${taskId}/comments`), params)).json() as
+        { data: { content: string }[] }
+      const items = await (await checklist.GET(get(`/api/v1/tasks/${taskId}/checklist`), params)).json() as
+        { data: { title: string; completed: boolean }[] }
+      const spent = await (await time.GET(get(`/api/v1/tasks/${taskId}/time`), params)).json() as
+        { data: { totalMinutes: number } }
+      expect(messages.data.map((message) => message.content)).toEqual(expect.arrayContaining(["Hesabatı cümə günü göndər", "Yoxladım"]))
+      expect(items.data.map((item) => [item.title, item.completed])).toEqual([["Rəfləri saymaq", true]])
+      expect(spent.data.totalMinutes).toBe(90)
+    })
+  })
 })

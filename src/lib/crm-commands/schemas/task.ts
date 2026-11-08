@@ -87,3 +87,43 @@ export const updateTaskCommandSchema = z.object({
 })
 
 export type UpdateTaskCommandInput = z.infer<typeof updateTaskCommandSchema>
+
+/*
+ * Работа ВНУТРИ задачи — сообщение, подзадача, отметка подзадачи, время.
+ *
+ * Владелец 2026-11-08: «всё, что работник и начальник делают руками в CRM,
+ * должно делаться через голосового помощника». В Zeytun за 60 дней руками
+ * написано больше тысячи сообщений в задачах и сотни подзадач — это самая
+ * частая ручная работа в CRM. Схемы — те же, что у экрана
+ * (`/api/v1/tasks/[id]/comments|checklist|time`): экран и голос зовут одну
+ * команду, поэтому права, журнал задачи и уведомления у них не расходятся.
+ */
+const isoDateString = z.string().refine((value) => !Number.isNaN(Date.parse(value)), "Invalid date")
+
+export const addTaskCommentCommandSchema = z.strictObject({
+  content: z.string().trim().min(1).max(5000),
+  // Люди, отмеченные @ в сообщении (ids, выбраны в поле ввода экрана).
+  mentions: z.array(z.string().min(1).max(64)).max(20).optional(),
+})
+export type AddTaskCommentCommandInput = z.infer<typeof addTaskCommentCommandSchema>
+
+export const addTaskChecklistItemCommandSchema = z.strictObject({
+  title: z.string().trim().min(1).max(500),
+  sortOrder: z.number().int().optional(),
+  assignedTo: z.string().min(1).max(64).nullable().optional(),
+  dueDate: isoDateString.nullable().optional(),
+})
+export type AddTaskChecklistItemCommandInput = z.infer<typeof addTaskChecklistItemCommandSchema>
+
+export const setTaskChecklistItemDoneCommandSchema = z.strictObject({
+  checklistItemId: z.string().min(1).max(64),
+  completed: z.boolean(),
+})
+export type SetTaskChecklistItemDoneCommandInput = z.infer<typeof setTaskChecklistItemDoneCommandSchema>
+
+export const logTaskTimeCommandSchema = z.strictObject({
+  minutes: z.number().int().min(1).max(24 * 60),
+  date: isoDateString.optional(),
+  note: z.string().trim().max(500).optional(),
+})
+export type LogTaskTimeCommandInput = z.infer<typeof logTaskTimeCommandSchema>
