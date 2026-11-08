@@ -49,7 +49,7 @@ describe("attendance schedule registration", () => {
     for (const after of [installedCrontab(before), installedCrontab(installedCrontab(before))]) {
       const active = after.split("\n").filter((line) => !line.trimStart().startsWith("#") && line.includes("cron-trigger.sh /api/cron/mtm-attendance-reports "))
       expect(active).toHaveLength(1)
-      expect(active[0].startsWith("*/5 * * * * ")).toBe(true)
+      expect(active[0].startsWith("2-59/5 * * * * ")).toBe(true)
       expect(after).toContain("17 * * * * /other/job")
     }
     expect(readFileSync(".github/workflows/deploy.yml", "utf8")).toContain("/api/cron/mtm-attendance-reports?smoke=1")

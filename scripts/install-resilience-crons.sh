@@ -89,6 +89,18 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # seconds (why — the comment above its use there). cron hands an environment
   # line to every command after it, so it stays first in the block.
   printf '%s\n' "CRON_TRIGGER_SPREAD_SECONDS=50"
+  # The spread above moves each job's HTTP call, but not its start: cron
+  # itself forks a child, runs PAM and logs a session for every line due that
+  # minute, all in its first second. Measured on production 2026-11-08: 25
+  # lines that only `sleep` put 41 threads in the run queue, the kernel took
+  # 47 % of six cores, and /api/v1/ping answered in 0.99 s instead of 0.05 s;
+  # with the eleven every-minute lines plus the twelve five-minute ones that
+  # was every fifth minute (1.2 s, and the station's own requests waited too).
+  # So the five-minute jobs are not all on minutes 0, 5, 10…: each sits in its
+  # own phase of the five (1-59/5 … 4-59/5, three per phase), and the
+  # quarter-hour ones take the free minutes 0/5/10 of their quarter. No minute
+  # now starts more than ~15 lines. A new five-minute job goes into the phase
+  # with the fewest lines, not on */5.
   printf '%s\n' "* * * * * $TRIGGER /api/v1/journeys/process >> $LOG 2>&1"
   printf '%s\n' "5 */6 * * * $TRIGGER finance-deadlines >> $LOG 2>&1"
   printf '%s\n' "*/15 * * * * $TRIGGER mtm-auto-checkout >> $LOG 2>&1"
@@ -96,7 +108,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # idempotent and uses a cross-process lease, so a minute cadence only reduces
   # post-commit delivery latency; it does not duplicate notifications.
   printf '%s\n' "* * * * * $TRIGGER mtm-route-notification-outbox >> $LOG 2>&1"
-  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/inbox-autonomous-agent >> $LOG 2>&1"
+  printf '%s\n' "1-59/5 * * * * $TRIGGER /api/cron/inbox-autonomous-agent >> $LOG 2>&1"
   # Backstop delayed/missed Chatwoot message_created webhooks. The endpoint is
   # bounded, exact-id idempotent and pinned to one configured TikTok inbox.
   printf '%s\n' "* * * * * $TRIGGER /api/cron/chatwoot-inbound-poll >> $LOG 2>&1"
@@ -111,7 +123,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   printf '%s\n' "*/30 * * * * $TRIGGER /api/cron/zeytun-catalog-refresh >> $LOG 2>&1"
   # Owner's queue task 10: the line's AI calls a pharmacy back about products it waited for.
   # A no-op unless the order organization switched it on; one call at most, inside voice hours.
-  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/zeytun-waitlist-callback >> $LOG 2>&1"
+  printf '%s\n' "1-59/5 * * * * $TRIGGER /api/cron/zeytun-waitlist-callback >> $LOG 2>&1"
   # Durable AI lead queues advance by at most one state transition per tenant
   # per tick. Dispatch remains a no-op unless both the server execution flag
   # and the tenant's VoIP queue switch are explicitly enabled.
@@ -129,7 +141,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # inside the retention window at the S6 tenant target without letting one
   # noisy tenant turn a single cleanup into an unbounded job.  The endpoint
   # owns the PostgreSQL lease; cron is only the durable external heartbeat.
-  printf '%s\n' "*/15 * * * * $TRIGGER /api/cron/mtm-cleanup >> $LOG 2>&1"
+  printf '%s\n' "5-59/15 * * * * $TRIGGER /api/cron/mtm-cleanup >> $LOG 2>&1"
   # A demo call's words are kept for 90 days — the AI agent says so in its
   # first sentence, and the prospect agreed to exactly that. Daily is plenty
   # for a 90-day promise; the endpoint touches only calls the demo placed.
@@ -149,7 +161,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # stops all use without it. Every five minutes, because the unbinding is
   # what the prospect was promised; a tick with nothing due reads one empty
   # table, and each row is leased, so overlaps send nothing twice.
-  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/demo-social-release >> $LOG 2>&1"
+  printf '%s\n' "1-59/5 * * * * $TRIGGER /api/cron/demo-social-release >> $LOG 2>&1"
   # A route stays PLANNED/IN_PROGRESS until a person closes it, so an ordinary
   # interrupted day never ended: prod had fourteen August routes sitting in the
   # "in progress" list. This sweep retires days that are over to INCOMPLETE.
@@ -164,7 +176,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # most (unique row before the send), so overlapping ticks send nothing twice.
   printf '%s\n' "* * * * * $TRIGGER /api/cron/mtm-customer-eta >> $LOG 2>&1"
   # Private attendance schedules are opt-in; worker rechecks access per letter.
-  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/mtm-attendance-reports >> $LOG 2>&1"
+  printf '%s\n' "2-59/5 * * * * $TRIGGER /api/cron/mtm-attendance-reports >> $LOG 2>&1"
   # A campaign with status «scheduled» goes out when its scheduledAt comes.
   # These are real messages to customers' contacts: each campaign is claimed
   # with one conditional write before sending, so overlapping ticks or a manual
@@ -175,17 +187,17 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # closed the tab on the bank's page never returns to tell us. This asks the
   # bank about open card orders, the longest-waiting first, a bounded number
   # per tick; recording is a conditional claim, so overlaps record once.
-  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/kapitalbank-reconcile >> $LOG 2>&1"
+  printf '%s\n' "2-59/5 * * * * $TRIGGER /api/cron/kapitalbank-reconcile >> $LOG 2>&1"
   # New leads and won deals to the organizations' Meta pixels. Meta refuses a
   # whole batch holding an event older than 7 days, so this runs often; each
   # record is queued once (unique per destination, event and record).
-  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/ad-conversions >> $LOG 2>&1"
+  printf '%s\n' "2-59/5 * * * * $TRIGGER /api/cron/ad-conversions >> $LOG 2>&1"
   # Durable meeting projections and calendar/customer delivery intents.
   printf '%s\n' "* * * * * $TRIGGER /api/cron/booking-effects >> $LOG 2>&1"
   # Reminders before a visit: the day before and two hours before, with the
   # buttons that keep a chair from going empty. Every five minutes is enough —
   # each window is hours wide and a booking is marked only once it is sent.
-  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/booking-reminders >> $LOG 2>&1"
+  printf '%s\n' "3-59/5 * * * * $TRIGGER /api/cron/booking-reminders >> $LOG 2>&1"
   # The demo organization's field day (owner decision 2026-09-22). A no-op for
   # every tenant without the hand-set `mtm-demo-pulse` flag; keyed writes make
   # a repeated or late tick harmless, and the endpoint holds its own lease.
@@ -196,7 +208,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # none had fired since. Every five minutes is the cadence the handler was
   # written for; it applies at most one rule per ticket per run and leaves
   # thirty minutes between two escalations of the same ticket.
-  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/sla-escalation >> $LOG 2>&1"
+  printf '%s\n' "3-59/5 * * * * $TRIGGER /api/cron/sla-escalation >> $LOG 2>&1"
   # A resolved ticket asks the customer to confirm; unanswered, it closes after
   # seven days, and the ticket card says so. Without this sweep it never did.
   # Hourly is plenty for a seven-day promise, and a request is closed once.
@@ -228,20 +240,20 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # run independently. Keep the legacy marker and all other social workers
   # behind their existing opt-in state. Retaining the marker also ensures an
   # older installer preserves the disabled state during rollback.
-  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/social-monitoring-run-jobs >> $LOG 2>&1"
+  printf '%s\n' "3-59/5 * * * * $TRIGGER /api/cron/social-monitoring-run-jobs >> $LOG 2>&1"
   if [ "$SOCIAL_CRONS_DISABLED" = true ]; then
     printf '%s\n' "$SOCIAL_DISABLED_MARKER"
-    printf '%s\n' "# */5 * * * * $TRIGGER /api/cron/social-monitoring-sources >> $LOG 2>&1"
-    printf '%s\n' "# */15 * * * * $TRIGGER /api/v1/social/cron/reconcile-providers >> $LOG 2>&1"
-    printf '%s\n' "# */5 * * * * $TRIGGER /api/v1/social/cron/process-media >> $LOG 2>&1"
+    printf '%s\n' "# 4-59/5 * * * * $TRIGGER /api/cron/social-monitoring-sources >> $LOG 2>&1"
+    printf '%s\n' "# 10-59/15 * * * * $TRIGGER /api/v1/social/cron/reconcile-providers >> $LOG 2>&1"
+    printf '%s\n' "# 4-59/5 * * * * $TRIGGER /api/v1/social/cron/process-media >> $LOG 2>&1"
     printf '%s\n' "# 25 3 * * * $TRIGGER /api/v1/social/cron/purge-observations >> $LOG 2>&1"
-    printf '%s\n' "# */5 * * * * $TRIGGER /api/v1/social/cron/process-outbound >> $LOG 2>&1"
+    printf '%s\n' "# 4-59/5 * * * * $TRIGGER /api/v1/social/cron/process-outbound >> $LOG 2>&1"
   else
-    printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/social-monitoring-sources >> $LOG 2>&1"
-    printf '%s\n' "*/15 * * * * $TRIGGER /api/v1/social/cron/reconcile-providers >> $LOG 2>&1"
-    printf '%s\n' "*/5 * * * * $TRIGGER /api/v1/social/cron/process-media >> $LOG 2>&1"
+    printf '%s\n' "4-59/5 * * * * $TRIGGER /api/cron/social-monitoring-sources >> $LOG 2>&1"
+    printf '%s\n' "10-59/15 * * * * $TRIGGER /api/v1/social/cron/reconcile-providers >> $LOG 2>&1"
+    printf '%s\n' "4-59/5 * * * * $TRIGGER /api/v1/social/cron/process-media >> $LOG 2>&1"
     printf '%s\n' "25 3 * * * $TRIGGER /api/v1/social/cron/purge-observations >> $LOG 2>&1"
-    printf '%s\n' "*/5 * * * * $TRIGGER /api/v1/social/cron/process-outbound >> $LOG 2>&1"
+    printf '%s\n' "4-59/5 * * * * $TRIGGER /api/v1/social/cron/process-outbound >> $LOG 2>&1"
   fi
   printf '%s\n' "$END_MARKER"
 } > "$NEXT"
