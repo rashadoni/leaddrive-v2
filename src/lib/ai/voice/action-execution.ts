@@ -360,11 +360,7 @@ export async function executeClaimedAiVoiceAction(
       }, result, false),
       postCommitEffects,
     }
-  }, {
-    maxWait: 5_000,
-    timeout: 15_000,
-    ...(serializable ? { isolationLevel: Prisma.TransactionIsolationLevel.Serializable } : {}),
-  })
+  }, { maxWait: 5_000, timeout: 15_000, ...(serializable ? { isolationLevel: Prisma.TransactionIsolationLevel.Serializable } : {}) })
 
   dispatchCollectedCommandEffects(completed.postCommitEffects)
   return completed.response
