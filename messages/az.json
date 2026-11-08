@@ -27203,6 +27203,14 @@
           "Ümumi tapşırıqlar və layihələr"
         ]
       },
+      "boards": {
+        "name": "Lövhələr",
+        "summary": "Komandanın tapşırıqlarını qovluqlar və lövhələr üzrə aparın.",
+        "benefits": [
+          "Cədvəl, Kanban və təqvim",
+          "Son tarixlər, alt tapşırıqlar və mesajlar"
+        ]
+      },
       "sales": {
         "name": "Satış",
         "summary": "Hər müştəri üzrə sövdələşmələri və növbəti addımları idarə edin.",

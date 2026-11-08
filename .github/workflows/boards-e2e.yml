@@ -26,6 +26,8 @@ on:
       - 'src/lib/crm-commands/task/**'
       - 'src/lib/nav-items.ts'
       - 'src/lib/user-module-access.ts'
+      - 'src/lib/modules.ts'
+      - 'prisma/migrations/*boards*/migration.sql'
       - 'src/auth.ts'
       - 'src/lib/auth.ts'
       - 'prisma/schema.prisma'

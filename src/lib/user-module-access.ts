@@ -1,8 +1,8 @@
-import { hasModule, type DerivedModuleId, type GroupModuleId, type ModuleId } from "./modules"
+import { hasModule, type GroupModuleId, type ModuleId } from "./modules"
 
 // modules.ts BOARDS_MODULE_ID, spelled out: several suites mock "./modules" with
 // a fixed export list, and this file is imported by the auth layer they test.
-const BOARDS_MODULE_ID: DerivedModuleId = "boards"
+const BOARDS_MODULE_ID = "boards" satisfies GroupModuleId
 import { isTenantCapabilityEnabled, type FieldTenantCapabilityId } from "./tenant-capabilities"
 
 /**
@@ -35,7 +35,7 @@ import { isTenantCapabilityEnabled, type FieldTenantCapabilityId } from "./tenan
  * keeps the `mtm` id: that is the toggle the superadmin's tenant editor shows.
  */
 export const WORKFORCE_HIDEABLE_ID = "workforce-hrm"
-export type UserHideableId = GroupModuleId | typeof WORKFORCE_HIDEABLE_ID | DerivedModuleId
+export type UserHideableId = GroupModuleId | typeof WORKFORCE_HIDEABLE_ID
 
 /**
  * `settings` is deliberately not hideable. Its scope is not only the settings

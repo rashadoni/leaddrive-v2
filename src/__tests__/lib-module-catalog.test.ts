@@ -12,7 +12,7 @@ import { navItems, accessibleNavItems } from "@/lib/nav-items"
 describe("group-module registry", () => {
   it("has exactly the sidebar group-modules", () => {
     expect([...GROUP_MODULE_IDS].sort()).toEqual([
-      "analytics", "contracts", "crm", "energy", "finance", "health",
+      "analytics", "boards", "contracts", "crm", "energy", "finance", "health",
       "insurance", "loyalty", "marketing", "media", "mtm", "omnichannel",
       "public-sector", "sales", "settings", "social", "support", "voip",
     ])

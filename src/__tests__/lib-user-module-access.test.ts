@@ -32,7 +32,7 @@ describe("the hideable catalog", () => {
     expect(USER_HIDEABLE_MODULE_IDS).toEqual([
       "crm",
       "boards",
-      ...GROUP_MODULE_IDS.filter((id) => id !== "settings" && id !== "crm"),
+      ...GROUP_MODULE_IDS.filter((id) => id !== "settings" && id !== "crm" && id !== "boards"),
       "workforce-hrm",
     ])
   })
@@ -83,8 +83,18 @@ describe("applyUserModuleMask", () => {
   })
 
   it("never grants a module the tenant does not have", () => {
-    const ctx = masked({ crm: true, settings: true, sales: false }, ["finance"])
+    const ctx = masked({ crm: true, boards: false, settings: true, sales: false }, ["finance"])
     expect(GROUP_MODULE_IDS.filter((id) => hasModule(ctx, id))).toEqual(["crm", "settings"])
+  })
+
+  // Boards are a tenant module of their own since 2026-11-08: a tenant may have
+  // them without CRM, or CRM without them; a record that says nothing about
+  // them (written before the split) follows CRM, as it did.
+  it("treats boards as the tenant's own module, following CRM only where the record is silent", () => {
+    expect(hasModule(org({ boards: true, crm: false }), "boards")).toBe(true)
+    expect(hasModule(org({ boards: false, crm: true }), "boards")).toBe(false)
+    expect(hasModule(org({ crm: true }), "boards")).toBe(true)
+    expect(hasModule(org({ crm: false }), "boards")).toBe(false)
   })
 
   it("beats an addon grant", () => {

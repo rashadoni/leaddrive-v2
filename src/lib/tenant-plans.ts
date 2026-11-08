@@ -17,14 +17,14 @@ export const TENANT_PLANS = {
     maxContacts: 500,
     // `sales` is a BASE group-module (deals/leads/quotes live there now) — every
     // plan, even starter, MUST include it or the tenant loses the pipeline.
-    features: ["crm", "sales", "settings"] as string[],
+    features: ["crm", "boards", "sales", "settings"] as string[],
     addons: [] as string[],
   },
   professional: {
     maxUsers: 25,
     maxContacts: 10000,
     features: [
-      "crm", "sales", "contracts", "marketing", "loyalty", "omnichannel", "support", "finance",
+      "crm", "boards", "sales", "contracts", "marketing", "loyalty", "omnichannel", "support", "finance",
       "analytics", "settings", "whatsapp", "complaints_register",
     ] as string[],
     addons: ["ai", "channels"] as string[],
@@ -33,7 +33,7 @@ export const TENANT_PLANS = {
     maxUsers: -1, // unlimited
     maxContacts: -1,
     features: [
-      "crm", "sales", "contracts", "marketing", "loyalty", "omnichannel", "social",
+      "crm", "boards", "sales", "contracts", "marketing", "loyalty", "omnichannel", "social",
       "voip", "support", "finance",
       "analytics", "mtm", "health", "insurance", "public-sector", "media",
       "energy", "settings", "whatsapp", "complaints_register",

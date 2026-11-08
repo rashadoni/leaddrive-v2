@@ -7,7 +7,7 @@
 #   1. TLS 1.3 + mTLS between nodes, SCRAM for clients; plaintext, a foreign
 #      CA, a missing client certificate and a wrong password are refused;
 #   2. deny-by-default ACLs: each service identity can do only its own job;
-#   3. all 86 catalog topics exist with RF=3, min ISR 2, replicas on three racks;
+#   3. all 89 catalog topics exist with RF=3, min ISR 2, replicas on three racks;
 #   4. losing one site keeps acks=all writes and controller quorum; losing two
 #      refuses writes; recovery loses no acknowledged record;
 #   5. a cold restart keeps topics, ACLs and credentials;
@@ -168,7 +168,7 @@ finance_replay="ld.$env.finance.replay.v1"
 
 step "Create the full topic catalog"
 node "$repo/scripts/event-platform/cluster/render.mjs" topics "$env" >"$work/topics.tsv"
-[ "$(wc -l <"$work/topics.tsv")" = 86 ] || fail "catalog did not expand to 86 topics"
+[ "$(wc -l <"$work/topics.tsv")" = 89 ] || fail "catalog did not expand to 89 topics"
 sudo install -o 1000 -g 1000 -m 0644 "$work/topics.tsv" "$work/client/topics.tsv"
 docker run --rm --network "$net" --label "$project" --user 1000:1000 -e KAFKA_HEAP_OPTS='-Xms64m -Xmx256m' \
   -v "$work/client:/client:ro" --entrypoint /bin/bash "$image" -ec '
@@ -178,7 +178,7 @@ docker run --rm --network "$net" --label "$project" --user 1000:1000 -e KAFKA_HE
       /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$0" --command-config /client/admin.properties \
         --create --topic "$name" --partitions "$partitions" --replication-factor "$rf" "${args[@]}" >/dev/null
     done </client/topics.tsv' "$bootstrap_mtls"
-[ "$(admin kafka-topics.sh --list | grep -c "^ld\.$env\.")" = 86 ] || fail "not all 86 catalog topics exist"
+[ "$(admin kafka-topics.sh --list | grep -c "^ld\.$env\.")" = 89 ] || fail "not all 89 catalog topics exist"
 admin kafka-topics.sh --describe --topic "$finance_events" >"$work/finance-describe.txt"
 grep -q 'ReplicationFactor: 3' "$work/finance-describe.txt" || fail "finance events RF is not 3"
 awk '/Replicas:/ { for (i = 1; i <= NF; i++) if ($i == "Replicas:") { n = split($(i + 1), r, ","); if (n != 3 || r[1] == r[2] || r[2] == r[3] || r[1] == r[3]) bad = 1 } }
@@ -187,7 +187,7 @@ admin kafka-configs.sh --describe --entity-type topics --entity-name "$finance_e
 for want in 'min.insync.replicas=2' 'unclean.leader.election.enable=false' 'retention.ms=7776000000'; do
   grep -q "$want" "$work/finance-config.txt" || fail "finance events effective config lacks $want"
 done
-echo "86 topics, $(awk -F'\t' '{s += $2} END {print s}' "$work/topics.tsv") partitions; finance events RF3/minISR2 on three racks"
+echo "89 topics, $(awk -F'\t' '{s += $2} END {print s}' "$work/topics.tsv") partitions; finance events RF3/minISR2 on three racks"
 
 step "Least-privilege ACLs"
 for name in $(cut -f1 "$work/topics.tsv" | grep '\.events\.v1$'); do
@@ -308,7 +308,7 @@ docker stop "${brokers[@]}" "${controllers[@]}" >/dev/null
 docker start "${controllers[@]}" "${brokers[@]}" >/dev/null
 wait_until "admin access after restart" 60 admin_lists_topics
 wait_until "three brokers after restart" 20 three_brokers_serve
-[ "$(admin kafka-topics.sh --list | grep -c "^ld\.$env\.")" = 86 ] || fail "topics missing after restart"
+[ "$(admin kafka-topics.sh --list | grep -c "^ld\.$env\.")" = 89 ] || fail "topics missing after restart"
 produce connect.properties "$finance_events" 10 4 >"$work/after-restart.jsonl" 2>/dev/null || true
 [ "$(acked_values <"$work/after-restart.jsonl" | wc -l)" = 10 ] || fail "SCRAM producer failed after restart"
 expect_write_refused "fund worker writing events after restart" fund.properties "$finance_events" 3 9

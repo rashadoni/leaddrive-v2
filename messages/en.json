@@ -27207,6 +27207,14 @@
           "Shared tasks and projects"
         ]
       },
+      "boards": {
+        "name": "Boards",
+        "summary": "Run your team's tasks in folders and boards.",
+        "benefits": [
+          "Table, Kanban and calendar",
+          "Deadlines, subtasks and messages"
+        ]
+      },
       "sales": {
         "name": "Sales",
         "summary": "Manage deals and the next steps for each customer.",
