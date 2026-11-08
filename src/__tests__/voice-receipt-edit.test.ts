@@ -16,8 +16,13 @@ import type { VoiceReceiptField } from "@/lib/ai/voice/receipt-store"
  * may send — the tests below make that an assertion rather than an assumption.
  */
 
-/** Re-derived from the live record by `bindTarget` on every draft write. */
-const SERVER_DERIVED = new Set(["expectedUpdatedAt"])
+/**
+ * Server-side fields: `expectedUpdatedAt` is re-derived from the live record by
+ * `bindTarget` on every draft write; a field route's `expectedVersion` and a
+ * field-client attachment's `previewToken` are set by the resolver, and their
+ * commands read the current value when an edited receipt no longer carries one.
+ */
+const SERVER_DERIVED = new Set(["expectedUpdatedAt", "expectedVersion", "previewToken"])
 
 describe("rebuilding a payload is lossless", () => {
   it("previews every field a voice caller may send, bar the server-derived one", () => {

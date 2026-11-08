@@ -29286,7 +29286,11 @@
       "agentId": "Employee",
       "body": "Message",
       "attendanceRequestId": "Request",
-      "decision": "Decision"
+      "decision": "Decision",
+      "routeId": "Route",
+      "overrideReason": "Reason to publish despite a conflict",
+      "fieldContactId": "Client",
+      "reason": "Reason"
     },
     "values": {
       "status": {
@@ -29370,7 +29374,9 @@
         "log_task_time": "Log time",
         "give_field_task": "Field task for an agent",
         "send_field_message": "Message to an agent",
-        "decide_attendance_request": "Decision on a request"
+        "decide_attendance_request": "Decision on a request",
+        "publish_field_route": "Publish a route",
+        "assign_field_contact": "Attach a client to an employee"
       },
       "confirm": {
         "create_task": "Create task",
@@ -29388,7 +29394,9 @@
         "log_task_time": "Log time",
         "give_field_task": "Give the task",
         "send_field_message": "Send to the agent",
-        "decide_attendance_request": "Save the decision"
+        "decide_attendance_request": "Save the decision",
+        "publish_field_route": "Publish",
+        "assign_field_contact": "Attach"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "A similar record already exists:",

@@ -29282,7 +29282,11 @@
       "agentId": "Əməkdaş",
       "body": "Mesaj",
       "attendanceRequestId": "Sorğu",
-      "decision": "Qərar"
+      "decision": "Qərar",
+      "routeId": "Marşrut",
+      "overrideReason": "Konfliktə baxmayaraq dərc səbəbi",
+      "fieldContactId": "Müştəri",
+      "reason": "Səbəb"
     },
     "values": {
       "status": {
@@ -29366,7 +29370,9 @@
         "log_task_time": "Vaxtı yaz",
         "give_field_task": "Agentə sahə tapşırığı",
         "send_field_message": "Agentə mesaj",
-        "decide_attendance_request": "Sorğu üzrə qərar"
+        "decide_attendance_request": "Sorğu üzrə qərar",
+        "publish_field_route": "Marşrutu dərc et",
+        "assign_field_contact": "Müştərini əməkdaşa bağla"
       },
       "confirm": {
         "create_task": "Tapşırıq yarat",
@@ -29384,7 +29390,9 @@
         "log_task_time": "Vaxtı yaz",
         "give_field_task": "Tapşırığı ver",
         "send_field_message": "Agentə göndər",
-        "decide_attendance_request": "Qərarı saxla"
+        "decide_attendance_request": "Qərarı saxla",
+        "publish_field_route": "Dərc et",
+        "assign_field_contact": "Bağla"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "Oxşar qeyd artq mövcuddur:",

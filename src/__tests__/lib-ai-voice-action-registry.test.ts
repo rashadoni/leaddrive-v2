@@ -8,6 +8,8 @@ import {
 } from "@/lib/ai/voice/action-registry"
 
 describe("AI voice action registry", () => {
+  // Eighteen since 2026-11-08 (stage 2b): publish a field route, attach a
+  // field client to an employee.
   // Sixteen since 2026-11-08 (later the same day): a field manager gives an
   // agent a task, writes to an agent and decides attendance requests.
   // Thirteen since 2026-11-08: work inside a task — a message, a subtask, a
@@ -18,7 +20,7 @@ describe("AI voice action registry", () => {
   // 2026-09-28: tasks and deals are edited by voice (2026-09-21), and a deal
   // can be moved between the stages of its own pipeline. Growing this list is
   // a decision, so it stays pinned.
-  it("is a closed sixteen-action allowlist with no executable callback", () => {
+  it("is a closed eighteen-action allowlist with no executable callback", () => {
     expect(AI_VOICE_ACTION_TYPES).toEqual([
       "create_task",
       "create_lead",
@@ -36,6 +38,8 @@ describe("AI voice action registry", () => {
       "give_field_task",
       "send_field_message",
       "decide_attendance_request",
+      "publish_field_route",
+      "assign_field_contact",
     ])
     expect(Object.keys(AI_VOICE_ACTION_REGISTRY)).toEqual(AI_VOICE_ACTION_TYPES)
     expect(isAiVoiceActionType("create_lead")).toBe(true)

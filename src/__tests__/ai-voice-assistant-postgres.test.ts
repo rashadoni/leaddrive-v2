@@ -2779,4 +2779,113 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
       }
     })
   })
+
+  /**
+   * Этап 2б (владелец 2026-11-08: «Сначала 2б»): опубликовать маршрут дня и
+   * привязать клиента поля к сотруднику — голосом, через те же функции, что
+   * кнопки экрана (route-publish.ts, contact-bulk-assignment-execute.ts).
+   * Сотрудники и возможности тенанта — из сценария «начальник в поле» выше.
+   */
+  describe("сценарий: маршрут и клиенты поля", () => {
+    const ELVIRA = "field-elvira"
+    const ROUTE = "field-route-1"
+    const DOCTOR = "field-contact-aliyev"
+    const PHARMACIST = "field-contact-mammadova"
+
+    function bakuDay(offsetDays: number): string {
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Baku" })
+      return new Date(Date.parse(`${today}T12:00:00Z`) + offsetDays * 86_400_000).toISOString().slice(0, 10)
+    }
+
+    beforeAll(async () => {
+      await bypass(async () => {
+        await prisma.mtmCustomer.create({ data: { id: "field-customer-1", organizationId: ORG, name: "Aptek 92" } })
+        await prisma.mtmRoute.create({
+          data: {
+            id: ROUTE, organizationId: ORG, agentId: ELVIRA, date: new Date(`${bakuDay(1)}T00:00:00.000Z`),
+            name: "Yasamal", status: "DRAFT", version: 1,
+          },
+        })
+        await prisma.mtmRoutePoint.create({
+          data: { organizationId: ORG, routeId: ROUTE, customerId: "field-customer-1", orderIndex: 0 },
+        })
+        await prisma.mtmContact.createMany({
+          data: [
+            { id: DOCTOR, organizationId: ORG, firstName: "Rashad", lastName: "Aliyev", displayName: "Aliyev Rashad" },
+            { id: PHARMACIST, organizationId: ORG, firstName: "Leyla", lastName: "Mammadova", displayName: "Mammadova Leyla" },
+          ],
+        })
+      })
+    })
+
+    it("«опубликуй маршрут Эльвиры на завтра»: PLANNED, уведомление агенту, журнал", async () => {
+      const receipt = await propose("propose_publish_field_route", { agentName: "Elvira", day: "tomorrow" })
+      expect(receipt.status).toBe(201)
+      const routeField = receipt.body.data!.preview.fields!.find((field) => field.key === "routeId") as
+        { after: unknown; afterLabel?: string }
+      expect([routeField.after, routeField.afterLabel]).toEqual([ROUTE, `Elvira Hasanova · Yasamal · ${bakuDay(1)}`])
+      // Версия — служебная: в квитанции её нет.
+      expect(receipt.body.data!.preview.fields!.map((field) => field.key)).not.toContain("expectedVersion")
+
+      expect((await pressCreate(receipt.body.data!)).status).toBe(200)
+      const route = await bypass(() => prisma.mtmRoute.findUniqueOrThrow({ where: { id: ROUTE } }))
+      expect([route.status, route.version, route.publishedVersion, route.publishedBy]).toEqual(["PLANNED", 2, 2, USER])
+      expect(await bypass(() => prisma.mtmRouteNotificationOutbox.count({
+        where: { organizationId: ORG, agentId: ELVIRA },
+      }))).toBe(1)
+      expect(await bypass(() => prisma.mtmAuditLog.count({
+        where: { organizationId: ORG, action: "ROUTE_PUBLISH", entityId: ROUTE, actorUserId: USER },
+      }))).toBe(1)
+
+      // Опубликованный второй раз не публикуется: помощник слышит, что он уже такой.
+      const again = await propose("propose_publish_field_route", { agentName: "Elvira", day: "tomorrow" })
+      expect(again.body.code).toBe("FIELD_ROUTE_NOT_FOUND")
+      expect(again.body.candidates).toEqual(["Yasamal (PLANNED)"])
+    })
+
+    it("привязать клиента: первый — главный, следующий — дополнительный, повтор — отказ словами", async () => {
+      const first = await propose("propose_assign_field_contact", { clientName: "doktor Aliyev", agentName: "Elvira" })
+      expect(first.status).toBe(201)
+      const contactField = first.body.data!.preview.fields!.find((field) => field.key === "fieldContactId") as
+        { after: unknown; afterLabel?: string }
+      expect([contactField.after, contactField.afterLabel]).toEqual([DOCTOR, "Aliyev Rashad"])
+      expect(first.body.data!.preview.fields!.map((field) => field.key)).not.toContain("previewToken")
+      expect((await pressCreate(first.body.data!)).status).toBe(200)
+
+      const second = await propose("propose_assign_field_contact", { clientName: "Aliyev", agentName: "Quliyeva" })
+      expect(second.status).toBe(201)
+      expect((await pressCreate(second.body.data!)).status).toBe(200)
+
+      const assignments = await bypass(() => prisma.mtmContactAgentAssignment.findMany({
+        where: { organizationId: ORG, contactId: DOCTOR }, orderBy: { createdAt: "asc" },
+      }))
+      expect(assignments.map((row) => [row.agentId, row.role, row.source, row.assignedBy]))
+        .toEqual([[ELVIRA, "PRIMARY", "BULK_ASSIGNMENT", USER], ["field-aytan-2", "SECONDARY", "BULK_ASSIGNMENT", USER]])
+      expect(await bypass(() => prisma.mtmAuditLog.count({
+        where: { organizationId: ORG, action: "CONTACT_BULK_ASSIGN" },
+      }))).toBe(2)
+
+      // Эльвира у этого клиента уже есть — отказ до квитанции, с причиной.
+      const repeat = await propose("propose_assign_field_contact", { clientName: "Aliyev", agentName: "Elvira" })
+      expect(repeat.status).toBe(400)
+      expect(JSON.stringify(repeat.body)).toContain("TARGET_ALREADY_ASSIGNED")
+    })
+
+    it("у клиента всё изменилось после квитанции — привязка не проходит вслепую", async () => {
+      const receipt = await propose("propose_assign_field_contact", { clientName: "Mammadova", agentName: "Mushkurova" })
+      expect(receipt.status).toBe(201)
+      // Пока квитанция висела, клиента отдали Эльвире главной: Мушкурова стала
+      // бы уже не главной, а дополнительной — не то, что человек видел.
+      await bypass(() => prisma.mtmContactAgentAssignment.create({
+        data: {
+          organizationId: ORG, contactId: PHARMACIST, agentId: ELVIRA, role: "PRIMARY",
+          effectiveFrom: new Date(`${bakuDay(0)}T00:00:00.000Z`), source: "MANUAL",
+        },
+      }))
+      expect((await pressCreate(receipt.body.data!)).status).toBe(409)
+      expect(await bypass(() => prisma.mtmContactAgentAssignment.count({
+        where: { organizationId: ORG, contactId: PHARMACIST, agentId: "field-aytan-1" },
+      }))).toBe(0)
+    })
+  })
 })

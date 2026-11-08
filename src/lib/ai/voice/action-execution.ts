@@ -16,8 +16,10 @@ import {
   setTaskChecklistItemDoneCommand,
 } from "@/lib/crm-commands/task/task-work"
 import {
+  assignFieldContactCommand,
   decideAttendanceRequestCommand,
   giveFieldTaskCommand,
+  publishFieldRouteCommand,
   sendFieldMessageCommand,
 } from "@/lib/crm-commands/mtm/manager-actions"
 import {
@@ -190,6 +192,10 @@ async function runCanonicalCommand(
     entityId = (await sendFieldMessageCommand(actor, payload, execution)).entity.threadId
   } else if (intent.actionType === "decide_attendance_request") {
     entityId = (await decideAttendanceRequestCommand(actor, payload, execution)).entity.id
+  } else if (intent.actionType === "publish_field_route") {
+    entityId = (await publishFieldRouteCommand(actor, payload, execution)).entity.id
+  } else if (intent.actionType === "assign_field_contact") {
+    entityId = (await assignFieldContactCommand(actor, payload, execution)).entity.contactId
   } else if (intent.actionType === "update_task") {
     if (!intent.targetEntityId) {
       throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)
@@ -234,6 +240,16 @@ export async function executeClaimedAiVoiceAction(
   auth: AuthResult,
   input: ExecuteClaimedAiVoiceActionInput,
 ): Promise<AiVoiceActionExecutionResult> {
+  // Привязка клиента поля держится на Serializable — так же, как у экрана
+  // (contact-bulk-assignment-execute.ts): две одновременные привязки одного
+  // клиента иначе дали бы ему двух главных сотрудников. Вид действия читается
+  // до транзакции только чтобы выбрать её уровень; всё решающее перечитывается
+  // внутри.
+  const kind = await prisma.aiActionIntent.findFirst({
+    where: { id: input.intentId, organizationId: auth.orgId, userId: auth.userId, parentIntentId: null },
+    select: { actionType: true },
+  })
+  const serializable = kind?.actionType === "assign_field_contact"
   const completed = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const intent = await tx.aiActionIntent.findFirst({
       where: {
@@ -344,7 +360,7 @@ export async function executeClaimedAiVoiceAction(
       }, result, false),
       postCommitEffects,
     }
-  }, { maxWait: 5_000, timeout: 15_000 })
+  }, { maxWait: 5_000, timeout: 15_000, ...(serializable ? { isolationLevel: Prisma.TransactionIsolationLevel.Serializable } : {}) })
 
   dispatchCollectedCommandEffects(completed.postCommitEffects)
   return completed.response

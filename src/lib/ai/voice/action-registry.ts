@@ -17,8 +17,10 @@ import {
 import { createDealCommandSchema, updateDealCommandSchema } from "@/lib/crm-commands/schemas/deal"
 import { createCompanyCommandSchema } from "@/lib/crm-commands/schemas/company"
 import {
+  assignFieldContactCommandSchema,
   decideAttendanceRequestCommandSchema,
   giveFieldTaskCommandSchema,
+  publishFieldRouteCommandSchema,
   sendFieldMessageCommandSchema,
 } from "@/lib/crm-commands/schemas/mtm"
 import { DEFAULT_AI_ACTION_INTENT_TTL_MS } from "./action-intent"
@@ -42,6 +44,9 @@ export const AI_VOICE_ACTION_TYPES = [
   "give_field_task",
   "send_field_message",
   "decide_attendance_request",
+  // Этап 2б: маршрут и клиенты поля.
+  "publish_field_route",
+  "assign_field_contact",
 ] as const
 
 export type AiVoiceActionType = (typeof AI_VOICE_ACTION_TYPES)[number]
@@ -63,6 +68,8 @@ export type AiVoiceActionCommand =
   | "giveFieldTaskCommand"
   | "sendFieldMessageCommand"
   | "decideAttendanceRequestCommand"
+  | "publishFieldRouteCommand"
+  | "assignFieldContactCommand"
 export type AiVoiceActionDedupePolicy =
   | "idempotency_key"
   | "lead_contact_coordinates"
@@ -92,6 +99,8 @@ export type AiVoiceActionEntityType =
   // Записи «Маршрутов и поля» (этап 2): полевая задача, сообщение агенту,
   // заявка сотрудника.
   | "mtm_task" | "mtm_message" | "mtm_attendance_request"
+  // Этап 2б: маршрут дня и клиент поля.
+  | "mtm_route" | "mtm_contact"
 
 /** The kinds of record a voice update may target. */
 export type AiVoiceActionTargetType = "lead" | "task" | "deal"
@@ -310,6 +319,12 @@ const LOG_TASK_TIME_FIELDS = ["minutes", "date", "note"] as const
 const GIVE_FIELD_TASK_FIELDS = ["agentId", "title", "dueDate"] as const
 const SEND_FIELD_MESSAGE_FIELDS = ["agentId", "body"] as const
 const DECIDE_ATTENDANCE_REQUEST_FIELDS = ["attendanceRequestId", "decision", "note", "expectedUpdatedAt"] as const
+// Версия маршрута и отпечаток предпросмотра — служебные: их кладёт сервер,
+// человеку в квитанции они не показываются (как expectedUpdatedAt).
+const PUBLISH_FIELD_ROUTE_FIELDS = ["routeId", "overrideReason", "expectedVersion"] as const
+const ASSIGN_FIELD_CONTACT_FIELDS = ["fieldContactId", "agentId", "reason", "previewToken"] as const
+/** Служебные поля квитанции: сервер их ставит, человек их не правит. */
+const SERVER_SIDE_FIELDS: ReadonlySet<string> = new Set(["expectedUpdatedAt", "expectedVersion", "previewToken"])
 
 const CONVERT_LEAD_FIELDS = [
   "dealTitle",
@@ -482,7 +497,7 @@ function managerEntry(input: {
   resultEntityType: AiVoiceActionEntityType
   risk: AiVoiceActionRisk
 }): AiVoiceActionRegistryEntry {
-  const previewFields = input.fields.filter((field) => field !== "expectedUpdatedAt")
+  const previewFields = input.fields.filter((field) => !SERVER_SIDE_FIELDS.has(field))
   return {
     actionType: input.actionType,
     command: input.command,
@@ -762,6 +777,24 @@ export const AI_VOICE_ACTION_REGISTRY: Readonly<Record<AiVoiceActionType, AiVoic
     permissions: WRITE_PERSONNEL,
     resultEntityType: "mtm_attendance_request",
     risk: "sensitive",
+  }),
+  publish_field_route: managerEntry({
+    actionType: "publish_field_route",
+    command: "publishFieldRouteCommand",
+    commandSchema: publishFieldRouteCommandSchema,
+    fields: PUBLISH_FIELD_ROUTE_FIELDS,
+    permissions: WRITE_ROUTE_FIELD,
+    resultEntityType: "mtm_route",
+    risk: "standard",
+  }),
+  assign_field_contact: managerEntry({
+    actionType: "assign_field_contact",
+    command: "assignFieldContactCommand",
+    commandSchema: assignFieldContactCommandSchema,
+    fields: ASSIGN_FIELD_CONTACT_FIELDS,
+    permissions: WRITE_ROUTE_FIELD,
+    resultEntityType: "mtm_contact",
+    risk: "standard",
   }),
 })
 
