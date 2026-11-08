@@ -172,7 +172,10 @@ export function buildEditedReceiptPayload(
 }
 
 /** Id-valued fields: named by the server, never typed into the form. */
-const REFERENCE_FIELD_KEYS = new Set(["assignedTo", "companyId", "contactId", "relatedId", "pipelineId", "checklistItemId"])
+const REFERENCE_FIELD_KEYS = new Set([
+  "assignedTo", "companyId", "contactId", "relatedId", "pipelineId", "checklistItemId",
+  "agentId", "attendanceRequestId",
+])
 
 /** The value a text input should start from. */
 export function editableFieldValue(field: VoiceReceiptField): string | boolean {

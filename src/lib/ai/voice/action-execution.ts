@@ -16,6 +16,11 @@ import {
   setTaskChecklistItemDoneCommand,
 } from "@/lib/crm-commands/task/task-work"
 import {
+  decideAttendanceRequestCommand,
+  giveFieldTaskCommand,
+  sendFieldMessageCommand,
+} from "@/lib/crm-commands/mtm/manager-actions"
+import {
   dispatchCollectedCommandEffects,
   type CrmCommandPostCommitEffect,
 } from "@/lib/crm-commands/execution-context"
@@ -179,6 +184,12 @@ async function runCanonicalCommand(
       log_task_time: logTaskTimeCommand,
     }[intent.actionType]
     entityId = (await taskWork(actor, intent.targetEntityId, payload, execution)).task.id
+  } else if (intent.actionType === "give_field_task") {
+    entityId = (await giveFieldTaskCommand(actor, payload, execution)).entity.id
+  } else if (intent.actionType === "send_field_message") {
+    entityId = (await sendFieldMessageCommand(actor, payload, execution)).entity.threadId
+  } else if (intent.actionType === "decide_attendance_request") {
+    entityId = (await decideAttendanceRequestCommand(actor, payload, execution)).entity.id
   } else if (intent.actionType === "update_task") {
     if (!intent.targetEntityId) {
       throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)

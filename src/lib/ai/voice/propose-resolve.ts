@@ -1,4 +1,9 @@
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { getMtmSettings } from "@/lib/mtm-settings"
+import { isValidTimezone } from "@/lib/timezone"
+import { quickTaskDueDate } from "@/lib/mtm/task-quick-due"
+import { resolveMtmRouteActor, type MtmRouteActor } from "@/lib/mtm/route-permissions"
 import { applyRecordFilter } from "@/lib/sharing-rules"
 import type { AuthResult } from "@/lib/api-auth"
 import {
@@ -63,9 +68,13 @@ export type VoiceProposeResolution =
       | "DEAL_STAGE_AMBIGUOUS"
       | "CHECKLIST_ITEM_NOT_FOUND"
       | "CHECKLIST_ITEM_AMBIGUOUS"
+      | "FIELD_AGENT_NOT_FOUND"
+      | "FIELD_AGENT_AMBIGUOUS"
+      | "ATTENDANCE_REQUEST_NOT_FOUND"
+      | "ATTENDANCE_REQUEST_AMBIGUOUS"
     field:
       | "assigneeName" | "leadName" | "companyName" | "contactName" | "taskTitle" | "dealName" | "status" | "stage"
-      | "itemTitle"
+      | "itemTitle" | "agentName" | "kind"
     candidates: readonly Readonly<{ id: string; label: string }>[]
   }>
   | Readonly<{ kind: "invalid"; issues: readonly Readonly<{ path: string; message: string }>[] }>
@@ -357,6 +366,58 @@ async function resolveChecklistItem(auth: AuthResult, taskId: string, spokenTitl
     take: MAX_CANDIDATES,
   }) as TaskRow[]
   return { ok: false as const, ambiguous: false, candidates: all.map((row) => ({ id: row.id, label: row.title })) }
+}
+
+/** Инструменты начальника в «Маршрутах и поле» (этап 2). */
+const FIELD_MANAGER_TOOLS: ReadonlySet<string> = new Set([
+  "propose_give_field_task",
+  "propose_send_field_message",
+  "propose_decide_attendance_request",
+])
+
+/**
+ * Один полевой сотрудник по имени — только из КОМАНДЫ этого начальника
+ * (`scopedAgentIds`; у администратора — вся организация), только активный и
+ * не он сам. «Айтан» среди двух Айтан — вопрос, а не первая попавшаяся: иначе
+ * задача или отказ в отпуске уйдут не тому человеку.
+ */
+async function resolveFieldAgent(auth: AuthResult, mtmActor: MtmRouteActor, spokenName: string) {
+  const rows = await prisma.mtmAgent.findMany({
+    where: {
+      organizationId: auth.orgId,
+      status: "ACTIVE",
+      fieldDeletedAt: null,
+      name: { contains: spokenName, mode: "insensitive" },
+      ...(mtmActor.scopedAgentIds !== null ? { id: { in: [...mtmActor.scopedAgentIds] } } : {}),
+      ...(mtmActor.agentId ? { NOT: { id: mtmActor.agentId } } : {}),
+    },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+    take: MAX_CANDIDATES + 1,
+  }) as Array<{ id: string; name: string }>
+  return matchNamedRecord(rows.map((row) => ({ id: row.id, label: row.name })), spokenName)
+}
+
+type PendingAttendanceRow = Readonly<{
+  id: string
+  startDate: Date
+  endDate: Date
+  updatedAt: Date
+  attendanceDetails: unknown
+}>
+
+function attendanceKind(row: PendingAttendanceRow): string | null {
+  const details = row.attendanceDetails
+  return details && typeof details === "object" && typeof (details as { kind?: unknown }).kind === "string"
+    ? (details as { kind: string }).kind
+    : null
+}
+
+/** «ANNUAL_LEAVE 2026-11-10 – 2026-11-12»: вид и дни — то, по чему человек выбирает. */
+function attendanceLabel(row: PendingAttendanceRow): string {
+  const start = row.startDate.toISOString().slice(0, 10)
+  const end = row.endDate.toISOString().slice(0, 10)
+  return `${attendanceKind(row) ?? "REQUEST"} ${start === end ? start : `${start} – ${end}`}`
 }
 
 /** One deal by the name the user spoke, among the deals this user may see. */
@@ -667,6 +728,88 @@ export async function resolveVoiceProposal(
     if (tool === "propose_create_deal") {
       const stage = await resolveEntryStage(auth)
       if (stage) payload.stage = stage
+    }
+  }
+
+  if (FIELD_MANAGER_TOOLS.has(tool)) {
+    // Полезная нагрузка собирается заново: слова модели (имя, «завтра»,
+    // «одобрить») — не поля команды.
+    for (const key of Object.keys(payload)) delete payload[key]
+    const mtmActor = auth.userId
+      ? await resolveMtmRouteActor(prisma, { organizationId: auth.orgId, userId: auth.userId, webRole: auth.role })
+      : null
+    if (!mtmActor || mtmActor.role === "AGENT") {
+      return {
+        kind: "invalid",
+        issues: [{ path: "(root)", message: "Only a field manager of the team can do this; say so to the user" }],
+      }
+    }
+    const agent = await resolveFieldAgent(auth, mtmActor, String(args.agentName ?? ""))
+    if (!agent.ok) {
+      return {
+        kind: "clarify",
+        code: agent.ambiguous ? "FIELD_AGENT_AMBIGUOUS" : "FIELD_AGENT_NOT_FOUND",
+        field: "agentName",
+        candidates: agent.candidates,
+      }
+    }
+
+    if (tool === "propose_give_field_task") {
+      const settings = await getMtmSettings(auth.orgId)
+      const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
+      let dueDate: Date | null
+      try {
+        dueDate = quickTaskDueDate(String(args.due ?? "none"), new Date(), timezone)
+      } catch {
+        return { kind: "invalid", issues: [{ path: "due", message: "That day has already passed" }] }
+      }
+      payload.agentId = agent.id
+      payload.title = args.title
+      payload.dueDate = dueDate ? dueDate.toISOString() : null
+    } else if (tool === "propose_send_field_message") {
+      payload.agentId = agent.id
+      payload.body = args.message
+    } else {
+      const reject = args.decision === "reject"
+      if (reject && typeof args.reason !== "string") {
+        return {
+          kind: "invalid",
+          issues: [{ path: "reason", message: "A refusal needs a reason the employee will read: ask the user why, then call again" }],
+        }
+      }
+      const pending = await prisma.mtmHrmRequest.findMany({
+        where: {
+          organizationId: auth.orgId,
+          agentId: agent.id,
+          status: "PENDING",
+          attendanceDetails: { not: Prisma.DbNull },
+        },
+        select: { id: true, startDate: true, endDate: true, updatedAt: true, attendanceDetails: true },
+        orderBy: { startDate: "asc" },
+        take: 20,
+      }) as PendingAttendanceRow[]
+      const matching = pending.filter((row) => (
+        (typeof args.kind !== "string" || attendanceKind(row) === args.kind)
+        && (typeof args.startDate !== "string" || row.startDate.toISOString().slice(0, 10) === args.startDate)
+      ))
+      if (matching.length !== 1) {
+        return {
+          kind: "clarify",
+          code: matching.length === 0 ? "ATTENDANCE_REQUEST_NOT_FOUND" : "ATTENDANCE_REQUEST_AMBIGUOUS",
+          field: "kind",
+          // Что открыто у этого сотрудника — чтобы спросить, а не гадать.
+          candidates: (matching.length === 0 ? pending : matching)
+            .slice(0, MAX_CANDIDATES)
+            .map((row) => ({ id: row.id, label: attendanceLabel(row) })),
+        }
+      }
+      const request = matching[0]
+      payload.attendanceRequestId = request.id
+      payload.decision = reject ? "REJECTED" : "APPROVED"
+      if (typeof args.reason === "string") payload.note = args.reason
+      // Версия, которую человек утверждает: изменилась заявка — квитанция
+      // устарела, и решение не уходит вслепую.
+      payload.expectedUpdatedAt = request.updatedAt.toISOString()
     }
   }
 

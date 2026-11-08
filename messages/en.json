@@ -29274,7 +29274,11 @@
       "completed": "Done",
       "minutes": "Minutes",
       "date": "Date",
-      "note": "Note"
+      "note": "Note",
+      "agentId": "Employee",
+      "body": "Message",
+      "attendanceRequestId": "Request",
+      "decision": "Decision"
     },
     "values": {
       "status": {
@@ -29306,6 +29310,10 @@
         "contact": "Contact",
         "company": "Company",
         "ticket": "Ticket"
+      },
+      "decision": {
+        "APPROVED": "Approve",
+        "REJECTED": "Reject"
       }
     }
   },
@@ -29351,7 +29359,10 @@
         "add_task_comment": "Message in the task",
         "add_task_checklist_item": "Add a subtask",
         "set_task_checklist_item_done": "Tick off a subtask",
-        "log_task_time": "Log time"
+        "log_task_time": "Log time",
+        "give_field_task": "Field task for an agent",
+        "send_field_message": "Message to an agent",
+        "decide_attendance_request": "Decision on a request"
       },
       "confirm": {
         "create_task": "Create task",
@@ -29366,7 +29377,10 @@
         "add_task_comment": "Post message",
         "add_task_checklist_item": "Add subtask",
         "set_task_checklist_item_done": "Save",
-        "log_task_time": "Log time"
+        "log_task_time": "Log time",
+        "give_field_task": "Give the task",
+        "send_field_message": "Send to the agent",
+        "decide_attendance_request": "Save the decision"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "A similar record already exists:",

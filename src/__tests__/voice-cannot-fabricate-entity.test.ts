@@ -23,6 +23,8 @@ const DB_IDS = {
   task: "db-task-0001",
   deal: "db-deal-0001",
   checklistItem: "db-checklist-0001",
+  fieldAgent: "db-field-agent-0001",
+  attendanceRequest: "00000000-0000-4000-8000-000000000001",
 } as const
 
 const mocks = vi.hoisted(() => ({
@@ -36,6 +38,8 @@ const mocks = vi.hoisted(() => ({
   stage: vi.fn(),
   stages: vi.fn(),
   checklist: vi.fn(),
+  fieldAgents: vi.fn(),
+  hrmRequests: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -49,8 +53,15 @@ vi.mock("@/lib/prisma", () => ({
     pipeline: { findFirst: mocks.pipeline },
     pipelineStage: { findFirst: mocks.stage, findMany: mocks.stages },
     taskChecklist: { findMany: mocks.checklist },
+    mtmAgent: { findMany: mocks.fieldAgents },
+    mtmHrmRequest: { findMany: mocks.hrmRequests },
   },
 }))
+// Начальник в «Маршрутах и поле» со всей организацией в команде.
+vi.mock("@/lib/mtm/route-permissions", () => ({
+  resolveMtmRouteActor: vi.fn(async () => ({ agentId: "db-manager-agent", role: "MANAGER", scopedAgentIds: null })),
+}))
+vi.mock("@/lib/mtm-settings", () => ({ getMtmSettings: vi.fn(async () => ({ timezone: "Asia/Baku" })) }))
 vi.mock("@/lib/sharing-rules", () => ({
   applyRecordFilter: vi.fn(async (_o: string, _u: string, _r: string, _t: string, where: object) => where),
 }))
@@ -72,7 +83,10 @@ const auth = {
 const POISON = "clxpoisoned0000000000001"
 
 /** Fields the CRM reads as a reference to another record. */
-const REFERENCE_FIELDS = ["assignedTo", "companyId", "contactId", "relatedId", "pipelineId", "campaignId", "checklistItemId"]
+const REFERENCE_FIELDS = [
+  "assignedTo", "companyId", "contactId", "relatedId", "pipelineId", "campaignId", "checklistItemId",
+  "agentId", "attendanceRequestId",
+]
 
 /** Every string argument each tool accepts, filled with the poison. */
 const POISONED_ARGS: Record<VoiceProposeToolName, Record<string, unknown>> = {
@@ -114,6 +128,10 @@ const POISONED_ARGS: Record<VoiceProposeToolName, Record<string, unknown>> = {
   propose_add_task_checklist_item: { taskTitle: POISON, title: POISON, assigneeName: POISON },
   propose_set_task_checklist_item_done: { taskTitle: POISON, itemTitle: POISON },
   propose_log_task_time: { taskTitle: POISON, minutes: 30, note: POISON },
+  // Начальник в «Маршрутах и поле»: агент и заявка — только словами.
+  propose_give_field_task: { agentName: POISON, title: POISON, due: "tomorrow" },
+  propose_send_field_message: { agentName: POISON, message: POISON },
+  propose_decide_attendance_request: { agentName: POISON, decision: "reject", reason: POISON },
 }
 
 beforeEach(() => {
@@ -125,6 +143,14 @@ beforeEach(() => {
   mocks.tasks.mockResolvedValue([{ id: DB_IDS.task, title: POISON, divisionId: null }])
   mocks.deals.mockResolvedValue([{ id: DB_IDS.deal, name: POISON }])
   mocks.checklist.mockResolvedValue([{ id: DB_IDS.checklistItem, title: POISON }])
+  mocks.fieldAgents.mockResolvedValue([{ id: DB_IDS.fieldAgent, name: POISON }])
+  mocks.hrmRequests.mockResolvedValue([{
+    id: DB_IDS.attendanceRequest,
+    startDate: new Date("2026-11-10T00:00:00Z"),
+    endDate: new Date("2026-11-12T00:00:00Z"),
+    updatedAt: new Date("2026-11-08T10:00:00Z"),
+    attendanceDetails: { kind: "ANNUAL_LEAVE" },
+  }])
   mocks.pipeline.mockResolvedValue({ id: "db-pipeline-0001" })
   mocks.stage.mockResolvedValue(null)
   mocks.stages.mockResolvedValue([

@@ -272,13 +272,18 @@ export async function cancelVoiceReceipt(
 }
 
 /** Where the created or updated record lives, for the success link. */
-const RESULT_ROUTES: Record<AiVoiceActionEntityType, string> = {
-  task: "/tasks",
-  lead: "/leads",
-  deal: "/deals",
-  company: "/companies",
+const RESULT_ROUTES: Record<AiVoiceActionEntityType, (id: string) => string> = {
+  task: (id) => `/tasks/${id}`,
+  lead: (id) => `/leads/${id}`,
+  deal: (id) => `/deals/${id}`,
+  company: (id) => `/companies/${id}`,
+  mtm_task: (id) => `/mtm/tasks/${id}`,
+  // У переписки и у заявки нет своей страницы: ссылка ведёт туда, где их
+  // видит начальник, — «Операции» и «Решения».
+  mtm_message: () => "/mtm/operations",
+  mtm_attendance_request: () => "/mtm/attendance/decisions",
 }
 
 export function voiceResultHref(entityType: AiVoiceActionEntityType, entityId: string): string {
-  return `${RESULT_ROUTES[entityType]}/${encodeURIComponent(entityId)}`
+  return RESULT_ROUTES[entityType](encodeURIComponent(entityId))
 }

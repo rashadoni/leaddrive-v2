@@ -2,7 +2,8 @@ import { createHash, randomBytes } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import type { AuthResult } from "@/lib/api-auth"
 import { getOrgModuleContext } from "@/lib/api-auth"
-import { moduleContextForUser } from "@/lib/user-module-access"
+import { hideableIdForFieldCapability, moduleContextForUser } from "@/lib/user-module-access"
+import { getTenantCapabilityAccess } from "@/lib/tenant-capability-access"
 import { prisma, logAudit } from "@/lib/prisma"
 import { applyRecordFilter } from "@/lib/sharing-rules"
 import { openTaskFor } from "@/lib/tasks/task-access"
@@ -523,6 +524,24 @@ async function findReplay(
   return existing
 }
 
+/**
+ * Возможность тенанта («Маршруты и поле», «Персонал») — так же, как её
+ * проверяет экран (with-mtm-rls-auth.ts): включена у тенанта и не скрыта от
+ * этого человека. Неудавшееся чтение — отказ.
+ */
+async function tenantCapabilityOpen(
+  auth: AuthResult,
+  capability: "route-field" | "personnel",
+): Promise<boolean> {
+  try {
+    const access = await getTenantCapabilityAccess(auth.orgId, capability)
+    if (!access.allowed) return false
+  } catch {
+    return false
+  }
+  return !auth.hiddenModules?.includes(hideableIdForFieldCapability(capability))
+}
+
 async function assertActionAccess(
   auth: AuthResult,
   actionType: AiVoiceActionType,
@@ -533,7 +552,8 @@ async function assertActionAccess(
   for (const permission of definition.permissions) {
     if (
       !checkPermission(auth.role, permission.module, permission.action)
-      || !hasModule(org, permission.tenantModule)
+      || (permission.tenantModule !== undefined && !hasModule(org, permission.tenantModule))
+      || (permission.tenantCapability !== undefined && !await tenantCapabilityOpen(auth, permission.tenantCapability))
     ) {
       throw new AiVoiceActionDraftError(
         "ACTION_FORBIDDEN",
@@ -767,12 +787,18 @@ function resolveDraftTarget(
 }
 
 /** Preview fields whose value is an id of another record, and where to name it. */
-const REFERENCE_FIELDS: Readonly<Record<string, "user" | "company" | "contact" | "checklistItem">> = {
+const REFERENCE_FIELDS: Readonly<Record<
+  string,
+  "user" | "company" | "contact" | "checklistItem" | "mtmAgent" | "attendanceRequest"
+>> = {
   assignedTo: "user",
   companyId: "company",
   contactId: "contact",
   // Подзадача, которую отмечают голосом: в квитанции — её название.
   checklistItemId: "checklistItem",
+  // «Маршруты и поле»: полевой сотрудник и его заявка — именем и днями.
+  agentId: "mtmAgent",
+  attendanceRequestId: "attendanceRequest",
 }
 
 /**
@@ -792,6 +818,8 @@ async function labelPreviewReferences(
     company: new Set<string>(),
     contact: new Set<string>(),
     checklistItem: new Set<string>(),
+    mtmAgent: new Set<string>(),
+    attendanceRequest: new Set<string>(),
   }
   for (const field of preview.fields) {
     const kind = REFERENCE_FIELDS[field.key]
@@ -800,9 +828,9 @@ async function labelPreviewReferences(
       if (typeof value === "string" && value) wanted[kind].add(value)
     }
   }
-  if (wanted.user.size + wanted.company.size + wanted.contact.size + wanted.checklistItem.size === 0) return preview
+  if (Object.values(wanted).every((ids) => ids.size === 0)) return preview
 
-  const [users, companies, contacts, checklistItems] = await Promise.all([
+  const [users, companies, contacts, checklistItems, mtmAgents, attendanceRequests] = await Promise.all([
     wanted.user.size
       ? prisma.user.findMany({
         where: { organizationId: auth.orgId, id: { in: [...wanted.user] } },
@@ -827,6 +855,18 @@ async function labelPreviewReferences(
         select: { id: true, title: true },
       })
       : [],
+    wanted.mtmAgent.size
+      ? prisma.mtmAgent.findMany({
+        where: { organizationId: auth.orgId, id: { in: [...wanted.mtmAgent] } },
+        select: { id: true, name: true },
+      })
+      : [],
+    wanted.attendanceRequest.size
+      ? prisma.mtmHrmRequest.findMany({
+        where: { organizationId: auth.orgId, id: { in: [...wanted.attendanceRequest] } },
+        select: { id: true, startDate: true, endDate: true, attendanceDetails: true, agent: { select: { name: true } } },
+      })
+      : [],
   ])
   const names = {
     user: new Map<string, string>(
@@ -841,6 +881,27 @@ async function labelPreviewReferences(
     ),
     checklistItem: new Map<string, string>(
       (checklistItems as { id: string; title: string }[]).map((row) => [row.id, row.title]),
+    ),
+    mtmAgent: new Map<string, string>(
+      (mtmAgents as { id: string; name: string }[]).map((row) => [row.id, row.name]),
+    ),
+    attendanceRequest: new Map<string, string>(
+      (attendanceRequests as Array<{
+        id: string
+        startDate: Date
+        endDate: Date
+        attendanceDetails: unknown
+        agent: { name: string } | null
+      }>).map((row) => {
+        const start = row.startDate.toISOString().slice(0, 10)
+        const end = row.endDate.toISOString().slice(0, 10)
+        const kind = row.attendanceDetails && typeof row.attendanceDetails === "object"
+          ? (row.attendanceDetails as { kind?: unknown }).kind
+          : null
+        // Чья, какая, на какие дни: по этому начальник узнаёт заявку.
+        return [row.id, [row.agent?.name, typeof kind === "string" ? kind : null, start === end ? start : `${start} – ${end}`]
+          .filter(Boolean).join(" · ")]
+      }),
     ),
   }
   return {
