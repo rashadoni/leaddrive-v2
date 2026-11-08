@@ -29278,7 +29278,11 @@
       "agentId": "Сотрудник",
       "body": "Сообщение",
       "attendanceRequestId": "Заявка",
-      "decision": "Решение"
+      "decision": "Решение",
+      "routeId": "Маршрут",
+      "overrideReason": "Причина публикации с конфликтом",
+      "fieldContactId": "Клиент",
+      "reason": "Причина"
     },
     "values": {
       "status": {
@@ -29362,7 +29366,9 @@
         "log_task_time": "Записать время",
         "give_field_task": "Полевая задача агенту",
         "send_field_message": "Сообщение агенту",
-        "decide_attendance_request": "Решение по заявке"
+        "decide_attendance_request": "Решение по заявке",
+        "publish_field_route": "Опубликовать маршрут",
+        "assign_field_contact": "Привязать клиента к сотруднику"
       },
       "confirm": {
         "create_task": "Создать задачу",
@@ -29380,7 +29386,9 @@
         "log_task_time": "Записать время",
         "give_field_task": "Дать задачу",
         "send_field_message": "Отправить агенту",
-        "decide_attendance_request": "Сохранить решение"
+        "decide_attendance_request": "Сохранить решение",
+        "publish_field_route": "Опубликовать",
+        "assign_field_contact": "Привязать"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "Похожая запись уже есть:",

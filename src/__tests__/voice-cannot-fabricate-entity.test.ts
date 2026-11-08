@@ -25,6 +25,8 @@ const DB_IDS = {
   checklistItem: "db-checklist-0001",
   fieldAgent: "db-field-agent-0001",
   attendanceRequest: "00000000-0000-4000-8000-000000000001",
+  fieldRoute: "db-field-route-0001",
+  fieldContact: "db-field-contact-0001",
 } as const
 
 const mocks = vi.hoisted(() => ({
@@ -40,6 +42,8 @@ const mocks = vi.hoisted(() => ({
   checklist: vi.fn(),
   fieldAgents: vi.fn(),
   hrmRequests: vi.fn(),
+  fieldRoutes: vi.fn(),
+  fieldContacts: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -55,6 +59,8 @@ vi.mock("@/lib/prisma", () => ({
     taskChecklist: { findMany: mocks.checklist },
     mtmAgent: { findMany: mocks.fieldAgents },
     mtmHrmRequest: { findMany: mocks.hrmRequests },
+    mtmRoute: { findMany: mocks.fieldRoutes },
+    mtmContact: { findMany: mocks.fieldContacts },
   },
 }))
 // Начальник в «Маршрутах и поле» со всей организацией в команде.
@@ -62,6 +68,10 @@ vi.mock("@/lib/mtm/route-permissions", () => ({
   resolveMtmRouteActor: vi.fn(async () => ({ agentId: "db-manager-agent", role: "MANAGER", scopedAgentIds: null })),
 }))
 vi.mock("@/lib/mtm-settings", () => ({ getMtmSettings: vi.fn(async () => ({ timezone: "Asia/Baku" })) }))
+// Предпросмотр привязки — свой модуль со своими тестами; здесь клиента можно привязать.
+vi.mock("@/lib/mtm/contact-bulk-assignment", () => ({
+  buildContactAssignmentPreview: vi.fn(async () => ({ previewToken: "p".repeat(64), rows: [{ assignable: true, issues: [] }] })),
+}))
 vi.mock("@/lib/sharing-rules", () => ({
   applyRecordFilter: vi.fn(async (_o: string, _u: string, _r: string, _t: string, where: object) => where),
 }))
@@ -85,7 +95,7 @@ const POISON = "clxpoisoned0000000000001"
 /** Fields the CRM reads as a reference to another record. */
 const REFERENCE_FIELDS = [
   "assignedTo", "companyId", "contactId", "relatedId", "pipelineId", "campaignId", "checklistItemId",
-  "agentId", "attendanceRequestId",
+  "agentId", "attendanceRequestId", "routeId", "fieldContactId",
 ]
 
 /** Every string argument each tool accepts, filled with the poison. */
@@ -132,6 +142,8 @@ const POISONED_ARGS: Record<VoiceProposeToolName, Record<string, unknown>> = {
   propose_give_field_task: { agentName: POISON, title: POISON, due: "tomorrow" },
   propose_send_field_message: { agentName: POISON, message: POISON },
   propose_decide_attendance_request: { agentName: POISON, decision: "reject", reason: POISON },
+  propose_publish_field_route: { agentName: POISON, day: "tomorrow", overrideReason: POISON },
+  propose_assign_field_contact: { clientName: POISON, agentName: POISON, reason: POISON },
 }
 
 beforeEach(() => {
@@ -144,6 +156,12 @@ beforeEach(() => {
   mocks.deals.mockResolvedValue([{ id: DB_IDS.deal, name: POISON }])
   mocks.checklist.mockResolvedValue([{ id: DB_IDS.checklistItem, title: POISON }])
   mocks.fieldAgents.mockResolvedValue([{ id: DB_IDS.fieldAgent, name: POISON }])
+  mocks.fieldRoutes.mockResolvedValue([{
+    id: DB_IDS.fieldRoute, name: POISON, status: "DRAFT", version: 2, date: new Date("2026-11-10T00:00:00Z"),
+  }])
+  mocks.fieldContacts.mockResolvedValue([{
+    id: DB_IDS.fieldContact, displayName: POISON, firstName: POISON, lastName: POISON, middleName: null,
+  }])
   mocks.hrmRequests.mockResolvedValue([{
     id: DB_IDS.attendanceRequest,
     startDate: new Date("2026-11-10T00:00:00Z"),

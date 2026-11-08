@@ -40,6 +40,9 @@ const deps = vi.hoisted(() => {
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: deps.transaction,
+    // Вид действия читается до транзакции только чтобы выбрать её уровень
+    // изоляции (Serializable для привязки клиента поля); здесь — обычный.
+    aiActionIntent: { findFirst: vi.fn(async () => null) },
   },
 }))
 

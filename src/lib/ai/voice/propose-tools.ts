@@ -42,6 +42,8 @@ export const VOICE_PROPOSE_TOOL_NAMES = [
   "propose_give_field_task",
   "propose_send_field_message",
   "propose_decide_attendance_request",
+  "propose_publish_field_route",
+  "propose_assign_field_contact",
 ] as const
 
 export type VoiceProposeToolName = (typeof VOICE_PROPOSE_TOOL_NAMES)[number]
@@ -64,6 +66,8 @@ export const VOICE_PROPOSE_ACTION_TYPES: Readonly<Record<VoiceProposeToolName, A
     propose_give_field_task: "give_field_task",
     propose_send_field_message: "send_field_message",
     propose_decide_attendance_request: "decide_attendance_request",
+    propose_publish_field_route: "publish_field_route",
+    propose_assign_field_contact: "assign_field_contact",
   })
 
 const personName = z.string().trim().min(2).max(120)
@@ -328,6 +332,23 @@ export const VOICE_PROPOSE_SCHEMAS = {
     /** Only when several requests of one kind are open: their first day. */
     startDate: day.optional(),
   }),
+  /*
+   * Этап 2б (владелец 2026-11-08: «Сначала 2б»): маршрут дня и клиенты поля.
+   */
+  propose_publish_field_route: z.strictObject({
+    /** Whose route: the field employee as the user names him. */
+    agentName: personName,
+    /** today, tomorrow or a YYYY-MM-DD day. */
+    day: z.string().trim().regex(/^(today|tomorrow|\d{4}-\d{2}-\d{2})$/, "Use today, tomorrow or YYYY-MM-DD"),
+    /** Only when the user knowingly publishes a route that conflicts with another one. */
+    overrideReason: z.string().trim().min(3).max(1000).optional(),
+  }),
+  propose_assign_field_contact: z.strictObject({
+    /** The field client (doctor, pharmacist) as the user names him. */
+    clientName: shortText,
+    agentName: personName,
+    reason: z.string().trim().min(3).max(500).optional(),
+  }),
 } as const satisfies Record<VoiceProposeToolName, z.ZodTypeAny>
 
 export type VoiceProposeArgs<T extends VoiceProposeToolName> =
@@ -364,6 +385,10 @@ const DESCRIPTIONS: Readonly<Record<VoiceProposeToolName, string>> = {
     "Prepare a personal MESSAGE to one field employee (agent) of the user's team, for the user to confirm. This does NOT send anything. agentName as the user said it; message in the user's own words — do not rewrite or translate it. It goes to the agent's phone once confirmed.",
   propose_decide_attendance_request:
     "Prepare a DECISION on an employee's attendance request (leave, sick leave, time off, business trip, remote work, overtime, time correction), for the user to confirm. This does NOT decide anything. agentName is whose request; decision approve or reject. Rejecting needs a reason — ask the user for it before calling. If the CRM answers that the employee has several open requests, ask which one and call again with kind (and startDate if needed).",
+  propose_publish_field_route:
+    "Prepare PUBLISHING the draft route of one field employee for a day, for the user to confirm. This does NOT publish anything. agentName as the user said it; day is today, tomorrow or YYYY-MM-DD. Publishing sends the route to the agent's phone. If the CRM says the route conflicts with another one, tell the user; publish anyway only if the user gives a reason (overrideReason).",
+  propose_assign_field_contact:
+    "Prepare ATTACHING one field client (a doctor, pharmacist or other field contact) to a field employee, for the user to confirm. This does NOT change anything. clientName and agentName as the user said them. The first employee of a client becomes the responsible one, the next ones are additional; nobody is detached. Add a short reason only if the user gave one.",
   propose_create_deal:
     "Prepare a NEW deal that does not come from a lead, for the user to confirm on screen. This does NOT create the deal: it shows a receipt the user confirms by saying yes or pressing the button. Name the company and contact as the user says them; never invent an id. Do not pass a stage, pipeline or probability — the CRM chooses them. If the user is converting an existing lead, use propose_convert_lead_to_deal instead.",
 }

@@ -4,7 +4,7 @@ import { checkPermission } from "@/lib/permissions"
 import { getTenantCapabilityAccess } from "@/lib/tenant-capability-access"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { getMtmSettings } from "@/lib/mtm-settings"
-import { isValidTimezone } from "@/lib/timezone"
+import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
 import { isAgentInRouteScope, resolveMtmRouteActor, type MtmRouteActor } from "@/lib/mtm/route-permissions"
 import { isMtmTaskManager } from "@/lib/mtm/task-access"
 import { notifyAgentOfAssignedTask } from "@/lib/mtm/task-assigned-notify"
@@ -26,10 +26,17 @@ import {
   validationError,
 } from "../errors"
 import {
+  assignFieldContactCommandSchema,
   decideAttendanceRequestCommandSchema,
   giveFieldTaskCommandSchema,
+  publishFieldRouteCommandSchema,
   sendFieldMessageCommandSchema,
 } from "../schemas/mtm"
+import { MtmRoutePublishError, publishMtmRouteInTransaction } from "@/lib/mtm/route-publish"
+import { MTM_ROUTE_AUDIT_ACTION } from "@/lib/mtm/route-audit"
+import { canManageFieldMasterData } from "@/lib/mtm/field-scope"
+import { buildContactAssignmentPreview, contactAssignmentRequestHash } from "@/lib/mtm/contact-bulk-assignment"
+import { executeContactAssignmentInTransaction } from "@/lib/mtm/contact-bulk-assignment-execute"
 
 /**
  * Что начальник делает в «Маршрутах и поле» руками — одной командой на любой
@@ -316,4 +323,155 @@ export async function decideAttendanceRequestCommand(
   return {
     entity: { id: outcome.request.id, status: outcome.request.status, passedToHr: outcome.passedToHr },
   }
+}
+
+/* ─── Опубликовать маршрут ──────────────────────────────────────────────── */
+
+/**
+ * «Опубликуй маршрут Эльвиры на завтра» — ТА ЖЕ публикация, что кнопка на
+ * экране маршрутов (`publishMtmRouteInTransaction`): права начальника,
+ * версия, блокировки расписания, конфликты с чужими маршрутами, уведомление
+ * агентам. Журнал MTM — в той же транзакции.
+ */
+export async function publishFieldRouteCommand(
+  actor: CrmCommandActorContext,
+  rawInput: unknown,
+  execution?: CrmCommandExecutionContext,
+): Promise<{ entity: { id: string; publishedVersion: number | null } }> {
+  const parsed = publishFieldRouteCommandSchema.safeParse(rawInput)
+  if (!parsed.success) throw validationError(parsed.error.issues[0]?.message ?? "Invalid route")
+  if (!checkPermission(actor.role, "mtm", "write")) throw forbiddenError()
+  await requireCapability(actor.organizationId, "route-field")
+  const input = parsed.data
+
+  return inTransaction(execution, async (db) => {
+    const mtmActor = await requireMtmActor(db, actor)
+    const expectedVersion = input.expectedVersion ?? (await db.mtmRoute.findFirst({
+      where: { id: input.routeId, organizationId: actor.organizationId, deletedAt: null },
+      select: { version: true },
+    }))?.version
+    if (expectedVersion === undefined) throw notFoundError("Route not found")
+    let outcome
+    try {
+      outcome = await publishMtmRouteInTransaction(db, {
+        organizationId: actor.organizationId,
+        userId: actor.userId,
+        actor: mtmActor,
+        routeId: input.routeId,
+        expectedVersion,
+        overrideReason: input.overrideReason ?? null,
+      })
+    } catch (error) {
+      if (!(error instanceof MtmRoutePublishError)) throw error
+      if (error.status === 404) throw notFoundError("Route not found")
+      if (error.status === 403) throw forbiddenError("This route is not yours to publish")
+      if (error.code === "ROUTE_VERSION_CONFLICT") throw staleWriteError("The route changed after it was reviewed")
+      throw new CrmCommandError("VALIDATION_FAILED", error.code, 400, { code: error.code, ...error.details })
+    }
+    if (outcome.kind === "already") {
+      return { entity: { id: outcome.route.id, publishedVersion: outcome.route.publishedVersion } }
+    }
+    await writeMtmAudit({
+      organizationId: actor.organizationId,
+      agentId: outcome.route.agentId,
+      action: MTM_ROUTE_AUDIT_ACTION.ROUTE_PUBLISH,
+      entity: "route",
+      entityId: outcome.route.id,
+      metadataKind: "route_publish",
+      oldData: { status: outcome.route.status, version: outcome.route.version },
+      newData: {
+        status: "PLANNED",
+        version: outcome.publishedVersion,
+        publishedVersion: outcome.publishedVersion,
+        conflicts: outcome.planningSignals.conflicts,
+        coordination: outcome.planningSignals.coordination,
+        managerOverride: outcome.managerOverride,
+        channel: actor.source,
+      },
+      actorUserId: actor.userId,
+    }, db)
+    return { entity: { id: outcome.route.id, publishedVersion: outcome.publishedVersion } }
+  })
+}
+
+/* ─── Привязать клиента к сотруднику ────────────────────────────────────── */
+
+/**
+ * «Назначь доктора Алиева Эльвире» — ТА ЖЕ запись, что «Привязать» на экране
+ * клиентов (`executeContactAssignmentInTransaction`): первый сотрудник клиента
+ * — главный, следующий — дополнительный, никого не отвязывает; сверка
+ * предпросмотра, итог операции и журнал MTM.
+ *
+ * Транзакция обязана быть Serializable — исполнитель голосовых действий
+ * открывает её такой для этого действия (action-execution.ts).
+ */
+export async function assignFieldContactCommand(
+  actor: CrmCommandActorContext,
+  rawInput: unknown,
+  execution?: CrmCommandExecutionContext,
+): Promise<{ entity: { id: string; contactId: string } }> {
+  const parsed = assignFieldContactCommandSchema.safeParse(rawInput)
+  if (!parsed.success) throw validationError(parsed.error.issues[0]?.message ?? "Invalid assignment")
+  if (!checkPermission(actor.role, "mtm", "write")) throw forbiddenError()
+  await requireCapability(actor.organizationId, "route-field")
+  const input = parsed.data
+  const settings = await getMtmSettings(actor.organizationId)
+  const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
+  const effectiveFrom = dateInputValueInTimezone(new Date(), timezone)
+  const name = await actorName(execution?.transaction ?? (prisma as unknown as Db), actor)
+
+  const run = async (db: Db) => {
+    const mtmActor = await requireMtmActor(db, actor)
+    if (!canManageFieldMasterData(mtmActor)) throw forbiddenError("Only a field manager assigns clients")
+    if (!isAgentInRouteScope(mtmActor, input.agentId)) throw forbiddenError("This agent is not in your team")
+    const preview = await buildContactAssignmentPreview(db, {
+      organizationId: actor.organizationId,
+      contactIds: [input.fieldContactId],
+      mode: "ASSIGN",
+      targetAgentId: input.agentId,
+      sourceAgentId: null,
+      effectiveFrom: new Date(`${effectiveFrom}T00:00:00.000Z`),
+      actor: mtmActor,
+    })
+    const row = preview.rows[0]
+    if (!row?.assignable) {
+      throw new CrmCommandError("VALIDATION_FAILED", row?.issues.join(", ") || "CONTACT_NOT_AVAILABLE", 400, {
+        issues: row?.issues ?? ["CONTACT_NOT_AVAILABLE"],
+      })
+    }
+    const body = {
+      contactIds: [input.fieldContactId],
+      mode: "ASSIGN" as const,
+      targetAgentId: input.agentId,
+      sourceAgentId: null,
+      effectiveFrom,
+      reason: input.reason ?? `Voice: ${name}`.slice(0, 500),
+      previewToken: input.previewToken ?? preview.previewToken,
+      idempotencyKey: `voice:${actor.actionIntentId ?? globalThis.crypto.randomUUID()}`,
+    }
+    try {
+      const result = await executeContactAssignmentInTransaction(db, {
+        organizationId: actor.organizationId,
+        userId: actor.userId,
+        actor: mtmActor,
+        body,
+        requestHash: contactAssignmentRequestHash(body),
+      })
+      const assignmentId = result.changed[0]?.assignmentId ?? body.idempotencyKey
+      return { entity: { id: assignmentId, contactId: input.fieldContactId } }
+    } catch (error) {
+      if (error instanceof Error && error.message === "STALE_PREVIEW") {
+        throw staleWriteError("The client's assignments changed after it was reviewed")
+      }
+      if (error instanceof Error && error.message === "NOTHING_TO_ASSIGN") {
+        throw validationError("This client cannot be assigned")
+      }
+      throw error
+    }
+  }
+
+  if (execution?.transaction) return run(execution.transaction)
+  return prisma.$transaction((tx: Prisma.TransactionClient) => run(tx), {
+    isolationLevel: "Serializable",
+  })
 }

@@ -19,7 +19,7 @@ import type { VoiceReceiptField } from "@/lib/ai/voice/receipt-store"
  */
 
 /** Fields that exist for the server's sake, not the reader's. */
-const HIDDEN_FIELD_KEYS = new Set(["expectedUpdatedAt"])
+const HIDDEN_FIELD_KEYS = new Set(["expectedUpdatedAt", "expectedVersion", "previewToken"])
 
 export function visibleReceiptFields(
   fields: readonly VoiceReceiptField[],
@@ -174,7 +174,7 @@ export function buildEditedReceiptPayload(
 /** Id-valued fields: named by the server, never typed into the form. */
 const REFERENCE_FIELD_KEYS = new Set([
   "assignedTo", "companyId", "contactId", "relatedId", "pipelineId", "checklistItemId",
-  "agentId", "attendanceRequestId",
+  "agentId", "attendanceRequestId", "routeId", "fieldContactId",
 ])
 
 /** The value a text input should start from. */

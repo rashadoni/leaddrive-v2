@@ -789,7 +789,7 @@ function resolveDraftTarget(
 /** Preview fields whose value is an id of another record, and where to name it. */
 const REFERENCE_FIELDS: Readonly<Record<
   string,
-  "user" | "company" | "contact" | "checklistItem" | "mtmAgent" | "attendanceRequest"
+  "user" | "company" | "contact" | "checklistItem" | "mtmAgent" | "attendanceRequest" | "mtmRoute" | "mtmContact"
 >> = {
   assignedTo: "user",
   companyId: "company",
@@ -799,6 +799,9 @@ const REFERENCE_FIELDS: Readonly<Record<
   // «Маршруты и поле»: полевой сотрудник и его заявка — именем и днями.
   agentId: "mtmAgent",
   attendanceRequestId: "attendanceRequest",
+  // Этап 2б: маршрут дня — «сотрудник · название · день», клиент поля — имя.
+  routeId: "mtmRoute",
+  fieldContactId: "mtmContact",
 }
 
 /**
@@ -820,6 +823,8 @@ async function labelPreviewReferences(
     checklistItem: new Set<string>(),
     mtmAgent: new Set<string>(),
     attendanceRequest: new Set<string>(),
+    mtmRoute: new Set<string>(),
+    mtmContact: new Set<string>(),
   }
   for (const field of preview.fields) {
     const kind = REFERENCE_FIELDS[field.key]
@@ -830,7 +835,7 @@ async function labelPreviewReferences(
   }
   if (Object.values(wanted).every((ids) => ids.size === 0)) return preview
 
-  const [users, companies, contacts, checklistItems, mtmAgents, attendanceRequests] = await Promise.all([
+  const [users, companies, contacts, checklistItems, mtmAgents, attendanceRequests, mtmRoutes, mtmContacts] = await Promise.all([
     wanted.user.size
       ? prisma.user.findMany({
         where: { organizationId: auth.orgId, id: { in: [...wanted.user] } },
@@ -865,6 +870,21 @@ async function labelPreviewReferences(
       ? prisma.mtmHrmRequest.findMany({
         where: { organizationId: auth.orgId, id: { in: [...wanted.attendanceRequest] } },
         select: { id: true, startDate: true, endDate: true, attendanceDetails: true, agent: { select: { name: true } } },
+      })
+      : [],
+    wanted.mtmRoute.size
+      ? prisma.mtmRoute.findMany({
+        where: { organizationId: auth.orgId, id: { in: [...wanted.mtmRoute] } },
+        select: {
+          id: true, name: true, date: true,
+          agent: { select: { name: true } },
+        },
+      })
+      : [],
+    wanted.mtmContact.size
+      ? prisma.mtmContact.findMany({
+        where: { organizationId: auth.orgId, id: { in: [...wanted.mtmContact] } },
+        select: { id: true, displayName: true, firstName: true, lastName: true },
       })
       : [],
   ])
@@ -902,6 +922,22 @@ async function labelPreviewReferences(
         return [row.id, [row.agent?.name, typeof kind === "string" ? kind : null, start === end ? start : `${start} – ${end}`]
           .filter(Boolean).join(" · ")]
       }),
+    ),
+    mtmRoute: new Map<string, string>(
+      (mtmRoutes as Array<{
+        id: string
+        name: string | null
+        date: Date
+        agent: { name: string } | null
+      }>).map((row) => [row.id, [
+        row.agent?.name,
+        row.name?.trim() || null,
+        row.date.toISOString().slice(0, 10),
+      ].filter(Boolean).join(" · ")]),
+    ),
+    mtmContact: new Map<string, string>(
+      (mtmContacts as Array<{ id: string; displayName: string; firstName: string; lastName: string }>)
+        .map((row) => [row.id, row.displayName?.trim() || `${row.lastName} ${row.firstName}`.trim()]),
     ),
   }
   return {

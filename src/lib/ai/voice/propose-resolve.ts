@@ -1,9 +1,10 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { getMtmSettings } from "@/lib/mtm-settings"
-import { isValidTimezone } from "@/lib/timezone"
+import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
 import { quickTaskDueDate } from "@/lib/mtm/task-quick-due"
 import { resolveMtmRouteActor, type MtmRouteActor } from "@/lib/mtm/route-permissions"
+import { buildContactAssignmentPreview } from "@/lib/mtm/contact-bulk-assignment"
 import { applyRecordFilter } from "@/lib/sharing-rules"
 import type { AuthResult } from "@/lib/api-auth"
 import {
@@ -72,9 +73,13 @@ export type VoiceProposeResolution =
       | "FIELD_AGENT_AMBIGUOUS"
       | "ATTENDANCE_REQUEST_NOT_FOUND"
       | "ATTENDANCE_REQUEST_AMBIGUOUS"
+      | "FIELD_ROUTE_NOT_FOUND"
+      | "FIELD_ROUTE_AMBIGUOUS"
+      | "FIELD_CONTACT_NOT_FOUND"
+      | "FIELD_CONTACT_AMBIGUOUS"
     field:
       | "assigneeName" | "leadName" | "companyName" | "contactName" | "taskTitle" | "dealName" | "status" | "stage"
-      | "itemTitle" | "agentName" | "kind"
+      | "itemTitle" | "agentName" | "kind" | "day" | "clientName"
     candidates: readonly Readonly<{ id: string; label: string }>[]
   }>
   | Readonly<{ kind: "invalid"; issues: readonly Readonly<{ path: string; message: string }>[] }>
@@ -373,7 +378,44 @@ const FIELD_MANAGER_TOOLS: ReadonlySet<string> = new Set([
   "propose_give_field_task",
   "propose_send_field_message",
   "propose_decide_attendance_request",
+  "propose_publish_field_route",
+  "propose_assign_field_contact",
 ])
+
+/**
+ * Один клиент поля по словам человека: каждое сказанное слово должно найтись
+ * в его имени, фамилии, отчестве или отображаемом имени. «Доктор Алиев
+ * Рашад» — три слова, и «доктор» не мешает: слово, которого нет ни у кого,
+ * отбрасывается, если без него остаётся хоть одно.
+ */
+async function resolveFieldContact(auth: AuthResult, spokenName: string) {
+  const words = spokenName.split(/\s+/).map((word) => word.trim()).filter((word) => word.length >= 2)
+  const wordWhere = (word: string) => ({
+    OR: [
+      { firstName: { contains: word, mode: "insensitive" as const } },
+      { lastName: { contains: word, mode: "insensitive" as const } },
+      { middleName: { contains: word, mode: "insensitive" as const } },
+      { displayName: { contains: word, mode: "insensitive" as const } },
+    ],
+  })
+  const find = (used: string[]) => prisma.mtmContact.findMany({
+    where: { organizationId: auth.orgId, deletedAt: null, AND: used.map(wordWhere) },
+    select: { id: true, displayName: true, firstName: true, lastName: true, middleName: true },
+    orderBy: { displayName: "asc" },
+    take: MAX_CANDIDATES + 1,
+  }) as Promise<Array<{ id: string; displayName: string; firstName: string; lastName: string; middleName: string | null }>>
+  let rows = words.length > 0 ? await find(words) : []
+  if (rows.length === 0 && words.length > 1) {
+    // Титул или ослышанное слово: ищем без каждого слова по очереди.
+    for (const skipped of words) {
+      rows = await find(words.filter((word) => word !== skipped))
+      if (rows.length > 0) break
+    }
+  }
+  const label = (row: (typeof rows)[number]) => row.displayName?.trim()
+    || [row.lastName, row.firstName, row.middleName].filter(Boolean).join(" ")
+  return matchNamedRecord(rows.map((row) => ({ id: row.id, label: label(row) })), spokenName)
+}
 
 /**
  * Один полевой сотрудник по имени — только из КОМАНДЫ этого начальника
@@ -769,6 +811,84 @@ export async function resolveVoiceProposal(
     } else if (tool === "propose_send_field_message") {
       payload.agentId = agent.id
       payload.body = args.message
+    } else if (tool === "propose_publish_field_route") {
+      const settings = await getMtmSettings(auth.orgId)
+      const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
+      const today = dateInputValueInTimezone(new Date(), timezone)
+      const spokenDay = String(args.day)
+      const dayKey = spokenDay === "today"
+        ? today
+        : spokenDay === "tomorrow"
+          ? new Date(Date.parse(`${today}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10)
+          : spokenDay
+      const routes = await prisma.mtmRoute.findMany({
+        where: {
+          organizationId: auth.orgId,
+          date: new Date(`${dayKey}T00:00:00.000Z`),
+          deletedAt: null,
+          OR: [{ agentId: agent.id }, { assignments: { some: { agentId: agent.id, removedAt: null } } }],
+        },
+        select: { id: true, name: true, status: true, version: true, date: true },
+        orderBy: { createdAt: "asc" },
+        take: MAX_CANDIDATES + 1,
+      }) as Array<{ id: string; name: string | null; status: string; version: number; date: Date }>
+      const drafts = routes.filter((route) => route.status === "DRAFT")
+      if (drafts.length !== 1) {
+        return {
+          kind: "clarify",
+          code: drafts.length === 0 ? "FIELD_ROUTE_NOT_FOUND" : "FIELD_ROUTE_AMBIGUOUS",
+          field: "day",
+          // Что у сотрудника в этот день есть — с состоянием: «уже
+          // опубликован» тоже ответ.
+          candidates: (drafts.length === 0 ? routes : drafts).map((route) => ({
+            id: route.id,
+            label: `${route.name?.trim() || dayKey} (${route.status})`,
+          })),
+        }
+      }
+      payload.routeId = drafts[0].id
+      payload.expectedVersion = drafts[0].version
+      if (typeof args.overrideReason === "string") payload.overrideReason = args.overrideReason
+    } else if (tool === "propose_assign_field_contact") {
+      const contact = await resolveFieldContact(auth, String(args.clientName ?? ""))
+      if (!contact.ok) {
+        return {
+          kind: "clarify",
+          code: contact.ambiguous ? "FIELD_CONTACT_AMBIGUOUS" : "FIELD_CONTACT_NOT_FOUND",
+          field: "clientName",
+          candidates: contact.candidates,
+        }
+      }
+      // Тот же предпросмотр, что у окна «Привязать» на экране: если клиента
+      // привязать нельзя, человек слышит почему — до квитанции, а не после
+      // кнопки. Его отпечаток уходит в квитанцию: изменилось что-то у клиента
+      // до подтверждения — запись не пройдёт вслепую.
+      const settings = await getMtmSettings(auth.orgId)
+      const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
+      const effectiveFrom = dateInputValueInTimezone(new Date(), timezone)
+      const preview = await buildContactAssignmentPreview(prisma, {
+        organizationId: auth.orgId,
+        contactIds: [contact.id],
+        mode: "ASSIGN",
+        targetAgentId: agent.id,
+        sourceAgentId: null,
+        effectiveFrom: new Date(`${effectiveFrom}T00:00:00.000Z`),
+        actor: mtmActor,
+      })
+      const row = preview.rows[0]
+      if (!row?.assignable) {
+        return {
+          kind: "invalid",
+          issues: [{
+            path: "clientName",
+            message: `This client cannot be attached: ${(row?.issues ?? ["CONTACT_NOT_AVAILABLE"]).join(", ")}. Say why in plain words`,
+          }],
+        }
+      }
+      payload.fieldContactId = contact.id
+      payload.agentId = agent.id
+      if (typeof args.reason === "string") payload.reason = args.reason
+      payload.previewToken = preview.previewToken
     } else {
       const reject = args.decision === "reject"
       if (reject && typeof args.reason !== "string") {

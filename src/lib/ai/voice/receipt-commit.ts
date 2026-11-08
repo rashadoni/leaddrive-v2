@@ -282,6 +282,9 @@ const RESULT_ROUTES: Record<AiVoiceActionEntityType, (id: string) => string> = {
   // видит начальник, — «Операции» и «Решения».
   mtm_message: () => "/mtm/operations",
   mtm_attendance_request: () => "/mtm/attendance/decisions",
+  // У маршрута дня нет своей страницы: он открывается в плане маршрутов.
+  mtm_route: () => "/mtm/routes",
+  mtm_contact: (id) => `/mtm/contacts/${id}`,
 }
 
 export function voiceResultHref(entityType: AiVoiceActionEntityType, entityId: string): string {
