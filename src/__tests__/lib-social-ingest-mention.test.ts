@@ -83,6 +83,12 @@ vi.mock("@/lib/prisma", () => {
 })
 
 import { prisma } from "@/lib/prisma"
+// Fixtures carry June/July publication dates; the 30-day intake gate is
+// pinned by its own case below and by monitoring-age-retention-postgres.
+const retentionGate = vi.hoisted(() => ({ isBeyond: vi.fn((_publishedAt?: Date | null) => false) }))
+vi.mock("@/lib/social/monitoring-age-retention", () => ({
+  isBeyondSocialMonitoringRetention: retentionGate.isBeyond,
+}))
 import { ingestMention, ingestMentionWithResult, normalizeMentionUrl } from "@/lib/social/ingest-mention"
 import {
   AUTOMATIC_REVIEW_AI_VERSION,
@@ -331,6 +337,25 @@ describe("ingestMentionWithResult", () => {
     })
 
     expect(create).not.toHaveBeenCalled()
+  })
+
+  // Owner 2026-11-08: a post published more than 30 days ago is old news and
+  // is stored nowhere — no mention, no envelope, no fingerprint.
+  it("stores nothing for a post published beyond the 30-day window", async () => {
+    retentionGate.isBeyond.mockReturnValueOnce(true)
+
+    const result = await ingestMentionWithResult(input)
+
+    expect(retentionGate.isBeyond).toHaveBeenCalledWith(input.publishedAt)
+    expect(result).toEqual({
+      id: "",
+      created: false,
+      accepted: false,
+      relevanceStatus: "REJECTED",
+      relevanceReason: "published_beyond_retention",
+    })
+    expect(create).not.toHaveBeenCalled()
+    expect(findUnique).not.toHaveBeenCalled()
   })
 
   it("creates a new mention and fires social_mention workflows", async () => {

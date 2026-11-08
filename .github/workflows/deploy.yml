@@ -482,6 +482,15 @@ jobs:
           MTM_DEMO_DB_GATE: required
           VITEST_MAX_WORKERS: 1
 
+      - name: Social monitoring 30-day retention database gate
+        # Same gate as in pr-checks: the nightly pass that deletes Social
+        # Monitoring data older than 30 days, on a real Postgres with the
+        # ledger triggers (see the test's header).
+        run: npx vitest run src/__tests__/social-monitoring-age-retention-postgres.test.ts
+        env:
+          SOCIAL_RETENTION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          SOCIAL_RETENTION_DB_GATE: required
+
       - name: Finance bill payment database gate
         # Same gate as in pr-checks: paying a vendor bill and executing a
         # payment order by the real handlers on a real Postgres (see the test's
