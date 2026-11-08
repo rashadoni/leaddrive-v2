@@ -188,7 +188,13 @@ export const navItems: NavItem[] = [
   // "/tasks" (Tapşırıqlar) intentionally removed from the menu — boards are the
   // primary task surface now. The page + /tasks/[id] detail still exist (board
   // cards link to the detail; the DONE-overflow links to /tasks), just unlinked.
-  { module: "boards", href: "/boards", icon: Columns3, tKey: "boards", group: "CRM" },
+  // ── Boards ───────────────────────────────────────────────────────────────
+  // Their own section, right under the core one (owner, 2026-11-08: «убери из
+  // главного раздела доски и пусть он будет отдельным модулем»). Under «all
+  // boards» the sidebar lists every folder and its boards
+  // (src/components/sidebar-board-tree.tsx), so switching boards needs no
+  // trip back to the list.
+  { module: "boards", href: "/boards", icon: Columns3, tKey: "boards", group: "Boards" },
   // ── Sales ────────────────────────────────────────────────────────────────
   // Dedicated Sales group/module (1 группа = 1 модуль): the seller's daily path
   // — leads → deals → quotes (CPQ) → sequences (cadences) → forecast — plus the
@@ -437,7 +443,7 @@ export const navItems: NavItem[] = [
   // intake-forms / approval-rules above. The /settings landing no longer
   // duplicates these as tiles.
   // CRM — pipelines/quotas/territories moved to the Sales group (see top of array).
-  { module: "boards", href: "/settings/task-templates", icon: FileText, tKey: "taskTemplates", group: "CRM" },
+  { module: "boards", href: "/settings/task-templates", icon: FileText, tKey: "taskTemplates", group: "Boards" },
   // NB: custom-fields + currencies deliberately NOT moved — LEGACY_MODULE_MAP
   // (modules.ts:67) classifies both as `settings` (org-level, cross-cutting:
   // currencies drive deal/invoice amounts, custom-fields span every entity), so
@@ -538,6 +544,7 @@ export const NAV_GROUP_ORDER: string[] = [...new Set(navItems.map((i) => i.group
  */
 export const GROUP_LAUNCHER_STYLE: Record<string, { chip: string; icon: string; dot: string }> = {
   CRM:                    { chip: "bg-orange-500/15",  icon: "text-orange-500",  dot: "bg-orange-500" },
+  Boards:                 { chip: "bg-orange-500/15",  icon: "text-orange-600",  dot: "bg-orange-600" },
   Sales:                  { chip: "bg-red-500/15",     icon: "text-red-500",     dot: "bg-red-500" },
   "Contracts Control":    { chip: "bg-blue-500/15",    icon: "text-blue-500",    dot: "bg-blue-500" },
   Marketing:              { chip: "bg-pink-500/15",    icon: "text-pink-500",    dot: "bg-pink-500" },

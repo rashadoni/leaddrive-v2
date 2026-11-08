@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { boardTabRows, type TabDivision } from "@/lib/tasks/board-tabs"
+import { boardIdFromPath, boardNavTree, boardTabRows, type TabDivision } from "@/lib/tasks/board-tabs"
 
 const BOARDS: TabDivision[] = [
   { id: "dig", name: "Digital Marketing", isDepartment: true, sortOrder: 1 },
@@ -43,5 +43,26 @@ describe("boardTabRows", () => {
     const rows = boardTabRows(visible, "dig-ph")
     expect(rows.places.map((tab) => tab.id)).toContain("dig-ph")
     expect(rows.projects).toBeNull()
+  })
+})
+
+describe("boardNavTree — the sidebar's folders and boards", () => {
+  it("puts stand-alone boards and folders in order, each folder with its own boards and counts", () => {
+    expect(boardNavTree(BOARDS).map((node) => [node.name, node.isDepartment, node.children.map((child) => [child.id, child.count])])).toEqual([
+      ["Ümumi Marketinq", false, []],
+      ["Digital Marketing", true, [["dig-zey", 380], ["dig-ph", 732]]],
+      ["Traditional Marketing", true, [["trad-zey", 37]]],
+    ])
+  })
+
+  it("stands a board alone when its folder is not the person's to open", () => {
+    const tree = boardNavTree(BOARDS.filter((division) => division.id !== "dig"))
+    expect(tree.map((node) => node.id)).toEqual(["general", "dig-zey", "dig-ph", "trad"])
+    expect(tree.find((node) => node.id === "dig-zey")).toMatchObject({ isDepartment: false, children: [] })
+  })
+
+  it("reads the open board from the address", () => {
+    expect([boardIdFromPath("/boards/dig-ph"), boardIdFromPath("/boards/dig-ph/settings"), boardIdFromPath("/boards"), boardIdFromPath("/tasks/1")])
+      .toEqual(["dig-ph", "dig-ph", null, null])
   })
 })

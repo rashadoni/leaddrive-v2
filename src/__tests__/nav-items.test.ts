@@ -404,12 +404,18 @@ describe("nav grouping", () => {
     expect(hrefs).toContain("/contracts/analytics")
   })
 
-  it("Sales then Contracts Control follow CRM in NAV_GROUP_ORDER", () => {
+  // Boards became a section of their own right under the core one (owner,
+  // 2026-11-08: «убери из главного раздела доски и пусть он будет отдельным модулем»).
+  it("Boards, then Sales, then Contracts Control follow CRM in NAV_GROUP_ORDER", () => {
     const crmIdx = NAV_GROUP_ORDER.indexOf("CRM")
+    const boardsIdx = NAV_GROUP_ORDER.indexOf("Boards")
     const salesIdx = NAV_GROUP_ORDER.indexOf("Sales")
     const ccIdx = NAV_GROUP_ORDER.indexOf("Contracts Control")
     expect(crmIdx).toBeGreaterThanOrEqual(0)
-    expect(salesIdx).toBe(crmIdx + 1)
+    expect(boardsIdx).toBe(crmIdx + 1)
+    expect(navItems.filter((i) => i.module === "boards").map((i) => [i.href, i.group]))
+      .toEqual([["/boards", "Boards"], ["/settings/task-templates", "Boards"]])
+    expect(salesIdx).toBe(boardsIdx + 1)
     expect(ccIdx).toBe(salesIdx + 1)
   })
 })
@@ -424,7 +430,7 @@ describe("admin sidebar catalog (derived — no drift from navItems)", () => {
     // real IA regression — a group silently added, removed, or reordered —
     // rather than just a bug in the catalog's own .map.
     expect(SIDEBAR_SECTIONS.map((s) => s.group)).toEqual([
-      "CRM", "Sales", "Contracts Control", "Marketing", "Loyalty Program", "Communication", "Social Monitoring", "VoIP", "Support", "Finance", "Analytics",
+      "CRM", "Boards", "Sales", "Contracts Control", "Marketing", "Loyalty Program", "Communication", "Social Monitoring", "VoIP", "Support", "Finance", "Analytics",
       "Route & Field", "Health Cloud", "Insurance Cloud", "Public Sector",
       "Media Cloud", "Energy & Utilities", "Settings",
     ])

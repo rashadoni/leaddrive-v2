@@ -8,7 +8,9 @@ import { boardTabRows, type TabDivision } from "@/lib/tasks/board-tabs"
 
 /**
  * Folders and projects as tabs above a board, so moving between projects is
- * one click and the sidebar stays as it is (owner, 2026-11-06). Rows and their
+ * one click (owner, 2026-11-06). Since 2026-11-08 the sidebar lists the same
+ * folders; while it does, these tabs are hidden (globals.css) and serve the
+ * phone and the folded sidebar. Rows and their
  * order: src/lib/tasks/board-tabs.ts. Without `divisions` it reads the board
  * list itself (the department view has none of its own).
  *
@@ -55,7 +57,7 @@ export function BoardProjectTabs({ currentId, divisions, loading = false }: {
   if (!rows || (rows.places.length < 2 && !rows.projects)) return null
 
   return (
-    <div className="flex flex-col gap-3 px-5 pb-3" data-testid="board-project-tabs">
+    <div className="flex flex-col gap-3 px-5 pb-3" data-testid="board-project-tabs" data-board-tabs="">
       <nav aria-label={t("placeTabs")} className="flex flex-wrap items-center gap-2">
         {rows.places.map((place) => {
           const Icon = place.isDepartment ? (place.active ? FolderOpen : Folder) : Columns3
@@ -95,7 +97,7 @@ export function BoardProjectTabs({ currentId, divisions, loading = false }: {
 /** Same box as the two rows of tabs (43 px tiles, 46 px project row), in grey. */
 function BoardProjectTabsPlaceholder() {
   return (
-    <div className="flex flex-col gap-3 px-5 pb-3" data-testid="board-project-tabs-placeholder" aria-hidden="true">
+    <div className="flex flex-col gap-3 px-5 pb-3" data-testid="board-project-tabs-placeholder" data-board-tabs="" aria-hidden="true">
       <div className="flex flex-wrap items-center gap-2 animate-pulse motion-reduce:animate-none">
         {[160, 190, 150].map((width) => (
           <div key={width} className="h-[43px] rounded-lg bg-muted" style={{ width }} />

@@ -1619,3 +1619,9 @@ main .lucide-search + input:not(.ai-search-input):focus-visible {
 main .lucide-search:has(+ input:not(.ai-search-input)) {
   color: hsl(var(--primary));
 }
+
+/* The sidebar lists the board folders (src/components/sidebar-board-tree.tsx):
+   while it does, the same switch above a board would only take room. */
+html[data-board-tree="on"] [data-board-tabs] {
+  display: none !important;
+}

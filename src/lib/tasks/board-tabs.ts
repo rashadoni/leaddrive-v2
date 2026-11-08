@@ -59,3 +59,38 @@ export function boardTabRows(divisions: readonly TabDivision[], currentId: strin
     }))
   return { places, projects: { departmentId, allActive: currentId === departmentId, items } }
 }
+
+export interface BoardNavLeaf { id: string; name: string; count: number | null }
+export interface BoardNavNode extends BoardNavLeaf { isDepartment: boolean; children: BoardNavLeaf[] }
+
+/**
+ * The same places and projects as a tree for the sidebar's «Boards» section
+ * (owner, 2026-11-08: the folders and their boards listed in the side menu, so
+ * a board in the same department is one click away). A section whose
+ * department the caller cannot open stands on its own, as with the tabs.
+ */
+export function boardNavTree(divisions: readonly TabDivision[]): BoardNavNode[] {
+  const known = new Set(divisions.map((division) => division.id))
+  const parentOf = (division: TabDivision) =>
+    division.parentDivisionId && known.has(division.parentDivisionId) ? division.parentDivisionId : null
+  const count = (division: TabDivision) => (typeof division._count?.tasks === "number" ? division._count.tasks : null)
+  return divisions
+    .filter((division) => !parentOf(division))
+    .sort(byOrder)
+    .map((division) => ({
+      id: division.id,
+      name: division.name,
+      count: count(division),
+      isDepartment: Boolean(division.isDepartment),
+      children: divisions
+        .filter((child) => parentOf(child) === division.id)
+        .sort(byOrder)
+        .map((child) => ({ id: child.id, name: child.name, count: count(child) })),
+    }))
+}
+
+/** The board a /boards/<id> address opens, or null. */
+export function boardIdFromPath(pathname: string): string | null {
+  const match = /^\/boards\/([^/?#]+)/u.exec(pathname)
+  return match ? decodeURIComponent(match[1]) : null
+}

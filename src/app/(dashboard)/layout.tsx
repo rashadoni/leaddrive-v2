@@ -139,8 +139,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const roleBlocked = !!session && !moduleBlocked && isNavPathRoleBlocked(org, pathname)
   const pageBlocked = moduleBlocked || roleBlocked
 
-  // Someone who was given the boards and nothing else works without the
-  // sidebar, and the CRM home is not theirs: send it to the boards.
+  // Someone who was given the boards and nothing else: the CRM home is not
+  // theirs, send it to the boards. The sidebar stays — its «Boards» section
+  // lists their folders and boards (owner, 2026-11-08).
   const boardsOnly = !!session && sessionLoaded && isBoardsOnlyWorkspace(org)
   const router = useRouter()
   useEffect(() => {
@@ -194,7 +195,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 placeholders — rendering the menu from a default org context
                 here silently hid module groups (MTM/Finance) and showed a
                 fake "User" identity (recurring bug report 2026-06-11). */}
-            {!boardsOnly && <Sidebar org={org} sessionLoaded={sessionLoaded} />}
+            <Sidebar org={org} sessionLoaded={sessionLoaded} />
             <div data-crm-workspace="" className="flex min-w-0 flex-1 flex-col overflow-hidden">
               <Header
                 orgName={user?.organizationName}
