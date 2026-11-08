@@ -6,6 +6,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -73,15 +74,30 @@ rewrite_exact_app_env_value "HELP_VIDEO_ASSET_DIR" "$APP_DIR/help-videos/player"
   }
 }
 
-const operationsSystemdUnits = [
-  "leaddrive-log-ship.service",
-  "leaddrive-log-ship.timer",
-  "leaddrive-postgres-backup.service",
-  "leaddrive-postgres-backup.timer",
-  "leaddrive-runtime-files-snapshot.service",
-  "leaddrive-runtime-files-snapshot.timer",
-  "leaddrive-secrets-snapshot.service",
-  "leaddrive-secrets-snapshot.timer",
+// Read the unit inventory and the arrays from the deploy script itself. A
+// hand-copied list here would be a second source of truth that quietly falls
+// behind: on 2026-11-08 the seven release-managed units joined the staged
+// validation, and a literal list would have made this fixture fail for the
+// wrong reason instead of covering them.
+function deployArrayAssignment(name: string): string {
+  const start = deploySource.indexOf(`${name}=(`)
+  expect(start, `${name} must exist in scripts/server-deploy.sh`).toBeGreaterThan(-1)
+  const end = deploySource.indexOf("\n)", start)
+  expect(end, `${name} must be a complete array`).toBeGreaterThan(start)
+  return `${deploySource.slice(start, end)}\n)`
+}
+
+const operationsSystemdUnits = readdirSync(join(root, "ops", "systemd")).sort()
+// Stub programs for every ExecStart the staged validation rebinds. The
+// notifier runs /bin/sh, so it has none.
+const operationsBackupPrograms = [
+  "ship-logs.sh",
+  "postgres-backup.sh",
+  "snapshot-runtime-files.sh",
+  "snapshot-secrets.sh",
+  "uploads-offsite-mirror.sh",
+  "wal-archive-backup.sh",
+  "wal-archive-check.sh",
 ]
 
 function runStagedOperationsSystemdValidation(options: {
@@ -109,7 +125,7 @@ function runStagedOperationsSystemdValidation(options: {
         ),
       )
     }
-    for (const script of ["ship-logs.sh", "postgres-backup.sh", "snapshot-runtime-files.sh", "snapshot-secrets.sh"]) {
+    for (const script of operationsBackupPrograms) {
       const scriptPath = join(backupRoot, script)
       writeFileSync(scriptPath, "#!/bin/sh\nexit 0\n")
       chmodSync(scriptPath, 0o755)
@@ -148,16 +164,9 @@ DEPLOY_SHA="$3"
 RELEASE_ROOT="$4"
 set -- normal "$DEPLOY_SHA"
 source "$HARNESS_FILE"
-OPERATIONS_SYSTEMD_UNITS=(
-  leaddrive-log-ship.service
-  leaddrive-log-ship.timer
-  leaddrive-postgres-backup.service
-  leaddrive-postgres-backup.timer
-  leaddrive-runtime-files-snapshot.service
-  leaddrive-runtime-files-snapshot.timer
-  leaddrive-secrets-snapshot.service
-  leaddrive-secrets-snapshot.timer
-)
+${deployArrayAssignment("OPERATIONS_SYSTEMD_UNITS")}
+${deployArrayAssignment("OPERATIONS_RELEASE_MANAGED_UNITS")}
+${deployArrayAssignment("OPERATIONS_ALL_RELEASE_UNITS")}
 validate_staged_operations_systemd_units "$RELEASE_ROOT"`,
         "bash",
         harnessFile,
@@ -363,12 +372,14 @@ describe("runtime release boundaries", () => {
     expect(onBox).toContain("exit 64")
     expect(onBox).not.toContain("release-cron-script-manifest.txt")
     expect(onBox).not.toMatch(/\bnpm (?:ci|run build)|\bpm2 (?:start|restart)/u)
-    for (const unit of [
-      "leaddrive-log-ship.service",
-      "leaddrive-postgres-backup.service",
-      "leaddrive-runtime-files-snapshot.service",
-      "leaddrive-secrets-snapshot.service",
-    ]) {
+    // Every service that runs a release program must reach it through the
+    // stable pointer, not just the ceremony's four: the release-managed seven
+    // are installed by this same activation, and a unit bound to a SHA or a
+    // checkout would outlive the release it was written for.
+    for (const unit of operationsSystemdUnits.filter((name) => name.endsWith(".service"))) {
+      // The notifier is the one service with no release program: it runs
+      // /bin/sh with the owner's notify command.
+      if (unit === "leaddrive-wal-check-failed.service") continue
       expect(read(`ops/systemd/${unit}`)).toContain("/usr/local/lib/leaddrive-v2/ops/current/backup/")
     }
   })

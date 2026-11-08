@@ -394,6 +394,7 @@ jobs:
           python3 .github/scripts/test_provision_postgres_restore_scratch.py
           node --test scripts/backup/object-lock-diagnostic.test.mjs
           node --test scripts/backup/owner-recovery.test.mjs
+          node --test scripts/backup/systemd-unit-install-contract.test.mjs
 
       - name: Event-platform migration and database invariant gate
         run: node scripts/ci/test-event-platform-migrations.mjs

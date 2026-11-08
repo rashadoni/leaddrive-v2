@@ -221,7 +221,45 @@ OPERATIONS_TIMERS=(
   leaddrive-runtime-files-snapshot.timer
   leaddrive-secrets-snapshot.timer
 )
+# The rest of ops/systemd belongs to the release, not to the commissioning
+# ceremony, and the split is one the repository already draws: these seven are
+# the units NOT listed in ops/backup/recovery-program-set.files, so changing
+# one needs no new offline drill signature, and their programs — the WAL
+# archive pair and the uploads mirror — are the ones that actually run on this
+# host today. The deploy owns them end to end and installs them on every run.
+#
+# This list exists because nothing compared the installed file with the
+# release. On 2026-11-01 commit 1281f9e7e taught the WAL watch to report its
+# verdicts as exit 10 and 20 and fixed `SuccessExitStatus=0 1 2` in
+# leaddrive-wal-check.service; the deploy shipped the new SCRIPT to
+# ops/current/backup/ that same evening, but the unit on the host was
+# hand-installed eight minutes earlier and stayed. For a week systemd read
+# every critical verdict as the watch crashing and fired OnFailure, and no
+# deploy said a word — the only comparison in this file was release-tree
+# against artifact, which matched perfectly while /etc disagreed with both.
+OPERATIONS_RELEASE_MANAGED_UNITS=(
+  leaddrive-uploads-offsite.service
+  leaddrive-uploads-offsite.timer
+  leaddrive-wal-backup.service
+  leaddrive-wal-backup.timer
+  leaddrive-wal-check-failed.service
+  leaddrive-wal-check.service
+  leaddrive-wal-check.timer
+)
+# Every unit file ops/systemd ships. Snapshot, rollback-state verification and
+# restore cover this whole set: which of them a given host may have installed
+# is a question of commissioning, but a unit that is on the host at all must be
+# restorable to exactly the bytes it had before this activation.
+OPERATIONS_ALL_RELEASE_UNITS=(
+  "${OPERATIONS_SYSTEMD_UNITS[@]}"
+  "${OPERATIONS_RELEASE_MANAGED_UNITS[@]}"
+)
+# OPERATIONS_TIMERS stays the ceremony's four on purpose: the uncommissioned
+# branch of install_release_owned_operations disables every timer it names, and
+# the WAL and uploads timers are live, enabled schedules on this host.
 OPERATIONS_LOGROTATE_FILES=(leaddrive-v2 leaddrive-cron-logs)
+# Reported in the Step 10 SUMMARY line as systemd-units=…
+SYSTEMD_UNITS_STATUS="not-reached"
 
 # The deployment and environment locks are held for the complete run. This is
 # intentionally broader than GitHub Actions concurrency: the documented on-box
@@ -5451,16 +5489,10 @@ validate_release_owned_operations_artifact() {
     bootstrap-backup-role.sql canary.sql migration-ledger.sql prove-restored-pii.mjs
     recovery-db-contract.tsv
   )
-  local -a units=(
-    leaddrive-log-ship.service
-    leaddrive-log-ship.timer
-    leaddrive-postgres-backup.service
-    leaddrive-postgres-backup.timer
-    leaddrive-runtime-files-snapshot.service
-    leaddrive-runtime-files-snapshot.timer
-    leaddrive-secrets-snapshot.service
-    leaddrive-secrets-snapshot.timer
-  )
+  # Every unit ops/systemd ships, not just the ceremony's eight: the deploy
+  # installs the release-managed seven itself, so a missing one must fail the
+  # artifact rather than silently leave the host on yesterday's unit.
+  local -a units=("${OPERATIONS_ALL_RELEASE_UNITS[@]}")
   local -a rotate_files=(leaddrive-v2 leaddrive-cron-logs)
 
   for script in "${backup_scripts[@]}"; do
@@ -5588,16 +5620,10 @@ validate_installed_release_operations() {
     bootstrap-backup-role.sql canary.sql migration-ledger.sql prove-restored-pii.mjs
     recovery-db-contract.tsv
   )
-  local -a units=(
-    leaddrive-log-ship.service
-    leaddrive-log-ship.timer
-    leaddrive-postgres-backup.service
-    leaddrive-postgres-backup.timer
-    leaddrive-runtime-files-snapshot.service
-    leaddrive-runtime-files-snapshot.timer
-    leaddrive-secrets-snapshot.service
-    leaddrive-secrets-snapshot.timer
-  )
+  # Every unit ops/systemd ships, not just the ceremony's eight: the deploy
+  # installs the release-managed seven itself, so a missing one must fail the
+  # artifact rather than silently leave the host on yesterday's unit.
+  local -a units=("${OPERATIONS_ALL_RELEASE_UNITS[@]}")
   local -a rotate_files=(leaddrive-v2 leaddrive-cron-logs)
 
   expected_program_set_sha="$(
@@ -6443,7 +6469,7 @@ reconcile_log_genesis_before_operations_switch() {
 
 validate_staged_operations_systemd_units() {
   local release_root="$1"
-  local stage unit source rendered script
+  local stage unit source rendered script args
 
   # The release-owned service units intentionally execute through the stable
   # `current` pointer.  On the first installation that pointer does not exist
@@ -6453,14 +6479,28 @@ validate_staged_operations_systemd_units() {
   # at `current` and are re-validated after the journalled pointer switch.
   stage="$(mktemp -d "$OPS_ROOT/.systemd-verify-${DEPLOY_SHA}.XXXXXX")" || \
     fatal "cannot create staged systemd validation directory"
-  for unit in "${OPERATIONS_SYSTEMD_UNITS[@]}"; do
+  for unit in "${OPERATIONS_ALL_RELEASE_UNITS[@]}"; do
     source="$release_root/systemd/$unit"
     rendered="$stage/$unit"
+    args=""
     case "$unit" in
       leaddrive-log-ship.service) script="ship-logs.sh" ;;
       leaddrive-postgres-backup.service) script="postgres-backup.sh" ;;
       leaddrive-runtime-files-snapshot.service) script="snapshot-runtime-files.sh" ;;
       leaddrive-secrets-snapshot.service) script="snapshot-secrets.sh" ;;
+      leaddrive-uploads-offsite.service) script="uploads-offsite-mirror.sh"; args=" --run" ;;
+      leaddrive-wal-backup.service) script="wal-archive-backup.sh" ;;
+      leaddrive-wal-check.service) script="wal-archive-check.sh" ;;
+      leaddrive-wal-check-failed.service)
+        # The one unit whose ExecStart is not a release program: it runs
+        # /bin/sh with the owner's notify command, so there is no stable
+        # pointer to rebind and the literal file is what systemd will load.
+        install -m 0644 -- "$source" "$rendered" || {
+          rm -rf -- "$stage"
+          fatal "cannot stage immutable operations notifier for systemd validation: $unit"
+        }
+        continue
+        ;;
       *.timer)
         install -m 0644 -- "$source" "$rendered" || {
           rm -rf -- "$stage"
@@ -6478,8 +6518,8 @@ validate_staged_operations_systemd_units() {
     # Each service has exactly one expected ExecStart and only that literal
     # stable-pointer path is rebound in the throwaway validation copy.
     if ! awk \
-      -v expected="ExecStart=$OPS_CURRENT_LINK/backup/$script" \
-      -v replacement="ExecStart=$release_root/backup/$script" '
+      -v expected="ExecStart=$OPS_CURRENT_LINK/backup/$script$args" \
+      -v replacement="ExecStart=$release_root/backup/$script$args" '
         $0 == expected { matches += 1; print replacement; next }
         /^[[:space:]]*ExecStart[[:space:]]*=/ { unexpected += 1 }
         { print }
@@ -6494,7 +6534,7 @@ validate_staged_operations_systemd_units() {
     }
   done
 
-  if ! systemd-analyze verify "${OPERATIONS_SYSTEMD_UNITS[@]/#/$stage/}"; then
+  if ! systemd-analyze verify "${OPERATIONS_ALL_RELEASE_UNITS[@]/#/$stage/}"; then
     rm -rf -- "$stage"
     fatal "staged systemd unit validation failed for the immutable operations release"
   fi
@@ -6666,7 +6706,7 @@ validate_operations_system_config_snapshot() {
     "operations system configuration recovery snapshot" \
     "$OPERATIONS_SYSTEM_CONFIG_BACKUP_DIR"
 
-  for unit in "${OPERATIONS_SYSTEMD_UNITS[@]}"; do
+  for unit in "${OPERATIONS_ALL_RELEASE_UNITS[@]}"; do
     state_file="$OPERATIONS_SYSTEM_CONFIG_BACKUP_DIR/systemd/$unit.state"
     snapshot="$OPERATIONS_SYSTEM_CONFIG_BACKUP_DIR/systemd/$unit"
     [ -f "$state_file" ] && [ ! -L "$state_file" ] || \
@@ -6980,7 +7020,7 @@ snapshot_operations_system_config() {
     "$OPERATIONS_SYSTEM_CONFIG_BACKUP_DIR/logrotate" || \
     fatal "cannot create operations system configuration snapshot"
 
-  for unit in "${OPERATIONS_SYSTEMD_UNITS[@]}"; do
+  for unit in "${OPERATIONS_ALL_RELEASE_UNITS[@]}"; do
     snapshot_operations_config_file \
       "systemd unit $unit" \
       "$SYSTEMD_UNIT_DIR/$unit" \
@@ -7066,7 +7106,7 @@ verify_operations_system_config_rollback_state() {
   local unit rotate failures=0
 
   [ "$OPERATIONS_SYSTEM_CONFIG_SNAPSHOT" = "true" ] || return 1
-  for unit in "${OPERATIONS_SYSTEMD_UNITS[@]}"; do
+  for unit in "${OPERATIONS_ALL_RELEASE_UNITS[@]}"; do
     if ! operations_config_file_matches_rollback_state \
       systemd "$unit" "$SYSTEMD_UNIT_DIR/$unit"; then
       log "FATAL: systemd unit $unit changed outside this operations activation; refusing rollback overwrite"
@@ -7149,7 +7189,7 @@ restore_operations_config_file() {
 restore_operations_system_config_files() {
   local unit rotate failures=0
 
-  for unit in "${OPERATIONS_SYSTEMD_UNITS[@]}"; do
+  for unit in "${OPERATIONS_ALL_RELEASE_UNITS[@]}"; do
     restore_operations_config_file systemd "$unit" "$SYSTEMD_UNIT_DIR/$unit" || failures=1
   done
   for rotate in "${OPERATIONS_LOGROTATE_FILES[@]}"; do
@@ -7778,6 +7818,34 @@ install_release_owned_operations() {
         "$SYSTEMD_UNIT_DIR/$unit"
     done
   fi
+  # The release-managed seven are installed in BOTH modes, because their
+  # programs are the ones this activation is switching: `ExecStart` points at
+  # $OPS_CURRENT_LINK/backup/, and the pointer moves a few lines below. A unit
+  # left behind on the host therefore drives a program it was not written for
+  # — which is exactly what happened to leaddrive-wal-check.service for the
+  # week after 2026-11-01 (see OPERATIONS_RELEASE_MANAGED_UNITS).
+  #
+  # Installing, not failing. A `fatal` on drift would turn a forgotten manual
+  # step into a frozen production line: the release is already merged and
+  # green, prod would stay on the previous code, and the only way out would be
+  # an SSH session — for every unrelated release queued behind it. Writing the
+  # file also schedules nothing: `systemctl enable` is what puts a timer on the
+  # clock, so a host that does not run these schedules is unaffected, and a
+  # host that does gets the definition the release was tested with. Rollback is
+  # covered: these units are in OPERATIONS_ALL_RELEASE_UNITS, so the
+  # pre-activation snapshot and the restore path own them like any other.
+  #
+  # Their timers are deliberately NOT quiesced above. A running oneshot keeps
+  # the definition it started with until it exits, so the worst case is that
+  # the 5-minute WAL check finishes under the old unit and the next run uses
+  # the new one — and wal-archive-check.sh holds its own lock anyway. Stopping
+  # the live archive watch for the length of a deploy would cost more.
+  for unit in "${OPERATIONS_RELEASE_MANAGED_UNITS[@]}"; do
+    install_operations_config_file_atomically \
+      "systemd-$unit" \
+      "$release_root/systemd/$unit" \
+      "$SYSTEMD_UNIT_DIR/$unit"
+  done
   for rotate in "${OPERATIONS_LOGROTATE_FILES[@]}"; do
     install_operations_config_file_atomically \
       "logrotate-$rotate" \
@@ -7797,9 +7865,16 @@ install_release_owned_operations() {
     systemd-analyze verify "${OPERATIONS_SYSTEMD_UNITS[@]/#/$SYSTEMD_UNIT_DIR/}" || \
       fatal "systemd unit validation failed for the immutable operations release"
   fi
+  # Ungated: these seven are on the host in both modes, so the literal files
+  # systemd will load are always there to verify against the live pointer.
+  systemd-analyze verify "${OPERATIONS_RELEASE_MANAGED_UNITS[@]/#/$SYSTEMD_UNIT_DIR/}" || \
+    fatal "systemd unit validation failed for the release-managed operations units"
   systemctl daemon-reload
   release_operations_runner_locks || \
     fatal "cannot release recovery-runner locks after atomic operations activation"
+  # Before any of the three return paths below: say out loud what is now in
+  # /etc/systemd/system and how it compares with this release.
+  report_installed_systemd_unit_drift "$release_root"
   if [ "$recovery_scope" = log-genesis-bootstrap-only ]; then
     # Do not convert an operations-only genesis ceremony into a backup outage.
     # The first log object has not been root-anchored yet, so only its timer
@@ -7850,6 +7925,88 @@ install_release_owned_operations() {
     systemctl is-active --quiet "$timer" || fatal "$timer is not active after installation"
   done
   log "Installed immutable release-owned operations for $recovery_scope; stage-ineligible timers remain fenced"
+}
+
+# Nobody compared /etc/systemd/system with the release until 2026-11-08, so a
+# unit could rot on the host for a week while every other check was green: the
+# deploy verified artifact-against-release-tree, which matched, and the units in
+# /etc were whatever the last pair of hands had put there. This reports the one
+# comparison that was missing, and it reports it in three different registers,
+# because the three groups mean three different things.
+#
+#  1. OPERATIONS_RELEASE_MANAGED_UNITS — the deploy just installed these, so a
+#     mismatch here is not drift, it is something changing /etc underneath a
+#     running activation. fatal.
+#  2. OPERATIONS_SYSTEMD_UNITS on a COMMISSIONED host — likewise installed a few
+#     lines above. fatal.
+#  3. OPERATIONS_SYSTEMD_UNITS on an UNCOMMISSIONED host — deliberately not
+#     installed (see the install loop), so whatever sits in /etc is a leftover
+#     from an earlier, commissioned life. On this production host they are
+#     dated 2026-09-05 and differ in StateDirectory/RuntimeDirectory naming.
+#     Warning, never fatal: these units are inert — the branch below asserts
+#     every one of their timers is disabled and inactive, so stale bytes cannot
+#     run — and their contents belong to the signed recovery-program set, which
+#     only the commissioning ceremony may install. Failing here would freeze
+#     production over files that do nothing; commissioning is what fixes them.
+report_installed_systemd_unit_drift() {
+  local release_root="$1"
+  local unit installed stale=0 absent=0 foreign=0 managed=0 ceremony=0
+  # Host-owned units that are not ours and must not be reported as drift.
+  # leaddrive-daily-backup.* runs /usr/local/sbin/leaddrive-backup.sh — the
+  # owner's own age-encrypted nightly dump, whose schedule is not this
+  # repository's (docs/BACKUP_RUNBOOK.md). A watch that is always red stops
+  # being read, so an intentional exception is named, not warned about.
+  local -a host_owned=(leaddrive-daily-backup.service leaddrive-daily-backup.timer)
+  # One lookup string rather than a pipe into grep -q: grep -q exits on the
+  # first match, and under `set -o pipefail` a SIGPIPE'd printf would turn a
+  # successful lookup into a failed pipeline.
+  local known=" ${OPERATIONS_ALL_RELEASE_UNITS[*]} ${host_owned[*]} "
+
+  for unit in "${OPERATIONS_RELEASE_MANAGED_UNITS[@]}"; do
+    cmp -s -- "$release_root/systemd/$unit" "$SYSTEMD_UNIT_DIR/$unit" || \
+      fatal "release-managed systemd unit does not match the release after installation: $unit"
+    managed=$((managed + 1))
+  done
+
+  if operations_backup_subsystem_is_commissioned; then
+    for unit in "${OPERATIONS_SYSTEMD_UNITS[@]}"; do
+      cmp -s -- "$release_root/systemd/$unit" "$SYSTEMD_UNIT_DIR/$unit" || \
+        fatal "commissioned backup systemd unit does not match the release after installation: $unit"
+      ceremony=$((ceremony + 1))
+    done
+  else
+    for unit in "${OPERATIONS_SYSTEMD_UNITS[@]}"; do
+      if [ ! -e "$SYSTEMD_UNIT_DIR/$unit" ] && [ ! -L "$SYSTEMD_UNIT_DIR/$unit" ]; then
+        absent=$((absent + 1))
+        continue
+      fi
+      if cmp -s -- "$release_root/systemd/$unit" "$SYSTEMD_UNIT_DIR/$unit"; then
+        ceremony=$((ceremony + 1))
+        continue
+      fi
+      stale=$((stale + 1))
+      log "WARNING: $SYSTEMD_UNIT_DIR/$unit differs from this release and is NOT being updated — the backup subsystem is not commissioned on this host, so the deploy does not own that file; its timer stays disabled (docs/BACKUP_RUNBOOK.md)"
+    done
+  fi
+
+  # The reverse drift: a leaddrive-* unit in /etc that this release does not
+  # ship and that is not a named host-owned exception. Either someone placed
+  # it by hand, or the release stopped shipping a unit nobody removed.
+  for installed in "$SYSTEMD_UNIT_DIR"/leaddrive-*.service "$SYSTEMD_UNIT_DIR"/leaddrive-*.timer; do
+    [ -f "$installed" ] || continue
+    unit="$(basename -- "$installed")"
+    case "$known" in
+      *" $unit "*) continue ;;
+    esac
+    foreign=$((foreign + 1))
+    log "WARNING: $installed is not shipped by this release and is not a known host-owned unit; nothing in the deploy maintains it"
+  done
+
+  SYSTEMD_UNITS_STATUS="release=$managed+$ceremony"
+  [ "$stale" = "0" ] || SYSTEMD_UNITS_STATUS="$SYSTEMD_UNITS_STATUS,stale=$stale"
+  [ "$absent" = "0" ] || SYSTEMD_UNITS_STATUS="$SYSTEMD_UNITS_STATUS,absent=$absent"
+  [ "$foreign" = "0" ] || SYSTEMD_UNITS_STATUS="$SYSTEMD_UNITS_STATUS,unowned=$foreign"
+  log "systemd units: $SYSTEMD_UNITS_STATUS (release-managed $managed, matching release $ceremony, stale $stale, absent $absent, unowned $foreign)"
 }
 
 validate_bootstrap_recovery_authority() {
@@ -9763,5 +9920,5 @@ rm -f "$DEPLOY_TAR" /tmp/server-deploy.sh
 # ── Step 11: Deploy summary (greppable single-line audit row) ──
 COMMIT_SHORT="${DEPLOY_SHA:0:7}"
 PRISMA_ENGINE_NAME=$(ls $PRISMA_ENGINE_PATTERN 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo "missing")
-log "SUMMARY commit=$COMMIT_SHORT backup=$(basename "$BACKUP_PATH") css_files=$CSS_COUNT js_files=$JS_COUNT prisma_engine=$PRISMA_ENGINE_NAME health=$HTTP_CODE css_check=$CSS_CODE db_probe=$DB_CODE jobs=$JOBS_STATUS line=$LINE_STATUS help-videos=$HELP_VIDEO_PULL_ACTION"
+log "SUMMARY commit=$COMMIT_SHORT backup=$(basename "$BACKUP_PATH") css_files=$CSS_COUNT js_files=$JS_COUNT prisma_engine=$PRISMA_ENGINE_NAME health=$HTTP_CODE css_check=$CSS_CODE db_probe=$DB_CODE jobs=$JOBS_STATUS line=$LINE_STATUS help-videos=$HELP_VIDEO_PULL_ACTION systemd-units=$SYSTEMD_UNITS_STATUS"
 log "Deploy complete! App running on $HEALTH_URL"
