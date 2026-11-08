@@ -123,7 +123,7 @@ export function BookingSummary({ page }: { page: PublicBookingPage }) {
       <h1 id="booking-title" className="text-2xl font-bold tracking-tight">{page.title}</h1>
       <ul className="space-y-2 text-sm text-muted-foreground">
         <li className="flex items-center gap-2"><Clock className="h-4 w-4 shrink-0" aria-hidden="true" />{t("minutes", { count: page.durationMinutes })}</li>
-        {price || from ? <li className="flex items-center gap-2 font-semibold text-foreground"><Wallet className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{price ?? t("previewFrom", { price: from ?? "" })}</li> : null}
+        {price || from ? <li className="flex items-center gap-2 text-base font-bold tabular-nums text-foreground"><Wallet className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{price ?? t("previewFrom", { price: from ?? "" })}</li> : null}
         <li className="flex items-center gap-2"><LocationIcon type={page.locationType} />{page.locationText || t(`location_${page.locationType}`)}</li>
         {page.hostNames.length > 0 ? (
           <li className="flex items-center gap-2"><User className="h-4 w-4 shrink-0" aria-hidden="true" />{page.hostNames.join(", ")}</li>
@@ -133,7 +133,7 @@ export function BookingSummary({ page }: { page: PublicBookingPage }) {
       {/* Said before the time is chosen, not after: a deposit the customer
           learns about on the confirmation screen is a deposit they argue about. */}
       {page.deposit ? (
-        <p className="rounded-xl bg-muted/50 p-3 text-sm">
+        <p className="rounded-xl border border-primary/25 bg-primary/5 p-3 text-sm">
           <span className="font-semibold">{t("depositDue", { amount: servicePriceLabel({ price: page.deposit, priceCurrency: page.priceCurrency ?? null }, locale) ?? page.deposit })}</span>
           <span className="mt-0.5 block text-xs text-muted-foreground">{t("depositFree", { hours: page.depositFreeHours ?? 24 })}</span>
         </p>
@@ -200,8 +200,8 @@ export function BookingScheduler({
         {/* Asked only where the answer changes the price or the length. */}
         {!staff && onHostChange && page.hosts && page.hosts.length > 0 && !startsAt ? (
           <div>
-            <p className="text-sm font-semibold">{t("pickHost")}</p>
-            <div className="mt-2 flex flex-wrap gap-2 rounded-xl bg-muted/40 p-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-muted-foreground">{t("pickHost")}</p>
+            <div className="mt-2 flex flex-wrap gap-2 rounded-xl border border-border/60 bg-muted/60 p-3">
               {[null, ...page.hosts].map((host) => {
                 const active = (page.chosenHostId ?? null) === (host?.id ?? null)
                 return (
@@ -232,8 +232,8 @@ export function BookingScheduler({
             visit of 60. */}
         {!staff && onAddOnsChange && page.addOns && page.addOns.length > 0 && !startsAt ? (
           <div>
-            <p className="text-sm font-semibold">{t("addOnsPick")}</p>
-            <ul className="mt-2 space-y-1.5 rounded-xl bg-muted/40 p-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-muted-foreground">{t("addOnsPick")}</p>
+            <ul className="mt-2 space-y-1.5 rounded-xl border border-border/60 bg-muted/60 p-3">
               {page.addOns.map((addOn) => {
                 const taken = (page.chosenAddOnIds ?? []).includes(addOn.id)
                 return (
@@ -303,8 +303,8 @@ export function BookingScheduler({
           <>
             {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
             <div>
-              <h2 className="mb-2 text-sm font-semibold">{t("chooseDay")}</h2>
-              <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted/40 p-2.5 sm:grid-cols-4 lg:grid-cols-5">
+              <h2 className="mb-2 text-[11px] font-bold uppercase tracking-[0.07em] text-muted-foreground">{t("chooseDay")}</h2>
+              <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/60 bg-muted/60 p-2.5 sm:grid-cols-4 lg:grid-cols-5">
                 {days.map((item) => (
                   <button
                     key={item.date}
@@ -324,8 +324,8 @@ export function BookingScheduler({
             </div>
             {day ? (
               <div>
-                <h2 className="mb-2 text-sm font-semibold">{t("chooseTime")}</h2>
-                <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted/40 p-3 sm:grid-cols-4 lg:grid-cols-6">
+                <h2 className="mb-2 text-[11px] font-bold uppercase tracking-[0.07em] text-muted-foreground">{t("chooseTime")}</h2>
+                <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/60 bg-muted/60 p-3 sm:grid-cols-4 lg:grid-cols-6">
                   {day.slots.map((slot) => (
                     <button
                       key={slot.startsAt}
