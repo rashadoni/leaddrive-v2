@@ -30,7 +30,11 @@ import { STATUS_TO_STAGE } from "@/lib/tasks/board-columns"
  *    says `relocate`: then it moves here (Bordio's projects became their own
  *    boards after the first run had put everything on one — owner, 2026-11-06).
  *    It takes this board's next key, its old key stays reserved, and the move
- *    is written to the task's history.
+ *    is written to the task's history;
+ *  - `detailsOnly` adds details (followers, history, time) to tasks already
+ *    brought over and leaves the tasks themselves alone, wherever they are:
+ *    an export a few days old would otherwise put back what people have changed
+ *    in the CRM since (Bordio's time records, owner 2026-11-08).
  */
 
 export const EXTERNAL_IMPORT_MAX_TASKS = 200
@@ -81,6 +85,14 @@ export const externalTaskSchema = z.strictObject({
     actorName: z.string().trim().max(200).nullable().optional(),
     text: z.string().trim().min(1).max(2000),
   })).max(1000).optional(),
+  // Time the other tool recorded on the task (Bordio: per day and person). A
+  // re-run writes only the entries the task does not hold yet.
+  timeEntries: z.array(z.strictObject({
+    userEmail: email.nullable().optional(),
+    startedAt: isoDate,
+    minutes: z.number().int().min(1).max(100_000),
+    source: z.enum(["timer", "manual"]).default("manual"),
+  })).max(500).optional(),
   comments: z.array(z.strictObject({
     authorEmail: email.nullable().optional(),
     authorName: z.string().trim().max(200).nullable().optional(),
@@ -101,6 +113,9 @@ export const externalImportSchema = z.strictObject({
   // their assignees and deadlines) and add the events not written yet.
   // Messages are never touched again.
   refreshDetails: z.boolean().default(false),
+  // Only add details to tasks already brought over (see the module comment).
+  // A task not brought over yet is refused, not created.
+  detailsOnly: z.boolean().default(false),
   tasks: z.array(externalTaskSchema).min(1).max(EXTERNAL_IMPORT_MAX_TASKS),
 })
 
@@ -174,6 +189,7 @@ export async function importExternalTasks(
     task.checklist.forEach((item) => want(item.assigneeEmail))
     task.events?.forEach((event) => want(event.actorEmail))
     task.comments.forEach((comment) => want(comment.authorEmail))
+    task.timeEntries?.forEach((entry) => want(entry.userEmail))
   }
   const users = wanted.size === 0 ? [] : await tx.user.findMany({
     where: { organizationId, email: { in: [...wanted.keys()], mode: "insensitive" } },
@@ -209,7 +225,11 @@ export async function importExternalTasks(
     select: { id: true, externalId: true, divisionId: true, taskKey: true, customFields: true, deletedAt: true },
   })
   const existingById = new Map(existing.map((task) => [task.externalId!, task]))
-  const elsewhere = existing.filter((task) => task.divisionId !== division.id)
+  if (input.detailsOnly) {
+    const missing = ids.find((id) => !existingById.has(id))
+    if (missing) throw new ExternalImportError(`Task ${missing} was not brought over yet`, 409)
+  }
+  const elsewhere = input.detailsOnly ? [] : existing.filter((task) => task.divisionId !== division.id)
   if (elsewhere.length > 0 && !input.relocate) {
     throw new ExternalImportError(`Task ${elsewhere[0].externalId} was already imported onto another board`, 409)
   }
@@ -225,8 +245,8 @@ export async function importExternalTasks(
     updated: existingById.size,
     moved: elsewhere.length,
     unmatchedEmails,
-    newTaskTypes,
-    newBrands,
+    newTaskTypes: input.detailsOnly ? [] : newTaskTypes,
+    newBrands: input.detailsOnly ? [] : newBrands,
   }
   if (input.dryRun) return base
   if (Object.keys(unmatchedEmails).length > 0 && !input.allowUnmatched) {
@@ -234,34 +254,36 @@ export async function importExternalTasks(
   }
 
   // ── configuration first, so every task below validates against it ─────────
-  if (newTaskTypes.length > 0) {
-    const max = await tx.taskType.aggregate({ where: { organizationId }, _max: { sortOrder: true } })
-    let sortOrder = (max._max.sortOrder ?? -1) + 1
-    for (const name of newTaskTypes) {
-      const type = typeLabels.get(name)!
-      await tx.taskType.create({
-        data: { organizationId, name, displayName: type.label, color: type.color ?? "#6B7280", sortOrder: sortOrder++ },
-      })
+  if (!input.detailsOnly) {
+    if (newTaskTypes.length > 0) {
+      const max = await tx.taskType.aggregate({ where: { organizationId }, _max: { sortOrder: true } })
+      let sortOrder = (max._max.sortOrder ?? -1) + 1
+      for (const name of newTaskTypes) {
+        const type = typeLabels.get(name)!
+        await tx.taskType.create({
+          data: { organizationId, name, displayName: type.label, color: type.color ?? "#6B7280", sortOrder: sortOrder++ },
+        })
+      }
     }
-  }
-  const inactiveTypes = existingTypes.filter((type) => !type.isActive).map((type) => type.name)
-  if (inactiveTypes.length > 0) {
-    await tx.taskType.updateMany({ where: { organizationId, name: { in: inactiveTypes } }, data: { isActive: true } })
-  }
-  if (brands.length > 0) {
-    if (!brandField) {
-      await tx.customField.create({
-        data: {
-          organizationId,
-          entityType: "task",
-          fieldName: BRAND_FIELD_NAME,
-          fieldLabel: BRAND_FIELD_LABEL,
-          fieldType: "select",
-          options: brands,
-        },
-      })
-    } else if (newBrands.length > 0) {
-      await tx.customField.update({ where: { id: brandField.id }, data: { options: [...brandField.options, ...newBrands] } })
+    const inactiveTypes = existingTypes.filter((type) => !type.isActive).map((type) => type.name)
+    if (inactiveTypes.length > 0) {
+      await tx.taskType.updateMany({ where: { organizationId, name: { in: inactiveTypes } }, data: { isActive: true } })
+    }
+    if (brands.length > 0) {
+      if (!brandField) {
+        await tx.customField.create({
+          data: {
+            organizationId,
+            entityType: "task",
+            fieldName: BRAND_FIELD_NAME,
+            fieldLabel: BRAND_FIELD_LABEL,
+            fieldType: "select",
+            options: brands,
+          },
+        })
+      } else if (newBrands.length > 0) {
+        await tx.customField.update({ where: { id: brandField.id }, data: { options: [...brandField.options, ...newBrands] } })
+      }
     }
   }
 
@@ -339,9 +361,39 @@ export async function importExternalTasks(
           })
         }
       }
+      if (task.timeEntries?.length) {
+        // Same person, day and minutes = the same record; counted, so two equal
+        // records of one day both land and a re-run adds neither.
+        const held = new Map<string, number>()
+        const keyOf = (user: string | null, at: Date, minutes: number | null) => `${user ?? "-"}|${at.toISOString()}|${minutes ?? 0}`
+        if (!isNew) {
+          for (const row of await tx.taskTimeEntry.findMany({ where: { organizationId, taskId }, select: { userId: true, startedAt: true, minutes: true } })) {
+            const key = keyOf(row.userId, row.startedAt, row.minutes)
+            held.set(key, (held.get(key) ?? 0) + 1)
+          }
+        }
+        const fresh = task.timeEntries.map((entry) => ({ ...entry, userId: userId(entry.userEmail), at: new Date(entry.startedAt) })).filter((entry) => {
+          const key = keyOf(entry.userId, entry.at, entry.minutes)
+          const count = held.get(key) ?? 0
+          if (count > 0) held.set(key, count - 1)
+          return count === 0
+        })
+        if (fresh.length > 0) {
+          await tx.taskTimeEntry.createMany({
+            // Finished records: `endedAt` is set, or the card would read one as a running timer.
+            data: fresh.map((entry) => ({
+              organizationId, taskId, userId: entry.userId, source: entry.source, startedAt: entry.at, endedAt: entry.at, minutes: entry.minutes,
+            })),
+          })
+        }
+      }
     }
 
     const previous = existingById.get(task.externalId)
+    if (previous && input.detailsOnly) {
+      await writeDetails(previous.id, false)
+      continue
+    }
     if (previous) {
       const customFields = { ...((previous.customFields as Record<string, unknown> | null) ?? {}) }
       if (task.brand) customFields[BRAND_FIELD_NAME] = task.brand
