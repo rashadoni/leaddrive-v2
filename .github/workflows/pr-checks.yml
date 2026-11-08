@@ -385,6 +385,16 @@ jobs:
           FINANCE_BILL_PAYMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           FINANCE_BILL_PAYMENT_DB_GATE: required
 
+      - name: Social monitoring 30-day retention database gate
+        # Social Monitoring keeps nothing older than 30 days (owner,
+        # 2026-11-08). The nightly pass on a real Postgres with the ledger
+        # triggers: old rows and cached previews go, fresh ones, configuration
+        # and the omnichannel inbox stay, a direct ledger DELETE still fails.
+        run: npx vitest run src/__tests__/social-monitoring-age-retention-postgres.test.ts
+        env:
+          SOCIAL_RETENTION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          SOCIAL_RETENTION_DB_GATE: required
+
       - name: Ad conversions database gate
         # Ad conversions to Meta on a real Postgres: nothing is sent without
         # the consent statement (the database refuses it too), a lead and a won

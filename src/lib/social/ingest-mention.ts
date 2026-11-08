@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { isBeyondSocialMonitoringRetention } from "@/lib/social/monitoring-age-retention"
 import { executeWorkflows } from "@/lib/workflow-engine"
 import { applyMonitoringScenariosToMentionInput } from "@/lib/social/monitoring-scenarios"
 import { detectArticleLanguage } from "@/lib/social/article-language"
@@ -831,6 +832,17 @@ export async function ingestMentionWithResult(
     suppressMediaScheduling?: boolean
   } = {},
 ): Promise<IngestResult> {
+  // A post published more than 30 days ago is old news and is not stored at
+  // all — not as a mention, not as an envelope (owner, 2026-11-08).
+  if (isBeyondSocialMonitoringRetention(input.publishedAt ?? null)) {
+    return {
+      id: "",
+      created: false,
+      accepted: false,
+      relevanceStatus: "REJECTED",
+      relevanceReason: "published_beyond_retention",
+    }
+  }
   let effectiveInput = await applyMonitoringScenariosToMentionInput(input)
   // Язык проставляем эвристикой при инжесте — до ветвления на официальный
   // архив и принятые находки: обе ветки фильтруются языковым фильтром ленты,
