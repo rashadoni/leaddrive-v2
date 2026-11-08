@@ -14,6 +14,7 @@ import { BookingCommandError } from "./command-error"
 import { computeSlots, findSlot } from "./availability"
 import { hostService } from "./host-variants"
 import { isGroupService, serviceCapacity } from "./group-service"
+import { asksDeposit, depositDue, depositPolicy } from "./deposit"
 import { addOnTotals, parseAddOns, selectedAddOns } from "./add-ons"
 import { activeHosts, orgContext, loadBusyByHost, bookingCancelUrl, hashBookingToken, type BookingInput, type CreateBookingResult } from "./book"
 import { bookingHostWhere, bookingScope } from "./access"
@@ -114,8 +115,14 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
         }
         if (access && !access.administrator && hostId !== access.userId && !await tx.bookingCoordinatorGrant.findFirst({ where: { organizationId: orgId, coordinatorUserId: access.userId, hostUserId: hostId, canManage: true } })) throw new BookingCommandError("FORBIDDEN", 403)
         await assertBookingInterval(tx, orgId, hostId, startsAt, endsAt, currentPage.bufferMinutes, undefined, group ? pageId : undefined)
+        // What this visit must leave, as the customer was shown it: the share
+        // is taken of the price with this master's rate and the extras on it.
+        const policy = depositPolicy(currentPage)
+        const deposit = asksDeposit(policy) ? depositDue(policy, visitOf(currentPage, hostId).price) : null
         let row = await tx.booking.create({ data: {
           organizationId: orgId, bookingPageId: pageId, hostUserId: hostId, startsAt, endsAt,
+          depositAmount: deposit === null ? null : deposit,
+          depositStatus: deposit === null ? null : "awaiting",
           name: input.name, phone: input.phone, email: input.email || null, note: input.note || null,
           cancelTokenHash: hashBookingToken(token), secretId,
           source: access ? "staff" : input.whatsapp ? "whatsapp" : "public_link", createdBy: access?.userId ?? null,

@@ -24,6 +24,9 @@ interface PageRow extends Omit<BookingPageDraft, "description" | "locationText" 
   hostVariants: unknown
   addOns: unknown
   capacity: number | null
+  depositAmount: string | null
+  depositPercent: number | null
+  depositFreeHours: number | null
   id: string
   description: string | null
   locationText: string | null
@@ -54,6 +57,9 @@ function newDraft(hostIds: string[]): BookingPageDraft {
     addOns: [],
     photoUrl: null,
     capacity: 1,
+    depositAmount: "",
+    depositPercent: "",
+    depositFreeHours: 24,
     weekly: defaultWeeklyHours(),
     price: "",
     category: "",
@@ -130,7 +136,9 @@ export function BookingPagesPanel() {
     setSaving(true)
     setError("")
     setSavedTitle("")
-    const { id, price, category, repeatCycleDays, ...body } = draft
+    const { id, price, category, repeatCycleDays, depositAmount, depositPercent, ...body } = draft
+    const deposit = depositAmount.trim() ? Number(depositAmount.trim().replace(",", ".")) : null
+    const share = depositPercent.trim() ? Number(depositPercent.trim()) : null
     // An empty field is «no price», and a typed comma is a decimal point here.
     const amount = price.trim() ? Number(price.trim().replace(",", ".")) : null
     const response = await fetch(id ? `/api/v1/booking-pages/${id}` : "/api/v1/booking-pages", {
@@ -143,6 +151,8 @@ export function BookingPagesPanel() {
         price: amount !== null && Number.isFinite(amount) ? Math.round(amount * 100) / 100 : null,
         category: category.trim() || null,
         repeatCycleDays: repeatCycleDays || null,
+        depositAmount: deposit !== null && Number.isFinite(deposit) && deposit > 0 ? Math.round(deposit * 100) / 100 : null,
+        depositPercent: deposit ? null : (share !== null && Number.isFinite(share) && share > 0 ? Math.trunc(share) : null),
       }),
     }).catch(() => null)
     const result = await response?.json().catch(() => null)
@@ -216,6 +226,9 @@ export function BookingPagesPanel() {
       addOns: parseAddOns(page.addOns),
       photoUrl: page.photoUrl ?? null,
       capacity: page.capacity ?? 1,
+      depositAmount: page.depositAmount ?? "",
+      depositPercent: page.depositPercent === null || page.depositPercent === undefined ? "" : String(page.depositPercent),
+      depositFreeHours: page.depositFreeHours ?? 24,
       weekly: parseWeeklyHours(page.weekly) ?? defaultWeeklyHours(),
       price: page.price ?? "",
       category: page.category ?? "",

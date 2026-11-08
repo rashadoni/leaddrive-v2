@@ -28,6 +28,10 @@ export const PATCH = withRlsAuth("bookings", "write", async (req: NextRequest, a
         hostVariants: pageHostVariantsData(input),
         addOns: pageAddOnsData(input),
         photoUrl: pagePhotoData(input),
+        // A sum and a share are two answers to one question; the sum wins,
+        // and the other column is cleared so no row holds both.
+        depositAmount: input.depositAmount ?? null,
+        depositPercent: input.depositAmount ? null : (input.depositPercent || null),
         category: input.category || null,
         repeatCycleDays: input.repeatCycleDays ?? null,
         weekly: input.weekly as unknown as Prisma.InputJsonValue,

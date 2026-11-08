@@ -23668,6 +23668,13 @@ model BookingPage {
   repeatCycleDays  Int?
   /// Users who take these meetings; a booking goes to one of them.
   hostIds          String[]
+  /// A deposit the customer leaves to hold the time: a fixed sum, or a share
+  /// of what the visit costs. Both null = no deposit for this service.
+  depositAmount    Decimal?     @db.Decimal(14, 2)
+  depositPercent   Int?
+  /// Cancel at least this many hours before, and the deposit is owed back;
+  /// later, or not turning up, and it is kept.
+  depositFreeHours Int          @default(24)
   /// How many customers take this service together: 1 = one at a time, more =
   /// a class, where the time stays open until the seats run out.
   capacity         Int          @default(1)
@@ -23810,6 +23817,11 @@ model Booking {
   taskId          String?
   googleEventId   String?
   cancelledAt     DateTime?
+  /// What this visit's deposit was, as it stood when the customer agreed.
+  depositAmount   Decimal?    @db.Decimal(14, 2)
+  /// awaiting | paid | refund_due | kept — null where no deposit was asked.
+  depositStatus   String?
+  depositPaidAt   DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 

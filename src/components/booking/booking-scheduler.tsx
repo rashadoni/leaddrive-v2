@@ -47,6 +47,10 @@ export interface PublicBookingPage {
   priceFrom?: string | null
   /** More than one: a class, and each free time says how many seats are left. */
   capacity?: number
+  /** What the customer must leave to hold the time; null = nothing. */
+  deposit?: string | null
+  /** Cancel this many hours ahead and a paid deposit is owed back. */
+  depositFreeHours?: number
   /** Extras the service offers, and the ones already ticked. */
   addOns?: { id: string; name: string; price: string | null; durationMinutes: number }[]
   chosenAddOnIds?: string[]
@@ -126,6 +130,14 @@ export function BookingSummary({ page }: { page: PublicBookingPage }) {
         ) : null}
       </ul>
       {page.description ? <p className="whitespace-pre-line text-sm leading-6">{page.description}</p> : null}
+      {/* Said before the time is chosen, not after: a deposit the customer
+          learns about on the confirmation screen is a deposit they argue about. */}
+      {page.deposit ? (
+        <p className="rounded-xl bg-muted/50 p-3 text-sm">
+          <span className="font-semibold">{t("depositDue", { amount: servicePriceLabel({ price: page.deposit, priceCurrency: page.priceCurrency ?? null }, locale) ?? page.deposit })}</span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">{t("depositFree", { hours: page.depositFreeHours ?? 24 })}</span>
+        </p>
+      ) : null}
     </aside>
   )
 }
