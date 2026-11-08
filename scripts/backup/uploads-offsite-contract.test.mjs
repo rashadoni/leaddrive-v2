@@ -21,6 +21,27 @@ const RECIPIENT = `age1${'q'.repeat(58)}`;
 
 const AWS_STUB = `#!/usr/bin/env bash
 set -Eeuo pipefail
+opt() { local want="--$1" i n; for ((i=1;i<=$#;i++)); do [ "\${!i}" = "$want" ] && { n=$((i+1)); printf '%s' "\${!n}"; return 0; }; done; return 1; }
+if [ "$1" = s3api ]; then
+  printf '%s\\n' "$*" >> "$FAKE_BUCKET.calls"
+  case "$2" in
+    list-object-versions)
+      prefix="$(opt prefix "$@")"
+      if [ -f "$FAKE_BUCKET/$prefix" ]; then
+        printf '{"Versions":[{"Key":"%s","VersionId":"v1","IsLatest":true}],"DeleteMarkers":[{"Key":"%s","VersionId":"m1"},{"Key":"%s-other","VersionId":"x"}]}' "$prefix" "$prefix" "$prefix"
+      else
+        printf '{}'
+      fi
+      exit 0 ;;
+    delete-object)
+      [ -z "\${FAKE_RM_FAIL:-}" ] || { echo "stub: delete refused" >&2; exit 1; }
+      key="$(opt key "$@")"
+      [ "$(opt version-id "$@")" != x ] || { echo "stub: deleted another key's version" >&2; exit 3; }
+      rm -f "$FAKE_BUCKET/$key"
+      exit 0 ;;
+  esac
+  exit 2
+fi
 for ((i=1;i<=$#;i++)); do [ "\${!i}" = cp ] && { n=$((i+2)); dst="\${!n}"; }; done
 [ -n "\${FAKE_FAIL:-}" ] && { cat >/dev/null; echo "stub: refused" >&2; exit 1; }
 key="\${dst#s3://*/}"
@@ -281,7 +302,8 @@ test('no copy of a client file is left behind on this host', () => {
   const w = world({ files: { 'a/f.bin': 'тайна' } });
   try {
     assert.equal(run(w, ['--run', '--recipient', RECIPIENT]).status, 0);
-    assert.deepEqual(readdirSync(join(w.dir, 'state')).sort(), ['ledger.tsv', 'mirror.lock', 'state']);
+    // gone.tsv holds names of files deleted on production, never their bytes.
+    assert.deepEqual(readdirSync(join(w.dir, 'state')).sort(), ['gone.tsv', 'ledger.tsv', 'mirror.lock', 'state']);
     assert.ok(!readFileSync(join(w.dir, 'state/ledger.tsv'), 'utf8').includes('тайна'));
     assert.match(source, /no plaintext copy and no\n# +ciphertext copy ever touches a disk here/);
   } finally {
@@ -383,11 +405,132 @@ test('the box-side wrapper takes the owner\'s key, never the dev box\'s', () => 
   assert.match(wrapper, /Не могу выбрать ключ сам/);
 });
 
-test('the mirror never deletes anything in the bucket', () => {
-  for (const forbidden of [/s3 rm/, /delete-object/, /--delete\b/]) {
-    assert.doesNotMatch(source, forbidden, `the mirror must not contain ${forbidden}`);
+const DAY = 86400;
+const at = (days) => ({ UPLOADS_OFFSITE_NOW: String(1_800_000_000 + days * DAY) });
+const goneList = (w) => readFileSync(join(w.dir, 'state/gone.tsv'), 'utf8');
+
+test('a file deleted on production leaves the copy after 30 days, every version of it', () => {
+  // The owner, 2026-11-08: «Да, 30 дней везде» — nothing older than 30 days
+  // kept anywhere, and a copy of a deleted file is such data.
+  const w = world({ files: { 'social-media-previews/org1/old.jpg': 'превью', 'contracts/keep.pdf': 'договор' } });
+  try {
+    assert.equal(run(w, ['--run', '--recipient', RECIPIENT], at(0)).status, 0);
+    rmSync(join(w.src, 'social-media-previews/org1/old.jpg'));
+
+    let out = run(w, ['--run', '--recipient', RECIPIENT], at(1));
+    assert.equal(out.status, 0, out.out);
+    assert.equal(summary(out.out).gone_files, '1');
+    assert.equal(summary(out.out).expired_files, '0');
+    assert.match(goneList(w), /^social-media-previews\/org1\/old\.jpg\t1800086400\n$/, 'the 30 days count from the first run that missed it');
+    assert.ok(objects(w).includes('uploads-offsite/social-media-previews/org1/old.jpg.age'), 'a deleted file stays for a month');
+
+    out = run(w, ['--run', '--recipient', RECIPIENT], at(29));
+    assert.equal(summary(out.out).expired_files, '0', 'removed before 29 days had passed since it went missing');
+
+    out = run(w, ['--run', '--recipient', RECIPIENT], at(30));
+    assert.equal(out.status, 0, out.out);
+    assert.equal(summary(out.out).expired_files, '1');
+    assert.equal(summary(out.out).status, 'ok');
+    assert.deepEqual(objects(w).filter((o) => !o.endsWith('.calls')), ['uploads-offsite/contracts/keep.pdf.age']);
+    // Both the version and the delete marker of that key, and nothing of another key.
+    const deletes = readFileSync(`${w.bucket}.calls`, 'utf8').split('\n').filter((l) => l.includes('delete-object'));
+    assert.deepEqual(deletes.map((l) => l.match(/--version-id (\S+)/)[1]).sort(), ['m1', 'v1']);
+    assert.equal(goneList(w), '');
+    assert.doesNotMatch(readFileSync(join(w.dir, 'state/ledger.tsv'), 'utf8'), /old\.jpg/);
+    assert.equal(state(w).offsite_expired, '1');
+
+    // The same name written again later is a new file and is copied again.
+    writeFileSync(join(w.src, 'social-media-previews/org1/old.jpg'), 'новое');
+    out = run(w, ['--run', '--recipient', RECIPIENT], at(31));
+    assert.equal(summary(out.out).sent_files, '1');
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
   }
-  assert.match(source, /It never deletes anything in the bucket/);
+});
+
+test('a file that comes back is forgotten, and its month starts over if it goes again', () => {
+  const w = world({ files: { 'a/f.bin': 'x', 'keep.bin': 'k' } });
+  try {
+    run(w, ['--run', '--recipient', RECIPIENT], at(0));
+    const body = readFileSync(join(w.src, 'a/f.bin'));
+    rmSync(join(w.src, 'a/f.bin'));
+    run(w, ['--run', '--recipient', RECIPIENT], at(1));
+    writeFileSync(join(w.src, 'a/f.bin'), body);
+    run(w, ['--run', '--recipient', RECIPIENT], at(2));
+    assert.equal(goneList(w), '');
+    rmSync(join(w.src, 'a/f.bin'));
+    const out = run(w, ['--run', '--recipient', RECIPIENT], at(31));
+    assert.equal(summary(out.out).expired_files, '0');
+    assert.match(goneList(w), /\t1802678400\n$/);
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
+  }
+});
+
+test('an empty source tree removes nothing: it is a missing disk, not deleted files', () => {
+  const w = world({ files: { 'a/f.bin': 'x', 'b/g.bin': 'y' } });
+  try {
+    run(w, ['--run', '--recipient', RECIPIENT], at(0));
+    rmSync(join(w.src, 'a'), { recursive: true });
+    rmSync(join(w.src, 'b'), { recursive: true });
+    const out = run(w, ['--run', '--recipient', RECIPIENT], at(40));
+    assert.equal(summary(out.out).expired_files, '0');
+    assert.equal(summary(out.out).expire_hold, 'empty-source');
+    assert.equal(summary(out.out).status, 'warn');
+    assert.equal(goneList(w), '', 'nothing may start counting while the tree is missing');
+    assert.equal(objects(w).filter((o) => o.endsWith('.age')).length, 2);
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
+  }
+});
+
+test('more removals than the limit in one run remove none and say so', () => {
+  const w = world({ files: { 'a/1.bin': '1', 'a/2.bin': '2', 'a/3.bin': '3', 'keep.bin': 'k' } });
+  try {
+    run(w, ['--run', '--recipient', RECIPIENT], at(0));
+    rmSync(join(w.src, 'a'), { recursive: true });
+    run(w, ['--run', '--recipient', RECIPIENT], at(1));
+    let out = run(w, ['--run', '--recipient', RECIPIENT], { ...at(31), UPLOADS_OFFSITE_EXPIRE_MAX: '2' });
+    assert.equal(summary(out.out).expire_hold, 'over-limit');
+    assert.equal(summary(out.out).expired_files, '0');
+    assert.equal(summary(out.out).status, 'warn');
+    assert.equal(objects(w).filter((o) => o.endsWith('.age')).length, 4);
+    out = run(w, ['--run', '--recipient', RECIPIENT], at(32));
+    assert.equal(summary(out.out).expired_files, '3', 'the default limit lets an ordinary month through');
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
+  }
+});
+
+test('a refused removal is a warning and is tried again next night', () => {
+  const w = world({ files: { 'a/f.bin': 'x', 'keep.bin': 'k' } });
+  try {
+    run(w, ['--run', '--recipient', RECIPIENT], at(0));
+    rmSync(join(w.src, 'a/f.bin'));
+    run(w, ['--run', '--recipient', RECIPIENT], at(1));
+    let out = run(w, ['--run', '--recipient', RECIPIENT], { ...at(31), FAKE_RM_FAIL: '1' });
+    assert.equal(summary(out.out).status, 'warn');
+    assert.equal(summary(out.out).expire_failures, '1');
+    assert.match(goneList(w), /a\/f\.bin\t1800086400/, 'kept, with its original date');
+    out = run(w, ['--run', '--recipient', RECIPIENT], at(32));
+    assert.equal(summary(out.out).expired_files, '1');
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
+  }
+});
+
+test('--plan names what would leave the copy and removes nothing', () => {
+  const w = world({ files: { 'a/f.bin': 'x', 'keep.bin': 'k' } });
+  try {
+    run(w, ['--run', '--recipient', RECIPIENT], at(0));
+    rmSync(join(w.src, 'a/f.bin'));
+    run(w, ['--run', '--recipient', RECIPIENT], at(1));
+    const out = run(w, ['--plan'], at(31));
+    assert.equal(summary(out.out).would_expire, '1');
+    assert.equal(objects(w).filter((o) => o.endsWith('.age')).length, 2);
+  } finally {
+    rmSync(w.dir, { recursive: true, force: true });
+  }
 });
 
 test('real age, when it is here: the copy decrypts back to the original', { skip: process.env.LEADDRIVE_OWNER_AGE_INTEGRATION !== '1' }, () => {
