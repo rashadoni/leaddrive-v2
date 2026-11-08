@@ -13,6 +13,7 @@
 import { makeScriptPrisma } from "../_rls.mjs"
 import bcrypt from "bcryptjs"
 import { passwordPolicyError } from "../password-policy.mjs"
+import { demoTeammateData } from "../demo-teammates.mjs"
 
 let prisma
 
@@ -137,20 +138,19 @@ async function main() {
   }
 
   // ─── Team members (4) ───
+  // Demo teammates are scenery, not accounts (scripts/demo-teammates.mjs).
   const teamMembers = [
-    { name: "Tural Məmmədov", email: `tural.mammadov@${slug}.leaddrivecrm.org`, role: "manager" },
-    { name: "Aynur Həsənli",  email: `aynur.hasanli@${slug}.leaddrivecrm.org`,  role: "member" },
-    { name: "Elçin Abbasov",  email: `elchin.abbasov@${slug}.leaddrivecrm.org`, role: "member" },
-    { name: "Nərmin Quliyeva",email: `narmin.guliyeva@${slug}.leaddrivecrm.org`,role: "member" },
+    { name: "Tural Məmmədov",  localPart: "tural.mammadov",  role: "manager" },
+    { name: "Aynur Həsənli",   localPart: "aynur.hasanli",   role: "sales" },
+    { name: "Elçin Abbasov",   localPart: "elchin.abbasov",  role: "sales" },
+    { name: "Nərmin Quliyeva", localPart: "narmin.guliyeva", role: "sales" },
   ]
   const teamUsers = []
   for (const tm of teamMembers) {
-    let u = await prisma.user.findFirst({ where: { organizationId: orgId, email: tm.email } })
+    const data = await demoTeammateData(tm, slug, (secret) => bcrypt.hash(secret, 12))
+    let u = await prisma.user.findFirst({ where: { organizationId: orgId, email: data.email } })
     if (!u) {
-      const hash = await bcrypt.hash(password, 12)
-      u = await prisma.user.create({
-        data: { ...tm, organizationId: orgId, passwordHash: hash, isActive: true },
-      })
+      u = await prisma.user.create({ data: { ...data, organizationId: orgId } })
     }
     teamUsers.push(u)
   }

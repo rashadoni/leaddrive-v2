@@ -7,6 +7,7 @@ import { makeScriptPrisma } from "./_rls.mjs"
 import { randomBytes } from "node:crypto"
 import bcrypt from "bcryptjs"
 import { passwordPolicyError } from "./password-policy.mjs"
+import { demoTeammateData, demoTeammateEmail } from "./demo-teammates.mjs"
 
 const REQUIRED_CONFIRMATION = "tenant-demo-seed-v1"
 let prisma
@@ -54,19 +55,11 @@ async function main() {
   // ─── Admin User ───
   let user = await prisma.user.findFirst({ where: { organizationId: orgId, role: "admin" } })
   if (!user) {
-    const hash = await bcrypt.hash(password, 12)
-    user = await prisma.user.create({
-      data: {
-        organizationId: orgId,
-        email: `admin@${slug}.com`,
-        name: "Demo Admin",
-        passwordHash: hash,
-        role: "admin",
-        isActive: true,
-        passwordChangedAt: new Date(),
-      },
-    })
-    console.log(`Created admin user: ${user.email}`)
+    // The tenant-admin API creates the admin (with the address the operator
+    // typed) before it runs this seed, so this only happens on a manual run.
+    // It used to invent `admin@<slug>.com` here — an ACTIVE admin on somebody
+    // else's domain, whose owner then receives the password resets.
+    throw new Error(`Tenant "${slug}" has no admin user; create one through the tenant admin first`)
   } else {
     if (preserveExistingAdminPassword) {
       console.log(`Admin user: ${user.email} (password preserved)`)
@@ -82,20 +75,21 @@ async function main() {
     }
   }
 
-  // Create additional team members
+  // Demo teammates: names on the demo pipeline, not accounts — inactive, on
+  // the undeliverable `.invalid` TLD, with a random password nobody holds.
+  // They used to be active on `<slug>.com` with the admin's temporary
+  // password, and that is somebody else's domain (scripts/demo-teammates.mjs).
   const teamMembers = [
-    { name: "Sarah Johnson", email: `sarah@${slug}.com`, role: "manager" },
-    { name: "Alex Chen", email: `alex@${slug}.com`, role: "member" },
-    { name: "Maria Lopez", email: `maria@${slug}.com`, role: "member" },
+    { name: "Sarah Johnson", localPart: "sarah", role: "manager" },
+    { name: "Alex Chen", localPart: "alex", role: "sales" },
+    { name: "Maria Lopez", localPart: "maria", role: "sales" },
   ]
 
   for (const tm of teamMembers) {
-    const existing = await prisma.user.findFirst({ where: { organizationId: orgId, email: tm.email } })
+    const data = await demoTeammateData(tm, slug, (secret) => bcrypt.hash(secret, 12))
+    const existing = await prisma.user.findFirst({ where: { organizationId: orgId, email: data.email } })
     if (!existing) {
-      const hash = await bcrypt.hash(password, 12)
-      await prisma.user.create({
-        data: { ...tm, organizationId: orgId, passwordHash: hash, isActive: true },
-      })
+      await prisma.user.create({ data: { ...data, organizationId: orgId } })
     }
   }
   console.log(`Team members: ${teamMembers.length}`)
@@ -1395,8 +1389,8 @@ async function main() {
       const perms = [
         { roleId: "viewer", entityType: "deal", fieldName: "valueAmount", access: "hidden" },
         { roleId: "viewer", entityType: "company", fieldName: "annualRevenue", access: "hidden" },
-        { roleId: "member", entityType: "deal", fieldName: "valueAmount", access: "visible" },
-        { roleId: "member", entityType: "contact", fieldName: "phone", access: "editable" },
+        { roleId: "sales", entityType: "deal", fieldName: "valueAmount", access: "visible" },
+        { roleId: "sales", entityType: "contact", fieldName: "phone", access: "editable" },
         { roleId: "support", entityType: "deal", fieldName: "valueAmount", access: "hidden" },
         { roleId: "support", entityType: "ticket", fieldName: "escalationLevel", access: "visible" },
       ]
@@ -1998,13 +1992,13 @@ async function main() {
 
       // MtmAgent — 3 agents
       const agent1 = await prisma.mtmAgent.create({
-        data: { organizationId: orgId, userId: teamUsers[1]?.id || null, name: "Sarah Johnson", email: `sarah@${slug}.com`, phone: "+48 500 111 001", role: "MANAGER", status: "ACTIVE", isOnline: true, lastSeenAt: new Date() },
+        data: { organizationId: orgId, userId: teamUsers[1]?.id || null, name: "Sarah Johnson", email: demoTeammateEmail("sarah", slug), phone: "+48 500 111 001", role: "MANAGER", status: "ACTIVE", isOnline: true, lastSeenAt: new Date() },
       })
       const agent2 = await prisma.mtmAgent.create({
-        data: { organizationId: orgId, userId: teamUsers[2]?.id || null, name: "Alex Chen", email: `alex@${slug}.com`, phone: "+48 500 111 002", role: "AGENT", status: "ACTIVE", managerId: agent1.id, isOnline: true, lastSeenAt: new Date(now - 15 * 60000) },
+        data: { organizationId: orgId, userId: teamUsers[2]?.id || null, name: "Alex Chen", email: demoTeammateEmail("alex", slug), phone: "+48 500 111 002", role: "AGENT", status: "ACTIVE", managerId: agent1.id, isOnline: true, lastSeenAt: new Date(now - 15 * 60000) },
       })
       const agent3 = await prisma.mtmAgent.create({
-        data: { organizationId: orgId, userId: teamUsers[3]?.id || null, name: "Maria Lopez", email: `maria@${slug}.com`, phone: "+48 500 111 003", role: "AGENT", status: "ACTIVE", managerId: agent1.id, isOnline: false, lastSeenAt: new Date(now - 2 * 60 * 60000) },
+        data: { organizationId: orgId, userId: teamUsers[3]?.id || null, name: "Maria Lopez", email: demoTeammateEmail("maria", slug), phone: "+48 500 111 003", role: "AGENT", status: "ACTIVE", managerId: agent1.id, isOnline: false, lastSeenAt: new Date(now - 2 * 60 * 60000) },
       })
       console.log("MTM Agents: 3")
 
@@ -2678,8 +2672,8 @@ async function main() {
     const existingSR = await prisma.sharingRule.findFirst({ where: { organizationId: orgId } })
     if (!existingSR) {
       const sharingRules = [
-        { entityType: "deal", name: "Sales team sees all deals", ruleType: "role", sourceRole: "member", targetRole: "member", accessLevel: "read" },
-        { entityType: "deal", name: "Managers edit all deals", ruleType: "role", sourceRole: "member", targetRole: "manager", accessLevel: "readwrite" },
+        { entityType: "deal", name: "Sales team sees all deals", ruleType: "role", sourceRole: "sales", targetRole: "sales", accessLevel: "read" },
+        { entityType: "deal", name: "Managers edit all deals", ruleType: "role", sourceRole: "sales", targetRole: "manager", accessLevel: "readwrite" },
         { entityType: "contact", name: "All contacts visible to team", ruleType: "all", accessLevel: "read" },
         { entityType: "company", name: "Company data shared across team", ruleType: "all", accessLevel: "read" },
       ]
