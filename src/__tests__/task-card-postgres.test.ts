@@ -13,6 +13,9 @@
  *    written by hand; the database itself refuses two running timers;
  *  - the import adds the other tool's subtask people and dates, reporter,
  *    followers and history to tasks already brought over, without doubling.
+ *  - `detailsOnly` writes the other tool's time records onto a task already
+ *    brought over and leaves the task as people have since changed it; a
+ *    re-run adds nothing, a task not brought over is refused.
  *
  * Runs in the same database gate as the task import (TASK_EXTERNAL_IMPORT_*).
  */
@@ -246,5 +249,49 @@ pgDescribe("Bordio-style task card on a real Postgres", () => {
       subtasks: [["pixel quraşdırılması", "sabina", null, "2026-11-03T15:04:00.000Z"], ["ga4 quraşdırılması", "sabina", "2026-11-12T19:59:59.000Z", null]],
       followers: ["aytan"], events: [["sabina", "changed the task's due date to 12 Mar 2026"]],
     })
+  })
+
+  it("detailsOnly brings the other tool's time onto a task already here, leaves the task alone, and adds nothing on a re-run", async () => {
+    const stale = {
+      externalId: "bordio-pha-95", title: "Vebsayta yönləndirməli reklamlar", status: "todo", createdAt: "2025-12-02T10:33:15.785Z",
+      assigneeEmails: ["nazrin@card.test"], checklist: [], comments: [],
+      timeEntries: [
+        { userEmail: "sabina@card.test", startedAt: "2025-11-04T00:00:00.000Z", minutes: 171, source: "timer" },
+        { userEmail: "sabina@card.test", startedAt: "2025-11-04T00:00:00.000Z", minutes: 171, source: "timer" },
+        { userEmail: "aytan@card.test", startedAt: "2026-02-24T00:00:00.000Z", minutes: 45 },
+      ],
+    }
+    const send = (body: unknown) => call(importRoute(request("POST", `/api/v1/divisions/${BOARD}/import-external`, body), onTask(BOARD)))
+    const id = (await bypass(() => prisma.task.findFirstOrThrow({ where: { organizationId: ORG, externalId: "bordio-pha-95" }, select: { id: true } }))).id
+    await bypass(() => prisma.task.update({ where: { id }, data: { title: "Renamed in the CRM", status: "done", completedAt: new Date("2026-11-08T08:00:00.000Z") } }))
+    const before = await bypass(() => prisma.taskTimeEntry.count({ where: { organizationId: ORG, taskId: id } }))
+
+    const missing = await send({ source: "bordio", detailsOnly: true, tasks: [{ ...stale, externalId: "never-brought" }] })
+    expect([missing.status, missing.body.error]).toEqual([409, "Task never-brought was not brought over yet"])
+    const dry = await send({ source: "bordio", detailsOnly: true, dryRun: true, tasks: [stale] })
+    expect([dry.status, dry.body.data.created, dry.body.data.updated, dry.body.data.newTaskTypes]).toEqual([200, 0, 1, []])
+    for (let run = 0; run < 2; run += 1) {
+      const res = await send({ source: "bordio", detailsOnly: true, tasks: [stale] })
+      expect(res.status, JSON.stringify(res.body)).toBe(200)
+    }
+
+    const task = await bypass(() => prisma.task.findFirstOrThrow({
+      where: { id },
+      select: { title: true, status: true, assignedTo: true, timeEntries: { where: { minutes: { in: [171, 45] } }, orderBy: [{ startedAt: "asc" }, { id: "asc" }] } },
+    }))
+    expect({
+      title: task.title, status: task.status, assignee: task.assignedTo,
+      entries: task.timeEntries.map((e) => [e.userId, e.source, e.startedAt.toISOString(), e.endedAt?.toISOString(), e.minutes]),
+    }).toEqual({
+      title: "Renamed in the CRM", status: "done", assignee: "sabina",
+      entries: [
+        ["sabina", "timer", "2025-11-04T00:00:00.000Z", "2025-11-04T00:00:00.000Z", 171],
+        ["sabina", "timer", "2025-11-04T00:00:00.000Z", "2025-11-04T00:00:00.000Z", 171],
+        ["aytan", "manual", "2026-02-24T00:00:00.000Z", "2026-02-24T00:00:00.000Z", 45],
+      ],
+    })
+    expect(await bypass(() => prisma.taskTimeEntry.count({ where: { organizationId: ORG, taskId: id } }))).toBe(before + 3)
+    const summary = await call(time.GET(request("GET", `/api/v1/tasks/${id}/time`), onTask(id)))
+    expect([summary.body.data.totalMinutes >= 387, summary.body.data.running]).toEqual([true, null])
   })
 })
