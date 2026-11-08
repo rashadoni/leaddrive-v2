@@ -2865,6 +2865,17 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
         where: { organizationId: ORG, action: "CONTACT_BULK_ASSIGN" },
       }))).toBe(2)
 
+      // К начальнику клиента не привязывают: его просто нет среди кандидатов.
+      await bypass(() => prisma.mtmAgent.create({
+        data: { id: "field-manager-kamran", organizationId: ORG, name: "Kamran Rzayev", role: "MANAGER", status: "ACTIVE" },
+      }))
+      const toManager = await propose("propose_assign_field_contact", { clientName: "Aliyev", agentName: "Kamran" })
+      expect(toManager.status).toBe(200)
+      expect(toManager.body.code).toBe("FIELD_AGENT_NOT_FOUND")
+      // А задачу ему дать можно — там роль не сужается.
+      expect((await propose("propose_give_field_task", { agentName: "Kamran", title: "Yoxla", due: "none" })).status).toBe(201)
+      await pressClose((await activeReceipt())!)
+
       // Эльвира у этого клиента уже есть — отказ до квитанции, с причиной.
       const repeat = await propose("propose_assign_field_contact", { clientName: "Aliyev", agentName: "Elvira" })
       expect(repeat.status).toBe(400)
