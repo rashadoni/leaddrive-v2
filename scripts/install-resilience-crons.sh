@@ -213,32 +213,35 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   printf '%s\n' "15 * * * * $TRIGGER /api/cron/contract-approval-escalations >> $LOG 2>&1"
   printf '%s\n' "0 8 * * * $TRIGGER /api/cron/contract-milestone-reminders >> $LOG 2>&1"
   printf '%s\n' "0 9 * * * $TRIGGER /api/cron/esign-reminders >> $LOG 2>&1"
+  # Social Monitoring, trimmed to what produces something (owner, 2026-11-08:
+  # «максимально оптимизировать мусор в этом модуле»). Measured on prod for
+  # 1-8 November, docs/social-monitoring-audit-2026-11-08.md:
+  # - poll-all (every 15 min) brought 0 new mentions in a week; the 15
+  #   accounts with a token have never brought one. It is no longer scheduled;
+  #   the awk filter above still strips the old line, so a reinstall removes it.
+  # - social-relevance-judge (every 15 min) re-read the same 15 text-less
+  #   records 11,160 times a week and decided nothing. Not scheduled either.
+  # - the queue drain, outbound replies and media worker found work in a
+  #   handful of ticks out of thousands; every five minutes is enough for a
+  #   module nobody waits on. Provider reconciliation saw no run all week.
   # The durable queue drain is required for user-started jobs and is safe to
   # run independently. Keep the legacy marker and all other social workers
   # behind their existing opt-in state. Retaining the marker also ensures an
   # older installer preserves the disabled state during rollback.
-  printf '%s\n' "* * * * * $TRIGGER /api/cron/social-monitoring-run-jobs >> $LOG 2>&1"
-  # The relevance judge's second-signal pass. Every fifteen minutes, not every
-  # minute: it asks a paid provider per record, the queue it drains is finite
-  # (records it has answered are stamped and never asked again), and the only
-  # thing a slower schedule delays is how soon a wrongly rejected mention comes
-  # back. Each answered record is stamped, so a repeated tick re-reads nothing.
-  printf '%s\n' "*/15 * * * * $TRIGGER /api/cron/social-relevance-judge >> $LOG 2>&1"
+  printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/social-monitoring-run-jobs >> $LOG 2>&1"
   if [ "$SOCIAL_CRONS_DISABLED" = true ]; then
     printf '%s\n' "$SOCIAL_DISABLED_MARKER"
-    printf '%s\n' "# 2,17,32,47 * * * * $TRIGGER /api/v1/social/cron/poll-all >> $LOG 2>&1"
     printf '%s\n' "# */5 * * * * $TRIGGER /api/cron/social-monitoring-sources >> $LOG 2>&1"
-    printf '%s\n' "# */2 * * * * $TRIGGER /api/v1/social/cron/reconcile-providers >> $LOG 2>&1"
-    printf '%s\n' "# */2 * * * * $TRIGGER /api/v1/social/cron/process-media >> $LOG 2>&1"
+    printf '%s\n' "# */15 * * * * $TRIGGER /api/v1/social/cron/reconcile-providers >> $LOG 2>&1"
+    printf '%s\n' "# */5 * * * * $TRIGGER /api/v1/social/cron/process-media >> $LOG 2>&1"
     printf '%s\n' "# 25 3 * * * $TRIGGER /api/v1/social/cron/purge-observations >> $LOG 2>&1"
-    printf '%s\n' "# * * * * * $TRIGGER /api/v1/social/cron/process-outbound >> $LOG 2>&1"
+    printf '%s\n' "# */5 * * * * $TRIGGER /api/v1/social/cron/process-outbound >> $LOG 2>&1"
   else
-    printf '%s\n' "2,17,32,47 * * * * $TRIGGER /api/v1/social/cron/poll-all >> $LOG 2>&1"
     printf '%s\n' "*/5 * * * * $TRIGGER /api/cron/social-monitoring-sources >> $LOG 2>&1"
-    printf '%s\n' "*/2 * * * * $TRIGGER /api/v1/social/cron/reconcile-providers >> $LOG 2>&1"
-    printf '%s\n' "*/2 * * * * $TRIGGER /api/v1/social/cron/process-media >> $LOG 2>&1"
+    printf '%s\n' "*/15 * * * * $TRIGGER /api/v1/social/cron/reconcile-providers >> $LOG 2>&1"
+    printf '%s\n' "*/5 * * * * $TRIGGER /api/v1/social/cron/process-media >> $LOG 2>&1"
     printf '%s\n' "25 3 * * * $TRIGGER /api/v1/social/cron/purge-observations >> $LOG 2>&1"
-    printf '%s\n' "* * * * * $TRIGGER /api/v1/social/cron/process-outbound >> $LOG 2>&1"
+    printf '%s\n' "*/5 * * * * $TRIGGER /api/v1/social/cron/process-outbound >> $LOG 2>&1"
   fi
   printf '%s\n' "$END_MARKER"
 } > "$NEXT"

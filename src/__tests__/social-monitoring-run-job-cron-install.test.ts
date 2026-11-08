@@ -79,13 +79,43 @@ function activeSchedules(crontab: string, endpoint: string) {
 }
 
 describe("durable Social Monitoring queue schedule", () => {
-  it("installs a dedicated minute runner without accelerating cadence collection", () => {
+  it("installs a dedicated five-minute runner without accelerating cadence collection", () => {
     expect(script).toContain(
-      "* * * * * $TRIGGER /api/cron/social-monitoring-run-jobs",
+      "*/5 * * * * $TRIGGER /api/cron/social-monitoring-run-jobs",
     )
     expect(script).toContain(
       "*/5 * * * * $TRIGGER /api/cron/social-monitoring-sources",
     )
+  })
+
+  // Owner 2026-11-08: «максимально оптимизировать мусор в этом модуле». A week
+  // on prod: poll-all brought 0 mentions, the relevance judge decided nothing,
+  // and the minute queues found work in a handful of ticks out of thousands.
+  it("removes the idle social schedules a previous release installed", () => {
+    const installed = installCrontab(`# BEGIN LEADDRIVE RESILIENCE CRONS
+* * * * * /old/cron-trigger.sh /api/cron/social-monitoring-run-jobs >> /x.log 2>&1
+*/15 * * * * /old/cron-trigger.sh /api/cron/social-relevance-judge >> /x.log 2>&1
+2,17,32,47 * * * * /old/cron-trigger.sh /api/v1/social/cron/poll-all >> /x.log 2>&1
+*/5 * * * * /old/cron-trigger.sh /api/cron/social-monitoring-sources >> /x.log 2>&1
+*/2 * * * * /old/cron-trigger.sh /api/v1/social/cron/reconcile-providers >> /x.log 2>&1
+*/2 * * * * /old/cron-trigger.sh /api/v1/social/cron/process-media >> /x.log 2>&1
+25 3 * * * /old/cron-trigger.sh /api/v1/social/cron/purge-observations >> /x.log 2>&1
+* * * * * /old/cron-trigger.sh /api/v1/social/cron/process-outbound >> /x.log 2>&1
+# END LEADDRIVE RESILIENCE CRONS
+`)
+    expect(activeSchedules(installed, "/api/v1/social/cron/poll-all")).toHaveLength(0)
+    expect(activeSchedules(installed, "/api/cron/social-relevance-judge")).toHaveLength(0)
+    const only = (endpoint: string) => {
+      const lines = activeSchedules(installed, endpoint)
+      expect(lines).toHaveLength(1)
+      return lines[0].split(" ").slice(0, 5).join(" ")
+    }
+    expect(only("/api/cron/social-monitoring-run-jobs")).toBe("*/5 * * * *")
+    expect(only("/api/v1/social/cron/process-outbound")).toBe("*/5 * * * *")
+    expect(only("/api/v1/social/cron/process-media")).toBe("*/5 * * * *")
+    expect(only("/api/v1/social/cron/reconcile-providers")).toBe("*/15 * * * *")
+    expect(only("/api/cron/social-monitoring-sources")).toBe("*/5 * * * *")
+    expect(only("/api/v1/social/cron/purge-observations")).toBe("25 3 * * *")
   })
 
   it("keeps exactly one queue drain active while legacy social crons stay disabled", () => {

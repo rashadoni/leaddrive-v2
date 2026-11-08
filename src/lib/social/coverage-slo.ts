@@ -62,6 +62,31 @@ function histogramTotal(run: SocialCoverageSloRunInput): number {
   return typeof total === "number" && Number.isFinite(total) ? Math.max(0, total) : 0
 }
 
+// How often the same finding may be raised again. Before 2026-11-08 every rule
+// re-alerted after 24 hours, each time with a push to every admin: a source
+// broken since July raised the same «Мониторинг: сбой сбора» every day, 253
+// notifications in one week on prod, none of them read. A breakage now alerts
+// once, when it starts, and reminds once a month while it lasts; a source that
+// collected again and broke again is a new breakage and alerts at once.
+const BREAKAGE_REMINDER_MS = 30 * 24 * 60 * 60 * 1000
+const CONDITION_REMINDER_MS = 7 * 24 * 60 * 60 * 1000
+const BREAKAGE_RULES = new Set<SocialCoverageAlertCandidate["rule"]>([
+  "stale_source",
+  "consecutive_failures",
+  "provider_status_failure",
+  "budget_exhaustion",
+])
+
+function suppressIfAlertedSince(
+  source: SocialCoverageSloSourceInput,
+  rule: SocialCoverageAlertCandidate["rule"],
+  now: Date,
+): Date {
+  if (!BREAKAGE_RULES.has(rule)) return new Date(now.getTime() - CONDITION_REMINDER_MS)
+  const reminderFloor = now.getTime() - BREAKAGE_REMINDER_MS
+  return new Date(Math.max(reminderFloor, source.lastSuccessfulAt?.getTime() ?? 0))
+}
+
 function candidate(
   source: SocialCoverageSloSourceInput,
   rule: SocialCoverageAlertCandidate["rule"],
@@ -69,11 +94,13 @@ function candidate(
   message: string,
   suffix: string,
   metadata: Record<string, unknown> = {},
+  now = new Date(),
 ): SocialCoverageAlertCandidate {
   return {
     rule,
     severity,
     message,
+    suppressIfAlertedSince: suppressIfAlertedSince(source, rule, now),
     dedupeKey: `${rule}:${source.id}:${suffix}`,
     metadata: {
       sourceId: source.id,
@@ -82,6 +109,18 @@ function candidate(
       ...metadata,
     },
   }
+}
+
+function candidateAt(
+  now: Date,
+  source: SocialCoverageSloSourceInput,
+  rule: SocialCoverageAlertCandidate["rule"],
+  severity: SocialCoverageAlertCandidate["severity"],
+  message: string,
+  suffix: string,
+  metadata: Record<string, unknown> = {},
+): SocialCoverageAlertCandidate {
+  return candidate(source, rule, severity, message, suffix, metadata, now)
 }
 
 export function evaluateSocialCoverageSloRules(
@@ -97,7 +136,8 @@ export function evaluateSocialCoverageSloRules(
     if (source.automaticCollectionEligible === false) continue
     const lastSuccess = source.lastSuccessfulAt?.getTime() ?? 0
     if (lastSuccess === 0 || lastSuccess < staleCutoff) {
-      candidates.push(candidate(
+      candidates.push(candidateAt(
+        now,
         source,
         "stale_source",
         source.lastSuccessfulAt ? "warning" : "critical",
@@ -113,7 +153,8 @@ export function evaluateSocialCoverageSloRules(
     const recent = source.recentRuns.slice(0, 5)
     const failurePrefix = recent.length >= 3 && recent.slice(0, 3).every(run => FAILURE_STATUSES.has(run.status))
     if (failurePrefix) {
-      candidates.push(candidate(
+      candidates.push(candidateAt(
+        now,
         source,
         "consecutive_failures",
         "critical",
@@ -129,7 +170,8 @@ export function evaluateSocialCoverageSloRules(
       run.status === "success" && (run.foundCount ?? 0) === 0,
     )
     if (zeroPrefix) {
-      candidates.push(candidate(
+      candidates.push(candidateAt(
+        now,
         source,
         "unexpected_zero_results",
         "warning",
@@ -152,7 +194,8 @@ export function evaluateSocialCoverageSloRules(
       const rule: SocialCoverageAlertCandidate["rule"] = /(budget|quota)/i.test(errorClass)
         ? "budget_exhaustion"
         : "provider_status_failure"
-      candidates.push(candidate(
+      candidates.push(candidateAt(
+        now,
         source,
         rule,
         "critical",
@@ -171,7 +214,8 @@ export function evaluateSocialCoverageSloRules(
       return total >= 10 && total / Math.max(total + found, 1) >= 0.8
     })
     if (rejectionRuns.length >= 2) {
-      candidates.push(candidate(
+      candidates.push(candidateAt(
+        now,
         source,
         "rejection_spike",
         "warning",
@@ -195,6 +239,11 @@ export function evaluateSocialCoverageSloRules(
 // at most one revive per source per 6h, config-class errors only (real
 // provider failures keep their backoff).
 const REVIVE_MIN_IDLE_MS = 6 * 60 * 60 * 1000
+// Every route of a `source_route_plan_blocked` source is fail-closed: a retry
+// only recompiles plans and fails again until configuration changes. Prod
+// 2026-11-08: thirty such sources, blocked since July, were revived four times
+// a day each. Once a day still notices a fixed configuration the same day.
+const REVIVE_ROUTE_PLAN_BLOCKED_MIN_IDLE_MS = 24 * 60 * 60 * 1000
 const REVIVE_STALE_SUCCESS_MS = 24 * 60 * 60 * 1000
 const REVIVE_QUEUE_JUMP_MS = 30 * 24 * 60 * 60 * 1000
 
@@ -212,7 +261,10 @@ async function reviveStarvedSources(
     if (lastSuccess >= now.getTime() - REVIVE_STALE_SUCCESS_MS) continue
     // Never-checked sources are already due by definition; only revive ones
     // the backoff has parked, and no more than once per 6h.
-    if (lastChecked === 0 || lastChecked >= now.getTime() - REVIVE_MIN_IDLE_MS) continue
+    const minIdleMs = source.lastError === "source_route_plan_blocked"
+      ? REVIVE_ROUTE_PLAN_BLOCKED_MIN_IDLE_MS
+      : REVIVE_MIN_IDLE_MS
+    if (lastChecked === 0 || lastChecked >= now.getTime() - minIdleMs) continue
     const list = byOrg.get(source.organizationId) ?? []
     list.push(source.id)
     byOrg.set(source.organizationId, list)

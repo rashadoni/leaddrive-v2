@@ -462,6 +462,31 @@ describe("social monitoring collector scheduler", () => {
     })
   })
 
+  // Prod 2026-11-08: thirty sources whose every route was fail-closed since
+  // July ran ~100 times a day, recompiling their plans each time, and found
+  // nothing. A blocked source waits a day; any other outcome keeps cadence.
+  it("retries a source with a fail-closed route plan once a day", () => {
+    const lastCheckedAt = new Date("2026-11-08T06:00:00.000Z")
+    const blocked = [{ status: "skipped", startedAt: lastCheckedAt, error: "source_route_plan_blocked" }]
+
+    expect(monitoringSourceDueState(
+      { ...source, lastCheckedAt },
+      blocked,
+      new Date("2026-11-09T05:59:59.000Z"),
+    )).toMatchObject({ due: false, reason: "backoff_wait" })
+    expect(monitoringSourceDueState(
+      { ...source, lastCheckedAt },
+      blocked,
+      new Date("2026-11-09T06:00:00.000Z"),
+    )).toMatchObject({ due: true, reason: "cadence_due" })
+    // Same 30-minute source after an ordinary empty run: cadence as before.
+    expect(monitoringSourceDueState(
+      { ...source, lastCheckedAt },
+      [{ status: "success", startedAt: lastCheckedAt, error: null, foundCount: 0 }],
+      new Date("2026-11-08T06:30:00.000Z"),
+    )).toMatchObject({ due: true })
+  })
+
   it("uses the tenant weekly cadence only for scheduled due selection", () => {
     const lastCheckedAt = new Date("2026-07-18T12:00:00.000Z")
     const scheduledCadenceMinutes = 7 * 24 * 60

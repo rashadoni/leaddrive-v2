@@ -55,16 +55,17 @@ describe("POST /api/cron/social-relevance-judge", () => {
 describe("the schedule that calls it", () => {
   const installer = readFileSync("scripts/install-resilience-crons.sh", "utf8")
 
-  // Every minute would ask a paid provider about 25 records a minute; the
-  // queue is finite and every answered record is stamped, so the only thing a
-  // slower schedule delays is how soon a wrongly rejected mention comes back.
-  it("runs every fifteen minutes, not every minute", () => {
-    expect(installer).toMatch(/\*\/15 \* \* \* \* \$TRIGGER \/api\/cron\/social-relevance-judge/)
+  // Owner 2026-11-08: «максимально оптимизировать мусор в этом модуле». On prod
+  // the pass re-read the same 15 text-less records 11,160 times in a week and
+  // decided nothing, so it is no longer scheduled. The route stays callable by
+  // hand (cron-trigger.sh /api/cron/social-relevance-judge).
+  it("is not scheduled", () => {
+    expect(installer).not.toMatch(/\$TRIGGER \/api\/cron\/social-relevance-judge/)
   })
 
-  // Without the retirement line the installer would stack a second copy of the
-  // schedule on every run.
-  it("retires its own previous line before writing it again", () => {
+  // A crontab written by an earlier release still carries the line; the
+  // installer has to strip it, or the pass keeps running after the release.
+  it("still retires the line an earlier release installed", () => {
     expect(installer).toMatch(/cron-trigger\\\.sh \\\/api\\\/cron\\\/social-relevance-judge\/ \{ next \}/)
   })
 })
