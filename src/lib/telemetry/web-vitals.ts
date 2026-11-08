@@ -1,9 +1,12 @@
 /**
  * Speed as the people using the CRM see it (real-user monitoring).
  *
- * The browser measures each page with the Web Vitals Next.js already ships
- * (`useReportWebVitals`) and, when the tab is hidden or closed, sends the
- * page's numbers in one beacon to WEB_VITALS_URI. The server writes one line:
+ * The browser measures the page load with the Web Vitals Next.js already
+ * ships (`useReportWebVitals`) and, when the tab is hidden or closed, sends
+ * the load's numbers in one beacon to WEB_VITALS_URI, under the address the
+ * tab was loaded on (src/components/web-vitals-reporter.tsx). Moving between
+ * pages inside the app is not a page load and is not measured here. The
+ * server writes one line:
  *
  *   {"evt":"web_vital","route":"/deals/:id","LCP":1830,"INP":96,"CLS":0.02,"TTFB":210,"conn":"4g","mem":4,"cpu":8}
  *
@@ -27,8 +30,6 @@ export const WEB_VITAL_LIMITS = {
   CLS: 100,
   FCP: 120_000,
   TTFB: 120_000,
-  // Next.js soft navigation: click on a link → new page rendered.
-  "Next.js-route-change-to-render": 120_000,
 } as const
 
 export type WebVitalName = keyof typeof WEB_VITAL_LIMITS
