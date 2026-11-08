@@ -48,19 +48,13 @@ export class MtmRoutePublishError extends Error {
   }
 }
 
-type RouteForPublish = {
-  id: string
-  agentId: string
-  date: Date
-  status: string
-  version: number
-  publishedVersion: number | null
-  publishedAt: Date | null
-  updatedAt: Date
-  dedupeKey: string | null
-  assignments: Array<{ agentId: string; role: string }>
-  points: Array<{ customerId: string | null; contactId: string | null; plannedTime: string | null; deletedAt: Date | null }>
-}
+const ROUTE_PUBLISH_INCLUDE = {
+  assignments: { where: { removedAt: null }, select: { agentId: true, role: true } },
+  points: { where: { deletedAt: null }, select: { customerId: true, contactId: true, plannedTime: true, deletedAt: true } },
+} satisfies Prisma.MtmRouteInclude
+
+/** Маршрут таким, каким его читает публикация, — тип из самого запроса. */
+type RouteForPublish = Prisma.MtmRouteGetPayload<{ include: typeof ROUTE_PUBLISH_INCLUDE }>
 
 export type MtmRoutePublishOutcome =
   /** Маршрут уже опубликован: повтор, а не новая публикация. */
@@ -89,13 +83,10 @@ export async function publishMtmRouteInTransaction(
   const { organizationId, actor } = params
   const now = params.now ?? new Date()
 
-  const route = await tx.mtmRoute.findFirst({
+  const route: RouteForPublish | null = await tx.mtmRoute.findFirst({
     where: { id: params.routeId, organizationId, deletedAt: null },
-    include: {
-      assignments: { where: { removedAt: null }, select: { agentId: true, role: true } },
-      points: { where: { deletedAt: null }, select: { customerId: true, contactId: true, plannedTime: true, deletedAt: true } },
-    },
-  }) as RouteForPublish | null
+    include: ROUTE_PUBLISH_INCLUDE,
+  })
   if (!route) throw new MtmRoutePublishError("NOT_FOUND", 404)
 
   if (!canPublishMtmRoute(actor, {
