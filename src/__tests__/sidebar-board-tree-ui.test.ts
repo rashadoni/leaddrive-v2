@@ -3,9 +3,9 @@
  * The sidebar's «Boards» section lists the folders and their boards (owner,
  * 2026-11-08: «каждый созданный каталог будет там как подраздел»), rendered
  * with the real Russian copy against a fake board list: the open board's
- * folder is unfolded and its board marked, another folder unfolds on its
- * arrow and stays so, and while the tree is on screen the tabs above a board
- * step aside — and come back when it is not.
+ * folder is unfolded and its board marked, a folder only folds and unfolds
+ * (as in Bordio — it opens no page) and stays as left, and while the tree is
+ * on screen the tabs above a board step aside — and come back when it is not.
  */
 import { act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
@@ -73,15 +73,15 @@ describe("the boards in the sidebar", () => {
     await render("/boards/dig-ph")
     expect(links()).toEqual([
       ["/boards/general", "Ümumi0", ""],
-      ["/boards/dig", "Digital Marketing", ""],
       ["/boards/dig-zey", "Zeytun380", ""],
       ["/boards/dig-ph", "Pharmastore732", "page"],
-      ["/boards/trad", "Traditional Marketing", ""],
     ])
+    expect([...container.querySelectorAll('[data-testid="sidebar-board-folder-toggle"]')].map((b) => [b.textContent, b.getAttribute("aria-expanded")]))
+      .toEqual([["Digital Marketing", "true"], ["Traditional Marketing", "false"]])
     expect(document.documentElement.dataset.boardTree).toBe("on")
   })
 
-  it("unfolds another folder on its arrow, keeps it unfolded, and never folds the open board's own folder", async () => {
+  it("a folder folds and unfolds and opens nothing; what was left open stays open", async () => {
     await render("/boards/dig-ph")
     const arrow = (name: string) => container.querySelector(`button[aria-label="Открыть «${name}»"], button[aria-label="Свернуть «${name}»"]`)!
     await act(async () => { arrow("Traditional Marketing").dispatchEvent(new MouseEvent("click", { bubbles: true })) })
@@ -89,7 +89,9 @@ describe("the boards in the sidebar", () => {
     expect(JSON.parse(localStorage.getItem("board-nav-open-folders") ?? "[]")).toEqual(expect.arrayContaining(["dig", "trad"]))
 
     await act(async () => { arrow("Digital Marketing").dispatchEvent(new MouseEvent("click", { bubbles: true })) })
-    expect(links().map(([href]) => href)).toContain("/boards/dig-ph")
+    expect(links().map(([href]) => href)).not.toContain("/boards/dig-ph")
+    expect(container.querySelector('a[href="/boards/dig"], a[href="/boards/trad"]')).toBeNull()
+    expect(JSON.parse(localStorage.getItem("board-nav-open-folders") ?? "[]")).toEqual(["trad"])
   })
 
   it("does not read the list again on every click between boards", async () => {
