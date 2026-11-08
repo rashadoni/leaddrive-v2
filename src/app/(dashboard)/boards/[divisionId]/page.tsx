@@ -763,6 +763,7 @@ function BoardInner() {
         <div className="px-5 pb-8 pt-3">
           <InlineTasksTable
             tasks={listTasks}
+            loading={loading}
             customGroups={listGroups}
             groupKeyOf={listGroupKeyOf}
             selectedIds={listSelected}

@@ -114,6 +114,10 @@ interface Props {
   statusOptions?: string[]
   sortBy: string
   onSortChange: (sort: string) => void
+  /** The caller is still reading the tasks: say so instead of «0 results» and
+      empty groups (owner, 2026-11-08 — a board opened from the sidebar showed
+      «0 nəticə» and an empty table for a moment before its 93 tasks). */
+  loading?: boolean
 }
 
 const STATUS_OPTIONS = ["pending", "in_progress", "completed", "cancelled"] as const
@@ -270,9 +274,11 @@ export function InlineTasksTable({
   onUpdate, onCreate, onDelete, onEdit, onOpenDetail,
   rowClassName, categoryColumnLabel, statusLabels, priorityLabels,
   customFieldDefs, users, projects = [], groupOpenClosed = false, customGroups, groupKeyOf, statusOptions, sortBy, onSortChange,
+  loading = false,
 }: Props) {
   const t = useTranslations("tasks")
   const tc = useTranslations("common")
+  const waiting = loading && tasks.length === 0
   const [search, setSearch] = useState("")
 
   // Column visibility (Roadmap #12). Hidden = explicitly excluded by user via
@@ -414,7 +420,7 @@ export function InlineTasksTable({
           />
         </div>
         <span className="text-sm text-muted-foreground">
-          {tc("results", { count: filtered.length })}
+          {waiting ? tc("loading") : tc("results", { count: filtered.length })}
         </span>
         {activeCustomFields.length > 0 && (
           <span className="text-xs text-muted-foreground border-l border-border pl-3 ml-1">
@@ -442,9 +448,13 @@ export function InlineTasksTable({
           summary that opens the task detail page (where full inline-editing
           works); avoids the 9-column horizontal scroll on narrow screens. */}
       <div className="md:hidden space-y-2">
-        {filtered.length === 0 ? (
+        {waiting ? (
+          <div data-testid="tasks-table-loading" className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card p-8 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> {tc("loading")}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-            {search ? tc("noResults") : t("noTasks") || tc("noData")}
+            {search ? tc("noResults") : t("noTasks")}
           </div>
         ) : (
           filtered.map((task) => (
@@ -547,7 +557,13 @@ export function InlineTasksTable({
               {/* Add-task row always renders FIRST (above all groups): with
                   long lists the bottom placement forced scrolling past every
                   row just to create a task (user feedback 2026-06-12). */}
-              {groupedByKey && customGroups ? (
+              {waiting ? (
+                <tr data-testid="tasks-table-loading">
+                  <td colSpan={totalCols} className="px-3 py-10 text-center text-muted-foreground">
+                    <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> {tc("loading")}</span>
+                  </td>
+                </tr>
+              ) : groupedByKey && customGroups ? (
                 <>
                   <AddTaskRow onCreate={onCreate} totalCols={totalCols} />
                   {customGroups.map((g) => {
@@ -582,10 +598,10 @@ export function InlineTasksTable({
                 </>
               )}
 
-              {filtered.length === 0 && (
+              {!waiting && filtered.length === 0 && (
                 <tr>
                   <td colSpan={totalCols} className="px-3 py-10 text-center text-muted-foreground">
-                    {search ? tc("noResults") : t("noTasks") || tc("noData")}
+                    {search ? tc("noResults") : t("noTasks")}
                   </td>
                 </tr>
               )}

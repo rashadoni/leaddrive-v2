@@ -2626,6 +2626,7 @@
     "manageCustomFields": "Manage custom fields"
   },
   "tasks": {
+    "noTasks": "No tasks",
     "title": "Task Management",
     "subtitle": "Create, assign and track tasks across your team",
     "newTask": "New Task",
