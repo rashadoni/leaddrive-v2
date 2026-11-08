@@ -294,4 +294,22 @@ pgDescribe("Bordio-style task card on a real Postgres", () => {
     const summary = await call(time.GET(request("GET", `/api/v1/tasks/${id}/time`), onTask(id)))
     expect([summary.body.data.totalMinutes >= 387, summary.body.data.running]).toEqual([true, null])
   })
+
+  // Owner, 2026-11-08 («Давай, обе»): a board member finishes a task, as in
+  // Bordio — once the grant says so; without it the move to done is refused.
+  it("a member granted canMoveToDone finishes a task; a member without it is refused", async () => {
+    await bypass(async () => {
+      await prisma.task.create({ data: { id: "task-done", organizationId: ORG, divisionId: BOARD, taskKey: "CARD-9", title: "Bitirilməli", status: "in_progress", assignedTo: "aytan" } })
+      await prisma.boardPermission.update({ where: { userId_divisionId: { userId: "aytan", divisionId: BOARD } }, data: { canMoveToDone: true } })
+    })
+    as("nazrin", "sales")
+    const refused = await call(taskRoute.PATCH(request("PATCH", "/api/v1/tasks/task-done", { status: "done" }), onTask("task-done")))
+    expect(refused.status).toBe(403)
+
+    as("aytan", "sales")
+    const finished = await call(taskRoute.PATCH(request("PATCH", "/api/v1/tasks/task-done", { status: "done" }), onTask("task-done")))
+    expect(finished.status, JSON.stringify(finished.body)).toBe(200)
+    const task = await bypass(() => prisma.task.findUniqueOrThrow({ where: { id: "task-done" }, select: { status: true, completedAt: true } }))
+    expect([task.status, task.completedAt !== null]).toEqual(["done", true])
+  })
 })

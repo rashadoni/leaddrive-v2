@@ -82,7 +82,7 @@ function InheritedAccessPanel({ division }: { division: Division }) {
             userId, divisionId: division.id,
             canView: false, canEdit: false, canCreateTask: false, canComment: false,
             canMoveToTodo: false, canMoveToInProgress: false, canMoveToTesting: false,
-            canMoveToReview: false, canMoveBack: false,
+            canMoveToReview: false, canMoveBack: false, canMoveToDone: false,
           }),
         })
       } else {

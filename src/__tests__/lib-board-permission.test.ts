@@ -92,16 +92,24 @@ describe("board-permission", () => {
     expect(canMoveToStatus(withBack, "backlog", "in_progress")).toBe(true)
   })
 
-  it("done is role-gated (admin/manager/head), NOT flag-gated", () => {
+  it("done takes admin/manager/head, or a member granted canMoveToDone — no other move flag", () => {
     const salesAllFlags = base({
       role: "sales",
       perm: flags({ canView: true, canMoveToReview: true, canMoveBack: true }),
     })
-    expect(canMoveToStatus(salesAllFlags, "done", "review")).toBe(false) // flags can't grant done
+    expect(canMoveToStatus(salesAllFlags, "done", "review")).toBe(false) // other move flags don't grant done
     expect(canMoveToStatus(base({ role: "manager" }), "done", "review")).toBe(true)
     expect(canMoveToStatus(base({ role: "sales", isDivisionHead: true }), "done", "review")).toBe(true)
     expect(canMoveToDone(base({ role: "manager" }))).toBe(true)
     expect(canMoveToDone(base({ role: "sales" }))).toBe(false)
+  })
+
+  // Owner, 2026-11-08: Zeytun's marketers close their own tasks, as in Bordio.
+  it("a member granted canMoveToDone finishes a task; a denied section still blocks it", () => {
+    const member = base({ role: "sales", perm: flags({ canView: true, canEdit: true, canMoveToDone: true }) })
+    expect(canMoveToStatus(member, "done", "in_progress")).toBe(true)
+    expect(canMoveToStatus(member, "done", "todo")).toBe(true)
+    expect(canMoveToDone(base({ role: "sales", perm: flags({ canView: false, canMoveToDone: true }) }))).toBe(false)
   })
 
   it("STATUS_RANK orders the 6 columns and maps legacy statuses", () => {
@@ -163,5 +171,13 @@ describe("explicit canView=false is a HARD deny (section overrides dept grant)",
     expect(canViewBoard(i)).toBe(true)
     expect(canEditTasks(i)).toBe(true)
     expect(canMoveToStatus(i, "done", "review")).toBe(true)
+  })
+})
+
+describe("adding someone to a board", () => {
+  it("makes a full member — finishing a task included, as in Bordio (2026-11-08)", async () => {
+    const { MEMBER_FLAGS } = await import("@/components/boards/member-picker")
+    expect(MEMBER_FLAGS).toMatchObject({ canView: true, canEdit: true, canMoveToDone: true })
+    expect(canMoveToStatus(base({ role: "sales", perm: flags(MEMBER_FLAGS) }), "done", "in_progress")).toBe(true)
   })
 })

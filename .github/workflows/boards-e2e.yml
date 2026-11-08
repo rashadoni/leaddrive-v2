@@ -1,0 +1,136 @@
+name: Boards authenticated E2E
+
+# The task boards end to end in a real browser, on a fictional copy of
+# Zeytun's set-up (owner, 2026-11-08: «полный тест от А до Я»): who sees which
+# folder and board, a refused board by its link, another organization out of
+# reach, creating a task with a deadline, moving it to done, @-mentions, the
+# boards-only menu. Disposable Postgres, made-up people and passwords;
+# production is never touched. Scenarios: scripts/boards-browser-evidence.mjs.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/boards-e2e.yml'
+      - 'scripts/boards-browser-evidence.mjs'
+      - 'src/app/(dashboard)/boards/**'
+      - 'src/app/(dashboard)/layout.tsx'
+      - 'src/app/api/v1/tasks/**'
+      - 'src/app/api/v1/divisions/**'
+      - 'src/app/api/v1/board-permissions/**'
+      - 'src/components/boards/**'
+      - 'src/components/tasks/**'
+      - 'src/components/sidebar.tsx'
+      - 'src/components/sidebar-board-tree.tsx'
+      - 'src/lib/tasks/**'
+      - 'src/lib/crm-commands/task/**'
+      - 'src/lib/nav-items.ts'
+      - 'src/lib/user-module-access.ts'
+      - 'src/auth.ts'
+      - 'src/lib/auth.ts'
+      - 'prisma/schema.prisma'
+      - 'messages/*.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: boards-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser:
+    name: Boards authenticated browser and database
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      NODE_ENV: development
+      NODE_OPTIONS: --max-old-space-size=6144
+      BOARDS_E2E: '1'
+      LEADDRIVE_DISABLE_SERVICE_WORKER: '1'
+      NEXT_TELEMETRY_DISABLED: '1'
+      BOARDS_E2E_OUTPUT: artifacts/boards-e2e
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: boards_e2e
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: [5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d boards_e2e"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Ephemeral loopback environment
+        env:
+          PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+        run: |
+          APP_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')"
+          DB_PASSWORD="$(openssl rand -hex 24)"
+          AUTH_SECRET_VALUE="$(openssl rand -hex 32)"
+          PII_SECRET="$(openssl rand -hex 32)"
+          echo "::add-mask::$DB_PASSWORD"
+          echo "::add-mask::$AUTH_SECRET_VALUE"
+          echo "::add-mask::$PII_SECRET"
+          {
+            echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/boards_e2e"
+            echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/boards_e2e"
+            echo "DATABASE_URL=postgresql://boards_e2e:${DB_PASSWORD}@127.0.0.1:${PG_PORT}/boards_e2e"
+            echo "BOARDS_E2E_DATABASE_PASSWORD=$DB_PASSWORD"
+            echo "BOARDS_E2E_PORT=$APP_PORT"
+            echo "BOARDS_E2E_BASE_URL=http://localhost:${APP_PORT}"
+            echo "NEXTAUTH_URL=http://localhost:${APP_PORT}"
+            echo "AUTH_URL=http://localhost:${APP_PORT}"
+            echo "APP_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_APP_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_MARKETING_URL=http://localhost:${APP_PORT}"
+            echo "AUTH_SECRET=$AUTH_SECRET_VALUE"
+            echo "NEXTAUTH_SECRET=$AUTH_SECRET_VALUE"
+            echo "TENANT_PII_MASTER_KEY=$PII_SECRET"
+            echo "BOARDS_E2E_LOG=${RUNNER_TEMP}/boards-e2e.log"
+            echo "LEADDRIVE_RUNTIME_DIR=${RUNNER_TEMP}/boards-e2e-runtime"
+            echo "LEADDRIVE_LOG_DIR=${RUNNER_TEMP}/boards-e2e-logs"
+          } >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Schema and tenant RLS on the disposable database
+        run: |
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
+          DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --skip-generate
+          npx prisma generate
+          node scripts/boards-browser-evidence.mjs prepare
+      - run: npx playwright install --with-deps chromium
+      - name: Boards scenarios in a real browser
+        run: |
+          node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port "$BOARDS_E2E_PORT" > "$BOARDS_E2E_LOG" 2>&1 &
+          APP_PID=$!
+          cleanup() { kill "$APP_PID" 2>/dev/null || true; wait "$APP_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 90); do
+            if curl -fsS --max-time 5 "$BOARDS_E2E_BASE_URL/api/v1/ping" >/dev/null 2>&1; then break; fi
+            if ! kill -0 "$APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then
+              echo '::error::The isolated application failed to start'
+              tail -n 60 "$BOARDS_E2E_LOG" | grep -viE 'secret|password|token|cookie' || true
+              exit 1
+            fi
+            sleep 2
+          done
+          node scripts/boards-browser-evidence.mjs
+      - name: Application errors seen during the run
+        if: failure()
+        run: grep -E 'Error|error:|⨯' "$BOARDS_E2E_LOG" | grep -viE 'secret|password|token|cookie|authorization' | tail -n 80 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: boards-e2e-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/boards-e2e
+          if-no-files-found: ignore
+          retention-days: 14
