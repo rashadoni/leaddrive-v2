@@ -999,6 +999,79 @@ pgDescribe("online booking on a real Postgres", () => {
     expect(events.map((event) => event.eventType)).toEqual(["sales.booking-imported.v1", "sales.booking-completed.v1"])
   })
 
+  /**
+   * The deposit is money, and the only thing the CRM does with it is say what
+   * happened. So this is about what the record REFUSES: a second press, a
+   * refund of money the late cancellation left with the salon, and a card
+   * payment landing on a visit a manager already marked by hand.
+   */
+  it("a deposit is marked once by hand, and a late card payment does not re-mark it", async () => {
+    const { applyDepositPaymentInTx } = await import("@/lib/booking/deposit-checkout")
+    const slug = await newPage({ price: 40, priceCurrency: "AZN", depositPercent: 25, depositFreeHours: 24 })
+    const id = (await (await book(slug, await someSlot(slug, 22))).json()).data.id
+    const booked = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    expect(booked.depositStatus).toBe("awaiting")
+    expect(Number(booked.depositAmount)).toBe(10)
+
+    const press = (version: number, deposit: string) => actionsPost(
+      json("POST", `/api/v1/bookings/${id}/actions`, { operation: "deposit", deposit, version, idempotencyKey: randomUUID() }),
+      { params: Promise.resolve({ id }) },
+    )
+    const marked = await press(booked.version, "paid")
+    expect(marked.status, await marked.clone().text()).toBe(200)
+    const paid = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    expect(paid.depositStatus).toBe("paid")
+    expect(paid.depositPaidAt).toBeInstanceOf(Date)
+    expect(paid.version).toBe(booked.version + 1)
+    expect((await bypass(() => prisma.domainEvent.findMany({ where: { organizationId: ORG, aggregateType: "booking", aggregateId: id } }))).map((event) => event.eventType))
+      .toContain("sales.booking-deposit-paid.v1")
+
+    // The same button again, at the version it now has: refused, not re-stamped.
+    expect((await press(paid.version, "paid")).status).toBe(409)
+    // The customer's card arrives a minute after the manager said «received».
+    // The payment is real and stays recorded as an intent; the meeting keeps
+    // the mark it already has, and gains no second «paid» in its history.
+    const late = await bypass(() => prisma.$transaction((tx) => applyDepositPaymentInTx(tx, { orgId: ORG, bookingId: id, paidAt: new Date() })))
+    expect(late).toBe("already")
+    const unchanged = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    expect(unchanged.version).toBe(paid.version)
+    expect(unchanged.depositPaidAt).toEqual(paid.depositPaidAt)
+
+    // Cancelled in time, so the salon owes it back — and may say it sent it,
+    // exactly once.
+    const cancelled = await actionsPost(json("POST", `/api/v1/bookings/${id}/actions`, { operation: "cancel", version: unchanged.version, notifyCustomer: false, idempotencyKey: randomUUID() }), { params: Promise.resolve({ id }) })
+    expect(cancelled.status, await cancelled.clone().text()).toBe(200)
+    const owed = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    expect(owed.depositStatus).toBe("refund_due")
+    expect((await press(owed.version, "paid")).status).toBe(409)
+    expect((await press(owed.version, "refunded")).status).toBe(200)
+    const returned = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    expect(returned.depositStatus).toBe("refunded")
+    expect((await press(returned.version, "refunded")).status).toBe(409)
+  })
+
+  /**
+   * «Kept» is the whole reason a deposit exists: cancel too late and the hour
+   * is gone. A card on the meeting must not be able to hand it back.
+   */
+  it("a deposit kept by a late cancellation cannot be returned from the card", async () => {
+    const slug = await newPage({ price: 40, priceCurrency: "AZN", depositAmount: 15, depositFreeHours: 720 })
+    const id = (await (await book(slug, await someSlot(slug, 24))).json()).data.id
+    const booked = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    const marked = await actionsPost(json("POST", `/api/v1/bookings/${id}/actions`, { operation: "deposit", deposit: "paid", version: booked.version, idempotencyKey: randomUUID() }), { params: Promise.resolve({ id }) })
+    expect(marked.status, await marked.clone().text()).toBe(200)
+    const paid = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    // 720 free hours is further ahead than this meeting is, so cancelling now
+    // is «late» by the service's own rule.
+    const cancelled = await actionsPost(json("POST", `/api/v1/bookings/${id}/actions`, { operation: "cancel", version: paid.version, notifyCustomer: false, idempotencyKey: randomUUID() }), { params: Promise.resolve({ id }) })
+    expect(cancelled.status, await cancelled.clone().text()).toBe(200)
+    const kept = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
+    expect(kept.depositStatus).toBe("kept")
+    const refund = await actionsPost(json("POST", `/api/v1/bookings/${id}/actions`, { operation: "deposit", deposit: "refunded", version: kept.version, idempotencyKey: randomUUID() }), { params: Promise.resolve({ id }) })
+    expect(refund.status).toBe(409)
+    expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))).depositStatus).toBe("kept")
+  })
+
   it("recording a past outcome retains the historical calendar binding after reconnecting Google", async () => {
     const slug = await newPage()
     const page = await bypass(() => prisma.bookingPage.findUniqueOrThrow({ where: { slug } }))

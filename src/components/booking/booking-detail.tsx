@@ -20,7 +20,7 @@ import { servicePriceLabel } from "@/lib/booking/service"
 import { BookingAvatar, avatarTone, nameInitials } from "./booking-day-timeline"
 import { BookingFollowUp } from "./booking-follow-up"
 import { BookingHistory } from "./booking-history"
-import { BookingMeetingActions, type BookingActionContext } from "./booking-meeting-actions"
+import { BookingDepositAction, BookingMeetingActions, type BookingActionContext } from "./booking-meeting-actions"
 import { BookingStatus } from "./booking-status"
 import type { WorkspaceBooking } from "./booking-workspace"
 
@@ -184,7 +184,10 @@ export function BookingDetail({ booking, context, identity, schedule, onSaved, o
       </ul>
     </> : null}
 
-    <div className="mt-5">
+    {/* The deposit sits with the actions, not with the facts: it is the one
+        thing on this card that someone presses rather than reads. */}
+    <div className="mt-5 space-y-4">
+      <BookingDepositAction key={`deposit:${booking.id}:${booking.version}`} booking={booking} onSaved={onSaved} />
       <BookingMeetingActions key={`${booking.id}:${booking.version}`} booking={booking} context={context} onSaved={onSaved} />
     </div>
     {booking.outcomeNote ? <CrmSection className="mt-4" title={t("outcomeNote")}><p className="whitespace-pre-wrap break-words text-sm">{booking.outcomeNote}</p></CrmSection> : null}

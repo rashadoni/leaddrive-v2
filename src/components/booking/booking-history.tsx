@@ -10,7 +10,7 @@ import type { WorkspaceBooking } from "./booking-workspace"
 
 export interface BookingHistoryItem { id: string; type: string; when: string; version: number; actorName?: string | null; actorType?: string; reason?: string | null; note?: string | null }
 interface HistoryPage { items: BookingHistoryItem[]; nextCursor: number | null }
-const LABELS: Record<string, string> = { "sales.booking-created.v1": "bookingCreated", "sales.booking-imported.v1": "historyImported", "sales.booking-rescheduled.v1": "historyRescheduled", "sales.booking-cancelled.v1": "meetingCancelled", "sales.booking-completed.v1": "meetingCompleted", "sales.booking-no-show.v1": "meetingNoShow", "sales.booking-outcome-corrected.v1": "historyCorrected" }
+const LABELS: Record<string, string> = { "sales.booking-created.v1": "bookingCreated", "sales.booking-imported.v1": "historyImported", "sales.booking-rescheduled.v1": "historyRescheduled", "sales.booking-cancelled.v1": "meetingCancelled", "sales.booking-completed.v1": "meetingCompleted", "sales.booking-no-show.v1": "meetingNoShow", "sales.booking-outcome-corrected.v1": "historyCorrected", "sales.booking-deposit-paid.v1": "historyDepositPaid", "sales.booking-deposit-refunded.v1": "historyDepositRefunded" }
 
 export function BookingHistory({ booking, timezone, cacheScope }: { booking: WorkspaceBooking; timezone: string; cacheScope: string }) {
   const t = useTranslations("booking"), locale = useLocale()

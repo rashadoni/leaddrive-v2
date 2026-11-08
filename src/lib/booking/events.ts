@@ -2,7 +2,7 @@ import type { Booking, Prisma } from "@prisma/client"
 import { z } from "zod"
 import { appendDomainEvent, eventProducerVersion } from "@/lib/event-platform/append"
 
-const types = ["imported", "created", "rescheduled", "cancelled", "completed", "no_show", "outcome_corrected"] as const
+const types = ["imported", "created", "rescheduled", "cancelled", "completed", "no_show", "outcome_corrected", "deposit_paid", "deposit_refunded"] as const
 export type BookingEvent = (typeof types)[number]
 const eventData = z.object({
   bookingId: z.string().min(1), hostUserId: z.string().min(1),

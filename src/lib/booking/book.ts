@@ -24,6 +24,7 @@ import { addOnTotals, parseAddOns, selectedAddOns } from "./add-ons"
 import { closedDateSet, readClosedDates } from "./closed-dates"
 import { isGroupService, seatsByStart, seatsLeft, serviceCapacity } from "./group-service"
 import { asksDeposit, depositDue, depositPolicy } from "./deposit"
+import { depositCheckoutView } from "./deposit-checkout"
 import { hasHostVariants, hostService, servicePriceSpan } from "./host-variants"
 import { bookingHostWhere } from "./access"
 import { isValidTimezone } from "@/lib/timezone"
@@ -330,6 +331,9 @@ export async function bookingCancelView(orgId: string, bookingId: string) {
   const saved = booking.snapshot && typeof booking.snapshot === "object" && !Array.isArray(booking.snapshot) ? booking.snapshot : null
   const host = await prisma.user.findFirst({ where: { id: booking.hostUserId, organizationId: orgId }, select: { name: true } })
   return {
+    // What the visit still owes, and whether a card would be taken for it now.
+    // Null where no deposit was ever asked, which is most meetings.
+    deposit: await depositCheckoutView(orgId, booking),
     status: booking.status as "confirmed" | "cancelled" | "completed" | "no_show",
     startsAt: booking.startsAt.toISOString(),
     endsAt: booking.endsAt.toISOString(),

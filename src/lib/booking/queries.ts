@@ -22,6 +22,7 @@ const columns = {
   id: true, bookingPageId: true, hostUserId: true, startsAt: true, endsAt: true,
   name: true, phone: true, email: true, note: true, status: true, createdAt: true,
   cancelledAt: true, googleEventId: true, updatedAt: true, version: true, snapshot: true, outcomeNote: true, cancellationReason: true, source: true,
+  depositAmount: true, depositStatus: true, depositPaidAt: true,
   bookingPage: { select: { title: true, locationType: true, locationText: true, slug: true, price: true, priceCurrency: true, repeatCycleDays: true } },
 } satisfies Prisma.BookingSelect
 
@@ -75,7 +76,7 @@ export async function listBookings(access: BookingAccess, filters: BookingFilter
   const reminders = await remindersOf(access.orgId, visible.map((row) => row.id))
   const last = visible.at(-1)
   return {
-    items: visible.map(({ googleEventId, snapshot, ...row }) => ({ ...row, bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, hostName: hosts.find((host) => host.id === row.hostUserId)?.name ?? null, calendarLinked: Boolean(googleEventId),
+    items: visible.map(({ googleEventId, snapshot, ...row }) => ({ ...row, depositAmount: row.depositAmount === null ? null : String(row.depositAmount), bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, hostName: hosts.find((host) => host.id === row.hostUserId)?.name ?? null, calendarLinked: Boolean(googleEventId),
       remindedDayAt: reminders.get(row.id)?.remindedDayAt?.toISOString() ?? null,
       remindedHourAt: reminders.get(row.id)?.remindedHourAt?.toISOString() ?? null,
       clientConfirmedAt: reminders.get(row.id)?.clientConfirmedAt?.toISOString() ?? null })),
@@ -114,7 +115,7 @@ export async function bookingDetail(access: BookingAccess, id: string, role: Rol
   const reminder = (await remindersOf(access.orgId, [id])).get(id) ?? null
   const canManage = access.writableHostIds === null || access.writableHostIds.includes(row.hostUserId)
   const canCorrect = access.administrator || Boolean(await prisma.bookingCoordinatorGrant.findFirst({ where: { organizationId: access.orgId, coordinatorUserId: access.userId, hostUserId: row.hostUserId, canManage: true } }))
-  return { ...safe, phoneRestricted: access.phoneRestricted, canCreateFollowUp: canManage && checkPermission(role, "tasks", "write"), canManage, canCorrect, availableHosts, bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, history: events.items, historyNextCursor: events.nextCursor, historyLimited: Boolean(events.nextCursor), integrations: effects.map((effect) => ({ type: effect.effectType, status: effect.status, requiresAttention: effect.lastError !== null, count: effect._count._all })), hostName: host?.name ?? null, hostActive: host?.isActive ?? false, calendarLinked: Boolean(googleEventId), whatsapp,
+  return { ...safe, depositAmount: safe.depositAmount === null ? null : String(safe.depositAmount), phoneRestricted: access.phoneRestricted, canCreateFollowUp: canManage && checkPermission(role, "tasks", "write"), canManage, canCorrect, availableHosts, bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, history: events.items, historyNextCursor: events.nextCursor, historyLimited: Boolean(events.nextCursor), integrations: effects.map((effect) => ({ type: effect.effectType, status: effect.status, requiresAttention: effect.lastError !== null, count: effect._count._all })), hostName: host?.name ?? null, hostActive: host?.isActive ?? false, calendarLinked: Boolean(googleEventId), whatsapp,
     remindedDayAt: reminder?.remindedDayAt?.toISOString() ?? null,
     remindedHourAt: reminder?.remindedHourAt?.toISOString() ?? null,
     clientConfirmedAt: reminder?.clientConfirmedAt?.toISOString() ?? null,
