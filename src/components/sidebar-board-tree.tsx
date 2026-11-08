@@ -10,8 +10,9 @@ import { boardIdFromPath, boardNavTree, type BoardNavLeaf, type TabDivision } fr
 /**
  * The folders and their boards inside the sidebar's «Boards» section (owner,
  * 2026-11-08: «каждый созданный каталог будет там как подраздел», so moving
- * between boards of one department needs no trip back). Only what the person
- * may open is listed — GET /api/v1/divisions filters by board access.
+ * between boards of one department needs no trip back). A folder folds and
+ * unfolds and opens nothing, as in Bordio; the folder of the open board
+ * unfolds by itself. Only what the person may open is listed — GET /api/v1/divisions filters by board access.
  *
  * While it is on screen it marks <html data-board-tree="on">, and the tabs
  * above a board step aside (globals.css): the same switch shown twice would
@@ -79,7 +80,7 @@ export function SidebarBoardTree({ pathname, visible }: { pathname: string; visi
 
   const toggle = (id: string) => setOpen((previous) => {
     const next = new Set(previous)
-    if (next.has(id) && id !== currentFolder) next.delete(id)
+    if (next.has(id)) next.delete(id)
     else next.add(id)
     return next
   })
@@ -88,35 +89,24 @@ export function SidebarBoardTree({ pathname, visible }: { pathname: string; visi
     <nav aria-label={t("title")} data-testid="sidebar-board-tree" className="mb-1 ml-5 space-y-0.5 border-l border-white/[0.08] pl-1.5">
       {tree.map((node) => {
         if (!node.isDepartment) return <BoardLink key={node.id} board={node} active={node.id === currentId} icon />
-        const isOpen = open.has(node.id) || node.id === currentFolder
+        const isOpen = open.has(node.id)
         const FolderIcon = isOpen ? FolderOpen : Folder
         return (
           <div key={node.id} data-testid="sidebar-board-folder" data-folder={node.id}>
-            <div className="flex items-center">
-              <button
-                type="button"
-                onClick={() => toggle(node.id)}
-                aria-expanded={isOpen}
-                aria-label={t(isOpen ? "collapse" : "expand", { name: node.name })}
-                className="flex h-8 w-6 shrink-0 items-center justify-center rounded text-white/40 hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-              >
-                <ChevronRight className={cn("h-3 w-3 transition-transform motion-reduce:transition-none", isOpen && "rotate-90")} aria-hidden="true" />
-              </button>
-              <Link
-                href={`/boards/${node.id}`}
-                prefetch={false}
-                data-testid="sidebar-board-link"
-                data-nav-active={node.id === currentId ? "true" : undefined}
-                aria-current={node.id === currentId ? "page" : undefined}
-                className={cn(
-                  "flex min-h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-[13px] font-medium transition-colors motion-reduce:transition-none",
-                  node.id === currentId ? "bg-white/[0.12] text-white" : "text-white/75 hover:bg-white/[0.06] hover:text-white",
-                )}
-              >
-                <FolderIcon className="h-3.5 w-3.5 shrink-0 text-white/50" aria-hidden="true" />
-                <span className="truncate">{node.name}</span>
-              </Link>
-            </div>
+            {/* A folder only folds and unfolds, as in Bordio (owner, 2026-11-08:
+                «в бордио также открываются?» — there a folder is not a page). */}
+            <button
+              type="button"
+              onClick={() => toggle(node.id)}
+              aria-expanded={isOpen}
+              aria-label={t(isOpen ? "collapse" : "expand", { name: node.name })}
+              data-testid="sidebar-board-folder-toggle"
+              className="flex min-h-8 w-full min-w-0 items-center gap-1.5 rounded-md py-1 pl-1 pr-1.5 text-left text-[13px] font-medium text-white/75 transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 motion-reduce:transition-none"
+            >
+              <ChevronRight className={cn("h-3 w-3 shrink-0 text-white/40 transition-transform motion-reduce:transition-none", isOpen && "rotate-90")} aria-hidden="true" />
+              <FolderIcon className="h-3.5 w-3.5 shrink-0 text-white/50" aria-hidden="true" />
+              <span className="truncate">{node.name}</span>
+            </button>
             {isOpen && node.children.length > 0 && (
               <div className="ml-6 space-y-0.5">
                 {node.children.map((child) => <BoardLink key={child.id} board={child} active={child.id === currentId} />)}
