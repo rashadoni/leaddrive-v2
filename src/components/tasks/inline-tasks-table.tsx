@@ -1820,17 +1820,27 @@ function AddTaskRow({ onCreate, totalCols }: {
   useEffect(() => { if (active) inputRef.current?.focus() }, [active])
 
   const reset = () => { setTitle(""); setActive(false) }
+  // One save at a time. Enter disables the input while it saves, a disabled
+  // input loses focus, and that blur called commit again with the same title
+  // before the first save had cleared it: every Enter made the task twice
+  // (seen on prod 2026-11-08 while recording the Boards guide).
+  const busy = useRef(false)
 
   const commit = async (keepOpen = false) => {
+    if (busy.current) return
     const trimmed = title.trim()
     if (!trimmed) { reset(); return }
+    busy.current = true
     setSaving(true)
     try {
       await onCreate({ title: trimmed, priority: "medium", status: "pending" })
       setTitle("")
       if (keepOpen) setTimeout(() => inputRef.current?.focus(), 50)
       else setActive(false)
-    } finally { setSaving(false) }
+    } finally {
+      busy.current = false
+      setSaving(false)
+    }
   }
 
   const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
