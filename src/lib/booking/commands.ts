@@ -11,6 +11,7 @@ import { bookingHostWhere } from "./access"
 import type { BookingAccess } from "./access"
 import { computeSlots, defaultWeeklyHours, findSlot, parseWeeklyHours, type BookingRules } from "./availability"
 import { readClosedDates } from "./closed-dates"
+import { depositAfterCancel, depositPolicy } from "./deposit"
 import { bookingCalendarBusy } from "./calendar-busy"
 import { appendBookingEvent, ensureBookingBaseline, type BookingEvent } from "./events"
 import { queueBookingEffects, ensureLegacyBinding } from "./integration-intents"
@@ -80,7 +81,15 @@ export async function runBookingCommand(access: BookingAccess, id: string, input
     if (input.operation === "cancel") {
       if (row.status === "cancelled") return { id, version: row.version }
       if (row.status !== "confirmed" || row.startsAt <= now) throw new BookingCommandError("INVALID_STATE")
-      change = { status: "cancelled", cancelledAt: now, cancellationReason: input.reason || null }; type = "cancelled"
+      // Cancel in time and a paid deposit is owed back; cancel late, or never
+      // turn up, and it is kept. Money is not sent anywhere from here — the
+      // visit only says what is owed, and a person pays it.
+      const depositStatus = depositAfterCancel(row, depositPolicy(page).freeHours, now)
+      change = {
+        status: "cancelled", cancelledAt: now, cancellationReason: input.reason || null,
+        ...(depositStatus ? { depositStatus } : {}),
+      }
+      type = "cancelled"
     } else if (input.operation === "outcome") {
       if (!input.outcome || row.status === "cancelled" || row.endsAt > now) throw new BookingCommandError("INVALID_STATE")
       if (row.status !== "confirmed") {

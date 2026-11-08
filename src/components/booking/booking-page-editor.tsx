@@ -39,6 +39,7 @@ import { bookingSlug, REPEAT_CYCLE_DAYS } from "@/lib/booking/service"
 import { servicePriceSpan, type HostVariants } from "@/lib/booking/host-variants"
 import { addOnId, type ServiceAddOn } from "@/lib/booking/add-ons"
 import { MAX_CAPACITY } from "@/lib/booking/group-service"
+import { depositDue, depositPolicy } from "@/lib/booking/deposit"
 import { getCurrencySymbol } from "@/lib/currency"
 import { cn } from "@/lib/utils"
 
@@ -64,6 +65,10 @@ export interface BookingPageDraft {
   photoUrl: string | null
   /** 1 = one customer at a time; more makes it a class. */
   capacity: number
+  /** What the customer leaves to hold the time: a sum, a share, or nothing. */
+  depositAmount: string
+  depositPercent: string
+  depositFreeHours: number
   weekly: WeeklyHours
   bufferMinutes: number
   minNoticeMinutes: number
@@ -443,6 +448,15 @@ export function BookingPageEditor({
   const LocationIcon = LOCATION_ICON[draft.locationType]
   const optional = <span className="font-normal text-muted-foreground">— {t("optionalMark")}</span>
   const symbol = getCurrencySymbol(currency)
+  // What the client will be asked for, worked out exactly as the server does.
+  const depositLabel = (() => {
+    const due = depositDue(depositPolicy({
+      depositAmount: draft.depositAmount.trim().replace(",", ".") || null,
+      depositPercent: Number(draft.depositPercent) || null,
+      depositFreeHours: draft.depositFreeHours,
+    }), draft.price.trim() || null)
+    return due ? `${due} ${symbol}` : ""
+  })()
   const variantCount = chosenHosts.filter((host) => draft.hostVariants[host.id]).length
   const perHost = perHostOpen || variantCount > 0
   // What the client may end up paying when the masters do not agree.
@@ -713,6 +727,49 @@ export function BookingPageEditor({
                 </div>
                 <p className="mt-1.5 text-xs text-muted-foreground">{t("fieldPriceHint")}</p>
               </div>
+              <div className="md:col-span-2">
+                <Label>{t("fieldDeposit")} {optional}</Label>
+                <Panel className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <span className="relative inline-flex">
+                    <Input
+                      className="h-10 w-28 pr-7 tabular-nums"
+                      inputMode="decimal"
+                      value={draft.depositAmount}
+                      placeholder={t("depositSum")}
+                      aria-label={t("depositSum")}
+                      onChange={(event) => onChange({ ...draft, depositAmount: event.target.value.replace(/[^\d.,]/g, "").slice(0, 12), depositPercent: "" })}
+                    />
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs font-semibold text-muted-foreground">{symbol}</span>
+                  </span>
+                  <span className="text-xs text-muted-foreground">{t("or")}</span>
+                  <span className="relative inline-flex">
+                    <Input
+                      className="h-10 w-24 pr-7 tabular-nums"
+                      inputMode="numeric"
+                      value={draft.depositPercent}
+                      placeholder={t("depositShare")}
+                      aria-label={t("depositShare")}
+                      onChange={(event) => onChange({ ...draft, depositPercent: event.target.value.replace(/\D/g, "").slice(0, 3), depositAmount: "" })}
+                    />
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs font-semibold text-muted-foreground">%</span>
+                  </span>
+                  {depositLabel ? <span className="text-xs font-semibold text-foreground">= {depositLabel}</span> : <span className="text-xs text-muted-foreground">{t("depositNone")}</span>}
+                </Panel>
+                {depositLabel ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Label htmlFor="bp-deposit-hours" className="text-xs">{t("depositFreeHoursLabel")}</Label>
+                    <Input
+                      id="bp-deposit-hours"
+                      className="h-9 w-20 tabular-nums"
+                      inputMode="numeric"
+                      value={String(draft.depositFreeHours)}
+                      onChange={(event) => set("depositFreeHours", Math.max(0, Math.min(720, Number(event.target.value.replace(/\D/g, "")) || 0)))}
+                    />
+                    <span className="text-xs text-muted-foreground">{t("depositHint")}</span>
+                  </div>
+                ) : null}
+              </div>
+
               <div>
                 <Label>{t("cycleQuestion")}</Label>
                 <div className="mt-1.5 flex flex-wrap gap-2">

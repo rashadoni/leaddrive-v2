@@ -33,6 +33,10 @@ export const bookingPageSchema = z.object({
     price: z.union([z.string().max(20), z.number()]).nullable().optional(),
     durationMinutes: z.number().int().nullable().optional(),
   })).nullable().optional(),
+  /** What the customer leaves to hold the time: a sum, or a share of the visit. */
+  depositAmount: z.number().min(0).max(1_000_000_000).nullable().optional(),
+  depositPercent: z.number().int().min(0).max(100).nullable().optional(),
+  depositFreeHours: z.number().int().min(0).max(720).optional(),
   /** More than one makes the service a class: the time holds this many people. */
   capacity: z.number().int().min(1).max(50).optional(),
   /** A path under /uploads/booking-photos; `bookingPhotoPath` is the rule. */

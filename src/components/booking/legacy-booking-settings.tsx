@@ -19,6 +19,9 @@ interface PageRow extends Omit<BookingPageDraft, "description" | "locationText" 
   hostVariants: unknown
   addOns: unknown
   capacity: number | null
+  depositAmount: string | null
+  depositPercent: number | null
+  depositFreeHours: number | null
   id: string
   description: string | null
   locationText: string | null
@@ -48,6 +51,9 @@ function newDraft(hostIds: string[]): BookingPageDraft {
     addOns: [],
     photoUrl: null,
     capacity: 1,
+    depositAmount: "",
+    depositPercent: "",
+    depositFreeHours: 24,
     weekly: defaultWeeklyHours(),
     price: "",
     category: "",
@@ -143,6 +149,9 @@ export default function BookingSettingsPage() {
       addOns: parseAddOns(page.addOns),
       photoUrl: page.photoUrl ?? null,
       capacity: page.capacity ?? 1,
+      depositAmount: page.depositAmount ?? "",
+      depositPercent: page.depositPercent === null || page.depositPercent === undefined ? "" : String(page.depositPercent),
+      depositFreeHours: page.depositFreeHours ?? 24,
       weekly: parseWeeklyHours(page.weekly) ?? defaultWeeklyHours(),
       price: page.price ?? "",
       category: page.category ?? "",

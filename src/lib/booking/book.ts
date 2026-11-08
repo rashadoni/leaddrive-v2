@@ -23,6 +23,7 @@ import { BookingCommandError } from "./command-error"
 import { addOnTotals, parseAddOns, selectedAddOns } from "./add-ons"
 import { closedDateSet, readClosedDates } from "./closed-dates"
 import { isGroupService, seatsByStart, seatsLeft, serviceCapacity } from "./group-service"
+import { asksDeposit, depositDue, depositPolicy } from "./deposit"
 import { hasHostVariants, hostService, servicePriceSpan } from "./host-variants"
 import { bookingHostWhere } from "./access"
 import { isValidTimezone } from "@/lib/timezone"
@@ -260,6 +261,9 @@ export async function publicBookingView(orgId: string, pageId: string, now = new
       hostNames: hosts.map((host) => host.name),
       /** More than one means a class: the time holds this many people. */
       capacity: serviceCapacity(page),
+      /** What must be left to hold the time, and how late it may be cancelled. */
+      deposit: asksDeposit(depositPolicy(page)) ? depositDue(depositPolicy(page), visit.price) : null,
+      depositFreeHours: depositPolicy(page).freeHours,
       /** Offered only where the answer changes the price or the duration. */
       hosts: hasHostVariants(service, hosts.map((host) => host.id))
         ? hosts.map((host) => ({ id: host.id, name: host.name, ...hostService(service, host.id) }))
