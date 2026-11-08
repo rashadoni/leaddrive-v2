@@ -180,6 +180,21 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
       })
     }
 
+    // Reads that do not depend on which agent answers start now and run while
+    // the agent is picked, instead of one after another (each is a database
+    // round trip in front of the answer's first word).
+    const orgModulesRead = getOrgModuleContext(orgId)
+    const timezoneRead = loadChatAnalyticsTimezone(orgId, userId).then(
+      (timezone) => ({ ok: true as const, timezone }),
+      (error: unknown) => ({ ok: false as const, error }),
+    )
+    const knownNamesRead = Promise.all([
+      prisma.contact.findMany({ where: { organizationId: orgId }, select: { fullName: true }, take: 200 }),
+      prisma.company.findMany({ where: { organizationId: orgId }, select: { name: true }, take: 100 }),
+    ]).catch(() => null)
+    // A failed read is handled where it is used; never an unhandled rejection.
+    orgModulesRead.catch(() => {})
+
     // Multi-agent routing: classify intent and find best agent
     const { agent: agentConfig, intent, confidence, isHandoff } = await routeToAgent(
       orgId, message, previousAgentId
@@ -206,12 +221,14 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
     // derive from the SAME cached org context (features + modules), so no extra
     // DB round-trip. `ai_smart_search` lives in Organization.features, which
     // loadOrgContext surfaces as modules["ai_smart_search"].
-    const orgCtx = moduleContextForUser(await getOrgModuleContext(orgId), session)
+    const orgCtx = moduleContextForUser(await orgModulesRead, session)
     const smartSearchEnabled = orgCtx.modules["ai_smart_search"] === true
     let analyticsTimezone: string
-    try {
-      analyticsTimezone = await loadChatAnalyticsTimezone(orgId, userId)
-    } catch (error) {
+    const timezone = await timezoneRead
+    if (timezone.ok) {
+      analyticsTimezone = timezone.timezone
+    } else {
+      const error = timezone.error
       console.error("[chat-analytics] timezone lookup failed", error instanceof Error ? error.message : "unknown error")
       if (requiredAnalyticsTool) {
         return NextResponse.json({
@@ -362,20 +379,12 @@ ${CURRENT_STATE_GROUNDING_RULES}
 
     // PII masking — load known names from CRM, mask messages + system prompt
     const piiMasker = new PiiMasker()
-    try {
-      const contacts: Array<{ fullName: string | null }> = await prisma.contact.findMany({
-        where: { organizationId: orgId },
-        select: { fullName: true },
-        take: 200,
-      })
-      const companies: Array<{ name: string | null }> = await prisma.company.findMany({
-        where: { organizationId: orgId },
-        select: { name: true },
-        take: 100,
-      })
+    const knownNames = await knownNamesRead
+    if (knownNames) {
+      const [contacts, companies]: [Array<{ fullName: string | null }>, Array<{ name: string | null }>] = knownNames
       piiMasker.addKnownNames(contacts.map((c) => c.fullName).filter((name): name is string => Boolean(name)))
       piiMasker.addKnownCompanies(companies.map((c) => c.name).filter((name): name is string => Boolean(name)))
-    } catch { /* non-critical */ }
+    } /* else non-critical: the turn goes on without known names */
 
     const maskedSystemPrompt = piiMasker.mask(systemPrompt)
     let currentMessages: Anthropic.MessageParam[] = messages.map((m) => ({
