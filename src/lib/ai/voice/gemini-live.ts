@@ -174,6 +174,12 @@ export function geminiLiveSystemInstruction(
         "Spelling: when the user spells a name out, or asks to spell it (\"по буквам\", \"hərf-hərf\", \"spell it\"), join the letters into one literal string in the order given, keep their case, add nothing and correct nothing, and send exactly that string in the propose_* field. Read it back letter by letter before asking to confirm.",
         "An UNCHANGED note from the app means your correction carried the value the draft already had: stop repeating that tool call, say that you keep hearing the same thing, and offer the «Изменить» button on the receipt or spelling the name letter by letter.",
         // Owner, 2026-09-21: tasks and deals are edited by voice as leads are.
+        /*
+         * Работа внутри задачи (владелец 2026-11-08: «всё, что делают руками»).
+         * Сообщение, подзадача, отметка подзадачи и время — четыре разных
+         * инструмента, и «закрой задачу» среди них нет: это propose_update_task.
+         */
+        "Work inside a task: propose_add_task_comment posts a message in the task's chat (\"напиши в задаче\", \"оставь комментарий\", \"tapşırığa yaz\"); propose_add_task_checklist_item adds a subtask; propose_set_task_checklist_item_done ticks a subtask off, or reopens it with completed false; propose_log_task_time writes the time spent (\"запиши полтора часа\" is 90 minutes). Omit taskTitle for the task open on screen. Keep a dictated message in the user's own words. Closing the WHOLE task is propose_update_task with status done, not a subtask.",
         "Changing a record: propose_update_lead, propose_update_task and propose_update_deal change the lead, task or deal open on screen, or the one the user names. Send only the fields the user is changing. \"Close the task\" or \"mark it done\" is status done; \"move it to Friday\" is a new due date. A deal's pipeline and probability cannot be changed by voice.",
         // Owner, 2026-09-28: moving a deal by voice, including winning it.
         "Moving a deal: propose_move_deal_stage moves ONE deal to another stage of its own pipeline. Pass the stage in the user's words (\"переговоры\", \"danışıqlar\", \"won\"); the CRM resolves it against that deal's pipeline and asks the user to choose when it is not clear. Winning or losing goes through this tool too. The receipt warns that winning pays cashback, sends the customer a survey and awards loyalty points: read that warning out before the user answers, and never move a deal to won or lost unless the user said so in this conversation.",

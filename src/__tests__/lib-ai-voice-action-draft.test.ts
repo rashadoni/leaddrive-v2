@@ -67,6 +67,14 @@ vi.mock("@/lib/sharing-rules", () => ({
   applyRecordFilter: deps.applyRecordFilter,
 }))
 
+// Правило доски (кто может открыть задачу) проверяется на настоящем Postgres
+// в ai-voice-assistant-postgres.test.ts («задачи чужой доски для голоса нет»);
+// здесь под проверкой черновик, и задача человеку открыта.
+vi.mock("@/lib/tasks/task-access", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/tasks/task-access")>(),
+  openTaskFor: vi.fn(async (_db: unknown, args: { taskId: string }) => ({ id: args.taskId })),
+}))
+
 import {
   AiVoiceActionDraftError,
   cancelUnfinishedSessionDrafts,

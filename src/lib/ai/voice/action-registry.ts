@@ -1,7 +1,14 @@
 import type { z } from "zod"
 import type { Module, Action } from "@/lib/permissions"
 import type { ModuleId } from "@/lib/modules"
-import { createTaskCommandSchema, updateTaskCommandSchema } from "@/lib/crm-commands/schemas/task"
+import {
+  addTaskChecklistItemCommandSchema,
+  addTaskCommentCommandSchema,
+  createTaskCommandSchema,
+  logTaskTimeCommandSchema,
+  setTaskChecklistItemDoneCommandSchema,
+  updateTaskCommandSchema,
+} from "@/lib/crm-commands/schemas/task"
 import {
   convertLeadToDealCommandSchema,
   createLeadCommandSchema,
@@ -21,6 +28,11 @@ export const AI_VOICE_ACTION_TYPES = [
   "update_deal",
   "move_deal_stage",
   "create_company",
+  // Работа внутри задачи (владелец 2026-11-08: «всё, что делают руками»).
+  "add_task_comment",
+  "add_task_checklist_item",
+  "set_task_checklist_item_done",
+  "log_task_time",
 ] as const
 
 export type AiVoiceActionType = (typeof AI_VOICE_ACTION_TYPES)[number]
@@ -35,6 +47,10 @@ export type AiVoiceActionCommand =
   | "updateDealCommand"
   | "moveDealStageCommand"
   | "createCompanyCommand"
+  | "addTaskCommentCommand"
+  | "addTaskChecklistItemCommand"
+  | "setTaskChecklistItemDoneCommand"
+  | "logTaskTimeCommand"
 export type AiVoiceActionDedupePolicy =
   | "idempotency_key"
   | "lead_contact_coordinates"
@@ -60,7 +76,17 @@ export type AiVoiceActionTargetType = "lead" | "task" | "deal"
 export type AiVoiceActionTarget = Readonly<{
   entityType: AiVoiceActionTargetType
   requestField: "targetEntityId"
-  bindExpectedUpdatedAt: true
+  /**
+   * Привязать черновик к версии записи: изменилась запись, пока квитанция на
+   * экране, — подтверждать нечего, считается заново. Нужно, когда действие
+   * МЕНЯЕТ поля записи (иначе голос затёр бы чужую правку).
+   *
+   * Не нужно, когда действие лишь добавляет к записи своё — сообщение,
+   * подзадачу, время: чужая правка срока задачи не делает сообщение в ней
+   * неверным, а отказ «запись изменилась» на каждое движение карточки сделал
+   * бы голосовые сообщения в живой задаче почти невозможными.
+   */
+  bindExpectedUpdatedAt: boolean
 }>
 
 export type AiVoiceActionPreviewField = Readonly<{
@@ -247,6 +273,15 @@ const CREATE_COMPANY_FIELDS = [
   "description",
 ] as const
 
+// Работа внутри задачи. Голосом — только то, что человек произносит:
+// упоминания (@) выбираются на экране, порядок подзадач — перетаскиванием.
+const ADD_TASK_COMMENT_FIELDS = ["content"] as const
+const ADD_TASK_CHECKLIST_ITEM_FIELDS = ["title", "assignedTo", "dueDate"] as const
+// `checklistItemId` сервер находит сам по названию, которое сказал человек
+// (propose-resolve.ts); модель идентификатора не видит и не присылает.
+const SET_TASK_CHECKLIST_ITEM_DONE_FIELDS = ["checklistItemId", "completed"] as const
+const LOG_TASK_TIME_FIELDS = ["minutes", "date", "note"] as const
+
 const CONVERT_LEAD_FIELDS = [
   "dealTitle",
   "dealStage",
@@ -320,6 +355,13 @@ const TASK_TARGET: AiVoiceActionTarget = {
   bindExpectedUpdatedAt: true,
 }
 
+/** Задача, К КОТОРОЙ что-то добавляют (см. bindExpectedUpdatedAt). */
+const TASK_PARENT_TARGET: AiVoiceActionTarget = {
+  entityType: "task",
+  requestField: "targetEntityId",
+  bindExpectedUpdatedAt: false,
+}
+
 const DEAL_TARGET: AiVoiceActionTarget = {
   entityType: "deal",
   requestField: "targetEntityId",
@@ -328,6 +370,11 @@ const DEAL_TARGET: AiVoiceActionTarget = {
 
 const WRITE_TASKS: readonly AiVoiceActionPermission[] = [
   { module: "tasks", action: "write", tenantModule: "crm" },
+]
+// Писать в задаче может тот, кто её читает, — как на экране
+// (POST /api/v1/tasks/[id]/comments стоит на tasks:read).
+const READ_TASKS: readonly AiVoiceActionPermission[] = [
+  { module: "tasks", action: "read", tenantModule: "crm" },
 ]
 const WRITE_LEADS: readonly AiVoiceActionPermission[] = [
   { module: "leads", action: "write", tenantModule: "sales" },
@@ -342,6 +389,43 @@ const CONVERT_LEAD_PERMISSIONS: readonly AiVoiceActionPermission[] = [
   ...WRITE_LEADS,
   ...WRITE_DEALS,
 ]
+
+/**
+ * Действие, которое добавляет что-то В задачу: результат — сама задача (на
+ * неё ведёт ссылка «готово»), цель — задача, к версии которой черновик не
+ * привязан. Права на поля задачи не проверяются: сообщение, подзадача и время
+ * — не поля карточки, а свои записи со своими правами (READ/WRITE_TASKS).
+ */
+function taskWorkEntry(input: {
+  actionType: AiVoiceActionType
+  command: AiVoiceActionCommand
+  commandSchema: z.ZodType
+  fields: readonly string[]
+  permissions: readonly AiVoiceActionPermission[]
+}): AiVoiceActionRegistryEntry {
+  return {
+    actionType: input.actionType,
+    command: input.command,
+    commandSchema: input.commandSchema,
+    allowedFields: input.fields,
+    permissions: input.permissions,
+    fieldPermissionEntity: "task",
+    fieldPermissionNames: () => [],
+    risk: "standard",
+    ttlMs: STANDARD_TTL_MS,
+    dedupePolicy: "idempotency_key",
+    target: TASK_PARENT_TARGET,
+    operation: "create",
+    resultEntityType: "task",
+    previewFields: input.fields,
+    renderPreview: createPreviewRenderer({
+      actionType: input.actionType,
+      operation: "create",
+      entityType: "task",
+      previewFields: input.fields,
+    }),
+  }
+}
 
 export const AI_VOICE_ACTION_REGISTRY: Readonly<Record<AiVoiceActionType, AiVoiceActionRegistryEntry>> = Object.freeze({
   create_task: {
@@ -542,6 +626,34 @@ export const AI_VOICE_ACTION_REGISTRY: Readonly<Record<AiVoiceActionType, AiVoic
       previewFields: CREATE_COMPANY_FIELDS,
     }),
   },
+  add_task_comment: taskWorkEntry({
+    actionType: "add_task_comment",
+    command: "addTaskCommentCommand",
+    commandSchema: addTaskCommentCommandSchema,
+    fields: ADD_TASK_COMMENT_FIELDS,
+    permissions: READ_TASKS,
+  }),
+  add_task_checklist_item: taskWorkEntry({
+    actionType: "add_task_checklist_item",
+    command: "addTaskChecklistItemCommand",
+    commandSchema: addTaskChecklistItemCommandSchema,
+    fields: ADD_TASK_CHECKLIST_ITEM_FIELDS,
+    permissions: WRITE_TASKS,
+  }),
+  set_task_checklist_item_done: taskWorkEntry({
+    actionType: "set_task_checklist_item_done",
+    command: "setTaskChecklistItemDoneCommand",
+    commandSchema: setTaskChecklistItemDoneCommandSchema,
+    fields: SET_TASK_CHECKLIST_ITEM_DONE_FIELDS,
+    permissions: WRITE_TASKS,
+  }),
+  log_task_time: taskWorkEntry({
+    actionType: "log_task_time",
+    command: "logTaskTimeCommand",
+    commandSchema: logTaskTimeCommandSchema,
+    fields: LOG_TASK_TIME_FIELDS,
+    permissions: WRITE_TASKS,
+  }),
 })
 
 const ACTION_TYPE_SET = new Set<string>(AI_VOICE_ACTION_TYPES)

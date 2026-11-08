@@ -10,6 +10,12 @@ import { updateTaskCommand } from "@/lib/crm-commands/task/update-task"
 import { updateDealCommand } from "@/lib/crm-commands/deal/update-deal"
 import { createCompanyCommand } from "@/lib/crm-commands/company/create-company"
 import {
+  addTaskChecklistItemCommand,
+  addTaskCommentCommand,
+  logTaskTimeCommand,
+  setTaskChecklistItemDoneCommand,
+} from "@/lib/crm-commands/task/task-work"
+import {
   dispatchCollectedCommandEffects,
   type CrmCommandPostCommitEffect,
 } from "@/lib/crm-commands/execution-context"
@@ -156,6 +162,23 @@ async function runCanonicalCommand(
     entityId = (await createDealCommand(actor, payload, execution)).entity.id
   } else if (intent.actionType === "create_company") {
     entityId = (await createCompanyCommand(actor, payload, execution)).entity.id
+  } else if (
+    intent.actionType === "add_task_comment"
+    || intent.actionType === "add_task_checklist_item"
+    || intent.actionType === "set_task_checklist_item_done"
+    || intent.actionType === "log_task_time"
+  ) {
+    // Работа внутри задачи: результат — сама задача (на неё ведёт «готово»).
+    if (!intent.targetEntityId) {
+      throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)
+    }
+    const taskWork = {
+      add_task_comment: addTaskCommentCommand,
+      add_task_checklist_item: addTaskChecklistItemCommand,
+      set_task_checklist_item_done: setTaskChecklistItemDoneCommand,
+      log_task_time: logTaskTimeCommand,
+    }[intent.actionType]
+    entityId = (await taskWork(actor, intent.targetEntityId, payload, execution)).task.id
   } else if (intent.actionType === "update_task") {
     if (!intent.targetEntityId) {
       throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)

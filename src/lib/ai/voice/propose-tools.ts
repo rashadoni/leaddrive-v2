@@ -35,6 +35,10 @@ export const VOICE_PROPOSE_TOOL_NAMES = [
   "propose_update_deal",
   "propose_move_deal_stage",
   "propose_create_company",
+  "propose_add_task_comment",
+  "propose_add_task_checklist_item",
+  "propose_set_task_checklist_item_done",
+  "propose_log_task_time",
 ] as const
 
 export type VoiceProposeToolName = (typeof VOICE_PROPOSE_TOOL_NAMES)[number]
@@ -50,6 +54,10 @@ export const VOICE_PROPOSE_ACTION_TYPES: Readonly<Record<VoiceProposeToolName, A
     propose_update_deal: "update_deal",
     propose_move_deal_stage: "move_deal_stage",
     propose_create_company: "create_company",
+    propose_add_task_comment: "add_task_comment",
+    propose_add_task_checklist_item: "add_task_checklist_item",
+    propose_set_task_checklist_item_done: "set_task_checklist_item_done",
+    propose_log_task_time: "log_task_time",
   })
 
 const personName = z.string().trim().min(2).max(120)
@@ -245,6 +253,44 @@ export const VOICE_PROPOSE_SCHEMAS = {
     /** Only when the user gave a reason for losing the deal. */
     lostReason: z.string().trim().max(500).optional(),
   }),
+  /*
+   * Работа внутри задачи (владелец 2026-11-08: «всё, что работник и начальник
+   * делают руками в CRM — через голосового помощника»). В Zeytun это самая
+   * частая ручная работа: сообщения, подзадачи и время в задачах.
+   *
+   * Задача — словами (`taskTitle`) или та, что открыта на экране, как у
+   * propose_update_task. Подзадача — тоже словами: сервер ищет её среди
+   * подзадач ЭТОЙ задачи. Упоминания (@) и порядок подзадач голосом не
+   * задаются: их выбирают на экране.
+   */
+  propose_add_task_comment: z.strictObject({
+    /** Omit for the task open on screen. */
+    taskTitle: shortText.optional(),
+    /** The message, in the user's words. */
+    content: z.string().trim().min(1).max(5000),
+  }),
+  propose_add_task_checklist_item: z.strictObject({
+    taskTitle: shortText.optional(),
+    /** What the subtask is. */
+    title: z.string().trim().min(1).max(500),
+    assigneeName: personName.optional(),
+    dueDate: day.optional(),
+  }),
+  propose_set_task_checklist_item_done: z.strictObject({
+    taskTitle: shortText.optional(),
+    /** The subtask as the user named it. */
+    itemTitle: shortText,
+    /** false to reopen a subtask that was ticked off. Defaults to done. */
+    completed: z.boolean().optional(),
+  }),
+  propose_log_task_time: z.strictObject({
+    taskTitle: shortText.optional(),
+    /** Minutes spent: "полтора часа" is 90. */
+    minutes: z.number().int().min(1).max(24 * 60),
+    /** The day the work was done, if not today. */
+    date: day.optional(),
+    note: z.string().trim().max(500).optional(),
+  }),
 } as const satisfies Record<VoiceProposeToolName, z.ZodTypeAny>
 
 export type VoiceProposeArgs<T extends VoiceProposeToolName> =
@@ -267,6 +313,14 @@ const DESCRIPTIONS: Readonly<Record<VoiceProposeToolName, string>> = {
     "Prepare a change to ONE existing deal for the user to confirm. This does NOT save anything. Omit dealName to change the deal currently open on the user's screen; otherwise give the name the user said. Send only the fields being changed. This tool cannot move the deal to another stage, pipeline or probability, and cannot mark it won or lost: say that this has to be done on screen.",
   propose_move_deal_stage:
     "Prepare moving ONE deal to another stage of its pipeline, for the user to confirm. This does NOT move anything yet. Omit dealName for the deal currently open on screen. Pass the stage in the user's own words; the CRM resolves it against that deal's pipeline and will ask the user to choose if it is not clear. Winning or losing a deal goes through this tool too — say plainly what the receipt shows before the user answers.",
+  propose_add_task_comment:
+    "Prepare a MESSAGE in ONE task's chat (a comment), for the user to confirm. This does NOT post anything. Omit taskTitle for the task open on screen; otherwise give the title the user said. content is the message in the user's own words — do not rewrite or translate it. Followers of the task will be notified when it is saved.",
+  propose_add_task_checklist_item:
+    "Prepare a new SUBTASK (checklist item) inside ONE task, for the user to confirm. This does NOT save anything. Omit taskTitle for the task open on screen. title is what the subtask is; add the assignee by name and a due date only if the user said them. Resolve relative dates to an absolute YYYY-MM-DD before calling. To create a separate task, use propose_create_task instead.",
+  propose_set_task_checklist_item_done:
+    "Prepare ticking off a SUBTASK (checklist item) of ONE task as done — or reopening it with completed false — for the user to confirm. This does NOT save anything. Omit taskTitle for the task open on screen. itemTitle is the subtask as the user named it; the CRM finds it among that task's subtasks and asks if it is unclear. To close the whole task, use propose_update_task with status done.",
+  propose_log_task_time:
+    "Prepare writing TIME spent on ONE task, for the user to confirm. This does NOT save anything. Omit taskTitle for the task open on screen. minutes is the time as a whole number of minutes (\"полтора часа\" = 90, \"iki saat\" = 120). Pass date (YYYY-MM-DD) only if the work was not done today, and a short note only if the user gave one.",
   propose_create_deal:
     "Prepare a NEW deal that does not come from a lead, for the user to confirm on screen. This does NOT create the deal: it shows a receipt the user confirms by saying yes or pressing the button. Name the company and contact as the user says them; never invent an id. Do not pass a stage, pipeline or probability — the CRM chooses them. If the user is converting an existing lead, use propose_convert_lead_to_deal instead.",
 }

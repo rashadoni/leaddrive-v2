@@ -4,6 +4,12 @@ import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { activeMembers, openTaskFor } from "@/lib/tasks/task-access"
+import { createRestActorContext } from "@/lib/crm-commands/actor-context"
+import {
+  addTaskChecklistItemCommand,
+  setTaskChecklistItemDoneCommand,
+} from "@/lib/crm-commands/task/task-work"
+import { crmCommandErrorResponse } from "@/lib/crm-commands/rest-response"
 
 /**
  * A task's subtasks (the checklist). Since 2026-11-07 a subtask has its own
@@ -12,13 +18,6 @@ import { activeMembers, openTaskFor } from "@/lib/tasks/task-access"
  * Reading needs the task to be open to the caller; changing needs tasks:write.
  */
 const isoDate = z.string().refine((value) => !Number.isNaN(Date.parse(value)), "Invalid date")
-
-const createItemSchema = z.object({
-  title: z.string().trim().min(1).max(500),
-  sortOrder: z.number().int().optional(),
-  assignedTo: z.string().min(1).max(64).nullable().optional(),
-  dueDate: isoDate.nullable().optional(),
-})
 
 const updateItemSchema = z.object({
   id: z.string(),
@@ -55,29 +54,16 @@ export const GET = withRlsAuth("tasks", "read", async (_req, auth, { params }: C
   return NextResponse.json({ success: true, data: items })
 })
 
+/** A new subtask — the same command the voice assistant uses. */
 export const POST = withRlsAuth("tasks", "write", async (req, auth, { params }: Ctx) => {
   const { id: taskId } = await params
-  const task = await openTaskFor(prisma, { organizationId: auth.orgId, userId: auth.userId, role: auth.role, taskId })
-  if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 })
-
-  const parsed = createItemSchema.safeParse(await req.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
-  const assigneeError = await checkAssignee(auth.orgId, parsed.data.assignedTo)
-  if (assigneeError) return NextResponse.json({ error: assigneeError }, { status: 400 })
-
-  const maxOrder = await prisma.taskChecklist.aggregate({ where: { taskId, organizationId: auth.orgId }, _max: { sortOrder: true } })
-  const item = await prisma.taskChecklist.create({
-    data: {
-      organizationId: auth.orgId,
-      taskId,
-      title: parsed.data.title,
-      sortOrder: parsed.data.sortOrder ?? (maxOrder._max.sortOrder ?? -1) + 1,
-      assignedTo: parsed.data.assignedTo ?? null,
-      dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : null,
-    },
-    include: itemInclude,
-  })
-  return NextResponse.json({ success: true, data: item }, { status: 201 })
+  const actor = createRestActorContext({ organizationId: auth.orgId, userId: auth.userId, role: auth.role })
+  try {
+    const { entity } = await addTaskChecklistItemCommand(actor, taskId, await req.json().catch(() => null))
+    return NextResponse.json({ success: true, data: entity }, { status: 201 })
+  } catch (error) {
+    return crmCommandErrorResponse(error)
+  }
 })
 
 export const PATCH = withRlsAuth("tasks", "write", async (req, auth, { params }: Ctx) => {
@@ -106,6 +92,21 @@ export const PATCH = withRlsAuth("tasks", "write", async (req, auth, { params }:
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   const assigneeError = await checkAssignee(auth.orgId, parsed.data.assignedTo)
   if (assigneeError) return NextResponse.json({ error: assigneeError }, { status: 400 })
+
+  // A plain tick — the one gesture voice also makes — runs the shared command,
+  // so the «closed the subtask» line in the time line has one author.
+  if (Object.keys(parsed.data).every((key) => key === "id" || key === "completed") && parsed.data.completed !== undefined) {
+    const actor = createRestActorContext({ organizationId: auth.orgId, userId: auth.userId, role: auth.role })
+    try {
+      const { entity } = await setTaskChecklistItemDoneCommand(actor, taskId, {
+        checklistItemId: parsed.data.id,
+        completed: parsed.data.completed,
+      })
+      return NextResponse.json({ success: true, data: entity })
+    } catch (error) {
+      return crmCommandErrorResponse(error)
+    }
+  }
 
   const { id: itemId, dueDate, completed, ...rest } = parsed.data
   const found = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {

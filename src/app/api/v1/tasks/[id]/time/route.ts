@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { openTaskFor } from "@/lib/tasks/task-access"
 import { timerMinutes } from "@/lib/tasks/task-feed"
+import { createRestActorContext } from "@/lib/crm-commands/actor-context"
+import { logTaskTimeCommand } from "@/lib/crm-commands/task/task-work"
+import { crmCommandErrorResponse } from "@/lib/crm-commands/rest-response"
 
 /**
  * Time on a task — Bordio's «Start timer» and «Log time» (owner, 2026-11-07).
@@ -60,6 +63,21 @@ export const POST = withRlsAuth("tasks", "write", async (req, auth, { params }: 
   const userId = auth.userId
   const now = new Date()
 
+  // Time written by hand — the same command the voice assistant uses.
+  if (parsed.data.action === "log") {
+    const { minutes, date, note } = parsed.data
+    try {
+      await logTaskTimeCommand(
+        createRestActorContext({ organizationId: auth.orgId, userId, role: auth.role }),
+        id,
+        { minutes, ...(date !== undefined ? { date } : {}), ...(note !== undefined ? { note } : {}) },
+      )
+    } catch (error) {
+      return crmCommandErrorResponse(error)
+    }
+    return NextResponse.json({ success: true, data: await summary(auth.orgId, id, auth.userId) })
+  }
+
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const running = await tx.taskTimeEntry.findFirst({ where: { organizationId: auth.orgId, userId, endedAt: null } })
     const close = async () => {
@@ -72,14 +90,6 @@ export const POST = withRlsAuth("tasks", "write", async (req, auth, { params }: 
       await tx.taskTimeEntry.create({ data: { organizationId: auth.orgId, taskId: id, userId, source: "timer", startedAt: now } })
     } else if (parsed.data.action === "stop") {
       if (running?.taskId === id) await close()
-    } else {
-      const at = parsed.data.date ? new Date(parsed.data.date) : now
-      await tx.taskTimeEntry.create({
-        data: {
-          organizationId: auth.orgId, taskId: id, userId, source: "manual",
-          startedAt: at, endedAt: at, minutes: parsed.data.minutes, note: parsed.data.note || null,
-        },
-      })
     }
   })
   return NextResponse.json({ success: true, data: await summary(auth.orgId, id, auth.userId) })
