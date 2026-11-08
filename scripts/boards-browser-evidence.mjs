@@ -194,7 +194,11 @@ async function main() {
     await page.waitForFunction(() => /\d+ nəticə/.test(document.body.innerText) || document.body.innerText.includes('girişiniz yoxdur'), null, { timeout: 180000 })
   }
   const resultCount = async (page) => Number((/(\d+) nəticə/.exec(await page.innerText('body')) ?? [])[1])
-  const folders = (page) => page.$$eval('[data-testid="sidebar-board-folder-toggle"]', (els) => els.map((el) => el.textContent?.trim()))
+  // The sidebar reads the board list on its own: wait for it, not just for the table.
+  const folders = async (page) => {
+    await page.waitForSelector('[data-testid="sidebar-board-folder-toggle"]', { timeout: 60000 })
+    return page.$$eval('[data-testid="sidebar-board-folder-toggle"]', (els) => els.map((el) => el.textContent?.trim()))
+  }
 
   await step('every role logs in with its own password', async () => {
     for (const key of ['admin', 'manager', 'marketer', 'marketerOld', 'clerk', 'boardsOnly', 'viewer']) await login(key)
