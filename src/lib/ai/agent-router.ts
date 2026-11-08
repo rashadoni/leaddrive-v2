@@ -11,38 +11,43 @@ const INTENT_TO_AGENT: Record<Intent, string> = {
   general: "general",
 }
 
-export async function routeToAgent(orgId: string, message: string, previousAgentId?: string) {
-  const { intent, confidence } = await classifyIntent(message)
-  const preferredType = INTENT_TO_AGENT[intent]
+type AgentRow = NonNullable<Awaited<ReturnType<typeof prisma.aiAgentConfig.findFirst>>>
 
-  // 1. Find specialized agent
-  let agent = await prisma.aiAgentConfig.findFirst({
-    where: {
-      organizationId: orgId,
-      isActive: true,
-      agentType: preferredType,
-    },
+/** The agent an intent lands on: its specialist, else a general agent, else any. */
+function agentFor(intent: Intent, agents: readonly AgentRow[]): AgentRow | null {
+  const preferredType = INTENT_TO_AGENT[intent]
+  return agents.find((agent) => agent.agentType === preferredType)
+    ?? agents.find((agent) => agent.agentType === "general")
+    ?? agents[0]
+    ?? null
+}
+
+/**
+ * Picks the org's agent for a chat message.
+ *
+ * The intent classifier is a model call (Haiku) in front of every Da Vinci
+ * answer, so it runs only when its answer can change the pick. On prod
+ * (2026-11-08) 10 of 13 organisations have no active agent or exactly one —
+ * Zeytun among them — and every intent lands on the same agent there; asking
+ * the model first only delayed the answer's first word.
+ *
+ * The internal chat NEVER gets the omnichannel "inbox" persona (e.g. the
+ * Gobustone social greeting + menu): it is customer-facing and belongs only
+ * to generateChannelAiReply.
+ */
+export async function routeToAgent(orgId: string, message: string, previousAgentId?: string) {
+  const agents: AgentRow[] = await prisma.aiAgentConfig.findMany({
+    where: { organizationId: orgId, isActive: true, agentType: { not: "inbox" } },
     orderBy: { priority: "desc" },
   })
 
-  // 2. Fallback: general agent
-  if (!agent) {
-    agent = await prisma.aiAgentConfig.findFirst({
-      where: { organizationId: orgId, isActive: true, agentType: "general" },
-      orderBy: { priority: "desc" },
-    })
-  }
-
-  // 3. Last-resort fallback: any active agent — but NEVER the omnichannel "inbox" persona.
-  //    The inbox agent (e.g. the "Gobustone" social greeting + menu) is customer-facing and
-  //    belongs ONLY to generateChannelAiReply; it must not bleed into the internal CRM in-app
-  //    chat. Excluding it keeps the per-group-agent boundary (same fix as whatsapp/portal).
-  if (!agent) {
-    agent = await prisma.aiAgentConfig.findFirst({
-      where: { organizationId: orgId, isActive: true, agentType: { not: "inbox" } },
-      orderBy: { priority: "desc" },
-    })
-  }
+  const intents = Object.keys(INTENT_TO_AGENT) as Intent[]
+  const outcomes = new Set(intents.map((intent) => agentFor(intent, agents)?.id ?? null))
+  const { intent, confidence } = outcomes.size > 1
+    ? await classifyIntent(message)
+    // Nothing to choose between: no model call, and no claim about the intent.
+    : { intent: "general" as Intent, confidence: 1 }
+  const agent = agentFor(intent, agents)
 
   return {
     agent,
