@@ -179,6 +179,12 @@ export function geminiLiveSystemInstruction(
          * Сообщение, подзадача, отметка подзадачи и время — четыре разных
          * инструмента, и «закрой задачу» среди них нет: это propose_update_task.
          */
+        /*
+         * Начальник в «Маршрутах и поле» (этап 2, владелец 2026-11-08):
+         * полевая задача, сообщение агенту, решение по заявке сотрудника.
+         * Полевой сотрудник — не коллега в CRM: задача ему — не задача CRM.
+         */
+        "Field team (route & field): propose_give_field_task gives a field employee (agent) a task in three parts — who, what, by when (today, tomorrow, none or a date); a task for a CRM colleague is propose_create_task instead. propose_send_field_message writes a personal message to an agent's phone. propose_decide_attendance_request approves or rejects an employee's leave, sick-leave, time-off, trip, remote-work, overtime or time-correction request; a rejection needs a reason the employee will read, so ask for it first. Name people as the user says them; the CRM finds them in the user's own team and asks if a name fits several.",
         "Work inside a task: propose_add_task_comment posts a message in the task's chat (\"напиши в задаче\", \"оставь комментарий\", \"tapşırığa yaz\"); propose_add_task_checklist_item adds a subtask; propose_set_task_checklist_item_done ticks a subtask off, or reopens it with completed false; propose_log_task_time writes the time spent (\"запиши полтора часа\" is 90 minutes). Omit taskTitle for the task open on screen. Keep a dictated message in the user's own words. Closing the WHOLE task is propose_update_task with status done, not a subtask.",
         "Changing a record: propose_update_lead, propose_update_task and propose_update_deal change the lead, task or deal open on screen, or the one the user names. Send only the fields the user is changing. \"Close the task\" or \"mark it done\" is status done; \"move it to Friday\" is a new due date. A deal's pipeline and probability cannot be changed by voice.",
         // Owner, 2026-09-28: moving a deal by voice, including winning it.

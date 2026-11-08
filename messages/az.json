@@ -29270,7 +29270,11 @@
       "completed": "Tamamlanıb",
       "minutes": "Dəqiqə",
       "date": "Tarix",
-      "note": "Qeyd"
+      "note": "Qeyd",
+      "agentId": "Əməkdaş",
+      "body": "Mesaj",
+      "attendanceRequestId": "Sorğu",
+      "decision": "Qərar"
     },
     "values": {
       "status": {
@@ -29302,6 +29306,10 @@
         "contact": "Kontakt",
         "company": "Şirkət",
         "ticket": "Müraciət"
+      },
+      "decision": {
+        "APPROVED": "Təsdiqlə",
+        "REJECTED": "Rədd et"
       }
     }
   },
@@ -29347,7 +29355,10 @@
         "add_task_comment": "Tapşırıqda mesaj",
         "add_task_checklist_item": "Alt tapşırıq əlavə et",
         "set_task_checklist_item_done": "Alt tapşırığı qeyd et",
-        "log_task_time": "Vaxtı yaz"
+        "log_task_time": "Vaxtı yaz",
+        "give_field_task": "Agentə sahə tapşırığı",
+        "send_field_message": "Agentə mesaj",
+        "decide_attendance_request": "Sorğu üzrə qərar"
       },
       "confirm": {
         "create_task": "Tapşırıq yarat",
@@ -29362,7 +29373,10 @@
         "add_task_comment": "Mesajı göndər",
         "add_task_checklist_item": "Alt tapşırıq əlavə et",
         "set_task_checklist_item_done": "Qeydi saxla",
-        "log_task_time": "Vaxtı yaz"
+        "log_task_time": "Vaxtı yaz",
+        "give_field_task": "Tapşırığı ver",
+        "send_field_message": "Agentə göndər",
+        "decide_attendance_request": "Qərarı saxla"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "Oxşar qeyd artq mövcuddur:",

@@ -39,6 +39,9 @@ export const VOICE_PROPOSE_TOOL_NAMES = [
   "propose_add_task_checklist_item",
   "propose_set_task_checklist_item_done",
   "propose_log_task_time",
+  "propose_give_field_task",
+  "propose_send_field_message",
+  "propose_decide_attendance_request",
 ] as const
 
 export type VoiceProposeToolName = (typeof VOICE_PROPOSE_TOOL_NAMES)[number]
@@ -58,6 +61,9 @@ export const VOICE_PROPOSE_ACTION_TYPES: Readonly<Record<VoiceProposeToolName, A
     propose_add_task_checklist_item: "add_task_checklist_item",
     propose_set_task_checklist_item_done: "set_task_checklist_item_done",
     propose_log_task_time: "log_task_time",
+    propose_give_field_task: "give_field_task",
+    propose_send_field_message: "send_field_message",
+    propose_decide_attendance_request: "decide_attendance_request",
   })
 
 const personName = z.string().trim().min(2).max(120)
@@ -291,6 +297,37 @@ export const VOICE_PROPOSE_SCHEMAS = {
     date: day.optional(),
     note: z.string().trim().max(500).optional(),
   }),
+  /*
+   * Начальник в «Маршрутах и поле» (этап 2, владелец 2026-11-08). Агент —
+   * по имени, как его называет начальник; сервер ищет его в СВОЕЙ команде
+   * начальника и спрашивает, если имя подходит нескольким.
+   */
+  propose_give_field_task: z.strictObject({
+    agentName: personName,
+    /** What the agent has to do. */
+    title: z.string().trim().min(1).max(200),
+    /** today, tomorrow, none (no deadline) or a YYYY-MM-DD day. */
+    due: z.string().trim().regex(/^(today|tomorrow|none|\d{4}-\d{2}-\d{2})$/, "Use today, tomorrow, none or YYYY-MM-DD").optional(),
+  }),
+  propose_send_field_message: z.strictObject({
+    agentName: personName,
+    /** The message, in the user's own words. */
+    message: z.string().trim().min(1).max(4000),
+  }),
+  propose_decide_attendance_request: z.strictObject({
+    /** Whose request: the employee as the user names him. */
+    agentName: personName,
+    decision: z.enum(["approve", "reject"]),
+    /** Required to reject: the employee is told why. */
+    reason: z.string().trim().min(3).max(1000).optional(),
+    /** Only when the employee has several open requests. */
+    kind: z.enum([
+      "ANNUAL_LEAVE", "SICK_LEAVE", "TIME_OFF", "HOURLY_ABSENCE",
+      "BUSINESS_TRIP", "REMOTE_WORK", "OVERTIME", "TIME_CORRECTION",
+    ]).optional(),
+    /** Only when several requests of one kind are open: their first day. */
+    startDate: day.optional(),
+  }),
 } as const satisfies Record<VoiceProposeToolName, z.ZodTypeAny>
 
 export type VoiceProposeArgs<T extends VoiceProposeToolName> =
@@ -321,6 +358,12 @@ const DESCRIPTIONS: Readonly<Record<VoiceProposeToolName, string>> = {
     "Prepare ticking off a SUBTASK (checklist item) of ONE task as done — or reopening it with completed false — for the user to confirm. This does NOT save anything. Omit taskTitle for the task open on screen. itemTitle is the subtask as the user named it; the CRM finds it among that task's subtasks and asks if it is unclear. To close the whole task, use propose_update_task with status done.",
   propose_log_task_time:
     "Prepare writing TIME spent on ONE task, for the user to confirm. This does NOT save anything. Omit taskTitle for the task open on screen. minutes is the time as a whole number of minutes (\"полтора часа\" = 90, \"iki saat\" = 120). Pass date (YYYY-MM-DD) only if the work was not done today, and a short note only if the user gave one.",
+  propose_give_field_task:
+    "Prepare a FIELD TASK for one field employee (agent) of the user's team, for the user to confirm. This does NOT create anything. Three things, as on the Field tasks screen: agentName as the user said it, title (what to do) and due — today, tomorrow, none, or a YYYY-MM-DD day; the CRM turns a day into its 18:00 deadline. The agent gets a notification on the phone once it is saved. For an office task in the CRM, use propose_create_task instead.",
+  propose_send_field_message:
+    "Prepare a personal MESSAGE to one field employee (agent) of the user's team, for the user to confirm. This does NOT send anything. agentName as the user said it; message in the user's own words — do not rewrite or translate it. It goes to the agent's phone once confirmed.",
+  propose_decide_attendance_request:
+    "Prepare a DECISION on an employee's attendance request (leave, sick leave, time off, business trip, remote work, overtime, time correction), for the user to confirm. This does NOT decide anything. agentName is whose request; decision approve or reject. Rejecting needs a reason — ask the user for it before calling. If the CRM answers that the employee has several open requests, ask which one and call again with kind (and startDate if needed).",
   propose_create_deal:
     "Prepare a NEW deal that does not come from a lead, for the user to confirm on screen. This does NOT create the deal: it shows a receipt the user confirms by saying yes or pressing the button. Name the company and contact as the user says them; never invent an id. Do not pass a stage, pipeline or probability — the CRM chooses them. If the user is converting an existing lead, use propose_convert_lead_to_deal instead.",
 }

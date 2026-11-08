@@ -16,6 +16,11 @@ import {
 } from "@/lib/crm-commands/schemas/lead"
 import { createDealCommandSchema, updateDealCommandSchema } from "@/lib/crm-commands/schemas/deal"
 import { createCompanyCommandSchema } from "@/lib/crm-commands/schemas/company"
+import {
+  decideAttendanceRequestCommandSchema,
+  giveFieldTaskCommandSchema,
+  sendFieldMessageCommandSchema,
+} from "@/lib/crm-commands/schemas/mtm"
 import { DEFAULT_AI_ACTION_INTENT_TTL_MS } from "./action-intent"
 
 export const AI_VOICE_ACTION_TYPES = [
@@ -33,6 +38,10 @@ export const AI_VOICE_ACTION_TYPES = [
   "add_task_checklist_item",
   "set_task_checklist_item_done",
   "log_task_time",
+  // Начальник в «Маршрутах и поле» (этап 2, владелец 2026-11-08).
+  "give_field_task",
+  "send_field_message",
+  "decide_attendance_request",
 ] as const
 
 export type AiVoiceActionType = (typeof AI_VOICE_ACTION_TYPES)[number]
@@ -51,6 +60,9 @@ export type AiVoiceActionCommand =
   | "addTaskChecklistItemCommand"
   | "setTaskChecklistItemDoneCommand"
   | "logTaskTimeCommand"
+  | "giveFieldTaskCommand"
+  | "sendFieldMessageCommand"
+  | "decideAttendanceRequestCommand"
 export type AiVoiceActionDedupePolicy =
   | "idempotency_key"
   | "lead_contact_coordinates"
@@ -60,7 +72,14 @@ export type AiVoiceActionDedupePolicy =
 export type AiVoiceActionPermission = Readonly<{
   module: Module
   action: Action
-  tenantModule: ModuleId
+  /** Модуль тенанта, без которого действия нет. */
+  tenantModule?: ModuleId
+  /**
+   * Возможность тенанта («Маршруты и поле», «Персонал»): эти разделы
+   * включаются не модулем, а возможностью, и её же проверяет экран
+   * (with-mtm-rls-auth.ts). Скрытая от человека возможность — тоже отказ.
+   */
+  tenantCapability?: "route-field" | "personnel"
 }>
 
 /**
@@ -68,7 +87,11 @@ export type AiVoiceActionPermission = Readonly<{
  * 2026-11-06: «создай клиента» до этого превращалось в ЛИД, потому что
  * создавать компанию голосом было нечем.
  */
-export type AiVoiceActionEntityType = "task" | "lead" | "deal" | "company"
+export type AiVoiceActionEntityType =
+  | "task" | "lead" | "deal" | "company"
+  // Записи «Маршрутов и поля» (этап 2): полевая задача, сообщение агенту,
+  // заявка сотрудника.
+  | "mtm_task" | "mtm_message" | "mtm_attendance_request"
 
 /** The kinds of record a voice update may target. */
 export type AiVoiceActionTargetType = "lead" | "task" | "deal"
@@ -282,6 +305,12 @@ const ADD_TASK_CHECKLIST_ITEM_FIELDS = ["title", "assignedTo", "dueDate"] as con
 const SET_TASK_CHECKLIST_ITEM_DONE_FIELDS = ["checklistItemId", "completed"] as const
 const LOG_TASK_TIME_FIELDS = ["minutes", "date", "note"] as const
 
+// Начальник в «Маршрутах и поле». Агента и заявку сервер находит сам по
+// словам человека (propose-resolve.ts); модель идентификаторов не видит.
+const GIVE_FIELD_TASK_FIELDS = ["agentId", "title", "dueDate"] as const
+const SEND_FIELD_MESSAGE_FIELDS = ["agentId", "body"] as const
+const DECIDE_ATTENDANCE_REQUEST_FIELDS = ["attendanceRequestId", "decision", "note", "expectedUpdatedAt"] as const
+
 const CONVERT_LEAD_FIELDS = [
   "dealTitle",
   "dealStage",
@@ -385,6 +414,17 @@ const WRITE_DEALS: readonly AiVoiceActionPermission[] = [
 const WRITE_COMPANIES: readonly AiVoiceActionPermission[] = [
   { module: "companies", action: "write", tenantModule: "crm" },
 ]
+const WRITE_ROUTE_FIELD: readonly AiVoiceActionPermission[] = [
+  { module: "mtm", action: "write", tenantCapability: "route-field" },
+]
+// Сообщение агенту живёт на «Операциях» — под модулем mtm, как экран
+// (POST /api/v1/mtm/operations/messages стоит на withMtmRlsAuth("mtm")).
+const WRITE_MTM: readonly AiVoiceActionPermission[] = [
+  { module: "mtm", action: "write", tenantModule: "mtm" },
+]
+const WRITE_PERSONNEL: readonly AiVoiceActionPermission[] = [
+  { module: "mtm", action: "write", tenantCapability: "personnel" },
+]
 const CONVERT_LEAD_PERMISSIONS: readonly AiVoiceActionPermission[] = [
   ...WRITE_LEADS,
   ...WRITE_DEALS,
@@ -423,6 +463,46 @@ function taskWorkEntry(input: {
       operation: "create",
       entityType: "task",
       previewFields: input.fields,
+    }),
+  }
+}
+
+/**
+ * Действие начальника в «Маршрутах и поле»: без цели-записи CRM (агента и
+ * заявку сервер кладёт в полезную нагрузку сам), результат — запись MTM.
+ * Права на поля CRM не при чём: команды MTM проверяют роль и команду
+ * начальника сами.
+ */
+function managerEntry(input: {
+  actionType: AiVoiceActionType
+  command: AiVoiceActionCommand
+  commandSchema: z.ZodType
+  fields: readonly string[]
+  permissions: readonly AiVoiceActionPermission[]
+  resultEntityType: AiVoiceActionEntityType
+  risk: AiVoiceActionRisk
+}): AiVoiceActionRegistryEntry {
+  const previewFields = input.fields.filter((field) => field !== "expectedUpdatedAt")
+  return {
+    actionType: input.actionType,
+    command: input.command,
+    commandSchema: input.commandSchema,
+    allowedFields: input.fields,
+    permissions: input.permissions,
+    fieldPermissionEntity: input.resultEntityType,
+    fieldPermissionNames: () => [],
+    risk: input.risk,
+    ttlMs: input.risk === "sensitive" ? SENSITIVE_TTL_MS : STANDARD_TTL_MS,
+    dedupePolicy: "idempotency_key",
+    target: null,
+    operation: "create",
+    resultEntityType: input.resultEntityType,
+    previewFields,
+    renderPreview: createPreviewRenderer({
+      actionType: input.actionType,
+      operation: "create",
+      entityType: input.resultEntityType,
+      previewFields,
     }),
   }
 }
@@ -653,6 +733,35 @@ export const AI_VOICE_ACTION_REGISTRY: Readonly<Record<AiVoiceActionType, AiVoic
     commandSchema: logTaskTimeCommandSchema,
     fields: LOG_TASK_TIME_FIELDS,
     permissions: WRITE_TASKS,
+  }),
+  give_field_task: managerEntry({
+    actionType: "give_field_task",
+    command: "giveFieldTaskCommand",
+    commandSchema: giveFieldTaskCommandSchema,
+    fields: GIVE_FIELD_TASK_FIELDS,
+    permissions: WRITE_ROUTE_FIELD,
+    resultEntityType: "mtm_task",
+    risk: "standard",
+  }),
+  send_field_message: managerEntry({
+    actionType: "send_field_message",
+    command: "sendFieldMessageCommand",
+    commandSchema: sendFieldMessageCommandSchema,
+    fields: SEND_FIELD_MESSAGE_FIELDS,
+    permissions: WRITE_MTM,
+    resultEntityType: "mtm_message",
+    risk: "standard",
+  }),
+  // Решение о чужом рабочем времени и деньгах (отпуск, больничный): короткий
+  // срок квитанции, как у правок записей.
+  decide_attendance_request: managerEntry({
+    actionType: "decide_attendance_request",
+    command: "decideAttendanceRequestCommand",
+    commandSchema: decideAttendanceRequestCommandSchema,
+    fields: DECIDE_ATTENDANCE_REQUEST_FIELDS,
+    permissions: WRITE_PERSONNEL,
+    resultEntityType: "mtm_attendance_request",
+    risk: "sensitive",
   }),
 })
 

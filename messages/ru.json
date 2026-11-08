@@ -29274,7 +29274,11 @@
       "completed": "Выполнена",
       "minutes": "Минут",
       "date": "Дата",
-      "note": "Примечание"
+      "note": "Примечание",
+      "agentId": "Сотрудник",
+      "body": "Сообщение",
+      "attendanceRequestId": "Заявка",
+      "decision": "Решение"
     },
     "values": {
       "status": {
@@ -29306,6 +29310,10 @@
         "contact": "Контакт",
         "company": "Компания",
         "ticket": "Обращение"
+      },
+      "decision": {
+        "APPROVED": "Одобрить",
+        "REJECTED": "Отклонить"
       }
     }
   },
@@ -29351,7 +29359,10 @@
         "add_task_comment": "Сообщение в задаче",
         "add_task_checklist_item": "Добавить подзадачу",
         "set_task_checklist_item_done": "Отметить подзадачу",
-        "log_task_time": "Записать время"
+        "log_task_time": "Записать время",
+        "give_field_task": "Полевая задача агенту",
+        "send_field_message": "Сообщение агенту",
+        "decide_attendance_request": "Решение по заявке"
       },
       "confirm": {
         "create_task": "Создать задачу",
@@ -29366,7 +29377,10 @@
         "add_task_comment": "Отправить сообщение",
         "add_task_checklist_item": "Добавить подзадачу",
         "set_task_checklist_item_done": "Сохранить отметку",
-        "log_task_time": "Записать время"
+        "log_task_time": "Записать время",
+        "give_field_task": "Дать задачу",
+        "send_field_message": "Отправить агенту",
+        "decide_attendance_request": "Сохранить решение"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "Похожая запись уже есть:",

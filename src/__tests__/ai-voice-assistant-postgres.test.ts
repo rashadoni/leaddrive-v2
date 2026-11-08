@@ -2593,4 +2593,190 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
       expect(spent.data.totalMinutes).toBe(90)
     })
   })
+
+  /**
+   * Начальник в «Маршрутах и поле» голосом (этап 2, владелец 2026-11-08):
+   * полевая задача агенту, сообщение агенту, решение по заявке сотрудника.
+   *
+   * Здесь всё настоящее, кроме микрофона: возможности тенанта читаются из
+   * строки организации, решение по заявке идёт через ту же функцию, что кнопки
+   * экрана «Решения» (блокировки, журнал, колокольчик сотрудника).
+   */
+  describe("сценарий: начальник в поле", () => {
+    const ELVIRA = "field-elvira"
+    const LEAVE = "11111111-1111-4111-8111-111111111111"
+    const LATE = "22222222-2222-4222-8222-222222222222"
+
+    function leaveDetails(kind: string) {
+      return {
+        version: 1,
+        kind,
+        unit: "DAYS",
+        startTime: null,
+        endTime: null,
+        timezone: "Asia/Baku",
+        dayKind: {
+          key: "ANNUAL_LEAVE", code: "M", color: "#22c55e", group: "PAID_LEAVE", paid: true,
+          unit: "DAYS", countsAsWorked: false, archived: false,
+          names: { az: "Məzuniyyət", ru: "Отпуск", en: "Annual leave" },
+        },
+        attachmentIds: [],
+        submissionHash: "a".repeat(64),
+      }
+    }
+
+    beforeAll(async () => {
+      await bypass(async () => {
+        // «Маршруты и поле» и «Персонал» включаются возможностями тенанта —
+        // их читает настоящая проверка, а не мок модулей.
+        await prisma.organization.update({
+          where: { id: ORG },
+          data: { features: ["route-field", "personnel"], modules: { mtm: true } },
+        })
+        await prisma.mtmSetting.create({ data: { organizationId: ORG, key: "attendanceEnabled", value: true } })
+        await prisma.mtmAgent.createMany({
+          data: [
+            { id: ELVIRA, organizationId: ORG, name: "Elvira Hasanova", role: "AGENT", status: "ACTIVE" },
+            { id: "field-aytan-1", organizationId: ORG, name: "Aytan Mushkurova", role: "AGENT", status: "ACTIVE" },
+            { id: "field-aytan-2", organizationId: ORG, name: "Aytan Quliyeva", role: "AGENT", status: "ACTIVE" },
+          ],
+        })
+        await prisma.mtmHrmRequest.create({
+          data: {
+            id: LEAVE, organizationId: ORG, agentId: ELVIRA, clientRequestId: "33333333-3333-4333-8333-333333333333",
+            type: "LEAVE", startDate: new Date("2026-11-20"), endDate: new Date("2026-11-21"),
+            reason: "Ailə işi", attendanceDetails: leaveDetails("ANNUAL_LEAVE"), submittedAt: new Date(),
+          },
+        })
+        await prisma.mtmHrmRequest.create({
+          data: {
+            id: LATE, organizationId: ORG, agentId: "field-aytan-1", clientRequestId: "44444444-4444-4444-8444-444444444444",
+            type: "LEAVE", startDate: new Date("2026-11-25"), endDate: new Date("2026-11-25"),
+            reason: "Həkim", attendanceDetails: leaveDetails("TIME_OFF"), submittedAt: new Date(),
+          },
+        })
+      })
+    })
+
+    async function waitFor(count: () => Promise<number>): Promise<number> {
+      let seen = 0
+      for (let attempt = 0; attempt < 40 && seen === 0; attempt += 1) {
+        seen = await count()
+        if (seen === 0) await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+      return seen
+    }
+
+    it("«дай Эльвире задачу на завтра»: задача агенту со сроком 18:00, и агент узнаёт о ней", async () => {
+      const receipt = await propose("propose_give_field_task", {
+        agentName: "Elvira", title: "Aptek 92-yə baş çək", due: "tomorrow",
+      })
+      expect(receipt.status).toBe(201)
+      // Агент — именем, а не идентификатором.
+      const agentField = receipt.body.data!.preview.fields!.find((field) => field.key === "agentId") as
+        { after: unknown; afterLabel?: string }
+      expect([agentField.after, agentField.afterLabel]).toEqual([ELVIRA, "Elvira Hasanova"])
+      // «Завтра» — это 18:00 завтрашнего дня по часам компании (task-quick-due.ts).
+      const due = new Date(String(previewField(receipt.body.data!, "dueDate")))
+      expect(due.toLocaleTimeString("en-GB", { timeZone: "Asia/Baku", hour: "2-digit", minute: "2-digit" })).toBe("18:00")
+      expect(await bypass(() => prisma.mtmTask.count({ where: { organizationId: ORG } }))).toBe(0)
+
+      expect((await pressCreate(receipt.body.data!)).status).toBe(200)
+      const task = await bypass(() => prisma.mtmTask.findFirstOrThrow({
+        where: { organizationId: ORG }, include: { events: true },
+      }))
+      expect([task.agentId, task.title, task.status, task.dueDate?.toISOString()])
+        .toEqual([ELVIRA, "Aptek 92-yə baş çək", "PENDING", due.toISOString()])
+      expect(task.events.map((event) => [event.type, (event.evidence as { channel?: string }).channel]))
+        .toEqual([["CREATED", "voice"]])
+      expect(await bypass(() => prisma.mtmAuditLog.count({
+        where: { organizationId: ORG, action: "TASK_CREATE", entityId: task.id, actorUserId: USER },
+      }))).toBe(1)
+      // Колокольчик агента — после коммита, в фоне.
+      expect(await waitFor(() => bypass(() => prisma.mtmNotification.count({
+        where: { organizationId: ORG, agentId: ELVIRA },
+      })))).toBeGreaterThan(0)
+    })
+
+    it("две Айтан — вопрос с обеими, а не первая попавшаяся", async () => {
+      const asked = await propose("propose_give_field_task", { agentName: "Aytan", title: "Hesabat", due: "today" })
+      expect(asked.status).toBe(200)
+      expect(asked.body.code).toBe("FIELD_AGENT_AMBIGUOUS")
+      expect([...(asked.body.candidates ?? [])].sort()).toEqual(["Aytan Mushkurova", "Aytan Quliyeva"])
+      expect(await activeReceipt()).toBeNull()
+    })
+
+    it("сообщение агенту уходит в его личную переписку от имени начальника", async () => {
+      const receipt = await propose("propose_send_field_message", { agentName: "Elvira", message: "Sabah 9-da ofisdə ol" })
+      expect(receipt.status).toBe(201)
+      expect(previewField(receipt.body.data!, "body")).toBe("Sabah 9-da ofisdə ol")
+      expect((await pressCreate(receipt.body.data!)).status).toBe(200)
+      const messages = await bypass(() => prisma.mtmMessage.findMany({
+        where: { organizationId: ORG }, include: { thread: true },
+      }))
+      expect(messages.map((message) => [message.body, message.senderUserId, message.senderName, message.thread.type]))
+        .toEqual([["Sabah 9-da ofisdə ol", USER, "Owner", "DIRECT"]])
+      expect(await bypass(() => prisma.mtmAuditLog.count({
+        where: { organizationId: ORG, action: "MESSAGE_DIRECT_SEND" },
+      }))).toBe(1)
+    })
+
+    it("отказ без причины не готовится; одобрение идёт через «Решения» — с колокольчиком сотрудника", async () => {
+      const noReason = await propose("propose_decide_attendance_request", { agentName: "Elvira", decision: "reject" })
+      expect(noReason.status).toBe(400)
+      expect(await activeReceipt()).toBeNull()
+
+      const receipt = await propose("propose_decide_attendance_request", { agentName: "Elvira", decision: "approve" })
+      expect(receipt.status).toBe(201)
+      const requestField = receipt.body.data!.preview.fields!.find((field) => field.key === "attendanceRequestId") as
+        { after: unknown; afterLabel?: string }
+      expect([requestField.after, requestField.afterLabel])
+        .toEqual([LEAVE, "Elvira Hasanova · ANNUAL_LEAVE · 2026-11-20 – 2026-11-21"])
+      expect(previewField(receipt.body.data!, "decision")).toBe("APPROVED")
+
+      expect((await pressCreate(receipt.body.data!)).status).toBe(200)
+      const decided = await bypass(() => prisma.mtmHrmRequest.findUniqueOrThrow({ where: { id: LEAVE } }))
+      expect([decided.status, decided.decidedByUserId]).toEqual(["APPROVED", USER])
+      expect(await bypass(() => prisma.mtmAuditLog.count({
+        where: { organizationId: ORG, action: "MTM_ATTENDANCE_REQUEST_DECIDED", entityId: LEAVE },
+      }))).toBe(1)
+      expect(await bypass(() => prisma.mtmNotification.count({
+        where: { organizationId: ORG, agentId: ELVIRA, metadata: { path: ["attendanceRequestId"], equals: LEAVE } },
+      }))).toBe(1)
+    })
+
+    it("заявку изменили, пока висела квитанция, — решение не уходит вслепую", async () => {
+      const receipt = await propose("propose_decide_attendance_request", {
+        agentName: "Mushkurova", decision: "reject", reason: "Həmin gün audit var",
+      })
+      expect(receipt.status).toBe(201)
+      await bypass(() => prisma.mtmHrmRequest.update({ where: { id: LATE }, data: { reason: "Həkim, arayış var" } }))
+
+      expect((await pressCreate(receipt.body.data!)).status).toBe(409)
+      expect((await bypass(() => prisma.mtmHrmRequest.findUniqueOrThrow({ where: { id: LATE } }))).status).toBe("PENDING")
+    })
+
+    it("пользователь CRM без карточки начальника в поле — отказ словами, и ничего не создано", async () => {
+      auth.userId = "user-colleague"
+      ;(auth as { role: string }).role = "manager"
+      try {
+        const colleagueSession = await bypass(() => prisma.voiceSession.create({
+          data: {
+            organizationId: ORG, userId: "user-colleague", status: "active",
+            reservedSeconds: 600, expiresAt: new Date(Date.now() + 600_000),
+          },
+        }))
+        const refused = await propose(
+          "propose_give_field_task",
+          { agentName: "Elvira", title: "Başqa iş", due: "today" },
+          { voiceSessionId: colleagueSession.id },
+        )
+        expect(refused.status).toBe(400)
+        expect(await bypass(() => prisma.mtmTask.count({ where: { organizationId: ORG, title: "Başqa iş" } }))).toBe(0)
+      } finally {
+        auth.userId = USER
+        ;(auth as { role: string }).role = "admin"
+      }
+    })
+  })
 })
