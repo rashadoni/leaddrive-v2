@@ -81,10 +81,10 @@ function activeSchedules(crontab: string, endpoint: string) {
 describe("durable Social Monitoring queue schedule", () => {
   it("installs a dedicated five-minute runner without accelerating cadence collection", () => {
     expect(script).toContain(
-      "*/5 * * * * $TRIGGER /api/cron/social-monitoring-run-jobs",
+      "3-59/5 * * * * $TRIGGER /api/cron/social-monitoring-run-jobs",
     )
     expect(script).toContain(
-      "*/5 * * * * $TRIGGER /api/cron/social-monitoring-sources",
+      "4-59/5 * * * * $TRIGGER /api/cron/social-monitoring-sources",
     )
   })
 
@@ -110,11 +110,11 @@ describe("durable Social Monitoring queue schedule", () => {
       expect(lines).toHaveLength(1)
       return lines[0].split(" ").slice(0, 5).join(" ")
     }
-    expect(only("/api/cron/social-monitoring-run-jobs")).toBe("*/5 * * * *")
-    expect(only("/api/v1/social/cron/process-outbound")).toBe("*/5 * * * *")
-    expect(only("/api/v1/social/cron/process-media")).toBe("*/5 * * * *")
-    expect(only("/api/v1/social/cron/reconcile-providers")).toBe("*/15 * * * *")
-    expect(only("/api/cron/social-monitoring-sources")).toBe("*/5 * * * *")
+    expect(only("/api/cron/social-monitoring-run-jobs")).toBe("3-59/5 * * * *")
+    expect(only("/api/v1/social/cron/process-outbound")).toBe("4-59/5 * * * *")
+    expect(only("/api/v1/social/cron/process-media")).toBe("4-59/5 * * * *")
+    expect(only("/api/v1/social/cron/reconcile-providers")).toBe("10-59/15 * * * *")
+    expect(only("/api/cron/social-monitoring-sources")).toBe("4-59/5 * * * *")
     expect(only("/api/v1/social/cron/purge-observations")).toBe("25 3 * * *")
   })
 
@@ -309,7 +309,7 @@ describe("manual callback commitment reminder schedule", () => {
 describe("MTM mobile sync retention schedule", () => {
   it("installs one bounded retention heartbeat and removes legacy duplicates", () => {
     expect(script).toContain(
-      "*/15 * * * * $TRIGGER /api/cron/mtm-cleanup",
+      "5-59/15 * * * * $TRIGGER /api/cron/mtm-cleanup",
     )
 
     const installed = installCrontab(`# BEGIN LEADDRIVE RESILIENCE CRONS

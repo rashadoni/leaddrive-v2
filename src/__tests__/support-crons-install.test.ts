@@ -66,14 +66,14 @@ describe("Support schedules on the production host", () => {
   it("runs escalation rules every five minutes and the auto-close sweep hourly", () => {
     const installed = installCrontab("")
 
-    expect(activeSchedules(installed, ESCALATION)).toEqual(["*/5 * * * *"])
+    expect(activeSchedules(installed, ESCALATION)).toEqual(["3-59/5 * * * *"])
     expect(activeSchedules(installed, AUTO_CLOSE)).toEqual(["37 * * * *"])
   })
 
   it("keeps exactly one of each after the installer runs again", () => {
     const reinstalled = installCrontab(installCrontab(""))
 
-    expect(activeSchedules(reinstalled, ESCALATION)).toEqual(["*/5 * * * *"])
+    expect(activeSchedules(reinstalled, ESCALATION)).toEqual(["3-59/5 * * * *"])
     expect(activeSchedules(reinstalled, AUTO_CLOSE)).toEqual(["37 * * * *"])
   })
 
@@ -85,7 +85,7 @@ describe("Support schedules on the production host", () => {
     ].join("\n"))
 
     expect(installed).not.toContain("/opt/old/cron-trigger.sh")
-    expect(activeSchedules(installed, ESCALATION)).toEqual(["*/5 * * * *"])
+    expect(activeSchedules(installed, ESCALATION)).toEqual(["3-59/5 * * * *"])
     expect(activeSchedules(installed, AUTO_CLOSE)).toEqual(["37 * * * *"])
   })
 

@@ -141,8 +141,38 @@ function installCrontab(initial: string) {
 }
 
 /** Does a crontab minute field fire at minute 0, the minute every schedule shares? */
-function firesAtMinuteZero(field: string) {
-  return field.split(",").some((part) => part === "*" || /^\*\/\d+$/.test(part) || part === "0")
+/** Does a crontab field (`*`, `N`, `A-B`, any of them with `/step`, comma lists) match `value`? */
+function fieldMatches(field: string, value: number, max: number) {
+  return field.split(",").some((part) => {
+    const [range, stepText] = part.split("/")
+    const step = stepText ? Number(stepText) : 1
+    const [low, high] = range === "*" ? [0, max] : range.includes("-") ? range.split("-").map(Number) : [Number(range), Number(range)]
+    return value >= low && value <= high && (value - low) % step === 0
+  })
+}
+
+/** Active schedule lines of the installed crontab, as [minute, hour, target]. */
+function activeTicks(crontab: string) {
+  return crontab
+    .split("\n")
+    .filter((line) => !line.trimStart().startsWith("#") && line.includes("cron-trigger.sh "))
+    .map((line) => line.trim().split(/\s+/))
+    .map((fields) => ({ minute: fields[0], hour: fields[1], target: fields[6] }))
+}
+
+/** Targets cron starts in each minute of a day, keyed "h:m". */
+function startsPerMinute(crontab: string) {
+  const ticks = activeTicks(crontab)
+  const perMinute = new Map<string, string[]>()
+  for (let hour = 0; hour < 24; hour += 1) {
+    for (let minute = 0; minute < 60; minute += 1) {
+      perMinute.set(
+        `${hour}:${minute}`,
+        ticks.filter((tick) => fieldMatches(tick.minute, minute, 59) && fieldMatches(tick.hour, hour, 23)).map((tick) => tick.target),
+      )
+    }
+  }
+  return perMinute
 }
 
 describe.skipIf(!hasTools)("the installed crontab spreads its ticks", () => {
@@ -160,19 +190,27 @@ describe.skipIf(!hasTools)("the installed crontab spreads its ticks", () => {
   })
 
   it("never starts more than two schedules in the same second of the busiest minute", () => {
-    const ticks = installCrontab("")
-      .split("\n")
-      .filter((line) => !line.trimStart().startsWith("#") && line.includes("cron-trigger.sh "))
-      .map((line) => line.trim().split(/\s+/))
-      .filter((fields) => firesAtMinuteZero(fields[0]))
-      .map((fields) => fields[6])
-    expect(ticks.length).toBeGreaterThan(15)
+    const busiest = [...startsPerMinute(installCrontab("")).values()].sort((a, b) => b.length - a.length)[0]
+    expect(busiest.length).toBeGreaterThan(12)
     const perSecond = new Map<number, string[]>()
-    for (const target of ticks) {
+    for (const target of busiest) {
       const offset = offsetOf(target, 50)
       perSecond.set(offset, [...(perSecond.get(offset) ?? []), target])
     }
     const crowded = [...perSecond.entries()].filter(([, targets]) => targets.length > 2)
     expect(crowded).toEqual([])
+  })
+
+  // The spread moves each job's HTTP call, not its start: cron forks, runs PAM
+  // and logs a session for every line due that minute in its first second.
+  // Production 2026-11-08: 25 lines that only `sleep` put 41 threads in the run
+  // queue and /api/v1/ping took 0.99 s; the five-minute jobs all on minutes
+  // 0, 5, 10… made that every fifth minute (1.2 s). Now no minute starts more
+  // than fifteen. A new five-minute job goes into the least busy phase.
+  it("starts at most fifteen schedules in any minute of the day", () => {
+    const perMinute = startsPerMinute(installCrontab(""))
+    const crowded = [...perMinute.entries()].filter(([, targets]) => targets.length > 15)
+    expect(crowded.map(([minute, targets]) => `${minute}: ${targets.length}`)).toEqual([])
+    expect(activeTicks(installCrontab("")).filter((tick) => tick.minute === "*/5")).toEqual([])
   })
 })

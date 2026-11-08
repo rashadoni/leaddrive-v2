@@ -116,14 +116,14 @@ function activeSchedules(crontab: string) {
 
 describe("the release schedule on the production host", () => {
   it("runs every five minutes, exactly once, also after the installer runs again", () => {
-    expect(activeSchedules(installCrontab(""))).toEqual(["*/5 * * * *"])
-    expect(activeSchedules(installCrontab(installCrontab("")))).toEqual(["*/5 * * * *"])
+    expect(activeSchedules(installCrontab(""))).toEqual(["1-59/5 * * * *"])
+    expect(activeSchedules(installCrontab(installCrontab("")))).toEqual(["1-59/5 * * * *"])
   })
 
   it("replaces a hand-installed copy", () => {
     const installed = installCrontab(`* * * * * /opt/old/cron-trigger.sh ${ENDPOINT} >> /var/log/old.log 2>&1\n`)
     expect(installed).not.toContain("/opt/old/cron-trigger.sh")
-    expect(activeSchedules(installed)).toEqual(["*/5 * * * *"])
+    expect(activeSchedules(installed)).toEqual(["1-59/5 * * * *"])
   })
 
   it("is proven by the deploy: one active line, a smoke answer, nothing stranded", () => {
