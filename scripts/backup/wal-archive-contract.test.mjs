@@ -372,7 +372,16 @@ test('the owner reads the subject once, not twice', () => {
 // exceeded" — because there was none — exited 1, and pipefail turned that into
 // a dead watch that systemd reported as success.
 
-function runCheck({ repo, logLine = 'обычный лог без слова про очередь', envFile } = {}) {
+function runCheck({
+  repo,
+  logLine = 'обычный лог без слова про очередь',
+  envFile,
+  // The storage gauge: bytes the bucket holds, and how many of them sit in
+  // noncurrent versions. Absent means no bucket is configured at all.
+  usage,
+  failList = false,
+  times = 1,
+} = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'leaddrive-wal-check-'));
   try {
     const bin = join(dir, 'bin');
@@ -392,6 +401,34 @@ function runCheck({ repo, logLine = 'обычный лог без слова п�
     writeFileSync(join(bin, 'pgbackrest'), `#!/bin/sh\ncase "$*" in\n  *--output=json*) cat ${repoFile} ;;\n  *check*) exit 0 ;;\nesac\n`);
     chmodSync(join(bin, 'psql'), 0o755);
     chmodSync(join(bin, 'pgbackrest'), 0o755);
+    const versionsFile = join(dir, 'versions.json');
+    const awsCalls = join(dir, 'aws-calls');
+    if (usage) {
+      // One live object and one superseded version of it, sized so the totals
+      // are exactly what the test asked for.
+      writeFileSync(
+        versionsFile,
+        JSON.stringify({
+          Versions: [
+            { Key: 'artifacts/live.tar.gz', VersionId: 'current', IsLatest: true, Size: usage.total - usage.dead },
+            { Key: 'artifacts/live.tar.gz', VersionId: 'old', IsLatest: false, Size: usage.dead },
+          ],
+        }),
+      );
+      writeFileSync(
+        join(bin, 'aws'),
+        [
+          '#!/bin/sh',
+          `echo "$@" >> ${awsCalls}`,
+          'case "$*" in',
+          `  *list-object-versions*) ${failList ? 'echo denied >&2; exit 254' : `cat ${versionsFile}`} ;;`,
+          'esac',
+          'exit 0',
+          '',
+        ].join('\n'),
+      );
+      chmodSync(join(bin, 'aws'), 0o755);
+    }
     const env = join(dir, 'env');
     writeFileSync(
       env,
@@ -404,19 +441,34 @@ function runCheck({ repo, logLine = 'обычный лог без слова п�
         `WAL_CHECK_STATE_FILE=${join(state, 'check-state.json')}`,
         `WAL_CHECK_LOCK_FILE=${join(state, 'wal-check.lock')}`,
         'WAL_ALERT_COMMAND=',
+        ...(usage
+          ? [
+              'WAL_REPO_BUCKET=test-bucket',
+              'WAL_REPO_ENDPOINT=s3.example.invalid',
+              'WAL_REPO_REGION=eu-central-003',
+              'WAL_REPO_KEY=key',
+              'WAL_REPO_KEY_SECRET=secret',
+              `WAL_USAGE_WARN_GIB=${usage.warnGib ?? 7}`,
+            ]
+          : []),
         '',
       ].join('\n'),
     );
     let status = 0;
     let stdout = '';
-    try {
-      stdout = execFileSync('bash', ['scripts/backup/wal-archive-check.sh'], {
-        encoding: 'utf8',
-        env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, WAL_ENV_FILE: envFile ?? env },
-      });
-    } catch (error) {
-      status = error.status ?? 1;
-      stdout = `${error.stdout ?? ''}${error.stderr ?? ''}`;
+    const runs = [];
+    for (let attempt = 0; attempt < times; attempt += 1) {
+      status = 0;
+      try {
+        stdout = execFileSync('bash', ['scripts/backup/wal-archive-check.sh'], {
+          encoding: 'utf8',
+          env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, WAL_ENV_FILE: envFile ?? env },
+        });
+      } catch (error) {
+        status = error.status ?? 1;
+        stdout = `${error.stdout ?? ''}${error.stderr ?? ''}`;
+      }
+      runs.push({ status, stdout });
     }
     let saved = null;
     try {
@@ -424,7 +476,15 @@ function runCheck({ repo, logLine = 'обычный лог без слова п�
     } catch {
       saved = null;
     }
-    return { status, stdout, saved };
+    let listings = 0;
+    try {
+      listings = readFileSync(awsCalls, 'utf8')
+        .split('\n')
+        .filter((line) => line.includes('list-object-versions')).length;
+    } catch {
+      listings = 0;
+    }
+    return { status, stdout, saved, runs, listings };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -438,6 +498,50 @@ test('a healthy archive with nothing to find in the log still reaches its verdic
   assert.match(run.stdout, /SUMMARY wal-check status=ok .*dropped=0/);
   assert.equal(run.saved?.status, 'ok');
   assert.equal(run.saved?.shouldAlert, false);
+});
+
+test('a bucket far from the cap says nothing about it', () => {
+  const run = runCheck({ usage: { total: 2 * 1024 ** 3, dead: 512 * 1024 ** 2 } });
+  assert.equal(run.status, 0, run.stdout);
+  assert.match(run.stdout, /SUMMARY wal-check status=ok .*usage=2147483648 dead=536870912/);
+  assert.doesNotMatch(run.stdout, /ГиБ/);
+});
+
+test('a bucket near the cap is a warning, and it names what can be freed now', () => {
+  // The incident this exists for: on 2026-11-03 the cap tripped and the first
+  // anybody heard was production failing to archive WAL for three hours. The
+  // warning has to arrive while there is still room, and has to say how much
+  // of it is hidden versions — that is the part an operator can take back in a
+  // minute.
+  const run = runCheck({ usage: { total: 8 * 1024 ** 3, dead: 6 * 1024 ** 3, warnGib: 7 } });
+  assert.equal(run.status, 10, `expected a warning, got ${run.status}: ${run.stdout}`);
+  assert.match(run.saved?.message ?? '', /занято 8\.0 ГиБ при пороге 7 ГиБ/);
+  assert.match(run.saved?.message ?? '', /6\.0 ГиБ держат скрытые версии/);
+  assert.equal(run.saved?.status, 'warn');
+});
+
+test('the gauge counts hidden versions, not only what a listing shows', () => {
+  // `s3 ls` showed 0.86 GiB where 6.9 GiB was stored, which is why the cap
+  // tripped unseen. A gauge that counted only live objects would stay quiet
+  // here — 1 GiB live against a 7 GiB threshold — and be useless.
+  const run = runCheck({ usage: { total: 7.5 * 1024 ** 3, dead: 6.5 * 1024 ** 3, warnGib: 7 } });
+  assert.equal(run.status, 10, `the hidden versions were not counted: ${run.stdout}`);
+});
+
+test('the paid listing is asked hourly, not on every ten-minute run', () => {
+  const run = runCheck({ usage: { total: 2 * 1024 ** 3, dead: 0 }, times: 3 });
+  assert.equal(run.listings, 1, `the bucket was listed ${run.listings} times`);
+  // And the number is still reported from the cache, not lost.
+  assert.match(run.stdout, /usage=2147483648 dead=0/);
+  assert.ok(run.saved?.usageAt > 0);
+});
+
+test('an unmeasurable bucket is silence, not a false alarm', () => {
+  // A gauge that reds whenever the provider is unreachable stops being read.
+  const run = runCheck({ usage: { total: 9 * 1024 ** 3, dead: 8 * 1024 ** 3 }, failList: true });
+  assert.equal(run.status, 0, run.stdout);
+  assert.match(run.stdout, /usage=-1 dead=-1/);
+  assert.equal(run.saved?.status, 'ok');
 });
 
 test('dropped WAL in the log is counted, not ignored', () => {
