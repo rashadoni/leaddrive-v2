@@ -147,6 +147,17 @@ pgDescribe("social monitoring 30-day retention on a real Postgres", () => {
       await prisma.socialMention.update({ where: { id: "mention-fresh" }, data: { clusterId: "cluster-old" } })
 
       await prisma.collectorRun.create({ data: { id: "run-old", organizationId: ORG, sourceId: "source-1", claimToken: "t1", claimVersion: 1, leaseExpiresAt: OLD, startedAt: OLD, status: "success" } })
+      // A provider run chain on an old collector run: the parent is guarded
+      // by its child within one statement and must still go in the same pass.
+      await prisma.collectorRun.create({ data: { id: "run-provider-old", organizationId: ORG, sourceId: "source-1", claimToken: "t3", claimVersion: 1, leaseExpiresAt: OLD, startedAt: OLD, status: "success" } })
+      await prisma.sourceRoutePlan.create({ data: { id: "plan-1", organizationId: ORG, sourceId: "source-1", routeKey: "k", platform: "youtube", capability: "DISCOVER_POSTS", contentScope: "PUBLIC", primaryAdapter: "a", acquisitionMode: "OFFICIAL_API", policyVersion: "v", reason: "r", status: "ACTIVE", createdAt: OLD } as never })
+      const providerRun = (id: string, parentRunId: string | null) => prisma.socialProviderRun.create({ data: {
+        id, organizationId: ORG, sourceId: "source-1", routePlanId: "plan-1", collectorRunId: "run-provider-old", parentRunId,
+        providerKey: "apify", adapterKey: "a", phase: "DISCOVER", schemaVersion: "1", idempotencyKey: id, inputHash: id,
+        maxTotalChargeUsd: 1, maxItems: 1, timeoutSeconds: 60, purgeAt: NOW, createdAt: OLD,
+      } as never })
+      await providerRun("provider-parent", null)
+      await providerRun("provider-child", "provider-parent")
       await prisma.collectorRun.create({ data: { id: "run-fresh", organizationId: ORG, sourceId: "source-1", claimToken: "t2", claimVersion: 1, leaseExpiresAt: FRESH, startedAt: FRESH, status: "success" } })
 
       const envelope = (id: string, createdAt: Date, extra: Record<string, unknown> = {}) => prisma.ingestEnvelope.create({
@@ -205,7 +216,7 @@ pgDescribe("social monitoring 30-day retention on a real Postgres", () => {
       await prisma.notification.create({ data: { id: "notice-other-old", organizationId: ORG, userId: "user-1", type: "info", title: "t", entityType: "task", createdAt: OLD } as never })
     })
 
-    result = await bypass(() => run({ now: NOW, batch: 1 }))
+    result = await bypass(() => run({ now: NOW }))
   }, 300_000)
 
   afterAll(async () => {
@@ -238,6 +249,7 @@ pgDescribe("social monitoring 30-day retention on a real Postgres", () => {
   it("deletes old envelopes, collector runs and the whole auto-review ledger", async () => {
     expect(await ids("ingest_envelopes")).toEqual(["envelope-fresh"])
     expect(await ids("collector_runs")).toEqual(["run-fresh"])
+    expect(await ids("social_provider_runs")).toEqual([])
     expect(await ids("discovery_auto_review_decisions")).toEqual([])
     expect(await ids("discovery_auto_review_events")).toEqual([])
     expect(await ids("discovery_auto_review_runs")).toEqual([])
