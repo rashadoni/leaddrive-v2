@@ -1,5 +1,5 @@
 export const GROUP_MODULE_IDS = [
-  "crm", "sales", "contracts", "marketing", "loyalty", "omnichannel", "social",
+  "crm", "boards", "sales", "contracts", "marketing", "loyalty", "omnichannel", "social",
   "voip", "support", "finance",
   "analytics", "mtm", "health", "insurance", "public-sector", "media",
   "energy", "settings",
@@ -37,24 +37,23 @@ export const ADDON_FLAG_IDS = ["ai", "voip"] as const
 export type AddonFlagId = (typeof ADDON_FLAG_IDS)[number]
 
 /**
- * Boards (tasks, boards, task templates) — a module of its own ONLY for the
- * per-user mask (owner, 2026-11-06: «выдели отдельно доску как модуль, чтоб мог
- * отдельно выдавать разрешение только на этот модуль»). A tenant never toggles
- * it: it follows `crm` (see hasModule), so no tenant record, plan or editor
- * knows it. What it adds is a separate tick on the user card — a person can
- * keep the boards without CRM, or CRM without the boards.
+ * Boards (tasks, boards, task templates) — a module of its own (owner,
+ * 2026-11-06: «выдели отдельно доску как модуль, чтоб мог отдельно выдавать
+ * разрешение только на этот модуль»; 2026-11-08: «он должен быть полностью
+ * раздельным»). Since 2026-11-08 a tenant turns it on and off like any other
+ * group module — its own tick in the tenant editor, its own entry in the plans —
+ * and a person keeps their own tick on the user card. A tenant record that
+ * says nothing about it (written before the split) follows `crm`, see hasModule;
+ * migration 20261205090000_boards_tenant_module wrote it for every tenant.
  */
 export const BOARDS_MODULE_ID = "boards" as const
-export type DerivedModuleId = typeof BOARDS_MODULE_ID
 
-export type ModuleId = GroupModuleId | AddonFlagId | "sms-otp" | DerivedModuleId
+export type ModuleId = GroupModuleId | AddonFlagId | "sms-otp"
 
 interface ModuleDefinition {
   name: string
   requires: ModuleId[]
   alwaysOn?: boolean
-  /** Follows another module for the tenant; never offered as a tenant feature (see BOARDS_MODULE_ID). */
-  derived?: boolean
 }
 
 export const MODULE_REGISTRY: Record<ModuleId, ModuleDefinition> = {
@@ -63,6 +62,8 @@ export const MODULE_REGISTRY: Record<ModuleId, ModuleDefinition> = {
   // client records. "Основная" makes that relationship clear in the tenant
   // picker without changing the stable `crm` entitlement key.
   crm:              { name: "Основная",            requires: [] },
+  // Its own module since 2026-11-08 — a tenant can have the boards without CRM.
+  boards:           { name: "Boards",              requires: [] },
   sales:            { name: "Sales",               requires: [] },
   contracts:        { name: "Contracts Control",   requires: [] },
   marketing:        { name: "Marketing",           requires: [] },
@@ -92,8 +93,6 @@ export const MODULE_REGISTRY: Record<ModuleId, ModuleDefinition> = {
   // page is the role gate's job (permissionScope/allowedRoles), not this one.
   settings:         { name: "Settings",            requires: [], alwaysOn: true },
 
-  /* ── Derived: follows `crm` for the tenant, split off only by the per-user mask ── */
-  boards:           { name: "Boards",              requires: [], derived: true },
 
   /* ── Cross-cutting add-on flags ── */
   ai:               { name: "Da Vinci AI",      requires: [] },
@@ -409,9 +408,10 @@ export function reconcileModulesWithFeatures(
  * "always true" plan-default branch here silently leaks paid modules.
  */
 export function hasModule(org: OrgModuleContext, moduleId: ModuleId): boolean {
-  // 0. Boards follow CRM for the tenant. An explicit boolean is written only by
-  //    the per-user mask (applyUserModuleMask), which is what lets a person keep
-  //    the boards with CRM hidden, or the other way round.
+  // 0. Boards: an explicit boolean — the tenant editor, the plans, the
+  //    2026-11-08 backfill, or the per-user mask — decides. A record written
+  //    before boards were a tenant module says nothing, and follows CRM as it
+  //    did then (also a session minted before the backfill reached the tenant).
   if (moduleId === BOARDS_MODULE_ID) {
     const explicit = org.modules?.[BOARDS_MODULE_ID]
     return typeof explicit === "boolean" ? explicit : hasModule(org, "crm")

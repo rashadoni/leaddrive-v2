@@ -21,7 +21,7 @@ describe("getPlanDefaults", () => {
     vi.mocked(prisma.planTemplate.findFirst).mockResolvedValue(null)
     const d = await getPlanDefaults("starter")
     // Group-vocab fallback mirrors scripts/seed-plan-templates.mjs starter row.
-    expect(d).toEqual({ maxUsers: 3, maxContacts: 500, features: ["crm", "sales", "settings"], addons: [] })
+    expect(d).toEqual({ maxUsers: 3, maxContacts: 500, features: ["crm", "boards", "sales", "settings"], addons: [] })
   })
   it("throws for an unknown/inactive key with no DB row", async () => {
     vi.mocked(prisma.planTemplate.findFirst).mockResolvedValue(null)

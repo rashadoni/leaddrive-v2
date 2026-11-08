@@ -13,9 +13,9 @@ const prisma = await makeScriptPrisma()
 // scripts/migrate-plan-templates-group-modules.mjs. Operators can edit later
 // in /admin/plans.
 const LEGACY = [
-  { key: "starter", name: "Starter", features: ["crm", "sales", "settings"], addons: [], maxUsers: 3, maxContacts: 500, sortOrder: 0 },
-  { key: "professional", name: "Professional", features: ["crm", "sales", "contracts", "marketing", "loyalty", "omnichannel", "support", "finance", "analytics", "settings", "whatsapp", "complaints_register"], addons: ["ai", "channels"], maxUsers: 25, maxContacts: 10000, sortOrder: 1 },
-  { key: "enterprise", name: "Enterprise", features: ["crm", "sales", "contracts", "marketing", "loyalty", "omnichannel", "social", "voip", "support", "finance", "analytics", "mtm", "health", "insurance", "public-sector", "media", "energy", "settings", "whatsapp", "complaints_register"], addons: ["ai", "channels", "finance", "mtm", "voip"], maxUsers: -1, maxContacts: -1, sortOrder: 2 },
+  { key: "starter", name: "Starter", features: ["crm", "boards", "sales", "settings"], addons: [], maxUsers: 3, maxContacts: 500, sortOrder: 0 },
+  { key: "professional", name: "Professional", features: ["crm", "boards", "sales", "contracts", "marketing", "loyalty", "omnichannel", "support", "finance", "analytics", "settings", "whatsapp", "complaints_register"], addons: ["ai", "channels"], maxUsers: 25, maxContacts: 10000, sortOrder: 1 },
+  { key: "enterprise", name: "Enterprise", features: ["crm", "boards", "sales", "contracts", "marketing", "loyalty", "omnichannel", "social", "voip", "support", "finance", "analytics", "mtm", "health", "insurance", "public-sector", "media", "energy", "settings", "whatsapp", "complaints_register"], addons: ["ai", "channels", "finance", "mtm", "voip"], maxUsers: -1, maxContacts: -1, sortOrder: 2 },
 ]
 
 async function main() {

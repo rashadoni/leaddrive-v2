@@ -15,7 +15,9 @@
  * Completed, and the people Zeytun has — admin, a manager, marketers on both
  * marketing folders (one granted before members could finish tasks), a
  * Cust-Serv clerk, a marketer who has the boards and nothing else, a viewer —
- * plus a second organization whose board must stay out of reach.
+ * plus a second organization whose board must stay out of reach, and a third
+ * that bought the boards without CRM (2026-11-08: boards a tenant module of
+ * their own) — its boards work, its CRM stays closed.
  */
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
@@ -78,6 +80,7 @@ async function seed() {
   const slug = `zeytun-e2e-${randomUUID().slice(0, 8)}`
   const org = await db.organization.create({ data: { name: 'Fictional Zeytun E2E', slug, plan: 'enterprise', modules: { crm: true }, settings: { fixtureOnly: true } } })
   const foreign = await db.organization.create({ data: { name: 'Fictional Foreign E2E', slug: `${slug}-foreign`, plan: 'enterprise', modules: { crm: true }, settings: { fixtureOnly: true } } })
+  const boardsTenant = await db.organization.create({ data: { name: 'Fictional Boards-only Tenant E2E', slug: `${slug}-boards`, plan: 'starter', features: ['boards', 'settings'], modules: { boards: true, crm: false, sales: false, settings: true }, settings: { fixtureOnly: true } } })
 
   const users = {}
   const person = async (key, role, extra = {}, organizationId = org.id) => {
@@ -91,6 +94,7 @@ async function seed() {
   await person('boardsOnly', 'sales', { hiddenModules: ALL_BUT_BOARDS })
   await person('viewer', 'viewer')
   await person('foreign', 'admin', {}, foreign.id)
+  await person('boardsTenantAdmin', 'admin', {}, boardsTenant.id)
 
   const boards = {}
   const board = async (key, name, sortOrder, parent = null, organizationId = org.id) => {
@@ -108,6 +112,7 @@ async function seed() {
   await board('TZEYTUN', 'Zeytun', 1, 'TRADITIONAL')
   await board('MX2611', '11. NOYABR 26 MX', 11, 'CUSTSERV')
   await board('FOREIGN', 'Foreign board', 1, null, foreign.id)
+  await board('SOLO', 'Solo board', 1, null, boardsTenant.id)
 
   const grant = (user, division, flags) => db.boardPermission.create({ data: { organizationId: org.id, userId: users[user].id, divisionId: boards[division].id, ...flags } })
   for (const folder of ['DIGITAL', 'TRADITIONAL']) {
@@ -135,8 +140,9 @@ async function seed() {
   await task('mxOne', 'MX2611', 'todo')
   await task('mxTwo', 'MX2611', 'done')
   await task('foreignOne', 'FOREIGN', 'todo')
+  await task('soloOne', 'SOLO', 'todo')
   await db.$disconnect()
-  return { org, foreign, slug, password, users, boards, tasks }
+  return { org, foreign, boardsTenant, slug, password, users, boards, tasks }
 }
 
 // ── scenarios ───────────────────────────────────────────────────────────────
@@ -193,7 +199,8 @@ async function main() {
   await step('every role logs in with its own password', async () => {
     for (const key of ['admin', 'manager', 'marketer', 'marketerOld', 'clerk', 'boardsOnly', 'viewer']) await login(key)
     await login('foreign', `${f.slug}-foreign`)
-    return { logins: 8 }
+    await login('boardsTenantAdmin', `${f.slug}-boards`)
+    return { logins: 9 }
   })
 
   const adminPage = await sessions.admin.newPage()
@@ -312,6 +319,20 @@ async function main() {
     assert.ok(JSON.stringify(told.json).includes(f.tasks.zeytunOne.id), 'manager not told')
     const author = await api('marketer', '/api/v1/notifications')
     assert.ok(!JSON.stringify(author.json ?? {}).includes(`${f.tasks.zeytunOne.id}`), 'author told about own message')
+  })
+
+  await step('a tenant with the boards and no CRM: boards work, CRM is closed', async () => {
+    const page = await sessions.boardsTenantAdmin.newPage()
+    await openBoard(page, 'SOLO')
+    assert.equal(await resultCount(page), 1)
+    const made = await api('boardsTenantAdmin', '/api/v1/tasks', { method: 'POST', body: { title: 'Fixture solo task', divisionId: f.boards.SOLO.id, status: 'todo' } })
+    assert.equal(made.status, 201, JSON.stringify(made.json))
+    const done = await api('boardsTenantAdmin', `/api/v1/tasks/${made.json.data.id}`, { method: 'PATCH', body: { status: 'done' } })
+    assert.equal(done.status, 200, JSON.stringify(done.json))
+    const companies = await api('boardsTenantAdmin', '/api/v1/companies')
+    assert.equal(companies.status, 403, `companies answered ${companies.status}`)
+    const groups = await page.$$eval('[data-testid="sidebar-group-toggle"]', (els) => els.map((el) => el.getAttribute('data-group')))
+    assert.ok(groups.includes('Boards') && !groups.includes('CRM'), `groups: ${groups}`)
   })
 
   await browser.close()
