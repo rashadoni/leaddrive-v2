@@ -31,8 +31,16 @@
 # tenant-file-readers-guard.test.ts proves the code seals what it writes; only
 # the disk shows what was written before it, or by a path nobody added there.
 #
-# It never deletes anything in the bucket: a file deleted on production (a
-# retention cron, a user) stays in the copy, because that is what a backup is.
+# A file deleted on production (a retention cron, a user) stays in the copy for
+# 30 days and then goes from the bucket too — every version of its object, not
+# just a delete marker over it. The owner, 2026-11-08: data older than 30 days
+# must not be kept anywhere («Да, 30 дней везде»), and a backup of a deleted
+# file is exactly such data. The 30 days count from the first run that found
+# the file missing ($GONE_LIST), so a file can still be brought back for a month.
+# Two guards stop a broken run from emptying the copy: nothing is marked
+# missing when the walk finds no file at all (an unmounted or emptied disk
+# looks exactly like that), and a run that would remove more than
+# UPLOADS_OFFSITE_EXPIRE_MAX objects removes none and says so (status=warn).
 #
 # Deliberately NOT copied: uploads/call-recordings. The owner set a 90-day
 # retention for call recordings and a cron enforces it; copying them offsite for
@@ -54,6 +62,8 @@ SOURCE_ROOT="${UPLOADS_OFFSITE_SOURCE_ROOT:-/var/lib/leaddrive-v2/uploads}"
 STATE_ROOT="${UPLOADS_OFFSITE_STATE_ROOT:-/var/lib/leaddrive-uploads-offsite}"
 WAL_ENV_FILE="${WAL_ENV_FILE:-/etc/leaddrive/wal-archive.env}"
 LEDGER="$STATE_ROOT/ledger.tsv"
+# rel<TAB>epoch of the first run that found a copied file missing on disk.
+GONE_LIST="$STATE_ROOT/gone.tsv"
 STATE_FILE="$STATE_ROOT/state"
 LOCK_FILE="$STATE_ROOT/mirror.lock"
 # Its own 90-day retention; see the header.
@@ -73,6 +83,12 @@ MODE=""
 RECIPIENT="${UPLOADS_OFFSITE_AGE_RECIPIENT:-}"
 MAX_BYTES="${UPLOADS_OFFSITE_MAX_BYTES:-2147483648}"
 MAX_SECONDS="${UPLOADS_OFFSITE_MAX_SECONDS:-1800}"
+# 29 days missing, then the bucket's own lifecycle drops what is left within a
+# day: nothing outlives its file on production by more than 30 days.
+RETENTION_DAYS="${UPLOADS_OFFSITE_RETENTION_DAYS:-29}"
+EXPIRE_MAX="${UPLOADS_OFFSITE_EXPIRE_MAX:-200}"
+# Test seam for the clock; a real run reads the clock.
+NOW="${UPLOADS_OFFSITE_NOW:-$(date -u +%s)}"
 
 log() { printf '[uploads-offsite] %s\n' "$*"; }
 fatal() { log "FATAL: $*" >&2; exit 1; }
@@ -105,7 +121,7 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 [ -n "$MODE" ] || { printf 'Usage: %s --plan | --run [--recipient age1…]\n' "$0" >&2; exit 2; }
-case "$MAX_BYTES$MAX_SECONDS" in *[!0-9]*) log 'FATAL --max-bytes and --max-seconds are numbers'; exit 2 ;; esac
+case "$MAX_BYTES$MAX_SECONDS$RETENTION_DAYS$EXPIRE_MAX$NOW" in *[!0-9]*) log 'FATAL --max-bytes and --max-seconds are numbers'; exit 2 ;; esac
 
 # The source is fixed on purpose: this script is handed a root key, and an
 # overridable source root is how a backup job becomes an exfiltration tool.
@@ -116,8 +132,9 @@ case "$MAX_BYTES$MAX_SECONDS" in *[!0-9]*) log 'FATAL --max-bytes and --max-seco
 [ -d "$SOURCE_ROOT" ] || fatal "no $SOURCE_ROOT on this host"
 install -d -m 0700 "$STATE_ROOT"
 : >>"$LEDGER"
+: >>"$GONE_LIST"
 
-for command_name in age aws find sha256sum stat; do
+for command_name in age aws find python3 sha256sum stat; do
   command -v "$command_name" >/dev/null 2>&1 || fatal "$command_name is required"
 done
 
@@ -150,6 +167,7 @@ plain_public=0
 plain_empty=0
 plain_unexpected=0
 declare -A PLAIN_DIRS=()
+declare -A PRESENT=()
 PENDING_LIST="$(mktemp)"
 trap 'rm -f "$PENDING_LIST"' EXIT
 
@@ -162,6 +180,7 @@ while IFS=$'\t' read -r rel size mtime; do
     *$'\n'*|*$'\t'*) log "WARNING: skipping a name with a tab or newline: ${rel//[$'\n\t']/?}"; continue ;;
   esac
   mtime="${mtime%%.*}"
+  PRESENT["$rel"]=1
   known_files=$((known_files + 1))
   known_bytes=$((known_bytes + size))
   # Is a client's file sitting plain on this disk? Counted over the WHOLE tree,
@@ -190,6 +209,33 @@ while IFS=$'\t' read -r rel size mtime; do
   printf '%s\t%s\t%s\n' "$rel" "$size" "$mtime" >>"$PENDING_LIST"
 done < <(find "${find_args[@]}")
 
+# ── Copied, then deleted on production ────────────────────
+# Carried over from the last run, so the 30 days count from the first run that
+# missed the file; a file that came back is forgotten.
+declare -A GONE_SINCE=()
+while IFS=$'\t' read -r rel since || [ -n "${rel:-}" ]; do
+  [ -n "${rel:-}" ] && [ -n "${COPIED[$rel]:-}" ] && [ -z "${PRESENT[$rel]:-}" ] || continue
+  GONE_SINCE["$rel"]="$since"
+done <"$GONE_LIST"
+gone_hold=""
+if [ "$known_files" -eq 0 ] && [ "${#COPIED[@]}" -gt 0 ]; then
+  # Not one file on disk, while the copy holds some: the tree is missing, not
+  # empty. Mark nothing and remove nothing.
+  gone_hold="empty-source"
+else
+  for rel in "${!COPIED[@]}"; do
+    [ -n "${PRESENT[$rel]:-}" ] || [ -n "${GONE_SINCE[$rel]:-}" ] || GONE_SINCE["$rel"]="$NOW"
+  done
+fi
+gone_files=${#GONE_SINCE[@]}
+EXPIRE_LIST=()
+for rel in "${!GONE_SINCE[@]}"; do
+  if [ $(( NOW - GONE_SINCE[$rel] )) -ge $(( RETENTION_DAYS * 86400 )) ]; then EXPIRE_LIST+=("$rel"); fi
+done
+if [ -z "$gone_hold" ] && [ "${#EXPIRE_LIST[@]}" -gt "$EXPIRE_MAX" ]; then
+  gone_hold="over-limit"
+fi
+
 # A plain client file is worth naming, and its directory names the upload path
 # that wrote it. File names are not printed: the directory and the count are
 # enough to act on, and this goes to the journal.
@@ -208,9 +254,9 @@ if [ "$MODE" = plan ]; then
   # side cannot see that: tenant-file-readers-guard.test.ts reads code, this
   # reads the disk. Sealing changes nothing here either way: everything is
   # age-encrypted on the way out.
-  printf 'SUMMARY uploads-offsite mode=plan files=%s bytes=%s pending_files=%s pending_bytes=%s plain_public=%s plain_empty=%s plain_unexpected=%s skipped=%s recipient=%s\n' \
+  printf 'SUMMARY uploads-offsite mode=plan files=%s bytes=%s pending_files=%s pending_bytes=%s plain_public=%s plain_empty=%s plain_unexpected=%s gone_files=%s would_expire=%s expire_hold=%s skipped=%s recipient=%s\n' \
     "$known_files" "$known_bytes" "$pending_files" "$pending_bytes" \
-    "$plain_public" "$plain_empty" "$plain_unexpected" "${SKIP_PATHS[*]}" \
+    "$plain_public" "$plain_empty" "$plain_unexpected" "$gone_files" "${#EXPIRE_LIST[@]}" "${gone_hold:-no}" "${SKIP_PATHS[*]}" \
     "$([ -n "$RECIPIENT" ] && printf 'set' || printf 'MISSING')"
   log "каталог: $(numfmt --to=iec "$known_bytes" 2>/dev/null || printf '%s B' "$known_bytes") в $known_files файлах"
   log "к отправке: $(numfmt --to=iec "$pending_bytes" 2>/dev/null || printf '%s B' "$pending_bytes") в $pending_files файлах"
@@ -267,6 +313,62 @@ while IFS=$'\t' read -r rel size mtime; do
   fi
 done <"$PENDING_LIST"
 
+# ── Remove from the bucket what production deleted 30 days ago ─
+# Every version and delete marker of the exact key: in a versioned bucket a
+# plain delete only hides the bytes (2026-11-03, the mtm-golden orphans).
+versions_of() {
+  aws s3api list-object-versions --bucket "$WAL_REPO_BUCKET" --prefix "$1" "${S3[@]}" \
+    | python3 -I -c '
+import json, sys
+key = sys.argv[1]
+data = json.loads(sys.stdin.read() or "{}")
+for row in (data.get("Versions") or []) + (data.get("DeleteMarkers") or []):
+    if row.get("Key") == key and row.get("VersionId"):
+        print(row["VersionId"])
+' "$1"
+}
+expire_object() {
+  local key="$UPLOADS_OFFSITE_PREFIX/$1.age" ids version
+  ids="$(versions_of "$key")" || return 1
+  while IFS= read -r version; do
+    [ -n "$version" ] || continue
+    aws s3api delete-object --bucket "$WAL_REPO_BUCKET" --key "$key" --version-id "$version" "${S3[@]}" >/dev/null || return 1
+  done <<<"$ids"
+}
+
+expired_files=0
+expire_failures=0
+declare -A EXPIRED=()
+if [ -n "$gone_hold" ]; then
+  log "WARNING: удаление из копии придержано ($gone_hold): к удалению ${#EXPIRE_LIST[@]}, отсутствует на диске $gone_files"
+else
+  for rel in "${EXPIRE_LIST[@]}"; do
+    if expire_object "$rel"; then
+      EXPIRED["$rel"]=1
+      expired_files=$((expired_files + 1))
+    else
+      expire_failures=$((expire_failures + 1))
+      log "WARNING: не удалось убрать из копии $rel"
+      [ "$expire_failures" -lt 3 ] || break
+    fi
+  done
+fi
+if [ "$expired_files" -gt 0 ]; then
+  # Rewritten in one step: a removed object leaves the ledger, so a file of
+  # the same name written later is copied again.
+  while IFS=$'\t' read -r rel size mtime || [ -n "${rel:-}" ]; do
+    [ -n "${rel:-}" ] && [ -z "${EXPIRED[$rel]:-}" ] || continue
+    printf '%s\t%s\t%s\n' "$rel" "$size" "$mtime"
+  done <"$LEDGER" >"$LEDGER.new"
+  mv -- "$LEDGER.new" "$LEDGER"
+fi
+for rel in "${!GONE_SINCE[@]}"; do
+  [ -z "${EXPIRED[$rel]:-}" ] || continue
+  printf '%s\t%s\n' "$rel" "${GONE_SINCE[$rel]}"
+done | sort >"$GONE_LIST.new"
+mv -- "$GONE_LIST.new" "$GONE_LIST"
+gone_files=$((gone_files - expired_files))
+
 left_files=$((pending_files - sent_files))
 status=ok
 message="скопировано $sent_files файл(ов)"
@@ -276,6 +378,9 @@ if [ "$failures" -gt 0 ] && [ "$sent_files" -eq 0 ]; then
 elif [ "$failures" -gt 0 ]; then
   status=warn
   message="скопировано $sent_files, отказов $failures"
+elif [ "$expire_failures" -gt 0 ] || [ -n "$gone_hold" ]; then
+  status=warn
+  message="удаление из копии не прошло"
 fi
 
 # State for the host health watch, flat on purpose: the watch reads it over
@@ -294,6 +399,9 @@ fi
   printf 'offsite_stopped=%s\n' "${stopped:-no}"
   printf 'offsite_failures=%s\n' "$failures"
   printf 'offsite_plain_unexpected=%s\n' "$plain_unexpected"
+  printf 'offsite_gone=%s\n' "$gone_files"
+  printf 'offsite_expired=%s\n' "$expired_files"
+  printf 'offsite_expire_hold=%s\n' "${gone_hold:-no}"
 } >"$STATE_FILE.new"
 chmod 0640 "$STATE_FILE.new"
 # Replaced in one step: a watch that caught a half-written file would read a
@@ -301,6 +409,7 @@ chmod 0640 "$STATE_FILE.new"
 mv -- "$STATE_FILE.new" "$STATE_FILE"
 
 report_plain
-printf 'SUMMARY uploads-offsite mode=run status=%s sent_files=%s sent_bytes=%s pending_files=%s stopped=%s failures=%s plain_unexpected=%s\n' \
-  "$status" "$sent_files" "$sent_bytes" "$left_files" "${stopped:-no}" "$failures" "$plain_unexpected"
+printf 'SUMMARY uploads-offsite mode=run status=%s sent_files=%s sent_bytes=%s pending_files=%s stopped=%s failures=%s plain_unexpected=%s gone_files=%s expired_files=%s expire_failures=%s expire_hold=%s\n' \
+  "$status" "$sent_files" "$sent_bytes" "$left_files" "${stopped:-no}" "$failures" "$plain_unexpected" \
+  "$gone_files" "$expired_files" "$expire_failures" "${gone_hold:-no}"
 [ "$status" != crit ] || exit 1

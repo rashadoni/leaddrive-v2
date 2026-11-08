@@ -381,7 +381,8 @@ from current main before staging» (`booking_artifact_admission=BLOCKED`), не
 - **Копия файлов клиентов — `uploads-offsite-mirror.sh`** (таймер
   `leaddrive-uploads-offsite`, 05:20 UTC): по файлу, потоком через age на ключ
   владельца, на ключах из `wal-archive.env`, прогон ограничен по байтам и
-  времени, из bucket ничего не удаляется. Не церемониальный
+  времени; файл, удалённый на проде, через 30 дней уходит и из bucket
+  (все версии; срок 30 дней везде — `docs/BACKUP_RUNBOOK.md`, раздел «Срок хранения»). Не церемониальный
   `snapshot-runtime-files.sh`: тому нужен commissioned env и полный tar дерева
   в tmpfs. **`uploads/call-recordings` в копию не входит** — у них свой срок
   90 дней, и вечная копия отменила бы его молча. Ставится на проде один раз
