@@ -116,10 +116,16 @@ export async function runBookingCommand(access: BookingAccess, id: string, input
 }
 
 /** Both old and new buffers matter; host advisory locks must be held by the caller. */
-export async function assertBookingInterval(tx: Prisma.TransactionClient, orgId: string, hostId: string, start: Date, end: Date, buffer: number, exceptId?: string) {
+/**
+ * `sameClassPageId` is the one exception: the other seats of the very same
+ * class, at the very same instant. They are not a clash — they are the class.
+ * Everything else this host has that hour still is.
+ */
+export async function assertBookingInterval(tx: Prisma.TransactionClient, orgId: string, hostId: string, start: Date, end: Date, buffer: number, exceptId?: string, sameClassPageId?: string) {
   const clashes = await tx.$queryRaw<{ id: string }[]>`
     SELECT id FROM bookings WHERE "organizationId" = ${orgId} AND "hostUserId" = ${hostId} AND status = 'confirmed'
     AND (${exceptId ?? null}::text IS NULL OR id <> ${exceptId ?? null})
+    AND NOT (${sameClassPageId ?? null}::text IS NOT NULL AND "bookingPageId" = ${sameClassPageId ?? null} AND "startsAt" = ${start})
     AND "startsAt" < ${new Date(end.getTime() + 240 * 60_000)} AND "endsAt" > ${new Date(start.getTime() - 240 * 60_000)}
     AND "startsAt" < ${end} + (GREATEST("bufferBefore", ${buffer}) * INTERVAL '1 minute')
     AND "endsAt" > ${start} - (GREATEST("bufferAfter", ${buffer}) * INTERVAL '1 minute') LIMIT 1

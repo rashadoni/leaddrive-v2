@@ -195,7 +195,7 @@ pgDescribe("online booking on a real Postgres", () => {
     // Only in this newly created scratch DB: replace the empty booking subset
     // with its original schema, then apply both actual forward migrations.
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `DROP TABLE IF EXISTS booking_reminders, booking_offers, booking_change_notes, booking_integration_bindings, booking_secrets, booking_coordinator_grants, bookings, booking_pages CASCADE;`)
-    for (const migration of ["20261101090000_online_booking", "20261102090000_booking_workspace", "20261102100000_booking_commands", "20261120090000_booking_page_price_category", "20261121090000_booking_offers", "20261122090000_booking_offer_review", "20261123090000_booking_reminders", "20261129090000_booking_page_host_variants", "20261130090000_booking_page_add_ons", "20261201090000_booking_page_photo"]) {
+    for (const migration of ["20261101090000_online_booking", "20261102090000_booking_workspace", "20261102100000_booking_commands", "20261120090000_booking_page_price_category", "20261121090000_booking_offers", "20261122090000_booking_offer_review", "20261123090000_booking_reminders", "20261129090000_booking_page_host_variants", "20261130090000_booking_page_add_ons", "20261201090000_booking_page_photo", "20261202090000_booking_page_capacity"]) {
       prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, readFileSync(path.join(ROOT, `prisma/migrations/${migration}/migration.sql`), "utf8"))
       if (migration === "20261101090000_online_booking") {
         prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `

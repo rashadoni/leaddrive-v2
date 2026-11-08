@@ -18,6 +18,7 @@ import { parseAddOns } from "@/lib/booking/add-ons"
 interface PageRow extends Omit<BookingPageDraft, "description" | "locationText" | "price" | "category" | "repeatCycleDays" | "hostVariants" | "addOns"> {
   hostVariants: unknown
   addOns: unknown
+  capacity: number | null
   id: string
   description: string | null
   locationText: string | null
@@ -46,6 +47,7 @@ function newDraft(hostIds: string[]): BookingPageDraft {
     hostVariants: {},
     addOns: [],
     photoUrl: null,
+    capacity: 1,
     weekly: defaultWeeklyHours(),
     price: "",
     category: "",
@@ -140,6 +142,7 @@ export default function BookingSettingsPage() {
       hostVariants: parseHostVariants(page.hostVariants),
       addOns: parseAddOns(page.addOns),
       photoUrl: page.photoUrl ?? null,
+      capacity: page.capacity ?? 1,
       weekly: parseWeeklyHours(page.weekly) ?? defaultWeeklyHours(),
       price: page.price ?? "",
       category: page.category ?? "",

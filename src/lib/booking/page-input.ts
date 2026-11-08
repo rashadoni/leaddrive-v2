@@ -33,6 +33,8 @@ export const bookingPageSchema = z.object({
     price: z.union([z.string().max(20), z.number()]).nullable().optional(),
     durationMinutes: z.number().int().nullable().optional(),
   })).nullable().optional(),
+  /** More than one makes the service a class: the time holds this many people. */
+  capacity: z.number().int().min(1).max(50).optional(),
   /** A path under /uploads/booking-photos; `bookingPhotoPath` is the rule. */
   photoUrl: z.string().max(300).nullable().optional(),
   /** Extras the customer may add; shape only — `normalizeAddOns` is the rule. */
