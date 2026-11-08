@@ -9,6 +9,7 @@ import { QueryResultCard, type QueryResult, type SearchUiText } from "@/componen
 import { markdownToHtml } from "@/lib/simple-markdown"
 import { sanitizeRichHtml } from "@/lib/sanitize"
 import { HelpButton } from "@/components/help/help-button"
+import { parseSseChunk } from "@/lib/ai/chat-live-reply"
 
 interface AiAction {
   tool: string
@@ -231,6 +232,8 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  // Id of the answer being written right now (streamed), if any.
+  const [liveId, setLiveId] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [locale, setLocale] = useState("ru")
   const launcherRef = useRef<HTMLButtonElement>(null)
@@ -301,6 +304,7 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
     setMessages(prev => [...prev, userMsg])
     setInput("")
     setLoading(true)
+    const answerId = (Date.now() + 1).toString()
 
     try {
       const pageContext = {
@@ -311,12 +315,45 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
       const res = await fetch("/api/v1/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, context: pageContext, history: messages.slice(-6), locale }),
+        body: JSON.stringify({ message: text, context: pageContext, history: messages.slice(-6), locale, stream: true }),
       })
-      const json = await res.json()
+      // The server streams the answer as it is written (src/lib/ai/chat-live-reply.ts)
+      // and ends with the same JSON body it otherwise returns; a plain JSON
+      // reply (an error, or a user whose phones are hidden) is read as before.
+      let json: { data?: { reply?: string; actions?: AiAction[]; queryResult?: QueryResult; queryError?: string }; error?: string }
+      if (res.body && res.headers.get("content-type")?.includes("text/event-stream")) {
+        json = {}
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ""
+        let shown = ""
+        const show = (content: string) => {
+          shown = content
+          setLiveId(content ? answerId : null)
+          setMessages(prev => {
+            const others = prev.filter(m => m.id !== answerId)
+            return content ? [...others, { id: answerId, role: "assistant", content, timestamp: new Date() }] : others
+          })
+        }
+        for (;;) {
+          const { value, done } = await reader.read()
+          if (value) buffer += decoder.decode(value, { stream: true })
+          const parsed = parseSseChunk(done ? `${buffer}\n\n` : buffer)
+          buffer = parsed.rest
+          for (const event of parsed.events) {
+            if (event.type === "delta") show(shown + event.text)
+            else if (event.type === "reset") show("")
+            else if (event.type === "done") json = (event.body ?? {}) as typeof json
+          }
+          if (done) break
+        }
+        setLiveId(null)
+      } else {
+        json = await res.json()
+      }
 
       const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
+        id: answerId,
         role: "assistant",
         content: json.data?.reply || displayAiError(json.error, uiText),
         timestamp: new Date(),
@@ -324,12 +361,13 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
         queryResult: json.data?.queryResult,
         queryError: json.data?.queryError,
       }
-      setMessages(prev => [...prev, aiMsg])
+      setMessages(prev => [...prev.filter(m => m.id !== answerId), aiMsg])
       // A result table is cramped at 380px — auto-widen the panel when a search
       // returns one. The user can collapse it again via the header toggle or ✕.
       if (json.data?.queryResult) setExpanded(true)
     } catch {
-      setMessages(prev => [...prev, {
+      setLiveId(null)
+      setMessages(prev => [...prev.filter(m => m.id !== answerId), {
         id: (Date.now() + 1).toString(), role: "assistant",
         content: uiText.connectionError, timestamp: new Date(),
       }])
@@ -496,7 +534,7 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
               </div>
             ))}
 
-            {loading && (
+            {loading && !liveId && (
               <div className="flex justify-start">
                 <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
                   <div className="flex items-center gap-2">
