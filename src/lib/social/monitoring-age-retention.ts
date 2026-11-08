@@ -302,7 +302,13 @@ export async function deleteSocialMonitoringDataBeyondRetention(options: {
           count = removed
         }
         result.deleted[step.key] += count
-        if (count < batch) break
+        // Stop only on an empty pass, not a short one: a statement sees the
+        // table as it was when it started, so a parent whose child it just
+        // removed (provider runs chain through parentRunId) is still guarded
+        // in that pass and goes in the next. Prod 2026-11-08: 1,237 of 1,380
+        // provider runs went in the first run and the 143 parents — with the
+        // 103 collector runs they held — only in a second one.
+        if (count === 0) break
       } catch (error) {
         result.failures.push({ step: step.key, error: error instanceof Error ? error.message.slice(0, 300) : "failed" })
         break
