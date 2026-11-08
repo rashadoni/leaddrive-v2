@@ -35,8 +35,16 @@ function trimMoney(text: string): string {
 
 function cleanAmount(value: unknown): string | null {
   if (typeof value === "number" && Number.isFinite(value) && value > 0 && value <= MAX_AMOUNT) return trimMoney(value.toFixed(2))
-  if (typeof value !== "string") return null
-  const text = value.trim().replace(",", ".")
+  // The column is `Decimal`, and that is what the database hands back: a
+  // fixed-sum deposit arrives here as a Decimal object, not as a string.
+  // Reading only strings and numbers is how «15 ₼» quietly became «no deposit
+  // at all» — the share worked, because its column is an integer. Anything
+  // whose text is not a plain amount still falls through to null below.
+  const raw = typeof value === "string" ? value
+    : typeof value === "object" && value !== null ? String(value)
+      : null
+  if (raw === null) return null
+  const text = raw.trim().replace(",", ".")
   if (!/^\d{1,10}(\.\d{1,2})?$/.test(text)) return null
   const amount = Number(text)
   return Number.isFinite(amount) && amount > 0 && amount <= MAX_AMOUNT ? trimMoney(text) : null
