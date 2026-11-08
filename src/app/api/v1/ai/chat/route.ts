@@ -18,6 +18,8 @@ import { predictDealWin } from "@/lib/ai/predictive"
 import { generateNextBestActions } from "@/lib/ai/next-best-action"
 import { routeToAgent } from "@/lib/ai/agent-router"
 import { PiiMasker } from "@/lib/ai/pii-masker"
+import { LiveReply, sseFrame } from "@/lib/ai/chat-live-reply"
+import { isPhoneRestrictedPrincipal } from "@/lib/customer-phone-privacy"
 import { dateInputValueInTimezone } from "@/lib/timezone"
 import {
   CHAT_ANALYTICS_TOOLS,
@@ -95,12 +97,54 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
     return NextResponse.json({ error: "Too many Da Vinci requests. Please try again later." }, { status: 429 })
   }
 
-  const { message, context, history, locale, previousAgentId, sessionId } = await req.json()
+  const { message, context, history, locale, previousAgentId, sessionId, stream } = await req.json()
   if (!message) return NextResponse.json({ error: "Message required" }, { status: 400 })
 
   const client = getClient()
   if (!client) return NextResponse.json({ error: "Da Vinci AI requires configuration. Please set ANTHROPIC_API_KEY in Settings → Integrations." }, { status: 503 })
 
+  // The answer streams (src/lib/ai/chat-live-reply.ts) only when the panel
+  // asks for it and nothing has to inspect the whole reply first: for a user
+  // whose customer phones are hidden, withCustomerPhonePrivacy masks phones in
+  // the JSON body and refuses any other response, so that user keeps the
+  // single JSON answer.
+  const phonesHidden = isPhoneRestrictedPrincipal(session) && session.hideCustomerPhoneForOperators === true
+  if (stream === true && !phonesHidden) {
+    const encoder = new TextEncoder()
+    const pending: string[] = []
+    let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null
+    const push = (event: Parameters<typeof sseFrame>[0]) => {
+      const frame = sseFrame(event)
+      if (!controllerRef) { pending.push(frame); return }
+      try { controllerRef.enqueue(encoder.encode(frame)) } catch { /* reader went away */ }
+    }
+    // Started here, inside the request's tenant scope, so every query of the
+    // turn keeps its RLS context (src/lib/rls-context.ts).
+    const result = answer((unmask) => new LiveReply(push, unmask))
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controllerRef = controller
+        for (const frame of pending.splice(0)) controller.enqueue(encoder.encode(frame))
+        void result.then(async (response) => {
+          const json = await response.json().catch(() => ({ error: "Da Vinci request failed" }))
+          push({ type: "done", status: response.status, body: json })
+        }).finally(() => {
+          try { controller.close() } catch { /* already closed */ }
+        })
+      },
+    })
+    return new Response(body, {
+      headers: {
+        "content-type": "text/event-stream; charset=utf-8",
+        "cache-control": "no-cache, no-store",
+        // nginx would otherwise hold the whole answer in its buffer.
+        "x-accel-buffering": "no",
+      },
+    })
+  }
+  return answer(null)
+
+  async function answer(openLive: ((unmask: (text: string) => string) => LiveReply) | null): Promise<NextResponse> {
   try {
     // One clock for the whole turn: period boundaries, prompt context and tool
     // evidence cannot drift across midnight while the model is thinking.
@@ -358,8 +402,13 @@ ${CURRENT_STATE_GROUNDING_RULES}
     const maxRounds = requiredAnalyticsTool || groundedForcedTool
       ? Math.max(2, configuredMaxRounds)
       : configuredMaxRounds
+    // Forced evidence turns are never streamed: their answer is the verified
+    // rendering, not the model's prose.
+    const live = openLive && !requiredAnalyticsTool && !groundedForcedTool && !stateGrounding
+      ? openLive((text) => piiMasker.unmask(text))
+      : null
     for (let round = 0; round < maxRounds; round++) {
-      const response = await client.messages.create({
+      const roundParams: Anthropic.MessageCreateParamsNonStreaming = {
         model: resolveAiModel(agentConfig?.model),
         max_tokens: agentConfig?.maxTokens || 1024,
         temperature: Math.min(1, Math.max(0, agentConfig?.temperature ?? 0.2)),
@@ -369,7 +418,19 @@ ${CURRENT_STATE_GROUNDING_RULES}
         ...(round === 0 && (requiredAnalyticsTool || groundedForcedTool)
           ? { tool_choice: { type: "tool" as const, name: (requiredAnalyticsTool || groundedForcedTool)! } }
           : {}),
-      })
+      }
+      let response: Anthropic.Message
+      if (live) {
+        live.startRound()
+        const roundStream = client.messages.stream(roundParams)
+        roundStream.on("streamEvent", (event) => {
+          if (event.type === "content_block_start" && event.content_block.type === "tool_use") live.toolUse()
+          else if (event.type === "content_block_delta" && event.delta.type === "text_delta") live.text(event.delta.text)
+        })
+        response = await roundStream.finalMessage()
+      } else {
+        response = await client.messages.create(roundParams)
+      }
 
       totalInputTokens += response.usage?.input_tokens || 0
       totalOutputTokens += response.usage?.output_tokens || 0
@@ -396,6 +457,8 @@ ${CURRENT_STATE_GROUNDING_RULES}
         const isAnalyticsTool = isChatAnalyticsToolName(toolBlock.name)
         const isGuideTool = toolBlock.name === "explain_crm_section"
         if (isAnalyticsTool) {
+          // From here the answer is the verified rendering, sent in `done`.
+          live?.stop()
           if (isGuideTool) guideAnalyticsAttempted = true
           else numericAnalyticsAttempted = true
         }
@@ -697,5 +760,6 @@ ${CURRENT_STATE_GROUNDING_RULES}
   } catch (e) {
     console.error("Da Vinci chat error:", e)
     return NextResponse.json({ error: "Da Vinci request failed" }, { status: 500 })
+  }
   }
 })
