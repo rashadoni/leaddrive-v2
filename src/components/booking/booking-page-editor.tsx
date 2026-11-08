@@ -27,10 +27,9 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { ArrowLeft, Building2, Check, ChevronRight, CircleAlert, Clock3, Copy, ImagePlus, Link2, Loader2, Phone, Plus, Sparkles, Trash2, Undo2, Video, Wallet } from "lucide-react"
+import { ArrowLeft, Building2, CalendarRange, Check, ChevronRight, CircleAlert, Clock3, Copy, ImagePlus, Link2, Loader2, Phone, Plus, PlusCircle, Settings2, Sparkles, Tag, Trash2, Undo2, Users, Video, Wallet, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { BookingAvatar } from "@/components/booking/booking-day-timeline"
@@ -121,7 +120,21 @@ const DAY_MS = 86_400_000
  * the sheet, the panel and the field become three depths instead of one.
  */
 function Panel({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("rounded-xl bg-muted/40 p-3.5", className)}>{children}</div>
+  return <div className={cn("rounded-xl border border-border/60 bg-muted/60 p-3.5", className)}>{children}</div>
+}
+
+/**
+ * The name of a field, as a form that was designed says it: small, spaced and
+ * quiet, so the eye reads the ANSWER first and the question second. A label in
+ * the same size and colour as the value is what makes a screen look typed
+ * rather than made.
+ */
+function FieldLabel({ htmlFor, children, className }: { htmlFor?: string; children: ReactNode; className?: string }) {
+  return (
+    <label htmlFor={htmlFor} className={cn("block text-[11px] font-bold uppercase tracking-[0.07em] text-muted-foreground", className)}>
+      {children}
+    </label>
+  )
 }
 
 const CHIP_BASE = cn(
@@ -168,10 +181,16 @@ function Chip({ active, onClick, children, className, filled }: { active: boolea
  * from that, from the space around the fields, and from the accent colour
  * being spent on one element per screen rather than on every link.
  */
-function Section({ id, title, hint, aside, children }: { id: string; title: string; hint?: string; aside?: ReactNode; children: ReactNode }) {
+function Section({ id, title, hint, aside, icon: Icon, children }: { id: string; title: string; hint?: string; aside?: ReactNode; icon: LucideIcon; children: ReactNode }) {
   return (
     <section id={id} className="scroll-mt-24 px-5 py-7 sm:px-8">
-      <div className="mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1">
+        {/* An anchor for the eye, not decoration: six headings down a page all
+            in the same weight are a wall, and a wall is what a form on paper
+            looks like. Quiet on purpose — the accent is for what is chosen. */}
+        <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+          <Icon className="h-[18px] w-[18px]" />
+        </span>
         <h3 className="text-[19px] font-bold tracking-tight">{title}</h3>
         {hint ? <p className="text-[13px] text-muted-foreground">{hint}</p> : null}
         {aside ? <div className="ml-auto text-xs text-muted-foreground">{aside}</div> : null}
@@ -523,16 +542,16 @@ export function BookingPageEditor({
 
         <div className="min-w-0 divide-y">
 
-          <Section id={STEP_IDS[0]} title={t("stepService")}>
+          <Section id={STEP_IDS[0]} icon={Tag} title={t("stepService")}>
             <div className="flex flex-wrap items-end justify-between gap-2">
-              <Label htmlFor="bp-title">{t("fieldTitle")}</Label>
+              <FieldLabel htmlFor="bp-title">{t("fieldTitle")}</FieldLabel>
               {draft.title.length > 0 ? <span className="text-xs tabular-nums text-muted-foreground">{draft.title.length}/{TITLE_MAX}</span> : null}
             </div>
-            <Input id="bp-title" className="mt-1 h-12 text-base font-semibold" maxLength={TITLE_MAX} autoFocus={!draft.id} value={draft.title} placeholder={t("fieldTitlePlaceholder")} onChange={(event) => setTitle(event.target.value)} />
+            <Input id="bp-title" className="mt-1.5 h-12 rounded-xl text-lg font-semibold" maxLength={TITLE_MAX} autoFocus={!draft.id} value={draft.title} placeholder={t("fieldTitlePlaceholder")} onChange={(event) => setTitle(event.target.value)} />
 
             {linkOpen ? (
               <div className="mt-2.5">
-                <Label htmlFor="bp-slug">{t("fieldSlug")}</Label>
+                <FieldLabel htmlFor="bp-slug">{t("fieldSlug")}</FieldLabel>
                 <div className="mt-1 flex items-center rounded-md border border-input bg-background text-sm">
                   <span className="whitespace-nowrap pl-3 text-muted-foreground">{linkBase}/</span>
                   <input id="bp-slug" className="h-10 min-w-0 flex-1 bg-transparent pr-3 outline-none" value={draft.slug} onChange={(event) => setSlug(event.target.value)} />
@@ -551,7 +570,7 @@ export function BookingPageEditor({
             )}
 
             <div className="mt-6">
-              <Label>{t("fieldCategory")} {optional}</Label>
+              <FieldLabel>{t("fieldCategory")} {optional}</FieldLabel>
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {groups.map((name) => (
                   <Chip key={name} active={draft.category.trim() === name} onClick={() => { setNewCategory(false); set("category", draft.category.trim() === name ? "" : name) }}>{name}</Chip>
@@ -570,7 +589,7 @@ export function BookingPageEditor({
 
             <div className="mt-6">
               <div className="flex flex-wrap items-end justify-between gap-2">
-                <Label htmlFor="bp-description">{t("fieldDescription")} {optional}</Label>
+                <FieldLabel htmlFor="bp-description">{t("fieldDescription")} {optional}</FieldLabel>
                 {draft.description.length > 0 ? <span className="text-xs tabular-nums text-muted-foreground">{draft.description.length}/{DESCRIPTION_MAX}</span> : null}
               </div>
               <Textarea id="bp-description" className="mt-1" rows={2} maxLength={DESCRIPTION_MAX} value={draft.description} onChange={(event) => { setReplaced(null); set("description", event.target.value) }} />
@@ -601,7 +620,7 @@ export function BookingPageEditor({
             {/* Square and Booksy both sell with a picture; the client sees it
                 on the link before anything else. */}
             <div className="mt-6">
-              <Label>{t("photoTitle")} {optional}</Label>
+              <FieldLabel>{t("photoTitle")} {optional}</FieldLabel>
               <div className="mt-1.5 flex flex-wrap items-center gap-3">
                 {draft.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -631,8 +650,8 @@ export function BookingPageEditor({
             </div>
           </Section>
 
-          <Section id={STEP_IDS[1]} title={t("stepWhere")}>
-            <Label>{t("fieldDuration")}</Label>
+          <Section id={STEP_IDS[1]} icon={Clock3} title={t("stepWhere")}>
+            <FieldLabel>{t("fieldDuration")}</FieldLabel>
             <Panel className="mt-1.5 flex flex-wrap gap-2">
               {DURATIONS.map((value) => (
                 <Chip key={value} filled active={!customDuration && draft.durationMinutes === value} onClick={() => { setCustomDuration(false); set("durationMinutes", value) }}>{t("minutes", { count: value })}</Chip>
@@ -658,7 +677,7 @@ export function BookingPageEditor({
             </Panel>
 
             <div className="mt-6">
-              <Label htmlFor="bp-capacity">{t("fieldCapacity")}</Label>
+              <FieldLabel htmlFor="bp-capacity">{t("fieldCapacity")}</FieldLabel>
               <div className="mt-1.5 flex flex-wrap items-center gap-2.5">
                 <Input
                   id="bp-capacity"
@@ -672,7 +691,7 @@ export function BookingPageEditor({
             </div>
 
             <div className="mt-6">
-              <Label>{t("fieldLocation")}</Label>
+              <FieldLabel>{t("fieldLocation")}</FieldLabel>
               <Panel className="mt-1.5 grid gap-2 sm:grid-cols-3">
                 {LOCATIONS.map((value) => {
                   const Icon = LOCATION_ICON[value]
@@ -704,20 +723,20 @@ export function BookingPageEditor({
             </div>
 
             <div className="mt-6">
-              <Label htmlFor="bp-location-text">{t(`locText_${draft.locationType}`)} {optional}</Label>
+              <FieldLabel htmlFor="bp-location-text">{t(`locText_${draft.locationType}`)} {optional}</FieldLabel>
               <Input id="bp-location-text" className="mt-1" value={draft.locationText} onChange={(event) => set("locationText", event.target.value)} />
               <p className="mt-1.5 text-xs text-muted-foreground">{t("locTextHint")}</p>
             </div>
           </Section>
 
-          <Section id={STEP_IDS[2]} title={t("stepPrice")}>
+          <Section id={STEP_IDS[2]} icon={Wallet} title={t("stepPrice")}>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <Label htmlFor="bp-price">{t("fieldPrice")} {optional}</Label>
+                <FieldLabel htmlFor="bp-price">{t("fieldPrice")} {optional}</FieldLabel>
                 <div className="relative mt-1">
                   <Input
                     id="bp-price"
-                    className="pr-10 text-base font-bold tabular-nums"
+                    className="h-12 pr-10 text-lg font-bold tabular-nums"
                     inputMode="decimal"
                     value={draft.price}
                     placeholder={t("fieldPricePlaceholder")}
@@ -728,14 +747,14 @@ export function BookingPageEditor({
                 <p className="mt-1.5 text-xs text-muted-foreground">{t("fieldPriceHint")}</p>
               </div>
               <div className="md:col-span-2">
-                <Label>{t("fieldDeposit")} {optional}</Label>
+                <FieldLabel>{t("fieldDeposit")} {optional}</FieldLabel>
                 <Panel className="mt-1.5 flex flex-wrap items-center gap-2">
                   <span className="relative inline-flex">
                     <Input
-                      className="h-10 w-28 pr-7 tabular-nums"
+                      className="h-10 w-24 pr-7 text-base font-semibold tabular-nums"
                       inputMode="decimal"
                       value={draft.depositAmount}
-                      placeholder={t("depositSum")}
+                      placeholder="0"
                       aria-label={t("depositSum")}
                       onChange={(event) => onChange({ ...draft, depositAmount: event.target.value.replace(/[^\d.,]/g, "").slice(0, 12), depositPercent: "" })}
                     />
@@ -744,20 +763,22 @@ export function BookingPageEditor({
                   <span className="text-xs text-muted-foreground">{t("or")}</span>
                   <span className="relative inline-flex">
                     <Input
-                      className="h-10 w-24 pr-7 tabular-nums"
+                      className="h-10 w-20 pr-7 text-base font-semibold tabular-nums"
                       inputMode="numeric"
                       value={draft.depositPercent}
-                      placeholder={t("depositShare")}
+                      placeholder="0"
                       aria-label={t("depositShare")}
                       onChange={(event) => onChange({ ...draft, depositPercent: event.target.value.replace(/\D/g, "").slice(0, 3), depositAmount: "" })}
                     />
                     <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs font-semibold text-muted-foreground">%</span>
                   </span>
-                  {depositLabel ? <span className="text-xs font-semibold text-foreground">= {depositLabel}</span> : <span className="text-xs text-muted-foreground">{t("depositNone")}</span>}
+                  {depositLabel
+                    ? <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-bold tabular-nums text-primary">{depositLabel}</span>
+                    : <span className="text-xs text-muted-foreground">{t("depositNone")}</span>}
                 </Panel>
                 {depositLabel ? (
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <Label htmlFor="bp-deposit-hours" className="text-xs">{t("depositFreeHoursLabel")}</Label>
+                    <FieldLabel htmlFor="bp-deposit-hours" className="text-xs">{t("depositFreeHoursLabel")}</FieldLabel>
                     <Input
                       id="bp-deposit-hours"
                       className="h-9 w-20 tabular-nums"
@@ -771,7 +792,7 @@ export function BookingPageEditor({
               </div>
 
               <div>
-                <Label>{t("cycleQuestion")}</Label>
+                <FieldLabel>{t("cycleQuestion")}</FieldLabel>
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {REPEAT_CYCLE_DAYS.map((days) => (
                     <Chip key={days} active={draft.repeatCycleDays === days} onClick={() => set("repeatCycleDays", days)}>
@@ -787,7 +808,7 @@ export function BookingPageEditor({
           {/* Fresha's «service add-ons»: the treatment that goes with the cut.
               Each one costs money AND takes time — a visit that charges for
               the extra without holding the chair double-books the master. */}
-          <Section id={STEP_IDS[3]} title={t("addOnsTitle")} hint={t("addOnsHint")}>
+          <Section id={STEP_IDS[3]} icon={PlusCircle} title={t("addOnsTitle")} hint={t("addOnsHint")}>
             {draft.addOns.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t("addOnsEmpty")}</p>
             ) : (
@@ -805,7 +826,7 @@ export function BookingPageEditor({
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="relative inline-flex">
                         <Input
-                          className="h-10 w-28 pr-7 tabular-nums"
+                          className="h-10 w-24 pr-7 text-base font-semibold tabular-nums"
                           inputMode="decimal"
                           value={addOn.price ?? ""}
                           placeholder="—"
@@ -849,6 +870,7 @@ export function BookingPageEditor({
 
           <Section
             id={STEP_IDS[4]}
+            icon={Users}
             title={t("fieldHosts")}
             aside={hosts.length > 1 ? (
               <button type="button" className="font-semibold underline-offset-4 hover:text-foreground hover:underline" onClick={() => set("hostIds", hosts.map((host) => host.id))}>{t("hostsAll")}</button>
@@ -914,7 +936,7 @@ export function BookingPageEditor({
             ) : null}
           </Section>
 
-          <Section id={STEP_IDS[5]} title={t("fieldHours")} aside={t("hoursOnLegend")}>
+          <Section id={STEP_IDS[5]} icon={CalendarRange} title={t("fieldHours")} aside={t("hoursOnLegend")}>
             <Panel>
             <div className="flex flex-wrap gap-2">
               {PRESETS.map((preset) => {
@@ -1011,27 +1033,30 @@ export function BookingPageEditor({
           {/* Calendly folds a step down to one line with its current answer on
               it; the three settings here are exactly that kind of step. */}
           <details id={STEP_IDS[6]} className="group scroll-mt-24">
-            <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2.5 px-5 py-6 text-[19px] font-bold tracking-tight sm:px-8 [&::-webkit-details-marker]:hidden">
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden="true" />
+            <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 px-5 py-6 text-[19px] font-bold tracking-tight sm:px-8 [&::-webkit-details-marker]:hidden">
+              <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <Settings2 className="h-[18px] w-[18px]" />
+              </span>
               {t("advancedTitle")}
               <span className="ml-auto text-[13px] font-normal text-muted-foreground group-open:hidden">{advancedNote}</span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90 group-open:ml-auto" aria-hidden="true" />
               <span className="ml-auto hidden text-[13px] font-normal text-muted-foreground group-open:inline">{t("advancedHint")}</span>
             </summary>
             <div className="grid gap-5 px-5 pb-7 sm:px-8">
               <div>
-                <Label>{t("fieldBuffer")}</Label>
+                <FieldLabel>{t("fieldBuffer")}</FieldLabel>
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {BUFFERS.map((value) => <Chip key={value} active={draft.bufferMinutes === value} onClick={() => set("bufferMinutes", value)}>{value === 0 ? t("noBuffer") : t("minutes", { count: value })}</Chip>)}
                 </div>
               </div>
               <div>
-                <Label>{t("fieldNotice")}</Label>
+                <FieldLabel>{t("fieldNotice")}</FieldLabel>
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {NOTICE_HOURS.map((hours) => <Chip key={hours} active={draft.minNoticeMinutes === hours * 60} onClick={() => set("minNoticeMinutes", hours * 60)}>{t("hoursBefore", { count: hours })}</Chip>)}
                 </div>
               </div>
               <div>
-                <Label>{t("fieldAhead")}</Label>
+                <FieldLabel>{t("fieldAhead")}</FieldLabel>
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {AHEAD_DAYS.map((days) => <Chip key={days} active={draft.maxDaysAhead === days} onClick={() => set("maxDaysAhead", days)}>{t("daysAhead", { count: days })}</Chip>)}
                 </div>
