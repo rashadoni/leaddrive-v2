@@ -10,7 +10,8 @@ import type { Role } from "@/lib/permissions"
  *   admin/superadmin            → bypass (always allowed)
  *   explicit row, canView=false → explicit DENY (beats own-division)
  *   own division                → default view / create / comment
- *   per-action move flags gate each status transition; `done` is role-gated.
+ *   per-action move flags gate each status transition; `done` takes an admin,
+ *   a manager, the board's head — or a member whose grant says canMoveToDone.
  */
 
 export type KanbanStatus = "backlog" | "todo" | "in_progress" | "testing" | "review" | "done"
@@ -53,6 +54,8 @@ export interface BoardPermissionFlags {
   canMoveToTesting: boolean
   canMoveToReview: boolean
   canMoveBack: boolean
+  /** May finish a task, as any member can in Bordio (owner, 2026-11-08). */
+  canMoveToDone?: boolean
   canCreateTask: boolean
   canComment: boolean
 }
@@ -84,13 +87,15 @@ function isExplicitlyDenied(i: BoardAccessInput): boolean {
 }
 
 /**
- * Spec rule #3: a task may enter `done` ONLY via admin / department head
- * (mapped to the `manager` role) / division head — independent of any
- * per-action move flag. An explicit section deny (canView=false) still blocks it.
+ * Spec rule #3, widened 2026-11-08: a task enters `done` via admin / department
+ * head (the `manager` role) / division head, or a member whose grant carries
+ * canMoveToDone — Zeytun's marketers close their own tasks, as they did in
+ * Bordio («Давай, обе»). The board's member picker grants it with full access.
+ * An explicit section deny (canView=false) still blocks it.
  */
 export function canMoveToDone(i: BoardAccessInput): boolean {
   if (isExplicitlyDenied(i)) return false
-  return isAdminRole(i.role) || i.role === "manager" || i.isDivisionHead
+  return isAdminRole(i.role) || i.role === "manager" || i.isDivisionHead || (!!i.perm?.canView && !!i.perm.canMoveToDone)
 }
 
 export function canViewBoard(i: BoardAccessInput): boolean {

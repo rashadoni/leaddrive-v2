@@ -2136,6 +2136,8 @@ model BoardPermission {
   canMoveToTesting    Boolean      @default(false)
   canMoveToReview     Boolean      @default(false)
   canMoveBack         Boolean      @default(false)
+  /// May finish a task (move it to done) — a full member, as in Bordio (2026-11-08).
+  canMoveToDone       Boolean      @default(false)
   canCreateTask       Boolean      @default(false)
   canComment          Boolean      @default(false)
   createdAt           DateTime     @default(now())

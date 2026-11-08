@@ -13,6 +13,7 @@ const FLAG_KEYS = [
   "canMoveToTesting",
   "canMoveToReview",
   "canMoveBack",
+  "canMoveToDone",
   "canCreateTask",
   "canComment",
 ] as const
@@ -27,6 +28,7 @@ const upsertSchema = z.object({
   canMoveToTesting: z.boolean().optional(),
   canMoveToReview: z.boolean().optional(),
   canMoveBack: z.boolean().optional(),
+  canMoveToDone: z.boolean().optional(),
   canCreateTask: z.boolean().optional(),
   canComment: z.boolean().optional(),
 })

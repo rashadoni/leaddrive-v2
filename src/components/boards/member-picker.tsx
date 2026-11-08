@@ -6,11 +6,12 @@ import { Search } from "lucide-react"
 
 export interface OrgUser { id: string; name: string; email?: string; avatar?: string | null }
 
-/** Full access on one board: view, create, edit, every column move, comment. */
+/** Full access on one board: view, create, edit, every column move — finishing
+ *  a task included, as in Bordio (2026-11-08) — comment. */
 export const MEMBER_FLAGS = {
   canView: true, canEdit: true, canCreateTask: true, canComment: true,
   canMoveToTodo: true, canMoveToInProgress: true, canMoveToTesting: true,
-  canMoveToReview: true, canMoveBack: true,
+  canMoveToReview: true, canMoveBack: true, canMoveToDone: true,
 }
 
 // ── Reusable member picker: search box + scrollable checkbox list ────────────
