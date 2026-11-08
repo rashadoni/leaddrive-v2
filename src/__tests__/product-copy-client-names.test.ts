@@ -22,6 +22,11 @@ const PRODUCT_COPY_ROOTS = ["messages", "src/content", "src/components", "src/ap
  */
 const PAYMENT_BANK_FILES = [
   "src/lib/payments/",
+  // A meeting's deposit is paid by card through that same bank (owner,
+  // 2026-11-08: «оба варианта»), so these two carry it for the same reason
+  // the invoice checkout does.
+  "src/lib/booking/deposit-checkout.ts",
+  "src/app/api/v1/public/booking/deposit/",
   "src/app/api/v1/payment-providers/",
   "src/app/api/v1/public/invoices/",
   "src/app/api/v1/settings/online-payment/",
