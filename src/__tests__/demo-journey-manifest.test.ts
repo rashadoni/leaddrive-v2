@@ -44,6 +44,9 @@ const read = (relative: string) => readFileSync(path.join(ROOT, relative), "utf8
  *  modules of their own. */
 const NAV_GROUP_TO_MODULE: Record<string, string> = {
   CRM: "crm",
+  // Boards left the core section for one of their own (2026-11-08); the
+  // derived `boards` module follows `crm`, so the demo shows them with it.
+  Boards: "crm",
   Sales: "sales",
   Communication: "omnichannel",
   Marketing: "marketing",

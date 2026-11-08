@@ -529,6 +529,11 @@
     "retry": "Retry"
   },
   "nav": {
+    "boardTree": {
+      "title": "Folders and boards",
+      "expand": "Expand {name}",
+      "collapse": "Collapse {name}"
+    },
     "adConversions": "Ad conversions",
     "onlineBooking": "Online booking",
     "bookingWorkspace": "Meetings & booking",
@@ -586,7 +591,7 @@
     "deals": "Deals",
     "leads": "Leads",
     "tasks": "Tasks",
-    "boards": "Boards",
+    "boards": "All boards",
     "contracts": "Contracts",
     "invoices": "Invoices",
     "products": "Products",
@@ -724,6 +729,7 @@
     "energyServiceCalls": "Service Calls",
     "groups": {
       "CRM": "Core",
+      "Boards": "Boards",
       "Sales": "Sales",
       "Contracts Control": "Contracts Control",
       "Marketing": "Marketing",

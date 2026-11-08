@@ -231,9 +231,10 @@ describe("dashboard shell session lifecycle", () => {
     expect(state.mounts).toBe(1)
   })
 
-  // Owner, 2026-11-06: someone given the boards and nothing else works without
-  // the sidebar, and lands on the boards instead of the CRM home.
-  it("drops the sidebar and opens the boards for a boards-only person", async () => {
+  // Owner, 2026-11-06: someone given the boards and nothing else lands on the
+  // boards instead of the CRM home. Since 2026-11-08 the sidebar stays: its
+  // «Boards» section lists their folders and boards.
+  it("opens the boards for a boards-only person, with the sidebar that lists them", async () => {
     const everythingButBoards = USER_HIDEABLE_MODULE_IDS.filter((id) => id !== "boards")
     const allOn = { crm: true, sales: true, marketing: true, analytics: true, support: true, settings: true, mtm: false }
     state.session.user = {
@@ -243,13 +244,13 @@ describe("dashboard shell session lifecycle", () => {
       hiddenModules: everythingButBoards,
     } as typeof state.session.user
     await render()
-    expect(container.querySelector('[data-testid="sidebar"]')).toBeNull()
+    expect(container.querySelector('[data-testid="sidebar"]')).not.toBeNull()
     expect(state.replaced).toEqual(["/boards"])
 
     state.pathname = "/boards/div-1"
     state.replaced = []
     await render()
-    expect(container.querySelector('[data-testid="sidebar"]')).toBeNull()
+    expect(container.querySelector('[data-testid="sidebar"]')).not.toBeNull()
     expect(page()).not.toBeNull()
     expect(state.replaced).toEqual([])
   })

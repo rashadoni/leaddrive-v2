@@ -529,6 +529,11 @@
     "retry": "Повторить"
   },
   "nav": {
+    "boardTree": {
+      "title": "Папки и доски",
+      "expand": "Открыть «{name}»",
+      "collapse": "Свернуть «{name}»"
+    },
     "adConversions": "Конверсии в рекламу",
     "onlineBooking": "Онлайн-запись",
     "bookingWorkspace": "Встречи и запись",
@@ -586,7 +591,7 @@
     "deals": "Сделки",
     "leads": "Лиды",
     "tasks": "Задачи",
-    "boards": "Доски",
+    "boards": "Все доски",
     "contracts": "Контракты",
     "invoices": "Счета",
     "products": "Продукты",
@@ -724,6 +729,7 @@
     "energyServiceCalls": "Выезды",
     "groups": {
       "CRM": "Основная",
+      "Boards": "Доски",
       "Sales": "Продажи",
       "Contracts Control": "Управление контрактами",
       "Marketing": "Маркетинг",

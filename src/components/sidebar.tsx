@@ -22,6 +22,7 @@ import { Logo } from "@/components/logo"
 import { useTranslations } from "next-intl"
 import { useTicketBadge } from "@/contexts/ticket-badge-context"
 import { useShellRefresh } from "@/components/shell-events-provider"
+import { SidebarBoardTree } from "@/components/sidebar-board-tree"
 
 // Hoisted out of their own group and shown directly under /dashboard. Both are
 // AI surfaces a director opens first thing, and both lived in Analytics — which
@@ -406,8 +407,11 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
       return next
     })
   }
+  // With the folders listed under it, «all boards» is lit only on the list
+  // itself; on a board the board's own row carries the mark.
+  const boardTreeShown = !effectiveCollapsed && openGroups.has("Boards")
   const renderSidebarItem = (item: NavItem) => {
-    const isActive = isItemActive(item)
+    const isActive = item.href === "/boards" && boardTreeShown ? pathname === "/boards" : isItemActive(item)
     const Icon = item.icon
     return (
       <Link
@@ -675,6 +679,11 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
                       <Fragment key={item.href}>
                         <hr data-testid="sidebar-section-divider" className="mx-3 my-1.5 border-white/[0.08]" />
                         {renderSidebarItem(item)}
+                      </Fragment>
+                    ) : item.href === "/boards" ? (
+                      <Fragment key={item.href}>
+                        {renderSidebarItem(item)}
+                        <SidebarBoardTree pathname={pathname} visible={boardTreeShown} />
                       </Fragment>
                     ) : renderSidebarItem(item)
                   ))}
