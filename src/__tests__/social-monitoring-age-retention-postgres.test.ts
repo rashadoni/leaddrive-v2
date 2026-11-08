@@ -26,9 +26,9 @@
  */
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs"
 import { createHash } from "node:crypto"
-import { tmpdir } from "node:os"
+import { homedir, tmpdir } from "node:os"
 import path from "node:path"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
@@ -44,10 +44,6 @@ const scratch = vi.hoisted(() => {
   const url = new URL(admin)
   url.pathname = `/${name}`
   process.env.DATABASE_URL = url.toString()
-  // Preview cache files land in a throwaway runtime root (created on first write).
-  const runtime = `${process.env.TMPDIR || "/tmp"}/social-retention-runtime-${process.pid}-${Date.now()}`
-  process.env.LEADDRIVE_RUNTIME_DIR = runtime
-  process.env.LEADDRIVE_LOG_DIR = `${runtime}-logs`
   return { name, url: url.toString() }
 })
 
@@ -111,7 +107,17 @@ pgDescribe("social monitoring 30-day retention on a real Postgres", () => {
   let run!: typeof import("@/lib/social/monitoring-age-retention").deleteSocialMonitoringDataBeyondRetention
   let result!: Awaited<ReturnType<typeof run>>
 
+  let runtimeDir = ""
+  let logDir = ""
+
   beforeAll(async () => {
+    // The real external-runtime guard rejects /tmp, as it should in
+    // production; a configured runtime root asks for a log root outside the
+    // checkout too. Set before the first import that resolves paths.
+    runtimeDir = mkdtempSync(path.join(homedir(), ".social-retention-runtime-test-"))
+    logDir = mkdtempSync(path.join(homedir(), ".social-retention-logs-test-"))
+    process.env.LEADDRIVE_RUNTIME_DIR = runtimeDir
+    process.env.LEADDRIVE_LOG_DIR = logDir
     prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `DROP DATABASE IF EXISTS "${scratch!.name}" WITH (FORCE)`)
     prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `CREATE DATABASE "${scratch!.name}"`)
     prismaCli(["db", "push", "--schema", schemaWithoutEmbeddings(), "--skip-generate", "--accept-data-loss"], { ...process.env, DATABASE_URL: scratch!.url })
@@ -204,6 +210,7 @@ pgDescribe("social monitoring 30-day retention on a real Postgres", () => {
 
   afterAll(async () => {
     await prisma?.$disconnect()
+    for (const directory of [runtimeDir, logDir]) if (directory) rmSync(directory, { recursive: true, force: true })
     if (scratch) prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `DROP DATABASE IF EXISTS "${scratch.name}" WITH (FORCE);`)
   }, 60_000)
 
