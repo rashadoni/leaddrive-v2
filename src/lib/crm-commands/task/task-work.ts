@@ -97,7 +97,7 @@ export async function addTaskCommentCommand(
   })
   if (execution?.transaction) {
     // Голос: транзакция ещё не закоммичена — уведомление только после неё.
-    dispatchOrDeferCommandEffects(execution, notify)
+    dispatchOrDeferCommandEffects(execution, async () => { await notify() })
   } else {
     // Экран: сообщение уже записано, и ответ уходит, когда люди оповещены —
     // как было до команды. Сбой уведомления сообщения не отменяет.
