@@ -154,8 +154,9 @@ describe("user card — what this person gets", () => {
     expect(rows()).not.toHaveProperty("Кадры")
     expect(rows()).toEqual({
       "Основная": [false, "Скрыт", null],
-      // Boards come with CRM and have a tick of their own (owner, 2026-11-06).
-      "Доски · Шаблоны задач": [false, "Скрыт", null],
+      // Boards come with CRM and have a tick of their own (owner, 2026-11-06),
+      // named after their own sidebar section since 2026-11-08.
+      "Доски": [false, "Скрыт", null],
       "Продажи": [false, "Скрыт", null],
       "Финансы": [false, "Скрыт", null],
       "Маршруты и поле · Персонал": [true, "Всё, включая удаление", "В поле — Вся организация."],
