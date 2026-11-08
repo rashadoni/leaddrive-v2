@@ -22,6 +22,7 @@ import { connectedCalendarKey } from "@/lib/calendar/providers"
 import { BookingCommandError } from "./command-error"
 import { addOnTotals, parseAddOns, selectedAddOns } from "./add-ons"
 import { closedDateSet, readClosedDates } from "./closed-dates"
+import { isGroupService, seatsByStart, seatsLeft, serviceCapacity } from "./group-service"
 import { hasHostVariants, hostService, servicePriceSpan } from "./host-variants"
 import { bookingHostWhere } from "./access"
 import { isValidTimezone } from "@/lib/timezone"
@@ -133,6 +134,12 @@ export interface BusyOptions {
    * the client who tapped late simply gets new times.
    */
   holds?: { exceptConversationId?: string | null }
+  /**
+   * A class does not make its own master busy for itself: the seats of one
+   * class share the hour by design. Their master stays busy for every other
+   * service, and the class's own seats are counted instead.
+   */
+  exceptBookingPageId?: string
 }
 
 export async function loadBusyByHost(orgId: string, hostIds: string[], from: Date, to: Date, timezone: string, options: BusyOptions = {}): Promise<Map<string, BusyInterval[]> & { unavailableHostIds: Set<string>; calendarKeys: Map<string, string> }> {
@@ -142,7 +149,11 @@ export async function loadBusyByHost(orgId: string, hostIds: string[], from: Dat
   const calendarKeys = new Map(hostIds.map((id) => [id, connectedCalendarKey(accounts.get(id) ?? [])]))
   const busy = Object.assign(new Map<string, BusyInterval[]>(hostIds.map((id) => [id, []])), { unavailableHostIds: new Set<string>(), calendarKeys })
   const bookings = await prisma.booking.findMany({
-    where: { organizationId: orgId, hostUserId: { in: hostIds }, status: "confirmed", endsAt: { gt: new Date(from.getTime() - 240 * 60_000) }, startsAt: { lt: new Date(to.getTime() + 240 * 60_000) } },
+    where: {
+      organizationId: orgId, hostUserId: { in: hostIds }, status: "confirmed",
+      endsAt: { gt: new Date(from.getTime() - 240 * 60_000) }, startsAt: { lt: new Date(to.getTime() + 240 * 60_000) },
+      ...(options.exceptBookingPageId ? { bookingPageId: { not: options.exceptBookingPageId } } : {}),
+    },
     select: { hostUserId: true, startsAt: true, endsAt: true, bufferBefore: true, bufferAfter: true },
   })
   for (const booking of bookings) busy.get(booking.hostUserId)?.push({ start: booking.startsAt, end: booking.endsAt, bufferBeforeMinutes: booking.bufferBefore, bufferAfterMinutes: booking.bufferAfter })
@@ -219,9 +230,19 @@ export async function publicBookingView(orgId: string, pageId: string, now = new
   const visit = addOnTotals(chosenService ?? { price: page.price === null ? null : String(page.price), durationMinutes: page.durationMinutes }, takenAddOns)
   const rules = { ...rulesOf(page, org.timezone, org.closedDates), durationMinutes: visit.durationMinutes }
   const { from, to } = windowOf(rules, now)
-  const busy = await loadBusyByHost(orgId, offered.map((host) => host.id), from, to, org.timezone, { holds: {} })
+  const group = isGroupService(page)
+  const busy = await loadBusyByHost(orgId, offered.map((host) => host.id), from, to, org.timezone,
+    { holds: {}, ...(group ? { exceptBookingPageId: page.id } : {}) })
   const days: DaySlots[] = computeSlots({ rules, hostIds: offered.map((host) => host.id), busyByHost: busy, now })
   if (!days.length && busy.unavailableHostIds.size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
+  // A class is offered until its seats run out; a full one is simply not a
+  // free time, exactly like a taken chair.
+  const taken = group
+    ? seatsByStart(await prisma.booking.findMany({
+      where: { organizationId: orgId, bookingPageId: page.id, status: "confirmed", startsAt: { gte: from, lt: to } },
+      select: { startsAt: true },
+    }))
+    : new Map<string, number>()
   const span = servicePriceSpan(service, hosts.map((host) => host.id))
   return {
     page: {
@@ -237,6 +258,8 @@ export async function publicBookingView(orgId: string, pageId: string, now = new
       /** Set only when masters differ and none is chosen yet: «from 25». */
       priceFrom: !chosen && span.varies ? span.min : null,
       hostNames: hosts.map((host) => host.name),
+      /** More than one means a class: the time holds this many people. */
+      capacity: serviceCapacity(page),
       /** Offered only where the answer changes the price or the duration. */
       hosts: hasHostVariants(service, hosts.map((host) => host.id))
         ? hosts.map((host) => ({ id: host.id, name: host.name, ...hostService(service, host.id) }))
@@ -249,7 +272,14 @@ export async function publicBookingView(orgId: string, pageId: string, now = new
     },
     // Which host is free is the server's business, not the customer's — unless
     // the customer named one, and then it is only that one.
-    days: days.map((day) => ({ date: day.date, slots: day.slots.map(({ startsAt, endsAt }) => ({ startsAt, endsAt, hostIds: [] })) })),
+    days: days
+      .map((day) => ({
+        date: day.date,
+        slots: day.slots
+          .map(({ startsAt, endsAt }) => ({ startsAt, endsAt, hostIds: [], ...(group ? { seatsLeft: seatsLeft(page, taken.get(startsAt) ?? 0) } : {}) }))
+          .filter((slot) => !group || (slot as { seatsLeft: number }).seatsLeft > 0),
+      }))
+      .filter((day) => day.slots.length > 0),
   }
 }
 

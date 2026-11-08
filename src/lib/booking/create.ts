@@ -13,6 +13,7 @@ import { assertBookingInterval, bookingRules } from "./commands"
 import { BookingCommandError } from "./command-error"
 import { computeSlots, findSlot } from "./availability"
 import { hostService } from "./host-variants"
+import { isGroupService, serviceCapacity } from "./group-service"
 import { addOnTotals, parseAddOns, selectedAddOns } from "./add-ons"
 import { activeHosts, orgContext, loadBusyByHost, bookingCancelUrl, hashBookingToken, type BookingInput, type CreateBookingResult } from "./book"
 import { bookingHostWhere, bookingScope } from "./access"
@@ -70,8 +71,13 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
   const checkedAt = Date.now()
   // A customer-facing booking respects the holds of other conversations; a
   // staff one does not (see BusyOptions).
-  const busy = await loadBusyByHost(orgId, permitted.map((host) => host.id), from, to, org.timezone,
-    access ? {} : { holds: { exceptConversationId: input.whatsapp?.conversationId ?? null } })
+  // A class does not block itself: its seats share the hour, and whether one
+  // is left is counted in the transaction below.
+  const group = isGroupService(page)
+  const busy = await loadBusyByHost(orgId, permitted.map((host) => host.id), from, to, org.timezone, {
+    ...(access ? {} : { holds: { exceptConversationId: input.whatsapp?.conversationId ?? null } }),
+    ...(group ? { exceptBookingPageId: pageId } : {}),
+  })
   const slot = findSlot(computeSlots({ rules, hostIds: permitted.map((host) => host.id), busyByHost: busy, now }), input.startsAt)
   if (!slot) {
     if (busy.unavailableHostIds.size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
@@ -96,8 +102,18 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
         const connected = await connectedCalendarsOf(tx, hostId)
         if (!currentPage || currentPage.version !== page.version || !currentPage.hostIds.includes(hostId) || Date.now() - checkedAt > 15000 || connectedCalendarKey(connected) !== (calendarKeys.get(hostId) ?? "")) throw new BookingCommandError("AVAILABILITY_CHANGED")
         if (!host) throw new BookingCommandError("SLOT_TAKEN")
+        if (group) {
+          // One class, one master: the seats of a class that already started
+          // selling belong to whoever is giving it.
+          const seats = await tx.booking.findMany({
+            where: { organizationId: orgId, bookingPageId: pageId, startsAt, status: "confirmed" },
+            select: { hostUserId: true },
+          })
+          if (seats.length >= serviceCapacity(currentPage)) return { ok: false, reason: "taken" } as CreateBookingResult
+          if (seats.length > 0 && seats[0].hostUserId !== hostId) throw new BookingCommandError("SLOT_TAKEN")
+        }
         if (access && !access.administrator && hostId !== access.userId && !await tx.bookingCoordinatorGrant.findFirst({ where: { organizationId: orgId, coordinatorUserId: access.userId, hostUserId: hostId, canManage: true } })) throw new BookingCommandError("FORBIDDEN", 403)
-        await assertBookingInterval(tx, orgId, hostId, startsAt, endsAt, currentPage.bufferMinutes)
+        await assertBookingInterval(tx, orgId, hostId, startsAt, endsAt, currentPage.bufferMinutes, undefined, group ? pageId : undefined)
         let row = await tx.booking.create({ data: {
           organizationId: orgId, bookingPageId: pageId, hostUserId: hostId, startsAt, endsAt,
           name: input.name, phone: input.phone, email: input.email || null, note: input.note || null,

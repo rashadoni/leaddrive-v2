@@ -23668,6 +23668,9 @@ model BookingPage {
   repeatCycleDays  Int?
   /// Users who take these meetings; a booking goes to one of them.
   hostIds          String[]
+  /// How many customers take this service together: 1 = one at a time, more =
+  /// a class, where the time stays open until the seats run out.
+  capacity         Int          @default(1)
   /// A picture of the service on its public page: a path under
   /// /uploads/booking-photos, never an address from somewhere else.
   photoUrl         String?

@@ -38,6 +38,7 @@ import { applyWeekly, openWeekdays, uniformInterval, WEEKDAYS, type HoursInterva
 import { bookingSlug, REPEAT_CYCLE_DAYS } from "@/lib/booking/service"
 import { servicePriceSpan, type HostVariants } from "@/lib/booking/host-variants"
 import { addOnId, type ServiceAddOn } from "@/lib/booking/add-ons"
+import { MAX_CAPACITY } from "@/lib/booking/group-service"
 import { getCurrencySymbol } from "@/lib/currency"
 import { cn } from "@/lib/utils"
 
@@ -61,6 +62,8 @@ export interface BookingPageDraft {
   addOns: ServiceAddOn[]
   /** A path under /uploads/booking-photos, or none. */
   photoUrl: string | null
+  /** 1 = one customer at a time; more makes it a class. */
+  capacity: number
   weekly: WeeklyHours
   bufferMinutes: number
   minNoticeMinutes: number
@@ -639,6 +642,20 @@ export function BookingPageEditor({
                 </span>
               ) : null}
             </Panel>
+
+            <div className="mt-6">
+              <Label htmlFor="bp-capacity">{t("fieldCapacity")}</Label>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2.5">
+                <Input
+                  id="bp-capacity"
+                  className="h-10 w-24 tabular-nums"
+                  inputMode="numeric"
+                  value={String(draft.capacity)}
+                  onChange={(event) => set("capacity", Math.max(1, Math.min(MAX_CAPACITY, Number(event.target.value.replace(/\D/g, "")) || 1)))}
+                />
+                <span className="text-xs text-muted-foreground">{draft.capacity > 1 ? t("capacityGroup") : t("capacityOne")}</span>
+              </div>
+            </div>
 
             <div className="mt-6">
               <Label>{t("fieldLocation")}</Label>

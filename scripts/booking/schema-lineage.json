@@ -31,6 +31,12 @@
       "migration": "20261201090000_booking_page_photo",
       "bookingAdditive": true,
       "note": "A picture of the service on its public page: one nullable column on booking_pages holding a path under /uploads/booking-photos."
+    },
+    {
+      "schemaHash": "b868c47c6c781d59232bec749daf9d414666932a8a7afa04fea81403c8b804ac",
+      "migration": "20261202090000_booking_page_capacity",
+      "bookingAdditive": true,
+      "note": "How many customers take a service together: one NOT NULL column with a default of 1 on booking_pages, so an older writer's rows read as one at a time."
     }
   ]
 }

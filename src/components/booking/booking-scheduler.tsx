@@ -45,6 +45,8 @@ export interface PublicBookingPage {
   chosenHostId?: string | null
   /** The lowest price, when the masters differ and none is chosen yet. */
   priceFrom?: string | null
+  /** More than one: a class, and each free time says how many seats are left. */
+  capacity?: number
   /** Extras the service offers, and the ones already ticked. */
   addOns?: { id: string; name: string; price: string | null; durationMinutes: number }[]
   chosenAddOnIds?: string[]
@@ -298,7 +300,7 @@ export function BookingScheduler({
                     data-crm-color-role="toggle"
                     onClick={() => setDate(item.date)}
                     aria-pressed={item.date === date}
-                    className={`rounded-xl border px-3 py-2.5 text-left text-sm transition-colors ${item.date === date
+                    className={`rounded-xl border px-2.5 py-2.5 text-left text-[13px] transition-colors ${item.date === date
                       ? "border-primary bg-primary font-bold text-primary-foreground shadow-[0_8px_18px_-12px_hsl(var(--primary))]"
                       : "bg-card hover:border-primary/40 hover:bg-primary/5"}`}
                   >
@@ -319,7 +321,10 @@ export function BookingScheduler({
                       onClick={() => chooseStart(slot.startsAt)}
                       className="min-h-11 rounded-xl border bg-card px-2 py-2.5 text-sm font-semibold tabular-nums transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground"
                     >
-                      {format.time(slot.startsAt)}
+                      <span className="block">{format.time(slot.startsAt)}</span>
+                      {(page.capacity ?? 1) > 1 && slot.seatsLeft !== undefined ? (
+                        <span className="block text-[11px] font-normal opacity-75">{t("seatsLeft", { count: slot.seatsLeft })}</span>
+                      ) : null}
                     </button>
                   ))}
                 </div>
