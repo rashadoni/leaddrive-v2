@@ -1252,6 +1252,7 @@ export default function TasksPage() {
           />
           <InlineTasksTable
             tasks={filtered.map(t => ({ ...t, collaborators: t.collaborators?.map(c => c.user) }))}
+            loading={loading}
             groupOpenClosed
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}

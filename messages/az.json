@@ -2626,6 +2626,7 @@
     "manageCustomFields": "Əlavə sahələri idarə et"
   },
   "tasks": {
+    "noTasks": "Tapşırıq yoxdur",
     "title": "Tapşırıq idarəetməsi",
     "subtitle": "Komanda tapşırıqlarını yaradın, təyin edin və izləyin",
     "newTask": "Yeni tapşırıq",
