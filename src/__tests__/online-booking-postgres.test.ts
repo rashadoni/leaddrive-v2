@@ -1007,7 +1007,7 @@ pgDescribe("online booking on a real Postgres", () => {
    */
   it("a deposit is marked once by hand, and a late card payment does not re-mark it", async () => {
     const { applyDepositPaymentInTx } = await import("@/lib/booking/deposit-checkout")
-    const slug = await newPage({ price: 40, priceCurrency: "AZN", depositPercent: 25, depositFreeHours: 24 })
+    const slug = await newPage({ price: 40, depositPercent: 25, depositFreeHours: 24 })
     const id = (await (await book(slug, await someSlot(slug, 22))).json()).data.id
     const booked = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
     expect(booked.depositStatus).toBe("awaiting")
@@ -1055,7 +1055,7 @@ pgDescribe("online booking on a real Postgres", () => {
    * is gone. A card on the meeting must not be able to hand it back.
    */
   it("a deposit kept by a late cancellation cannot be returned from the card", async () => {
-    const slug = await newPage({ price: 40, priceCurrency: "AZN", depositAmount: 15, depositFreeHours: 720 })
+    const slug = await newPage({ price: 40, depositAmount: 15, depositFreeHours: 720 })
     const id = (await (await book(slug, await someSlot(slug, 24))).json()).data.id
     const booked = await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))
     const marked = await actionsPost(json("POST", `/api/v1/bookings/${id}/actions`, { operation: "deposit", deposit: "paid", version: booked.version, idempotencyKey: randomUUID() }), { params: Promise.resolve({ id }) })
