@@ -11,6 +11,15 @@ const INTENT_TO_AGENT: Record<Intent, string> = {
   general: "general",
 }
 
+/**
+ * The agent types that ARE Da Vinci personas — the ones an intent can ask for.
+ * Every other type is a module's own agent with its own job and its own prompt:
+ * "inbox" (the omnichannel greeting + menu), "social" (the Social Monitoring
+ * group's social-care drafter), "contract" (CLM), "advisor", … They answer
+ * customers or do one task; none of them is the CRM assistant for staff.
+ */
+export const CHAT_AGENT_TYPES: readonly string[] = [...new Set(Object.values(INTENT_TO_AGENT))]
+
 type AgentRow = NonNullable<Awaited<ReturnType<typeof prisma.aiAgentConfig.findFirst>>>
 
 /** The agent an intent lands on: its specialist, else a general agent, else any. */
@@ -31,13 +40,16 @@ function agentFor(intent: Intent, agents: readonly AgentRow[]): AgentRow | null 
  * Zeytun among them — and every intent lands on the same agent there; asking
  * the model first only delayed the answer's first word.
  *
- * The internal chat NEVER gets the omnichannel "inbox" persona (e.g. the
- * Gobustone social greeting + menu): it is customer-facing and belongs only
- * to generateChannelAiReply.
+ * The internal chat answers staff only as a Da Vinci persona
+ * (`CHAT_AGENT_TYPES`). Until 2026-11-09 only the "inbox" persona was kept
+ * out, so in five organisations whose single agent was the Social Monitoring
+ * one (Zeytun Pharma among them) every CRM question went to "the official
+ * social-care drafting assistant", with its prompt. An organisation with no
+ * Da Vinci persona gets `agent: null` — the plain Da Vinci, as most do.
  */
 export async function routeToAgent(orgId: string, message: string, previousAgentId?: string) {
   const agents: AgentRow[] = await prisma.aiAgentConfig.findMany({
-    where: { organizationId: orgId, isActive: true, agentType: { not: "inbox" } },
+    where: { organizationId: orgId, isActive: true, agentType: { in: [...CHAT_AGENT_TYPES] } },
     orderBy: { priority: "desc" },
   })
 

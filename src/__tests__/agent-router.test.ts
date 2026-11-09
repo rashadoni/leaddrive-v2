@@ -15,16 +15,47 @@ import { classifyIntent } from "@/lib/ai/intent-classifier"
 import { prisma } from "@/lib/prisma"
 
 /**
- * Agents as the query returns them: active, never the inbox persona, highest
- * priority first.
+ * The org's agents as stored. The mock answers `findMany` the way Postgres
+ * would — it applies the router's own `where` and `orderBy` to these rows —
+ * so a test states which rows exist and checks which agent answers, not the
+ * shape of the query.
  */
-const salesAgent = { id: "agent-sales", agentType: "sales", configName: "Sales Bot", isActive: true, priority: 5 }
-const supportAgent = { id: "agent-support", agentType: "support", configName: "Support Bot", isActive: true, priority: 3 }
-const generalAgent = { id: "agent-general", agentType: "general", configName: "General Bot", isActive: true, priority: 1 }
-const socialAgent = { id: "agent-social", agentType: "social", configName: "Social Bot", isActive: true, priority: 0 }
+const salesAgent = { id: "agent-sales", organizationId: "org-1", agentType: "sales", configName: "Sales Bot", isActive: true, priority: 5 }
+const supportAgent = { id: "agent-support", organizationId: "org-1", agentType: "support", configName: "Support Bot", isActive: true, priority: 3 }
+const generalAgent = { id: "agent-general", organizationId: "org-1", agentType: "general", configName: "General Bot", isActive: true, priority: 1 }
+const socialAgent = { id: "agent-social", organizationId: "org-1", agentType: "social", configName: "Zeytun Pharma · Social AI", isActive: true, priority: 0 }
+const inboxAgent = { id: "agent-inbox", organizationId: "org-1", agentType: "inbox", configName: "Inbox AI Agent", isActive: true, priority: 99 }
+const contractAgent = { id: "agent-contract", organizationId: "org-1", agentType: "contract", configName: "Contract AI", isActive: true, priority: 50 }
 
-function orgHas(...agents: object[]) {
-  vi.mocked(prisma.aiAgentConfig.findMany).mockResolvedValue(agents as never)
+type Row = { id: string; organizationId: string; agentType: string; isActive: boolean; priority: number }
+let table: Row[] = []
+
+function matches(row: Row, where: Record<string, unknown>): boolean {
+  return Object.entries(where).every(([key, condition]) => {
+    const value = (row as Record<string, unknown>)[key]
+    if (condition && typeof condition === "object") {
+      const c = condition as { in?: unknown[]; not?: unknown }
+      if (c.in && !c.in.includes(value)) return false
+      if ("not" in c && value === c.not) return false
+      return true
+    }
+    return value === condition
+  })
+}
+
+function orgHas(...agents: Row[]) {
+  table = agents
+  vi.mocked(prisma.aiAgentConfig.findMany).mockImplementation((async (args: {
+    where: Record<string, unknown>
+    orderBy?: { priority?: "asc" | "desc" }
+  }) => {
+    const rows = table.filter((row) => matches(row, args.where))
+    if (args.orderBy?.priority) {
+      const sign = args.orderBy.priority === "desc" ? -1 : 1
+      rows.sort((a, b) => sign * (a.priority - b.priority))
+    }
+    return rows
+  }) as never)
 }
 
 describe("agent-router — routeToAgent", () => {
@@ -34,13 +65,30 @@ describe("agent-router — routeToAgent", () => {
     vi.clearAllMocks()
   })
 
-  it("reads only active agents, never the omnichannel inbox persona, best priority first", async () => {
-    orgHas()
-    await routeToAgent(orgId, "Hello")
-    expect(prisma.aiAgentConfig.findMany).toHaveBeenCalledWith({
-      where: { organizationId: orgId, isActive: true, agentType: { not: "inbox" } },
-      orderBy: { priority: "desc" },
-    })
+  it("never answers staff as a module's own agent: inbox, social, contract stay out", async () => {
+    orgHas(inboxAgent, contractAgent, socialAgent, { ...generalAgent, isActive: false })
+    for (const message of ["Сколько заказов за неделю?", "Hello", "Покажи сделки"]) {
+      expect(await routeToAgent(orgId, message)).toEqual({ agent: null, intent: "general", confidence: 1, isHandoff: false })
+    }
+    expect(classifyIntent).not.toHaveBeenCalled()
+  })
+
+  it("Zeytun: an org whose only agent is the social one gets the plain Da Vinci", async () => {
+    orgHas(socialAgent)
+    const result = await routeToAgent(orgId, "Сколько заказов?", "agent-social")
+    expect(result.agent).toBeNull()
+    expect(classifyIntent).not.toHaveBeenCalled()
+  })
+
+  it("module agents do not outrank a Da Vinci persona, whatever their priority", async () => {
+    orgHas(inboxAgent, contractAgent, socialAgent, generalAgent)
+    expect((await routeToAgent(orgId, "Hi")).agent).toEqual(generalAgent)
+  })
+
+  it("reads only this org's active agents, best priority first", async () => {
+    orgHas({ ...salesAgent, organizationId: "org-2" }, { ...supportAgent, isActive: false }, generalAgent)
+    expect((await routeToAgent(orgId, "What is your pricing?")).agent).toEqual(generalAgent)
+    expect(classifyIntent).not.toHaveBeenCalled()
   })
 
   it("routes sales_inquiry to the sales agent", async () => {
@@ -72,10 +120,7 @@ describe("agent-router — routeToAgent", () => {
     // No agents at all (most organisations).
     orgHas()
     expect(await routeToAgent(orgId, "Hello")).toEqual({ agent: null, intent: "general", confidence: 1, isHandoff: false })
-    // One agent of a type no intent asks for (Zeytun: a single "social" agent).
-    orgHas(socialAgent)
-    expect((await routeToAgent(orgId, "Сколько заказов?")).agent).toEqual(socialAgent)
-    // Two agents, but only one of them is ever picked (general wins over the unmapped type).
+    // Two agents, but only one of them is a Da Vinci persona.
     orgHas(generalAgent, socialAgent)
     expect((await routeToAgent(orgId, "Hi")).agent).toEqual(generalAgent)
     expect(classifyIntent).not.toHaveBeenCalled()
