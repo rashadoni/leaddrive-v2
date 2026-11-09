@@ -22,6 +22,7 @@ import { CheckSquare, Plus, Clock, AlertTriangle, Pencil, Trash2, CalendarDays, 
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { cn } from "@/lib/utils"
 import { MotionList, MotionItem } from "@/components/ui/motion"
+import { applyTaskPatch, revertTaskPatch } from "@/lib/client/optimistic-task-patch"
 
 interface Task {
   id: string
@@ -675,19 +676,33 @@ export default function TasksPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session])
 
+  // The tick shows at once (owner, 2026-11-09). Before, it waited for the
+  // server, then for the whole list again, and a refusal (a board task the
+  // person may not move) was never told: the next load simply undid the tick.
+  // Refused or unreachable — only this task's status goes back, with the reason.
   async function toggleComplete(task: Task) {
-    const newStatus = task.status === "completed" ? "pending" : "completed"
+    const patch = { status: task.status === "completed" ? "pending" : "completed" }
+    setTasks(p => p.map(x => (x.id === task.id ? applyTaskPatch(x, patch) : x)))
+    const undo = () => setTasks(p => p.map(x => (x.id === task.id ? revertTaskPatch(x, task, patch) : x)))
     try {
-      await fetch(`/api/v1/tasks/${task.id}`, {
+      const res = await fetch(`/api/v1/tasks/${task.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>),
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(patch),
       })
-      fetchTasks()
-    } catch (err) { console.error(err) }
+      if (!res.ok) {
+        undo()
+        const j = await res.json().catch(() => ({}))
+        toast.error(j?.message || j?.error || t("inlineNetworkErrorReverted"))
+      }
+    } catch (err) {
+      console.error(err)
+      undo()
+      toast.error(t("inlineNetworkErrorReverted"))
+    }
   }
 
   // Inline editing helpers (used by InlineTasksTable)
