@@ -250,7 +250,7 @@ async function main() {
       }
       const subject = subjectCache.get(subjectId)
       if (!subject) return false
-      const result = await judgeSubjectRelevance({
+      const result = await judgeSubjectRelevance(row.organizationId, {
         text: row.text,
         platform: row.platform,
         authorName: row.authorName,
