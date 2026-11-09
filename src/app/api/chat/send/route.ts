@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     const telegramText = `💬 *Yeni mesaj (saytdan)*\n\n👤 ${label}\n🆔 \`${sessionId.slice(0, 8)}\`\n\n${text}`
 
     const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

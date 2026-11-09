@@ -33,6 +33,7 @@ export async function sendExpoPush(messages: ExpoPushMessage[]): Promise<number>
   if (valid.length === 0) return 0
   try {
     const res = await fetch(EXPO_PUSH_URL, {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify(valid.map((m) => ({ sound: "default", ...m }))),

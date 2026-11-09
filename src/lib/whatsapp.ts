@@ -601,6 +601,7 @@ export async function sendWhatsAppText({
 
   try {
     const res = await fetch(`${GRAPH_API_BASE}/${config.phoneNumberId}/messages`, {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: {
         Authorization: `Bearer ${config.accessToken}`,
@@ -707,6 +708,7 @@ export async function sendWhatsAppTemplate({
 
   try {
     const res = await fetch(`${GRAPH_API_BASE}/${config.phoneNumberId}/messages`, {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: {
         Authorization: `Bearer ${config.accessToken}`,
@@ -1013,6 +1015,7 @@ export async function syncTemplatesFromMeta(organizationId: string, opts: { chan
   try {
     while (nextUrl) {
       const res: Response = await fetch(nextUrl, {
+        signal: AbortSignal.timeout(15_000),
         headers: { Authorization: `Bearer ${config.accessToken}` },
       })
       const data: any = await res.json()
@@ -1296,7 +1299,7 @@ export async function validateWhatsAppCredentials(
   try {
     const res = await fetch(
       `${GRAPH_API_BASE}/${config.phoneNumberId}?fields=verified_name,display_phone_number`,
-      { headers: { Authorization: `Bearer ${config.accessToken}` } },
+      { signal: AbortSignal.timeout(15_000), headers: { Authorization: `Bearer ${config.accessToken}` } },
     )
     const data = await res.json()
     if (!res.ok) return { ok: false, error: data?.error?.message || `HTTP ${res.status}` }

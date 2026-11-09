@@ -136,7 +136,7 @@ export async function GET(req: NextRequest) {
   form.set("grant_type", "authorization_code")
   form.set("redirect_uri", redirectUri)
   form.set("code", code)
-  const shortRes = await fetch(IG_TOKEN_URL, { method: "POST", body: form })
+  const shortRes = await fetch(IG_TOKEN_URL, { signal: AbortSignal.timeout(15_000), method: "POST", body: form })
   if (!shortRes.ok) {
     console.error("[instagram-oauth] short token failed:", await redactedProviderText(shortRes))
     return redirectError(req, "token_exchange_failed", ret, originChannelId)
@@ -152,6 +152,7 @@ export async function GET(req: NextRequest) {
   // 2) long-lived token (~60 days)
   const longRes = await fetch(
     `${IG_GRAPH}/access_token?grant_type=ig_exchange_token&client_secret=${encodeURIComponent(appSecret)}&access_token=${encodeURIComponent(short)}`,
+    { signal: AbortSignal.timeout(15_000) },
   )
   if (!longRes.ok) {
     console.error("[instagram-oauth] long token failed:", await redactedProviderText(longRes))
@@ -169,7 +170,7 @@ export async function GET(req: NextRequest) {
   // an id, and the revocation (lib/social/instagram-revoke) matches either this one or `user_id`.
   let scopedId = ""
   try {
-    const meRes = await fetch(`${IG_GRAPH}/me?fields=user_id,username`, graphBearerInit(longToken))
+    const meRes = await fetch(`${IG_GRAPH}/me?fields=user_id,username`, { ...graphBearerInit(longToken), signal: AbortSignal.timeout(15_000) })
     if (meRes.ok) {
       const me = await meRes.json() as { user_id?: string | number; username?: string; id?: string }
       userId = String(me.user_id ?? me.id ?? shortUserId)

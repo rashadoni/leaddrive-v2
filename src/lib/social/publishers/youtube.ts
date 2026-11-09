@@ -18,6 +18,7 @@ async function publishYouTubeReply(input: SocialReplyPublishInput): Promise<Soci
 
   try {
     const response = await fetch("https://www.googleapis.com/youtube/v3/comments?part=snippet", {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -61,6 +62,7 @@ async function accessTokenForPublish(input: SocialReplyPublishInput): Promise<st
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
   if (!refresh || !clientId || !clientSecret) return null
   const response = await fetch("https://oauth2.googleapis.com/token", {
+    signal: AbortSignal.timeout(15_000),
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({

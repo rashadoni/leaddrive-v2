@@ -81,6 +81,7 @@ export async function sendTelegramText({
     const payload: Record<string, unknown> = { chat_id: target.chatId, text: body }
     if (parseMode) payload.parse_mode = parseMode
     const response = await fetch(`${TELEGRAM_API_BASE}/bot${target.botToken}/sendMessage`, {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

@@ -67,6 +67,7 @@ export async function GET(req: NextRequest) {
   if (!clientId || !clientSecret || !redirectUri) return errRedirect(req, "not_configured")
 
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    signal: AbortSignal.timeout(15_000),
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -82,6 +83,7 @@ export async function GET(req: NextRequest) {
 
   // Fetch channel info
   const chanRes = await fetch("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", {
+    signal: AbortSignal.timeout(15_000),
     headers: { Authorization: `Bearer ${t.access_token}` },
   })
   const chan = (await chanRes.json().catch(() => null)) as { items?: Array<{ id: string; snippet: { title: string; customUrl?: string } }> } | null

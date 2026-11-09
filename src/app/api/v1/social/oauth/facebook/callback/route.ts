@@ -168,6 +168,7 @@ export async function GET(req: NextRequest) {
   // 1) short-lived user token
   const shortRes = await fetch(
     `${GRAPH}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${encodeURIComponent(code)}`,
+    { signal: AbortSignal.timeout(15_000) },
   )
   if (!shortRes.ok) {
     console.error("[facebook-oauth] short token failed:", await redactedProviderText(shortRes))
@@ -178,6 +179,7 @@ export async function GET(req: NextRequest) {
   // 2) long-lived user token (~60 days)
   const longRes = await fetch(
     `${GRAPH}/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${encodeURIComponent(shortJson.access_token)}`,
+    { signal: AbortSignal.timeout(15_000) },
   )
   if (!longRes.ok) {
     console.error("[facebook-oauth] long token failed:", await redactedProviderText(longRes))
@@ -188,7 +190,7 @@ export async function GET(req: NextRequest) {
   // 3) list admined pages (each comes with its own long-lived page token)
   const pagesRes = await fetch(
     `${GRAPH}/me/accounts?fields=${messenger ? "id,name,access_token" : "id,name,access_token,instagram_business_account{id,username}"}`,
-    graphBearerInit(longJson.access_token),
+    { ...graphBearerInit(longJson.access_token), signal: AbortSignal.timeout(15_000) },
   )
   if (!pagesRes.ok) {
     console.error("[facebook-oauth] /me/accounts failed:", await redactedProviderText(pagesRes))
