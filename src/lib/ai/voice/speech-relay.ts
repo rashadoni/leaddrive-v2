@@ -69,7 +69,11 @@ export class SpeechRelay {
   private readonly fetchImpl: typeof fetch
 
   constructor(private readonly options: SpeechRelayOptions) {
-    this.fetchImpl = options.fetch ?? ((...args) => fetch(...args))
+    // Bound, not wrapped: the wrapper existed only to keep `fetch` from losing
+    // its receiver, and a bare `fetch(...)` call here reads to the timeout
+    // guard as a server call to another service with no limit. The one real
+    // call this makes is to this app's own route, with a signal (below).
+    this.fetchImpl = options.fetch ?? fetch.bind(globalThis)
   }
 
   /** Озвучивает ли модуль этот ход сам (иначе играет голос модели). */
