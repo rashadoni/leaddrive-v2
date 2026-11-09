@@ -82,7 +82,7 @@ export async function pollYouTubeAccount(accountId: string): Promise<{ ingested:
     url.searchParams.set("order", "time")
     if (pageToken) url.searchParams.set("pageToken", pageToken)
 
-    const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } })
+    const res = await fetch(url.toString(), { signal: AbortSignal.timeout(30_000), headers: { Authorization: `Bearer ${token}` } })
     if (!res.ok) return { ingested, error: `threads failed ${res.status}` }
     const json = (await res.json()) as {
       nextPageToken?: string

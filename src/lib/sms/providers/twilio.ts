@@ -42,6 +42,7 @@ export const twilioProvider: SmsProvider = {
       const body = new URLSearchParams({ To: params.to, From: fromNumber, Body: params.message })
 
       const res = await fetch(url, {
+        signal: AbortSignal.timeout(15_000),
         method: "POST",
         headers: {
           Authorization: `Basic ${auth}`,

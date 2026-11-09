@@ -178,7 +178,7 @@ export async function pollFacebookAccount(accountId: string): Promise<NativeMeta
     initialUrl: url,
     fetchPage: async pageUrl => {
       try {
-        const response = await fetch(pageUrl, graphAuthInit(token))
+        const response = await fetch(pageUrl, { ...graphAuthInit(token), signal: AbortSignal.timeout(30_000) })
         if (!response.ok) {
           const body = await response.text()
           return {
@@ -229,7 +229,7 @@ export async function pollFacebookAccount(accountId: string): Promise<NativeMeta
   let partialError: string | null = posts.error
   const fetchCommentPage = async (pageUrl: string) => {
     try {
-      const response = await fetch(pageUrl, graphAuthInit(token))
+      const response = await fetch(pageUrl, { ...graphAuthInit(token), signal: AbortSignal.timeout(30_000) })
       if (!response.ok) {
         const body = await response.text()
         return {
@@ -388,7 +388,7 @@ export async function pollFacebookAccount(accountId: string): Promise<NativeMeta
 
   // Fetch posts where this page is tagged — these are true external mentions.
   const taggedUrl = `${GRAPH}/me/tagged?fields=id,message,story,created_time,permalink_url,from&limit=25${proofParam}`
-  const tRes = await fetch(taggedUrl, graphAuthInit(token))
+  const tRes = await fetch(taggedUrl, { ...graphAuthInit(token), signal: AbortSignal.timeout(30_000) })
   if (tRes.ok) {
     const tJson = await tRes.json() as {
       data: Array<{ id: string; message?: string; story?: string; created_time: string; permalink_url?: string; from?: { id: string; name: string } }>
@@ -487,7 +487,7 @@ export async function pollInstagramAccount(accountId: string): Promise<NativeMet
     initialUrl: mediaUrl,
     fetchPage: async pageUrl => {
       try {
-        const response = await fetch(pageUrl, graphAuthInit(token))
+        const response = await fetch(pageUrl, { ...graphAuthInit(token), signal: AbortSignal.timeout(30_000) })
         if (!response.ok) {
           const body = await response.text()
           return {
@@ -536,7 +536,7 @@ export async function pollInstagramAccount(accountId: string): Promise<NativeMet
   let partialError: string | null = media.error
   const fetchCommentPage = async (pageUrl: string) => {
     try {
-      const response = await fetch(pageUrl, graphAuthInit(token))
+      const response = await fetch(pageUrl, { ...graphAuthInit(token), signal: AbortSignal.timeout(30_000) })
       if (!response.ok) {
         const body = await response.text()
         return {
@@ -692,7 +692,7 @@ export async function pollInstagramAccount(accountId: string): Promise<NativeMet
 
   // Fetch media where this account is tagged (brand mentions). Same scope.
   const tagsUrl = `${GRAPH}/${account.handle}/tags?fields=id,caption,permalink,timestamp,username,media_type&limit=25${proofParam}`
-  const tRes = await fetch(tagsUrl, graphAuthInit(token))
+  const tRes = await fetch(tagsUrl, { ...graphAuthInit(token), signal: AbortSignal.timeout(30_000) })
   if (tRes.ok) {
     const tJson = await tRes.json() as {
       data: Array<{ id: string; caption?: string; permalink?: string; timestamp: string; username?: string; media_type?: string }>

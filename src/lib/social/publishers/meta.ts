@@ -33,6 +33,7 @@ async function publishViaGraph(
 
   try {
     const res = await fetch(url, {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ message: replyText, access_token: token }),

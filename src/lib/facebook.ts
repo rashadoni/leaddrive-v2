@@ -12,6 +12,7 @@ export async function sendFacebookMessage(
   void orgId
   try {
     const res = await fetch("https://graph.facebook.com/v20.0/me/messages", {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${pageAccessToken}` },
       body: JSON.stringify({ recipient: { id: psid }, message: { text } }),
@@ -37,6 +38,7 @@ export async function sendInstagramMessage(
   void orgId
   try {
     const res = await fetch("https://graph.facebook.com/v20.0/me/messages", {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${pageAccessToken}` },
       body: JSON.stringify({ recipient: { id: igsid }, message: { text } }),

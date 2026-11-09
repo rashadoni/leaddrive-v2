@@ -130,6 +130,7 @@ export async function POST(req: NextRequest) {
         try {
           const tgUrl = `https://api.telegram.org/bot${orgSettings.telegramBotToken}/sendMessage`
           await fetch(tgUrl, {
+            signal: AbortSignal.timeout(30_000),
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

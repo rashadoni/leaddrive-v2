@@ -89,6 +89,7 @@ export async function GET(req: NextRequest) {
   if (!verifier) return redirectError(req, "bad_cookie")
 
   const tokenRes = await fetch("https://api.twitter.com/2/oauth2/token", {
+    signal: AbortSignal.timeout(15_000),
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -116,6 +117,7 @@ export async function GET(req: NextRequest) {
 
   // Fetch the authenticated user to get handle
   const userRes = await fetch("https://api.twitter.com/2/users/me", {
+    signal: AbortSignal.timeout(15_000),
     headers: { Authorization: `Bearer ${tokenJson.access_token}` },
   })
   const userJson = await userRes.json().catch(() => null) as { data?: { id: string; username: string; name: string } } | null
