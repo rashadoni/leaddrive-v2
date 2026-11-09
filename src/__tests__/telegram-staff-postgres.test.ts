@@ -31,6 +31,9 @@ if (!adminUrl && process.env.TELEGRAM_STAFF_DB_GATE === "required") {
 
 const scratch = vi.hoisted(() => {
   process.env.TENANT_PII_MASTER_KEY = "6".repeat(64)
+  // The AI gateway falls back to the platform key; the stand-in model below
+  // answers whatever key it is built with.
+  process.env.ANTHROPIC_API_KEY ??= "sk-ant-platform-key-for-tests" // gitleaks:allow — not a key
   const admin = process.env.TELEGRAM_STAFF_TEST_DATABASE_URL
   if (!admin) return null
   const name = `telegram_staff_${process.pid}`
