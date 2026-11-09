@@ -8,6 +8,9 @@ export type CrmCommandErrorCode =
   // `status: "converted"` has to go through convertLeadToDealCommand, which
   // creates the deal the word promises.
   | "CONVERSION_REQUIRES_COMMAND"
+  // The record's own state refuses the change (a closed ticket, a complaint
+  // that cannot leave the registry).
+  | "CONFLICT"
 
 export class CrmCommandError extends Error {
   constructor(

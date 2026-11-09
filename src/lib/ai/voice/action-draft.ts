@@ -848,7 +848,34 @@ function resolveDraftTarget(
   if (entityType === "deal") return resolveDealTarget(auth, targetEntityId)
   if (entityType === "contact") return resolveContactTarget(auth, targetEntityId)
   if (entityType === "company") return resolveCompanyTarget(auth, targetEntityId)
+  if (entityType === "ticket") return resolveTicketTarget(auth, targetEntityId)
   return resolveLeadDraftTarget(auth, targetEntityId)
+}
+
+/**
+ * Тикет (этап 4): правка статуса, приоритета, ответственного или комментарий.
+ * В квитанции он назван номером и темой — так его ищут на экране очереди.
+ */
+async function resolveTicketTarget(auth: AuthResult, targetEntityId: string): Promise<DraftTarget> {
+  const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "ticket", {
+    id: targetEntityId,
+    organizationId: auth.orgId,
+  })
+  const ticket = await prisma.ticket.findFirst({
+    where,
+    select: { id: true, ticketNumber: true, subject: true, status: true, priority: true, assignedTo: true, updatedAt: true },
+  })
+  if (!ticket) {
+    throw new AiVoiceActionDraftError("TARGET_NOT_FOUND", "The target record was not found", 404)
+  }
+  return {
+    entityType: "ticket",
+    id: ticket.id,
+    label: `${ticket.ticketNumber} · ${ticket.subject}`,
+    status: ticket.status,
+    updatedAt: ticket.updatedAt,
+    before: { status: ticket.status, priority: ticket.priority, assignedTo: ticket.assignedTo },
+  }
 }
 
 /** Preview fields whose value is an id of another record, and where to name it. */

@@ -27,6 +27,8 @@ import {
   VOICE_RECEIPT_STATE_EVENT,
   VOICE_RECORD_CHANGED_EVENT,
   VOICE_DRAFT_SHOWN,
+  VOICE_DRAFT_SHOWN_BUTTON_ONLY,
+  voiceProposalNeedsButton,
   voiceDraftUnchangedNote,
   voiceOutcomeMessage,
   type ConfirmationGate,
@@ -554,12 +556,15 @@ function ConsoleInner({
       window.dispatchEvent(new CustomEvent(VOICE_RECEIPT_CHANGED_EVENT))
       // Поправка, не изменившая ничего, — это единственное, чего модель о своём
       // же вызове знать не может: она слышала два разных слова. Сервер знает.
+      // Уходит клиенту — только кнопкой (voice-confirmation.ts): модель
+      // просит нажать, а не ждёт «да».
+      const shown = voiceProposalNeedsButton(tool, args) ? VOICE_DRAFT_SHOWN_BUTTON_ONLY : VOICE_DRAFT_SHOWN
       const unchanged = body?.data?.unchangedFields
       if (unchanged && unchanged.length > 0) {
         trace("propose", { tool, fields: unchanged.length }, "unchanged")
-        return `${VOICE_DRAFT_SHOWN}\n${voiceDraftUnchangedNote(unchanged)}`
+        return `${shown}\n${voiceDraftUnchangedNote(unchanged)}`
       }
-      return VOICE_DRAFT_SHOWN
+      return shown
     } catch {
       trace("propose", { tool }, "error")
       return "ERROR: не удалось подготовить черновик. Ничего не сохранено."

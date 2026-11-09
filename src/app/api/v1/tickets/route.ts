@@ -1,12 +1,12 @@
 import type { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
-import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withRls } from "@/lib/with-rls"
-import { getFieldPermissions, filterEntityFields, filterWritableFields } from "@/lib/field-filter"
+import { getFieldPermissions, filterEntityFields } from "@/lib/field-filter"
 import { applyRecordFilter } from "@/lib/sharing-rules"
-import { createTicketWithAssignment } from "@/lib/ticket-factory"
-import { LEGACY_TICKET_CATEGORY_SLUGS } from "@/lib/ticketing/categories"
+import { createRestActorContext } from "@/lib/crm-commands/actor-context"
+import { CrmCommandError } from "@/lib/crm-commands/errors"
+import { createTicketCommand } from "@/lib/crm-commands/ticket/create-ticket"
 import { TicketingValidationError } from "@/lib/ticketing/category-service"
 import {
   parseTicketListParams,
@@ -15,28 +15,6 @@ import {
   ticketSearchWhere,
   type TicketQueueCounts,
 } from "@/lib/ticketing/ticket-list-query"
-
-const createTicketSchema = z.object({
-  subject: z.string().min(1).max(300),
-  description: z.string().max(5000).optional(),
-  priority: z.enum(["low", "medium", "high", "critical"]).optional(),
-  category: z.enum(LEGACY_TICKET_CATEGORY_SLUGS).optional(),
-  categoryId: z.string().optional(),
-  contactId: z.string().optional(),
-  companyId: z.string().optional(),
-  assignedTo: z.string().optional(),
-})
-
-type CreateTicketWritableData = {
-  subject: string
-  description?: string
-  priority?: "low" | "medium" | "high" | "critical"
-  category?: (typeof LEGACY_TICKET_CATEGORY_SLUGS)[number]
-  categoryId?: string | null
-  contactId?: string | null
-  companyId?: string | null
-  assignedTo?: string | null
-}
 
 type TicketListRow = Prisma.TicketGetPayload<{
   include: {
@@ -157,32 +135,14 @@ export const GET = withRls(async (req, { orgId, session }) => {
 })
 
 export const POST = withRls(async (req, { orgId, session }) => {
-  const role = session?.role || "admin"
   const body = await req.json()
-  const parsed = createTicketSchema.safeParse(body)
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
-
+  const actor = createRestActorContext({ organizationId: orgId, userId: session?.userId, role: session?.role })
   try {
-    const fieldPerms = await getFieldPermissions(orgId, role, "ticket")
-    const writableData = filterWritableFields({
-      subject: parsed.data.subject,
-      description: parsed.data.description,
-      priority: parsed.data.priority,
-      category: parsed.data.category,
-      categoryId: parsed.data.categoryId,
-      contactId: parsed.data.contactId,
-      companyId: parsed.data.companyId,
-      assignedTo: parsed.data.assignedTo,
-    }, fieldPerms, role) as CreateTicketWritableData
-
-    const ticket = await createTicketWithAssignment({
-      organizationId: orgId,
-      createdBy: session?.userId || null,
-      source: "agent",
-      ...writableData,
-    })
+    // Одна команда с голосом (этап 4): права на поля, номер, SLA, назначение.
+    const { entity: ticket } = await createTicketCommand(actor, body)
     return NextResponse.json({ success: true, data: ticket }, { status: 201 })
   } catch (e) {
+    if (e instanceof CrmCommandError) return NextResponse.json({ error: e.message }, { status: e.status })
     if (e instanceof TicketingValidationError) {
       return NextResponse.json({ error: e.message }, { status: e.status })
     }

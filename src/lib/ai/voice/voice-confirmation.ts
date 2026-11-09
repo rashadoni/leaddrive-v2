@@ -321,3 +321,32 @@ export function voiceDraftUnchangedNote(fields: readonly string[]): string {
 
 export const VOICE_DRAFT_SHOWN =
   "OK: the draft is on screen. Read it back briefly in the user's language and ask them to confirm. The app hears their yes or no itself — do not call any tool for it. When they answer, say only a short acknowledgement (\"сохраняю\") and wait for the CRM_RESULT message; nothing is saved before it arrives."
+
+/**
+ * Что уходит клиенту, подтверждается только кнопкой (владелец 2026-11-08,
+ * план этапа 4: «исходящее — только кнопкой»). Голосовое «да» здесь не
+ * действует: фон, телевизор, собственный голос помощника в динамике — и
+ * клиенту ушёл бы текст, которого человек не читал.
+ *
+ * Ответ клиенту в тикете — всегда; смена статуса тикета — всегда, когда она
+ * в квитанции: «решён» просит клиента подтвердить закрытие и шлёт опрос,
+ * а тикету из WhatsApp любой статус может уйти шаблоном.
+ */
+export function voiceMayConfirm(actionType: string, fieldKeys: readonly string[]): boolean {
+  if (actionType === "reply_to_ticket") return false
+  if (actionType === "update_ticket" && fieldKeys.includes("status")) return false
+  return true
+}
+
+/** То же правило со стороны модели: по инструменту и его аргументам. */
+export function voiceProposalNeedsButton(tool: string, args: unknown): boolean {
+  if (tool === "propose_reply_to_ticket") return true
+  if (tool === "propose_update_ticket") {
+    return Boolean(args && typeof args === "object" && "status" in args && (args as { status?: unknown }).status !== undefined)
+  }
+  return false
+}
+
+export const VOICE_DRAFT_SHOWN_BUTTON_ONLY =
+  "OK: the draft is on screen. This one reaches the CUSTOMER, so a spoken yes does NOT confirm it. Read it back briefly in the user's language and ask them to check it and press the button on the draft themselves. Do not say it was sent; wait for the CRM_RESULT message."
+

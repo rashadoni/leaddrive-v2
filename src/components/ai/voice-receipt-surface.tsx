@@ -27,6 +27,7 @@ import {
   type VoiceReceiptCommandDetail,
   type VoiceReceiptOutcomeDetail,
   type VoiceReceiptStateDetail,
+  voiceMayConfirm,
 } from "@/lib/ai/voice/voice-confirmation"
 import {
   cancelVoiceReceipt,
@@ -371,9 +372,12 @@ export function VoiceReceiptSurface({
   }, [awaitingReceiptId])
   useEffect(() => () => announceState(null), [])
 
-  const commandRef = useRef({ confirm, discard, awaitingReceiptId })
+  const voiceConfirmAllowed = receipt
+    ? voiceMayConfirm(receipt.actionType, (receipt.preview?.fields ?? []).map((field) => field.key))
+    : true
+  const commandRef = useRef({ confirm, discard, awaitingReceiptId, voiceConfirmAllowed })
   useEffect(() => {
-    commandRef.current = { confirm, discard, awaitingReceiptId }
+    commandRef.current = { confirm, discard, awaitingReceiptId, voiceConfirmAllowed }
   })
   useEffect(() => {
     const onCommand = (event: Event) => {
@@ -382,7 +386,11 @@ export function VoiceReceiptSurface({
       // Only the draft that was waiting, and only while it still is: a
       // command for a replaced or edited draft is dropped, not redirected.
       if (!detail || !current.awaitingReceiptId || detail.receiptId !== current.awaitingReceiptId) return
-      if (detail.command === "confirm") void current.confirm("voice")
+      if (detail.command === "confirm") {
+        // Уходит клиенту — голосовое «да» не отправляет, только кнопка.
+        if (!current.voiceConfirmAllowed) return
+        void current.confirm("voice")
+      }
       else void current.discard("voice")
     }
     window.addEventListener(VOICE_RECEIPT_COMMAND_EVENT, onCommand)
@@ -548,7 +556,7 @@ export function VoiceReceiptSurface({
 
         {!succeeded && (
           <p data-testid="voice-receipt-press-notice" className="mt-3 text-muted-foreground">
-            {t("receipt.pressNotice")}
+            {t(voiceConfirmAllowed ? "receipt.pressNotice" : "receipt.buttonOnlyNotice")}
           </p>
         )}
       </div>

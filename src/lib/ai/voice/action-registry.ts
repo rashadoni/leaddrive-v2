@@ -18,6 +18,7 @@ import { createDealCommandSchema, updateDealCommandSchema } from "@/lib/crm-comm
 import { createCompanyCommandSchema } from "@/lib/crm-commands/schemas/company"
 import { createContactCommandSchema, updateContactCommandSchema } from "@/lib/crm-commands/schemas/contact"
 import { voiceActivityCommandSchema } from "@/lib/crm-commands/schemas/activity"
+import { voiceTicketSchemas } from "@/lib/crm-commands/schemas/ticket"
 import {
   assignFieldContactCommandSchema,
   decideAttendanceRequestCommandSchema,
@@ -56,6 +57,12 @@ export const AI_VOICE_ACTION_TYPES = [
   "log_company_activity",
   "log_deal_activity",
   "log_lead_activity",
+  // Этап 4 (владелец 2026-11-09): тикеты. Ответ клиенту и смена статуса —
+  // только кнопкой (voice-confirmation.ts: voiceMayConfirm).
+  "create_ticket",
+  "add_ticket_note",
+  "reply_to_ticket",
+  "update_ticket",
 ] as const
 
 export type AiVoiceActionType = (typeof AI_VOICE_ACTION_TYPES)[number]
@@ -82,6 +89,9 @@ export type AiVoiceActionCommand =
   | "createContactCommand"
   | "updateContactCommand"
   | "createActivityCommand"
+  | "createTicketCommand"
+  | "addTicketCommentCommand"
+  | "updateTicketCommand"
 export type AiVoiceActionDedupePolicy =
   | "idempotency_key"
   | "lead_contact_coordinates"
@@ -115,6 +125,8 @@ export type AiVoiceActionEntityType =
   | "mtm_route" | "mtm_contact"
   // Этап 3: контакт (человек у клиента).
   | "contact"
+  // Этап 4: тикет поддержки.
+  | "ticket"
 
 /** Все виды результата — для проверки сохранённого результата при повторе. */
 export const AI_VOICE_ACTION_ENTITY_TYPES: readonly AiVoiceActionEntityType[] = [
@@ -122,10 +134,11 @@ export const AI_VOICE_ACTION_ENTITY_TYPES: readonly AiVoiceActionEntityType[] = 
   "mtm_task", "mtm_message", "mtm_attendance_request",
   "mtm_route", "mtm_contact",
   "contact",
+  "ticket",
 ]
 
 /** The kinds of record a voice update may target. */
-export type AiVoiceActionTargetType = "lead" | "task" | "deal" | "contact" | "company"
+export type AiVoiceActionTargetType = "lead" | "task" | "deal" | "contact" | "company" | "ticket"
 
 export type AiVoiceActionTarget = Readonly<{
   entityType: AiVoiceActionTargetType
@@ -350,6 +363,10 @@ const CREATE_CONTACT_FIELDS = ["fullName", "email", "phone", "position", "compan
 const UPDATE_CONTACT_FIELDS = [...CREATE_CONTACT_FIELDS, "expectedUpdatedAt"] as const
 // Запись в карточке: карточку сервер берёт из цели черновика, не из полей.
 const LOG_ACTIVITY_FIELDS = ["type", "subject", "description", "scheduledAt"] as const
+// Этап 4: тикет. Клиента, компанию и ответственного сервер находит по имени.
+const CREATE_TICKET_FIELDS = ["subject", "description", "priority", "contactId", "companyId", "assignedTo"] as const
+const TICKET_COMMENT_FIELDS = ["comment"] as const
+const UPDATE_TICKET_FIELDS = ["status", "priority", "assignedTo", "expectedUpdatedAt"] as const
 /** Служебные поля квитанции: сервер их ставит, человек их не правит. */
 const SERVER_SIDE_FIELDS: ReadonlySet<string> = new Set(["expectedUpdatedAt", "expectedVersion", "previewToken"])
 
@@ -456,6 +473,10 @@ const WRITE_DEALS: readonly AiVoiceActionPermission[] = [
 const WRITE_COMPANIES: readonly AiVoiceActionPermission[] = [
   { module: "companies", action: "write", tenantModule: "crm" },
 ]
+// Тикеты живут в модуле «Поддержка», права — как у экрана (tickets:write).
+const WRITE_TICKETS: readonly AiVoiceActionPermission[] = [
+  { module: "tickets", action: "write", tenantModule: "support" },
+]
 const WRITE_CONTACTS: readonly AiVoiceActionPermission[] = [
   { module: "contacts", action: "write", tenantModule: "crm" },
 ]
@@ -472,6 +493,19 @@ const CONTACT_TARGET: AiVoiceActionTarget = {
  */
 function activityParentTarget(entityType: AiVoiceActionTargetType): AiVoiceActionTarget {
   return { entityType, requestField: "targetEntityId", bindExpectedUpdatedAt: false }
+}
+
+const TICKET_TARGET: AiVoiceActionTarget = {
+  entityType: "ticket",
+  requestField: "targetEntityId",
+  bindExpectedUpdatedAt: true,
+}
+
+/** Тикет, в который пишут комментарий: к его версии не привязывается. */
+const TICKET_PARENT_TARGET: AiVoiceActionTarget = {
+  entityType: "ticket",
+  requestField: "targetEntityId",
+  bindExpectedUpdatedAt: false,
 }
 
 const WRITE_ROUTE_FIELD: readonly AiVoiceActionPermission[] = [
@@ -557,6 +591,33 @@ function activityEntry(input: {
       operation: "create",
       entityType: input.target,
       previewFields: LOG_ACTIVITY_FIELDS,
+    }),
+  }
+}
+
+/** Комментарий в тикете: внутренняя заметка или ответ клиенту. Результат — тикет. */
+function ticketCommentEntry(actionType: "add_ticket_note" | "reply_to_ticket"): AiVoiceActionRegistryEntry {
+  const risk: AiVoiceActionRisk = actionType === "reply_to_ticket" ? "sensitive" : "standard"
+  return {
+    actionType,
+    command: "addTicketCommentCommand",
+    commandSchema: voiceTicketSchemas.comment,
+    allowedFields: TICKET_COMMENT_FIELDS,
+    permissions: WRITE_TICKETS,
+    fieldPermissionEntity: "ticket",
+    fieldPermissionNames: () => [],
+    risk,
+    ttlMs: risk === "sensitive" ? SENSITIVE_TTL_MS : STANDARD_TTL_MS,
+    dedupePolicy: "idempotency_key",
+    target: TICKET_PARENT_TARGET,
+    operation: "create",
+    resultEntityType: "ticket",
+    previewFields: TICKET_COMMENT_FIELDS,
+    renderPreview: createPreviewRenderer({
+      actionType,
+      operation: "create",
+      entityType: "ticket",
+      previewFields: TICKET_COMMENT_FIELDS,
     }),
   }
 }
@@ -923,6 +984,53 @@ export const AI_VOICE_ACTION_REGISTRY: Readonly<Record<AiVoiceActionType, AiVoic
   log_company_activity: activityEntry({ actionType: "log_company_activity", target: "company", permissions: WRITE_COMPANIES }),
   log_deal_activity: activityEntry({ actionType: "log_deal_activity", target: "deal", permissions: WRITE_DEALS }),
   log_lead_activity: activityEntry({ actionType: "log_lead_activity", target: "lead", permissions: WRITE_LEADS }),
+  create_ticket: {
+    actionType: "create_ticket",
+    command: "createTicketCommand",
+    commandSchema: voiceTicketSchemas.create,
+    allowedFields: CREATE_TICKET_FIELDS,
+    permissions: WRITE_TICKETS,
+    fieldPermissionEntity: "ticket",
+    fieldPermissionNames: (payload) => ownPayloadFields(payload),
+    risk: "standard",
+    ttlMs: STANDARD_TTL_MS,
+    dedupePolicy: "idempotency_key",
+    target: null,
+    operation: "create",
+    resultEntityType: "ticket",
+    previewFields: CREATE_TICKET_FIELDS,
+    renderPreview: createPreviewRenderer({
+      actionType: "create_ticket",
+      operation: "create",
+      entityType: "ticket",
+      previewFields: CREATE_TICKET_FIELDS,
+    }),
+  },
+  add_ticket_note: ticketCommentEntry("add_ticket_note"),
+  // Уходит клиенту (в WhatsApp, если тикет оттуда): короткий срок квитанции.
+  reply_to_ticket: ticketCommentEntry("reply_to_ticket"),
+  update_ticket: {
+    actionType: "update_ticket",
+    command: "updateTicketCommand",
+    commandSchema: voiceTicketSchemas.update,
+    allowedFields: UPDATE_TICKET_FIELDS,
+    permissions: WRITE_TICKETS,
+    fieldPermissionEntity: "ticket",
+    fieldPermissionNames: (payload) => ownPayloadFields(payload, ["expectedUpdatedAt"]),
+    risk: "sensitive",
+    ttlMs: SENSITIVE_TTL_MS,
+    dedupePolicy: "target_revision",
+    target: TICKET_TARGET,
+    operation: "update",
+    resultEntityType: "ticket",
+    previewFields: UPDATE_TICKET_FIELDS.filter((field) => field !== "expectedUpdatedAt"),
+    renderPreview: createPreviewRenderer({
+      actionType: "update_ticket",
+      operation: "update",
+      entityType: "ticket",
+      previewFields: UPDATE_TICKET_FIELDS.filter((field) => field !== "expectedUpdatedAt"),
+    }),
+  },
 })
 
 const ACTION_TYPE_SET = new Set<string>(AI_VOICE_ACTION_TYPES)

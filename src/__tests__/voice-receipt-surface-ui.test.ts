@@ -687,6 +687,59 @@ describe("answering the draft by voice", () => {
     expect(postCalls()).toHaveLength(0)
   })
 
+  // Этап 4: что уходит клиенту, подтверждается только кнопкой — фон или
+  // собственный голос помощника не должны отправить клиенту текст.
+  function ticketReplyReceipt() {
+    return serverReceipt({
+      actionType: "reply_to_ticket",
+      target: { entityType: "ticket", id: "ticket-7" },
+      preview: {
+        contract: 1,
+        actionType: "reply_to_ticket",
+        operation: "create",
+        entityType: "ticket",
+        titleKey: "ai.voice.actions.reply_to_ticket.title",
+        target: { entityType: "ticket", id: "ticket-7", label: "TK-0007 · Kassa işləmir" },
+        fields: [{ key: "comment", labelKey: "ai.voice.actions.fields.comment", after: "Sabah usta gələcək" }],
+      },
+    })
+  }
+
+  it("does not send a reply to the customer on a spoken yes — only the button does", async () => {
+    fetchMock
+      .mockReturnValueOnce(jsonResponse(ticketReplyReceipt()))
+      .mockReturnValueOnce(proofResponse())
+      .mockReturnValueOnce(jsonResponse({
+        intentId: "intent-1",
+        state: "succeeded",
+        actionType: "reply_to_ticket",
+        revision: 3,
+        payloadHash: "a".repeat(64),
+        result: { entityType: "ticket", entityId: "ticket-7" },
+        replayed: false,
+      }, 200))
+    await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
+    expect(text("voice-receipt-press-notice")).toBe("receipt.buttonOnlyNotice")
+    await say("confirm")
+    expect(postCalls()).toHaveLength(0)
+
+    // Кнопка отправляет, как всегда.
+    await click("voice-receipt-confirm")
+    expect(postCalls().map(([url]) => url)).toEqual([
+      "/api/v1/ai/voice/actions/intent-1/confirmation",
+      "/api/v1/ai/voice/actions/intent-1/commit",
+    ])
+  })
+
+  it("still cancels a reply to the customer on a spoken no", async () => {
+    fetchMock
+      .mockReturnValueOnce(jsonResponse(ticketReplyReceipt()))
+      .mockReturnValueOnce(jsonResponse({ id: "intent-1", state: "cancelled" }))
+    await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
+    await say("cancel")
+    expect(postCalls().map(([url]) => url)).toEqual(["/api/v1/ai/voice/actions/intent-1/cancel"])
+  })
+
   it("tells the model about a press too, so it does not ask again", async () => {
     fetchMock
       .mockReturnValueOnce(jsonResponse(serverReceipt()))

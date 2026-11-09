@@ -29291,7 +29291,8 @@
       "position": "Vəzifə",
       "subject": "Mövzu",
       "type": "Qeyd növü",
-      "scheduledAt": "Nə vaxt"
+      "scheduledAt": "Nə vaxt",
+      "comment": "Mətn"
     },
     "values": {
       "status": {
@@ -29308,7 +29309,12 @@
         "done": "Hazırdır",
         "completed": "Tamamlanıb",
         "cancelled": "Ləğv edilib",
-        "backlog": "Backlog"
+        "backlog": "Backlog",
+        "open": "Açıq",
+        "waiting": "Gözləyir",
+        "resolved": "Həll edildi",
+        "closed": "Bağlandı",
+        "escalated": "Eskalasiya edildi"
       },
       "priority": {
         "low": "Aşağı",
@@ -29353,6 +29359,7 @@
       "yes": "Bəli",
       "no": "Xeyr",
       "pressNotice": "Assistent soruşanda «hə» deyin və ya düyməni basın. O vaxta qədər CRM-ə heç nə yazılmır.",
+      "buttonOnlyNotice": "Bunu müştəri görəcək — yoxlayın və düyməni basın. Səsli «hə» bunu göndərməyəcək.",
       "cancel": "Ləğv et",
       "retry": "Yenidən cəhd et",
       "refresh": "Qaralamanı yenilə",
@@ -29389,7 +29396,11 @@
         "log_contact_activity": "Kontakt kartına qeyd",
         "log_company_activity": "Şirkət kartına qeyd",
         "log_deal_activity": "Sövdələşmə kartına qeyd",
-        "log_lead_activity": "Lid kartına qeyd"
+        "log_lead_activity": "Lid kartına qeyd",
+        "create_ticket": "Tiket yarat",
+        "add_ticket_note": "Tiketdə daxili qeyd",
+        "reply_to_ticket": "Tiketdə müştəriyə cavab",
+        "update_ticket": "Tiketi dəyiş"
       },
       "confirm": {
         "create_task": "Tapşırıq yarat",
@@ -29415,7 +29426,11 @@
         "log_contact_activity": "Yaz",
         "log_company_activity": "Yaz",
         "log_deal_activity": "Yaz",
-        "log_lead_activity": "Yaz"
+        "log_lead_activity": "Yaz",
+        "create_ticket": "Tiket yarat",
+        "add_ticket_note": "Qeydi saxla",
+        "reply_to_ticket": "Müştəriyə göndər",
+        "update_ticket": "Tiketi saxla"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "Oxşar qeyd artq mövcuddur:",
@@ -29434,7 +29449,7 @@
       }
     },
     "title": "Səslə idarəetmə",
-    "subtitle": "Sövdələr, tapşırıqlar, gələn mesajlar və ya sahə komandası haqqında soruşun. Assistent həmçinin tapşırıq, lid, sövdələşmə və ya lidə dəyişiklik hazırlaya bilər — qaralamadakı düyməni basmayana qədər heç nə yazılmır.",
+    "subtitle": "Sövdələr, tapşırıqlar, gələn mesajlar və ya sahə komandası haqqında soruşun. Assistent həmçinin tapşırıq, lid, sövdələşmə, kontakt və tiketləri hazırlayır və dəyişir, kartlara qeyd və zəngləri yazır, sahə komandasını idarə edir — qaralamanı təsdiq etməyincə heç nə yazılmır: «hə» deyin və ya düyməni basın. Müştəriyə cavab yalnız düymə ilə gedir.",
     "idle": "Hazır",
     "listening": "Dinləyirəm",
     "hearing": "Sizi eşidirəm…",
