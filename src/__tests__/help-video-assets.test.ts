@@ -87,10 +87,10 @@ describe("help video assets", () => {
 
     expect(entry).not.toBeNull()
     expect(getHelpVideoAsset(entry!, "ru").videoSrc).toBe(
-      "/api/help-videos/deals.ru.VOICE.mp4?v=20260729-boards-guide",
+      "/api/help-videos/deals.ru.VOICE.mp4?v=20261109-boards-guide-az-v2",
     )
     expect(getHelpVideoAsset(entry!, "ru").posterSrc).toBe(
-      "/api/help-videos/deals.ru.poster.jpg?v=20260729-boards-guide",
+      "/api/help-videos/deals.ru.poster.jpg?v=20261109-boards-guide-az-v2",
     )
   })
 
