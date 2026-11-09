@@ -29295,7 +29295,8 @@
       "position": "Position",
       "subject": "Subject",
       "type": "Entry type",
-      "scheduledAt": "When"
+      "scheduledAt": "When",
+      "comment": "Text"
     },
     "values": {
       "status": {
@@ -29312,7 +29313,12 @@
         "done": "Done",
         "completed": "Completed",
         "cancelled": "Cancelled",
-        "backlog": "Backlog"
+        "backlog": "Backlog",
+        "open": "Open",
+        "waiting": "Waiting",
+        "resolved": "Resolved",
+        "closed": "Closed",
+        "escalated": "Escalated"
       },
       "priority": {
         "low": "Low",
@@ -29357,6 +29363,7 @@
       "yes": "Yes",
       "no": "No",
       "pressNotice": "Say “yes” when the assistant asks, or press the button. Nothing is written to the CRM before that.",
+      "buttonOnlyNotice": "The customer will see this — check it and press the button. A spoken yes will not send it.",
       "cancel": "Cancel",
       "retry": "Try again",
       "refresh": "Reload the draft",
@@ -29393,7 +29400,11 @@
         "log_contact_activity": "Entry on the contact card",
         "log_company_activity": "Entry on the company card",
         "log_deal_activity": "Entry on the deal card",
-        "log_lead_activity": "Entry on the lead card"
+        "log_lead_activity": "Entry on the lead card",
+        "create_ticket": "Create ticket",
+        "add_ticket_note": "Internal note in ticket",
+        "reply_to_ticket": "Reply to customer in ticket",
+        "update_ticket": "Edit ticket"
       },
       "confirm": {
         "create_task": "Create task",
@@ -29419,7 +29430,11 @@
         "log_contact_activity": "Save entry",
         "log_company_activity": "Save entry",
         "log_deal_activity": "Save entry",
-        "log_lead_activity": "Save entry"
+        "log_lead_activity": "Save entry",
+        "create_ticket": "Create ticket",
+        "add_ticket_note": "Save note",
+        "reply_to_ticket": "Send to customer",
+        "update_ticket": "Save ticket"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "A similar record already exists:",
@@ -29438,7 +29453,7 @@
       }
     },
     "title": "Voice control",
-    "subtitle": "Ask about deals, tasks, the inbox or the field team. The assistant can also prepare a task, a lead, a deal or a change to a lead — it writes nothing until you press the button on the draft.",
+    "subtitle": "Ask about deals, tasks, the inbox or the field team. The assistant also prepares and changes tasks, leads, deals, contacts and tickets, writes notes and calls into record cards and runs the field team — it writes nothing until you confirm the draft: say \"yes\" or press the button. A reply to a customer goes out only with the button.",
     "idle": "Ready",
     "listening": "Listening",
     "hearing": "I can hear you…",

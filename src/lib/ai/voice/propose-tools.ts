@@ -47,6 +47,10 @@ export const VOICE_PROPOSE_TOOL_NAMES = [
   "propose_create_contact",
   "propose_update_contact",
   "propose_log_activity",
+  "propose_create_ticket",
+  "propose_add_ticket_note",
+  "propose_reply_to_ticket",
+  "propose_update_ticket",
 ] as const
 
 export type VoiceProposeToolName = (typeof VOICE_PROPOSE_TOOL_NAMES)[number]
@@ -76,6 +80,10 @@ export const VOICE_PROPOSE_ACTION_TYPES: Readonly<Record<VoiceProposeToolName, A
     // Одна фраза для модели, четыре действия у сервера: какое — решает вид
     // карточки (контакт, компания, сделка, лид), см. propose-resolve.ts.
     propose_log_activity: "log_contact_activity",
+    propose_create_ticket: "create_ticket",
+    propose_add_ticket_note: "add_ticket_note",
+    propose_reply_to_ticket: "reply_to_ticket",
+    propose_update_ticket: "update_ticket",
   })
 
 const personName = z.string().trim().min(2).max(120)
@@ -390,6 +398,36 @@ export const VOICE_PROPOSE_SCHEMAS = {
     /** Only for a meeting or call at a set time: local YYYY-MM-DDTHH:MM. */
     when: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Use local YYYY-MM-DDTHH:MM").optional(),
   }),
+  /*
+   * Этап 4 (владелец 2026-11-09): тикеты поддержки. Тикет — номером
+   * («TK-0012», «двенадцатый») или словами темы, либо тот, что открыт на
+   * экране. Ответ клиенту и смена статуса уходят клиенту — их подтверждают
+   * только кнопкой.
+   */
+  propose_create_ticket: z.strictObject({
+    subject: z.string().trim().min(1).max(300),
+    description: z.string().trim().max(5000).optional(),
+    priority: z.enum(["low", "medium", "high", "critical"]).optional(),
+    contactName: shortText.optional(),
+    companyName: shortText.optional(),
+    assigneeName: personName.optional(),
+  }),
+  propose_add_ticket_note: z.strictObject({
+    /** Ticket number or words of its subject; omit for the ticket open on screen. */
+    ticket: shortText.optional(),
+    note: z.string().trim().min(1).max(5000),
+  }),
+  propose_reply_to_ticket: z.strictObject({
+    ticket: shortText.optional(),
+    /** The reply the customer will read, in the user's own words. */
+    message: z.string().trim().min(1).max(5000),
+  }),
+  propose_update_ticket: z.strictObject({
+    ticket: shortText.optional(),
+    status: z.enum(["new", "open", "in_progress", "waiting", "resolved", "closed", "escalated"]).optional(),
+    priority: z.enum(["low", "medium", "high", "critical"]).optional(),
+    assigneeName: personName.optional(),
+  }),
 } as const satisfies Record<VoiceProposeToolName, z.ZodTypeAny>
 
 export type VoiceProposeArgs<T extends VoiceProposeToolName> =
@@ -436,6 +474,14 @@ const DESCRIPTIONS: Readonly<Record<VoiceProposeToolName, string>> = {
     "Prepare a change to ONE existing contact (a person at a client) for the user to confirm. This does NOT save anything. Omit contactName for the contact open on screen; otherwise give the name the user said. Send only the fields being changed: fullName, email, phone, position, companyName.",
   propose_log_activity:
     "Prepare a NOTE, a logged CALL, an EMAIL or a MEETING in the history of ONE card — a contact, a company, a deal or a lead — for the user to confirm. This does NOT save anything. Omit recordType and recordName for the card open on screen; otherwise give the kind of card and its name as the user said it. kind: note, call, email or meeting. subject is a short title; details is what was said or agreed, in the user's own words — do not invent anything. when (local YYYY-MM-DDTHH:MM) only for a meeting or call at a time the user named; resolve relative days first. To give someone a job to do, use propose_create_task instead.",
+  propose_create_ticket:
+    "Prepare a new SUPPORT TICKET for the user to confirm. This does NOT create anything. subject is a short title; description what is wrong, in the user's words. Add priority, the customer (contactName or companyName) and the assignee by name only if the user said them. Creating a ticket sends nothing to the customer.",
+  propose_add_ticket_note:
+    "Prepare an INTERNAL NOTE in ONE support ticket, for the user to confirm — only colleagues see it, the customer does not. This does NOT save anything. ticket is its number (\"TK-0012\", \"12\") or words of its subject; omit it for the ticket open on screen. note in the user's own words.",
+  propose_reply_to_ticket:
+    "Prepare a REPLY TO THE CUSTOMER in ONE support ticket. This does NOT send anything. ticket is its number or words of its subject; omit it for the ticket open on screen. message is exactly what the customer will read, in the user's own words — do not rewrite, translate or add anything. If the ticket came from WhatsApp, the customer gets it in WhatsApp. It goes out ONLY when the user presses the button on the draft: tell them so; a spoken yes does not send it. For a note only colleagues see, use propose_add_ticket_note.",
+  propose_update_ticket:
+    "Prepare a change to ONE support ticket — its status, priority or assignee — for the user to confirm. This does NOT save anything. ticket is its number or words of its subject; omit it for the ticket open on screen. status: new, open, in_progress, waiting, resolved, closed or escalated. A status change can message the customer (resolved asks them to confirm closing and sends a survey), so it is confirmed ONLY with the button on the draft: tell the user so.",
   propose_create_deal:
     "Prepare a NEW deal that does not come from a lead, for the user to confirm on screen. This does NOT create the deal: it shows a receipt the user confirms by saying yes or pressing the button. Name the company and contact as the user says them; never invent an id. Do not pass a stage, pipeline or probability — the CRM chooses them. If the user is converting an existing lead, use propose_convert_lead_to_deal instead.",
 }

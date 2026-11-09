@@ -27,6 +27,7 @@ const DB_IDS = {
   attendanceRequest: "00000000-0000-4000-8000-000000000001",
   fieldRoute: "db-field-route-0001",
   fieldContact: "db-field-contact-0001",
+  ticket: "db-ticket-0001",
 } as const
 
 const mocks = vi.hoisted(() => ({
@@ -44,6 +45,7 @@ const mocks = vi.hoisted(() => ({
   hrmRequests: vi.fn(),
   fieldRoutes: vi.fn(),
   fieldContacts: vi.fn(),
+  tickets: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -61,6 +63,7 @@ vi.mock("@/lib/prisma", () => ({
     mtmHrmRequest: { findMany: mocks.hrmRequests },
     mtmRoute: { findMany: mocks.fieldRoutes },
     mtmContact: { findMany: mocks.fieldContacts },
+    ticket: { findMany: mocks.tickets },
   },
 }))
 // Начальник в «Маршрутах и поле» со всей организацией в команде.
@@ -148,6 +151,11 @@ const POISONED_ARGS: Record<VoiceProposeToolName, Record<string, unknown>> = {
   propose_create_contact: { fullName: POISON, position: POISON, companyName: POISON },
   propose_update_contact: { contactName: POISON, fullName: POISON, position: POISON, companyName: POISON },
   propose_log_activity: { recordType: "contact", recordName: POISON, kind: "call", subject: POISON, details: POISON },
+  // Этап 4: тикет — номером или словами темы; клиент и ответственный — по имени.
+  propose_create_ticket: { subject: POISON, description: POISON, contactName: POISON, companyName: POISON, assigneeName: POISON },
+  propose_add_ticket_note: { ticket: POISON, note: POISON },
+  propose_reply_to_ticket: { ticket: POISON, message: POISON },
+  propose_update_ticket: { ticket: POISON, status: "in_progress", assigneeName: POISON },
 }
 
 beforeEach(() => {
@@ -166,6 +174,7 @@ beforeEach(() => {
   mocks.fieldContacts.mockResolvedValue([{
     id: DB_IDS.fieldContact, displayName: POISON, firstName: POISON, lastName: POISON, middleName: null,
   }])
+  mocks.tickets.mockResolvedValue([{ id: DB_IDS.ticket, ticketNumber: "TK-0001", subject: POISON }])
   mocks.hrmRequests.mockResolvedValue([{
     id: DB_IDS.attendanceRequest,
     startDate: new Date("2026-11-10T00:00:00Z"),

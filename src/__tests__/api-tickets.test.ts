@@ -502,6 +502,8 @@ describe("POST /api/v1/tickets", () => {
       createdAt,
     } as any)
 
+    // Команда проверяет, что компания — своей организации (до SLA).
+    vi.mocked(prisma.company.findFirst).mockResolvedValueOnce({ id: "comp-1" } as any)
     const res = await POST(makeRequest("http://localhost/api/v1/tickets", {
       method: "POST",
       body: JSON.stringify({ subject: "Entitled", priority: "critical", companyId: "comp-1" }),

@@ -119,8 +119,20 @@ export async function fireTicketHooks(ticketId: string): Promise<void> {
   await emitTicketCreatedSideEffects(ticket)
 }
 
+/**
+ * Внутри чужой транзакции (голос, этап 4): тикет пишется в ней одной попыткой
+ * — номер берётся под блокировкой последовательности, гонки за номер нет, — а
+ * авто-назначение и всё, что за ним (журнал, уведомления, вебхуки, Slack),
+ * идёт после коммита через `afterCommit`. Без транзакции — как всегда.
+ */
+export type TicketFactoryExecution = Readonly<{
+  transaction: Prisma.TransactionClient
+  afterCommit: (effect: () => Promise<void>) => void
+}>
+
 export async function createTicketWithAssignment(
   input: CreateTicketInput & { fireHooks?: boolean },
+  execution?: TicketFactoryExecution,
 ): Promise<Ticket> {
   const orgId = input.organizationId
 
@@ -153,43 +165,51 @@ export async function createTicketWithAssignment(
         externalId: input.requesterExternalId,
         meta: input.requesterMeta,
       })
+  const writeTicket = async (tx: Prisma.TransactionClient): Promise<Ticket> => {
+    await lockTicketNumberSequence(orgId, tx)
+    const ticketNumber = await nextTicketNumber(orgId, tx, input.ticketNumberPrefix || "TK")
+    const created = await tx.ticket.create({
+      data: {
+        organizationId: orgId,
+        ticketNumber,
+        subject: input.subject,
+        description: input.description,
+        priority,
+        category,
+        categoryId: resolvedCategory.categoryId,
+        status: input.initialStatus || "new",
+        contactId: input.contactId || null,
+        leadId: input.leadId || null,
+        companyId: resolvedCompanyId,
+        assignedTo: input.assignedTo || null,
+        createdBy: input.createdBy || null,
+        tags: input.tags || [],
+        source: input.source || null,
+        sourceMeta: input.sourceMeta as Prisma.InputJsonValue | undefined,
+        ...requesterSnapshot,
+        ...sla,
+      },
+    })
+    await createTicketEntitlementMilestones(tx, {
+      organizationId: orgId,
+      ticketId: created.id,
+      companyId: created.companyId,
+      ticketCreatedAt: created.createdAt,
+      priority: created.priority,
+    })
+    return created
+  }
+
   let ticket: Ticket | null = null
+  if (execution) {
+    ticket = await writeTicket(execution.transaction)
+    const created = ticket
+    execution.afterCommit(async () => { await assignAndAnnounce(created, input, category) })
+    return created
+  }
   for (let attempt = 1; attempt <= TICKET_NUMBER_RETRY_LIMIT; attempt += 1) {
     try {
-      ticket = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        await lockTicketNumberSequence(orgId, tx)
-        const ticketNumber = await nextTicketNumber(orgId, tx, input.ticketNumberPrefix || "TK")
-        const created = await tx.ticket.create({
-          data: {
-            organizationId: orgId,
-            ticketNumber,
-            subject: input.subject,
-            description: input.description,
-            priority,
-            category,
-            categoryId: resolvedCategory.categoryId,
-            status: input.initialStatus || "new",
-            contactId: input.contactId || null,
-            leadId: input.leadId || null,
-            companyId: resolvedCompanyId,
-            assignedTo: input.assignedTo || null,
-            createdBy: input.createdBy || null,
-            tags: input.tags || [],
-            source: input.source || null,
-            sourceMeta: input.sourceMeta as Prisma.InputJsonValue | undefined,
-            ...requesterSnapshot,
-            ...sla,
-          },
-        })
-        await createTicketEntitlementMilestones(tx, {
-          organizationId: orgId,
-          ticketId: created.id,
-          companyId: created.companyId,
-          ticketCreatedAt: created.createdAt,
-          priority: created.priority,
-        })
-        return created
-      })
+      ticket = await prisma.$transaction(writeTicket)
       break
     } catch (error) {
       if (attempt < TICKET_NUMBER_RETRY_LIMIT && isTicketNumberConflict(error)) {
@@ -203,6 +223,15 @@ export async function createTicketWithAssignment(
     throw new Error("Failed to create ticket")
   }
 
+  return assignAndAnnounce(ticket, input, category)
+}
+
+async function assignAndAnnounce(
+  ticket: Ticket,
+  input: CreateTicketInput & { fireHooks?: boolean },
+  category: string,
+): Promise<Ticket> {
+  const orgId = input.organizationId
   let finalTicket: Ticket = ticket
   let finalAssignee = finalTicket.assignedTo
 

@@ -11,6 +11,9 @@ import { updateDealCommand } from "@/lib/crm-commands/deal/update-deal"
 import { createCompanyCommand } from "@/lib/crm-commands/company/create-company"
 import { createContactCommand, updateContactCommand } from "@/lib/crm-commands/contact/contact"
 import { createActivityCommand } from "@/lib/crm-commands/activity/create-activity"
+import { createTicketCommand } from "@/lib/crm-commands/ticket/create-ticket"
+import { addTicketCommentCommand } from "@/lib/crm-commands/ticket/ticket-comment"
+import { updateTicketCommand } from "@/lib/crm-commands/ticket/update-ticket"
 import {
   addTaskChecklistItemCommand,
   addTaskCommentCommand,
@@ -230,6 +233,22 @@ async function runCanonicalCommand(
     }[intent.actionType]
     await createActivityCommand(actor, { ...payload, ...link }, execution)
     entityId = id
+  } else if (intent.actionType === "create_ticket") {
+    entityId = (await createTicketCommand(actor, payload, execution)).entity.id
+  } else if (intent.actionType === "add_ticket_note" || intent.actionType === "reply_to_ticket") {
+    // Внутренняя заметка или ответ клиенту — решает действие квитанции, а не поле.
+    if (!intent.targetEntityId) {
+      throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)
+    }
+    entityId = (await addTicketCommentCommand(actor, intent.targetEntityId, {
+      comment: payload.comment,
+      isInternal: intent.actionType === "add_ticket_note",
+    }, execution)).ticket.id
+  } else if (intent.actionType === "update_ticket") {
+    if (!intent.targetEntityId) {
+      throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)
+    }
+    entityId = (await updateTicketCommand(actor, intent.targetEntityId, payload, execution)).entity.id
   } else if (intent.actionType === "update_task") {
     if (!intent.targetEntityId) {
       throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)

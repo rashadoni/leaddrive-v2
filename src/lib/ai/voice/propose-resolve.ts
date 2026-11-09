@@ -82,9 +82,12 @@ export type VoiceProposeResolution =
       | "RECORD_NOT_FOUND"
       | "RECORD_AMBIGUOUS"
       | "RECORD_TARGET_REQUIRED"
+      | "TICKET_NOT_FOUND"
+      | "TICKET_AMBIGUOUS"
+      | "TICKET_TARGET_REQUIRED"
     field:
       | "assigneeName" | "leadName" | "companyName" | "contactName" | "taskTitle" | "dealName" | "status" | "stage"
-      | "itemTitle" | "agentName" | "kind" | "day" | "clientName" | "recordName"
+      | "itemTitle" | "agentName" | "kind" | "day" | "clientName" | "recordName" | "ticket"
     candidates: readonly Readonly<{ id: string; label: string }>[]
   }>
   | Readonly<{ kind: "invalid"; issues: readonly Readonly<{ path: string; message: string }>[] }>
@@ -615,6 +618,7 @@ export async function resolveVoiceProposal(
       || key === "taskTitle"
       || key === "dealName"
       || key === "itemTitle"
+      || (key === "ticket" && TICKET_TOOLS.has(tool))
     ) continue
     payload[key] = value
   }
@@ -1014,6 +1018,57 @@ export async function resolveVoiceProposal(
     }
   }
 
+  if (tool === "propose_create_ticket") {
+    // Клиент тикета — карточкой CRM, по имени; сказанное слово в тикет не идёт.
+    delete payload.contactName
+    delete payload.companyName
+    if (typeof args.contactName === "string") {
+      const contact = await resolveContact(auth, args.contactName)
+      if (!contact.ok) {
+        return { kind: "clarify", code: contact.ambiguous ? "CONTACT_AMBIGUOUS" : "CONTACT_NOT_FOUND", field: "contactName", candidates: contact.candidates }
+      }
+      payload.contactId = contact.id
+    }
+    if (typeof args.companyName === "string") {
+      const company = await resolveCompany(auth, args.companyName)
+      if (!company.ok) {
+        return { kind: "clarify", code: company.ambiguous ? "COMPANY_AMBIGUOUS" : "COMPANY_NOT_FOUND", field: "companyName", candidates: company.candidates }
+      }
+      payload.companyId = company.id
+    }
+  }
+
+  if (TICKET_TOOLS.has(tool) && tool !== "propose_create_ticket") {
+    if (typeof args.ticket === "string") {
+      const ticket = await resolveTicket(auth, args.ticket)
+      if (!ticket.ok) {
+        return {
+          kind: "clarify",
+          code: ticket.ambiguous ? "TICKET_AMBIGUOUS" : "TICKET_NOT_FOUND",
+          field: "ticket",
+          candidates: ticket.candidates,
+        }
+      }
+      targetEntityId = ticket.id
+    } else if (screen.recordType === "ticket" && screen.recordId) {
+      targetEntityId = screen.recordId
+    } else {
+      return { kind: "clarify", code: "TICKET_TARGET_REQUIRED", field: "ticket", candidates: [] }
+    }
+    // Слова модели — в поля команды.
+    if (tool === "propose_add_ticket_note") {
+      delete payload.note
+      payload.comment = args.note
+    }
+    if (tool === "propose_reply_to_ticket") {
+      delete payload.message
+      payload.comment = args.message
+    }
+    if (tool === "propose_update_ticket" && Object.keys(payload).length === 0) {
+      return { kind: "invalid", issues: [{ path: "(root)", message: "Name at least one field to change" }] }
+    }
+  }
+
   if (tool === "propose_log_activity") {
     // Полезная нагрузка — заново: вид и имя карточки — не поля записи.
     for (const key of Object.keys(payload)) delete payload[key]
@@ -1054,6 +1109,53 @@ export async function resolveVoiceProposal(
     actionType,
     payload,
     ...(targetEntityId ? { targetEntityId } : {}),
+  }
+}
+
+const TICKET_TOOLS: ReadonlySet<string> = new Set([
+  "propose_create_ticket",
+  "propose_add_ticket_note",
+  "propose_reply_to_ticket",
+  "propose_update_ticket",
+])
+
+/**
+ * Тикет по словам человека: номер («TK-0012», «тикет 12») или слова темы,
+ * имени клиента. Видимость — та же, что у очереди (правила записей).
+ */
+async function resolveTicket(auth: AuthResult, spoken: string) {
+  const digits = spoken.replace(/\D/g, "")
+  const numberOnly = /^[\p{L}\s#№-]*\d+$/u.test(spoken.trim()) && digits.length > 0 && digits.length <= 8
+  const contains = { contains: spoken, mode: "insensitive" as const }
+  const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "ticket", {
+    organizationId: auth.orgId,
+    ...(numberOnly
+      ? {
+          OR: [
+            { ticketNumber: { equals: spoken.trim(), mode: "insensitive" as const } },
+            { ticketNumber: { endsWith: `-${digits.padStart(4, "0")}` } },
+            { ticketNumber: { endsWith: `-${digits}` } },
+          ],
+        }
+      : {
+          OR: [
+            { subject: contains },
+            { requesterName: contains },
+            { contact: { is: { fullName: contains } } },
+          ],
+        }),
+  })
+  const rows = await prisma.ticket.findMany({
+    where,
+    select: { id: true, ticketNumber: true, subject: true },
+    orderBy: { updatedAt: "desc" },
+    take: MAX_CANDIDATES + 1,
+  }) as Array<{ id: string; ticketNumber: string; subject: string }>
+  if (rows.length === 1) return { ok: true as const, id: rows[0].id }
+  return {
+    ok: false as const,
+    ambiguous: rows.length > 0,
+    candidates: rows.slice(0, MAX_CANDIDATES).map((row) => ({ id: row.id, label: `${row.ticketNumber} · ${row.subject}` })),
   }
 }
 

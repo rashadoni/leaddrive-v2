@@ -146,6 +146,15 @@ vi.mock("@/lib/rate-limit", async (importOriginal) => ({
 // Наружу ничего не уходит: что команда ХОТЕЛА отправить, проверяют её
 // собственные тесты.
 vi.mock("@/lib/webhooks", () => ({ fireWebhooks: vi.fn(async () => {}) }))
+// Клиенту в WhatsApp тоже ничего не уходит: запоминается, что отправили бы.
+const whatsAppSent = vi.hoisted(() => [] as Array<{ to: string; message: string }>)
+vi.mock("@/lib/whatsapp", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/whatsapp")>(),
+  sendWhatsAppMessage: vi.fn(async (input: { to: string; message: string }) => {
+    whatsAppSent.push({ to: input.to, message: input.message })
+    return { success: true }
+  }),
+}))
 
 const ROOT = process.cwd()
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
@@ -3158,6 +3167,137 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
       expect(contactResponse.status).toBe(404)
       expect(await bypass(() => prisma.activity.count({ where: { subject: "Sızma" } }))).toBe(0)
       expect((await bypass(() => prisma.contact.findFirstOrThrow({ where: { id: foreign.id } }))).fullName).toBe("Yad adam")
+    })
+  })
+
+  /**
+   * Этап 4 (владелец 2026-11-09): тикеты поддержки. В Biznesdoktor их ведут
+   * руками — создают, пишут внутренние заметки и ответы клиенту, меняют
+   * статус. Ответ клиенту и смена статуса уходят клиенту, поэтому голосом их
+   * готовят, а отправляет только кнопка (это проверяет UI-тест квитанции;
+   * здесь — что сервер делает то же, что экран).
+   */
+  describe("сценарий: тикеты поддержки", () => {
+    let ticketsRoute!: typeof import("@/app/api/v1/tickets/[id]/route")
+
+    beforeAll(async () => {
+      ticketsRoute = await import("@/app/api/v1/tickets/[id]/route")
+    })
+
+    async function waitFor<T>(read: () => Promise<T>, done: (value: T) => boolean): Promise<T> {
+      for (let attempt = 0; attempt < 50; attempt += 1) {
+        const value = await read()
+        if (done(value)) return value
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+      return read()
+    }
+
+    it("тикет голосом: номер по порядку, компания по имени, автор — сказавший", async () => {
+      const created = await propose("propose_create_ticket", {
+        subject: "Kassa işləmir",
+        description: "Səhər açılmır",
+        priority: "high",
+        companyName: "Azmart",
+      })
+      expect(created.status).toBe(201)
+      expect(previewField(created.body.data!, "companyId")).toBe("company-1")
+      expect((await pressCreate(created.body.data!)).status).toBe(200)
+      const ticket = await bypass(() => prisma.ticket.findFirstOrThrow({
+        where: { organizationId: ORG, subject: "Kassa işləmir" },
+      }))
+      expect(ticket.ticketNumber).toMatch(/^TK-\d{4}$/)
+      expect(ticket.companyId).toBe("company-1")
+      expect(ticket.priority).toBe("high")
+      expect(ticket.createdBy).toBe(USER)
+      expect(ticket.source).toBe("agent")
+    })
+
+    it("заметка — только сотрудникам, ответ — клиенту в WhatsApp и отметка первого ответа", async () => {
+      const ticket = await bypass(() => prisma.ticket.create({
+        data: {
+          organizationId: ORG,
+          ticketNumber: "TK-0501",
+          subject: "Çatdırılma gecikir",
+          description: "Müştəri: +994501234567",
+          status: "open",
+          tags: ["whatsapp"],
+        },
+      }))
+      whatsAppSent.length = 0
+
+      const note = (await propose("propose_add_ticket_note", { ticket: "501", note: "Anbara yazdım" })).body.data!
+      expect((await pressCreate(note)).status).toBe(200)
+      // Повтор того же подтверждения не пишет второй заметки.
+      await pressCreate(note)
+
+      const reply = (await propose(
+        "propose_reply_to_ticket",
+        { message: "Sifarişiniz sabah çatdırılacaq" },
+        { screen: { recordType: "ticket", recordId: ticket.id } },
+      )).body.data!
+      expect((await pressCreate(reply)).status).toBe(200)
+
+      const comments = await bypass(() => prisma.ticketComment.findMany({
+        where: { ticketId: ticket.id },
+        orderBy: { createdAt: "asc" },
+      }))
+      expect(comments.map((row) => [row.comment, row.isInternal, row.userId])).toEqual([
+        ["Anbara yazdım", true, USER],
+        ["Sifarişiniz sabah çatdırılacaq", false, USER],
+      ])
+      // Клиенту ушёл только ответ, и только после записи; заметка — нет.
+      const sent = await waitFor(async () => [...whatsAppSent], (rows) => rows.length > 0)
+      expect(sent).toEqual([{ to: "994501234567", message: "Sifarişiniz sabah çatdırılacaq" }])
+      const after = await bypass(() => prisma.ticket.findFirstOrThrow({ where: { id: ticket.id } }))
+      expect(after.firstResponseAt).not.toBeNull()
+
+      // Тот же текст тикета экран показывает своим маршрутом.
+      const screen = await ticketsRoute.GET(get(`/api/v1/tickets/${ticket.id}`), { params: Promise.resolve({ id: ticket.id }) })
+      const body = await screen.json() as { data: { comments: Array<{ comment: string }> } }
+      expect(body.data.comments.map((row) => row.comment)).toEqual(["Anbara yazdım", "Sifarişiniz sabah çatdırılacaq"])
+    })
+
+    it("статус и ответственный; чужая правка в промежутке — отказ; в закрытый тикет не пишут", async () => {
+      const ticket = await bypass(() => prisma.ticket.create({
+        data: { organizationId: ORG, ticketNumber: "TK-0502", subject: "Printer", status: "new" },
+      }))
+      const receipt = (await propose("propose_update_ticket", {
+        ticket: "TK-0502", status: "in_progress", assigneeName: "Leyla",
+      })).body.data!
+      expect(previewField(receipt, "status")).toBe("in_progress")
+      expect(previewField(receipt, "assignedTo")).toBe("user-colleague")
+
+      // Коллега тем временем поднимает приоритет на экране.
+      await bypass(() => prisma.ticket.update({ where: { id: ticket.id }, data: { priority: "high" } }))
+      expect((await pressCreate(receipt)).status).toBe(409)
+      expect((await bypass(() => prisma.ticket.findFirstOrThrow({ where: { id: ticket.id } }))).status).toBe("new")
+
+      const fresh = (await propose("propose_update_ticket", {
+        ticket: "502", status: "in_progress", assigneeName: "Leyla",
+      })).body.data!
+      expect((await pressCreate(fresh)).status).toBe(200)
+      const saved = await bypass(() => prisma.ticket.findFirstOrThrow({ where: { id: ticket.id } }))
+      expect([saved.status, saved.assignedTo, saved.priority]).toEqual(["in_progress", "user-colleague", "high"])
+
+      await bypass(() => prisma.ticket.update({ where: { id: ticket.id }, data: { status: "closed" } }))
+      const late = (await propose("propose_add_ticket_note", { ticket: "502", note: "Gecikmiş qeyd" })).body.data!
+      expect((await pressCreate(late)).status).toBe(409)
+      expect(await bypass(() => prisma.ticketComment.count({ where: { ticketId: ticket.id } }))).toBe(0)
+    })
+
+    it("наблюдатель тикеты голосом не трогает", async () => {
+      const ticket = await bypass(() => prisma.ticket.create({
+        data: { organizationId: ORG, ticketNumber: "TK-0503", subject: "Viewer", status: "open" },
+      }))
+      ;(auth as { role: string }).role = "viewer"
+      try {
+        const refused = await propose("propose_add_ticket_note", { ticket: "503", note: "Baxdım" })
+        expect(refused.status).toBe(403)
+      } finally {
+        ;(auth as { role: string }).role = "admin"
+      }
+      expect(await bypass(() => prisma.ticketComment.count({ where: { ticketId: ticket.id } }))).toBe(0)
     })
   })
 })
