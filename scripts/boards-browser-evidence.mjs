@@ -347,6 +347,36 @@ async function main() {
     await openBoard(page, 'DZEYTUN')
     assert.deepEqual(await folders(page), ['Digital Marketing'])
   })
+  await step('boards-only marketer: a task template fills the board\'s new-task form, its subtasks come along', async () => {
+    const made = await api('boardsOnly', '/api/v1/task-templates', { method: 'POST', body: {
+      name: 'Həftəlik story', taskTitle: 'Story {{week}}', priority: 'high', checklist: [{ title: 'Mətn' }, { title: 'Dizayn' }],
+    } })
+    assert.ok([200, 201].includes(made.status), JSON.stringify(made.json))
+    const page = await sessions.boardsOnly.newPage()
+    await openBoard(page, 'DZEYTUN')
+    await page.getByRole('button', { name: 'Yeni Tapşırıq' }).click()
+    await page.waitForSelector('[data-testid="board-create-template"]', { timeout: 60000 })
+    await page.selectOption('[data-testid="board-create-template"]', { label: 'Həftəlik story' })
+    const title = await page.inputValue('[data-testid="board-create-title"]')
+    assert.match(title, /^Story \d+$/)
+    await page.getByRole('button', { name: 'Yarat', exact: true }).click()
+    let task = null
+    for (let i = 0; i < 30 && !task; i++) {
+      if (i) await page.waitForTimeout(500)
+      const list = await api('boardsOnly', `/api/v1/tasks?divisionId=${f.boards.DZEYTUN.id}&limit=1000`)
+      task = (list.json?.data?.tasks ?? []).find((t) => t.title === title) ?? null
+    }
+    assert.ok(task, `no task «${title}» on the board`)
+    assert.equal(task.priority, 'high')
+    let checklist = []
+    for (let i = 0; i < 20 && checklist.length < 2; i++) {
+      if (i) await page.waitForTimeout(500)
+      checklist = (await api('boardsOnly', `/api/v1/tasks/${task.id}`)).json?.data?.checklist ?? []
+    }
+    assert.deepEqual(checklist.map((c) => c.title).sort(), ['Dizayn', 'Mətn'])
+    await page.close()
+    return { title, subtasks: checklist.length }
+  })
   await step('a message with an @-mention reaches the person, the author is not told', async () => {
     const res = await api('marketer', `/api/v1/tasks/${f.tasks.zeytunOne.id}/comments`, { method: 'POST', body: { content: `bax @${f.users.manager.name}`, mentions: [f.users.manager.id] } })
     assert.ok([200, 201].includes(res.status), JSON.stringify(res.json))

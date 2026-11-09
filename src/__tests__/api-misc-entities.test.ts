@@ -140,6 +140,37 @@ describe("Activities", () => {
     expect(json.success).toBe(true)
   })
 
+  // 2026-11-09: писать в ленту карточки — право писать в саму карточку.
+  // Раньше маршрут не спрашивал прав, и заметку записывал даже наблюдатель.
+  it("POST refuses a read-only role and writes nothing", async () => {
+    vi.mocked(prisma.activity.create).mockClear()
+    vi.mocked(requireAuth).mockResolvedValue({ ...AUTH, role: "viewer" } as any)
+    vi.mocked(prisma.contact.findFirst).mockResolvedValue({ id: "c1" } as any)
+    const res = await activitiesPOST(
+      req("/api/v1/activities", { method: "POST", body: JSON.stringify({ type: "note", subject: "x", contactId: "c1" }) }),
+    )
+    expect(res.status).toBe(403)
+    expect(prisma.activity.create).not.toHaveBeenCalled()
+  })
+
+  it("POST asks for write on the card's own module", async () => {
+    vi.mocked(prisma.activity.create).mockClear()
+    // Продажи пишут в сделку, но не в тикет.
+    vi.mocked(requireAuth).mockResolvedValue({ ...AUTH, role: "sales" } as any)
+    const refused = await activitiesPOST(
+      req("/api/v1/activities", { method: "POST", body: JSON.stringify({ type: "note", subject: "x", relatedType: "ticket", relatedId: "t1" }) }),
+    )
+    expect(refused.status).toBe(403)
+    expect(prisma.activity.create).not.toHaveBeenCalled()
+    vi.mocked(prisma.activity.create).mockResolvedValue({ id: "a3", type: "note", contactId: null } as any)
+    const deal = (prisma as any).deal
+    deal.findFirst = vi.fn().mockResolvedValue({ id: "d1" })
+    const allowed = await activitiesPOST(
+      req("/api/v1/activities", { method: "POST", body: JSON.stringify({ type: "note", subject: "x", relatedType: "deal", relatedId: "d1" }) }),
+    )
+    expect(allowed.status).toBe(201)
+  })
+
   it("POST refuses a contact of another organization", async () => {
     vi.mocked(prisma.activity.create).mockClear()
     vi.mocked(prisma.contact.findFirst).mockResolvedValue(null)

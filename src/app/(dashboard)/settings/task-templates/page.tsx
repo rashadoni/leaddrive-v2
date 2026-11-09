@@ -228,7 +228,7 @@ export default function TaskTemplatesSettingsPage() {
             <HelpButton slug="task-templates" variant="label" />
             <TourReplayButton tourId="taskTemplatesSettings" />
           </h1>
-          <PageDescription text={t("description")} />
+          <PageDescription text={t("subtitle")} />
         </div>
         <Button onClick={openCreate} data-tour-id="task-templates-new">
           <Plus className="h-4 w-4 mr-1" /> {t("newTemplate")}
@@ -293,7 +293,7 @@ export default function TaskTemplatesSettingsPage() {
                 <div className="text-xs text-muted-foreground space-y-0.5">
                   <div><span className="font-medium">{tc("title")}:</span> {tpl.taskTitle}</div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] uppercase">{tpl.priority}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] uppercase">{PRIORITIES.includes(tpl.priority as (typeof PRIORITIES)[number]) ? tc(tpl.priority) : tpl.priority}</span>
                     {tpl.dueDateOffsetDays !== null && (
                       <span>{t("dueOffset", { days: tpl.dueDateOffsetDays })}</span>
                     )}

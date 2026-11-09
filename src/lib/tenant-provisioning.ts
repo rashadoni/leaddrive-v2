@@ -30,6 +30,10 @@ const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/
  * Keyed off effective modules, NOT the plan name, so custom plans with an `mtm` addon
  * (or `mtm` feature) correctly trigger MTM-agent seeding.
  */
+
+/** Пояс новой организации, пока админ не выбрал другой. */
+export const DEFAULT_ORGANIZATION_TIMEZONE = "Asia/Baku"
+
 export function effectiveModulesEnableMtm(features: string[], addons: string[]): boolean {
   const mods = new Set<string>(features)
   for (const a of addons) for (const m of ADDON_MODULES[a] ?? []) mods.add(m)
@@ -297,6 +301,10 @@ export async function provisionTenant(input: TenantInput): Promise<ProvisionResu
         serverType: "shared",
         provisionedAt: new Date(),
         provisionedBy: input.provisionedBy,
+        // Клиенты — в Баку. Без пояса сервер считает время по UTC, на 4 часа
+        // позади: голосовые отчёты брали «сегодня» с 4 утра. 2026-11-09 пояс
+        // не был задан ни у одной организации; владелец: «Да, пояс Баку».
+        settings: { timezone: DEFAULT_ORGANIZATION_TIMEZONE },
       },
     })
 

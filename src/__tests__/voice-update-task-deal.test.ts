@@ -236,7 +236,8 @@ describe("a voice task update", () => {
       "org-1", "update", "task", "task-1", "Call Ali",
       expect.objectContaining({ userId: "user-1" }),
     )
-    expect(effects.createNotification).toHaveBeenCalledWith(expect.objectContaining({ title: "Task Completed" }))
+    // A voice update carries no screen language: the app default (task-notification-text.ts).
+    expect(effects.createNotification).toHaveBeenCalledWith(expect.objectContaining({ title: "Задача выполнена" }))
     expect(effects.recalcProjectCompletion).toHaveBeenCalledWith("project-1", "org-1")
   })
 })
