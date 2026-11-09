@@ -68,7 +68,7 @@ describe("agent-router — routeToAgent", () => {
   it("never answers staff as a module's own agent: inbox, social, contract stay out", async () => {
     orgHas(inboxAgent, contractAgent, socialAgent, { ...generalAgent, isActive: false })
     for (const message of ["Сколько заказов за неделю?", "Hello", "Покажи сделки"]) {
-      expect(await routeToAgent(orgId, message)).toEqual({ agent: null, intent: "general", confidence: 1, isHandoff: false })
+      expect(await routeToAgent(orgId, message)).toEqual({ agent: null, intent: "general", confidence: 1, classified: false, isHandoff: false })
     }
     expect(classifyIntent).not.toHaveBeenCalled()
   })
@@ -95,7 +95,7 @@ describe("agent-router — routeToAgent", () => {
     orgHas(salesAgent, supportAgent, generalAgent)
     vi.mocked(classifyIntent).mockResolvedValue({ intent: "sales_inquiry", confidence: 0.9 })
     const result = await routeToAgent(orgId, "What is your pricing?")
-    expect(result).toEqual({ agent: salesAgent, intent: "sales_inquiry", confidence: 0.9, isHandoff: false })
+    expect(result).toEqual({ agent: salesAgent, intent: "sales_inquiry", confidence: 0.9, classified: true, isHandoff: false })
   })
 
   it("routes support_request and billing_question to the support agent", async () => {
@@ -119,7 +119,7 @@ describe("agent-router — routeToAgent", () => {
   it("asks no model when there is nothing to choose between", async () => {
     // No agents at all (most organisations).
     orgHas()
-    expect(await routeToAgent(orgId, "Hello")).toEqual({ agent: null, intent: "general", confidence: 1, isHandoff: false })
+    expect(await routeToAgent(orgId, "Hello")).toEqual({ agent: null, intent: "general", confidence: 1, classified: false, isHandoff: false })
     // Two agents, but only one of them is a Da Vinci persona.
     orgHas(generalAgent, socialAgent)
     expect((await routeToAgent(orgId, "Hi")).agent).toEqual(generalAgent)

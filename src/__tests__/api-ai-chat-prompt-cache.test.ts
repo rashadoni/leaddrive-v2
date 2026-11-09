@@ -250,3 +250,36 @@ describe("calculateAiCost with the prompt cache", () => {
     expect(calculateAiCost("claude-opus-4-6", 1_000_000, 1_000_000)).toBeCloseTo(30, 9)
   })
 })
+
+describe("Da Vinci's preparation", () => {
+  it("reads deal insights while the agent is picked, and logs when each step was ready", async () => {
+    const { predictDealWin } = await import("@/lib/ai/predictive")
+    const { prisma } = await import("@/lib/prisma")
+    vi.mocked(prisma.deal.findFirst).mockResolvedValue({ id: "deal-1" } as never)
+    anthropicCreate.mockResolvedValue(reply("Salam!"))
+    // The router answers only after the insights have started: before
+    // 2026-11-09 they started after it, and this would never resolve.
+    let insightsStartedFirst = false
+    routeToAgentMock.mockImplementation(() => new Promise((resolve) => {
+      const wait = () => {
+        if (vi.mocked(predictDealWin).mock.calls.length > 0) {
+          insightsStartedFirst = true
+          resolve({ agent: AGENT, intent: "sales_inquiry", confidence: 0.9, classified: true, isHandoff: false })
+        } else setTimeout(wait, 1)
+      }
+      setTimeout(wait, 1)
+      setTimeout(() => resolve({ agent: AGENT, intent: "sales_inquiry", confidence: 0.9, classified: true, isHandoff: false }), 500)
+    }))
+
+    const res = await ask("Bu sövdələşmə necədir?", { url: "/deals/deal-1", title: "Deal" })
+    expect(res.status).toBe(200)
+    expect(insightsStartedFirst).toBe(true)
+    expect(call(0).system[1].text).toContain("AI Insights for current deal")
+
+    const line = JSON.parse(writes.find((chunk) => chunk.includes('"ai_chat_timing"'))!)
+    expect(line.classified).toBe(true)
+    for (const key of ["routedMs", "readMs", "insightsMs", "namesMs", "prepMs"]) {
+      expect(typeof line[key], key).toBe("number")
+    }
+  })
+})

@@ -68,6 +68,14 @@ describe("the chat's timing line", () => {
     try {
       let clock = 1_000
       const timing = startChatTiming(() => clock)
+      clock = 1_250
+      timing.mark("routed")
+      timing.classified(true)
+      clock = 1_260
+      timing.mark("read")
+      timing.mark("names")
+      clock = 1_290
+      timing.mark("routed")
       clock = 1_300
       timing.modelCall()
       clock = 1_800
@@ -81,10 +89,13 @@ describe("the chat's timing line", () => {
       expect(lines).toHaveLength(1)
       const line = JSON.parse(lines[0])
       expect(line).toMatchObject({ prepMs: 300, firstTextMs: 800, totalMs: 2000, status: 200, streamed: true })
+      // Each step of the preparation, first mark wins; a step never reached is null.
+      expect(line).toMatchObject({ routedMs: 250, readMs: 260, namesMs: 260, insightsMs: null, classified: true })
       expect(Object.keys(line).sort()).toEqual(
         [
           "evt", "firstTextMs", "prepMs", "proc", "status", "streamed", "totalMs", "turn", "uptimeS",
           "rounds", "inputTokens", "cacheReadTokens", "cacheWriteTokens", "outputTokens",
+          "routedMs", "readMs", "insightsMs", "namesMs", "classified",
         ].sort(),
       )
     } finally {

@@ -65,6 +65,8 @@ export async function routeToAgent(orgId: string, message: string, previousAgent
     agent,
     intent,
     confidence,
+    /** Whether the intent model was asked (it stands in front of the answer). */
+    classified: outcomes.size > 1,
     isHandoff: previousAgentId ? agent?.id !== previousAgentId : false,
   }
 }
