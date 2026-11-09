@@ -78,6 +78,13 @@ export class LiveReply {
     this.send({ type: "delta", text: piece })
   }
 
+  /** The round is asked again (its stream stalled): what it showed is taken back. */
+  restartRound(): void {
+    if (this.shownAnything && !this.stopped) this.send({ type: "reset" })
+    this.shownAnything = false
+    this.startRound()
+  }
+
   /** The model turned to a tool: what it wrote this round is not the answer. */
   toolUse(): void {
     if (this.toolInRound) return

@@ -7,7 +7,7 @@
  * tool takes back its preamble. The final answer is the same JSON body as
  * without streaming, sent last.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { NextRequest, NextResponse } from "next/server"
 
 const { anthropicCreate, anthropicStream, executeVoiceReadToolMock } = vi.hoisted(() => ({
@@ -178,5 +178,61 @@ describe("Da Vinci streams its answer", () => {
     const hidden = await ask("Скажи привет")
     expect(hidden.headers.get("content-type")).not.toContain("text/event-stream")
     expect(anthropicStream).not.toHaveBeenCalled()
+  })
+})
+
+/** A stream that sends `events`, then says nothing more until it is aborted. */
+function silentRound(events: StreamEvent[]) {
+  const handlers: Array<(event: StreamEvent) => void> = []
+  let fail: ((error: Error) => void) | undefined
+  const self = {
+    aborted: false,
+    on(name: string, handler: (event: StreamEvent) => void) { if (name === "streamEvent") handlers.push(handler); return self },
+    finalMessage() {
+      for (const event of events) for (const handler of handlers) handler(event)
+      return new Promise((_resolve, reject) => { fail = reject })
+    },
+    abort() { self.aborted = true; fail?.(new Error("Request was aborted.")) },
+  }
+  return self
+}
+
+describe("Da Vinci does not wait for ever on a model that goes silent", () => {
+  // Production 2026-11-09: after the first word Anthropic's stream stopped
+  // for 65 s; the person watched half a sentence for a minute.
+  beforeEach(() => { vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] }) })
+  afterEach(() => { vi.useRealTimers() })
+
+  it("cuts the silent stream off after 20 s, takes back its words and shows the answer asked again", async () => {
+    const stalled = silentRound([textDelta("Здравствуйте! Чем ")])
+    anthropicStream
+      .mockImplementationOnce(() => stalled)
+      .mockImplementationOnce(() => round(
+        [textDelta("Здравствуйте! Чем могу помочь?")],
+        [{ type: "text", text: "Здравствуйте! Чем могу помочь?" }],
+      ))
+    const res = await ask("Привет! Ты на связи?")
+    const body = res.text()
+    await vi.advanceTimersByTimeAsync(20_000)
+    const list = parseSseChunk(await body).events
+    expect(stalled.aborted).toBe(true)
+    expect(anthropicStream).toHaveBeenCalledTimes(2)
+    const resetAt = list.findIndex((event) => event.type === "reset")
+    expect(resetAt).toBeGreaterThan(0)
+    expect(shown(list)).toBe("Здравствуйте! Чем могу помочь?")
+    const done = list.at(-1) as Extract<LiveReplyEvent, { type: "done" }>
+    expect(done.status).toBe(200)
+    expect((done.body as { data: { reply: string } }).data.reply).toBe("Здравствуйте! Чем могу помочь?")
+  })
+
+  it("says the model did not answer when it stays silent twice", async () => {
+    anthropicStream.mockImplementation(() => silentRound([]))
+    const res = await ask("Привет! Ты на связи?")
+    const body = res.text()
+    await vi.advanceTimersByTimeAsync(40_000)
+    const done = parseSseChunk(await body).events.at(-1) as Extract<LiveReplyEvent, { type: "done" }>
+    expect(anthropicStream).toHaveBeenCalledTimes(2)
+    expect(done.status).toBe(504)
+    expect(done.body).toEqual({ error: "Da Vinci did not answer in time" })
   })
 })
