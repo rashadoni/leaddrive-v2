@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { NextResponse } from "next/server"
+import { consoleSpeechConfig } from "@/lib/ai/voice/console-speech"
 import { z } from "zod"
 import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
@@ -103,6 +104,8 @@ export const POST = withRlsAuth("ai", "read", async (req, auth) => {
       // model receives must agree with the switch, or it will offer to prepare
       // actions the server then refuses.
       writesEnabled: voiceWritesEnabled(),
+      // Голос линии: вкладка озвучивает текст ответа (console-speech.ts).
+      speechRelay: consoleSpeechConfig() !== null,
     })
 
     const finalized = await prisma.voiceSession.updateMany({

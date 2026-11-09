@@ -271,6 +271,11 @@ export function geminiLiveConfig(input: {
   writesEnabled?: boolean
   /** Resolved once per mint, so the setup and the id cannot disagree. */
   model?: GeminiLiveModel
+  /**
+   * Озвучка голосом линии (console-speech.ts): вкладке нужен текст ответа
+   * модели, чтобы озвучить его, — расшифровка её собственной речи.
+   */
+  speechRelay?: boolean
 }): LiveConnectConfig {
   const model = input.model ?? geminiLiveModel()
   return {
@@ -299,6 +304,7 @@ export function geminiLiveConfig(input: {
     }],
     sessionResumption: {},
     inputAudioTranscription: {},
+    ...(input.speechRelay ? { outputAudioTranscription: {} } : {}),
     contextWindowCompression: { slidingWindow: {} },
     // Detection settings, barge-in policy and their reasoning live in
     // audio-policy.ts, because the noisy-room mode changes exactly one field
@@ -322,6 +328,7 @@ export function geminiLiveTokenConfig(input: {
   /** The write kill switch, resolved server-side and sealed into the token. */
   writesEnabled?: boolean
   model?: GeminiLiveModel
+  speechRelay?: boolean
 }): LiveConnectConfig {
   const locked = { ...geminiLiveConfig(input) }
   delete locked.sessionResumption
@@ -342,6 +349,7 @@ export async function createGeminiLiveToken(input: {
   audioMode?: VoiceAudioMode
   writesEnabled?: boolean
   model?: GeminiLiveModel
+  speechRelay?: boolean
   now?: Date
 }): Promise<{ token: string; expiresAt: string; model: string }> {
   const now = input.now ?? new Date()
@@ -375,6 +383,7 @@ export async function createGeminiLiveToken(input: {
           },
           tools: config.tools,
           inputAudioTranscription: config.inputAudioTranscription,
+          ...(config.outputAudioTranscription ? { outputAudioTranscription: config.outputAudioTranscription } : {}),
           realtimeInputConfig: config.realtimeInputConfig,
           contextWindowCompression: config.contextWindowCompression,
         },
@@ -388,6 +397,7 @@ export async function createGeminiLiveToken(input: {
           "systemInstruction",
           "tools",
           "inputAudioTranscription",
+          ...(config.outputAudioTranscription ? ["outputAudioTranscription"] : []),
           "realtimeInputConfig",
           "contextWindowCompression",
         ].join(","),
