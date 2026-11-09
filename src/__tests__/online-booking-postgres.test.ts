@@ -1538,6 +1538,8 @@ pgDescribe("online booking on a real Postgres", () => {
     // Its own organisation: this suite leaves dozens of services behind, and
     // the block deliberately carries only the first twelve.
     const SHOP = "org-service-facts"
+    /** An organisation that takes no bookings at all — OTHER_ORG has services of its own. */
+    const QUIET = "org-no-services"
     const page = (over: Record<string, unknown> = {}) => bypass(() => prisma.bookingPage.create({
       data: {
         organizationId: SHOP, title: "Saç kəsimi", slug: `facts-${++sequence}`, durationMinutes: 45,
@@ -1548,8 +1550,11 @@ pgDescribe("online booking on a real Postgres", () => {
     }))
 
     beforeAll(async () => {
-      await bypass(() => prisma.organization.create({
-        data: { id: SHOP, name: "Salon", slug: SHOP, modules: { crm: true }, settings: { timezone: "Asia/Baku" } },
+      await bypass(() => prisma.organization.createMany({
+        data: [
+          { id: SHOP, name: "Salon", slug: SHOP, modules: { crm: true }, settings: { timezone: "Asia/Baku" } },
+          { id: QUIET, name: "Dükan", slug: QUIET, modules: { crm: true }, settings: { timezone: "Asia/Baku" } },
+        ],
       }))
     })
 
@@ -1583,7 +1588,7 @@ pgDescribe("online booking on a real Postgres", () => {
       // A company that does not take bookings must not get a heading with
       // nothing under it: an empty list reads as «we offer nothing».
       const { serviceFactsBlock } = await import("@/lib/booking/service-facts")
-      expect(await bypass(() => serviceFactsBlock(OTHER_ORG, "az"))).toBe("")
+      expect(await bypass(() => serviceFactsBlock(QUIET, "az"))).toBe("")
     })
   })
 
