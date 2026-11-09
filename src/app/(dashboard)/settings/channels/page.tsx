@@ -256,6 +256,12 @@ const copy = {
     esConnected: "Connected: {number}",
     esCancelled: "The Meta window was closed before the connection finished.",
     esFailed: "The connection did not finish. Try again, or use manual setup.",
+    esChoosePrompt: "How should this number work?",
+    esKeepApp: "Keep my WhatsApp Business app",
+    esKeepAppHint: "It keeps working on your phone; LeadDrive answers alongside it. Needs the app 2.24.17 or newer.",
+    esMoveToApi: "Move the number to the API",
+    esMoveToApiHint: "The number can no longer be used in the WhatsApp Business app.",
+    esChooseBack: "Cancel",
     cardStatus: "Status",
     cardNextStep: "Next step",
     cardVerify: "Verify",
@@ -462,6 +468,12 @@ const copy = {
     esConnected: "Подключено: {number}",
     esCancelled: "Окно Meta закрыли до завершения подключения.",
     esFailed: "Подключение не завершилось. Попробуйте ещё раз или используйте ручную настройку.",
+    esChoosePrompt: "Как должен работать этот номер?",
+    esKeepApp: "Оставить приложение WhatsApp Business",
+    esKeepAppHint: "Номер продолжит работать на телефоне, LeadDrive отвечает рядом. Нужно приложение 2.24.17 или новее.",
+    esMoveToApi: "Перенести номер в API",
+    esMoveToApiHint: "Приложением WhatsApp Business на этом номере пользоваться будет нельзя.",
+    esChooseBack: "Отмена",
     cardStatus: "Статус",
     cardNextStep: "Следующий шаг",
     cardVerify: "Проверка",
@@ -666,6 +678,12 @@ const copy = {
     esConnected: "Qoşuldu: {number}",
     esCancelled: "Meta pəncərəsi qoşulma bitmədən bağlandı.",
     esFailed: "Qoşulma tamamlanmadı. Yenidən cəhd edin və ya əl ilə quraşdırmadan istifadə edin.",
+    esChoosePrompt: "Bu nömrə necə işləsin?",
+    esKeepApp: "WhatsApp Business tətbiqim qalsın",
+    esKeepAppHint: "Nömrə telefonda işləməyə davam edir, LeadDrive onunla birgə cavab verir. Tətbiqin 2.24.17 və ya daha yeni versiyası lazımdır.",
+    esMoveToApi: "Nömrəni API-yə köçür",
+    esMoveToApiHint: "Bu nömrədə WhatsApp Business tətbiqindən istifadə etmək mümkün olmayacaq.",
+    esChooseBack: "Ləğv et",
     cardStatus: "Status",
     cardNextStep: "Növbəti addım",
     cardVerify: "Yoxlama",
@@ -1786,6 +1804,11 @@ function ChannelsPageInner() {
     failedMessage: c.esFailed,
     onConnected: () => void fetchChannels(),
   })
+  // The tile asks before it decides. One click used to start Meta's dialog on the path that moves the
+  // number to the API — and a number that has moved cannot go back: the Deregister API refuses a
+  // number that lives in the WhatsApp Business app. For a shop run from one phone that is the whole
+  // business's WhatsApp, so the irreversible choice is not something a tile makes on its own.
+  const [whatsappChoosing, setWhatsappChoosing] = useState(false)
 
   // Back from Meta's login (lib/social/oauth-return): `?oauth=facebook|instagram` plus what the callback
   // reports — `connected`, `pages`, `ig`, or `error` — and `channelId`, the row it wired or started from.
@@ -2117,6 +2140,41 @@ function ChannelsPageInner() {
       // A plain same-origin navigation, like Social Monitoring's tiles: the session cookie rides along.
       // It stays a way back into Meta's login for a draft or refused row too.
       action = <a href={card.oauthStart} aria-label={ariaLabel} className={actionClass}>{inner}</a>
+    } else if (isWhatsApp && !whatsappManual && whatsappChoosing && !whatsappWorking) {
+      // Not a button wrapping the tile: the tile becomes the question. Both consequences are named,
+      // and the path that keeps the customer's phone working is the first one.
+      action = (
+        <div className={cn(actionClass, "gap-2")} data-testid="whatsapp-connect-choice">
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-foreground">{card.title}</div>
+            <div className="text-[11px] leading-4 text-muted-foreground">{c.esChoosePrompt}</div>
+          </div>
+          <button
+            data-crm-color-role="provider"
+            type="button"
+            className="w-full rounded-lg bg-emerald-600 px-2 py-1.5 text-[11px] font-semibold leading-4 text-white transition-colors hover:bg-emerald-700"
+            onClick={() => void whatsappSignup.start({ keepBusinessApp: true })}
+          >
+            {c.esKeepApp}
+          </button>
+          <p className="text-[10px] leading-3 text-muted-foreground">{c.esKeepAppHint}</p>
+          <button
+            type="button"
+            className="w-full rounded-lg border border-emerald-300 px-2 py-1.5 text-[11px] font-semibold leading-4 text-emerald-800 transition-colors hover:bg-emerald-50 dark:text-emerald-300"
+            onClick={() => void whatsappSignup.start()}
+          >
+            {c.esMoveToApi}
+          </button>
+          <p className="text-[10px] leading-3 text-muted-foreground">{c.esMoveToApiHint}</p>
+          <button
+            type="button"
+            className="self-start text-[10px] font-medium text-muted-foreground underline"
+            onClick={() => setWhatsappChoosing(false)}
+          >
+            {c.esChooseBack}
+          </button>
+        </div>
+      )
     } else if (isWhatsApp && !whatsappManual) {
       action = (
         <button
@@ -2124,7 +2182,7 @@ function ChannelsPageInner() {
           aria-label={ariaLabel}
           className={actionClass}
           disabled={whatsappSignup.availability === "loading" || whatsappWorking}
-          onClick={() => void whatsappSignup.start()}
+          onClick={() => setWhatsappChoosing(true)}
         >
           {inner}
         </button>
