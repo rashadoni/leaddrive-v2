@@ -289,6 +289,10 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
           aiSuggestedCustomerStage: true,
           aiCustomerStageConfidence: true,
           aiCustomerStageReason: true,
+          adSourceType: true,
+          adSourceId: true,
+          adHeadline: true,
+          adReferralAt: true,
           metadata: true,
         },
       })
@@ -309,6 +313,10 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
         aiSuggestedCustomerStage: string | null
         aiCustomerStageConfidence: number | null
         aiCustomerStageReason: string | null
+        adSourceType: string | null
+        adSourceId: string | null
+        adHeadline: string | null
+        adReferralAt: Date | null
         metadata: unknown
       }
       const byId = new Map<string, SocialState>(socialRows.map((r: SocialState) => [r.id, r]))
@@ -369,6 +377,11 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
           aiSuggestedCustomerStage: s.aiSuggestedCustomerStage,
           aiCustomerStageConfidence: s.aiCustomerStageConfidence,
           aiCustomerStageReason: s.aiCustomerStageReason,
+          // Which ad brought the chat, when one did (Click-to-WhatsApp).
+          adSourceType: s.adSourceType,
+          adSourceId: s.adSourceId,
+          adHeadline: s.adHeadline,
+          adReferralAt: s.adReferralAt,
           linkedLead: qualificationLeadId ? linkedLeadById.get(qualificationLeadId) ?? null : null,
         } : c
       })

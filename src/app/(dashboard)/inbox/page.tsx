@@ -58,7 +58,7 @@ import {
   User, Users, UserX, UserPlus, Bot, Ban, Hash, Folder, Check, Clock,
   MoreHorizontal, Paperclip, Smile, Sparkles, Zap, SlidersHorizontal,
   Mail, Phone, Eye, CalendarClock, ChevronDown, X, RotateCcw, CheckCircle2,
-  Trash2,
+  Trash2, Megaphone,
 } from "lucide-react"
 import {
   CHANNELS, REPLY_CHANNELS, ChannelIcon, channelColor, channelLabel,
@@ -3172,6 +3172,17 @@ export default function InboxV2Page() {
                 ))}
               </div>
             </Section>
+
+            {/* Which ad brought this chat. Shown only when Meta told us, so a
+                conversation that came on its own carries no empty row. */}
+            {selectedConvo.adReferralAt ? (
+              <Section title={t("fromAd")}>
+                <div className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                  <Megaphone className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{selectedConvo.adHeadline || (selectedConvo.adSourceId ? `#${selectedConvo.adSourceId}` : t("fromAdUnnamed"))}</span>
+                </div>
+              </Section>
+            ) : null}
 
             {/* Declutter: unavailable sections are omitted (not rendered with hint paragraphs);
                 empty-but-editable ones collapse to a "+ add" row. */}

@@ -108,11 +108,16 @@ describe("GET /api/v1/inbox/analytics", () => {
     fn(getOrgId).mockResolvedValue("org_1")
     fn(prisma.channelMessage.groupBy).mockResolvedValue([])
     fn(prisma.socialConversation.groupBy).mockResolvedValue([{ status: "resolved", _count: { _all: 2 } }])
-    // byPlatform comes from the FIRST $queryRaw (resolved-channel groupBy); lifetime from the SECOND.
+    // Order of the raw queries: resolved-channel groupBy, then the ads that
+    // brought chats, then the average lifetime.
     fn(prisma.$queryRaw)
       .mockResolvedValueOnce([
         { channel: "whatsapp", status: "resolved", count: 2 },
         { channel: "email", status: "open", count: 1 }, // email resolved from metadata.channel
+      ])
+      .mockResolvedValueOnce([
+        { sourceId: "120210000000111", headline: "Payız endirimi", count: 7 },
+        { sourceId: "120210000000222", headline: null, count: 2 },
       ])
       .mockResolvedValueOnce([{ avg_hours: 12.34 }])
     const res = await GET(new NextRequest("http://localhost/api/v1/inbox/analytics"))
@@ -122,6 +127,27 @@ describe("GET /api/v1/inbox/analytics", () => {
       { platform: "email", total: 1, open: 1, resolved: 0 },
     ])
     expect(json.data.avgLifetimeHours).toBe(12.3)
+    // Chats from ads: the total is the sum, and an ad with no headline keeps
+    // its id so the screen can still name it.
+    expect(json.data.fromAds.total).toBe(9)
+    expect(json.data.fromAds.ads).toEqual([
+      { sourceId: "120210000000111", headline: "Payız endirimi", count: 7 },
+      { sourceId: "120210000000222", headline: null, count: 2 },
+    ])
+  })
+
+  it("reports no ads when nothing came from one", async () => {
+    // A company that does not advertise gets a zero, not a missing field: the
+    // screen decides whether to draw the card, and it needs an answer.
+    fn(getOrgId).mockResolvedValue("org_1")
+    fn(prisma.channelMessage.groupBy).mockResolvedValue([])
+    fn(prisma.socialConversation.groupBy).mockResolvedValue([])
+    fn(prisma.$queryRaw)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ avg_hours: null }])
+    const json = await (await GET(new NextRequest("http://localhost/api/v1/inbox/analytics"))).json()
+    expect(json.data.fromAds).toEqual({ total: 0, ads: [] })
   })
 
   it("applies ?channel= (channelType for messages; resolved-channel OR for conversations)", async () => {

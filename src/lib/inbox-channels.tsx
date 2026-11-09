@@ -189,6 +189,11 @@ export interface InboxConversation {
   aiSuggestedCustomerStage?: string | null
   aiCustomerStageConfidence?: number | null
   aiCustomerStageReason?: string | null
+  /** Which advertisement brought this chat — null for one that arrived on its own. */
+  adSourceType?: string | null
+  adSourceId?: string | null
+  adHeadline?: string | null
+  adReferralAt?: string | Date | null
   linkedLead?: {
     id: string
     assignedTo: string | null

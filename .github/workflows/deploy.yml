@@ -633,6 +633,13 @@ jobs:
         env:
           DEMO_SOCIAL_CONNECT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           DEMO_SOCIAL_CONNECT_DB_GATE: required
+      - name: WhatsApp ad referral database gate
+        # First-touch ad attribution on a real Postgres: a redelivery, a
+        # second ad and another tenant's row must all leave it alone.
+        run: npx vitest run src/__tests__/whatsapp-ad-referral-postgres.test.ts
+        env:
+          WHATSAPP_AD_REFERRAL_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          WHATSAPP_AD_REFERRAL_DB_GATE: required
       - name: Demo assistant voice budget database gate
         # Same gate as in pr-checks: the guide's voice minutes are claimed
         # atomically before Google is asked, so requests arriving together

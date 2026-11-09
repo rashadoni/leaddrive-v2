@@ -12,6 +12,7 @@ import { PiiMasker } from "@/lib/ai/pii-masker"
 import { scoreAiResponse, qualityMetadata } from "@/lib/ai/response-scorer"
 import { readAiReplyPolicy, decideAiReplyAction, isInAiRollout } from "@/lib/inbox/ai-reply-gate"
 import { saveConversationAiDraft } from "@/lib/inbox/ai-draft"
+import { readAdReferral } from "@/lib/inbox/ad-referral"
 import { enrichComplaintInBackground } from "@/lib/complaint-ai"
 import { createHash, createHmac, timingSafeEqual } from "crypto"
 import { normalizeTicketPriority } from "@/lib/sla-resolver"
@@ -1312,6 +1313,21 @@ async function processMessages(
         orgId, "whatsapp", waId, senderName, text, channelConfig.id,
       )
       convId = conv.id
+      // Which ad brought this chat. Meta puts `referral` on the first message
+      // after a Click-to-WhatsApp tap and we used to drop it, so the one
+      // question an owner paying for ads asks had no answer in the product.
+      // First touch only — see src/lib/inbox/ad-referral.ts.
+      const adReferral = readAdReferral(msg)
+      if (adReferral) {
+        try {
+          const { recordAdReferral } = await import("@/lib/inbox/ad-referral")
+          await recordAdReferral({ orgId, conversationId: conv.id, referral: adReferral })
+        } catch (e) {
+          // The chat matters more than where it came from: a failure here must
+          // not cost the customer their message.
+          console.error("[WA Webhook] ad referral not recorded:", e)
+        }
+      }
       if (optedOut) await recordWhatsAppConversationOptOut(orgId, conv.id)
       await prisma.channelMessage.update({
         where: { id: savedMsg.id },
