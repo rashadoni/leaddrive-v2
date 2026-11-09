@@ -22,6 +22,7 @@ const engine = vi.hoisted(() => ({
 vi.mock("@/lib/demo-center/demo-social-release", () => engine)
 
 import { POST } from "@/app/api/cron/demo-social-release/route"
+import { runnableCronLines } from "./helpers/installed-cron"
 
 const ENDPOINT = "/api/cron/demo-social-release"
 const SECRET = "cron-secret-for-this-test"
@@ -97,6 +98,8 @@ function installCrontab(initialCrontab: string) {
     chmodSync(join(bin, "flock"), 0o755)
     writeFileSync(join(scripts, "cron-trigger.sh"), "#!/bin/sh\nexit 0\n")
     chmodSync(join(scripts, "cron-trigger.sh"), 0o755)
+    writeFileSync(join(scripts, "cron-dispatch.sh"), "#!/bin/sh\nexit 0\n")
+    chmodSync(join(scripts, "cron-dispatch.sh"), 0o755)
     execFileSync("bash", [join(process.cwd(), "scripts/install-resilience-crons.sh")], {
       env: { ...process.env, CRONTAB_STATE: state, LOG: join(root, "cron.log"), PATH: `${bin}:${process.env.PATH ?? ""}`, SCRIPTS: scripts },
       stdio: "pipe",
@@ -108,9 +111,7 @@ function installCrontab(initialCrontab: string) {
 }
 
 function activeSchedules(crontab: string) {
-  return crontab
-    .split("\n")
-    .filter((line) => !line.trimStart().startsWith("#") && line.includes(`cron-trigger.sh ${ENDPOINT} `))
+  return runnableCronLines(crontab).filter((line) => line.includes(`cron-trigger.sh ${ENDPOINT} `))
     .map((line) => line.trim().split(/\s+/).slice(0, 5).join(" "))
 }
 

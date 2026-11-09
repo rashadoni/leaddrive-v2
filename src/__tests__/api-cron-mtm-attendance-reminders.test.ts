@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({ job: vi.fn(), bypass: vi.fn() }))
 vi.mock("@/lib/cron/mtm-attendance-reminder-job", () => ({ runMtmAttendanceReminderJob: mocks.job }))
 vi.mock("@/lib/rls-context", () => ({ enterRlsBypass: mocks.bypass }))
 import { POST } from "@/app/api/cron/mtm-attendance-reminders/route"
+import { runnableCronLines } from "./helpers/installed-cron"
 const request = (secret = "fixture-secret", smoke = false) => new NextRequest(`http://localhost/api/cron/mtm-attendance-reminders${smoke ? "?smoke=1" : ""}`, { method: "POST", headers: { "x-cron-secret": secret } })
 beforeEach(() => { vi.clearAllMocks(); vi.stubEnv("CRON_SECRET", "fixture-secret") })
 afterEach(() => { vi.unstubAllEnvs() })
@@ -38,7 +39,7 @@ function installedCrontab(initial: string) {
     mkdirSync(bin); mkdirSync(scripts); writeFileSync(state, initial)
     const crontab = join(bin, "crontab")
     writeFileSync(crontab, '#!/bin/sh\nset -eu\nif [ "${1:-}" = "-l" ]; then cat "$CRONTAB_STATE"; else cp "$1" "$CRONTAB_STATE"; fi\n'); chmodSync(crontab, 0o755)
-    for (const file of [join(bin, "flock"), join(scripts, "cron-trigger.sh")]) { writeFileSync(file, "#!/bin/sh\nexit 0\n"); chmodSync(file, 0o755) }
+    for (const file of [join(bin, "flock"), join(scripts, "cron-trigger.sh"), join(scripts, "cron-dispatch.sh")]) { writeFileSync(file, "#!/bin/sh\nexit 0\n"); chmodSync(file, 0o755) }
     execFileSync("bash", [join(process.cwd(), "scripts/install-resilience-crons.sh")], { env: { ...process.env, CRONTAB_STATE: state, SCRIPTS: scripts, LOG: join(root, "cron.log"), PATH: `${bin}:${process.env.PATH}` }, stdio: "pipe" })
     return readFileSync(state, "utf8")
   } finally { rmSync(root, { recursive: true, force: true }) }
@@ -47,7 +48,7 @@ describe("attendance schedule registration", () => {
   it("installs once, replaces old endpoint copies and preserves unrelated schedules", () => {
     const before = '17 * * * * /other/job\n*/15 * * * * /opt/old/cron-trigger.sh /api/cron/mtm-attendance-reminders\n'
     for (const after of [installedCrontab(before), installedCrontab(installedCrontab(before))]) {
-      const active = after.split("\n").filter((line) => !line.trimStart().startsWith("#") && line.includes("cron-trigger.sh /api/cron/mtm-attendance-reminders "))
+      const active = runnableCronLines(after).filter((line) => line.includes("cron-trigger.sh /api/cron/mtm-attendance-reminders "))
       expect(active).toHaveLength(1)
       expect(active[0].startsWith("* * * * * ")).toBe(true)
       expect(after).toContain("17 * * * * /other/job")

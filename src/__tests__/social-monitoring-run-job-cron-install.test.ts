@@ -10,6 +10,7 @@ import { execFileSync } from "node:child_process"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
+import { runnableCronLines } from "./helpers/installed-cron"
 
 const script = readFileSync(
   join(process.cwd(), "scripts/install-resilience-crons.sh"),
@@ -46,6 +47,8 @@ fi
     chmodSync(join(bin, "flock"), 0o755)
     writeFileSync(join(scripts, "cron-trigger.sh"), "#!/bin/sh\nexit 0\n")
     chmodSync(join(scripts, "cron-trigger.sh"), 0o755)
+    writeFileSync(join(scripts, "cron-dispatch.sh"), "#!/bin/sh\nexit 0\n")
+    chmodSync(join(scripts, "cron-dispatch.sh"), 0o755)
 
     execFileSync(
       "bash",
@@ -69,13 +72,9 @@ fi
 }
 
 function activeSchedules(crontab: string, endpoint: string) {
-  return crontab
-    .split("\n")
-    .filter(
-      (line) =>
-        !line.trimStart().startsWith("#") &&
-        line.includes(`cron-trigger.sh ${endpoint}`),
-    )
+  return runnableCronLines(crontab).filter((line) =>
+    line.includes(`cron-trigger.sh ${endpoint}`),
+  )
 }
 
 describe("durable Social Monitoring queue schedule", () => {
@@ -138,7 +137,7 @@ describe("durable Social Monitoring queue schedule", () => {
         .split("\n")
         .some(
           (line) =>
-            line.trimStart().startsWith("#") &&
+            line.startsWith("# ") &&
             line.includes(
               "cron-trigger.sh /api/cron/social-monitoring-sources",
             ),

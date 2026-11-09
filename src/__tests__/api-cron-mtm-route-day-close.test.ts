@@ -37,6 +37,7 @@ import {
   executeMtmRouteDayCloseJob,
   firstOpenDayKey,
 } from "@/lib/cron/mtm-route-day-close-job"
+import { runnableCronLines } from "./helpers/installed-cron"
 
 function cronRequest(url = "http://localhost:3000/api/cron/mtm-route-day-close") {
   return new NextRequest(url, { method: "POST", headers: { Authorization: "Bearer test-cron-secret" } })
@@ -328,6 +329,8 @@ describe("the day-close schedule is actually installed and verified", () => {
       chmodSync(join(bin, "flock"), 0o755)
       writeFileSync(join(scripts, "cron-trigger.sh"), "#!/bin/sh\nexit 0\n")
       chmodSync(join(scripts, "cron-trigger.sh"), 0o755)
+      writeFileSync(join(scripts, "cron-dispatch.sh"), "#!/bin/sh\nexit 0\n")
+      chmodSync(join(scripts, "cron-dispatch.sh"), 0o755)
 
       execFileSync("bash", [join(process.cwd(), "scripts/install-resilience-crons.sh")], {
         env: {
@@ -346,9 +349,7 @@ describe("the day-close schedule is actually installed and verified", () => {
   }
 
   function activeSchedules(crontab: string, endpoint: string) {
-    return crontab
-      .split("\n")
-      .filter((line) => !line.trimStart().startsWith("#") && line.includes(`cron-trigger.sh ${endpoint}`))
+    return runnableCronLines(crontab).filter((line) => line.includes(`cron-trigger.sh ${endpoint}`))
   }
 
   it("runs hourly, because the boundary is each tenant's local morning", () => {

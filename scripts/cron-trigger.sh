@@ -118,10 +118,14 @@ esac
 # station hung up a call whose "ringing" went unanswered for 2 s. The work per
 # minute is small; it was only ever the shape of it.
 #
-# The crontab sets CRON_TRIGGER_SPREAD_SECONDS (install-resilience-crons.sh),
-# and each target then waits its own fixed offset inside that window, derived
-# from its name so a tick lands at the same second every minute and two ticks
-# of one target are still a minute apart. The wait comes before the lock, so a
+# Each target waits its own fixed offset inside CRON_TRIGGER_SPREAD_SECONDS,
+# derived from its name so a tick lands at the same second every minute and
+# two ticks of one target are still a minute apart. Since 2026-11-09 the
+# scheduled ticks come from scripts/cron-dispatch.sh, which waits that same
+# offset itself and passes 0 here: starting the process is what cost the
+# first second of every minute, not its HTTP call. A crontab that still runs
+# this script line by line (a rollback to an older release) sets the window
+# itself, and the wait below is what spreads it. The wait comes before the lock, so a
 # verifier never queues behind a schedule that is only sleeping. A caller that
 # waits for the lock is a verifier asking for an answer now, and a run by hand
 # does not set the variable: neither is delayed.

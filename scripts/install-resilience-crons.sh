@@ -6,6 +6,7 @@ set -euo pipefail
 
 SCRIPTS="${SCRIPTS:-/usr/local/lib/leaddrive-v2/ops/current/cron-scripts}"
 TRIGGER="$SCRIPTS/cron-trigger.sh"
+DISPATCH="$SCRIPTS/cron-dispatch.sh"
 LOG="${LOG:-/var/log/leaddrive-resilience-cron.log}"
 BEGIN_MARKER="# BEGIN LEADDRIVE RESILIENCE CRONS"
 END_MARKER="# END LEADDRIVE RESILIENCE CRONS"
@@ -13,14 +14,17 @@ SOCIAL_DISABLED_MARKER="# LEADDRIVE SOCIAL CRONS DISABLED"
 EXPECTED_CRONTAB_PATH="${LEADDRIVE_CRON_EXPECTED_PATH:-}"
 
 [ -x "$TRIGGER" ] || { echo "cron trigger is not executable: $TRIGGER"; exit 1; }
+[ -x "$DISPATCH" ] || { echo "cron dispatcher is not executable: $DISPATCH"; exit 1; }
+command -v cksum >/dev/null || { echo "cksum command is missing"; exit 1; }
 command -v crontab >/dev/null || { echo "crontab command is missing"; exit 1; }
 command -v flock >/dev/null || { echo "flock command is missing"; exit 1; }
 
 CURRENT="$(mktemp)"
 CLEAN="$(mktemp)"
+SCHEDULE="$(mktemp)"
 NEXT="$(mktemp)"
 EXPECTED_STAGE=""
-trap 'rm -f "$CURRENT" "$CLEAN" "$NEXT" "${EXPECTED_STAGE:-}"' EXIT
+trap 'rm -f "$CURRENT" "$CLEAN" "$SCHEDULE" "$NEXT" "${EXPECTED_STAGE:-}"' EXIT
 
 crontab -l > "$CURRENT" 2>/dev/null || true
 SOCIAL_CRONS_DISABLED=false
@@ -35,6 +39,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   $0 == end { managed = 0; next }
   managed { next }
   $0 == social_disabled { next }
+  /cron-dispatch\.sh/ { next }
   /cron-trigger\.sh \/api\/v1\/journeys\/process/ { next }
   /cron-trigger\.sh finance-deadlines/ { next }
   /cron-trigger\.sh mtm-auto-checkout/ { next }
@@ -81,16 +86,10 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   { print }
 ' "$CURRENT" > "$CLEAN"
 
+# The schedule, one job per line in cron's own syntax. cron does not run these
+# lines itself: see the dispatcher block below for why and how they run.
 {
-  cat "$CLEAN"
-  printf '%s\n' "$BEGIN_MARKER"
-  # Spread the ticks over the minute instead of starting them all in its first
-  # second: cron-trigger.sh waits a fixed per-target offset below this many
-  # seconds (why — the comment above its use there). cron hands an environment
-  # line to every command after it, so it stays first in the block.
-  printf '%s\n' "CRON_TRIGGER_SPREAD_SECONDS=50"
-  # The spread above moves each job's HTTP call, but not its start: cron
-  # itself forks a child, runs PAM and logs a session for every line due that
+  # cron forks a child, runs PAM and logs a session for every line due in a
   # minute, all in its first second. Measured on production 2026-11-08: 25
   # lines that only `sleep` put 41 threads in the run queue, the kernel took
   # 47 % of six cores, and /api/v1/ping answered in 0.99 s instead of 0.05 s;
@@ -99,8 +98,10 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # So the five-minute jobs are not all on minutes 0, 5, 10…: each sits in its
   # own phase of the five (1-59/5 … 4-59/5, three per phase), and the
   # quarter-hour ones take the free minutes 0/5/10 of their quarter. No minute
-  # now starts more than ~15 lines. A new five-minute job goes into the phase
-  # with the fewest lines, not on */5.
+  # now starts more than ~15 jobs. A new five-minute job goes into the phase
+  # with the fewest lines, not on */5. Since 2026-11-09 cron starts none of
+  # these lines itself (scripts/cron-dispatch.sh), and the phases still keep
+  # the jobs' own work from piling onto one minute.
   printf '%s\n' "* * * * * $TRIGGER /api/v1/journeys/process >> $LOG 2>&1"
   printf '%s\n' "5 */6 * * * $TRIGGER finance-deadlines >> $LOG 2>&1"
   printf '%s\n' "*/15 * * * * $TRIGGER mtm-auto-checkout >> $LOG 2>&1"
@@ -255,6 +256,43 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
     printf '%s\n' "25 3 * * * $TRIGGER /api/v1/social/cron/purge-observations >> $LOG 2>&1"
     printf '%s\n' "4-59/5 * * * * $TRIGGER /api/v1/social/cron/process-outbound >> $LOG 2>&1"
   fi
+} > "$SCHEDULE"
+
+# One crontab line starts all of the above. Measured on production 2026-11-08:
+# cron's fork, PAM session and session log per due line, all in the minute's
+# first second, made /api/v1/ping take 0.99 s instead of 0.05 s with 25 lines;
+# the phases above left 0.3-0.7 s every minute from the eleven every-minute
+# lines alone. So cron starts scripts/cron-dispatch.sh once a minute, and it
+# starts each due job in its own second of the minute.
+#
+# A job line becomes `#@<second> <five fields> <command>`: a comment to cron, a
+# job to the dispatcher. <second> is the job's fixed offset — the target's
+# cksum modulo SPREAD_SECONDS, the same offset cron-trigger.sh used to sleep —
+# so a job lands on the same second every minute, a minute after its last
+# tick, and no second of the busiest minute starts more than two jobs. Lines
+# that are comments already (a disabled schedule) stay plain comments.
+# The schedule stays in the crontab so the deploy's expected-crontab proof and
+# its rollback, which restores the previous crontab whole, keep working as is.
+SPREAD_SECONDS=50
+{
+  cat "$CLEAN"
+  printf '%s\n' "$BEGIN_MARKER"
+  printf '%s\n' "* * * * * $DISPATCH >> $LOG 2>&1"
+  # Word-splitting a schedule line must not expand its `*` fields into files.
+  set -f
+  while IFS= read -r line; do
+    case "$line" in
+      '#'* | '') printf '%s\n' "$line" ;;
+      *)
+        # shellcheck disable=SC2086
+        set -- $line
+        [ "$#" -ge 7 ] || { echo "schedule line has no command: $line" >&2; exit 1; }
+        offset=$(( $(printf '%s' "$7" | cksum | cut -d' ' -f1) % SPREAD_SECONDS ))
+        printf '#@%s %s\n' "$offset" "$line"
+        ;;
+    esac
+  done < "$SCHEDULE"
+  set +f
   printf '%s\n' "$END_MARKER"
 } > "$NEXT"
 
