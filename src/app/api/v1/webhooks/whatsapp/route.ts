@@ -6,6 +6,7 @@ import { alreadyIngested, isDuplicateInsert } from "@/lib/social/meta-inbound-id
 import { sendWhatsAppMessage, resolveWhatsAppConfig } from "@/lib/whatsapp"
 import { fetchAndStoreWaMedia } from "@/lib/whatsapp-media"
 import { sanitizeForPrompt, sanitizeLog } from "@/lib/sanitize"
+import { describeWaMessage } from "@/lib/whatsapp-message-text"
 import { getAnthropicClient } from "@/lib/ai/anthropic-client"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { scoreAiResponse, qualityMetadata } from "@/lib/ai/response-scorer"
@@ -109,6 +110,13 @@ type WaRecord = Record<string, unknown>
 type WaContactPayload = WaRecord & { profile?: WaRecord; wa_id?: unknown }
 type WaCallPayload = WaRecord & { id?: unknown; event?: unknown; direction?: unknown; status?: unknown; errors?: unknown; timestamp?: unknown; start_time?: unknown; end_time?: unknown; duration?: unknown; from?: unknown; to?: unknown; session?: unknown }
 type WaCallStatusPayload = WaRecord & { id?: unknown; status?: unknown; type?: unknown; timestamp?: unknown; recipient_id?: unknown }
+/** A delivery receipt for a message we sent (sent / delivered / read / failed). */
+type WaMessageStatusPayload = {
+  id?: unknown
+  status?: unknown
+  biz_opaque_callback_data?: unknown
+  errors?: Array<{ title?: unknown; code?: unknown }>
+}
 type WaMediaPayload = WaRecord & { id?: unknown; caption?: unknown; filename?: unknown }
 type WaInboundMessagePayload = WaRecord & {
   from: string
@@ -310,22 +318,34 @@ export async function POST(req: NextRequest) {
     }
     const body = JSON.parse(rawBody)
 
-    // Meta sends various webhook event types — we only care about messages
-    const entry = body?.entry?.[0]
-    const changes = entry?.changes?.[0]
-    const value = changes?.value
-
-    if (!value) {
+    // ─── One delivery can carry many changes ─────────────────────────────
+    // Until coexistence this handler read `entry[0].changes[0]` and dropped the rest in silence.
+    // Meta packs several entries, and several changes per entry, into one POST — and the history
+    // synchronisation of a coexistence number is delivered exactly that way: Meta warns that "a
+    // single webhook could potentially describe thousands of messages", split into chunks. Reading
+    // only the first change also silently lost ordinary batched messages, so this is a fix, not
+    // just groundwork.
+    const entries = Array.isArray(body?.entry) ? body.entry : []
+    const changeList: Array<{ entryId: string | null; change: WaRecord }> = []
+    for (const entry of entries) {
+      if (!entry || typeof entry !== "object") continue
+      const entryId = asStringOrNull((entry as WaRecord).id)
+      const list = Array.isArray((entry as WaRecord).changes) ? (entry as WaRecord).changes as unknown[] : []
+      for (const change of list) {
+        if (change && typeof change === "object") changeList.push({ entryId, change: change as WaRecord })
+      }
+    }
+    if (changeList.length === 0) {
       return NextResponse.json({ ok: true })
     }
 
-    const metadata = value.metadata // { display_phone_number, phone_number_id }
-    const phoneNumberId = metadata?.phone_number_id
-    const contacts = value.contacts // [{ profile: { name }, wa_id }]
-    const isCallWebhook =
-      changes?.field === "calls" ||
-      Array.isArray(value.calls) ||
-      (Array.isArray(value.statuses) && value.statuses.some(isWaCallStatus))
+    // The signature phase needs ONE number to fall back on, as before: a delivery carries changes
+    // for a single WhatsApp account, and a change that turns out to belong elsewhere is refused
+    // below rather than processed under a signature that did not sign for it.
+    const phoneNumberId = changeList
+      .map(({ change }) => (change.value as WaRecord | undefined)?.metadata as WaRecord | undefined)
+      .map((metadata) => metadata?.phone_number_id)
+      .find((value) => !!value)
 
     const legacyChannelConfigForSignature = !tenantSlug && !process.env.WHATSAPP_APP_SECRET
       ? await resolveWhatsAppWebhookChannelConfig({ tenantCtx, tenantSlug, phoneNumberId })
@@ -346,45 +366,142 @@ export async function POST(req: NextRequest) {
     // without `?t=` are verified, and the feature must not change that.
     const sharedAppSecret = process.env.WHATSAPP_EMBEDDED_SIGNUP_APP_SECRET?.trim() || null
     const signedBySharedApp = !!sharedAppSecret && verifyWhatsAppSignature(rawBody, signature, sharedAppSecret)
-    const resolveChannel = () =>
-      resolveWhatsAppWebhookChannelConfig({ tenantCtx, tenantSlug, phoneNumberId, signedBySharedApp })
+
+    for (const { entryId, change } of changeList) {
+      await handleWhatsAppChange({
+        entryId,
+        change,
+        tenantCtx,
+        tenantSlug,
+        signedBySharedApp,
+        signatureChannel: legacyChannelConfigForSignature,
+      })
+    }
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    console.error("[WA Webhook] Error:", err)
+    // Always return 200 to Meta to avoid webhook retries
+    return NextResponse.json({ ok: true })
+  }
+}
+
+/**
+ * One `entry[].changes[]` item, routed by its `field`.
+ *
+ * Every branch resolves the channel from THIS change's own `phone_number_id`, so a batched delivery
+ * cannot write one number's event onto another number's workspace. In the legacy path — no `?t=`,
+ * no env app secret — the signature was verified with one channel row's own secret, and only that
+ * row's changes may be processed: `signatureChannel` is what enforces it.
+ */
+async function handleWhatsAppChange(params: {
+  entryId: string | null
+  change: WaRecord
+  tenantCtx: WhatsAppWebhookTenantCtx | null
+  tenantSlug: string | null
+  signedBySharedApp: boolean
+  signatureChannel: WhatsAppWebhookChannelConfig | null
+}): Promise<void> {
+  const { entryId, change, tenantCtx, tenantSlug, signedBySharedApp, signatureChannel } = params
+  const value = change.value && typeof change.value === "object" ? change.value as WaRecord : null
+  if (!value) return
+
+  const field = asStringOrNull(change.field)
+  const metadata = value.metadata && typeof value.metadata === "object" ? value.metadata as WaRecord : undefined
+  const phoneNumberId = metadata?.phone_number_id
+  const contacts = Array.isArray(value.contacts) ? value.contacts as WaContactPayload[] : undefined
+
+  // One bad change must not cost the rest of the delivery: Meta redelivers the WHOLE payload, so
+  // abandoning the batch here would re-run every change that already succeeded — and for a one-shot
+  // history chunk there is no redelivery worth waiting for at all.
+  try {
+  // `account_update` carries no phone number — it is addressed by the Messaging account id in
+  // `entry.id` — so it resolves its own rows and returns before the per-number lookup below.
+  if (field === "account_update") {
+    const { applyWhatsAppAccountUpdate } = await import("@/lib/whatsapp-account-update")
+    await applyWhatsAppAccountUpdate({ wabaId: entryId, value: value as never })
+    return
+  }
+
+  const resolveChannel = async (): Promise<WhatsAppWebhookChannelConfig | null> => {
+    const resolved = await resolveWhatsAppWebhookChannelConfig({ tenantCtx, tenantSlug, phoneNumberId, signedBySharedApp })
+    if (!resolved) return null
+    if (signatureChannel && resolved.id !== signatureChannel.id) {
+      console.warn(
+        `[WA Webhook] POST: change for phone_number_id=${sanitizeLog(String(phoneNumberId || ""))} is not the channel`
+        + ` whose secret signed this delivery — ignoring`,
+      )
+      return null
+    }
+    return resolved
+  }
+
+  // The team answered from the WhatsApp Business app on their phone. Storing it is what keeps our
+  // agents from answering the same customer a second time — see lib/inbox/whatsapp-app-echo.
+  if (field === "smb_message_echoes" || Array.isArray(value.message_echoes)) {
+    const channelConfig = await resolveChannel()
+    if (!channelConfig) {
+      console.log(`[WA Webhook] POST: no matching ChannelConfig for echo phone_number_id=${sanitizeLog(String(phoneNumberId))} — ignoring`)
+      return
+    }
+    const { ingestWhatsAppAppEcho } = await import("@/lib/inbox/whatsapp-app-echo")
+    await runWithTenant(channelConfig.organizationId, () => ingestWhatsAppAppEcho({
+      channel: { id: channelConfig.id, organizationId: channelConfig.organizationId },
+      value: value as never,
+    }))
+    return
+  }
+
+  // Contacts and messaging history of a freshly connected coexistence number. Both are one-shot and
+  // can describe thousands of messages, so they are deliberately NOT written from inside this
+  // request yet; they are acknowledged and logged until the importer lands.
+  if (field === "history" || field === "smb_app_state_sync") {
+    const chunks = Array.isArray(value.history) ? value.history.length : Array.isArray(value.state_sync) ? value.state_sync.length : 0
+    console.log(
+      `[WA Webhook] POST: ${sanitizeLog(field)} for phone_number_id=${sanitizeLog(String(phoneNumberId || ""))}`
+      + ` items=${chunks} — not imported yet`,
+    )
+    return
+  }
+
+  const isCallWebhook =
+    field === "calls" ||
+    Array.isArray(value.calls) ||
+    (Array.isArray(value.statuses) && (value.statuses as unknown[]).some(isWaCallStatus))
 
     if (isCallWebhook) {
-      const channelConfig = legacyChannelConfigForSignature
-        ?? await resolveChannel()
+      const channelConfig = await resolveChannel()
       if (!channelConfig) {
         console.log(`[WA Webhook] POST: no matching ChannelConfig for calls phone_number_id=${sanitizeLog(String(phoneNumberId))} (tenant=${tenantSlug || "none"}) — ignoring to avoid cross-tenant leak`)
-        return NextResponse.json({ ok: true })
+        return
       }
 
       await runWithTenant(channelConfig.organizationId, () => processCallEvents({
         calls: Array.isArray(value.calls) ? value.calls as WaCallPayload[] : [],
-        statuses: Array.isArray(value.statuses) ? value.statuses.filter(isWaCallStatus) : [],
-        contacts: Array.isArray(contacts) ? contacts as WaContactPayload[] : undefined,
-        metadata: metadata && typeof metadata === "object" ? metadata as WaRecord : undefined,
+        statuses: Array.isArray(value.statuses) ? (value.statuses as unknown[]).filter(isWaCallStatus) : [],
+        contacts,
+        metadata,
         channelConfig,
       }))
-      return NextResponse.json({ ok: true })
+      return
     }
 
     // Handle message status updates (sent, delivered, read)
     if (value.statuses) {
-      const statusChannelConfig = legacyChannelConfigForSignature
-        ?? await resolveChannel()
+      const statusChannelConfig = await resolveChannel()
       if (!statusChannelConfig) {
         console.log(`[WA Webhook] POST: no matching ChannelConfig for status phone_number_id=${sanitizeLog(String(phoneNumberId))} (tenant=${tenantSlug || "none"}) — ignoring to avoid cross-tenant status write`)
-        return NextResponse.json({ ok: true })
+        return
       }
-      for (const status of value.statuses) {
+      for (const status of value.statuses as WaMessageStatusPayload[]) {
         await handleStatusUpdate(status, statusChannelConfig.organizationId)
       }
-      return NextResponse.json({ ok: true })
+      return
     }
 
     // Handle incoming messages
-    const messages = value.messages
-    if (!messages || messages.length === 0) {
-      return NextResponse.json({ ok: true })
+    const messages = Array.isArray(value.messages) ? value.messages as WaInboundMessagePayload[] : []
+    if (messages.length === 0) {
+      return
     }
 
     // ─── Tenant routing ──────────────────────────────────────────
@@ -395,21 +512,17 @@ export async function POST(req: NextRequest) {
     // 2. Without `?t=`, look up by phoneNumberId / phoneNumber (legacy column
     //    for un-migrated rows). No more "first active config" fallback — the
     //    previous behaviour routed cross-tenant inbound into random orgs.
-    const channelConfig = legacyChannelConfigForSignature
-      ?? await resolveChannel()
+    const channelConfig = await resolveChannel()
 
     if (!channelConfig) {
       console.log(`[WA Webhook] POST: no matching ChannelConfig for phone_number_id=${sanitizeLog(String(phoneNumberId))} (tenant=${tenantSlug || "none"}) — ignoring to avoid cross-tenant leak`)
-      return NextResponse.json({ ok: true })
+      return
     }
 
     // RLS: org resolved — ALL message processing (incl. AI auto-reply + ticket creation) runs tenant-scoped.
-    await runWithTenant(channelConfig.organizationId, () => processMessages(messages, contacts, channelConfig))
-    return NextResponse.json({ ok: true })
+    await runWithTenant(channelConfig.organizationId, () => processMessages(messages, contacts ?? [], channelConfig))
   } catch (err) {
-    console.error("[WA Webhook] Error:", err)
-    // Always return 200 to Meta to avoid webhook retries
-    return NextResponse.json({ ok: true })
+    console.error(`[WA Webhook] change (${sanitizeLog(field || "unknown")}) failed:`, err)
   }
 }
 
@@ -1049,59 +1162,10 @@ async function processMessages(
       continue
     }
 
-    // Extract message text based on type
-    let text = ""
-    let messageType = msg.type || "text"
-
-    switch (msg.type) {
-      case "text":
-        text = asStringOrNull(msg.text?.body) ?? ""
-        break
-      case "image":
-        text = asStringOrNull(msg.image?.caption) ?? "[Изображение]"
-        messageType = "image"
-        break
-      case "video":
-        text = asStringOrNull(msg.video?.caption) ?? "[Видео]"
-        messageType = "video"
-        break
-      case "audio":
-        text = "[Аудио сообщение]"
-        messageType = "audio"
-        break
-      case "voice":
-        text = "[Голосовое сообщение]"
-        messageType = "voice"
-        break
-      case "document":
-        text = asStringOrNull(msg.document?.caption) ?? `[Документ: ${asStringOrNull(msg.document?.filename) ?? "file"}]`
-        messageType = "document"
-        break
-      case "sticker":
-        text = "[Стикер]"
-        messageType = "sticker"
-        break
-      case "location":
-        text = `[Локация: ${msg.location?.latitude}, ${msg.location?.longitude}]`
-        messageType = "location"
-        break
-      case "contacts":
-        text = "[Контакт]"
-        messageType = "contacts"
-        break
-      case "reaction":
-        text = `[Реакция: ${msg.reaction?.emoji || ""}]`
-        messageType = "reaction"
-        break
-      case "button":
-        text = asStringOrNull(msg.button?.text) ?? "[Кнопка]"
-        break
-      case "interactive":
-        text = asStringOrNull(msg.interactive?.button_reply?.title) ?? asStringOrNull(msg.interactive?.list_reply?.title) ?? "[Интерактив]"
-        break
-      default:
-        text = `[${msg.type || "unknown"}]`
-    }
+    // What the message says, and under which type it is stored. One reader for this and for the
+    // echo of a reply typed in the WhatsApp Business app, so both sides of a coexistence thread
+    // describe a sticker or a voice note with the same words (lib/whatsapp-message-text).
+    const { text, messageType } = describeWaMessage(msg)
 
     // Skip reaction messages (don't create separate message records)
     if (msg.type === "reaction") continue
@@ -2077,7 +2141,7 @@ async function handleAiAutoReply(
 
 // Handle delivery status updates (sent → delivered → read)
 async function handleStatusUpdate(
-  status: { id?: unknown; status?: unknown; biz_opaque_callback_data?: unknown; errors?: Array<{ title?: unknown; code?: unknown }> },
+  status: WaMessageStatusPayload,
   organizationId: string,
 ) {
   const waMessageId = asStringOrNull(status.id)
