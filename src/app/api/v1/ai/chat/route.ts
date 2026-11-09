@@ -153,6 +153,45 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
   timing.finish(reply.status, false)
   return reply
 
+  // Context enrichment: deal prediction + next actions when on deal page.
+  async function dealInsightsContext(orgRead: ReturnType<typeof getOrgModuleContext>): Promise<string> {
+    const dealPageMatch = context?.url?.match(/\/deals\/([^/]+)/)
+    if (!dealPageMatch) return ""
+    const orgCtx = moduleContextForUser(await orgRead, session)
+    if (canRead(session.role, "deals") && hasModule(orgCtx, "sales")) {
+      try {
+        const visibleDealWhere = await applyRecordFilter(
+          orgId,
+          userId,
+          session.role,
+          "deal",
+          { id: dealPageMatch[1], organizationId: orgId },
+        )
+        const visibleDeal = await prisma.deal.findFirst({
+          where: visibleDealWhere,
+          select: { id: true },
+        })
+        if (!visibleDeal) throw new Error("Deal is not visible to this user")
+        const [prediction, nextActions] = await Promise.all([
+          predictDealWin(visibleDeal.id, orgId),
+          generateNextBestActions(orgId, userId, 3, {
+            role: session.role,
+            deals: canRead(session.role, "deals") && hasModule(orgCtx, "sales"),
+            leads: canRead(session.role, "leads") && hasModule(orgCtx, "sales"),
+            tasks: canRead(session.role, "tasks") && hasModule(orgCtx, "crm"),
+            tickets: canRead(session.role, "tickets") && hasModule(orgCtx, "support"),
+          }),
+        ])
+        return `\n\nAI Insights for current deal:
+- Win Probability: ${prediction.winProbability}% (confidence: ${prediction.confidence}%)
+- Risk Factors: ${prediction.riskFactors.join(", ") || "none"}
+- Recommended Actions: ${nextActions.map(a => a.titleKey).join("; ") || "none"}`
+      } catch { /* ignore enrichment errors */ }
+    }
+    return ""
+  }
+
+
   async function answer(openLive: ((unmask: (text: string) => string) => LiveReply) | null): Promise<NextResponse> {
   try {
     // One clock for the whole turn: period boundaries, prompt context and tool
@@ -203,11 +242,19 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
     ]).catch(() => null)
     // A failed read is handled where it is used; never an unhandled rejection.
     orgModulesRead.catch(() => {})
+    // Deal insights depend on the page and the org, not on the agent: they
+    // are read while the agent is picked instead of after it.
+    const insightsRead = dealInsightsContext(orgModulesRead).then((text) => {
+      timing.mark("insights")
+      return text
+    }, () => "")
 
     // Multi-agent routing: classify intent and find best agent
-    const { agent: agentConfig, intent, confidence, isHandoff } = await routeToAgent(
+    const { agent: agentConfig, intent, confidence, classified, isHandoff } = await routeToAgent(
       orgId, message, previousAgentId
     )
+    timing.mark("routed")
+    timing.classified(classified)
 
     // Record handoff if agent changed
     if (isHandoff && previousAgentId && agentConfig) {
@@ -254,6 +301,7 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
       }
       throw error
     }
+    timing.mark("read")
     const localDate = dateInputValueInTimezone(requestNow, analyticsTimezone)
 
     // Get tools from the routed agent's own config (write/CRM tools).
@@ -297,39 +345,7 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
     // the caller's role and the metric's paid module before touching data.
     tools = [...tools, ...CHAT_ANALYTICS_TOOLS, ...(voiceChatTools as typeof tools)]
 
-    // Context enrichment: deal prediction + next actions when on deal page
-    let aiInsightsContext = ""
-    const dealPageMatch = context?.url?.match(/\/deals\/([^/]+)/)
-    if (dealPageMatch && canRead(session.role, "deals") && hasModule(orgCtx, "sales")) {
-      try {
-        const visibleDealWhere = await applyRecordFilter(
-          orgId,
-          userId,
-          session.role,
-          "deal",
-          { id: dealPageMatch[1], organizationId: orgId },
-        )
-        const visibleDeal = await prisma.deal.findFirst({
-          where: visibleDealWhere,
-          select: { id: true },
-        })
-        if (!visibleDeal) throw new Error("Deal is not visible to this user")
-        const [prediction, nextActions] = await Promise.all([
-          predictDealWin(visibleDeal.id, orgId),
-          generateNextBestActions(orgId, userId, 3, {
-            role: session.role,
-            deals: canRead(session.role, "deals") && hasModule(orgCtx, "sales"),
-            leads: canRead(session.role, "leads") && hasModule(orgCtx, "sales"),
-            tasks: canRead(session.role, "tasks") && hasModule(orgCtx, "crm"),
-            tickets: canRead(session.role, "tickets") && hasModule(orgCtx, "support"),
-          }),
-        ])
-        aiInsightsContext = `\n\nAI Insights for current deal:
-- Win Probability: ${prediction.winProbability}% (confidence: ${prediction.confidence}%)
-- Risk Factors: ${prediction.riskFactors.join(", ") || "none"}
-- Recommended Actions: ${nextActions.map(a => a.titleKey).join("; ") || "none"}`
-      } catch { /* ignore enrichment errors */ }
-    }
+    const aiInsightsContext = await insightsRead
 
     const agentName = agentConfig?.configName || "Da Vinci"
     const agentSystemPrompt = agentConfig?.systemPrompt ? `${agentConfig.systemPrompt}\n\n` : ""
@@ -395,6 +411,7 @@ Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown
     // PII masking — load known names from CRM, mask messages + system prompt
     const piiMasker = new PiiMasker()
     const knownNames = await knownNamesRead
+    timing.mark("names")
     if (knownNames) {
       const [contacts, companies]: [Array<{ fullName: string | null }>, Array<{ name: string | null }>] = knownNames
       piiMasker.addKnownNames(contacts.map((c) => c.fullName).filter((name): name is string => Boolean(name)))
