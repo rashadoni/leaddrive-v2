@@ -223,8 +223,13 @@ async function main() {
     assert.match(await page.innerText('[data-testid="help-video-first-visit"]'), /ilk dəfəsiniz/)
     await page.click('[data-testid="help-video-first-visit-later"]')
     await page.waitForSelector('[data-testid="help-video-first-visit"]', { state: 'detached', timeout: 30000 })
-    const stored = await api('manager', '/api/v1/users/me/preferences')
-    assert.deepEqual(stored.json?.data?.helpVideoSeen, ['boards'])
+    // The window saves without waiting for the answer; give the request time to land.
+    let stored = []
+    for (let i = 0; i < 30 && !stored.includes('boards'); i++) {
+      if (i) await page.waitForTimeout(500)
+      stored = (await api('manager', '/api/v1/users/me/preferences')).json?.data?.helpVideoSeen ?? []
+    }
+    assert.deepEqual(stored, ['boards'])
     await page.reload({ timeout: 180000 })
     await page.waitForFunction(() => /\d+ nəticə/.test(document.body.innerText), null, { timeout: 180000 })
     await page.waitForTimeout(3000)
