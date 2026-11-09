@@ -187,6 +187,7 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     await admin.pharmacyWaitlistItem.deleteMany({})
     await admin.pharmacyPhoneOrder.deleteMany({})
     await admin.company.deleteMany({})
+    await admin.systemJobCursor.deleteMany({})
     session.current = { user: { id: "user-zeytun", organizationId: ZEYTUN, role: "admin", email: "manager@zeytun.test", name: "Nigar" } }
   })
 
@@ -716,6 +717,51 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     const { listPharmacies } = await import("@/lib/pharmacy-orders/pharmacy-companies")
     expect(await runWithTenant(OTHER, () => listPharmacies(app as unknown as PrismaClient, OTHER, { filter: "all", q: "", page: 3 })))
       .toMatchObject({ total: 0, page: 1, rows: [] })
+  })
+
+  it("does not rewrite a pharmacy 1C sent unchanged, and still shows when 1C last confirmed each one", async () => {
+    // 2026-11-09: the hourly list rewrote all 1144 of Zeytun's pharmacies only to
+    // move externalSyncedAt — ~230 thousand updates a week. xmin is the row version.
+    await admin.organization.update({ where: { id: ZEYTUN }, data: { modules: { mtm: true, crm: true } } })
+    const versions = async () => new Map((await admin.$queryRaw<{ externalId: string; xmin: string }[]>`
+      SELECT "externalId", xmin::text AS xmin FROM "companies" WHERE "externalSource" = 'zeytun_1c'`).map(row => [row.externalId, row.xmin]))
+    const rewritten = (before: Map<string, string>, after: Map<string, string>) => [...after].filter(([guid, v]) => before.get(guid) !== v).map(([guid]) => guid).sort()
+    const { GET: pharmaciesRoute } = await import("@/app/api/v1/pharmacy-orders/pharmacies/route")
+    const companyRoute = await import("@/app/api/v1/companies/[id]/route")
+    const listSyncedAt = async () => (await (await pharmaciesRoute(json("GET", "/api/v1/pharmacy-orders/pharmacies"))).json()).data.syncedAt
+    const cardSyncedAt = async (guid: string) => {
+      const id = await companyId(guid)
+      return (await (await companyRoute.GET(json("GET", `/api/v1/companies/${id}`), params(id))).json()).data.externalSyncedAt
+    }
+
+    await sync(pharmacyRows(30), T1)
+    const loaded = await versions()
+    // The next hour's list, 1C unchanged: not one company row is written.
+    expect(await sync(pharmacyRows(30), T2)).toEqual({ created: 0, updated: 0, removed: 0, returned: 0, removalsHeld: 0, linkedOrders: 0 })
+    expect(rewritten(loaded, await versions())).toEqual([])
+    // The screens still say 1C confirmed them at T2.
+    expect(await listSyncedAt()).toBe(T2.toISOString())
+    expect(await cardSyncedAt(GUID(5))).toBe(T2.toISOString())
+
+    // 1C renamed one and closed another: only those two rows are written.
+    const before = await versions()
+    expect(await sync(pharmacyRows(29, { 1: "Aptek Bir" }), T3)).toMatchObject({ updated: 1, removed: 1 })
+    expect(rewritten(before, await versions())).toEqual([GUID(1), GUID(30)].sort())
+    expect(await cardSyncedAt(GUID(1))).toBe(T3.toISOString())
+    expect(await cardSyncedAt(GUID(5))).toBe(T3.toISOString())
+    // The closed one was last seen in the T2 list, not when it was created.
+    expect(await admin.company.findFirstOrThrow({ where: { externalId: GUID(30) } })).toMatchObject({ externalSyncedAt: T2, externalRemovedAt: T3 })
+    expect(await cardSyncedAt(GUID(30))).toBe(T2.toISOString())
+
+    // A list too short to trust: the listed ones were seen at T4, the held ones only at T3.
+    expect(await sync(pharmacyRows(7, { 1: "Aptek Bir" }), T4)).toMatchObject({ removed: 0, removalsHeld: 22 })
+    expect(await cardSyncedAt(GUID(5))).toBe(T4.toISOString())
+    expect(await cardSyncedAt(GUID(20))).toBe(T3.toISOString())
+    expect(await listSyncedAt()).toBe(T4.toISOString())
+    // An older list read late does not take the time back.
+    await sync(pharmacyRows(29, { 1: "Aptek Bir" }), T1)
+    expect(await cardSyncedAt(GUID(20))).toBe(T3.toISOString())
+    expect(await admin.systemJobCursor.findUniqueOrThrow({ where: { name: `pharmacy-companies-list:${ZEYTUN}` } })).toMatchObject({ cursor: T3.toISOString() })
   })
 
   it("keeps what 1C owns out of the company form, and does not delete a 1C pharmacy", async () => {

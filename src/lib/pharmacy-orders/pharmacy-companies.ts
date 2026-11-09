@@ -44,6 +44,16 @@ export type PharmacySyncResult = {
  * Only what 1C owns changes; a pharmacy that left the list is marked inactive,
  * never deleted (its orders stay on it). `observedAt` is when 1C was read:
  * a list already loaded is a no-op apart from linking orders.
+ *
+ * A pharmacy 1C sent unchanged is not written. Until 2026-11-09 every such
+ * row got the new `externalSyncedAt`, and the list is read about once an
+ * hour: 1144 company rows rewritten for nothing each time, ~230 thousand
+ * updates a week to the table, its WAL and backups. When the whole list is
+ * trusted, «1C confirmed it at» is the list's time for every listed
+ * pharmacy, so it is kept once, in the list cursor (`pharmacyListSyncedAt`),
+ * and the screens read `pharmacySyncedAt`. A list whose removals are held is
+ * not the whole list: then the cursor stays and listed rows get the stamp,
+ * so a held pharmacy keeps the time it was really last seen.
  */
 export async function syncPharmacyCompanies(db: PrismaClient, orgId: string, rows: PharmacyRow[], observedAt: Date): Promise<PharmacySyncResult> {
   if (!rows.length) throw new Error("empty_pharmacy_list")
@@ -70,6 +80,12 @@ export async function syncPharmacyCompanies(db: PrismaClient, orgId: string, row
       })).count
     }
 
+    const listedAt = await pharmacyListSyncedAt(tx, orgId)
+    const gone = existing.filter(company => !listed.has(company.externalId!) && !company.externalRemovedAt)
+    // A list that suddenly lacks many pharmacies is far likelier a short 1C
+    // answer than a mass closure: keep them and let the next list decide.
+    const trusted = gone.length <= Math.max(20, existing.length * REMOVAL_TRUST_SHARE)
+
     const seenOnly: string[] = []
     for (const row of rows) {
       const company = known.get(row.guid)
@@ -83,24 +99,30 @@ export async function syncPharmacyCompanies(db: PrismaClient, orgId: string, row
         })
         if (changed) result.updated++
         if (company.externalRemovedAt) result.returned++
-      } else if (!company.externalSyncedAt || company.externalSyncedAt < observedAt) {
-        seenOnly.push(company.id)
+      } else if (!trusted) {
+        const seen = pharmacySyncedAt(company, listedAt)
+        if (!seen || seen < observedAt) seenOnly.push(company.id)
       }
     }
     for (let i = 0; i < seenOnly.length; i += 1000) {
       await tx.company.updateMany({ where: { organizationId: orgId, id: { in: seenOnly.slice(i, i + 1000) } }, data: { externalSyncedAt: observedAt } })
     }
 
-    const gone = existing.filter(company => !listed.has(company.externalId!) && !company.externalRemovedAt)
-    if (gone.length > Math.max(20, existing.length * REMOVAL_TRUST_SHARE)) {
-      // A list that suddenly lacks many pharmacies is far likelier a short 1C
-      // answer than a mass closure: keep them and let the next list decide.
+    if (!trusted) {
       result.removalsHeld = gone.length
-    } else if (gone.length) {
-      result.removed = (await tx.company.updateMany({
-        where: { organizationId: orgId, id: { in: gone.map(company => company.id) } },
-        data: { externalRemovedAt: observedAt, status: "inactive" },
-      })).count
+    } else {
+      if (gone.length) {
+        // Last seen in the list before this one: that time leaves the cursor
+        // with them, since a removed pharmacy shows its own stamp.
+        const lastSeen = (company: typeof gone[number]) => pharmacySyncedAt(company, listedAt)
+        for (const stamp of new Set(gone.map(company => lastSeen(company)?.getTime() ?? null))) {
+          result.removed += (await tx.company.updateMany({
+            where: { organizationId: orgId, id: { in: gone.filter(company => (lastSeen(company)?.getTime() ?? null) === stamp).map(company => company.id) } },
+            data: { externalRemovedAt: observedAt, status: "inactive", externalSyncedAt: stamp === null ? null : new Date(stamp) },
+          })).count
+        }
+      }
+      await advanceListCursor(tx, orgId, observedAt)
     }
 
     // Orders taken before their pharmacy had a card (or before this feature).
@@ -112,6 +134,40 @@ export async function syncPharmacyCompanies(db: PrismaClient, orgId: string, row
         AND c."externalSource" = ${PHARMACY_COMPANY_SOURCE} AND c."externalId" = o."pharmacyGuid"`
     return result
   }, { isolationLevel: "ReadCommitted", maxWait: 5000, timeout: 60_000 }))
+}
+
+/* ─── When 1C last confirmed a pharmacy ───────────────────────────── */
+
+type CursorDb = Pick<PrismaClient, "$queryRaw">
+const listCursorName = (orgId: string) => `pharmacy-companies-list:${orgId}`
+
+/** When the organization's last whole (trusted) 1C list was read; null before the first. */
+export async function pharmacyListSyncedAt(db: CursorDb, orgId: string): Promise<Date | null> {
+  const rows = await db.$queryRaw<{ cursor: string | null }[]>`
+    SELECT "cursor" FROM "system_job_cursors" WHERE "name" = ${listCursorName(orgId)} LIMIT 1`
+  const at = rows[0]?.cursor ? new Date(rows[0].cursor) : null
+  return at && !Number.isNaN(at.getTime()) ? at : null
+}
+
+/** Moves forward only: an older list read late does not take the time back.
+ * ISO strings of one length order as the times they spell. */
+async function advanceListCursor(db: CursorDb, orgId: string, observedAt: Date) {
+  const at = observedAt.toISOString()
+  await db.$queryRaw`
+    INSERT INTO "system_job_cursors" ("name", "cursor", "version", "updatedAt")
+    VALUES (${listCursorName(orgId)}, ${at}, 1, CURRENT_TIMESTAMP)
+    ON CONFLICT ("name") DO UPDATE
+    SET "cursor" = EXCLUDED."cursor", "version" = "system_job_cursors"."version" + 1, "updatedAt" = CURRENT_TIMESTAMP
+    WHERE "system_job_cursors"."cursor" IS NULL OR "system_job_cursors"."cursor" < EXCLUDED."cursor"
+    RETURNING "name"`
+}
+
+/** When 1C last confirmed this pharmacy: a pharmacy still on the register was
+ * in the last whole list, a removed one keeps the time it was last seen. */
+export function pharmacySyncedAt(company: { externalSyncedAt: Date | null; externalRemovedAt: Date | null }, listedAt: Date | null): Date | null {
+  const own = company.externalSyncedAt
+  if (company.externalRemovedAt || !listedAt) return own
+  return own && own > listedAt ? own : listedAt
 }
 
 /* ─── Reads for the screens ────────────────────────────────────────── */
@@ -128,7 +184,7 @@ export type PharmacyFilter = typeof PHARMACY_FILTERS[number]
 export async function listPharmacies(db: PrismaClient, orgId: string, input: { filter: PharmacyFilter; q: string; now?: Date; page?: number }) {
   const now = input.now ?? new Date()
   const since = new Date(now.getTime() - 30 * DAY)
-  const [companies, allTime, recent] = await Promise.all([
+  const [companies, allTime, recent, listedAt] = await Promise.all([
     db.company.findMany({
       where: { organizationId: orgId, externalSource: PHARMACY_COMPANY_SOURCE },
       select: { id: true, name: true, address: true, city: true, phone: true, externalSyncedAt: true, externalRemovedAt: true,
@@ -138,6 +194,7 @@ export async function listPharmacies(db: PrismaClient, orgId: string, input: { f
       _max: { createdAt: true } }),
     db.pharmacyPhoneOrder.groupBy({ by: ["companyId"], where: { organizationId: orgId, companyId: { not: null }, createdAt: { gte: since }, ...COUNTED },
       _count: { _all: true }, _sum: { totalAmount: true } }),
+    pharmacyListSyncedAt(db, orgId),
   ])
   const last = new Map(allTime.map(row => [row.companyId!, row._max.createdAt]))
   const month = new Map(recent.map(row => [row.companyId!, { count: row._count._all, total: row._sum.totalAmount ?? new Prisma.Decimal(0) }]))
@@ -171,8 +228,10 @@ export async function listPharmacies(db: PrismaClient, orgId: string, input: { f
     || [row.name, row.address, row.city].some(value => value?.toLocaleLowerCase("az").includes(q))
     || (digits.length >= 4 && (row.phone ?? "").replace(/\D/gu, "").includes(digits)))
   found.sort((a, b) => (b.lastOrderAt ?? "").localeCompare(a.lastOrderAt ?? "") || a.name.localeCompare(b.name, "az") || a.id.localeCompare(b.id))
-  const syncedAt = companies.reduce<Date | null>((max, company) =>
-    company.externalSyncedAt && (!max || company.externalSyncedAt > max) ? company.externalSyncedAt : max, null)
+  const syncedAt = companies.reduce<Date | null>((max, company) => {
+    const at = pharmacySyncedAt(company, listedAt)
+    return at && (!max || at > max) ? at : max
+  }, null)
   const pageSize = 100
   const totalPages = Math.max(1, Math.ceil(found.length / pageSize))
   const requestedPage = Number.isSafeInteger(input.page) && input.page! > 0 ? input.page! : 1

@@ -11,6 +11,7 @@ import {
 } from "@/lib/validation/numeric"
 import { voenInput } from "@/lib/companies/az-taxpayer-registry"
 import { PHARMACY_SOURCE_FIELDS } from "@/lib/pharmacy-orders/pharmacy-source"
+import { pharmacyListSyncedAt, pharmacySyncedAt } from "@/lib/pharmacy-orders/pharmacy-companies"
 
 const updateCompanySchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -63,6 +64,9 @@ export const GET = withRlsAuth("companies", "read", async (_req, { orgId, role }
       },
     })
     if (!company) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    // A 1C pharmacy unchanged by the last whole list is not rewritten; the
+    // list's time is kept once (pharmacy-companies.ts).
+    if (company.externalSource) company.externalSyncedAt = pharmacySyncedAt(company, await pharmacyListSyncedAt(prisma, orgId))
     const fieldPerms = await getFieldPermissions(orgId, role, "company")
     const filtered = filterEntityFields(company, fieldPerms, role)
     return NextResponse.json({ success: true, data: filtered })

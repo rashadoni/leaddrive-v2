@@ -21,6 +21,8 @@ function fixture(count = 1143) {
   const db = {
     company: { findMany: vi.fn().mockResolvedValue([...companies].reverse()) },
     pharmacyPhoneOrder: { groupBy: vi.fn().mockResolvedValue([]) },
+    // No whole 1C list recorded yet: the rows' own stamps stand.
+    $queryRaw: vi.fn().mockResolvedValue([]),
   }
   return { companies, mock: db, db: db as unknown as PrismaClient }
 }
