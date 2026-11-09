@@ -3,7 +3,7 @@ import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import Anthropic from "@anthropic-ai/sdk"
 import { getAnthropicClient } from "@/lib/ai/anthropic-client"
-import { resolveAiModel } from "@/lib/ai/budget"
+import { calculateAiCost, resolveAiModel } from "@/lib/ai/budget"
 import { checkRateLimit, RATE_LIMIT_CONFIG } from "@/lib/rate-limit"
 import { TOOL_META, filterToolsByTenantModules, getEnabledTools, getEnabledToolsForAgent, type RiskLevel } from "@/lib/ai/tools"
 import { READ_TOOLS, READ_TOOL_NAMES, READ_TOOL_MODULE, READ_TOOL_PERMISSION, type ReadResultData } from "@/lib/ai/read-tools"
@@ -20,6 +20,7 @@ import { routeToAgent } from "@/lib/ai/agent-router"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { LiveReply, sseFrame } from "@/lib/ai/chat-live-reply"
 import { startChatTiming } from "@/lib/ai/chat-timing"
+import { cachedSystemPrompt, roundUsage, withCachedTail } from "@/lib/ai/chat-prompt-cache"
 import { isPhoneRestrictedPrincipal } from "@/lib/customer-phone-privacy"
 import { dateInputValueInTimezone } from "@/lib/timezone"
 import {
@@ -332,12 +333,14 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
 
     const agentName = agentConfig?.configName || "Da Vinci"
     const agentSystemPrompt = agentConfig?.systemPrompt ? `${agentConfig.systemPrompt}\n\n` : ""
-    const systemPrompt = `${agentSystemPrompt}You are ${agentName} — an intelligent CRM assistant (type: ${agentConfig?.agentType || "general"}) for LeadDrive, a CRM platform built by ${COMPANY_LEGAL_NAME} in ${COMPANY_LEGAL_ADDRESS}.
+    // Two parts, in this order, for the prompt cache
+    // (src/lib/ai/chat-prompt-cache.ts). The rules depend only on the agent and
+    // the locale and are read back from the cache by the next question; the
+    // page, the clock and the deal insights change with every request and go
+    // after them. Nothing per-request may be added to `stableSystemPrompt`.
+    const stableSystemPrompt = `${agentSystemPrompt}You are ${agentName} — an intelligent CRM assistant (type: ${agentConfig?.agentType || "general"}) for LeadDrive, a CRM platform built by ${COMPANY_LEGAL_NAME} in ${COMPANY_LEGAL_ADDRESS}.
 
 CRITICAL RULE #1: You MUST always respond in ${forceLang}. This is non-negotiable regardless of what language the user writes in.
-
-Current page: ${context?.url || "unknown"} (${context?.title || ""})
-Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown"}, timezone ${analyticsTimezone})
 
 Rules:
 - ALWAYS respond in ${forceLang}
@@ -358,7 +361,9 @@ ${ADVISORY_GROUNDING_RULES}
 ${CURRENT_STATE_GROUNDING_RULES}
 - For a briefing, pipeline, overdue, workload, quotes, inbox, leads, marketing, forecast or boards question, call the matching get_*_summary tool. To answer about ONE record's contents - a deal's MEDDPICC, a contact's cashback, competitors, an invoice - call find_record first, then read_record with the returned id. Null fields are genuinely empty: say the field is not filled in, never guess. Never read record ids aloud or print them
 - For section help, translate or concisely paraphrase only the verified explain_crm_section guide into ${forceLang}; do not add product behavior that is absent from the guide
-- Use AI insights context below to proactively suggest relevant actions${aiInsightsContext}`
+- Use AI insights context below to proactively suggest relevant actions`
+    const requestSystemPrompt = `Current page: ${context?.url || "unknown"} (${context?.title || ""})
+Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown"}, timezone ${analyticsTimezone})${aiInsightsContext}`
 
     const historyEntries: ChatHistoryEntry[] = Array.isArray(history) ? history : []
     const messages: Anthropic.MessageParam[] = [
@@ -371,6 +376,8 @@ ${CURRENT_STATE_GROUNDING_RULES}
 
     const start = Date.now()
     let totalInputTokens = 0
+    let totalCacheReadTokens = 0
+    let totalCacheWriteTokens = 0
     let totalOutputTokens = 0
     const allActions: AiToolAction[] = []
     let queryResult: ReadResultData | undefined
@@ -394,7 +401,13 @@ ${CURRENT_STATE_GROUNDING_RULES}
       piiMasker.addKnownCompanies(companies.map((c) => c.name).filter((name): name is string => Boolean(name)))
     } /* else non-critical: the turn goes on without known names */
 
-    const maskedSystemPrompt = piiMasker.mask(systemPrompt)
+    // The stable part is masked first, so its placeholders depend only on its
+    // own text and the org's known names, never on this request's page or
+    // question: the cached prefix stays byte-identical between questions.
+    const maskedSystemPrompt = cachedSystemPrompt(
+      piiMasker.mask(stableSystemPrompt),
+      piiMasker.mask(requestSystemPrompt),
+    )
     let currentMessages: Anthropic.MessageParam[] = messages.map((m) => ({
       ...m,
       content: typeof m.content === "string" ? piiMasker.mask(m.content) : m.content,
@@ -431,7 +444,7 @@ ${CURRENT_STATE_GROUNDING_RULES}
         temperature: Math.min(1, Math.max(0, agentConfig?.temperature ?? 0.2)),
         system: maskedSystemPrompt,
         tools: tools.length > 0 ? tools : undefined,
-        messages: currentMessages,
+        messages: withCachedTail(currentMessages),
         ...(round === 0 && (requiredAnalyticsTool || groundedForcedTool)
           ? { tool_choice: { type: "tool" as const, name: (requiredAnalyticsTool || groundedForcedTool)! } }
           : {}),
@@ -453,8 +466,12 @@ ${CURRENT_STATE_GROUNDING_RULES}
         response = await client.messages.create(roundParams)
       }
 
-      totalInputTokens += response.usage?.input_tokens || 0
-      totalOutputTokens += response.usage?.output_tokens || 0
+      const usage = roundUsage(response.usage)
+      timing.usage(usage)
+      totalInputTokens += usage.inputTokens
+      totalCacheReadTokens += usage.cacheReadTokens
+      totalCacheWriteTokens += usage.cacheWriteTokens
+      totalOutputTokens += usage.outputTokens
 
       // Collect text blocks
       for (const block of response.content) {
@@ -754,9 +771,13 @@ ${CURRENT_STATE_GROUNDING_RULES}
           aiResponse: textReply.slice(0, 1000),
           model: resolveAiModel(agentConfig?.model),
           latencyMs: latency,
-          promptTokens: totalInputTokens,
+          // The whole prompt, cached or not, as before caching.
+          promptTokens: totalInputTokens + totalCacheReadTokens + totalCacheWriteTokens,
           completionTokens: totalOutputTokens,
-          costUsd: (totalInputTokens * 0.003 + totalOutputTokens * 0.015) / 1000,
+          costUsd: calculateAiCost(resolveAiModel(agentConfig?.model), totalInputTokens, totalOutputTokens, {
+            readTokens: totalCacheReadTokens,
+            writeTokens: totalCacheWriteTokens,
+          }),
           toolsCalled,
           agentConfigId: agentConfig?.id,
           agentType: agentConfig?.agentType,

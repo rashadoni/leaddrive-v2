@@ -82,7 +82,10 @@ describe("the chat's timing line", () => {
       const line = JSON.parse(lines[0])
       expect(line).toMatchObject({ prepMs: 300, firstTextMs: 800, totalMs: 2000, status: 200, streamed: true })
       expect(Object.keys(line).sort()).toEqual(
-        ["evt", "firstTextMs", "prepMs", "proc", "status", "streamed", "totalMs", "turn", "uptimeS"].sort(),
+        [
+          "evt", "firstTextMs", "prepMs", "proc", "status", "streamed", "totalMs", "turn", "uptimeS",
+          "rounds", "inputTokens", "cacheReadTokens", "cacheWriteTokens", "outputTokens",
+        ].sort(),
       )
     } finally {
       spy.mockRestore()
