@@ -16,7 +16,8 @@
  * within five minutes should read the tools and rules from the cache.
  *
  * The `…Ms` marks split the preparation: when the agent was picked
- * (`classified`: an intent model call was needed for it), the org context and
+ * (`classified`: there were several to choose between — until 2026-11-09 a
+ * model call, since then the question's words), the org context and
  * timezone were read, deal insights were ready (deal pages only) and the
  * known names for masking were loaded — each counted from the start of the
  * turn, so the largest one before `prepMs` is what the first word waited for.
@@ -37,7 +38,7 @@ export type ChatTiming = {
   firstText(): void
   /** A step of the preparation is done (first call counts). */
   mark(step: ChatPrepStep): void
-  /** Whether picking the agent needed the intent model. */
+  /** Whether there were several agents to choose between. */
   classified(value: boolean): void
   /** One model round finished with these token counts. */
   usage(round: ChatRoundUsage): void

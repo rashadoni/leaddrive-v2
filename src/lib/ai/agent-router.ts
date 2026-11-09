@@ -34,11 +34,11 @@ function agentFor(intent: Intent, agents: readonly AgentRow[]): AgentRow | null 
 /**
  * Picks the org's agent for a chat message.
  *
- * The intent classifier is a model call (Haiku) in front of every Da Vinci
- * answer, so it runs only when its answer can change the pick. On prod
- * (2026-11-08) 10 of 13 organisations have no active agent or exactly one —
- * Zeytun among them — and every intent lands on the same agent there; asking
- * the model first only delayed the answer's first word.
+ * The intent is read from the question's words (`classifyIntent`), and only
+ * when it can change the pick. On prod (2026-11-08) 10 of 13 organisations
+ * have no active agent or exactly one — Zeytun among them — and every intent
+ * lands on the same agent there. Until 2026-11-09 the intent was a Haiku call
+ * that the first word waited 1.1–1.6 s for (src/lib/ai/intent-classifier.ts).
  *
  * The internal chat answers staff only as a Da Vinci persona
  * (`CHAT_AGENT_TYPES`). Until 2026-11-09 only the "inbox" persona was kept
@@ -56,8 +56,8 @@ export async function routeToAgent(orgId: string, message: string, previousAgent
   const intents = Object.keys(INTENT_TO_AGENT) as Intent[]
   const outcomes = new Set(intents.map((intent) => agentFor(intent, agents)?.id ?? null))
   const { intent, confidence } = outcomes.size > 1
-    ? await classifyIntent(message)
-    // Nothing to choose between: no model call, and no claim about the intent.
+    ? classifyIntent(message)
+    // Nothing to choose between: no claim about the intent.
     : { intent: "general" as Intent, confidence: 1 }
   const agent = agentFor(intent, agents)
 
@@ -65,7 +65,7 @@ export async function routeToAgent(orgId: string, message: string, previousAgent
     agent,
     intent,
     confidence,
-    /** Whether the intent model was asked (it stands in front of the answer). */
+    /** Whether there was more than one agent to choose between. */
     classified: outcomes.size > 1,
     isHandoff: previousAgentId ? agent?.id !== previousAgentId : false,
   }
