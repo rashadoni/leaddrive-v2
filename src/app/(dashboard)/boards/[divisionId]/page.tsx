@@ -54,6 +54,7 @@ import { TaskExportMenu } from "@/components/tasks/task-export-menu"
 import { useTaskTypes, useEventTypes, type TaskTypeInfo, type TaskTypeDTO } from "@/components/tasks/use-task-types"
 import { BoardActionsCtx, CardQuickMenu, type BoardActions } from "@/components/boards/card-quick-menu"
 import { HelpButton } from "@/components/help/help-button"
+import { boardTaskFromTemplate, type BoardTaskTemplate } from "@/lib/task-templates/board-task-from-template"
 
 // Shared CRM surfaces; stage and priority colors retain their meaning.
 const C = {
@@ -119,6 +120,9 @@ const TaskTypeCtx = createContext<Map<string, TaskTypeInfo>>(new Map())
 // Same lookup for the Event-type axis (channel/source) — a second color dot on cards.
 const EventTypeCtx = createContext<Map<string, TaskTypeInfo>>(new Map())
 const PRIORITIES = ["critical", "high", "medium", "low"] as const
+// `common.priorityCritical` … — the same words the task list shows (it used to
+// print the raw value capitalised: «High», «Medium» in an Azerbaijani screen).
+const priorityKey = (p: string) => `priority${p[0].toUpperCase()}${p.slice(1)}`
 const CATEGORIES = ["Q1", "Q2", "Q3", "Q4"] as const
 const DONE_MAX = 10
 const DONE_WINDOW_DAYS = 14
@@ -173,6 +177,7 @@ export default function BoardPage() {
 
 function BoardInner() {
   const t = useTranslations("board")
+  const tCommon = useTranslations("common")
   const params = useParams<{ divisionId: string }>()
   const divisionId = params.divisionId
   const router = useRouter()
@@ -733,7 +738,7 @@ function BoardInner() {
         </select>
         <select value={priority} onChange={(e) => setPriority(e.target.value)} className="rounded border px-2 py-1.5 text-xs" style={{ borderColor: C.input, background: C.card, color: C.text }}>
           <option value="">{t("priority")}</option>
-          {PRIORITIES.map((x) => <option key={x} value={x}>{x[0].toUpperCase() + x.slice(1)}</option>)}
+          {PRIORITIES.map((x) => <option key={x} value={x}>{tCommon(priorityKey(x))}</option>)}
         </select>
         <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="rounded border px-2 py-1.5 text-xs" style={{ borderColor: C.input, background: C.card, color: C.text }}>
           <option value="">{t("assignee")}</option>
@@ -1034,6 +1039,7 @@ function CreateTaskDialog({
   onCreated: () => void
 }) {
   const t = useTranslations("board")
+  const tCommon = useTranslations("common")
   // Lazy: the full org user list is only fetched when this dialog opens.
   const [users, setUsers] = useState<OrgUser[]>([])
   useEffect(() => {
@@ -1050,8 +1056,41 @@ function CreateTaskDialog({
   const [category, setCategory] = useState<string>("")
   const [assignedTo, setAssignedTo] = useState<string>("")
   const [dueDate, setDueDate] = useState<string>("")
+  const [description, setDescription] = useState<string>("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Task templates (settings → «Tapşırıq şablonları») fill this dialog too —
+  // until 2026-11-09 only the CRM task form offered them, so a person who has
+  // the boards alone could make templates and never use one.
+  const { data: session } = useSession()
+  const tTemplates = useTranslations("taskTemplates")
+  const [templates, setTemplates] = useState<BoardTaskTemplate[]>([])
+  const [templateId, setTemplateId] = useState("")
+  const [pendingChecklist, setPendingChecklist] = useState<{ title: string; sortOrder?: number }[]>([])
+  useEffect(() => {
+    let alive = true
+    fetch("/api/v1/task-templates", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (alive && Array.isArray(j?.data)) setTemplates(j.data) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [])
+
+  function applyTemplate(id: string) {
+    setTemplateId(id)
+    const tpl = templates.find((x) => x.id === id)
+    if (!tpl) return
+    const filled = boardTaskFromTemplate(tpl, { userName: session?.user?.name ?? "", locale: navigator.language })
+    setTitle(filled.title)
+    setDescription(filled.description)
+    if (filled.priority) setPriority(filled.priority)
+    setAssignedTo(filled.assignedTo)
+    setDueDate(filled.dueDate)
+    setPendingChecklist(filled.checklist)
+    // Usage counter, as the CRM form does — fire-and-forget.
+    fetch(`/api/v1/task-templates/${tpl.id}/instantiate`, { method: "POST", credentials: "include" }).catch(() => {})
+  }
 
   // Spec: the board "New Task" dialog enforces title 3..200 client-side.
   const valid = title.trim().length >= 3 && title.trim().length <= 200
@@ -1074,12 +1113,29 @@ function CreateTaskDialog({
           ...(category ? { category } : {}),
           ...(assignedTo ? { assignedTo } : {}),
           ...(dueDate ? { dueDate: new Date(dueDate).toISOString() } : {}),
+          ...(description.trim() ? { description: description.trim() } : {}),
         }),
       })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
         setError(j?.message || j?.error || t("changeFailed"))
         return
+      }
+      // The template's checklist becomes the task's subtasks — the task API
+      // takes them one by one, after the task exists. Best effort: the task
+      // is already made, a lost item must not undo it.
+      if (pendingChecklist.length) {
+        const created = await res.json().catch(() => null)
+        const taskId = created?.data?.id
+        if (taskId) {
+          await Promise.allSettled(pendingChecklist.map((item, i) =>
+            fetch(`/api/v1/tasks/${taskId}/checklist`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ title: item.title, sortOrder: item.sortOrder ?? i }),
+            })))
+        }
       }
       onCreated()
     } catch {
@@ -1097,6 +1153,19 @@ function CreateTaskDialog({
           <button onClick={onClose} style={{ color: C.sub }}><X className="h-5 w-5" /></button>
         </div>
 
+        {templates.length > 0 && (
+          <select
+            value={templateId}
+            onChange={(e) => applyTemplate(e.target.value)}
+            className="mb-3 w-full rounded-md border px-2 py-2 text-sm"
+            style={{ borderColor: C.input, background: C.card }}
+            data-testid="board-create-template"
+          >
+            <option value="">{tTemplates("pickerButton")}</option>
+            {templates.map((tpl) => <option key={tpl.id} value={tpl.id}>{tpl.name}</option>)}
+          </select>
+        )}
+
         <label className="mb-1 block text-sm font-medium">{t("titleLabel")}</label>
         <input
           autoFocus
@@ -1106,6 +1175,7 @@ function CreateTaskDialog({
           placeholder={t("titlePlaceholder")}
           className="mb-3 w-full rounded-md border px-3 py-2 text-sm outline-none"
           style={{ borderColor: C.input }}
+          data-testid="board-create-title"
         />
 
         <div className="mb-3 grid grid-cols-2 gap-3">
@@ -1118,7 +1188,7 @@ function CreateTaskDialog({
           <div>
             <label className="mb-1 block text-sm font-medium">{t("priority")}</label>
             <select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full rounded-md border px-2 py-2 text-sm" style={{ borderColor: C.input, background: C.card }}>
-              {PRIORITIES.map((x) => <option key={x} value={x}>{x[0].toUpperCase() + x.slice(1)}</option>)}
+              {PRIORITIES.map((x) => <option key={x} value={x}>{tCommon(priorityKey(x))}</option>)}
             </select>
           </div>
         </div>

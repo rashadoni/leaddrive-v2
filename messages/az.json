@@ -2350,6 +2350,7 @@
   "taskTemplates": {
     "title": "Tapşırıq şablonları",
     "description": "Təsvir",
+    "subtitle": "Təkrarlanan işlər üçün hazır tapşırıqlar: başlıq, prioritet, son tarix və alt tapşırıqlar bir kliklə doldurulur.",
     "newTemplate": "Yeni şablon",
     "editTemplate": "Şablonu redaktə et",
     "deleteTemplate": "Şablonu sil",

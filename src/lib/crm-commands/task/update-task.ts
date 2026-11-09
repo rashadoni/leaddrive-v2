@@ -4,6 +4,7 @@ import { requireFieldPermissions } from "@/lib/field-filter"
 import { applyRecordFilter } from "@/lib/sharing-rules"
 import { executeWorkflows } from "@/lib/workflow-engine"
 import { createNotification } from "@/lib/notifications"
+import { taskNotificationLocale, taskNotificationText } from "@/lib/tasks/task-notification-text"
 import { resolveRelated } from "@/lib/resolve-related"
 import { validateRequiredCustomFields } from "@/lib/custom-fields-validation"
 import { recalcProjectCompletion } from "@/lib/project-rollup"
@@ -394,25 +395,33 @@ export async function updateTaskCommand(
       && parsed.data.assignedTo !== existing.assignedTo
       && parsed.data.assignedTo !== actor.userId
     ) {
-      createNotification({
-        organizationId: orgId,
-        userId: parsed.data.assignedTo,
-        type: "info",
-        title: "Вам назначена задача",
-        message: task.title,
-        entityType: "task",
-        entityId: taskId,
-        push: true,
-        kind: "task.assigned",
-        email: true,
-      }).catch(() => {})
+      const assignee = parsed.data.assignedTo
+      void (async () => {
+        // In the assignee's language (task-notification-text.ts).
+        const recipient = await prisma.user.findFirst({ where: { id: assignee, organizationId: orgId }, select: { preferredLanguage: true } }).catch(() => null)
+        const text = taskNotificationText("assigned", taskNotificationLocale(recipient?.preferredLanguage, actor.locale), task)
+        await createNotification({
+          organizationId: orgId,
+          userId: assignee,
+          type: "info",
+          title: text.title,
+          message: text.message,
+          entityType: "task",
+          entityId: taskId,
+          push: true,
+          kind: "task.assigned",
+          email: true,
+        })
+      })().catch(() => {})
     }
     if (statusChanging && (newStatus === "done" || newStatus === "completed")) {
+      // No single recipient: in the language of the screen it was done in.
+      const text = taskNotificationText("completed", taskNotificationLocale(null, actor.locale), task)
       createNotification({
         organizationId: orgId,
         type: "success",
-        title: "Task Completed",
-        message: `Task completed: "${task.title}"`,
+        title: text.title,
+        message: text.message,
         entityType: "task",
         entityId: taskId,
       }).catch(() => {})
