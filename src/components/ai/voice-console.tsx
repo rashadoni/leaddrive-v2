@@ -1,5 +1,6 @@
 "use client"
 
+import { SpeechRelay } from "@/lib/ai/voice/speech-relay"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import type { FunctionCall, FunctionResponse, LiveServerMessage, Session as GeminiLiveSession } from "@google/genai"
@@ -175,6 +176,8 @@ const MIC_SILENCE_WARN_MS = 10_000
 const TRANSCRIPT_PREVIEW_LIMIT = 180
 const MAX_RECONNECT_ATTEMPTS = 2
 const PLAYBACK_BUFFER_SECONDS = 30
+/** Собственный звук модели, отложенный на случай сбоя озвучки, — не больше. */
+const NATIVE_TURN_AUDIO_MAX_PARTS = 4_000
 const GO_AWAY_SAFETY_MARGIN_MS = 500
 const LIVE_CONNECT_TIMEOUT_MS = 15_000
 
@@ -233,6 +236,8 @@ type SessionInfo = {
   remainingSeconds: number
   firstName?: string
   allowedSections: string[]
+  /** Ответы озвучивает сервер голосом линии (console-speech.ts). */
+  speechRelay?: boolean
 }
 
 type TokenInfo = {
@@ -371,6 +376,11 @@ function ConsoleInner({
   const tryDeferredReconnectRef = useRef<() => void>(() => {})
   const streamRef = useRef<MediaStream | null>(null)
   const audioPipelineRef = useRef<AudioPipeline | null>(null)
+  // Голос линии: озвучка ответов сервером. Пока она говорит, собственный звук
+  // модели в этом ходе не играет, а копится — на случай сбоя озвучки.
+  const speechRelayRef = useRef<SpeechRelay | null>(null)
+  const nativeTurnAudioRef = useRef<Float32Array[]>([])
+  const nativeVoiceThisTurnRef = useRef(false)
   const micMeterRef = useRef<{ context: AudioContext; timer: number; source: MediaStreamAudioSourceNode } | null>(null)
   const generationRef = useRef(0)
   const startedAtRef = useRef(0)
@@ -695,6 +705,10 @@ function ConsoleInner({
     if (pendingReconnectTimerRef.current !== null) window.clearTimeout(pendingReconnectTimerRef.current)
     pendingReconnectTimerRef.current = null
     lostSpeechDuringReconnectRef.current = false
+    speechRelayRef.current?.interrupt()
+    speechRelayRef.current = null
+    nativeTurnAudioRef.current = []
+    nativeVoiceThisTurnRef.current = false
     const pipeline = audioPipelineRef.current
     audioPipelineRef.current = null
     if (pipeline) {
@@ -960,6 +974,9 @@ function ConsoleInner({
     if (message.serverContent?.interrupted) {
       trace("voice_audio_event", { event: "provider_interrupted" }, "provider_interrupted")
       audioPipelineRef.current?.playbackNode.port.postMessage({ type: "interrupt", generation })
+      speechRelayRef.current?.interrupt()
+      nativeTurnAudioRef.current = []
+      nativeVoiceThisTurnRef.current = false
       playbackActiveRef.current = false
       confirmationGateRef.current.setAssistantSpeaking(false, Date.now())
       generationInProgressRef.current = false
@@ -990,7 +1007,24 @@ function ConsoleInner({
       )
       return
     }
-    if (decodedParts.length > 0) {
+    // Текст ответа — озвучке голосом линии, пока она этот ход ведёт.
+    const relay = speechRelayRef.current
+    const relayed = Boolean(relay?.speaking) && !nativeVoiceThisTurnRef.current
+    const spokenText = message.serverContent?.outputTranscription?.text
+    if (relayed && spokenText) relay!.addText(spokenText)
+    if (decodedParts.length > 0 && relayed) {
+      // Модель отвечает, но звучит озвучка: собственный звук копится на случай
+      // сбоя. Говорящим помощник станет с первым звуком озвучки (onAudio).
+      confirmedSpeechActiveRef.current = false
+      clearUtteranceWatchdog()
+      generationInProgressRef.current = true
+      nudgedRef.current = false
+      setPhase("responding")
+      armResponseWatchdog(RESPONSE_PROGRESS_TIMEOUT_MS)
+      if (nativeTurnAudioRef.current.length < NATIVE_TURN_AUDIO_MAX_PARTS) {
+        nativeTurnAudioRef.current.push(...decodedParts)
+      }
+    } else if (decodedParts.length > 0) {
       confirmedSpeechActiveRef.current = false
       clearUtteranceWatchdog()
       playbackActiveRef.current = true
@@ -1017,6 +1051,7 @@ function ConsoleInner({
     }
 
     if (message.serverContent?.generationComplete) {
+      speechRelayRef.current?.flush()
       generationInProgressRef.current = false
       tryDeferredReconnectRef.current()
     }
@@ -1028,6 +1063,10 @@ function ConsoleInner({
       // The answer is finished, so the next one gets a fresh per-turn
       // allowance. The session and proposal counts deliberately carry over.
       toolBudgetRef.current.endTurn()
+      // Договорить остаток ответа; следующий ход озвучка снова ведёт сама.
+      speechRelayRef.current?.endTurn()
+      nativeTurnAudioRef.current = []
+      nativeVoiceThisTurnRef.current = false
       // The model has answered whatever the user just said, so that utterance
       // is complete: the provider never marks it finished itself.
       const decision = confirmationGateRef.current.assistantFinishedTurn(Date.now())
@@ -1085,6 +1124,42 @@ function ConsoleInner({
     t,
     trace,
   ])
+
+  /**
+   * Озвучка голосом линии для этого разговора. Звук идёт в тот же
+   * проигрыватель, что и голос модели, поэтому перебивание, «доиграло» и
+   * защита подтверждения голосом от эха работают как прежде.
+   */
+  const createSpeechRelay = useCallback((voiceSessionId: string) => {
+    const post = (samples: Float32Array) => {
+      audioPipelineRef.current?.playbackNode.port.postMessage(
+        { type: "audio", samples, generation: generationRef.current },
+        [samples.buffer],
+      )
+    }
+    const speaking = () => {
+      playbackActiveRef.current = true
+      confirmationGateRef.current.setAssistantSpeaking(true, Date.now())
+      setIsSpeaking(true)
+    }
+    return new SpeechRelay({
+      voiceSessionId,
+      play: post,
+      onAudio: speaking,
+      onFallback: (heardAny) => {
+        // Озвучка не ответила: до конца хода — голос модели. Если голосом
+        // линии в этом ходе ещё ничего не прозвучало, ход играется с начала.
+        trace("voice_audio_event", { event: "speech_relay_fallback" }, heardAny ? "relay_fallback_mid" : "relay_fallback")
+        nativeVoiceThisTurnRef.current = true
+        const pending = nativeTurnAudioRef.current
+        nativeTurnAudioRef.current = []
+        if (!heardAny && pending.length > 0) {
+          speaking()
+          for (const samples of pending) post(samples)
+        }
+      },
+    })
+  }, [trace])
 
   const prepareAudio = useCallback(async (
     stream: MediaStream,
@@ -1427,6 +1502,7 @@ function ConsoleInner({
         return
       }
       audioPipelineRef.current = pipeline
+      if (started.speechRelay) speechRelayRef.current = createSpeechRelay(started.voiceSessionId)
       lastActivityRef.current = Date.now()
       setActive(true)
       setPhase("processing")
@@ -1458,7 +1534,7 @@ function ConsoleInner({
     } finally {
       if (generationRef.current === generation) setStarting(false)
     }
-  }, [armResponseWatchdog, connectGemini, locale, prepareAudio, startMicMeter, stop, t, trace])
+  }, [armResponseWatchdog, connectGemini, createSpeechRelay, locale, prepareAudio, startMicMeter, stop, t, trace])
 
   useEffect(() => {
     if (!session) return

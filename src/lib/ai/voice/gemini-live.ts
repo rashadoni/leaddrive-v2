@@ -91,12 +91,23 @@ export function geminiLiveModel(
     : { id, thinkingLevel: null, toolBehavior: Behavior.BLOCKING }
 }
 
-// Chosen by the owner on 2026-08-17 after listening to every preset speak the
-// same Azerbaijani sentence. The console assistant and the phone agent are
-// deliberately different voices: the phone line is a stranger calling a
-// customer, the console is a tool the owner talks to, and hearing the same
-// voice in both made the two feel like one system when they are not.
-export const GEMINI_LIVE_VOICE = "Algieba"
+// Sulafat — тот же голос, что у телефонной линии Зейтуна (владелец
+// 2026-11-09: «поставь голос тот, который на звонке, с такими же манерами»).
+// До этого с 2026-08-17 был мужской Algieba, намеренно отличный от линии;
+// владелец решил иначе. Линия озвучивает ответы отдельной моделью TTS, а
+// консоль говорит своим голосом Live, поэтому тембр один, а синтез свой;
+// манера линии — в системной инструкции ниже (VOICE_MANNER).
+export const GEMINI_LIVE_VOICE = "Sulafat"
+
+/**
+ * Манера речи — та, что владелец выбрал для линии по трём записям
+ * (вариант «C», 2026-10-30, ZEYTUN_INBOUND_SPEECH.style): тепло, с улыбкой,
+ * без спешки, с небольшими паузами, живой человек, а не диктор. Плюс правило
+ * линии про азербайджанский: каждое слово, число и название — по-бакински,
+ * никогда по-английски.
+ */
+export const VOICE_MANNER =
+  "Speak like a real colleague in a relaxed, friendly conversation: warm and smiling, at a natural unhurried pace with small natural pauses, not a narrator reading a script. When you answer in Azerbaijani, say every word, number and name the way it is said in Baku, never the English way. Before a clarifying question a short thoughtful \"hmm\" is fine; never use it as a habit. Do not sound theatrical."
 export const GEMINI_LIVE_API_VERSION = "v1beta"
 
 const TOKEN_CONNECT_WINDOW_MS = 60_000
@@ -129,7 +140,8 @@ export function geminiLiveSystemInstruction(
     firstName ? `Address the user as ${firstName}.` : "Do not invent the user's name.",
     // Names no voice: the preset is chosen in GEMINI_LIVE_VOICE and naming a
     // different one here told the model to imitate a voice it is not using.
-    "Speak naturally, warmly, and concisely at your normal pace. Do not sound theatrical and do not add filler sounds mechanically.",
+    VOICE_MANNER,
+    "Keep replies concise.",
     // The prohibition alone was not enough. Asked "what boards are there", the
     // model answered "five" without calling a tool - the real answer was three,
     // with names it never mentioned. A rule that only forbids invention leaves
@@ -259,6 +271,11 @@ export function geminiLiveConfig(input: {
   writesEnabled?: boolean
   /** Resolved once per mint, so the setup and the id cannot disagree. */
   model?: GeminiLiveModel
+  /**
+   * Озвучка голосом линии (console-speech.ts): вкладке нужен текст ответа
+   * модели, чтобы озвучить его, — расшифровка её собственной речи.
+   */
+  speechRelay?: boolean
 }): LiveConnectConfig {
   const model = input.model ?? geminiLiveModel()
   return {
@@ -287,6 +304,7 @@ export function geminiLiveConfig(input: {
     }],
     sessionResumption: {},
     inputAudioTranscription: {},
+    ...(input.speechRelay ? { outputAudioTranscription: {} } : {}),
     contextWindowCompression: { slidingWindow: {} },
     // Detection settings, barge-in policy and their reasoning live in
     // audio-policy.ts, because the noisy-room mode changes exactly one field
@@ -310,6 +328,7 @@ export function geminiLiveTokenConfig(input: {
   /** The write kill switch, resolved server-side and sealed into the token. */
   writesEnabled?: boolean
   model?: GeminiLiveModel
+  speechRelay?: boolean
 }): LiveConnectConfig {
   const locked = { ...geminiLiveConfig(input) }
   delete locked.sessionResumption
@@ -330,6 +349,7 @@ export async function createGeminiLiveToken(input: {
   audioMode?: VoiceAudioMode
   writesEnabled?: boolean
   model?: GeminiLiveModel
+  speechRelay?: boolean
   now?: Date
 }): Promise<{ token: string; expiresAt: string; model: string }> {
   const now = input.now ?? new Date()
@@ -363,6 +383,7 @@ export async function createGeminiLiveToken(input: {
           },
           tools: config.tools,
           inputAudioTranscription: config.inputAudioTranscription,
+          ...(config.outputAudioTranscription ? { outputAudioTranscription: config.outputAudioTranscription } : {}),
           realtimeInputConfig: config.realtimeInputConfig,
           contextWindowCompression: config.contextWindowCompression,
         },
@@ -376,6 +397,7 @@ export async function createGeminiLiveToken(input: {
           "systemInstruction",
           "tools",
           "inputAudioTranscription",
+          ...(config.outputAudioTranscription ? ["outputAudioTranscription"] : []),
           "realtimeInputConfig",
           "contextWindowCompression",
         ].join(","),

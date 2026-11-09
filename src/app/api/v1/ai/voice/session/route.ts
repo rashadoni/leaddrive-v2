@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { consoleSpeechConfig } from "@/lib/ai/voice/console-speech"
 import { prisma, logAudit } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { checkRateLimit } from "@/lib/rate-limit"
@@ -180,6 +181,8 @@ export const POST = withRlsAuth("ai", "read", async (req, auth) => {
       remainingSeconds: reservation.remainingSeconds,
       firstName,
       allowedSections,
+      // Голос линии: ответы озвучивает сервер (console-speech.ts).
+      speechRelay: consoleSpeechConfig() !== null,
     },
   })
 })

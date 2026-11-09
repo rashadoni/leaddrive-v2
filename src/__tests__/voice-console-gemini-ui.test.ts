@@ -395,6 +395,77 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
     )).toBe(true)
   })
 
+  // Голос линии (владелец 2026-11-09: «точь-в-точь, какой на звонке»):
+  // ответ модели звучит озвучкой сервера, собственный звук модели — нет.
+  describe("with the phone line's voice", () => {
+    function relayedSession() {
+      const base = fetchMock.getMockImplementation()!
+      const spoken: string[] = []
+      fetchMock.mockImplementation(async (input, init) => {
+        const url = String(input)
+        if (url.endsWith("/api/v1/ai/voice/session")) {
+          return json({ data: {
+            voiceSessionId: "voice-session-1",
+            maxSessionSeconds: 3_600,
+            heartbeatIntervalSeconds: 15,
+            remainingSeconds: 7_200,
+            firstName: "Rashad",
+            allowedSections: ["leads"],
+            speechRelay: true,
+          } })
+        }
+        if (url.endsWith("/api/v1/ai/voice/speech")) {
+          spoken.push(JSON.parse(String(init?.body)).text)
+          return new Response(new Uint8Array([0, 0x40, 0, 0x40]), { status: 200 })
+        }
+        return base(input, init)
+      })
+      return spoken
+    }
+
+    const AUDIO = { inlineData: { data: "AAA=", mimeType: "audio/pcm;rate=24000" } }
+    const audioSent = (port: FakePort) => port.sent.filter(({ message }) => (message as { type?: string }).type === "audio")
+
+    it("speaks the model's answer in the line's voice, not the model's own", async () => {
+      const spoken = relayedSession()
+      await start()
+      const playback = FakeWorkletNode.nodes.get("gemini-live-playback")!
+      const before = audioSent(playback.port).length
+      act(() => gemini.callbacks!.onmessage({
+        serverContent: { modelTurn: { parts: [AUDIO] }, outputTranscription: { text: "Bu gün üç sövdələşmə var. " } },
+      }))
+      // The model's own sound is held back, not played.
+      expect(audioSent(playback.port)).toHaveLength(before)
+      await act(async () => { await flush() })
+      expect(spoken).toEqual(["Bu gün üç sövdələşmə var."])
+      const relayed = audioSent(playback.port).slice(before)
+      expect(relayed).toHaveLength(1)
+      expect([...(relayed[0].message as { samples: Float32Array }).samples]).toEqual([0.5, 0.5])
+      expect(container.textContent).toContain("Speaking")
+    })
+
+    it("plays the model's own voice for the turn when the line's voice fails", async () => {
+      const base = fetchMock.getMockImplementation()!
+      relayedSession()
+      const relayedImpl = fetchMock.getMockImplementation()!
+      fetchMock.mockImplementation(async (input, init) => (String(input).endsWith("/api/v1/ai/voice/speech")
+        ? new Response("{}", { status: 502 })
+        : relayedImpl(input, init)))
+      void base
+      await start()
+      const playback = FakeWorkletNode.nodes.get("gemini-live-playback")!
+      const before = audioSent(playback.port).length
+      act(() => gemini.callbacks!.onmessage({
+        serverContent: { modelTurn: { parts: [AUDIO, AUDIO] }, outputTranscription: { text: "Salam. " } },
+      }))
+      await act(async () => { await flush() })
+      // Nothing was heard in the line's voice, so the turn plays from its start.
+      expect(audioSent(playback.port).length - before).toBe(2)
+      act(() => gemini.callbacks!.onmessage({ serverContent: { modelTurn: { parts: [AUDIO] } } }))
+      expect(audioSent(playback.port).length - before).toBe(3)
+    })
+  })
+
   it("keeps queued playback when local loudness has not been confirmed as speech", async () => {
     await start()
     const capture = FakeWorkletNode.nodes.get("gemini-live-capture")!
