@@ -4,7 +4,7 @@ import Image from "next/image"
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { useLocale } from "next-intl"
 import { usePathname } from "next/navigation"
-import { Minimize2, Play, Video, X } from "lucide-react"
+import { Play, Video, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -305,6 +305,10 @@ export function HelpVideoLauncher() {
               {title || labels.title}
             </h2>
           </div>
+          {/* Closing the player returns to the section's card — it never hides
+              the card for good (2026-11-09: the X here used to, and the
+              first-visit prompt promises the card stays to reopen the video).
+              Only the card's own X dismisses the card. */}
           <div className="flex shrink-0 items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -314,22 +318,8 @@ export function HelpVideoLauncher() {
                   size="icon"
                   className="h-8 w-8"
                   onClick={minimize}
-                  aria-label={labels.minimize}
-                >
-                  <Minimize2 className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{labels.minimize}</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={close}
                   aria-label={labels.close}
+                  data-testid="help-video-player-close"
                 >
                   <X className="h-4 w-4" />
                 </Button>

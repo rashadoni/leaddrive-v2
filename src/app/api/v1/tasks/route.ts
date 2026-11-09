@@ -87,6 +87,7 @@ export const POST = withRls(async (req, { orgId, session }) => {
       userId: session?.userId,
       role: session?.role as Role | undefined,
       requestId: req.headers.get("x-request-id"),
+      locale: req.headers.get("x-locale"),
     })
     const result = await createTaskCommand(actor, body)
     return NextResponse.json({ success: true, data: result.entity }, { status: 201 })

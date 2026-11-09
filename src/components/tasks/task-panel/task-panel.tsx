@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/format-date"
 import { TaskPanelFeed } from "@/components/tasks/task-panel/task-panel-feed"
 import { TaskPanelSubtasks, endOfDayIso, type Subtask } from "@/components/tasks/task-panel/task-panel-subtasks"
 import { applyTaskPatch, revertTaskPatch } from "@/lib/client/optimistic-task-patch"
+import { STATUS_TO_STAGE, foldToVisibleStage } from "@/lib/tasks/board-columns"
 
 /**
  * The task card as a panel on the right of the board — Bordio's card (owner,
@@ -208,8 +209,18 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
     reload()
   }
 
-  const statusLabel = useCallback((value: string) => columns.find((c) => c.key === value)?.label ?? value, [columns])
-  const statusValue = useMemo(() => (task ? columns.find((c) => c.key === task.status)?.key ?? task.status : ""), [columns, task])
+  // A status the board has no column for (the CRM's «pending» from the quick
+  // add row, «completed», «cancelled») is shown as the column the board puts
+  // the task in — the same fold as the lanes (board-columns.ts) — not as the
+  // raw word («pending» in an Azerbaijani card, 2026-11-09). Display only:
+  // nothing is written until the person picks a status.
+  const shownStatus = useCallback((value: string) => {
+    if (columns.some((c) => c.key === value)) return value
+    const folded = foldToVisibleStage(STATUS_TO_STAGE[value] ?? value, new Set(columns.map((c) => c.key)))
+    return columns.some((c) => c.key === folded) ? folded : value
+  }, [columns])
+  const statusLabel = useCallback((value: string) => columns.find((c) => c.key === shownStatus(value))?.label ?? value, [columns, shownStatus])
+  const statusValue = useMemo(() => (task ? shownStatus(task.status) : ""), [shownStatus, task])
   const runningSeconds = time?.running ? Math.max(0, Math.floor((now - new Date(time.running.startedAt).getTime()) / 1000)) : 0
   const people4mention = useMemo(() => people.map((p) => ({ id: p.id, name: p.name })), [people])
 
@@ -273,7 +284,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                     void patch({ status: e.target.value, ...(column?.columnKey ? { boardColumnKey: column.columnKey } : {}) })
                   }} className={selectClass}>
                     {columns.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-                    {!columns.some((c) => c.key === task.status) && <option value={task.status}>{task.status}</option>}
+                    {!columns.some((c) => c.key === statusValue) && <option value={statusValue}>{statusValue}</option>}
                   </select>
                 ))}
                 {field(t("dueDate"), (

@@ -821,6 +821,8 @@ describe("PATCH /api/v1/tasks/:id", () => {
     await PATCH(
       makeRequest("http://localhost/api/v1/tasks/t1", {
         method: "PATCH",
+        // The screen it was done in (the proxy's x-locale) is the notice's language.
+        headers: { "x-locale": "az" },
         body: JSON.stringify({ status: "completed" }),
       }),
       makeParams("t1")
@@ -829,11 +831,12 @@ describe("PATCH /api/v1/tasks/:id", () => {
     const updateCall = vi.mocked(prisma.task.update).mock.calls[0][0] as any
     expect(updateCall.data.completedAt).toBeInstanceOf(Date)
 
-    // Also creates a completion notification
+    // Also creates a completion notification — in Azerbaijani, not «Task Completed»
     expect(createNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "success",
-        title: "Task Completed",
+        title: "Tapşırıq tamamlandı",
+        message: "Tamamlandı: «Task»",
       })
     )
   })
