@@ -32,6 +32,13 @@ interface LauncherPrefs {
   isFavorite: (href: string) => boolean
   toggleFavorite: (href: string) => void
   recordVisit: (href: string | undefined) => void
+  /**
+   * Help-video slugs whose first-visit prompt this person was already shown;
+   * `null` until the server answered (and stays `null` if it could not — then
+   * no prompt is shown at all rather than one shown again and again).
+   */
+  helpVideoSeen: ReadonlySet<string> | null
+  markHelpVideoSeen: (slug: string) => void
 }
 
 const Ctx = createContext<LauncherPrefs | null>(null)
@@ -50,6 +57,7 @@ function readLS<T>(key: string, fallback: T): T {
 export function LauncherPrefsProvider({ children }: { children: React.ReactNode }) {
   const [favorites, setFavorites] = useState<string[]>([])
   const [recents, setRecents] = useState<Recent[]>([])
+  const [helpVideoSeen, setHelpVideoSeen] = useState<ReadonlySet<string> | null>(null)
 
   const hydrated = useRef(false)       // server load finished → safe to PUT
   const skipFirstPersist = useRef(true) // don't persist the empty initial render
@@ -71,6 +79,8 @@ export function LauncherPrefsProvider({ children }: { children: React.ReactNode 
         // so visits recorded before hydration aren't lost.
         setFavorites(srvFav)
         setRecents((prev) => mergeRecents(srvRec, prev))
+        const srvSeen: string[] = Array.isArray(j.data?.helpVideoSeen) ? j.data.helpVideoSeen : []
+        setHelpVideoSeen((prev) => new Set([...srvSeen, ...(prev ?? [])]))
       })
       .catch(() => {})
       .finally(() => {
@@ -123,12 +133,27 @@ export function LauncherPrefsProvider({ children }: { children: React.ReactNode 
 
   const isFavorite = useCallback((href: string) => favorites.includes(href), [favorites])
 
+  // Sent at once, not debounced with the launcher state: the person may close
+  // the tab right after dismissing the prompt. The server adds the slug to the
+  // stored set, so this one request carries only what was just shown.
+  const markHelpVideoSeen = useCallback((slug: string) => {
+    setHelpVideoSeen((prev) => new Set([...(prev ?? []), slug]))
+    fetch("/api/v1/users/me/preferences", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ helpVideoSeen: [slug] }),
+      keepalive: true,
+    }).catch(() => {})
+  }, [])
+
   const value: LauncherPrefs = {
     favorites,
     recents: recents.map((r) => r.href),
     isFavorite,
     toggleFavorite,
     recordVisit,
+    helpVideoSeen,
+    markHelpVideoSeen,
   }
 
   return (

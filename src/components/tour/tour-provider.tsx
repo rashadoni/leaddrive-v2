@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react"
 import { useSession } from "next-auth/react"
 
 const STORAGE_PREFIX = "leaddrive_tours_"
@@ -24,6 +24,16 @@ interface TourContextValue {
   resetAllTours: () => void
   totalSteps: number
   setTotalSteps: (n: number) => void
+  /** A page's first-visit tour, started now or once nothing holds it back. */
+  requestAutoTour: (tourId: string) => void
+  /** The page went away before its held tour could start. */
+  cancelAutoTour: (tourId: string) => void
+  /**
+   * While held, first-visit tours wait. The «watch the video?» prompt holds them
+   * (help-video-first-visit.tsx) so a new person meets one window, not the
+   * prompt and a tour on top of each other; the tour starts when it closes.
+   */
+  holdAutoTours: (held: boolean) => void
 }
 
 const TourContext = createContext<TourContextValue | null>(null)
@@ -71,6 +81,29 @@ export function TourProvider({ children }: { children: ReactNode }) {
       return { ...s, activeTour: tourId, currentStep: 0 }
     })
   }, [])
+
+  const autoHeld = useRef(false)
+  const pendingAuto = useRef<string | null>(null)
+
+  const requestAutoTour = useCallback((tourId: string) => {
+    if (autoHeld.current) {
+      pendingAuto.current = tourId
+      return
+    }
+    startTour(tourId)
+  }, [startTour])
+
+  const cancelAutoTour = useCallback((tourId: string) => {
+    if (pendingAuto.current === tourId) pendingAuto.current = null
+  }, [])
+
+  const holdAutoTours = useCallback((held: boolean) => {
+    autoHeld.current = held
+    if (held || !pendingAuto.current) return
+    const tourId = pendingAuto.current
+    pendingAuto.current = null
+    startTour(tourId)
+  }, [startTour])
 
   const nextStep = useCallback(() => {
     setState(s => ({ ...s, currentStep: s.currentStep + 1 }))
@@ -132,6 +165,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
         resetAllTours,
         totalSteps,
         setTotalSteps,
+        requestAutoTour,
+        cancelAutoTour,
+        holdAutoTours,
       }}
     >
       {children}
@@ -150,15 +186,18 @@ export function useTour() {
  * Call at the top of a page component: useAutoTour("tour-id")
  */
 export function useAutoTour(tourId: string) {
-  const { startTour, isTourCompleted } = useTour()
+  const { requestAutoTour, cancelAutoTour, isTourCompleted } = useTour()
 
   useEffect(() => {
     // Small delay to let the page render first so targets exist
     const timer = setTimeout(() => {
       if (!isTourCompleted(tourId)) {
-        startTour(tourId)
+        requestAutoTour(tourId)
       }
     }, 800)
-    return () => clearTimeout(timer)
-  }, [tourId, startTour, isTourCompleted])
+    return () => {
+      clearTimeout(timer)
+      cancelAutoTour(tourId)
+    }
+  }, [tourId, requestAutoTour, cancelAutoTour, isTourCompleted])
 }

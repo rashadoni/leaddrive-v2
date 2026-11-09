@@ -63,7 +63,7 @@ describe("GET /api/v1/users/me/preferences", () => {
     prismaMock.userPreference.findUnique.mockResolvedValue(null)
     const res = await GET(makeGet())
     const body = await res.json()
-    expect(body.data).toEqual({ favorites: [], recents: [] })
+    expect(body.data).toEqual({ favorites: [], recents: [], helpVideoSeen: [] })
   })
 })
 
@@ -117,5 +117,49 @@ describe("PUT /api/v1/users/me/preferences", () => {
   it("rejects a malformed body with 400", async () => {
     const res = await PUT(makePut({ favorites: "not-an-array" }))
     expect(res.status).toBe(400)
+  })
+})
+
+describe("helpVideoSeen — the sections whose «watch the video?» prompt was already shown", () => {
+  beforeEach(() => {
+    prismaMock.userPreference.upsert.mockImplementation(async (args: any) => ({
+      favorites: [],
+      recents: [],
+      data: args.update?.data ?? args.create?.data ?? {},
+    }))
+  })
+
+  it("is read from the row's data bucket", async () => {
+    prismaMock.userPreference.findUnique.mockResolvedValue({ favorites: [], recents: [], data: { helpVideoSeen: ["boards", "deals"] } })
+    const body = await (await GET(makeGet())).json()
+    expect(body.data.helpVideoSeen).toEqual(["boards", "deals"])
+  })
+
+  it("adds the shown section to what is stored and keeps the rest of the bucket", async () => {
+    prismaMock.userPreference.findUnique.mockResolvedValue({ data: { helpVideoSeen: ["deals"], other: 1 } })
+    const res = await PUT(makePut({ helpVideoSeen: ["boards"] }))
+    expect(res.status).toBe(200)
+    const call = prismaMock.userPreference.upsert.mock.calls[0][0]
+    expect(call.update).toEqual({ data: { other: 1, helpVideoSeen: ["deals", "boards"] } })
+    expect(call.update.favorites).toBeUndefined()
+    expect((await res.json()).data.helpVideoSeen).toEqual(["deals", "boards"])
+  })
+
+  it("never takes a section back off, and a launcher save does not touch the list", async () => {
+    prismaMock.userPreference.findUnique.mockResolvedValue({ data: { helpVideoSeen: ["deals", "boards"] } })
+    await PUT(makePut({ helpVideoSeen: ["boards"] }))
+    expect(prismaMock.userPreference.upsert.mock.calls[0][0].update.data.helpVideoSeen).toEqual(["deals", "boards"])
+
+    vi.clearAllMocks()
+    vi.mocked(requireSessionAuth).mockResolvedValue({ orgId: "org-1", userId: "u-1", role: "admin" } as any)
+    vi.mocked(isAuthError).mockReturnValue(false)
+    prismaMock.userPreference.upsert.mockResolvedValue({ favorites: ["/deals"], recents: [], data: { helpVideoSeen: ["deals"] } })
+    await PUT(makePut({ favorites: ["/deals"] }))
+    expect(prismaMock.userPreference.upsert.mock.calls[0][0].update.data).toBeUndefined()
+  })
+
+  it("refuses anything that is not a section slug", async () => {
+    expect((await PUT(makePut({ helpVideoSeen: ["../etc"] }))).status).toBe(400)
+    expect((await PUT(makePut({ helpVideoSeen: ["Boards"] }))).status).toBe(400)
   })
 })
