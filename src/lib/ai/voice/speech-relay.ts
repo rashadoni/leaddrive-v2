@@ -69,7 +69,7 @@ export class SpeechRelay {
   private readonly fetchImpl: typeof fetch
 
   constructor(private readonly options: SpeechRelayOptions) {
-    this.fetchImpl = options.fetch ?? ((...args) => fetch(...args))
+    this.fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis)
   }
 
   /** Озвучивает ли модуль этот ход сам (иначе играет голос модели). */
