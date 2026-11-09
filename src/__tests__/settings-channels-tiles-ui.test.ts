@@ -15,8 +15,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
  * The channel catalog is a grid of platform tiles, the way Social Monitoring connects accounts
  * (owner, 2026-10-03: «человек нажимает на иконку платформы и всё»).
  *
- * What each tile does is the contract checked here: WhatsApp starts Meta's Embedded Signup from the
- * tile itself (or opens its form when the server has no Embedded Signup); Facebook and Instagram are
+ * What each tile does is the contract checked here: WhatsApp asks from the tile itself which of
+ * Meta's two paths to take and then opens its dialog (or opens its form when the server has no
+ * Embedded Signup); Facebook and Instagram are
  * links into Meta's login; a platform that needs a key opens its form in a window over the catalog; VoIP
  * and integrations go to their own screens; telephony is not here (VoIP calls has its own menu entry). No
  * tile walks the user through the setup wizard's pages, and Edit on a connected channel opens the same window.
@@ -196,12 +197,87 @@ describe("Channel catalog — one tile per platform", () => {
     await flushMicrotasks()
   }
 
-  it("starts Meta's Embedded Signup from the WhatsApp tile itself", async () => {
+  it("connects WhatsApp from the tile itself, without walking through a wizard", async () => {
     await renderCatalog([], true)
     const whatsapp = action("whatsapp-business")
     expect(whatsapp.tagName).toBe("BUTTON")
     expect(whatsapp.getAttribute("aria-label")).toBe("Connect with Meta: WhatsApp Business Platform (API)")
     expect(whatsapp.hasAttribute("disabled")).toBe(false)
+  })
+
+  describe("and it asks before it decides", () => {
+    // One click used to open Meta's dialog on the path that MOVES the number to the API, and that
+    // cannot be undone: the Deregister API refuses a number that lives in the WhatsApp Business app.
+    // For a shop run from one phone, that number is the whole business's WhatsApp.
+    let loginOptions: Array<Record<string, unknown>>
+
+    beforeEach(() => {
+      loginOptions = []
+      process.env.NEXT_PUBLIC_APP_URL = window.location.origin
+      ;(window as unknown as { FB: unknown }).FB = {
+        init: vi.fn(),
+        login: vi.fn((_cb: unknown, options: Record<string, unknown>) => { loginOptions.push(options) }),
+      }
+    })
+    afterEach(() => {
+      delete (window as unknown as { FB?: unknown }).FB
+      delete process.env.NEXT_PUBLIC_APP_URL
+    })
+
+    const choice = () => container.querySelector<HTMLElement>('[data-testid="whatsapp-connect-choice"]')
+    const choiceButtons = () => [...(choice()?.querySelectorAll<HTMLButtonElement>("button") ?? [])]
+
+    it("opens the question instead of Meta's dialog", async () => {
+      await renderCatalog([], true)
+
+      await click(action("whatsapp-business"))
+
+      expect(choice()).not.toBeNull()
+      // Nothing irreversible has started yet.
+      expect(loginOptions).toEqual([])
+      expect(formOpen()).toBe(false)
+    })
+
+    it("offers keeping the phone's app first, and names what the other path costs", async () => {
+      await renderCatalog([], true)
+      await click(action("whatsapp-business"))
+
+      const labels = choiceButtons().map((button) => button.textContent)
+      expect(labels[0]).toContain("Keep my WhatsApp Business app")
+      expect(labels[1]).toContain("Move the number to the API")
+      expect(choice()?.textContent).toContain("can no longer be used in the WhatsApp Business app")
+    })
+
+    it("asks Meta for the coexistence path on the first option", async () => {
+      await renderCatalog([], true)
+      await click(action("whatsapp-business"))
+
+      await click(choiceButtons()[0])
+
+      expect(loginOptions).toHaveLength(1)
+      expect((loginOptions[0].extras as Record<string, unknown>).featureType).toBe("whatsapp_business_app_onboarding")
+    })
+
+    it("leaves the old path exactly as it was on the second option", async () => {
+      await renderCatalog([], true)
+      await click(action("whatsapp-business"))
+
+      await click(choiceButtons()[1])
+
+      expect(loginOptions).toHaveLength(1)
+      expect(loginOptions[0].extras as Record<string, unknown>).not.toHaveProperty("featureType")
+    })
+
+    it("lets the tile go back to normal without connecting anything", async () => {
+      await renderCatalog([], true)
+      await click(action("whatsapp-business"))
+
+      await click(choiceButtons()[choiceButtons().length - 1])
+
+      expect(choice()).toBeNull()
+      expect(action("whatsapp-business").tagName).toBe("BUTTON")
+      expect(loginOptions).toEqual([])
+    })
   })
 
   it("opens WhatsApp's form instead when the server has no Embedded Signup", async () => {
