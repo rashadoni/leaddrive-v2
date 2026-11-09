@@ -207,6 +207,32 @@ async function main() {
     return { logins: 9 }
   })
 
+  // Everyone but the manager has already been offered the Boards video, the
+  // way the prompt itself records it — so its window does not stand over the
+  // pages the other scenarios click. The manager meets it as a newcomer.
+  for (const key of Object.keys(sessions)) {
+    if (key === 'manager') continue
+    const seen = await api(key, '/api/v1/users/me/preferences', { method: 'PUT', body: { helpVideoSeen: ['boards'] } })
+    assert.equal(seen.status, 200, `${key}: ${JSON.stringify(seen.json)}`)
+  }
+
+  await step('first visit: the «watch the video?» window comes once, «Sonra» closes it for good', async () => {
+    const page = await sessions.manager.newPage()
+    await page.goto(`/boards/${f.boards.DPHARMA.id}`, { timeout: 180000 })
+    await page.waitForSelector('[data-testid="help-video-first-visit"]', { timeout: 120000 })
+    assert.match(await page.innerText('[data-testid="help-video-first-visit"]'), /ilk dəfəsiniz/)
+    await page.click('[data-testid="help-video-first-visit-later"]')
+    await page.waitForSelector('[data-testid="help-video-first-visit"]', { state: 'detached', timeout: 30000 })
+    const stored = await api('manager', '/api/v1/users/me/preferences')
+    assert.deepEqual(stored.json?.data?.helpVideoSeen, ['boards'])
+    await page.reload({ timeout: 180000 })
+    await page.waitForFunction(() => /\d+ nəticə/.test(document.body.innerText), null, { timeout: 180000 })
+    await page.waitForTimeout(3000)
+    assert.equal(await page.$('[data-testid="help-video-first-visit"]'), null, 'offered again after a reload')
+    await page.close()
+    return { offered: 'once' }
+  })
+
   const adminPage = await sessions.admin.newPage()
   await step('admin: a board opens as the table with its own tasks, folders in the sidebar, tabs out of the way', async () => {
     await openBoard(adminPage, 'DPHARMA')
