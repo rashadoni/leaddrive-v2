@@ -29,7 +29,6 @@ const WITHOUT_LIMIT: Record<string, string> = {
   "src/lib/mtm/geocode.ts": "passes its caller's options through; the one caller sets signal: deps.timeout(TIMEOUT_MS[service])",
   "src/lib/demo-center/form-challenge-client.ts": "browser code of the demo form (no \"use client\": imported by a client page)",
   "src/lib/mtm/basemap-provider-store.ts": "browser code: asks this app's /api/v1/public/basemap-provider",
-  "src/lib/ai/voice/speech-relay.ts": "browser code of the voice console: passes the caller's fetch through to this app's /api/v1/ai/voice/speech, each phrase with its own AbortController",
 }
 
 function sourceFiles(dir: string): string[] {
