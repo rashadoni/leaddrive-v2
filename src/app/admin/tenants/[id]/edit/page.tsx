@@ -87,6 +87,7 @@ interface TenantData {
   features: any
   modules?: Record<string, boolean>
   isActive: boolean
+  aiPlatformKey?: boolean
   serverType: string
   provisionedAt: string | null
   createdAt: string
@@ -122,6 +123,7 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
     plan: "starter",
     maxUsers: 3,
     maxContacts: 500,
+    aiPlatformKey: true,
     primaryColor: "#6C63FF",
     logo: "",
     features: [] as string[],
@@ -155,6 +157,7 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
             plan: t.plan,
             maxUsers: t.maxUsers,
             maxContacts: t.maxContacts,
+            aiPlatformKey: t.aiPlatformKey !== false,
             primaryColor: branding.primaryColor || "#6C63FF",
             logo: branding.logo || "",
             features: withRequiredModules(featuresRaw),
@@ -256,6 +259,7 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
           plan: form.plan,
           maxUsers: form.maxUsers,
           maxContacts: form.maxContacts,
+          aiPlatformKey: form.aiPlatformKey,
           branding: { primaryColor: form.primaryColor, logo: form.logo || undefined },
           features: form.features,
           capabilityChanges: Object.fromEntries(EDITABLE_TENANT_CAPABILITIES
@@ -812,6 +816,21 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
                 <p className="text-xs text-muted-foreground">{t("tenants.maxUsersHint")}</p>
               </div>
             </div>
+          </Card>
+
+          <Card className="p-5">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4"
+                checked={form.aiPlatformKey}
+                onChange={(e) => setForm({ ...form, aiPlatformKey: e.target.checked })}
+              />
+              <span className="space-y-1">
+                <span className="block text-base font-semibold">{t("tenants.aiPlatformKey")}</span>
+                <span className="block text-xs text-muted-foreground">{t("tenants.aiPlatformKeyHint")}</span>
+              </span>
+            </label>
           </Card>
 
           <VoiceNumbersPanel tenantId={tenantId} />

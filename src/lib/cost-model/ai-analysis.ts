@@ -1,4 +1,4 @@
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import type { CostModelResult } from "./types"
 
 const MODEL = process.env.MANAGER_MODEL || "claude-sonnet-4-5-20250929"
@@ -126,20 +126,16 @@ const LANG_MAP: Record<string, string> = {
 }
 
 export async function analyzeTab(
+  orgId: string,
   tab: string,
   result: CostModelResult,
   lang: string = "ru",
 ): Promise<{ analysis: string; thinking: string }> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured")
-  }
-
   // Heavy call: 16k max_tokens + 10k extended-thinking budget can run well past
   // the factory's 45s default. Give it a generous-but-bounded window (the pre-factory
   // behaviour was the SDK's 10-min default, which worked); maxRetries:0 so a stalled
   // expensive call fails fast rather than doubling the wall-clock.
-  const client = getAnthropicClient({ apiKey, timeout: 240_000, maxRetries: 0 })
+  const client = await anthropicFor(orgId, "cost-model", { timeout: 240_000, maxRetries: 0 })
 
   const baseContext = buildBaseContext(result)
   const tabData = buildTabData(tab, result)

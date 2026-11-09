@@ -58,6 +58,10 @@ import { runAiAssist } from "@/lib/inbox/ai-assist"
 import { POST } from "@/app/api/v1/inbox/ai-assist/route"
 import { buildInboxKbContext } from "@/lib/inbox/kb-context"
 
+// The AI gateway (src/lib/ai/gateway) falls back to the platform key, and an
+// installation without one has no AI: the mocked client stands behind this one.
+process.env.ANTHROPIC_API_KEY ??= "test-key"
+
 function postReq(body: Record<string, unknown>) {
   return new NextRequest("http://localhost/api/v1/inbox/ai-assist", {
     method: "POST",

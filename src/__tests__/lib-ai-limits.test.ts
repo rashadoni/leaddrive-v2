@@ -10,7 +10,7 @@ vi.mock("@/lib/prisma", () => ({
     organization: { findUnique: vi.fn() },
     channelMessage: { count: vi.fn() },
     webChatMessage: { count: vi.fn() },
-    aiInteractionLog: { aggregate: vi.fn() },
+    aiUsage: { aggregate: vi.fn() },
   },
 }))
 
@@ -27,7 +27,7 @@ beforeEach(() => {
   vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings: {} } as never)
   vi.mocked(prisma.channelMessage.count).mockResolvedValue(0 as never)
   vi.mocked(prisma.webChatMessage.count).mockResolvedValue(0 as never)
-  vi.mocked(prisma.aiInteractionLog.aggregate).mockResolvedValue({
+  vi.mocked(prisma.aiUsage.aggregate).mockResolvedValue({
     _sum: { costUsd: 0 },
   } as never)
   vi.mocked(prisma.$queryRaw).mockResolvedValue([] as never)
@@ -42,7 +42,7 @@ describe("checkAiBudget", () => {
       now.getUTCDate(),
     ))
     const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-    vi.mocked(prisma.aiInteractionLog.aggregate).mockResolvedValue({
+    vi.mocked(prisma.aiUsage.aggregate).mockResolvedValue({
       _sum: { costUsd: 1.25 },
     } as never)
     vi.mocked(prisma.$queryRaw).mockResolvedValue([{

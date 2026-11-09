@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { aiUnavailableText, isAiUnavailable } from "@/lib/ai/gateway"
 import { withRlsAuth } from "@/lib/with-rls"
 import { loadAndCompute } from "@/lib/cost-model/db"
 import { getAiCache, setAiCache, invalidateAiCache } from "@/lib/cost-model/db"
@@ -41,7 +42,7 @@ export const POST = withRlsAuth("profitability", "read", async (req, { orgId }) 
     const result = await loadAndCompute(orgId)
 
     // Call AI
-    const { analysis, thinking } = await analyzeTab(tab, result, lang)
+    const { analysis, thinking } = await analyzeTab(orgId, tab, result, lang)
 
     // Cache result
     setAiCache(cacheKey, analysis, thinking)
@@ -52,8 +53,8 @@ export const POST = withRlsAuth("profitability", "read", async (req, { orgId }) 
     })
   } catch (error: any) {
     console.error("Da Vinci analysis error:", error)
-    if (error.message === "ANTHROPIC_API_KEY not configured") {
-      return NextResponse.json({ error: "Da Vinci AI requires ANTHROPIC_API_KEY. Configure in Settings → Integrations." }, { status: 500 })
+    if (isAiUnavailable(error)) {
+      return NextResponse.json({ error: aiUnavailableText(error) }, { status: 503 })
     }
     if (error.status) {
       // Anthropic API error

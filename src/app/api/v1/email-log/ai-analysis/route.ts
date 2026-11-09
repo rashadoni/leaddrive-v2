@@ -3,7 +3,7 @@ import { withRls } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import { PAGE_SIZE } from "@/lib/constants"
 import { PiiMasker } from "@/lib/ai/pii-masker"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { aiUnavailableText, anthropicOrRefusal, isAiUnavailable } from "@/lib/ai/gateway"
 
 const MODEL = process.env.MANAGER_MODEL || "claude-sonnet-4-5-20250929"
 
@@ -15,8 +15,8 @@ const LANG_MAP: Record<string, { name: string; instruction: string }> = {
 
 export const POST = withRls(async (req, { orgId }) => {
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return NextResponse.json({ error: "Da Vinci AI requires ANTHROPIC_API_KEY. Configure in Settings → Integrations." }, { status: 503 })
+  const client = await anthropicOrRefusal(orgId, "email-analysis")
+  if (isAiUnavailable(client)) return NextResponse.json({ error: aiUnavailableText(client) }, { status: 503 })
 
   let body: { lang?: string }
   try {
@@ -104,7 +104,6 @@ Provide a comprehensive email activity analysis (250-400 words) with:
 Use professional CRM analyst style. Be specific about email addresses and error patterns.`
 
   try {
-    const client = getAnthropicClient({ apiKey })
     const piiMasker = new PiiMasker()
     const maskedPrompt = piiMasker.mask(prompt)
     const msg = await client.messages.create({

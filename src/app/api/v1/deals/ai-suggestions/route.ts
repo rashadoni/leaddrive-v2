@@ -3,7 +3,7 @@ import { withRlsAuth } from "@/lib/with-rls"
 import { checkAiBudget, calculateAiCost } from "@/lib/ai/budget"
 import { prisma } from "@/lib/prisma"
 import { predictDealWin } from "@/lib/ai/predictive"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { getOrgModuleContext } from "@/lib/api-auth"
@@ -121,7 +121,7 @@ export const GET = withRlsAuth("deals", "read", async (req, auth) => {
     const piiMasker = new PiiMasker()
     const maskedContext = piiMasker.mask(JSON.stringify(context))
 
-    const anthropic = getAnthropicClient()
+    const anthropic = await anthropicFor(orgId, "deals")
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 300,

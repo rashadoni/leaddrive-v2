@@ -4,25 +4,12 @@ import {
   monitoringResetAiCostCarrySince,
 } from "@/lib/social/paid-provider-run-scope"
 import { featureFlagsToArray } from "@/lib/modules"
+import { aiCallCostUsd, MODEL_PRICING } from "@/lib/ai/gateway/pricing"
 
 const DEFAULT_DAILY_LIMIT_USD = 5.0
 
-// Model pricing per million tokens (USD)
-const MODEL_PRICING: Record<string, { input: number; output: number }> = {
-  "claude-haiku-4-5-20251001": { input: 1.0, output: 5.0 },
-  "claude-sonnet-4-5-20250929": { input: 3.0, output: 15.0 },
-  "claude-sonnet-4-20250514": { input: 3.0, output: 15.0 },
-  // Opus 4.6 and 4.8 cost $5 / $25 (Anthropic price list, checked 2026-11-09);
-  // $15 / $75 was Opus 4 / 4.1. The chat route bills through this table since
-  // 2026-11-09, so a wrong row here is a wrong budget.
-  "claude-opus-4-6": { input: 5.0, output: 25.0 },
-  // Current Anthropic aliases (latest tiers, verified 2026-06 via Perplexity;
-  // sonnet/opus aliases carry no date suffix — the prior "*-4-6-20250514" IDs
-  // were fictional and 502'd at the API).
-  "claude-haiku-4-5": { input: 1.0, output: 5.0 },
-  "claude-sonnet-4-6": { input: 3.0, output: 15.0 },
-  "claude-opus-4-8": { input: 5.0, output: 25.0 },
-}
+// One price table for every metered AI call: src/lib/ai/gateway/pricing.ts.
+export { MODEL_PRICING, CACHE_READ_PRICE_FACTOR, CACHE_WRITE_5M_PRICE_FACTOR } from "@/lib/ai/gateway/pricing"
 
 /**
  * Model IDs Anthropic no longer serves. Kept priced, because historical
@@ -70,15 +57,6 @@ export function resolveAiModel(stored?: string | null, fallback: string = DEFAUL
 }
 
 /**
- * Prompt-cache prices as a share of the model's input price (Anthropic, the
- * same for every model priced here): a read costs a tenth, a write to the
- * default 5-minute cache a quarter more than plain input. Only the 5-minute
- * cache is used; a 1-hour write would cost 2×.
- */
-export const CACHE_READ_PRICE_FACTOR = 0.1
-export const CACHE_WRITE_5M_PRICE_FACTOR = 1.25
-
-/**
  * Calculate cost in USD for a given model + token usage.
  * Centralised pricing — use this everywhere instead of inline formulas.
  *
@@ -93,15 +71,15 @@ export function calculateAiCost(
   outputTokens: number,
   cache?: { readTokens?: number; writeTokens?: number },
 ): number {
-  const pricing = MODEL_PRICING[model] || MODEL_PRICING["claude-haiku-4-5-20251001"]
-  const cachedInput = (cache?.readTokens || 0) * CACHE_READ_PRICE_FACTOR
-    + (cache?.writeTokens || 0) * CACHE_WRITE_5M_PRICE_FACTOR
-  return ((inputTokens + cachedInput) * pricing.input + outputTokens * pricing.output) / 1_000_000
+  return aiCallCostUsd(model, inputTokens, outputTokens, cache)
 }
 
 /**
  * Check if organization has remaining AI budget for today.
- * Sums costUsd from AiInteractionLog for the current day.
+ * Sums today's (UTC) spend in the gateway's journal `ai_usage` — every paid
+ * AI call, whichever key paid for it (src/lib/ai/gateway). Until 2026-11-09 it
+ * summed AiInteractionLog.costUsd, which only the features that remembered to
+ * log wrote, and only for Claude.
  * Returns { allowed, spent, limit, remaining }.
  */
 export async function checkAiBudget(orgId: string): Promise<{
@@ -118,11 +96,10 @@ export async function checkAiBudget(orgId: string): Promise<{
   ))
 
   const [result, resetCarry] = await Promise.all([
-    prisma.aiInteractionLog.aggregate({
+    prisma.aiUsage.aggregate({
       where: {
         organizationId: orgId,
         createdAt: { gte: todayStart },
-        costUsd: { not: null },
       },
       _sum: { costUsd: true },
     }),

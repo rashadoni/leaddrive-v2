@@ -40,6 +40,16 @@ vi.mock("@/lib/ai/anthropic-client", () => ({
   },
 }))
 
+// The gateway's key, budget and journal live in the database; here only the
+// client it hands out matters, so it hands out the mocked one directly.
+vi.mock("@/lib/ai/gateway", async () => {
+  const { getAnthropicClient } = await import("@/lib/ai/anthropic-client")
+  return {
+    anthropicFor: async (_orgId: string, _feature: string, options?: Record<string, unknown>) => getAnthropicClient(options as never),
+    isAiUnavailable: () => false,
+  }
+})
+
 import { classifyIntent } from "@/lib/ai/intent-classifier"
 import { aiSentiment, aiSentimentDetailed } from "@/lib/sentiment"
 
@@ -66,7 +76,7 @@ describe("AI classifier PII masking", () => {
   it("masks social/survey sentiment text PII before Anthropic", async () => {
     h.responseText = "negative"
 
-    const result = await aiSentiment("Terrible service. Email me at leyla@example.com or call +994 55 111 22 33.")
+    const result = await aiSentiment("org-1", "Terrible service. Email me at leyla@example.com or call +994 55 111 22 33.")
     const payload = h.lastRequest?.messages[0]?.content ?? ""
 
     expect(result).toBe("negative")
@@ -80,7 +90,7 @@ describe("AI classifier PII masking", () => {
     vi.useFakeTimers()
     h.hangUntilAbort = true
 
-    const pending = aiSentimentDetailed("🙄", { timeoutMs: 1_000, logErrors: false })
+    const pending = aiSentimentDetailed("org-1", "🙄", { timeoutMs: 1_000, logErrors: false })
     await vi.advanceTimersByTimeAsync(1_000)
 
     await expect(pending).resolves.toEqual({ sentiment: null, errorClass: "TIMEOUT" })

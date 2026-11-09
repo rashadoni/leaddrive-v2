@@ -1,4 +1,4 @@
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { prisma } from "@/lib/prisma"
 import { calculateAiCost } from "@/lib/ai/budget"
@@ -70,7 +70,7 @@ export async function findTicketsNeedingTriage(orgId: string, now: Date) {
 export async function generateTriageSuggestion(
   ticket: { id: string; organizationId: string; subject: string; description: string | null },
 ): Promise<TriageSuggestion | null> {
-  const anthropic = getAnthropicClient()
+  const anthropic = await anthropicFor(ticket.organizationId, "automation")
 
   const prompt = `You are a support-ticket triage classifier. Read the ticket and return structured metadata.
 

@@ -49,11 +49,16 @@ model Organization {
   provisionedAt       DateTime?
   provisionedBy       String?
   deletionScheduledAt DateTime?
+  /// AI on the platform's own keys when the organization has not entered its
+  /// own (src/lib/ai/gateway). Set per client by the platform superadmin only.
+  aiPlatformKey       Boolean   @default(true)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
   // Relations
   users                 User[]
+  aiCredentials         TenantAiCredential[]
+  aiUsage               AiUsage[]
   companies             Company[]
   contacts              Contact[]
   deals                 Deal[]
@@ -3509,6 +3514,52 @@ model AiInteractionLog {
 
   @@index([organizationId])
   @@map("ai_interaction_logs")
+}
+
+/// An organization's own key for an AI provider (src/lib/ai/gateway).
+/// `secret` is sealed with the organization's data key
+/// (encryptForTenantBound(org, "tenant_ai_credentials", "secret")) and never
+/// leaves the server; `keyHint` is the last four characters for the screen.
+model TenantAiCredential {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  provider       String // anthropic | gemini | openai | voyage | google_vision | google_speech
+  secret         String
+  keyHint        String
+  status         String       @default("unchecked") // ok | invalid | unchecked
+  lastCheckedAt  DateTime?
+  lastError      String?
+  createdBy      String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, provider])
+  @@map("tenant_ai_credentials")
+}
+
+/// One row per paid AI call made through the gateway: numbers only, no text.
+/// The organization's AI budget and spend reports read this table.
+model AiUsage {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  feature          String
+  /// The AI agent (ai_agent_configs.id) the call answered for, when one did.
+  agentId          String?
+  provider         String
+  model            String?
+  inputTokens      Int          @default(0)
+  outputTokens     Int          @default(0)
+  cacheReadTokens  Int          @default(0)
+  cacheWriteTokens Int          @default(0)
+  costUsd          Float        @default(0)
+  keySource        String // platform | tenant
+  createdAt        DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, agentId, createdAt])
+  @@map("ai_usage")
 }
 
 model AiGuardrail {

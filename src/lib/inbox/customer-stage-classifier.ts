@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import {
   conversationHasPhone,
@@ -35,13 +35,14 @@ function parseDecision(text: string): StageDecision | null {
   }
 }
 
-async function classify(text: string, hasPhone: boolean): Promise<StageDecision | null> {
-  if (!process.env.ANTHROPIC_API_KEY) return null
+async function classify(orgId: string, text: string, hasPhone: boolean): Promise<StageDecision | null> {
   const masked = new PiiMasker()
     .mask(text)
     .replace(/(?:\+?\d[\d\s().-]{5,}\d)/g, "[PHONE]")
   try {
-    const response = await getAnthropicClient().messages.create({
+    // No key or no budget for this organization throws here: no decision.
+    const client = await anthropicFor(orgId, "inbox-customer-stage")
+    const response = await client.messages.create({
       model: MODEL,
       max_tokens: 220,
       temperature: 0,
@@ -114,7 +115,7 @@ export async function maybeClassifyCustomerStage(input: {
     .map((message: { direction: string; body: string }) => `${message.direction === "inbound" ? "CUSTOMER" : "AGENT"}: ${message.body}`)
     .concat(`CUSTOMER: ${input.inboundText}`)
     .join("\n")
-  const decision = await classify(context, hasPhone)
+  const decision = await classify(input.organizationId, context, hasPhone)
   if (!decision) return { applied: false, reason: "classification-unavailable" }
   if (decision.stage === "unclassified") return { applied: false, reason: "unclassified" }
   const safeStage = decision.stage === "potential" && !hasPhone ? "interested" : decision.stage

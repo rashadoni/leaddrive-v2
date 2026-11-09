@@ -3,7 +3,7 @@ import { withRls } from "@/lib/with-rls"
 import { checkAiBudget, calculateAiCost } from "@/lib/ai/budget"
 import { prisma } from "@/lib/prisma"
 import { PiiMasker } from "@/lib/ai/pii-masker"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { normalizeAiTicketCategory } from "@/lib/ticketing/categories"
 import { isSupportAiEnabled, SUPPORT_AI_DISABLED_ERROR } from "@/lib/ai/support-feature"
 
@@ -30,7 +30,7 @@ export const POST = withRls(async (req, { orgId }) => {
   }
 
   try {
-    const anthropic = getAnthropicClient()
+    const anthropic = await anthropicFor(orgId, "tickets")
     const piiMasker = new PiiMasker()
     const input = piiMasker.mask(`Subject: ${(subject || "").slice(0, 200)}\nDescription: ${(description || "").slice(0, 500)}`)
 

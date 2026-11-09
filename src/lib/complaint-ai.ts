@@ -1,5 +1,5 @@
 import { prisma } from "./prisma"
-import { getAnthropicClient } from "./ai/anthropic-client"
+import { anthropicFor } from "./ai/gateway"
 import { checkAiBudget, calculateAiCost } from "./ai/budget"
 import { PiiMasker } from "./ai/pii-masker"
 import { isSupportAiEnabled } from "./ai/support-feature"
@@ -26,7 +26,7 @@ export async function categorizeComplaint(
   if (!budget.allowed) return null
 
   try {
-    const anthropic = getAnthropicClient()
+    const anthropic = await anthropicFor(orgId, "complaints")
     const masker = new PiiMasker()
     const masked = masker.mask(input.content.slice(0, 1500))
 

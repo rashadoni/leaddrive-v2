@@ -13,7 +13,7 @@
 import type Anthropic from "@anthropic-ai/sdk"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { checkAiBudget, resolveAiModel } from "@/lib/ai/budget"
 import { LINE_TYPES } from "@/lib/cpq/line-types"
 
@@ -83,7 +83,7 @@ export class AiFillUnavailableError extends Error {
 export async function suggestProductCard(input: { orgId: string; name: string; client?: Pick<Anthropic, "messages"> }): Promise<ProductCardSuggestion> {
   const budget = await checkAiBudget(input.orgId)
   if (!budget.allowed) throw new AiFillUnavailableError("BUDGET")
-  const client = input.client ?? getAnthropicClient()
+  const client = input.client ?? await anthropicFor(input.orgId, "products", { skipBudget: true })
   const model = resolveAiModel(undefined)
   const started = Date.now()
   const response = await client.messages.create({

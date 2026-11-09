@@ -21,7 +21,7 @@
 import type Anthropic from "@anthropic-ai/sdk"
 import type { Prisma } from "@prisma/client"
 import { bookingDb as prisma } from "./db"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { calculateAiCost, checkAiBudget, checkConversationAiLimits, resolveAiModel } from "@/lib/ai/budget"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { sanitizeForPrompt } from "@/lib/sanitize"
@@ -489,7 +489,7 @@ async function decide(input: BookingTurnInput, context: DecisionContext, history
   const transcript = history
     .map((message) => `${message.direction === "inbound" ? "Client" : "Salon"}: ${masker.mask(sanitizeForPrompt(message.body ?? "", 600))}`)
     .join("\n")
-  const client = input.client ?? getAnthropicClient()
+  const client = input.client ?? await anthropicFor(input.organizationId, "booking-agent", { skipBudget: true })
   const model = resolveAiModel(undefined)
   const tool = bookingTool(context)
   const started = Date.now()

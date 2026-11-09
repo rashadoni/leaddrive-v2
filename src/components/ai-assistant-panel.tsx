@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useState, useRef, useEffect } from "react"
+import { isAiRefusalText } from "@/lib/ai/gateway/refusal-text"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Bot, X, Send, Loader2, Sparkles, Trash2, Brain, CheckCircle2, XCircle, Clock, Maximize2, Minimize2 } from "lucide-react"
@@ -160,6 +161,8 @@ function displayAiError(raw: unknown, uiText: typeof UI_TEXT["ru"]) {
     return uiText.capabilityDisabled
   }
   if (/Too many Da Vinci requests/i.test(message)) return uiText.tooManyRequests
+  // No AI key or the day's AI budget used up: the server's own words say what to do.
+  if (isAiRefusalText(message)) return message
   if (/Da Vinci AI requires configuration|ANTHROPIC_API_KEY/i.test(message)) return uiText.configurationMissing
   if (/Unauthorized/i.test(message)) return uiText.connectionError
   return uiText.connectionError

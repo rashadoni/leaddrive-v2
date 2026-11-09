@@ -1,4 +1,4 @@
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor, isAiUnavailable } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 
 /**
@@ -181,13 +181,10 @@ function buildJudgeMessage(input: AiRelevanceJudgeInput, masker: PiiMasker): str
  * лизы крона. Тот же контракт, что у ИИ-триажа тональности.
  */
 export async function judgeSubjectRelevance(
+  orgId: string,
   input: AiRelevanceJudgeInput,
   options: { logErrors?: boolean; timeoutMs?: number } = {},
 ): Promise<AiRelevanceJudgeResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    return { verdict: null, errorClass: "MISSING_KEY", version: AI_RELEVANCE_JUDGE_VERSION }
-  }
   if (!input.text?.trim() || !input.subjectName?.trim()) {
     return { verdict: null, errorClass: "INVALID_INPUT", version: AI_RELEVANCE_JUDGE_VERSION }
   }
@@ -198,7 +195,7 @@ export async function judgeSubjectRelevance(
   timeout.unref?.()
 
   try {
-    const client = getAnthropicClient({ apiKey, timeout: timeoutMs, maxRetries: 0 })
+    const client = await anthropicFor(orgId, "social", { timeout: timeoutMs, maxRetries: 0 })
     const masker = new PiiMasker()
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -224,6 +221,10 @@ export async function judgeSubjectRelevance(
     if (verdict) return { verdict, errorClass: null, version: AI_RELEVANCE_JUDGE_VERSION }
     return { verdict: null, errorClass: "INVALID_RESPONSE", version: AI_RELEVANCE_JUDGE_VERSION }
   } catch (error) {
+    // No key for this organization, or its AI budget is used up.
+    if (isAiUnavailable(error)) {
+      return { verdict: null, errorClass: "MISSING_KEY", version: AI_RELEVANCE_JUDGE_VERSION }
+    }
     if (options.logErrors !== false) console.error("[ai-relevance-judge] failed:", error)
     return {
       verdict: null,

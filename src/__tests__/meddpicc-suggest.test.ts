@@ -30,6 +30,10 @@ import { POST } from "@/app/api/v1/deals/[id]/meddpicc/suggest/route"
 import { prisma } from "@/lib/prisma"
 import { getOrgId, getSession } from "@/lib/api-auth"
 
+// The AI gateway (src/lib/ai/gateway) falls back to the platform key, and an
+// installation without one has no AI: the mocked client stands behind this one.
+process.env.ANTHROPIC_API_KEY ??= "test-key"
+
 const ctx = (id: string) => ({ params: Promise.resolve({ id }) })
 const req = () =>
   new NextRequest("http://localhost/api/v1/deals/deal-1/meddpicc/suggest", {

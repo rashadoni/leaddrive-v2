@@ -7,7 +7,7 @@
  */
 import type Anthropic from "@anthropic-ai/sdk"
 import { prisma } from "@/lib/prisma"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { checkAiBudget, resolveAiModel } from "@/lib/ai/budget"
 import { voiceTools } from "@/lib/ai/voice/realtime-tool-contract"
 import { VOICE_TOOL_NAMES, type VoiceToolName } from "@/lib/ai/voice/read-tools"
@@ -68,7 +68,7 @@ export async function runStaffAgent(input: {
   const budget = await checkAiBudget(actor.orgId)
   if (!budget.allowed) return { text: "", budgetExhausted: true }
 
-  const client = input.client ?? getAnthropicClient()
+  const client = input.client ?? await anthropicFor(actor.orgId, "telegram-staff", { skipBudget: true })
   const model = resolveAiModel(undefined)
   const tools: Anthropic.Tool[] = [...readTools(), ...PROPOSE_TOOLS.map((tool) => ({ ...tool, input_schema: tool.input_schema as Anthropic.Tool.InputSchema }))]
   const messages: Anthropic.MessageParam[] = [

@@ -1,4 +1,4 @@
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { prisma } from "@/lib/prisma"
 import { calculateAiCost } from "@/lib/ai/budget"
@@ -73,7 +73,7 @@ export async function processMeetingRecap(input: MeetingInput): Promise<MeetingR
     orderBy: { updatedAt: "desc" },
   })
 
-  const anthropic = getAnthropicClient()
+  const anthropic = await anthropicFor(input.orgId, "meeting-recap")
 
   const prompt = `You are a CRM assistant summarizing a sales/support meeting transcript.
 

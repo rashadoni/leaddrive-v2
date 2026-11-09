@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { calculateAiCost } from "@/lib/ai/budget"
 import { decimalToNumber } from "@/lib/prisma-decimal"
@@ -90,7 +90,7 @@ export async function generateRenewalProposal(
   orgName: string,
   lang: string = "en",
 ): Promise<RenewalDraft | null> {
-  const anthropic = getAnthropicClient()
+  const anthropic = await anthropicFor(contract.organizationId, "renewal")
   const currentValue = decimalToNumber(contract.valueAmount)
   const currency = contract.currency || "USD"
   const companyName = contract.company?.name || "the client"

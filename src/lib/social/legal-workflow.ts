@@ -1,7 +1,7 @@
 import crypto from "node:crypto"
 import { Prisma, type SocialLegalCandidate } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { checkAiBudget, calculateAiCost } from "@/lib/ai/budget"
 import { getSubjectSocialAgentPersona } from "@/lib/ai/social-agent"
 import { SOCIAL_LEGAL_CATEGORIES, suggestLegalCategory, type SocialLegalCategory } from "@/lib/social/legal-categories"
@@ -403,7 +403,7 @@ Return strict JSON only: {"category":"insult|defamation|false_accusation|threat|
 Use null and low confidence when context is insufficient. Never claim that a law was violated.`
   const start = Date.now()
   try {
-    const response = await getAnthropicClient().messages.create({
+    const response = await (await anthropicFor(input.mention.organizationId, "social")).messages.create({
       model,
       max_tokens: 500,
       temperature: 0,

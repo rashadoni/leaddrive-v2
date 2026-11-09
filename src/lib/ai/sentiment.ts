@@ -1,4 +1,4 @@
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { prisma } from "@/lib/prisma"
 import { calculateAiCost } from "@/lib/ai/budget"
@@ -67,7 +67,7 @@ export async function findTicketsForSentimentCheck(orgId: string, now: Date) {
 export async function classifyTicketSentiment(
   ticket: { id: string; organizationId: string; subject: string; description: string | null },
 ): Promise<SentimentResult | null> {
-  const anthropic = getAnthropicClient()
+  const anthropic = await anthropicFor(ticket.organizationId, "automation")
 
   const prompt = `You are a support-ticket sentiment classifier. Detect when customer is frustrated, angry, or threatening to churn.
 

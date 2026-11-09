@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { DEFAULT_CURRENCY } from "@/lib/constants"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { PiiMasker } from "@/lib/ai/pii-masker"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { aiUnavailableText, anthropicOrRefusal, isAiUnavailable } from "@/lib/ai/gateway"
 import { canonicalDealStage } from "@/lib/deal-stage-normalization"
 import { wonStageNames, lostStageNames } from "@/lib/marketing-attribution/won-stages"
 
@@ -20,8 +20,8 @@ const LANG_MAP: Record<string, { name: string; instruction: string }> = {
 
 export const POST = withRls(async (req, { orgId }) => {
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return NextResponse.json({ error: "Da Vinci AI requires ANTHROPIC_API_KEY. Configure in Settings → Integrations." }, { status: 503 })
+  const ai = await anthropicOrRefusal(orgId, "deals")
+  if (isAiUnavailable(ai)) return NextResponse.json({ error: aiUnavailableText(ai) }, { status: 503 })
 
   let body: { lang?: string }
   try {
@@ -130,7 +130,7 @@ Provide a comprehensive sales pipeline analysis (300-500 words) with:
 Use professional CRM analyst style with data-driven insights. Be specific about deal names and numbers.`
 
   try {
-    const client = getAnthropicClient()
+    const client = ai
     const piiMasker = new PiiMasker()
     const maskedPrompt = piiMasker.mask(prompt)
     const msg = await client.messages.create({

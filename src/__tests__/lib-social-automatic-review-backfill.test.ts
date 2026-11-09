@@ -283,6 +283,7 @@ describe("automatic stored REVIEW backfill", () => {
 
     expect(deps.aiSentimentDetailed).toHaveBeenCalledOnce()
     expect(deps.aiSentimentDetailed).toHaveBeenCalledWith(
+      "org-1",
       "Mağaza saat 22:00-da bağlanır",
       { logErrors: false, timeoutMs: 8_000 },
     )
@@ -444,7 +445,7 @@ describe("automatic stored REVIEW backfill", () => {
       aiAttempted: 1,
       unresolved: 0,
     })
-    expect(deps.aiSentimentDetailed).toHaveBeenCalledWith("🙄", {
+    expect(deps.aiSentimentDetailed).toHaveBeenCalledWith("org-1", "🙄", {
       logErrors: false,
       timeoutMs: 8_000,
     })

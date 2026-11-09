@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import { PiiMasker } from "@/lib/ai/pii-masker"
-import Anthropic from "@anthropic-ai/sdk"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import type Anthropic from "@anthropic-ai/sdk"
+import { anthropicFor, isAiUnavailable } from "@/lib/ai/gateway"
 import { checkRateLimit, RATE_LIMIT_CONFIG } from "@/lib/rate-limit"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { getOrgModuleContext } from "@/lib/api-auth"
@@ -15,9 +15,12 @@ import { applyRecordFilter } from "@/lib/sharing-rules"
 // Unified Da Vinci endpoint for lead-related Da Vinci features
 // POST /api/v1/ai?action=sentiment|tasks|text
 
-function getClient(): Anthropic | null {
-  if (!process.env.ANTHROPIC_API_KEY) return null
-  return getAnthropicClient()
+/** Claude for this organization, or null — no key, or its AI budget used up: the fallbacks answer. */
+async function getClient(orgId: string): Promise<Anthropic | null> {
+  return anthropicFor(orgId, "ai-actions").catch((error: unknown) => {
+    if (isAiUnavailable(error)) return null
+    throw error
+  })
 }
 
 async function logAiCall(
@@ -206,7 +209,7 @@ export const POST = withRlsAuth("ai", "read", async (req, auth) => {
 // ── SENTIMENT ──────────────────────────────────────────────
 
 async function handleSentiment(orgId: string, contextBlock: string, contextName: string, contactNames: string, activities: any[], langName: string) {
-  const client = getClient()
+  const client = await getClient(orgId)
   if (!client) return sentimentFallback(contextName, contactNames, activities)
 
   try {
@@ -252,7 +255,7 @@ function sentimentFallback(contextName: string, contactNames: string, activities
 // ── TASKS ──────────────────────────────────────────────────
 
 async function handleTasks(orgId: string, contextBlock: string, contextName: string, contactName: string, contactPhone: string, contactEmail: string, industry: string, website: string, langName: string, senderOrgName: string = "the team") {
-  const client = getClient()
+  const client = await getClient(orgId)
   if (!client) return tasksFallback(contextName, contactName, contactPhone, industry, website, langName, senderOrgName)
 
   try {
@@ -361,7 +364,7 @@ async function handleText(orgId: string, contextBlock: string, contextName: stri
   const tone = options?.tone || "professional"
   const instructions = options?.instructions || ""
 
-  const client = getClient()
+  const client = await getClient(orgId)
   if (!client) return textFallback(textType, topic, tone, instructions, contextName, contactName, industry, langName, senderOrgName)
 
   // Topic gives the AI a purpose beyond the generic "write a business email".
@@ -452,7 +455,7 @@ async function handleWhatsAppFillTemplate(
     return NextResponse.json({ success: true, data: { variables: {} } })
   }
 
-  const client = getClient()
+  const client = await getClient(orgId)
   if (!client) {
     // No AI — return best-effort heuristic fills from context.
     const fallback: Record<string, string> = {}

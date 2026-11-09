@@ -16285,6 +16285,8 @@
       "copied": "Copied!",
       "server": "Server",
       "maxUsersHint": "-1 = unlimited",
+      "aiPlatformKey": "AI on our key",
+      "aiPlatformKeyHint": "When the client has not entered its own AI key, AI works on the platform's key and we pay. Turned off: without its own key the client has no AI.",
       "seedDemoData": "Quickstart — Seed demo data",
       "seedDemoDataDesc": "Populate all 60+ CRM sections with realistic demo data (companies, contacts, deals, invoices, tickets, MTM, budgeting, etc.). Perfect for client demos and evaluation.",
       "landingPage": "Start page after login",

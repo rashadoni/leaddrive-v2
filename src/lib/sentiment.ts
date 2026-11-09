@@ -1,4 +1,4 @@
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor, isAiUnavailable } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 
 const POSITIVE_WORDS = [
@@ -65,11 +65,10 @@ export function crudeSentiment(text: string): "positive" | "neutral" | "negative
  * Returns a typed failure so durable workers can retry without guessing.
  */
 export async function aiSentimentDetailed(
+  orgId: string,
   text: string,
   options: { logErrors?: boolean; timeoutMs?: number } = {},
 ): Promise<AiSentimentResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return { sentiment: null, errorClass: "MISSING_KEY" }
   if (!text.trim()) return { sentiment: null, errorClass: "INVALID_INPUT" }
 
   const timeoutMs = Math.max(1_000, Math.min(options.timeoutMs ?? 45_000, 120_000))
@@ -81,7 +80,9 @@ export async function aiSentimentDetailed(
     // Disable SDK retries here. Callers that need recovery persist their retry
     // state, while the AbortSignal guarantees that a timed-out request does not
     // continue consuming an orphaned provider slot after the cron lease ends.
-    const client = getAnthropicClient({ apiKey, timeout: timeoutMs, maxRetries: 0 })
+    // The organization's key or the platform's, within its AI budget; neither
+    // reads as a missing key.
+    const client = await anthropicFor(orgId, "social", { timeout: timeoutMs, maxRetries: 0 })
     const truncated = text.length > 1000 ? text.slice(0, 1000) + "…" : text
     const piiMasker = new PiiMasker()
     const maskedText = piiMasker.mask(truncated)
@@ -106,6 +107,7 @@ export async function aiSentimentDetailed(
     }
     return { sentiment: null, errorClass: "INVALID_RESPONSE" }
   } catch (e) {
+    if (isAiUnavailable(e)) return { sentiment: null, errorClass: "MISSING_KEY" }
     if (options.logErrors !== false) console.error("[sentiment] AI failed:", e)
     return {
       sentiment: null,
@@ -120,16 +122,17 @@ export async function aiSentimentDetailed(
  * Backwards-compatible sentiment helper for existing best-effort callers.
  */
 export async function aiSentiment(
+  orgId: string,
   text: string,
   options: { logErrors?: boolean; timeoutMs?: number } = {},
 ): Promise<"positive" | "neutral" | "negative" | null> {
-  return (await aiSentimentDetailed(text, options)).sentiment
+  return (await aiSentimentDetailed(orgId, text, options)).sentiment
 }
 
 /**
  * Best-effort sentiment: AI first, crude fallback.
  */
-export async function classifySentiment(text: string): Promise<"positive" | "neutral" | "negative"> {
-  const ai = await aiSentiment(text)
+export async function classifySentiment(orgId: string, text: string): Promise<"positive" | "neutral" | "negative"> {
+  const ai = await aiSentiment(orgId, text)
   return ai || crudeSentiment(text)
 }

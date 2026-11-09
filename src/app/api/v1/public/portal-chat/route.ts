@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { getPortalUser } from "@/lib/portal-auth"
 import { sanitizeForPrompt } from "@/lib/sanitize"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicAccess, isAiUnavailable } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { getSupportAgentConfig } from "@/lib/ai/support-agent"
@@ -370,16 +370,21 @@ export async function POST(req: NextRequest) {
   let assistantContent: string
   let degraded = false
 
-  if (process.env.ANTHROPIC_API_KEY) {
+  // The organization's key or the platform's, within its AI budget
+  // (src/lib/ai/gateway); without either the canned answer below is given.
+  const portalAi = await anthropicAccess(user.organizationId, "portal-chat").catch((error: unknown) => {
+    if (isAiUnavailable(error)) return null
+    throw error
+  })
+  if (portalAi) {
     const startTime = Date.now()
     let usedModel = "claude-haiku-4-5-20251001"
     let usage: { input_tokens: number; output_tokens: number } | undefined
 
     try {
-      const client = getAnthropicClient()
-
       // Load active agent config from DB
       const agentConfig = await getActiveAgentConfig(user.organizationId)
+      const client = portalAi(agentConfig?.id)
 
       // Load guardrails from DB
       const guardrailPrompts = await getGuardrails(user.organizationId)

@@ -181,7 +181,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
       ;(async () => {
         try {
           const { classifySentiment } = await import("@/lib/sentiment")
-          const s = await classifySentiment(parsed.data.comment as string)
+          const s = await classifySentiment(survey.organizationId, parsed.data.comment as string)
           await prisma.surveyResponse.update({ where: { id: updated.id }, data: { commentSentiment: s } })
         } catch {}
       })()
@@ -235,7 +235,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     ;(async () => {
       try {
         const { classifySentiment } = await import("@/lib/sentiment")
-        const s = await classifySentiment(parsed.data.comment as string)
+        const s = await classifySentiment(survey.organizationId, parsed.data.comment as string)
         await prisma.surveyResponse.update({ where: { id: response.id }, data: { commentSentiment: s } })
       } catch (e) {
         console.error("[surveys] comment sentiment failed:", e)
