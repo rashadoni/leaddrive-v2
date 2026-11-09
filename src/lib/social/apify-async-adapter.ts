@@ -358,7 +358,7 @@ async function settleStableApifyCharge(run: {
   if (!token) return false
   const response = await fetch(
     `${APIFY_API}/actor-runs/${encodeURIComponent(run.externalRunId)}`,
-    { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } },
+    { signal: AbortSignal.timeout(60_000), headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } },
   )
   if (!response.ok) return false
   const body = await response.json().catch(() => null) as { data?: JsonRecord } | null
@@ -4218,7 +4218,7 @@ export async function importApifyProviderRun(providerRunId: string): Promise<{ s
   }
   const token = await apifyToken(run.organizationId)
   if (!token) return { status: "BLOCKED", imported: 0, error: "apify_token_missing" }
-  const response = await fetch(`${APIFY_API}/actor-runs/${encodeURIComponent(run.externalRunId)}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } })
+  const response = await fetch(`${APIFY_API}/actor-runs/${encodeURIComponent(run.externalRunId)}`, { signal: AbortSignal.timeout(60_000), headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } })
   if (!response.ok) return { status: run.status, imported: 0, error: `apify_run_status_${response.status}` }
   const body = await response.json() as { data?: JsonRecord }
   const remote = record(body.data)
@@ -4363,7 +4363,7 @@ export async function importApifyProviderRun(providerRunId: string): Promise<{ s
       ...(current?.lastError ? { error: current.lastError } : {}),
     }
   }
-  const itemsResponse = await fetch(`${APIFY_API}/datasets/${encodeURIComponent(datasetId)}/items?clean=true&format=json&limit=${run.maxItems}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } })
+  const itemsResponse = await fetch(`${APIFY_API}/datasets/${encodeURIComponent(datasetId)}/items?clean=true&format=json&limit=${run.maxItems}`, { signal: AbortSignal.timeout(120_000), headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } })
   if (!itemsResponse.ok) return { status: "IMPORTING", imported: 0, error: `apify_dataset_${itemsResponse.status}` }
   const payload = await itemsResponse.json()
   if (!Array.isArray(payload)) {
@@ -5119,7 +5119,7 @@ export async function processApifyDatasetDeletion(limit = 50) {
       await prisma.socialDeletionLedgerEntry.update({ where: { id: entry.id }, data: { status: "FAILED", attempts: { increment: 1 }, lastAttemptAt: new Date(), nextRetryAt: new Date(Date.now() + 3_600_000), lastError: !datasetId ? "dataset_id_missing" : "apify_token_missing" } })
       continue
     }
-    const response = await fetch(`${APIFY_API}/datasets/${encodeURIComponent(datasetId)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }).catch(() => null)
+    const response = await fetch(`${APIFY_API}/datasets/${encodeURIComponent(datasetId)}`, { signal: AbortSignal.timeout(60_000), method: "DELETE", headers: { Authorization: `Bearer ${token}` } }).catch(() => null)
     if (response && (response.ok || response.status === 404)) {
       completed += 1
       const now = new Date()

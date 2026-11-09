@@ -23,7 +23,7 @@ export async function pollVkAccount(accountId: string): Promise<{ ingested: numb
   url.searchParams.set("access_token", token)
   url.searchParams.set("v", "5.199")
 
-  const res = await fetch(url.toString())
+  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(30_000) })
   if (!res.ok) return { ingested: 0, error: `vk search failed ${res.status}` }
   const json = (await res.json()) as {
     response?: { items?: Array<{ id: number; owner_id: number; text?: string; date?: number; likes?: { count: number }; reposts?: { count: number }; comments?: { count: number }; views?: { count: number } }> }

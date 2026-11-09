@@ -24,6 +24,7 @@ async function refreshTokenIfNeeded(account: { id: string; accessToken: string |
   const clientSecret = process.env.TIKTOK_CLIENT_SECRET
   if (!clientKey || !clientSecret) return null
   const res = await fetch("https://open.tiktokapis.com/v2/oauth/token/", {
+    signal: AbortSignal.timeout(30_000),
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -59,6 +60,7 @@ export async function pollTikTokAccount(accountId: string): Promise<{ ingested: 
 
   // List user's recent videos (last 20)
   const videoRes = await fetch("https://open.tiktokapis.com/v2/video/list/?fields=id,title,create_time,view_count,like_count,comment_count,share_count", {
+    signal: AbortSignal.timeout(30_000),
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

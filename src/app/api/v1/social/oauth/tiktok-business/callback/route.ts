@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
   if (!clientId || !clientSecret || !redirectUri) return errorRedirect(request, "tiktok_business_not_configured")
 
   const tokenResponse = await fetch("https://business-api.tiktok.com/open_api/v1.3/tt_user/oauth2/token/", {
+    signal: AbortSignal.timeout(15_000),
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, grant_type: "authorization_code", auth_code: authCode, redirect_uri: redirectUri }),

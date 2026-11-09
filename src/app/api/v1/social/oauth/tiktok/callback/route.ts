@@ -67,6 +67,7 @@ export async function GET(req: NextRequest) {
   if (!clientKey || !clientSecret || !redirectUri) return errRedirect(req, "not_configured")
 
   const tokenRes = await fetch("https://open.tiktokapis.com/v2/oauth/token/", {
+    signal: AbortSignal.timeout(15_000),
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -91,6 +92,7 @@ export async function GET(req: NextRequest) {
   // scope makes TikTok reject the WHOLE request with scope_not_authorized —
   // which is why connected accounts used to display the raw open_id.
   const userRes = await fetch("https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name", {
+    signal: AbortSignal.timeout(15_000),
     headers: { Authorization: `Bearer ${tokenJson.access_token}` },
   })
   const userJson = (await userRes.json().catch(() => null)) as { data?: { user?: { display_name?: string } } } | null

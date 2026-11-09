@@ -38,6 +38,7 @@ export class TwilioProvider implements VoipProvider {
     })
 
     const res = await fetch(url, {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: {
         Authorization: `Basic ${auth}`,
@@ -59,6 +60,7 @@ export class TwilioProvider implements VoipProvider {
     const auth = Buffer.from(`${this.accountSid}:${this.authToken}`).toString("base64")
 
     const res = await fetch(url, {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: {
         Authorization: `Basic ${auth}`,
@@ -80,6 +82,7 @@ export class TwilioProvider implements VoipProvider {
       const auth = Buffer.from(`${this.accountSid}:${this.authToken}`).toString("base64")
 
       const res = await fetch(url, {
+        signal: AbortSignal.timeout(15_000),
         headers: { Authorization: `Basic ${auth}` },
       })
 
