@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react"
 import { Loader2 } from "lucide-react"
 import { runEmbeddedSignupDialog } from "@/components/channels/whatsapp-embedded-signup"
-import { WHATSAPP_SIGNUP_RELAY_TYPE } from "@/lib/whatsapp-signup-window"
+import { WHATSAPP_SIGNUP_RELAY_TYPE, type SignupWindowMode } from "@/lib/whatsapp-signup-window"
 
 /**
  * The app-host half of WhatsApp Embedded Signup for tenant hosts (lib/whatsapp-signup-window).
@@ -31,10 +31,13 @@ export function WhatsAppSignupWindow({
   config,
   returnOrigin,
   labels,
+  mode = {},
 }: {
   config: { appId: string; configId: string } | null
   returnOrigin: string | null
   labels: WhatsAppSignupWindowLabels
+  /** The path the tenant tab chose, carried here in this window's own URL. */
+  mode?: SignupWindowMode
 }) {
   const [phase, setPhase] = useState<Phase>("idle")
 
@@ -55,7 +58,7 @@ export function WhatsAppSignupWindow({
       return
     }
     setPhase("working")
-    void runEmbeddedSignupDialog(config).then((outcome) => {
+    void runEmbeddedSignupDialog(config, mode).then((outcome) => {
       if (outcome.kind === "connected") {
         const delivered = post({ result: "connected", code: outcome.code, ...outcome.session })
         setPhase(delivered ? "done" : "failed")

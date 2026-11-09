@@ -8,12 +8,15 @@ import { WhatsAppEmbeddedSignup } from "@/components/channels/whatsapp-embedded-
 const labels = {
   title: "Connect through Meta",
   description: "Choose your business number.",
-  button: "Connect WhatsApp",
   working: "Finishing connection…",
   connected: "Connected: {number}",
   paymentHint: "Add a payment method in",
   cancelled: "Connection cancelled",
   failed: "Connection did not finish",
+  keepAppButton: "Keep my WhatsApp Business app",
+  keepAppHint: "The number keeps working on your phone.",
+  moveButton: "Move the number to the API",
+  moveHint: "The app stops working with this number.",
 }
 const sessionMessage = {
   type: "WA_EMBEDDED_SIGNUP",
@@ -96,5 +99,59 @@ describe("WhatsApp Embedded Signup registration result", () => {
     expect(container.textContent).toContain("Registration incomplete")
     expect(container.textContent).not.toContain("Connected:")
     expect(onConnected).not.toHaveBeenCalled()
+  })
+})
+
+describe("the choice the customer is given when connecting", () => {
+  let container: HTMLDivElement
+  let root: Root
+  let loginOptions: Record<string, unknown> | undefined
+
+  beforeEach(async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+    loginOptions = undefined
+    process.env.NEXT_PUBLIC_APP_URL = window.location.origin
+    window.FB = {
+      init: vi.fn(),
+      login: vi.fn((_cb: unknown, options: Record<string, unknown>) => { loginOptions = options }),
+    } as unknown as typeof window.FB
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ configured: true, appId: "123456", configId: "456789" })))
+    await act(async () => root.render(createElement(WhatsAppEmbeddedSignup, { labels })))
+  })
+
+  afterEach(async () => {
+    await act(async () => root.unmount())
+    container.remove()
+    vi.unstubAllGlobals()
+  })
+
+  it("offers keeping the app first, and says what each path costs", () => {
+    const buttons = Array.from(container.querySelectorAll("button")).map((b) => b.textContent)
+
+    // Order is the message: for a shop run by one person, losing their WhatsApp ends the
+    // conversation before anything is demonstrated, so that path is not the default.
+    expect(buttons[0]).toContain(labels.keepAppButton)
+    expect(buttons[1]).toContain(labels.moveButton)
+    // Neither choice is made silently: both consequences are on screen.
+    expect(container.textContent).toContain(labels.keepAppHint)
+    expect(container.textContent).toContain(labels.moveHint)
+  })
+
+  it("asks Meta for the WhatsApp Business app path only on the first button", async () => {
+    await act(async () => container.querySelectorAll<HTMLButtonElement>("button")[0].click())
+
+    // Meta's one switch for coexistence. Without it the dialog only offers to take the number away.
+    expect((loginOptions?.extras as Record<string, unknown>).featureType).toBe("whatsapp_business_app_onboarding")
+  })
+
+  it("does not ask for it on the second button, so a pure-API connection is unchanged", async () => {
+    await act(async () => container.querySelectorAll<HTMLButtonElement>("button")[1].click())
+
+    expect(loginOptions?.extras as Record<string, unknown>).not.toHaveProperty("featureType")
+    // The session info version this page's reader depends on is still requested.
+    expect((loginOptions?.extras as Record<string, unknown>).sessionInfoVersion).toBe("3")
   })
 })

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { encryptToken } from "@/lib/secure-token"
 import { redactOAuthProviderText } from "@/lib/oauth-redaction"
+import { decideNumberOnboarding, type NumberPlatformFacts } from "@/lib/whatsapp-number-onboarding"
 
 /**
  * WhatsApp Embedded Signup — a business connects its own WhatsApp number to LeadDrive through Meta's
@@ -30,6 +31,13 @@ import { redactOAuthProviderText } from "@/lib/oauth-redaction"
  * secret for callbacks without `?t=`), and setting it would change how those are verified.
  */
 const GRAPH = "https://graph.facebook.com/v21.0"
+/**
+ * `is_on_biz_app` and `platform_type` — the fields that say whether a number also lives in the
+ * WhatsApp Business app — are read on their own, newer version. Asking for them on the v21 phone
+ * numbers edge above would risk one unknown field turning the ownership check itself into an error;
+ * here a failure is an expected outcome and means "unreadable" (lib/whatsapp-number-onboarding).
+ */
+const PLATFORM_GRAPH = "https://graph.facebook.com/v27.0"
 
 export type WhatsAppPlatformApp = { appId: string; appSecret: string; configId: string }
 
@@ -44,7 +52,14 @@ export type EmbeddedSignupInput = {
   organizationId: string
   code: string
   wabaId: string
-  phoneNumberId: string
+  /**
+   * Optional on purpose. Meta's coexistence example shows a completion event carrying only
+   * `waba_id`, and a dialog the customer actually finished must not be reported as a failure over a
+   * missing id we can look up ourselves — see `resolvePhoneNumber`.
+   */
+  phoneNumberId?: string | null
+  /** Embedded Signup's completion event, which is how the browser tells us the customer kept their app. */
+  signupEvent?: string | null
   businessId?: string | null
   createdBy?: string | null
 }
@@ -56,9 +71,16 @@ export type EmbeddedSignupResult =
       created: boolean
       displayPhoneNumber: string | null
       verifiedName: string | null
+      /**
+       * `already_connected` also covers a coexistence number: it is already registered, which is
+       * precisely why we must not register it. Kept as one of the two old values so a browser still
+       * running yesterday's script does not read a good connection as a failure.
+       */
       registration: "registered" | "already_connected"
+      /** The number stays usable in the WhatsApp Business app on the customer's phone. */
+      coexistence: boolean
     }
-  | { ok: false; step: "config" | "exchange" | "phone" | "ownership" | "conflict" | "subscribe" | "register"; error: string }
+  | { ok: false; step: "config" | "exchange" | "phone" | "ownership" | "conflict" | "subscribe" | "register" | "platform"; error: string }
 
 type GraphJson = Record<string, unknown> & { error?: { message?: string } }
 
@@ -85,12 +107,67 @@ function graphError(json: GraphJson, fallback: string): string {
 
 const isGraphId = (value: string) => /^\d{5,25}$/.test(value)
 
+type WabaNumber = Record<string, unknown>
+
+/**
+ * Which number the customer connected.
+ *
+ * Normally the browser tells us. Meta's coexistence documentation, however, shows a completion event
+ * carrying only `waba_id`, and we cannot verify which it is until a real number goes through — so a
+ * missing id is recovered here instead of failing a signup the customer completed. The account's own
+ * number list is the authority: one number means one answer, and several with nothing to choose by
+ * is the one case worth refusing, because picking the wrong colleague's number would connect the
+ * wrong WhatsApp.
+ */
+async function resolvePhoneNumber(
+  given: string,
+  numbers: WabaNumber[],
+): Promise<{ ok: true; phone: WabaNumber; phoneNumberId: string } | { ok: false; error: string }> {
+  if (given) {
+    const phone = numbers.find((p) => String(p.id) === given)
+    return phone
+      ? { ok: true, phone, phoneNumberId: given }
+      : { ok: false, error: "That phone number is not part of the WhatsApp Business Account you connected." }
+  }
+  if (numbers.length === 1) {
+    return { ok: true, phone: numbers[0], phoneNumberId: String(numbers[0].id) }
+  }
+  if (numbers.length === 0) {
+    return { ok: false, error: "This WhatsApp Business Account has no phone number yet. Add the number in WhatsApp Manager, then connect again." }
+  }
+  return {
+    ok: false,
+    error: "Meta did not say which number was connected, and this account has several. Connect again and pick the number in Meta's dialog.",
+  }
+}
+
+/**
+ * Does this number also live in the WhatsApp Business app?
+ *
+ * Unreadable is a normal answer — the fields may not exist on the version the app is allowed to
+ * call, and the request may simply be refused. The caller decides what to do with silence
+ * (lib/whatsapp-number-onboarding); it never means "no".
+ */
+async function readNumberPlatform(phoneNumberId: string, token: string): Promise<NumberPlatformFacts> {
+  const res = await fetch(`${PLATFORM_GRAPH}/${phoneNumberId}?fields=is_on_biz_app,platform_type`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(15_000),
+  }).catch(() => null)
+  if (!res) return { isOnBizApp: null, platformType: null }
+  const json = ((await res.json().catch(() => ({}))) || {}) as GraphJson
+  if (!res.ok || json.error) return { isOnBizApp: null, platformType: null }
+  return {
+    isOnBizApp: typeof json.is_on_biz_app === "boolean" ? json.is_on_biz_app : null,
+    platformType: typeof json.platform_type === "string" ? json.platform_type : null,
+  }
+}
+
 export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promise<EmbeddedSignupResult> {
   const app = whatsappPlatformApp()
   if (!app) return { ok: false, step: "config", error: "WhatsApp Embedded Signup is not configured on this server." }
   const wabaId = input.wabaId.trim()
-  const phoneNumberId = input.phoneNumberId.trim()
-  if (!input.code || !isGraphId(wabaId) || !isGraphId(phoneNumberId)) {
+  const givenPhoneNumberId = (input.phoneNumberId || "").trim()
+  if (!input.code || !isGraphId(wabaId) || (givenPhoneNumberId && !isGraphId(givenPhoneNumberId))) {
     return { ok: false, step: "exchange", error: "Meta did not return a complete signup (code, account and number)." }
   }
 
@@ -107,8 +184,9 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
   const numbers = await graph(`/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,status&limit=100`, { token })
   if (!numbers.ok) return { ok: false, step: "ownership", error: graphError(numbers.json, "Could not read the WhatsApp Business Account.") }
   const list = Array.isArray(numbers.json.data) ? (numbers.json.data as Array<Record<string, unknown>>) : []
-  const phone = list.find((p) => String(p.id) === phoneNumberId)
-  if (!phone) return { ok: false, step: "ownership", error: "That phone number is not part of the WhatsApp Business Account you connected." }
+  const picked = await resolvePhoneNumber(givenPhoneNumberId, list)
+  if (!picked.ok) return { ok: false, step: "ownership", error: picked.error }
+  const { phone, phoneNumberId } = picked
   const displayPhoneNumber = typeof phone.display_phone_number === "string" ? phone.display_phone_number : null
   const verifiedName = typeof phone.verified_name === "string" ? phone.verified_name : null
 
@@ -128,14 +206,29 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
     return { ok: false, step: "conflict", error: "This WhatsApp number is already connected to another LeadDrive workspace." }
   }
 
+  // Which kind of number this is, decided in one place from both signals we have.
+  const facts = await readNumberPlatform(phoneNumberId, token)
+  const decision = decideNumberOnboarding({ facts, signupEvent: input.signupEvent })
+  console.log(
+    `[WA Signup] number ${phoneNumberId}: mode=${decision.mode} register=${decision.register}`
+    + ` reason=${decision.reason} is_on_biz_app=${facts.isOnBizApp} platform_type=${facts.platformType ?? "?"}`
+    + ` event=${input.signupEvent ?? "?"}`,
+  )
+  if (decision.mode === "contradiction") {
+    return { ok: false, step: "platform", error: decision.error ?? "Meta describes this number inconsistently." }
+  }
+
   // 3. webhooks for the WABA → LeadDrive's app.
   const subscribe = await graph(`/${wabaId}/subscribed_apps`, { method: "POST", token })
   if (!subscribe.ok) return { ok: false, step: "subscribe", error: graphError(subscribe.json, "Meta refused the webhook subscription for this account.") }
 
-  // 4. register the number for Cloud API messaging unless it already is.
+  // 4. register the number for Cloud API messaging unless it already is — and never for a number
+  //    that also lives in the WhatsApp Business app. Meta: "skip the phone number registration
+  //    step, as the number is already registered". Both guards stand: the decision above, and the
+  //    status Meta reports for this number.
   let registration: "registered" | "already_connected" = "already_connected"
   let pin: string | null = null
-  if (String(phone.status || "").toUpperCase() !== "CONNECTED") {
+  if (decision.register && String(phone.status || "").toUpperCase() !== "CONNECTED") {
     pin = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0")
     const register = await graph(`/${phoneNumberId}/register`, {
       method: "POST",
@@ -175,6 +268,13 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
     displayPhoneNumber,
     onboardedAt: new Date().toISOString(),
     registration,
+    // What this number is, and on whose word. The reason is kept because both signals are still
+    // unproven against a live coexistence number: when one turns out wrong, this is the evidence.
+    coexistence: decision.mode === "coexistence",
+    onboardingMode: decision.mode,
+    onboardingReason: decision.reason,
+    isOnBizApp: facts.isOnBizApp,
+    platformType: facts.platformType,
     ...(pin ? { registrationPin: encryptToken(pin, "whatsapp-registration-pin") } : {}),
   }
   const data = {
@@ -219,5 +319,6 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
     displayPhoneNumber,
     verifiedName,
     registration,
+    coexistence: decision.mode === "coexistence",
   }
 }

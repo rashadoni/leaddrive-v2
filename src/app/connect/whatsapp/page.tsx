@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { getTranslations } from "next-intl/server"
 import { WhatsAppSignupWindow } from "@/components/channels/whatsapp-signup-window"
 import { whatsappPlatformApp } from "@/lib/whatsapp-embedded-signup"
-import { isSignupReturnOrigin } from "@/lib/whatsapp-signup-window"
+import { isSignupReturnOrigin, readSignupWindowMode } from "@/lib/whatsapp-signup-window"
 
 // Reads the Embedded Signup configuration from the environment on every request.
 export const dynamic = "force-dynamic"
@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function WhatsAppSignupWindowPage({
   searchParams,
 }: {
-  searchParams: Promise<{ origin?: string | string[] }>
+  searchParams: Promise<{ origin?: string | string[]; keepApp?: string | string[] }>
 }) {
   const [t, params] = await Promise.all([getTranslations("whatsappSignupWindow"), searchParams])
   const origin = typeof params.origin === "string" ? params.origin : null
@@ -30,6 +30,7 @@ export default async function WhatsAppSignupWindowPage({
     <WhatsAppSignupWindow
       config={app ? { appId: app.appId, configId: app.configId } : null}
       returnOrigin={isSignupReturnOrigin(origin) ? origin : null}
+      mode={readSignupWindowMode(params.keepApp)}
       labels={{
         title: t("title"),
         description: t("description"),
