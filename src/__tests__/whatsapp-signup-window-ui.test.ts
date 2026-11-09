@@ -103,7 +103,7 @@ describe("channel catalog on a tenant host", () => {
     const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")
     expect(post?.[0]).toBe("/api/v1/channels/whatsapp/embedded-signup")
     expect(JSON.parse(String(post?.[1]?.body))).toEqual({
-      code: "ONE_TIME_CODE", wabaId: "111222333", phoneNumberId: "444555666", businessId: null,
+      code: "ONE_TIME_CODE", wabaId: "111222333", phoneNumberId: "444555666", signupEvent: null, businessId: null,
     })
     expect(onConnected).toHaveBeenCalledExactlyOnceWith("channel-1")
     expect(container.textContent).toContain("Connected: +994501234567")
@@ -182,7 +182,10 @@ describe("signup window on the app host", () => {
     })
 
     expect(opener.postMessage).toHaveBeenCalledExactlyOnceWith(
-      { type: WHATSAPP_SIGNUP_RELAY_TYPE, result: "connected", code: "ONE_TIME_CODE", wabaId: "111222333", phoneNumberId: "444555666", businessId: null },
+      {
+        type: WHATSAPP_SIGNUP_RELAY_TYPE, result: "connected", code: "ONE_TIME_CODE",
+        wabaId: "111222333", phoneNumberId: "444555666", signupEvent: "FINISH", businessId: null,
+      },
       RETURN,
     )
     expect(window.close).toHaveBeenCalled()

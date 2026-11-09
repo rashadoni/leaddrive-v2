@@ -73,6 +73,24 @@ const SERVER_OWNED_SETTING_KEYS_BY_TYPE: Readonly<Record<string, readonly string
     "onboardedAt",
     "registration",
     "registrationPin",
+    // What kind of number this is, and the evidence it was decided on (lib/whatsapp-number-onboarding).
+    // `coexistence` is load-bearing beyond bookkeeping: it is what holds our automatic replies on a
+    // number somebody answers from their phone, so a Save that erased it would quietly start
+    // answering customers a second time.
+    "coexistence",
+    "onboardingMode",
+    "onboardingReason",
+    "isOnBizApp",
+    "platformType",
+    // The owner's per-channel override of that hold (lib/inbox/whatsapp-reply-hold). Set outside this
+    // form, and dropping it would turn the hold back on or off behind his back.
+    "replyHold",
+    // Meta said this number's Cloud API side is temporarily down (lib/whatsapp-account-update); the
+    // pause is lifted by a webhook, not by a Save.
+    "cloudApiPaused",
+    "cloudApiPausedAt",
+    "cloudApiPausedEvent",
+    "disconnected",
   ],
 }
 

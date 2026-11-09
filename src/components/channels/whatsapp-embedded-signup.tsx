@@ -16,12 +16,17 @@ import { appOrigin, readRelayedSignup, signupWindowUrl } from "@/lib/whatsapp-si
 export type WhatsAppEmbeddedSignupLabels = {
   title: string
   description: string
-  button: string
   working: string
   connected: string
   paymentHint: string
   cancelled: string
   failed: string
+  /** «Keep my WhatsApp Business app» — the recommended choice, and its requirements. */
+  keepAppButton: string
+  keepAppHint: string
+  /** «Move the number to the API» — and the honest warning that the app stops working. */
+  moveButton: string
+  moveHint: string
 }
 
 type SdkLoginResponse = { authResponse?: { code?: string } | null }
@@ -29,7 +34,16 @@ type FacebookSdk = {
   init: (options: Record<string, unknown>) => void
   login: (callback: (response: SdkLoginResponse) => void, options: Record<string, unknown>) => void
 }
-export type SignupSession = { wabaId: string; phoneNumberId: string; businessId: string | null }
+export type SignupSession = {
+  wabaId: string
+  /** Empty when Meta's completion event named no number; the server resolves it from the account. */
+  phoneNumberId: string
+  /** Meta's completion event — `FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING` means the app was kept. */
+  signupEvent: string | null
+  businessId: string | null
+}
+/** Which of Meta's two paths the customer picked on our screen. */
+export type SignupMode = { keepBusinessApp?: boolean }
 export type WhatsAppEmbeddedSignupStatus =
   | { kind: "idle" }
   | { kind: "working" }
@@ -86,10 +100,15 @@ export function readSignupMessage(origin: string, raw: unknown): SignupSession |
   if (message.type !== "WA_EMBEDDED_SIGNUP") return null
   if (message.event === "CANCEL") return "cancel"
   const wabaId = String(message.data?.waba_id ?? "")
-  const phoneNumberId = String(message.data?.phone_number_id ?? "")
-  if (!/^\d+$/.test(wabaId) || !/^\d+$/.test(phoneNumberId)) return null
+  if (!/^\d+$/.test(wabaId)) return null
+  // The number is NOT required. Meta's coexistence example shows a completion event carrying only
+  // `waba_id`, and we have never seen a real one — reporting a finished dialog as a failure over a
+  // field the server can look up itself would be the worse guess (lib/whatsapp-number-onboarding).
+  const rawNumber = message.data?.phone_number_id ? String(message.data.phone_number_id) : ""
+  if (rawNumber && !/^\d+$/.test(rawNumber)) return null
   const businessId = message.data?.business_id ? String(message.data.business_id) : null
-  return { wabaId, phoneNumberId, businessId }
+  const signupEvent = typeof message.event === "string" ? message.event : null
+  return { wabaId, phoneNumberId: rawNumber, signupEvent, businessId }
 }
 
 export type EmbeddedSignupDialogOutcome =
@@ -102,7 +121,10 @@ export type EmbeddedSignupDialogOutcome =
  * and number the customer picked. Meta starts the SDK only on the app host (its allowed-domains list),
  * so tenant hosts reach this through the app-host window (lib/whatsapp-signup-window) instead.
  */
-export function runEmbeddedSignupDialog(config: { appId: string; configId: string }): Promise<EmbeddedSignupDialogOutcome> {
+export function runEmbeddedSignupDialog(
+  config: { appId: string; configId: string },
+  mode: SignupMode = {},
+): Promise<EmbeddedSignupDialogOutcome> {
   return new Promise((resolve) => {
     let session: SignupSession | null = null
     let settled = false
@@ -138,7 +160,16 @@ export function runEmbeddedSignupDialog(config: { appId: string; configId: strin
             config_id: config.configId,
             response_type: "code",
             override_default_response_type: true,
-            extras: { setup: {}, sessionInfoVersion: "3" },
+            extras: {
+              setup: {},
+              // Meta's one switch for coexistence. Without it the dialog offers only the path that
+              // takes the number away from the phone. No `version` is sent, so Meta serves this as
+              // Embedded Signup v4, where this featureType is the documented way to ask for it —
+              // v5 turns it on by default but drops `waba_id` from the session info, which this
+              // page needs, so do not move to v5 without changing readSignupMessage first.
+              ...(mode.keepBusinessApp ? { featureType: "whatsapp_business_app_onboarding" } : {}),
+              sessionInfoVersion: "3",
+            },
           },
         )
       })
@@ -191,7 +222,14 @@ export function useWhatsAppEmbeddedSignup({
       const res = await fetch("/api/v1/channels/whatsapp/embedded-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, ...picked }),
+        body: JSON.stringify({
+          code,
+          wabaId: picked.wabaId,
+          // Omitted rather than sent empty: the server then resolves it from the account.
+          ...(picked.phoneNumberId ? { phoneNumberId: picked.phoneNumberId } : {}),
+          signupEvent: picked.signupEvent,
+          businessId: picked.businessId,
+        }),
       })
       const json = (await res.json().catch(() => ({}))) as {
         ok?: boolean
@@ -199,6 +237,7 @@ export function useWhatsAppEmbeddedSignup({
         displayPhoneNumber?: string | null
         registration?: string
         registrationError?: string
+        coexistence?: boolean
         error?: string
       }
       // Older servers returned ok:true even when registration failed. Only a confirmed registration
@@ -227,8 +266,8 @@ export function useWhatsAppEmbeddedSignup({
       if (result.kind === "cancel") setStatus({ kind: "error", message: cancelledMessage })
       else if (result.kind === "failed") setStatus({ kind: "error", message: failedMessage })
       else {
-        const { code, wabaId, phoneNumberId, businessId } = result
-        void finishRef.current(code, { wabaId, phoneNumberId, businessId })
+        const { code, wabaId, phoneNumberId, signupEvent, businessId } = result
+        void finishRef.current(code, { wabaId, phoneNumberId, signupEvent, businessId })
       }
     }
     window.addEventListener("message", onMessage)
@@ -251,12 +290,12 @@ export function useWhatsAppEmbeddedSignup({
     return () => window.clearInterval(timer)
   }, [status.kind, cancelledMessage])
 
-  const start = () => {
+  const start = (mode: SignupMode = {}) => {
     if (!config || status.kind === "working") return
     if (window.location.origin !== appOrigin()) {
       // Opened synchronously inside the click, or the browser blocks it.
       const popup = window.open(
-        signupWindowUrl(window.location.origin, document.documentElement.lang || null),
+        signupWindowUrl(window.location.origin, document.documentElement.lang || null, undefined, mode),
         "leaddrive-whatsapp-signup",
         "popup,width=620,height=760",
       )
@@ -269,7 +308,7 @@ export function useWhatsAppEmbeddedSignup({
       return
     }
     setStatus({ kind: "working" })
-    void runEmbeddedSignupDialog(config).then((outcome) => {
+    void runEmbeddedSignupDialog(config, mode).then((outcome) => {
       if (outcome.kind === "cancel") setStatus({ kind: "error", message: cancelledMessage })
       else if (outcome.kind === "failed") setStatus({ kind: "error", message: failedMessage })
       else void finish(outcome.code, outcome.session)
@@ -314,15 +353,35 @@ export function WhatsAppEmbeddedSignup({
           </p>
         </div>
       ) : (
-        <button data-crm-color-role="provider"
-          type="button"
-          onClick={() => void start()}
-          disabled={status.kind === "working"}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-70"
-        >
-          {status.kind === "working" && <Loader2 className="h-4 w-4 animate-spin" />}
-          {status.kind === "working" ? labels.working : labels.button}
-        </button>
+        // Two paths, and the one that keeps the phone working comes first. For a salon or a shop run
+        // by one person, «I will lose my WhatsApp» is the objection that ends the conversation before
+        // anything is demonstrated — so the choice is stated plainly, with what each side costs,
+        // instead of being hidden behind one button that silently takes the number away.
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <button data-crm-color-role="provider"
+              type="button"
+              onClick={() => void start({ keepBusinessApp: true })}
+              disabled={status.kind === "working"}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-70"
+            >
+              {status.kind === "working" && <Loader2 className="h-4 w-4 animate-spin" />}
+              {status.kind === "working" ? labels.working : labels.keepAppButton}
+            </button>
+            <p className="text-[11px] leading-snug text-emerald-800">{labels.keepAppHint}</p>
+          </div>
+          <div className="space-y-1">
+            <button
+              type="button"
+              onClick={() => void start()}
+              disabled={status.kind === "working"}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-300 bg-white py-2.5 text-sm font-medium text-emerald-800 transition-colors hover:bg-emerald-100 disabled:opacity-70"
+            >
+              {labels.moveButton}
+            </button>
+            <p className="text-[11px] leading-snug text-emerald-800">{labels.moveHint}</p>
+          </div>
+        </div>
       )}
       {status.kind === "error" && <p className="text-xs text-red-700">{status.message}</p>}
     </div>

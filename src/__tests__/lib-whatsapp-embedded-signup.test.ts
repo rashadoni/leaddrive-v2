@@ -52,6 +52,9 @@ let registerOk = true
 let registerConfirmed = true
 let subscribeOk = true
 let phoneStatusAfterRegister: string | null = null
+// What Graph answers for `is_on_biz_app`. "unreadable" stands for the field not existing or the
+// request being refused — which is what we expect from today's live numbers.
+let isOnBizApp: boolean | "unreadable" = "unreadable"
 
 function stubGraph() {
   calls = []
@@ -63,6 +66,11 @@ function stubGraph() {
     if (url.includes("/oauth/access_token?")) return json({ access_token: "BUSINESS_TOKEN", token_type: "bearer" })
     if (url.includes("/111222333/phone_numbers")) {
       return json({ data: [{ id: "444555666", display_phone_number: "+994 50 123 45 67", verified_name: "Acme Rent", status: phoneStatus }] })
+    }
+    if (url.includes("/444555666?fields=is_on_biz_app")) {
+      return isOnBizApp === "unreadable"
+        ? json({ error: { message: "(#100) Unsupported get request" } }, 400)
+        : json({ is_on_biz_app: isOnBizApp, platform_type: "CLOUD_API", id: "444555666" })
     }
     if (url.endsWith("/111222333/subscribed_apps")) return subscribeOk ? json({ success: true }) : json({ error: { message: "(#200) no permission" } }, 400)
     if (url.endsWith("/444555666/register")) {
@@ -85,6 +93,7 @@ beforeEach(() => {
   registerConfirmed = true
   subscribeOk = true
   phoneStatusAfterRegister = null
+  isOnBizApp = "unreadable"
   stubGraph()
 })
 
@@ -96,12 +105,14 @@ describe("completeEmbeddedSignup", () => {
     expect(calls.map((c) => `${c.method} ${new URL(c.url).pathname}`)).toEqual([
       "GET /v21.0/oauth/access_token",
       "GET /v21.0/111222333/phone_numbers",
+      // Asked on its own newer version, and only once the number is known to be ours to connect.
+      "GET /v27.0/444555666",
       "POST /v21.0/111222333/subscribed_apps",
       "POST /v21.0/444555666/register",
     ])
     // The business token rides in the Authorization header on every call after the exchange.
     expect(calls.slice(1).every((c) => c.auth === "Bearer BUSINESS_TOKEN" && !c.url.includes("BUSINESS_TOKEN"))).toBe(true)
-    const pin = (calls[3].body as { pin: string }).pin
+    const pin = (calls[4].body as { pin: string }).pin
     expect(pin).toMatch(/^\d{6}$/)
 
     const row = db.rows[0]
@@ -202,7 +213,7 @@ describe("readSignupMessage (browser side)", () => {
   const finish = { type: "WA_EMBEDDED_SIGNUP", event: "FINISH", data: { waba_id: "111222333", phone_number_id: "444555666", business_id: "99988877" } }
 
   it("reads Meta's FINISH message, as an object or as a JSON string", () => {
-    const expected = { wabaId: "111222333", phoneNumberId: "444555666", businessId: "99988877" }
+    const expected = { wabaId: "111222333", phoneNumberId: "444555666", signupEvent: "FINISH", businessId: "99988877" }
     expect(readSignupMessage("https://www.facebook.com", finish)).toEqual(expected)
     expect(readSignupMessage("https://web.facebook.com", JSON.stringify(finish))).toEqual(expected)
   })
@@ -215,5 +226,94 @@ describe("readSignupMessage (browser side)", () => {
   it("reports a cancel and ignores unrelated messages", () => {
     expect(readSignupMessage("https://www.facebook.com", { type: "WA_EMBEDDED_SIGNUP", event: "CANCEL", data: {} })).toBe("cancel")
     expect(readSignupMessage("https://www.facebook.com", { type: "something-else" })).toBeNull()
+  })
+
+  it("carries the coexistence completion event through, even without a number", () => {
+    // Meta's own example of this event shows `waba_id` alone. A finished dialog must not be read as
+    // a failure over a field the server can look up itself (lib/whatsapp-number-onboarding).
+    const kept = {
+      type: "WA_EMBEDDED_SIGNUP",
+      event: "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING",
+      data: { waba_id: "111222333" },
+    }
+    expect(readSignupMessage("https://www.facebook.com", kept)).toEqual({
+      wabaId: "111222333",
+      phoneNumberId: "",
+      signupEvent: "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING",
+      businessId: null,
+    })
+  })
+
+  it("still refuses a message with no account id, or with a malformed number", () => {
+    expect(readSignupMessage("https://www.facebook.com", { type: "WA_EMBEDDED_SIGNUP", event: "FINISH", data: { phone_number_id: "444555666" } })).toBeNull()
+    expect(readSignupMessage("https://www.facebook.com", { type: "WA_EMBEDDED_SIGNUP", event: "FINISH", data: { waba_id: "111222333", phone_number_id: "4-4-4" } })).toBeNull()
+  })
+})
+
+describe("a number that stays in the WhatsApp Business app (coexistence)", () => {
+  it("does not register it, and says so on the channel", async () => {
+    isOnBizApp = true
+
+    const result = await completeEmbeddedSignup({ ...input, signupEvent: "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" })
+
+    // Meta: "skip the phone number registration step, as the number is already registered". There is
+    // no undo for touching that registration — the Deregister API refuses such a number.
+    expect(calls.some((c) => c.url.endsWith("/register"))).toBe(false)
+    expect(result).toMatchObject({ ok: true, registration: "already_connected", coexistence: true })
+    expect(db.rows[0].settings).toMatchObject({
+      coexistence: true,
+      onboardingMode: "coexistence",
+      onboardingReason: "graph_says_business_app",
+      isOnBizApp: true,
+    })
+    // The channel is live and sendable; only the registration call was skipped.
+    expect(db.rows[0].isActive).toBe(true)
+    expect(db.rows[0].settings).not.toHaveProperty("registrationPin")
+  })
+
+  it("believes the dialog when Graph will not answer", async () => {
+    isOnBizApp = "unreadable"
+    phoneStatus = "PENDING"
+
+    const result = await completeEmbeddedSignup({ ...input, signupEvent: "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" })
+
+    expect(result).toMatchObject({ ok: true, coexistence: true })
+    expect(calls.some((c) => c.url.endsWith("/register"))).toBe(false)
+    expect(db.rows[0].settings).toMatchObject({ onboardingReason: "signup_event_says_business_app" })
+  })
+
+  it("refuses to connect a number Meta describes two ways at once", async () => {
+    isOnBizApp = false
+
+    const result = await completeEmbeddedSignup({ ...input, signupEvent: "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" })
+
+    expect(result).toMatchObject({ ok: false, step: "platform" })
+    // Nothing registered, nothing subscribed, nothing saved: the owner retries instead of owning a
+    // channel we cannot describe.
+    expect(calls.some((c) => c.url.endsWith("/register"))).toBe(false)
+    expect(calls.some((c) => c.url.endsWith("/subscribed_apps"))).toBe(false)
+    expect(db.rows).toEqual([])
+  })
+
+  it("finds the number itself when Meta's event named only the account", async () => {
+    isOnBizApp = true
+
+    const result = await completeEmbeddedSignup({
+      ...input,
+      phoneNumberId: null,
+      signupEvent: "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING",
+    })
+
+    expect(result).toMatchObject({ ok: true, coexistence: true, displayPhoneNumber: "+994 50 123 45 67" })
+    expect(db.rows[0].phoneNumberId).toBe("444555666")
+  })
+
+  it("still registers an ordinary number, exactly as before", async () => {
+    // The live path, untouched: no coexistence signal anywhere.
+    const result = await completeEmbeddedSignup(input)
+
+    expect(result).toMatchObject({ ok: true, registration: "registered", coexistence: false })
+    expect(calls.some((c) => c.url.endsWith("/register"))).toBe(true)
+    expect(db.rows[0].settings).toMatchObject({ coexistence: false, onboardingReason: "no_signal" })
   })
 })

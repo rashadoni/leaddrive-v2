@@ -7,6 +7,7 @@ import { sendWhatsAppMessage, resolveWhatsAppConfig } from "@/lib/whatsapp"
 import { fetchAndStoreWaMedia } from "@/lib/whatsapp-media"
 import { sanitizeForPrompt, sanitizeLog } from "@/lib/sanitize"
 import { describeWaMessage } from "@/lib/whatsapp-message-text"
+import { holdsAutomaticReply } from "@/lib/inbox/whatsapp-reply-hold"
 import { getAnthropicClient } from "@/lib/ai/anthropic-client"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { scoreAiResponse, qualityMetadata } from "@/lib/ai/response-scorer"
@@ -1086,6 +1087,12 @@ async function processMessages(
       ?? null)
     : null
 
+  // On a number that also lives in the WhatsApp Business app, the team answers from the phone and we
+  // must not answer first — our reply leaves inside this request, theirs takes half a minute. The
+  // message is still stored and still becomes a ticket; the minute-by-minute backlog agent takes the
+  // turn if nobody answered (lib/inbox/whatsapp-reply-hold).
+  const replyHeld = holdsAutomaticReply(channelConfig.settings)
+
   for (const msg of messages) {
     const waId = msg.from || msg.from_user_id || msg.from_parent_user_id || "" // sender's phone number or BSUID
     if (!waId) continue
@@ -1413,7 +1420,7 @@ async function processMessages(
         },
       }
     }
-    if (!flowTookOwnership && msg.type === "text" && text.trim()) {
+    if (!replyHeld && !flowTookOwnership && msg.type === "text" && text.trim()) {
       const { handleDemoWhatsAppInbound } = await import("@/lib/demo-center/demo-whatsapp-agent")
       const demo = await handleDemoWhatsAppInbound({
         organizationId: orgId,
@@ -1423,7 +1430,7 @@ async function processMessages(
         conversationId: convId,
       }, { fileTicket: fileDemoTicket })
       if (demo.handled) continue
-    } else if (!flowTookOwnership && text.trim()) {
+    } else if (!replyHeld && !flowTookOwnership && text.trim()) {
       const { fileDemoWhatsAppMedia } = await import("@/lib/demo-center/demo-whatsapp-agent")
       if (await fileDemoWhatsAppMedia({ organizationId: orgId, waPhone: waId }, { fileTicket: fileDemoTicket })) continue
     }
@@ -1436,7 +1443,7 @@ async function processMessages(
     // Only a typed message or a tapped button: other interactive replies (a
     // call permission, say) carry no words to book from.
     const replyId = asStringOrNull(msg.interactive?.button_reply?.id) ?? asStringOrNull(msg.interactive?.list_reply?.id)
-    if (!flowTookOwnership && convId && text.trim() && (msg.type === "text" || (msg.type === "interactive" && replyId))) {
+    if (!replyHeld && !flowTookOwnership && convId && text.trim() && (msg.type === "text" || (msg.type === "interactive" && replyId))) {
       try {
         const { handleWhatsAppBookingTurn } = await import("@/lib/booking/whatsapp-agent")
         const booking = await handleWhatsAppBookingTurn({
@@ -1478,6 +1485,14 @@ async function processMessages(
     // An uncertain/pending flow delivery owns this turn. Preserve ticket ingestion,
     // but never add a second reply through reopen, rules, demo or native AI.
     if (flowTookOwnership) continue
+
+    // Same rule for a held channel, and after the ticket on purpose: the operator still sees the
+    // message and the request still files it — only the sending stops. Everything below this line
+    // writes to the customer (the ticket-reopen notice included), so one guard covers them all.
+    if (replyHeld) {
+      console.log(`[WA Webhook] reply held for ${sanitizeLog(waId)} — the team answers from the WhatsApp Business app`)
+      continue
+    }
 
     if (inboundTicket.reopened && inboundTicket.ticketNumber) {
       // WA-specific: notify the customer that their ticket was reopened.

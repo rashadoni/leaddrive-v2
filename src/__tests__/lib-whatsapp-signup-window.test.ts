@@ -58,7 +58,8 @@ describe("readRelayedSignup", () => {
 
   it("reads the window's result from the app origin", () => {
     expect(readRelayedSignup(APP, connected, APP)).toEqual({
-      kind: "connected", code: "ONE_TIME_CODE", wabaId: "111222333", phoneNumberId: "444555666", businessId: "777",
+      kind: "connected", code: "ONE_TIME_CODE", wabaId: "111222333", phoneNumberId: "444555666",
+      signupEvent: null, businessId: "777",
     })
     expect(readRelayedSignup(APP, { type: WHATSAPP_SIGNUP_RELAY_TYPE, result: "cancel" }, APP)).toEqual({ kind: "cancel" })
     expect(readRelayedSignup(APP, { type: WHATSAPP_SIGNUP_RELAY_TYPE, result: "failed" }, APP)).toEqual({ kind: "failed" })
@@ -71,5 +72,29 @@ describe("readRelayedSignup", () => {
     expect(readRelayedSignup(APP, { ...connected, wabaId: "abc" }, APP)).toBeNull()
     expect(readRelayedSignup(APP, { ...connected, code: "" }, APP)).toBeNull()
     expect(readRelayedSignup(APP, JSON.stringify(connected), APP)).toBeNull()
+    // A number that is present must still be a number; only an absent one is allowed through.
+    expect(readRelayedSignup(APP, { ...connected, phoneNumberId: "4-4-4" }, APP)).toBeNull()
+  })
+
+  it("relays a coexistence result that names the account but no number", () => {
+    // Meta's own example of that completion event carries `waba_id` alone, and the server resolves
+    // the number from the account rather than failing a dialog the customer finished.
+    const kept = { ...connected, phoneNumberId: undefined, signupEvent: "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" }
+
+    expect(readRelayedSignup(APP, kept, APP)).toEqual({
+      kind: "connected", code: "ONE_TIME_CODE", wabaId: "111222333", phoneNumberId: "",
+      signupEvent: "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING", businessId: "777",
+    })
+  })
+})
+
+describe("signupWindowUrl: which of Meta's two paths the window opens", () => {
+  it("asks for the WhatsApp Business app path only when told to", () => {
+    const keep = new URL(signupWindowUrl("https://zeytun.leaddrivecrm.org", null, APP, { keepBusinessApp: true }))
+    expect(keep.searchParams.get("keepApp")).toBe("1")
+
+    // Absent means the path this product has always taken, so an older cached tab is unaffected.
+    const plain = new URL(signupWindowUrl("https://zeytun.leaddrivecrm.org", null, APP))
+    expect(plain.searchParams.has("keepApp")).toBe(false)
   })
 })

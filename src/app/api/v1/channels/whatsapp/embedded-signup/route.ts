@@ -11,8 +11,11 @@ import { completeEmbeddedSignup, whatsappPlatformApp } from "@/lib/whatsapp-embe
  * GET  — what the browser needs to open Meta's dialog: the app id and the Embedded Signup
  *        configuration id. Both are public identifiers; the app secret never leaves the server.
  *        `configured: false` hides the button.
- * POST — the result of the dialog ({ code, wabaId, phoneNumberId, businessId? }); finishes the
- *        onboarding server-side and saves the channel in the caller's workspace.
+ * POST — the result of the dialog ({ code, wabaId, phoneNumberId?, signupEvent?, businessId? });
+ *        finishes the onboarding server-side and saves the channel in the caller's workspace.
+ *        `phoneNumberId` is optional because Meta's coexistence completion event may carry only the
+ *        account id, and `signupEvent` is how the browser reports that the customer kept their
+ *        WhatsApp Business app (lib/whatsapp-number-onboarding).
  *
  * Admin-only, like every other channel credential change (lib/channels-access).
  */
@@ -28,7 +31,8 @@ export async function GET(req: NextRequest) {
 const bodySchema = z.object({
   code: z.string().min(1).max(4096),
   wabaId: z.string().regex(/^\d{5,25}$/),
-  phoneNumberId: z.string().regex(/^\d{5,25}$/),
+  phoneNumberId: z.string().regex(/^\d{5,25}$/).optional().nullable(),
+  signupEvent: z.string().max(120).optional().nullable(),
   businessId: z.string().regex(/^\d{5,25}$/).optional().nullable(),
 })
 
@@ -45,7 +49,8 @@ export async function POST(req: NextRequest) {
       organizationId: gate.orgId,
       code: parsed.data.code,
       wabaId: parsed.data.wabaId,
-      phoneNumberId: parsed.data.phoneNumberId,
+      phoneNumberId: parsed.data.phoneNumberId ?? null,
+      signupEvent: parsed.data.signupEvent ?? null,
       businessId: parsed.data.businessId ?? null,
       createdBy: gate.userId,
     })

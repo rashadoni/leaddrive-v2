@@ -63,6 +63,8 @@ export type AppEchoOutcome = {
   revoked: number
   edited: number
   skipped: number
+  /** Meta sent us back a message we had sent through the Cloud API ourselves — see below. */
+  ownSendsEchoed: number
 }
 
 function str(value: unknown): string | null {
@@ -214,7 +216,7 @@ export async function ingestWhatsAppAppEcho(params: {
 }): Promise<AppEchoOutcome> {
   const { channel, value } = params
   const organizationId = channel.organizationId
-  const out: AppEchoOutcome = { stored: 0, duplicates: 0, revoked: 0, edited: 0, skipped: 0 }
+  const out: AppEchoOutcome = { stored: 0, duplicates: 0, revoked: 0, edited: 0, skipped: 0, ownSendsEchoed: 0 }
   const echoes = Array.isArray(value.message_echoes) ? value.message_echoes : []
   const businessNumber = str(value.metadata?.phone_number_id) ?? str(value.metadata?.display_phone_number) ?? "whatsapp"
   const displayPhoneNumber = str(value.metadata?.display_phone_number)
@@ -275,10 +277,29 @@ export async function ingestWhatsAppAppEcho(params: {
     // concurrent one into P2002 (same two layers as inbound, see meta-inbound-idempotency).
     const already = await prisma.channelMessage.findFirst({
       where: { organizationId, channelType: "whatsapp", direction: "outbound", externalId: messageId },
-      select: { id: true },
+      select: { id: true, metadata: true },
     }).catch(() => null)
     if (already) {
-      out.duplicates += 1
+      // Two different reasons to find a row with this id, and they are worth telling apart.
+      //
+      // An echo row means Meta redelivered a webhook — ordinary, nothing to see. A row that is NOT
+      // an echo means Meta echoed back a message WE sent through the Cloud API: its id is the wamid
+      // our own send stored. Meta's documentation only ever describes echoes of the app and its
+      // companion devices and never says whether our own sends come back, so this log line is how
+      // we find out from a real number instead of guessing.
+      //
+      // Either way no second row is written, which is what matters: our own reply must appear in the
+      // thread once. The guard is this lookup, not the wording of the documentation.
+      const wasOurOwnSend = metadataRecord(already.metadata).source !== BUSINESS_APP_SOURCE
+      if (wasOurOwnSend) {
+        out.ownSendsEchoed += 1
+        console.log(
+          `[WA Echo] Meta echoed back our own Cloud API send (wamid=${sanitizeLog(messageId)}, org=${sanitizeLog(organizationId)})`
+          + " — kept the existing row, no duplicate. Undocumented behaviour; see lib/inbox/whatsapp-app-echo.",
+        )
+      } else {
+        out.duplicates += 1
+      }
       continue
     }
 
@@ -335,10 +356,10 @@ export async function ingestWhatsAppAppEcho(params: {
     }
   }
 
-  if (out.stored || out.revoked || out.edited || out.duplicates || out.skipped) {
+  if (out.stored || out.revoked || out.edited || out.duplicates || out.skipped || out.ownSendsEchoed) {
     console.log(
       `[WA Echo] org=${sanitizeLog(organizationId)} stored=${out.stored} revoked=${out.revoked}`
-      + ` edited=${out.edited} duplicates=${out.duplicates} skipped=${out.skipped}`,
+      + ` edited=${out.edited} duplicates=${out.duplicates} ownSends=${out.ownSendsEchoed} skipped=${out.skipped}`,
     )
   }
   return out

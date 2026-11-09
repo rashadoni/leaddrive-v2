@@ -41,14 +41,39 @@ export function isSignupReturnOrigin(origin: string | null | undefined, app: str
   return url.protocol === "https:" && getOrgSubdomain(url.hostname) !== null
 }
 
-export function signupWindowUrl(returnOrigin: string, lang: string | null, app: string = appOrigin()): string {
+/** Which of Meta's two paths the window should open; `keepBusinessApp` is the coexistence one. */
+export type SignupWindowMode = { keepBusinessApp?: boolean }
+
+export function signupWindowUrl(
+  returnOrigin: string,
+  lang: string | null,
+  app: string = appOrigin(),
+  mode: SignupWindowMode = {},
+): string {
   const params = new URLSearchParams({ origin: returnOrigin })
   if (lang === "az" || lang === "ru" || lang === "en") params.set("lang", lang)
+  // Absent means the path this product has always taken. A window opened from an older cached tab
+  // therefore keeps behaving exactly as before.
+  if (mode.keepBusinessApp) params.set("keepApp", "1")
   return `${app}${WHATSAPP_SIGNUP_WINDOW_PATH}?${params.toString()}`
 }
 
+/** Read the window's mode back out of its own URL. */
+export function readSignupWindowMode(value: string | string[] | undefined): SignupWindowMode {
+  return { keepBusinessApp: (Array.isArray(value) ? value[0] : value) === "1" }
+}
+
 export type RelayedSignup =
-  | { kind: "connected"; code: string; wabaId: string; phoneNumberId: string; businessId: string | null }
+  | {
+      kind: "connected"
+      code: string
+      wabaId: string
+      /** Empty when Meta's completion event carried no number; the server looks it up. */
+      phoneNumberId: string
+      /** Meta's completion event, which says whether the customer kept their WhatsApp Business app. */
+      signupEvent: string | null
+      businessId: string | null
+    }
   | { kind: "cancel" }
   | { kind: "failed" }
 
@@ -63,8 +88,12 @@ export function readRelayedSignup(origin: string, raw: unknown, app: string = ap
   if (message.result !== "connected") return null
   const code = typeof message.code === "string" ? message.code : ""
   const wabaId = String(message.wabaId ?? "")
-  const phoneNumberId = String(message.phoneNumberId ?? "")
-  if (!code || !/^\d+$/.test(wabaId) || !/^\d+$/.test(phoneNumberId)) return null
+  // A missing number is relayed as empty rather than dropped: Meta's coexistence completion event
+  // may carry only the account id, and the server resolves the number from that account.
+  const phoneNumberId = message.phoneNumberId ? String(message.phoneNumberId) : ""
+  if (!code || !/^\d+$/.test(wabaId)) return null
+  if (phoneNumberId && !/^\d+$/.test(phoneNumberId)) return null
   const businessId = message.businessId ? String(message.businessId) : null
-  return { kind: "connected", code, wabaId, phoneNumberId, businessId }
+  const signupEvent = typeof message.signupEvent === "string" ? message.signupEvent : null
+  return { kind: "connected", code, wabaId, phoneNumberId, signupEvent, businessId }
 }
