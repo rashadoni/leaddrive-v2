@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { decideNumberOnboarding, isCoexistenceChannel, COEXISTENCE_FINISH_EVENT } from "@/lib/whatsapp-number-onboarding"
-import { holdsAutomaticReply, readReplyHoldSetting } from "@/lib/inbox/whatsapp-reply-hold"
+import { deferredReplyEnabled, holdsAutomaticReply, readReplyHoldSetting } from "@/lib/inbox/whatsapp-reply-hold"
 
 /**
  * Register this number, or leave it alone.
@@ -97,5 +97,27 @@ describe("holdsAutomaticReply", () => {
     expect(readReplyHoldSetting({ replyHold: "sometimes" })).toBe("auto")
     expect(readReplyHoldSetting({})).toBe("auto")
     expect(holdsAutomaticReply({ coexistence: true, replyHold: "sometimes" })).toBe(true)
+  })
+})
+
+describe("deferredReplyEnabled", () => {
+  it("is on exactly where a held reply is meant to arrive later", () => {
+    // Held now, answered a minute later by lib/booking/whatsapp-deferred-turn.
+    expect(deferredReplyEnabled({ coexistence: true })).toBe(true)
+    expect(deferredReplyEnabled({ coexistence: true, replyHold: "auto" })).toBe(true)
+  })
+
+  it("is off where the owner reserved the channel for people", () => {
+    // `always` is held and stays held: the deferred worker must not answer here, which is why it
+    // asks this question instead of holdsAutomaticReply.
+    expect(holdsAutomaticReply({ coexistence: true, replyHold: "always" })).toBe(true)
+    expect(deferredReplyEnabled({ coexistence: true, replyHold: "always" })).toBe(false)
+  })
+
+  it("is off on a channel that was never held", () => {
+    // Nothing to defer: these answer inside the webhook, as they always have.
+    expect(deferredReplyEnabled({ embeddedSignup: true })).toBe(false)
+    expect(deferredReplyEnabled({ coexistence: true, replyHold: "never" })).toBe(false)
+    expect(deferredReplyEnabled(null)).toBe(false)
   })
 })
