@@ -110,6 +110,13 @@ type WaRecord = Record<string, unknown>
 type WaContactPayload = WaRecord & { profile?: WaRecord; wa_id?: unknown }
 type WaCallPayload = WaRecord & { id?: unknown; event?: unknown; direction?: unknown; status?: unknown; errors?: unknown; timestamp?: unknown; start_time?: unknown; end_time?: unknown; duration?: unknown; from?: unknown; to?: unknown; session?: unknown }
 type WaCallStatusPayload = WaRecord & { id?: unknown; status?: unknown; type?: unknown; timestamp?: unknown; recipient_id?: unknown }
+/** A delivery receipt for a message we sent (sent / delivered / read / failed). */
+type WaMessageStatusPayload = {
+  id?: unknown
+  status?: unknown
+  biz_opaque_callback_data?: unknown
+  errors?: Array<{ title?: unknown; code?: unknown }>
+}
 type WaMediaPayload = WaRecord & { id?: unknown; caption?: unknown; filename?: unknown }
 type WaInboundMessagePayload = WaRecord & {
   from: string
@@ -485,7 +492,7 @@ async function handleWhatsAppChange(params: {
         console.log(`[WA Webhook] POST: no matching ChannelConfig for status phone_number_id=${sanitizeLog(String(phoneNumberId))} (tenant=${tenantSlug || "none"}) — ignoring to avoid cross-tenant status write`)
         return
       }
-      for (const status of value.statuses as unknown[]) {
+      for (const status of value.statuses as WaMessageStatusPayload[]) {
         await handleStatusUpdate(status, statusChannelConfig.organizationId)
       }
       return
@@ -2134,7 +2141,7 @@ async function handleAiAutoReply(
 
 // Handle delivery status updates (sent → delivered → read)
 async function handleStatusUpdate(
-  status: { id?: unknown; status?: unknown; biz_opaque_callback_data?: unknown; errors?: Array<{ title?: unknown; code?: unknown }> },
+  status: WaMessageStatusPayload,
   organizationId: string,
 ) {
   const waMessageId = asStringOrNull(status.id)
