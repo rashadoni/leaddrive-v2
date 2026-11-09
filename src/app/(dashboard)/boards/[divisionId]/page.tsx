@@ -234,6 +234,10 @@ function BoardInner() {
       if (mine) q.set("mine", "1")
       if (mineCreated) q.set("created", "1")
       const qs = q.toString()
+      // The address already says this (it does on every opening — the filters
+      // were read from it): replacing it with itself still sent the router to
+      // the server for the page again, beside the board's own first reads.
+      if (qs === new URLSearchParams(window.location.search).toString()) return
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
     }, 300)
     return () => clearTimeout(id)

@@ -8,6 +8,7 @@ import type { Role } from "@/lib/permissions"
 import { createRestActorContext } from "@/lib/crm-commands/actor-context"
 import { CrmCommandError } from "@/lib/crm-commands/errors"
 import { createTaskCommand } from "@/lib/crm-commands/task/create-task"
+import { BOARD_TASKS_PAGE } from "@/lib/tasks/fetch-board-tasks"
 
 export const GET = withRls(async (req, { orgId, session }) => {
   const role = session?.role || "admin"
@@ -18,7 +19,10 @@ export const GET = withRls(async (req, { orgId, session }) => {
   // `offset` (spec) wins over page-based paging when present.
   const offsetParam = sp.get("offset")
   const offset = offsetParam !== null ? parseInt(offsetParam) : (page - 1) * limit
-  if (isNaN(page) || isNaN(limit) || page < 1 || limit < 1 || limit > 200 || isNaN(offset) || offset < 0) {
+  // One board's tasks come in one answer (the board page reads all of them —
+  // fetch-board-tasks.ts); any other list stays at 200 a page.
+  const maxLimit = sp.get("divisionId") ? BOARD_TASKS_PAGE : 200
+  if (isNaN(page) || isNaN(limit) || page < 1 || limit < 1 || limit > maxLimit || isNaN(offset) || offset < 0) {
     return NextResponse.json({ error: "Invalid page or limit" }, { status: 400 })
   }
 
