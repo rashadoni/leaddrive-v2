@@ -49,7 +49,10 @@ describe("dashboard AI launcher placement", () => {
     expect(voice).toContain("createPortal(launcher, activeInlineHost)")
     expect(voiceConsole).toContain("if (orbPortalTarget) return createPortal(orbControl, orbPortalTarget)")
     expect(voiceConsole).toContain("if (!showFloatingOrb) return null")
-    expect(voiceConsole).toContain('inline ? "h-9 w-9" : "h-14 w-14"')
+    // В шапке — кнопка со словом («Голос» / «Стоп»), на экранах без шапки —
+    // круглая плавающая (владелец 2026-11-09: «сделай более заметной»).
+    expect(voiceConsole).toContain('inline ? "h-9" : "h-14 w-14"')
+    expect(voiceConsole).toContain('data-testid="voice-assistant-launcher-label"')
     // The inline line appears only when there is something to say. Its list of
     // conditions grows as new warnings are added (unapplied noise suppression,
     // 2026-09-20), so pin that each one participates rather than their order —

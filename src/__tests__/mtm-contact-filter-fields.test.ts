@@ -281,6 +281,12 @@ beforeEach(async () => {
   root = createRoot(container)
   await act(async () => { root.render(createElement(MtmContactExplorer)) })
   await settle()
+  // Список грузится настоящими маршрутами: шести тактов на занятом раннере CI
+  // не хватало (2026-11-09, пустой список в первом тесте). Ждём сам список —
+  // счётчик «Tapıldı» появляется вместе с ним, — а не число тактов.
+  for (let attempt = 0; attempt < 200 && !container.textContent?.includes("Tapıldı"); attempt += 1) {
+    await settle(10)
+  }
 })
 
 afterEach(async () => {
