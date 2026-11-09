@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { hmacToken } from "@/lib/secure-token"
-import { resolveWhatsAppConfig } from "@/lib/whatsapp"
 import { DEMO_WHATSAPP_MAX_AI_REPLIES } from "./demo-whatsapp-agent"
 import {
   DEMO_WHATSAPP_CONSENT_VERSION,
@@ -12,7 +11,7 @@ import { demoCallFirstName } from "./call-prompt"
 import { normalizeDemoPhone } from "./phone-verification"
 import { inDemoSalesOrganization } from "./sales-org"
 import { DEMO_WHATSAPP_TICKET_MESSAGES, demoWhatsAppTicketView, type DemoWhatsAppTicketView } from "./demo-whatsapp-ticket-view"
-import { demoWhatsAppConversationId, demoWhatsAppSender } from "./whatsapp-number"
+import { demoWhatsAppChannel, demoWhatsAppConversationId, demoWhatsAppSender } from "./whatsapp-number"
 
 /**
  * The demo's live WhatsApp thread: the prospect's own phone and the demo's AI
@@ -330,7 +329,11 @@ export async function sendDemoWhatsAppWelcome(params: {
 
   const firstName = demoCallFirstName(params.requestName) ?? DEMO_WHATSAPP_WELCOME.fallbackName
   const entered = await inDemoSalesOrganization(async (organizationId) => {
-    const config = await resolveWhatsAppConfig(organizationId)
+    // The named demo number, not whichever channel comes back first: the sales
+    // organisation holds three, one of them the owner's personal working number
+    // (./whatsapp-number.ts). Writing the welcome from a different number than
+    // the one the visitor was shown is the failure this avoids.
+    const config = await demoWhatsAppChannel(organizationId)
     if (!config) return { status: "failed" as const }
     const delivery = await sendDemoWhatsAppWelcomeTemplate(config, { to: phone.e164, firstName })
     if (delivery.status !== "sent") return delivery
