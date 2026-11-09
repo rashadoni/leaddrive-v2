@@ -6,8 +6,14 @@ vi.mock("@/lib/prisma", () => ({
   },
 }))
 
-vi.mock("@/lib/ai/intent-classifier", () => ({
-  classifyIntent: vi.fn(),
+// The intent is read from the words (no model since 2026-11-09). The real
+// classifier runs here; a spy only shows whether it was consulted at all.
+vi.mock("@/lib/ai/intent-classifier", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/ai/intent-classifier")>()
+  return { ...real, classifyIntent: vi.fn(real.classifyIntent) }
+})
+vi.mock("@anthropic-ai/sdk", () => ({
+  default: function NoModel() { throw new Error("routing must not call a model") },
 }))
 
 import { routeToAgent } from "@/lib/ai/agent-router"
@@ -91,28 +97,33 @@ describe("agent-router — routeToAgent", () => {
     expect(classifyIntent).not.toHaveBeenCalled()
   })
 
-  it("routes sales_inquiry to the sales agent", async () => {
+  it("routes a sales question to the sales agent, by its words", async () => {
     orgHas(salesAgent, supportAgent, generalAgent)
-    vi.mocked(classifyIntent).mockResolvedValue({ intent: "sales_inquiry", confidence: 0.9 })
     const result = await routeToAgent(orgId, "What is your pricing?")
-    expect(result).toEqual({ agent: salesAgent, intent: "sales_inquiry", confidence: 0.9, classified: true, isHandoff: false })
+    expect(result).toEqual({ agent: salesAgent, intent: "sales_inquiry", confidence: 0.7, classified: true, isHandoff: false })
+    expect((await routeToAgent(orgId, "Покажи сделки в воронке")).agent).toEqual(salesAgent)
+    expect((await routeToAgent(orgId, "Bu ay neçə sövdələşmə bağlanıb?")).agent).toEqual(salesAgent)
   })
 
-  it("routes support_request and billing_question to the support agent", async () => {
+  it("routes support and billing questions to the support agent", async () => {
     orgHas(salesAgent, supportAgent, generalAgent)
-    vi.mocked(classifyIntent).mockResolvedValueOnce({ intent: "support_request", confidence: 0.85 })
     expect((await routeToAgent(orgId, "My app is broken")).agent).toEqual(supportAgent)
-    vi.mocked(classifyIntent).mockResolvedValueOnce({ intent: "billing_question", confidence: 0.8 })
     expect((await routeToAgent(orgId, "Where is my invoice?")).agent).toEqual(supportAgent)
+    expect((await routeToAgent(orgId, "Какие тикеты открыты?")).agent).toEqual(supportAgent)
+  })
+
+  it("a question with no clear words goes to the general agent", async () => {
+    orgHas(salesAgent, supportAgent, generalAgent)
+    expect((await routeToAgent(orgId, "Привет! Ты на связи?")).agent).toEqual(generalAgent)
+    // Two areas named equally: neither wins.
+    expect((await routeToAgent(orgId, "Отчёт по продажам")).agent).toEqual(generalAgent)
   })
 
   it("falls back to the general agent, then to any active agent", async () => {
     orgHas(supportAgent, generalAgent)
-    vi.mocked(classifyIntent).mockResolvedValueOnce({ intent: "sales_inquiry", confidence: 0.9 })
     expect((await routeToAgent(orgId, "What is pricing?")).agent).toEqual(generalAgent)
 
     orgHas(salesAgent, supportAgent)
-    vi.mocked(classifyIntent).mockResolvedValueOnce({ intent: "data_analysis", confidence: 0.7 })
     expect((await routeToAgent(orgId, "Show me analytics")).agent).toEqual(salesAgent)
   })
 
@@ -126,16 +137,14 @@ describe("agent-router — routeToAgent", () => {
     expect(classifyIntent).not.toHaveBeenCalled()
   })
 
-  it("asks the model as soon as two intents would land on different agents", async () => {
+  it("reads the words as soon as two intents would land on different agents", async () => {
     orgHas(salesAgent, generalAgent)
-    vi.mocked(classifyIntent).mockResolvedValue({ intent: "general", confidence: 0.6 })
     expect((await routeToAgent(orgId, "Hello")).agent).toEqual(generalAgent)
     expect(classifyIntent).toHaveBeenCalledTimes(1)
   })
 
   it("reports a handoff only when the agent changes from the previous one", async () => {
     orgHas(salesAgent, supportAgent)
-    vi.mocked(classifyIntent).mockResolvedValue({ intent: "support_request", confidence: 0.9 })
     expect((await routeToAgent(orgId, "My app is broken", "agent-sales")).isHandoff).toBe(true)
     expect((await routeToAgent(orgId, "Still broken", "agent-support")).isHandoff).toBe(false)
     expect((await routeToAgent(orgId, "Hi")).isHandoff).toBe(false)

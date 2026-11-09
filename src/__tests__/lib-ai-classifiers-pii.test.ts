@@ -53,17 +53,14 @@ beforeEach(() => {
 })
 
 describe("AI classifier PII masking", () => {
-  it("masks raw chat message PII before intent classification", async () => {
-    h.responseText = JSON.stringify({ intent: "support_request", confidence: 0.92 })
+  it("classifies a chat message's intent without sending it anywhere", async () => {
+    // Since 2026-11-09 the intent is read from the words: the message, PII
+    // and all, never leaves the process.
+    const result = classifyIntent("Need help for aysel@example.com, the export is broken, call +994 50 123 45 67")
 
-    const result = await classifyIntent("Need help for aysel@example.com, call +994 50 123 45 67")
-    const payload = h.lastRequest?.messages[0]?.content ?? ""
-
-    expect(result).toEqual({ intent: "support_request", confidence: 0.92 })
-    expect(payload).toContain("[EMAIL_")
-    expect(payload).toContain("[PHONE_")
-    expect(payload).not.toContain("aysel@example.com")
-    expect(payload).not.toContain("+994 50 123 45 67")
+    expect(result.intent).toBe("support_request")
+    expect(h.lastRequest).toBeNull()
+    expect(h.clientOptions).toBeNull()
   })
 
   it("masks social/survey sentiment text PII before Anthropic", async () => {
