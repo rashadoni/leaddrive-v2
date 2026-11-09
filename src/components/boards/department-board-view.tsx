@@ -55,7 +55,7 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
   const [view, setView] = useState<"board" | "reports">("board")
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
 
-  const TASK_CAP = 200 // GET /tasks rejects limit > 200; matches the single-board page
+  const TASK_CAP = 200 // GET /tasks rejects limit > 200 unless the request names one board
 
   // The department's child sections (the divisions list already filters to what
   // the user can see, so a section-scoped member only gets their own sections).

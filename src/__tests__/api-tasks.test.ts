@@ -163,6 +163,22 @@ describe("GET /api/v1/tasks", () => {
     expect(res.status).toBe(400)
   })
 
+  it("takes a whole board in one answer — up to 1000 when the request names a board, never more", async () => {
+    // Admin: the board filter needs no board-permission lookup.
+    vi.mocked(getSession).mockResolvedValue(SESSION as any)
+    vi.mocked(prisma.task.findMany).mockResolvedValue([])
+    vi.mocked(prisma.task.count).mockResolvedValue(732)
+
+    const board = await GET(makeRequest("http://localhost/api/v1/tasks?divisionId=div-A&limit=1000&offset=0"))
+    expect(board.status).toBe(200)
+    expect(vi.mocked(prisma.task.findMany).mock.calls.at(-1)?.[0]).toMatchObject({ take: 1000, skip: 0 })
+
+    const past = await GET(makeRequest("http://localhost/api/v1/tasks?divisionId=div-A&limit=1001"))
+    expect(past.status).toBe(400)
+    const unscoped = await GET(makeRequest("http://localhost/api/v1/tasks?limit=1000"))
+    expect(unscoped.status).toBe(400)
+  })
+
   it("returns tasks with filters (assignedTo, status)", async () => {
     vi.mocked(getSession).mockResolvedValue(SESSION as any)
     const mockTasks = [{ id: "t1", title: "Task 1", status: "pending", assignedTo: "user-1" }]

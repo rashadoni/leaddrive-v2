@@ -7,8 +7,13 @@
  * became real when Zeytun's marketing board was brought over from Bordio with
  * 1772 tasks (2026-11-06). The first page says how many there are; the rest are
  * asked for at once. The list orders by id last, so pages never overlap or skip.
+ *
+ * A board's page is 1000, not the list's usual 200 (2026-11-09): each further
+ * page was asked only after the first had answered, so a board past 200 tasks —
+ * six of Zeytun's, up to 732 — drew its table one whole round trip later. GET
+ * /api/v1/tasks takes up to this many only when the request names a board.
  */
-export const BOARD_TASKS_PAGE = 200
+export const BOARD_TASKS_PAGE = 1000
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 
