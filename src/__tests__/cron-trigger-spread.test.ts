@@ -16,6 +16,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, wr
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { runnableCronLines } from "./helpers/installed-cron"
 
 const ROOT = process.cwd()
 const TRIGGER = join(ROOT, "scripts/cron-trigger.sh")
@@ -133,6 +134,8 @@ function installCrontab(initial: string) {
   chmodSync(join(bin, "crontab"), 0o755)
   writeFileSync(join(scripts, "cron-trigger.sh"), "#!/bin/sh\nexit 0\n")
   chmodSync(join(scripts, "cron-trigger.sh"), 0o755)
+  writeFileSync(join(scripts, "cron-dispatch.sh"), "#!/bin/sh\nexit 0\n")
+  chmodSync(join(scripts, "cron-dispatch.sh"), 0o755)
   execFileSync("bash", [INSTALLER], {
     env: { ...process.env, CRONTAB_STATE: state, LOG: join(root, "cron.log"), PATH: `${bin}:${process.env.PATH ?? ""}`, SCRIPTS: scripts },
     stdio: "pipe",
@@ -151,11 +154,10 @@ function fieldMatches(field: string, value: number, max: number) {
   })
 }
 
-/** Active schedule lines of the installed crontab, as [minute, hour, target]. */
+/** Scheduled jobs of the installed crontab, as [minute, hour, target]. */
 function activeTicks(crontab: string) {
-  return crontab
-    .split("\n")
-    .filter((line) => !line.trimStart().startsWith("#") && line.includes("cron-trigger.sh "))
+  return runnableCronLines(crontab)
+    .filter((line) => line.includes("cron-trigger.sh "))
     .map((line) => line.trim().split(/\s+/))
     .map((fields) => ({ minute: fields[0], hour: fields[1], target: fields[6] }))
 }
@@ -176,17 +178,33 @@ function startsPerMinute(crontab: string) {
 }
 
 describe.skipIf(!hasTools)("the installed crontab spreads its ticks", () => {
-  it("sets the window before the first tick, so every tick gets it", () => {
-    const lines = installCrontab("").split("\n")
-    const env = lines.indexOf("CRON_TRIGGER_SPREAD_SECONDS=50")
-    const firstTick = lines.findIndex((line) => line.includes("cron-trigger.sh "))
-    expect(env).toBeGreaterThan(-1)
-    expect(env).toBeLessThan(firstTick)
+  // cron forks, runs PAM and logs a session for every line due in a minute, all
+  // in its first second (production 2026-11-08: 25 lines, /api/v1/ping 0.99 s).
+  // So cron runs one line, the dispatcher, and every job is a `#@<second>`
+  // line it starts in that second (scripts/cron-dispatch.sh).
+  it("gives cron one line to start: the dispatcher", () => {
+    const installed = installCrontab("17 * * * * /other/job\n")
+    const block = installed.slice(installed.indexOf("# BEGIN LEADDRIVE RESILIENCE CRONS"))
+    const cronLines = block.split("\n").filter((line) => line.trim() !== "" && !line.trimStart().startsWith("#"))
+    expect(cronLines).toEqual([`* * * * * ${join(root, "scripts", "cron-dispatch.sh")} >> ${join(root, "cron.log")} 2>&1`])
+    expect(installed.startsWith("17 * * * * /other/job\n")).toBe(true)
+    expect(installed).not.toContain("CRON_TRIGGER_SPREAD_SECONDS=")
   })
 
-  it("keeps one window line when the installer runs again", () => {
-    const reinstalled = installCrontab(installCrontab(""))
-    expect(reinstalled.split("\n").filter((line) => line.startsWith("CRON_TRIGGER_SPREAD_SECONDS="))).toHaveLength(1)
+  it("starts each job in its target's own second, the one cron-trigger.sh used to sleep", () => {
+    const jobs = installCrontab("").split("\n").filter((line) => line.startsWith("#@"))
+    expect(jobs.length).toBeGreaterThan(30)
+    for (const line of jobs) {
+      const fields = line.split(/\s+/)
+      expect(Number(fields[0].slice(2))).toBe(offsetOf(fields[7], 50))
+    }
+  })
+
+  it("installs the same crontab again, with one dispatcher line", () => {
+    const once = installCrontab("")
+    const twice = installCrontab(once)
+    expect(twice).toBe(once)
+    expect(twice.split("\n").filter((line) => line.includes("cron-dispatch.sh"))).toHaveLength(1)
   })
 
   it("never starts more than two schedules in the same second of the busiest minute", () => {

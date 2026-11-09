@@ -511,6 +511,8 @@ describe("runtime release boundaries", () => {
       "cron-cdp-identity-scan.sh",
       "cron-cdp-profile-refresh.sh",
       "cron-customer-insights-snapshot.sh",
+      // The one line cron starts; it starts the schedule (2026-11-09).
+      "cron-dispatch.sh",
       "cron-trigger.sh",
     ])
     expect(read("scripts/install-resilience-crons.sh"))

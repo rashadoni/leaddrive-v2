@@ -16,6 +16,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
+import { runnableCronLines } from "./helpers/installed-cron"
 
 const ESCALATION = "/api/cron/sla-escalation"
 const AUTO_CLOSE = "/api/cron/ticket-closure-requests"
@@ -38,6 +39,8 @@ function installCrontab(initialCrontab: string) {
     chmodSync(join(bin, "flock"), 0o755)
     writeFileSync(join(scripts, "cron-trigger.sh"), "#!/bin/sh\nexit 0\n")
     chmodSync(join(scripts, "cron-trigger.sh"), 0o755)
+    writeFileSync(join(scripts, "cron-dispatch.sh"), "#!/bin/sh\nexit 0\n")
+    chmodSync(join(scripts, "cron-dispatch.sh"), 0o755)
 
     execFileSync("bash", [join(process.cwd(), "scripts/install-resilience-crons.sh")], {
       env: {
@@ -56,9 +59,7 @@ function installCrontab(initialCrontab: string) {
 }
 
 function activeSchedules(crontab: string, endpoint: string) {
-  return crontab
-    .split("\n")
-    .filter((line) => !line.trimStart().startsWith("#") && line.includes(`cron-trigger.sh ${endpoint} `))
+  return runnableCronLines(crontab).filter((line) => line.includes(`cron-trigger.sh ${endpoint} `))
     .map((line) => line.trim().split(/\s+/).slice(0, 5).join(" "))
 }
 

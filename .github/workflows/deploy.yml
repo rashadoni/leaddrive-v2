@@ -1976,7 +1976,7 @@ jobs:
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             'set -euo pipefail
-             CRONTAB="$(crontab -l 2>/dev/null)"
+             CRONTAB="$(crontab -l 2>/dev/null | sed -E "s/^#@[0-9]+ //")"
              ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
                $0 !~ /^[[:space:]]*#/ &&
                $0 ~ /cron-trigger\.sh \/api\/cron\/commitment-escalation/ { count++ }
@@ -2003,7 +2003,7 @@ jobs:
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             'set -euo pipefail
-             CRONTAB="$(crontab -l 2>/dev/null)"
+             CRONTAB="$(crontab -l 2>/dev/null | sed -E "s/^#@[0-9]+ //")"
              ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
                $0 !~ /^[[:space:]]*#/ &&
                $0 ~ /cron-trigger\.sh \/api\/cron\/mtm-route-day-close/ { count++ }
@@ -2030,7 +2030,7 @@ jobs:
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             'set -euo pipefail
-             CRONTAB="$(crontab -l 2>/dev/null)"
+             CRONTAB="$(crontab -l 2>/dev/null | sed -E "s/^#@[0-9]+ //")"
              ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
                $0 !~ /^[[:space:]]*#/ &&
                $0 ~ /cron-trigger\.sh \/api\/cron\/mtm-attendance-reports/ { count++ }
@@ -2057,7 +2057,7 @@ jobs:
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             'set -euo pipefail
-             CRONTAB="$(crontab -l 2>/dev/null)"
+             CRONTAB="$(crontab -l 2>/dev/null | sed -E "s/^#@[0-9]+ //")"
              ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
                $0 !~ /^[[:space:]]*#/ &&
                $0 ~ /cron-trigger\.sh \/api\/cron\/mtm-attendance-reminders/ { count++ }
@@ -2084,7 +2084,7 @@ jobs:
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             'set -euo pipefail
-             CRONTAB="$(crontab -l 2>/dev/null)"
+             CRONTAB="$(crontab -l 2>/dev/null | sed -E "s/^#@[0-9]+ //")"
              ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
                $0 !~ /^[[:space:]]*#/ &&
                $0 ~ /cron-trigger\.sh \/api\/cron\/mtm-customer-eta/ { count++ }
@@ -2111,7 +2111,7 @@ jobs:
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             'set -euo pipefail
-             CRONTAB="$(crontab -l 2>/dev/null)"
+             CRONTAB="$(crontab -l 2>/dev/null | sed -E "s/^#@[0-9]+ //")"
              ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
                $0 !~ /^[[:space:]]*#/ &&
                $0 ~ /cron-trigger\.sh \/api\/cron\/campaign-scheduled-send/ { count++ }
@@ -2138,7 +2138,7 @@ jobs:
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             'set -euo pipefail
-             CRONTAB="$(crontab -l 2>/dev/null)"
+             CRONTAB="$(crontab -l 2>/dev/null | sed -E "s/^#@[0-9]+ //")"
              for ENDPOINT in renewal-alerts contract-approval-escalations contract-milestone-reminders esign-reminders; do
                ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk -v target="cron-trigger.sh /api/cron/$ENDPOINT " '\''
                  $0 !~ /^[[:space:]]*#/ && index($0, target) { count++ }
@@ -2167,7 +2167,7 @@ jobs:
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             'set -euo pipefail
-             CRONTAB="$(crontab -l 2>/dev/null)"
+             CRONTAB="$(crontab -l 2>/dev/null | sed -E "s/^#@[0-9]+ //")"
              ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
                $0 !~ /^[[:space:]]*#/ &&
                $0 ~ /cron-trigger\.sh \/api\/cron\/demo-social-release/ { count++ }
@@ -2198,7 +2198,7 @@ jobs:
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             'set -euo pipefail
-             CRONTAB="$(crontab -l 2>/dev/null)"
+             CRONTAB="$(crontab -l 2>/dev/null | sed -E "s/^#@[0-9]+ //")"
              ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
                $0 !~ /^[[:space:]]*#/ &&
                $0 ~ /cron-trigger\.sh \/api\/cron\/missed-inbound-reconciliation/ { count++ }
@@ -2225,7 +2225,7 @@ jobs:
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             'set -euo pipefail
-             CRONTAB="$(crontab -l 2>/dev/null)"
+             CRONTAB="$(crontab -l 2>/dev/null | sed -E "s/^#@[0-9]+ //")"
              ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
                $0 !~ /^[[:space:]]*#/ &&
                $0 ~ /cron-trigger\.sh \/api\/cron\/voice-call-queues/ { count++ }
@@ -2311,7 +2311,7 @@ jobs:
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             'set -euo pipefail
-             CRONTAB="$(crontab -l 2>/dev/null)"
+             CRONTAB="$(crontab -l 2>/dev/null | sed -E "s/^#@[0-9]+ //")"
              ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
                $0 !~ /^[[:space:]]*#/ &&
                $0 ~ /cron-trigger\.sh \/api\/cron\/chatwoot-inbound-poll/ { count++ }
@@ -2326,6 +2326,45 @@ jobs:
                exit 1
              fi
              echo "Chatwoot inbound backstop scheduler proof passed"'
+
+      # cron itself starts one line a minute, scripts/cron-dispatch.sh, and it
+      # starts every LeadDrive job from the `#@<second>` lines of the crontab
+      # (why: its header). The scheduler proofs above call cron-trigger.sh
+      # directly, so a missing dispatcher line or one that cannot read the
+      # schedule would stop every job while all of them stay green.
+      - name: Verify the cron dispatcher starts the schedule
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'set -euo pipefail
+             DISPATCH=/usr/local/lib/leaddrive-v2/ops/current/cron-scripts/cron-dispatch.sh
+             [ -x "$DISPATCH" ] || { echo "FATAL: cron dispatcher is not executable: $DISPATCH"; exit 1; }
+             ACTIVE_COUNT="$(crontab -l 2>/dev/null | awk -v dispatch="$DISPATCH " '\''
+               $0 !~ /^[[:space:]]*#/ && $0 ~ /^\* \* \* \* \* / && index($0, dispatch) > 0 { count++ }
+               END { print count + 0 }
+             '\'')"
+             if [ "$ACTIVE_COUNT" -ne 1 ]; then
+               echo "FATAL: expected exactly one every-minute cron dispatcher line; found $ACTIVE_COUNT"
+               exit 1
+             fi
+             if ! systemctl is-active --quiet cron.service; then
+               echo "FATAL: cron.service is not active"
+               exit 1
+             fi
+             PROBLEMS="$(CRON_DISPATCH_DRY_RUN=1 "$DISPATCH" 2>&1 >/dev/null)"
+             if [ -n "$PROBLEMS" ]; then
+               printf "%s\n" "$PROBLEMS"
+               echo "FATAL: cron dispatcher could not read the schedule"
+               exit 1
+             fi
+             DUE="$(CRON_DISPATCH_DRY_RUN=1 "$DISPATCH")"
+             printf "%s\n" "$DUE"
+             if ! printf "%s\n" "$DUE" | grep -Fq "cron-trigger.sh /api/v1/journeys/process "; then
+               echo "FATAL: cron dispatcher does not see the every-minute journeys job"
+               exit 1
+             fi
+             echo "Cron dispatcher proof passed: $(printf "%s\n" "$DUE" | grep -c .) job(s) due this minute"'
 
       # F-25/F-38: `prisma migrate deploy` ran a few steps ago and can add a
       # tenant table. A table with an organizationId and no RLS does not fail —
@@ -2363,7 +2402,7 @@ jobs:
           ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             'set -euo pipefail
-             CRONTAB="$(crontab -l 2>/dev/null)"
+             CRONTAB="$(crontab -l 2>/dev/null | sed -E "s/^#@[0-9]+ //")"
              ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
                $0 !~ /^[[:space:]]*#/ &&
                $0 ~ /cron-trigger\.sh \/api\/cron\/mtm-cleanup/ { count++ }
