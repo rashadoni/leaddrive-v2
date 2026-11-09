@@ -398,30 +398,41 @@ describe("meetings day view — a big team does not bury the day", () => {
     locale: "ru", timeZone: "Asia/Baku", messages: ru,
     children: createElement(BookingHostChips, { hosts, anyMeta: "2 встречи", selected, onSelect: () => {} }),
   } as ComponentProps<typeof NextIntlClientProvider>))
-  const names = (markup: string) => [...markup.matchAll(/Сотрудник (\d+)/g)].map((match) => Number(match[1]))
+  /** Names drawn as chips — the picker renders its list only once opened. */
+  const chipNames = (markup: string) => [...markup.matchAll(/Сотрудник (\d+)<\/span>/g)].map((match) => Number(match[1]))
 
-  it("shows only the colleagues who have something that day, and counts the rest on one button", () => {
+  it("gives a chip only to the colleagues who have something that day", () => {
     const markup = render(team(2, 30))
-    expect(names(markup)).toEqual([0, 1])
-    // 28 hidden: the button says how many, so nobody thinks they are gone.
-    expect(markup).toContain("Ещё 28")
+    expect(chipNames(markup)).toEqual([0, 1])
   })
 
-  it("keeps the chosen colleague visible even with an empty day, or the filter could not be undone", () => {
+  it("puts the rest behind one field instead of twenty-eight more chips", () => {
+    // Unfolding thirty names who have nothing that day is the wall this row
+    // exists to avoid: the day itself goes off the screen.
+    const markup = render(team(2, 30))
+    expect(markup).toContain("Ещё 28 сотрудников")
+    // Three chips — the whole team, and the two with a meeting — and one
+    // field. The twenty-eight names live in the field's own list, which it
+    // builds when opened, so none of them is on the screen until asked for.
+    expect([...markup.matchAll(/data-crm-filter=""/g)]).toHaveLength(3)
+    expect(markup).not.toContain("Сотрудник 7")
+  })
+
+  it("keeps the chosen colleague as a chip even with an empty day, or the filter could not be undone", () => {
     const markup = render(team(2, 30), "u17")
-    expect(names(markup)).toContain(17)
-    expect(markup).toContain("Ещё 27")
+    expect(chipNames(markup)).toContain(17)
+    expect(markup).toContain("Ещё 27 сотрудников")
   })
 
-  it("leaves a small team whole — collapsing four names helps nobody", () => {
+  it("leaves a small team whole — a field to search four names helps nobody", () => {
     const markup = render(team(1, 4))
-    expect(names(markup)).toEqual([0, 1, 2, 3])
+    expect(chipNames(markup)).toEqual([0, 1, 2, 3])
     expect(markup).not.toContain("Ещё")
   })
 
-  it("shows no «more» button when everyone is busy anyway", () => {
+  it("shows no field when everyone is busy anyway", () => {
     const markup = render(team(30, 30))
-    expect(names(markup)).toHaveLength(30)
+    expect(chipNames(markup)).toHaveLength(30)
     expect(markup).not.toContain("Ещё")
   })
 })
