@@ -10,7 +10,7 @@ export interface HelpVideoEntry {
 }
 
 const HELP_VIDEO_BASE_PATH = process.env.NEXT_PUBLIC_HELP_VIDEO_BASE_URL ?? "/api/help-videos"
-const HELP_VIDEO_ASSET_VERSION = "20261109-boards-guide-az-v2"
+const HELP_VIDEO_ASSET_VERSION = "20261109-boards-guide-az-full"
 const HELP_VIDEO_BLOCKED_LOCAL_TTS_SLUGS = new Set<string>()
 
 const HELP_VIDEO_ENTRIES_RAW = [
