@@ -62,6 +62,7 @@ vi.mock("@/components/reviewer-watermark", () => ({ ReviewerWatermark: () => nul
 vi.mock("@/components/tour/tour-renderer", () => ({ TourRenderer: () => null }))
 vi.mock("@/components/ticket-notifier", () => ({ TicketNotifier: () => null }))
 vi.mock("@/components/help/help-video-launcher", () => ({ HelpVideoLauncher: () => null }))
+vi.mock("@/components/help/help-video-first-visit", () => ({ HelpVideoFirstVisitPrompt: () => null }))
 vi.mock("@/components/mtm/pharmacy-promotion-outbox-sync", () => ({ PharmacyPromotionOutboxSync: () => null }))
 vi.mock("@/components/module-disabled", () => ({
   ModuleDisabled: ({ reason }: { reason: string }) => createElement("div", { "data-testid": "blocked-page" }, reason),

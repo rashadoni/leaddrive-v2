@@ -1,6 +1,7 @@
 /**
- * GET  /api/v1/users/me/preferences  → { favorites: string[], recents: {href,at}[] }
- * PUT  /api/v1/users/me/preferences  → upsert the caller's favorites/recents
+ * GET  /api/v1/users/me/preferences  → { favorites: string[], recents: {href,at}[], helpVideoSeen: string[] }
+ * PUT  /api/v1/users/me/preferences  → upsert the caller's favorites/recents;
+ *                                       helpVideoSeen slugs are ADDED to the stored set
  *
  * Per-user (NOT per-org) UI state for the App Launcher: pinned favorites +
  * recently-used modules. Self-service — every authenticated user manages only
@@ -9,6 +10,7 @@
  */
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { navItems } from "@/lib/nav-items"
 import { withRlsSessionAuth } from "@/lib/with-rls"
@@ -28,6 +30,17 @@ const LEGACY_HREF_REMAP: Record<string, string> = {
 }
 const remapHref = (href: string) => LEGACY_HREF_REMAP[href] ?? href
 
+// Sections whose «first visit — watch the video?» prompt this person has
+// already been shown (owner, 2026-11-09: once per section, per person, on any
+// device). Kept in the row's forward-compat `data` bucket — no new table.
+const MAX_HELP_VIDEO_SEEN = 300
+const helpVideoSlug = z.string().regex(/^[a-z0-9-]{1,64}$/)
+
+function storedHelpVideoSeen(data: unknown): string[] {
+  const list = (data as { helpVideoSeen?: unknown } | null)?.helpVideoSeen
+  return Array.isArray(list) ? list.filter((s): s is string => typeof s === "string") : []
+}
+
 const recentSchema = z.object({
   href: z.string(),
   at: z.number().int().nonnegative(),
@@ -36,6 +49,7 @@ const recentSchema = z.object({
 const schema = z.object({
   favorites: z.array(z.string()).optional(),
   recents: z.array(recentSchema).optional(),
+  helpVideoSeen: z.array(helpVideoSlug).max(50).optional(),
 })
 
 type Recent = { href: string; at: number }
@@ -50,6 +64,7 @@ export const GET = withRlsSessionAuth(async (_req, session) => {
       data: {
         favorites: [...new Set(((pref?.favorites as string[] | undefined) ?? []).map(remapHref))],
         recents: ((pref?.recents as Recent[] | undefined) ?? []).map((r) => ({ ...r, href: remapHref(r.href) })),
+        helpVideoSeen: storedHelpVideoSeen(pref?.data),
       },
     })
   } catch (e) {
@@ -82,11 +97,23 @@ export const PUT = withRlsSessionAuth(async (req, session) => {
     ? dedupeRecents(parsed.data.recents.map((r) => ({ ...r, href: remapHref(r.href) })).filter((r) => VALID_HREFS.has(r.href))).slice(0, MAX_RECENTS)
     : undefined
 
-  const data: { favorites?: string[]; recents?: Recent[] } = {}
+  const data: { favorites?: string[]; recents?: Recent[]; data?: Prisma.InputJsonObject } = {}
   if (favorites !== undefined) data.favorites = favorites
   if (recents !== undefined) data.recents = recents
 
   try {
+    // A prompt once shown stays shown: the request names what it just showed
+    // and the server adds it to what is stored — a tab that loaded before
+    // another one marked a section cannot take that section back off.
+    if (parsed.data.helpVideoSeen?.length) {
+      const current = await prisma.userPreference.findUnique({ where: { userId }, select: { data: true } })
+      const bucket = (current?.data && typeof current.data === "object" && !Array.isArray(current.data)
+        ? current.data
+        : {}) as Record<string, unknown>
+      const seen = [...new Set([...storedHelpVideoSeen(bucket), ...parsed.data.helpVideoSeen])].slice(-MAX_HELP_VIDEO_SEEN)
+      data.data = { ...bucket, helpVideoSeen: seen } as Prisma.InputJsonObject
+    }
+
     const pref = await prisma.userPreference.upsert({
       where: { userId },
       create: { userId, organizationId: orgId, ...data },
@@ -97,6 +124,7 @@ export const PUT = withRlsSessionAuth(async (req, session) => {
       data: {
         favorites: (pref.favorites as string[]) ?? [],
         recents: (pref.recents as Recent[]) ?? [],
+        helpVideoSeen: storedHelpVideoSeen(pref.data),
       },
     })
   } catch (e) {

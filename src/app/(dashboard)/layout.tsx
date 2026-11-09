@@ -30,6 +30,7 @@ import { TourProvider } from "@/components/tour/tour-provider"
 import { TourRenderer } from "@/components/tour/tour-renderer"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { HelpVideoLauncher } from "@/components/help/help-video-launcher"
+import { HelpVideoFirstVisitPrompt } from "@/components/help/help-video-first-visit"
 import { PharmacyPromotionOutboxSync } from "@/components/mtm/pharmacy-promotion-outbox-sync"
 import { dashboardAssistantVisibility } from "@/lib/dashboard-assistant-visibility"
 import { ReviewerWatermark } from "@/components/reviewer-watermark"
@@ -218,6 +219,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                         content (never a floating overlay), so it doesn't cover
                         the work area. Expands into a modal on click. */}
                     <HelpVideoLauncher />
+                    {/* First visit to a section with a video: offer it once (help-video-first-visit.tsx). */}
+                    <HelpVideoFirstVisitPrompt />
                     {/* Keyed on WHO is signed in, never on the token.
                         This used to be `key={outboxSessionKey}`, which carries
                         `session.iat`. Every GET /api/auth/session re-signs the
