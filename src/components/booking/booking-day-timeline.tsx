@@ -18,8 +18,8 @@
  * the right so the name underneath it stays readable, because that name is
  * exactly what the person has to read before deciding.
  */
-import { useState } from "react"
 import { useTranslations } from "next-intl"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { CalendarPlus, Clock3, TriangleAlert, Users } from "lucide-react"
 import { Hint, HintValue } from "@/components/hint"
 import { cn } from "@/lib/utils"
@@ -286,18 +286,17 @@ export function BookingHostChips({ hosts, anyMeta, selected, onSelect }: {
   onSelect: (id: string) => void
 }) {
   const t = useTranslations("booking")
-  const [expanded, setExpanded] = useState(false)
   const chip = (active: boolean) => cn(
     "flex min-h-11 max-w-full items-center gap-2.5 rounded-full border py-1 pl-1.5 pr-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
     active ? "border-primary bg-primary/5 ring-1 ring-inset ring-primary" : "border-border bg-card hover:border-primary/50",
   )
-  // Everyone, while the team is small or the row is open; otherwise the ones
-  // with meetings today and the selected one, so the filter can be undone.
+  // Everyone while the team is small; otherwise the ones with meetings today
+  // and the selected one, so the filter can always be undone.
   const big = hosts.length > CHIPS_ALWAYS_SHOWN
-  const shown = expanded || !big ? hosts : hosts.filter((host) => host.count > 0 || host.id === selected)
-  const hidden = hosts.length - shown.length
-  const collapsible = big && (hidden > 0 || expanded)
-  return <div className="flex flex-wrap gap-2" role="group" aria-label={t("colHosts")}>
+  const shownIds = new Set(big ? hosts.filter((host) => host.count > 0 || host.id === selected).map((host) => host.id) : hosts.map((host) => host.id))
+  const shown = hosts.filter((host) => shownIds.has(host.id))
+  const rest = hosts.filter((host) => !shownIds.has(host.id))
+  return <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("colHosts")}>
     <button type="button" data-crm-filter="" data-state={selected ? "inactive" : "active"} aria-pressed={!selected} onClick={() => onSelect("")} className={chip(!selected)}>
       <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Users className="h-4 w-4" /></span>
       <span className="min-w-0 truncate text-sm"><span className="font-semibold">{t("availableTeam")}</span>{anyMeta ? <span className="ml-1.5 text-muted-foreground">{anyMeta}</span> : null}</span>
@@ -306,15 +305,21 @@ export function BookingHostChips({ hosts, anyMeta, selected, onSelect }: {
       <BookingAvatar name={host.name} className="h-8 w-8 text-xs" />
       <span className="min-w-0 truncate text-sm"><span className="font-semibold">{host.name}</span>{host.meta ? <span className="ml-1.5 text-muted-foreground">{host.meta}</span> : null}</span>
     </button>)}
-    {collapsible ? (
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        aria-expanded={expanded}
-        className="flex min-h-11 items-center rounded-full border border-dashed border-border px-4 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {expanded ? t("hostsFewer") : t("hostsMore", { count: hidden })}
-      </button>
+    {/* The rest of the team. Not as more chips: unfolding thirty colleagues
+        who have nothing that day is the wall this row exists to avoid. One
+        field you type a name into answers the only question left — «show me
+        this person's day» — and it stays one line however big the company. */}
+    {rest.length ? (
+      <div className="w-60 max-w-full">
+        <SearchableSelect
+          value=""
+          onValueChange={(id) => { if (id) onSelect(id) }}
+          options={rest.map((host) => ({ value: host.id, label: host.meta ? `${host.name} · ${host.meta}` : host.name }))}
+          placeholder={t("hostsMore", { count: rest.length })}
+          searchPlaceholder={t("hostsSearch")}
+          noResultsLabel={t("hostsNone")}
+        />
+      </div>
     ) : null}
   </div>
 }
