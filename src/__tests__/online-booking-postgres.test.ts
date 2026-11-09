@@ -1528,4 +1528,68 @@ pgDescribe("online booking on a real Postgres", () => {
     }
   })
 
+  /**
+   * The answering assistant's view of the company. The booking agent acts only
+   * on a request for a time and hands everything else to the general reply,
+   * which read only the knowledge base — so «how much is it» had no answer in a
+   * product where the owner had typed the price into the service itself.
+   */
+  describe("what the assistant may say about the services", () => {
+    // Its own organisation: this suite leaves dozens of services behind, and
+    // the block deliberately carries only the first twelve.
+    const SHOP = "org-service-facts"
+    /** An organisation that takes no bookings at all — OTHER_ORG has services of its own. */
+    const QUIET = "org-no-services"
+    const page = (over: Record<string, unknown> = {}) => bypass(() => prisma.bookingPage.create({
+      data: {
+        organizationId: SHOP, title: "Saç kəsimi", slug: `facts-${++sequence}`, durationMinutes: 45,
+        bufferMinutes: 0, minNoticeMinutes: 0, maxDaysAhead: 7, locationType: "office",
+        locationText: "Bakı, Nizami 203", hostIds: [], weekly: ALL_DAY, isActive: true,
+        price: 25, priceCurrency: "AZN", ...over,
+      },
+    }))
+
+    beforeAll(async () => {
+      await bypass(() => prisma.organization.createMany({
+        data: [
+          { id: SHOP, name: "Salon", slug: SHOP, modules: { crm: true }, settings: { timezone: "Asia/Baku" } },
+          { id: QUIET, name: "Dükan", slug: QUIET, modules: { crm: true }, settings: { timezone: "Asia/Baku" } },
+        ],
+      }))
+    })
+
+    it("names the price, the length and the place the organisation saved", async () => {
+      const { serviceFactsBlock } = await import("@/lib/booking/service-facts")
+      await page()
+
+      const block = await bypass(() => serviceFactsBlock(SHOP, "az"))
+      expect(block).toContain("Saç kəsimi")
+      expect(block).toContain("45 dəq")
+      expect(block).toContain("25")
+      expect(block).toContain("Bakı, Nizami 203")
+    })
+
+    it("forbids naming a time, because only the booking agent sees the schedule", async () => {
+      // Without this line the assistant, now holding a service list, invents
+      // «come tomorrow at ten» — a promise nothing in the schedule backs.
+      const { serviceFactsBlock } = await import("@/lib/booking/service-facts")
+      const block = await bypass(() => serviceFactsBlock(SHOP, "ru"))
+      expect(block).toContain("время не назначай")
+      expect(block).toContain("Свободное время тебе неизвестно")
+    })
+
+    it("leaves a closed service out", async () => {
+      const { serviceFactsBlock } = await import("@/lib/booking/service-facts")
+      await page({ title: "Köhnə xidmət", isActive: false })
+      expect(await bypass(() => serviceFactsBlock(SHOP, "az"))).not.toContain("Köhnə xidmət")
+    })
+
+    it("says nothing at all when the organisation publishes no service", async () => {
+      // A company that does not take bookings must not get a heading with
+      // nothing under it: an empty list reads as «we offer nothing».
+      const { serviceFactsBlock } = await import("@/lib/booking/service-facts")
+      expect(await bypass(() => serviceFactsBlock(QUIET, "az"))).toBe("")
+    })
+  })
+
 })
