@@ -6,6 +6,8 @@ import { createActivityCommand } from "@/lib/crm-commands/activity/create-activi
 import { CrmCommandError } from "@/lib/crm-commands/errors"
 import { crmCommandErrorResponse } from "@/lib/crm-commands/rest-response"
 import { PAGE_SIZE } from "@/lib/constants"
+import { checkPermission } from "@/lib/permissions"
+import { activityWriteModules } from "@/lib/crm-commands/activity/activity-permissions"
 
 export const GET = withRls(async (req: NextRequest, { orgId }) => {
   const { searchParams } = new URL(req.url)
@@ -57,6 +59,13 @@ export const GET = withRls(async (req: NextRequest, { orgId }) => {
 
 export const POST = withRlsAuth(undefined, undefined, async (req, auth) => {
   const body = await req.json()
+  const denied = activityWriteModules(body).filter((module) => !checkPermission(auth.role, module, "write"))
+  if (denied.length > 0) {
+    return NextResponse.json(
+      { error: "Forbidden", message: `Role "${auth.role}" cannot "write" on "${denied[0]}"` },
+      { status: 403 },
+    )
+  }
   const actor = createRestActorContext({ organizationId: auth.orgId, userId: auth.userId, role: auth.role })
   try {
     // Одна команда с голосом (этап 3): проверка карточки, событие контакта и
