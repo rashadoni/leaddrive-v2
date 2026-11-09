@@ -53,6 +53,9 @@ vi.mock("@/lib/demo-center/sales-org", () => ({
 vi.mock("@/lib/whatsapp", () => ({ resolveWhatsAppConfig: mocks.config, sendWhatsAppText: vi.fn() }))
 vi.mock("@/lib/demo-center/whatsapp-number", () => ({
   demoWhatsAppSender: mocks.sender,
+  // The named demo channel. The welcome goes out through the same reader as the
+  // number shown on screen, so the two can no longer be different numbers.
+  demoWhatsAppChannel: mocks.config,
   demoWhatsAppConversationId: vi.fn(async () => "conv-1"),
 }))
 
