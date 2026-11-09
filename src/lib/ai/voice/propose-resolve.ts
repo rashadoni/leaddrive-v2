@@ -423,12 +423,19 @@ async function resolveFieldContact(auth: AuthResult, spokenName: string) {
  * не он сам. «Айтан» среди двух Айтан — вопрос, а не первая попавшаяся: иначе
  * задача или отказ в отпуске уйдут не тому человеку.
  */
-async function resolveFieldAgent(auth: AuthResult, mtmActor: MtmRouteActor, spokenName: string) {
+async function resolveFieldAgent(
+  auth: AuthResult,
+  mtmActor: MtmRouteActor,
+  spokenName: string,
+  /** Только эта роль: клиентов привязывают к полевым агентам, не к начальникам. */
+  role?: "AGENT",
+) {
   const rows = await prisma.mtmAgent.findMany({
     where: {
       organizationId: auth.orgId,
       status: "ACTIVE",
       fieldDeletedAt: null,
+      ...(role ? { role } : {}),
       name: { contains: spokenName, mode: "insensitive" },
       ...(mtmActor.scopedAgentIds !== null ? { id: { in: [...mtmActor.scopedAgentIds] } } : {}),
       ...(mtmActor.agentId ? { NOT: { id: mtmActor.agentId } } : {}),
@@ -786,7 +793,16 @@ export async function resolveVoiceProposal(
         issues: [{ path: "(root)", message: "Only a field manager of the team can do this; say so to the user" }],
       }
     }
-    const agent = await resolveFieldAgent(auth, mtmActor, String(args.agentName ?? ""))
+    // Клиентов поля привязывают только к агентам (contact-bulk-assignment.ts:
+    // TARGET_AGENT_UNAVAILABLE для любой другой роли). Искать среди начальников
+    // значит найти человека, к которому привязать нельзя: так 2026-11-08 в
+    // LeadDrive Inc. «Farid Aliyev» (MANAGER) получил отказ уже после выбора.
+    const agent = await resolveFieldAgent(
+      auth,
+      mtmActor,
+      String(args.agentName ?? ""),
+      tool === "propose_assign_field_contact" ? "AGENT" : undefined,
+    )
     if (!agent.ok) {
       return {
         kind: "clarify",
