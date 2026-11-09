@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { resolveAnalyticsPeriod } from "@/lib/ai/analytics-period"
-import { localDateTimeToUtc, resolveEffectiveTimezone } from "@/lib/timezone"
+import { isValidTimezone, localDateTimeToUtc, resolveEffectiveTimezone } from "@/lib/timezone"
 import type { ExplicitPeriodRange, Period } from "./section-reader"
 
 function jsonObject(value: unknown): Record<string, unknown> {
@@ -40,6 +40,37 @@ export async function loadVoiceReportingTimezone(orgId: string, userId: string):
     userTimezone: user?.timezone,
     orgTimezone: typeof settings.timezone === "string" ? settings.timezone : null,
   })
+}
+
+/**
+ * Часы, по которым человек назвал время («встреча завтра в 15:00»).
+ *
+ * Пояс пользователя, потом организации — как у отчётов. Если не задан ни
+ * тот, ни другой, — пояс браузера, из которого человек говорит, а не UTC:
+ * 2026-11-09 на проде пояс не был задан ни у одной организации и ни у одного
+ * пользователя, и «15:00» в Баку легло бы в базу как 19:00. Браузерному поясу
+ * ничего не доверено, кроме чтения часов: неизвестное имя пояса — это UTC.
+ */
+export async function loadVoiceWallClockTimezone(
+  orgId: string,
+  userId: string,
+  browserTimezone: string | undefined,
+): Promise<string> {
+  const [user, organization] = await Promise.all([
+    prisma.user.findFirst({
+      where: { id: userId, organizationId: orgId },
+      select: { timezone: true },
+    }),
+    prisma.organization.findFirst({
+      where: { id: orgId },
+      select: { settings: true },
+    }),
+  ])
+  const settings = jsonObject(organization?.settings)
+  const orgTimezone = typeof settings.timezone === "string" ? settings.timezone : null
+  if (isValidTimezone(user?.timezone)) return user!.timezone as string
+  if (isValidTimezone(orgTimezone)) return orgTimezone
+  return isValidTimezone(browserTimezone) ? browserTimezone : "UTC"
 }
 
 const PERIOD_PRESET: Record<Period, Parameters<typeof resolveAnalyticsPeriod>[0]["period"]> = {

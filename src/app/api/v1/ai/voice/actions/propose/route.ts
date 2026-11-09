@@ -44,6 +44,11 @@ const proposeRequestSchema = z.strictObject({
   args: z.record(z.string(), z.unknown()),
   providerToolCallId: z.string().trim().min(1).max(255).optional(),
   screen: screenSchema.optional(),
+  /**
+   * Пояс браузера (Intl). Время, сказанное вслух, — по часам человека, когда
+   * пояс не задан ни у него, ни у организации (propose-resolve.ts).
+   */
+  timeZone: z.string().trim().min(1).max(64).optional(),
 })
 
 export const POST = withRlsSessionAuth(async (req, auth) => {
@@ -76,7 +81,7 @@ export const POST = withRlsSessionAuth(async (req, auth) => {
     auth,
     parsed.data.tool,
     parsed.data.args,
-    parsed.data.screen ?? {},
+    { ...(parsed.data.screen ?? {}), ...(parsed.data.timeZone ? { timeZone: parsed.data.timeZone } : {}) },
   )
 
   if (resolution.kind === "invalid") {
