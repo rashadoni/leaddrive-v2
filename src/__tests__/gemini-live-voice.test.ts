@@ -67,6 +67,12 @@ describe("Gemini Live CRM voice", () => {
     expect(instruction).toMatch(/Do not mix languages inside one reply/)
   })
 
+  it("speaks in the phone line's manner", () => {
+    const instruction = geminiLiveSystemInstruction("az", "Rəşad")
+    expect(instruction).toContain("warm and smiling, at a natural unhurried pace with small natural pauses")
+    expect(instruction).toContain("the way it is said in Baku, never the English way")
+  })
+
   it("does not tell the model to imitate a voice it is not using", () => {
     // The voice preset is chosen in GEMINI_LIVE_VOICE. Naming a different one
     // in the prompt survived a voice change and contradicted it.
@@ -85,20 +91,21 @@ describe("Gemini Live CRM voice", () => {
     expect(require).toBeLessThan(forbid)
   })
 
-  it("locks the native audio model, Algieba voice, low-latency VAD, and read-only CRM tools", () => {
+  it("locks the native audio model, Sulafat voice, low-latency VAD, and read-only CRM tools", () => {
     const config = geminiLiveConfig({ locale: "az", firstName: "Rəşad", allowedSections: ["leads"] })
     // Google retires the 3.1 preview no earlier than 2026-11-17. The default
     // moved off it after the provider check opened a real 3.8 session on
     // production; moving it again is one constant and this line.
     expect(DEFAULT_GEMINI_LIVE_MODEL).toBe(NEXT_MODEL)
     expect(geminiLiveModel().id).toBe(NEXT_MODEL)
-    // Owner picked this by ear on 2026-08-17 from side-by-side Azerbaijani
-    // samples of every preset. Pinned so the console voice cannot drift back
-    // silently; changing it is a decision, not a refactor.
-    expect(GEMINI_LIVE_VOICE).toBe("Algieba")
+    // The phone line's voice (owner 2026-11-09: «голос тот, который на
+    // звонке, с такими же манерами»); Algieba before that, from 2026-08-17.
+    // Pinned so the console voice cannot drift back silently; changing it is
+    // a decision, not a refactor.
+    expect(GEMINI_LIVE_VOICE).toBe("Sulafat")
     expect(GEMINI_LIVE_API_VERSION).toBe("v1beta")
     expect(config.responseModalities).toEqual(["AUDIO"])
-    expect(config.speechConfig?.voiceConfig?.prebuiltVoiceConfig?.voiceName).toBe("Algieba")
+    expect(config.speechConfig?.voiceConfig?.prebuiltVoiceConfig?.voiceName).toBe("Sulafat")
     // 3.8 Live takes no thinking level at all ("must be omitted in setup").
     // What keeps "five boards" from coming back there is the next line: the
     // model may not go on talking while a tool is still running.
