@@ -366,7 +366,8 @@ describe("POST /api/v1/ai/chat", () => {
         { id: "hidden-deal", organizationId: "org-1" },
       )
       expect(predictDealWin).not.toHaveBeenCalled()
-      expect(anthropicCreate.mock.calls[0][0].system).not.toContain("AI Insights for current deal")
+      const system = anthropicCreate.mock.calls[0][0].system as Array<{ text: string }>
+      expect(system.map((block) => block.text).join("\n")).not.toContain("AI Insights for current deal")
     } finally {
       process.env.ANTHROPIC_API_KEY = originalKey
     }

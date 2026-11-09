@@ -6,11 +6,18 @@
  * cannot be reproduced without restarting production.
  *
  *   {"evt":"ai_chat_timing","turn":1,"uptimeS":42,"prepMs":380,
- *    "firstTextMs":1450,"totalMs":3100,"status":200,"streamed":true,"proc":"web"}
+ *    "firstTextMs":1450,"totalMs":3100,"status":200,"streamed":true,"proc":"web",
+ *    "rounds":2,"inputTokens":310,"cacheReadTokens":9800,"cacheWriteTokens":5200,
+ *    "outputTokens":240}
+ *
+ * The token counts are summed over the turn's model rounds and show whether
+ * the prompt cache works (src/lib/ai/chat-prompt-cache.ts): a second question
+ * within five minutes should read the tools and rules from the cache.
  *
  * Numbers only: no question, no answer, no organization or person.
  */
 import { processRole } from "@/lib/station-timing"
+import type { ChatRoundUsage } from "@/lib/ai/chat-prompt-cache"
 
 let turnsInProcess = 0
 
@@ -19,6 +26,8 @@ export type ChatTiming = {
   modelCall(): void
   /** The first text the person sees: a streamed word, or the whole reply. */
   firstText(): void
+  /** One model round finished with these token counts. */
+  usage(round: ChatRoundUsage): void
   finish(status: number, streamed: boolean): void
 }
 
@@ -28,9 +37,17 @@ export function startChatTiming(now: () => number = Date.now): ChatTiming {
   let modelAt: number | undefined
   let firstTextAt: number | undefined
   let finished = false
+  const tokens = { rounds: 0, inputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, outputTokens: 0 }
   return {
     modelCall() { modelAt ??= now() },
     firstText() { firstTextAt ??= now() },
+    usage(round) {
+      tokens.rounds += 1
+      tokens.inputTokens += round.inputTokens
+      tokens.cacheReadTokens += round.cacheReadTokens
+      tokens.cacheWriteTokens += round.cacheWriteTokens
+      tokens.outputTokens += round.outputTokens
+    },
     finish(status, streamed) {
       if (finished) return
       finished = true
@@ -45,6 +62,7 @@ export function startChatTiming(now: () => number = Date.now): ChatTiming {
         status,
         streamed,
         proc: processRole(),
+        ...tokens,
       }
       // stdout, not console: route tests spy on console.
       process.stdout.write(`${JSON.stringify(line)}\n`)
