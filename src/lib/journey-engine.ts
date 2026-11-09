@@ -479,6 +479,7 @@ async function processClaimedEnrollmentStep(
                 parse_mode: "HTML",
               }
               const tgRes = await fetch(`https://api.telegram.org/bot${tgChannel.botToken}/sendMessage`, {
+                signal: AbortSignal.timeout(15_000),
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(tgBody),

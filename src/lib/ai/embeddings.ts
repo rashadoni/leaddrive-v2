@@ -24,6 +24,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
   if (voyageKey) {
     // Use Voyage AI for high-quality embeddings
     const response = await fetch("https://api.voyageai.com/v1/embeddings", {
+      signal: AbortSignal.timeout(30_000),
       method: "POST",
       headers: {
         "Content-Type": "application/json",

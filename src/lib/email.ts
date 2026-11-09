@@ -128,6 +128,7 @@ async function sendViaResend(params: {
   if (!apiKey) return null
   try {
     const res = await fetch("https://api.resend.com/emails", {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -178,6 +179,7 @@ async function sendViaPostmark(params: {
   if (!token) return null
   try {
     const res = await fetch("https://api.postmarkapp.com/email", {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: {
         "Content-Type": "application/json",

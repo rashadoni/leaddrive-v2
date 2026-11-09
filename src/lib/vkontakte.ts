@@ -12,7 +12,7 @@ export async function sendVkMessage(
       access_token: groupToken,
       v: "5.131",
     })
-    const res = await fetch(`https://api.vk.com/method/messages.send?${params}`)
+    const res = await fetch(`https://api.vk.com/method/messages.send?${params}`, { signal: AbortSignal.timeout(15_000) })
     const json = await res.json()
     if (json.error) {
       console.error("VK send error:", json.error)

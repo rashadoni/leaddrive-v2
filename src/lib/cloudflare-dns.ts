@@ -49,6 +49,7 @@ export async function createDnsRecord(
 
   try {
     const res = await fetch(`${CF_API}/zones/${config.zoneId}/dns_records`, {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: headers(config.apiToken),
       body: JSON.stringify({
@@ -91,7 +92,7 @@ export async function deleteDnsRecord(slug: string): Promise<{ success: boolean;
     // Find the record first
     const listRes = await fetch(
       `${CF_API}/zones/${config.zoneId}/dns_records?name=${fullName}&type=A`,
-      { headers: headers(config.apiToken) }
+      { signal: AbortSignal.timeout(15_000), headers: headers(config.apiToken) }
     )
     const listData = await listRes.json()
 
@@ -102,6 +103,7 @@ export async function deleteDnsRecord(slug: string): Promise<{ success: boolean;
     // Delete each matching record
     for (const record of listData.result) {
       await fetch(`${CF_API}/zones/${config.zoneId}/dns_records/${record.id}`, {
+        signal: AbortSignal.timeout(15_000),
         method: "DELETE",
         headers: headers(config.apiToken),
       })
@@ -129,7 +131,7 @@ export async function listDnsRecords(): Promise<{ success: boolean; records?: Dn
   try {
     const res = await fetch(
       `${CF_API}/zones/${config.zoneId}/dns_records?type=A&per_page=100`,
-      { headers: headers(config.apiToken) }
+      { signal: AbortSignal.timeout(15_000), headers: headers(config.apiToken) }
     )
     const data = await res.json()
 

@@ -44,6 +44,7 @@ export async function sendInstagramLoginMessage(
   if (!recipientId || !text || !igToken) return false
   try {
     const res = await fetch(`${IG_GRAPH}/me/messages?access_token=${encodeURIComponent(igToken)}`, {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -115,6 +116,7 @@ export async function refreshInstagramLoginToken(
   try {
     const res = await fetch(
       `${IG_GRAPH.replace("/v21.0", "")}/refresh_access_token?grant_type=ig_refresh_token&access_token=${encodeURIComponent(igToken)}`,
+      { signal: AbortSignal.timeout(15_000) },
     )
     if (!res.ok) {
       console.error(`[ig-login] refresh failed (${res.status}):`, safeLogValue(await res.text()))

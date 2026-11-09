@@ -154,6 +154,7 @@ export const atlProvider: SmsProvider = {
 
     try {
       const res = await fetch(ATL_ENDPOINT, {
+        signal: AbortSignal.timeout(15_000),
         method: "POST",
         headers: { "Content-Type": "application/xml; charset=UTF-8" },
         body: xml,

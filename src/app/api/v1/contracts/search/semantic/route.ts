@@ -49,6 +49,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
   const voyageKey = process.env.VOYAGE_API_KEY
   if (voyageKey) {
     const response = await fetch("https://api.voyageai.com/v1/embeddings", {
+      signal: AbortSignal.timeout(30_000),
       method: "POST",
       headers: {
         "Content-Type": "application/json",

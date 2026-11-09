@@ -90,7 +90,7 @@ export async function importPageConversations(
 
   try {
     for (let page = 0; url && page < MAX_PAGES; page++) {
-      const res = await fetch(url, graphAuthInit(pageToken))
+      const res = await fetch(url, { ...graphAuthInit(pageToken), signal: AbortSignal.timeout(20_000) })
       const data = (await res.json().catch(() => ({}))) as GraphPage
       if (!res.ok || data.error) {
         out.error = data.error?.message || `HTTP ${res.status}`

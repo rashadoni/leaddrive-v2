@@ -44,6 +44,7 @@ export const vonageProvider: SmsProvider = {
         text: params.message,
       })
       const res = await fetch("https://rest.nexmo.com/sms/json", {
+        signal: AbortSignal.timeout(15_000),
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body,

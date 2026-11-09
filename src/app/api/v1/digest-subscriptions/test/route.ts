@@ -100,6 +100,7 @@ export const POST = withRlsAuth("core", "write", async (req, auth) => {
       const tgRes = await fetch(
         `https://api.telegram.org/bot${d.telegramBotToken}/sendMessage`,
         {
+          signal: AbortSignal.timeout(15_000),
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
