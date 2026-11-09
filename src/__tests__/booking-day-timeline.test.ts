@@ -349,7 +349,7 @@ describe("meetings day view — whose day it is", () => {
   const chips = (selected: string) => renderToStaticMarkup(createElement(NextIntlClientProvider, {
     locale: "ru", timeZone: "Asia/Baku", messages: ru,
     children: createElement(BookingHostChips, {
-      hosts: [{ id: "samir", name: "Самир Алиев", meta: "3 встречи" }, { id: "nigar", name: "Нигяр Гусейнова", meta: "1 встреча" }],
+      hosts: [{ id: "samir", name: "Самир Алиев", meta: "3 встречи", count: 3 }, { id: "nigar", name: "Нигяр Гусейнова", meta: "1 встреча", count: 1 }],
       anyMeta: "4 встречи", selected, onSelect: () => {},
     }),
   } as ComponentProps<typeof NextIntlClientProvider>))
@@ -379,6 +379,50 @@ describe("meetings day view — whose day it is", () => {
     const picked = chips("samir")
     expect([...picked.matchAll(/data-state="active"/g)]).toHaveLength(1)
     expect([...picked.matchAll(/data-state="inactive"/g)]).toHaveLength(2)
+  })
+})
+
+/**
+ * A real organization had thirty colleagues with booking access, and the row
+ * drew a chip for every one of them — twenty-eight reading «0 meetings». They
+ * filled the screen and pushed the day itself below the fold, which is the one
+ * thing this view exists to show. So the row is allowed to grow only with the
+ * people the day is actually about.
+ */
+describe("meetings day view — a big team does not bury the day", () => {
+  const team = (busy: number, size: number) => Array.from({ length: size }, (_, index) => ({
+    id: `u${index}`, name: `Сотрудник ${index}`, count: index < busy ? 1 : 0,
+    meta: index < busy ? "1 встреча" : "0 встреч",
+  }))
+  const render = (hosts: ReturnType<typeof team>, selected = "") => renderToStaticMarkup(createElement(NextIntlClientProvider, {
+    locale: "ru", timeZone: "Asia/Baku", messages: ru,
+    children: createElement(BookingHostChips, { hosts, anyMeta: "2 встречи", selected, onSelect: () => {} }),
+  } as ComponentProps<typeof NextIntlClientProvider>))
+  const names = (markup: string) => [...markup.matchAll(/Сотрудник (\d+)/g)].map((match) => Number(match[1]))
+
+  it("shows only the colleagues who have something that day, and counts the rest on one button", () => {
+    const markup = render(team(2, 30))
+    expect(names(markup)).toEqual([0, 1])
+    // 28 hidden: the button says how many, so nobody thinks they are gone.
+    expect(markup).toContain("Ещё 28")
+  })
+
+  it("keeps the chosen colleague visible even with an empty day, or the filter could not be undone", () => {
+    const markup = render(team(2, 30), "u17")
+    expect(names(markup)).toContain(17)
+    expect(markup).toContain("Ещё 27")
+  })
+
+  it("leaves a small team whole — collapsing four names helps nobody", () => {
+    const markup = render(team(1, 4))
+    expect(names(markup)).toEqual([0, 1, 2, 3])
+    expect(markup).not.toContain("Ещё")
+  })
+
+  it("shows no «more» button when everyone is busy anyway", () => {
+    const markup = render(team(30, 30))
+    expect(names(markup)).toHaveLength(30)
+    expect(markup).not.toContain("Ещё")
   })
 })
 

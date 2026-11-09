@@ -44,10 +44,23 @@ export function BookingCoordinatorsPanel() {
     setData({ ...data, grants: [...data.grants.filter((row) => row.coordinatorUserId !== coordinator), ...hosts.map((hostUserId) => ({ coordinatorUserId: coordinator, hostUserId, canManage }))] })
     setSaved(true)
   }
-  return <section className="max-w-2xl space-y-5">
+  // Who coordinates whom right now. The tab used to open on an empty select,
+  // so the one question it exists to answer needed a colleague opened one by one.
+  const name = (id: string) => data?.users.find((user) => user.id === id)?.name ?? id
+  const pairs = [...new Set((data?.grants ?? []).map((row) => row.coordinatorUserId))]
+    .map((id) => ({ id, name: name(id), hosts: (data?.grants ?? []).filter((row) => row.coordinatorUserId === id).map((row) => name(row.hostUserId)) }))
+  return <section className="space-y-5 rounded-2xl border bg-card p-5 shadow-sm">
     <header><h2 className="text-lg font-semibold">{t("coordinatorTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("coordinatorHint")}</p></header>
     {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
     {!data ? <p role="status">{t("workspaceLoading")}</p> : <>
+      <div className="rounded-xl border border-border/60 bg-muted/50 p-3">
+        <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-muted-foreground">{t("coordinatorCurrentTitle")}</p>
+        {pairs.length ? (
+          <ul className="mt-1.5 space-y-1 text-sm">
+            {pairs.map((pair) => <li key={pair.id}><span className="font-semibold">{pair.name}</span> → {pair.hosts.join(", ")}</li>)}
+          </ul>
+        ) : <p className="mt-1.5 text-sm text-muted-foreground">{t("coordinatorCurrentNone")}</p>}
+      </div>
       <div className="space-y-2"><Label htmlFor="booking-coordinator">{t("coordinatorPerson")}</Label><select id="booking-coordinator" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" value={coordinator} disabled={busy} onChange={(event) => choose(event.target.value)}><option value="">{t("chooseEmployee")}</option>{data.users.map((user) => <option value={user.id} key={user.id}>{user.name}</option>)}</select></div>
       {coordinator ? <><fieldset className="space-y-2"><legend className="mb-2 text-sm font-medium">{t("coordinatorHosts")}</legend>{data.users.filter((user) => user.id !== coordinator).map((user) => <label key={user.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-sm"><input type="checkbox" disabled={busy} checked={hosts.includes(user.id)} onChange={(event) => { setHosts(event.target.checked ? [...hosts, user.id] : hosts.filter((id) => id !== user.id)); setSaved(false) }} />{user.name}</label>)}</fieldset>
         <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" disabled={busy} checked={canManage} onChange={(event) => { setCanManage(event.target.checked); setSaved(false) }} />{t("coordinatorCanManage")}</label>

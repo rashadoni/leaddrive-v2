@@ -284,60 +284,6 @@ export function BookingPagesPanel() {
         </div>
       )}
 
-      {/* Calendly's date-specific hours, in the half a salon actually says:
-          closed. One list for the whole organization — a holiday marked on
-          twenty services is nineteen chances to miss one. */}
-      {!draft ? (
-        <div className="rounded-2xl border bg-card p-5 shadow-sm">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h2 className="flex items-center gap-2 text-[17px] font-bold tracking-tight">
-              <CalendarOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />{t("closedTitle")}
-            </h2>
-            <p className="text-[13px] text-muted-foreground">{t("closedHint")}</p>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-end gap-2">
-            <div>
-              <Label htmlFor="closed-date" className="text-xs">{t("closedDate")}</Label>
-              <Input id="closed-date" type="date" className="mt-1 h-10 w-44" value={closedDraft.date} onChange={(event) => setClosedDraft({ ...closedDraft, date: event.target.value })} />
-            </div>
-            <div className="min-w-[180px] flex-1">
-              <Label htmlFor="closed-note" className="text-xs">{t("closedNote")}</Label>
-              <Input id="closed-note" className="mt-1 h-10" maxLength={80} placeholder={t("closedNotePlaceholder")} value={closedDraft.note} onChange={(event) => setClosedDraft({ ...closedDraft, note: event.target.value })} />
-            </div>
-            <Button variant="outline" onClick={addClosedDate} disabled={!closedDraft.date || closedBusy}>
-              <Plus className="h-4 w-4" aria-hidden="true" />{t("closedAdd")}
-            </Button>
-          </div>
-
-          {closedError ? <p className="mt-2 text-xs text-destructive" role="alert">{closedError}</p> : null}
-
-          {closedDates.length === 0 ? (
-            <p className="mt-3 text-sm text-muted-foreground">{t("closedEmpty")}</p>
-          ) : (
-            <ul className="mt-3 flex flex-wrap gap-2">
-              {closedDates.map((entry) => (
-                <li key={entry.date} className="inline-flex min-h-10 items-center gap-2 rounded-full border bg-card px-3 text-sm">
-                  <span className="font-semibold tabular-nums">{entry.date}</span>
-                  {entry.note ? <span className="max-w-[180px] truncate text-muted-foreground">{entry.note}</span> : null}
-                  <button
-                    type="button"
-                    aria-label={`${t("removeAction")}: ${entry.date}`}
-                    disabled={closedBusy}
-                    onClick={() => void saveClosedDates(closedDates.filter((other) => other.date !== entry.date))}
-                    className="text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ) : null}
-
-      {!draft ? <BookingWhatsAppCard services={pages.map(({ id, title, price, priceCurrency }) => ({ id, title, price, priceCurrency }))} hosts={users} /> : null}
-
       {draft && savedTitle ? (
         <p className="flex items-center gap-2 rounded-lg border border-emerald-600/30 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-400" role="status">
           <Check className="h-4 w-4 shrink-0" aria-hidden="true" />{t("savedAnother", { title: savedTitle })}
@@ -412,6 +358,60 @@ export function BookingPagesPanel() {
           ))}
         </div>
       )}
+
+      {!draft ? <BookingWhatsAppCard services={pages.map(({ id, title, price, priceCurrency }) => ({ id, title, price, priceCurrency }))} hosts={users} /> : null}
+
+      {/* Calendly's date-specific hours, in the half a salon actually says:
+          closed. One list for the whole organization — a holiday marked on
+          twenty services is nineteen chances to miss one. */}
+      {!draft ? (
+        <div className="rounded-2xl border bg-card p-5 shadow-sm">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h2 className="flex items-center gap-2 text-[17px] font-bold tracking-tight">
+              <CalendarOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />{t("closedTitle")}
+            </h2>
+            <p className="text-[13px] text-muted-foreground">{t("closedHint")}</p>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-end gap-2">
+            <div>
+              <Label htmlFor="closed-date" className="text-xs">{t("closedDate")}</Label>
+              <Input id="closed-date" type="date" className="mt-1 h-10 w-44" value={closedDraft.date} onChange={(event) => setClosedDraft({ ...closedDraft, date: event.target.value })} />
+            </div>
+            <div className="min-w-[180px] flex-1">
+              <Label htmlFor="closed-note" className="text-xs">{t("closedNote")}</Label>
+              <Input id="closed-note" className="mt-1 h-10" maxLength={80} placeholder={t("closedNotePlaceholder")} value={closedDraft.note} onChange={(event) => setClosedDraft({ ...closedDraft, note: event.target.value })} />
+            </div>
+            <Button variant="outline" onClick={addClosedDate} disabled={!closedDraft.date || closedBusy}>
+              <Plus className="h-4 w-4" aria-hidden="true" />{t("closedAdd")}
+            </Button>
+          </div>
+
+          {closedError ? <p className="mt-2 text-xs text-destructive" role="alert">{closedError}</p> : null}
+
+          {closedDates.length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">{t("closedEmpty")}</p>
+          ) : (
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {closedDates.map((entry) => (
+                <li key={entry.date} className="inline-flex min-h-10 items-center gap-2 rounded-full border bg-card px-3 text-sm">
+                  <span className="font-semibold tabular-nums">{entry.date}</span>
+                  {entry.note ? <span className="max-w-[180px] truncate text-muted-foreground">{entry.note}</span> : null}
+                  <button
+                    type="button"
+                    aria-label={`${t("removeAction")}: ${entry.date}`}
+                    disabled={closedBusy}
+                    onClick={() => void saveClosedDates(closedDates.filter((other) => other.date !== entry.date))}
+                    className="text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
     </div>
   )
 }
