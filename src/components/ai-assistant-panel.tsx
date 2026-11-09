@@ -34,7 +34,7 @@ interface Message {
 
 // Tool labels are locale-keyed inside UI_TEXT.toolLabels
 
-const UI_TEXT: Record<string, { title: string; subtitle: string; greeting: string; placeholder: string; suggestions: string[]; approve: string; reject: string; approved: string; rejected: string; executed: string; failed: string; pending: string; connectionError: string; capabilityDisabled: string; tooManyRequests: string; configurationMissing: string; noResponse: string; collapse: string; expand: string; clear: string; close: string; send: string; recipient: string; fields: string; unknownAction: string; toolLabels: Record<string, string>; search: SearchUiText }> = {
+const UI_TEXT: Record<string, { title: string; subtitle: string; greeting: string; placeholder: string; suggestions: string[]; approve: string; reject: string; approved: string; rejected: string; executed: string; failed: string; pending: string; connectionError: string; noAnswerInTime: string; capabilityDisabled: string; tooManyRequests: string; configurationMissing: string; noResponse: string; collapse: string; expand: string; clear: string; close: string; send: string; recipient: string; fields: string; unknownAction: string; toolLabels: Record<string, string>; search: SearchUiText }> = {
   en: {
     title: "Da Vinci",
     subtitle: "Da Vinci AI",
@@ -49,6 +49,7 @@ const UI_TEXT: Record<string, { title: string; subtitle: string; greeting: strin
     failed: "Failed",
     pending: "Awaiting approval",
     connectionError: "Connection error. Please try again.",
+    noAnswerInTime: "Da Vinci did not answer. Please ask again.",
     capabilityDisabled: "This feature is available in demo mode. Live access needs approval from an admin or LeadDrive.",
     tooManyRequests: "Too many Da Vinci requests. Please try again in a minute.",
     configurationMissing: "Da Vinci is not configured for this organization yet. Ask an admin to check AI settings.",
@@ -85,6 +86,7 @@ const UI_TEXT: Record<string, { title: string; subtitle: string; greeting: strin
     failed: "Ошибка",
     pending: "Ожидает одобрения",
     connectionError: "Ошибка соединения. Попробуйте еще раз.",
+    noAnswerInTime: "Da Vinci не ответил. Задайте вопрос ещё раз.",
     capabilityDisabled: "Функция доступна в демо-режиме. Для live-доступа нужно одобрение администратора или LeadDrive.",
     tooManyRequests: "Слишком много запросов к Da Vinci. Попробуйте еще раз через минуту.",
     configurationMissing: "Da Vinci еще не настроен для этой организации. Попросите администратора проверить AI-настройки.",
@@ -121,6 +123,7 @@ const UI_TEXT: Record<string, { title: string; subtitle: string; greeting: strin
     failed: "Xəta",
     pending: "Təsdiq gözləyir",
     connectionError: "Bağlantı xətası. Yenidən cəhd edin.",
+    noAnswerInTime: "Da Vinci cavab vermədi. Sualı yenidən verin.",
     capabilityDisabled: "Bu funksiya demo rejimində əlçatandır. Live giriş üçün admin və ya LeadDrive təsdiqi lazımdır.",
     tooManyRequests: "Da Vinci üçün çox sorğu göndərildi. Bir dəqiqə sonra yenidən cəhd edin.",
     configurationMissing: "Da Vinci bu təşkilat üçün hələ qurulmayıb. Admin AI ayarlarını yoxlamalıdır.",
@@ -161,6 +164,7 @@ function displayAiError(raw: unknown, uiText: typeof UI_TEXT["ru"]) {
     return uiText.capabilityDisabled
   }
   if (/Too many Da Vinci requests/i.test(message)) return uiText.tooManyRequests
+  if (/did not answer in time/i.test(message)) return uiText.noAnswerInTime
   // No AI key or the day's AI budget used up: the server's own words say what to do.
   if (isAiRefusalText(message)) return message
   if (/Da Vinci AI requires configuration|ANTHROPIC_API_KEY/i.test(message)) return uiText.configurationMissing

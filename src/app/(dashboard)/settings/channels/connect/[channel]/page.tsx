@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   ArrowRight,
   AtSign,
-  BookOpen,
   CheckCircle2,
   ExternalLink,
   Info,
@@ -25,7 +24,7 @@ import {
   Sparkles,
   Webhook,
 } from "lucide-react"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
@@ -332,6 +331,7 @@ const copy = {
     faqTitle: "Common questions",
     faqDesc: "Quick answers for the operator before saving this channel.",
     connectionMapTitle: "How this connection works",
+    connectionMapSteps: "3 steps",
     connectionMapDesc: "Follow the same route for every provider: prepare the external account, save only the selected channel in LeadDrive, then verify one controlled message before live use.",
     providerWorkTitle: "Provider side",
     providerWorkDesc: "Create or confirm the account, page, inbox, sender, bot, mailbox or phone provider outside LeadDrive.",
@@ -769,6 +769,7 @@ const copy = {
     faqTitle: "Частые вопросы",
     faqDesc: "Короткие ответы для оператора перед сохранением канала.",
     connectionMapTitle: "Как работает это подключение",
+    connectionMapSteps: "3 шага",
     connectionMapDesc: "Для каждого провайдера один порядок: подготовить внешний аккаунт, сохранить только выбранный канал в LeadDrive, затем проверить один контролируемый диалог до живого использования.",
     providerWorkTitle: "Сторона провайдера",
     providerWorkDesc: "Создайте или проверьте аккаунт, страницу, inbox, отправителя, бота, почтовый ящик или телефонию вне LeadDrive.",
@@ -1189,6 +1190,7 @@ const copy = {
     faqTitle: "Tez-tez verilən suallar",
     faqDesc: "Kanalı saxlamazdan əvvəl operator üçün qısa cavablar.",
     connectionMapTitle: "Bu qoşulma necə işləyir",
+    connectionMapSteps: "3 addım",
     connectionMapDesc: "Hər provayder üçün eyni ardıcıllıq: xarici hesabı hazırlayın, LeadDrive-da yalnız seçilmiş kanalı saxlayın, sonra canlı istifadədən əvvəl bir nəzarətli dialoq yoxlayın.",
     providerWorkTitle: "Provayder tərəfi",
     providerWorkDesc: "LeadDrive-dan kənarda hesab, səhifə, inbox, göndərən, bot, mailbox və ya telefon provayderini yaradın və yoxlayın.",
@@ -2755,19 +2757,13 @@ function ChannelConnectInner() {
   })
   const selectedScenario = scenarioOptions.find((item) => item.value === mode) || scenarioOptions[0]
   const selectedScenarioTitle = selectedScenario.title
-  const selectedScenarioDescription = selectedScenario.description
   const currentAnswerIndex = readinessAnswers[stepIndex] ?? selectedOption
-  const selectedAnswer = currentStep?.options[currentAnswerIndex]
   const processSteps: Array<{ key: ConnectStage; label: string }> = [
     { key: "intro", label: c.stepIntro },
     { key: "eligibility", label: c.stepEligibility },
     { key: "connect", label: c.stepConnect },
   ]
   const activeStepIndex = processSteps.findIndex((item) => item.key === stage)
-  const readyChecklist = Array.from(new Set([
-    ...guide.resources.slice(0, 2),
-    ...guide.tutorial.steps.slice(0, 2),
-  ])).slice(0, 4)
   const channelRequirements = getChannelRequirements(guide, loc)
   const stageHref = (nextStage: ConnectStage) => {
     const nextParams = new URLSearchParams(searchParams.toString())
@@ -2806,151 +2802,7 @@ function ChannelConnectInner() {
   const providerPreviewSteps = tutorialScreen.providerActions
   const leadDrivePreviewSteps = tutorialScreen.leadDriveActions
   const faqItems = getChannelFaq(guide, loc, channelRequirements, tutorialScreen)
-  const isMetaGuide =
-    guide.formChannelId === "whatsapp-business"
-    || guide.formChannelId === "facebook"
-    || guide.formChannelId === "instagram"
   const isTikTokChatwootGuide = guide.formChannelId === "tiktok"
-  const metaCopy = loc === "ru"
-    ? {
-        title: "Meta setup: что именно нужно сделать",
-        description: "Эти каналы подключаются через Meta. Сначала проверьте доступы и права, потом сохраните ключи в LeadDrive и только после этого отправьте один тестовый входящий диалог.",
-        appTitle: "1. Meta App и права",
-        appDescription: "Откройте Meta Developers или Business Manager, проверьте App ID, App Secret, Verify Token и нужные permissions.",
-        accountTitle:
-          guide.formChannelId === "whatsapp-business"
-            ? "2. WABA и телефон"
-            : guide.formChannelId === "instagram"
-              ? "2. Instagram Login или linked Page"
-              : "2. Facebook Page",
-        accountDescription:
-          guide.formChannelId === "whatsapp-business"
-            ? "Выберите WhatsApp Business Account, номер, шаблоны и webhook-подписку для сообщений."
-            : guide.formChannelId === "instagram"
-              ? "Подключите professional Instagram account через Instagram Login или связанную Facebook Page."
-              : "Выберите Facebook Page и выдайте доступ к сообщениям Page для Messenger.",
-        verifyTitle: "3. Webhook и тест",
-        verifyDescription: "Подпишите webhook, сохраните канал в LeadDrive и отправьте один тестовый DM/сообщение в Inbox до живого трафика.",
-        badge: "Meta-подключение",
-      }
-    : loc === "az"
-      ? {
-          title: "Meta setup: dəqiq nə etmək lazımdır",
-          description: "Bu kanallar Meta üzərindən qoşulur. Əvvəl girişləri və icazələri yoxlayın, sonra açarları LeadDrive-da saxlayın və yalnız bundan sonra bir test inbound dialoq göndərin.",
-          appTitle: "1. Meta App və icazələr",
-          appDescription: "Meta Developers və ya Business Manager-i açın, App ID, App Secret, Verify Token və lazımi permissions yoxlayın.",
-          accountTitle:
-            guide.formChannelId === "whatsapp-business"
-              ? "2. WABA və telefon"
-              : guide.formChannelId === "instagram"
-                ? "2. Instagram Login və ya linked Page"
-                : "2. Facebook Page",
-          accountDescription:
-            guide.formChannelId === "whatsapp-business"
-              ? "WhatsApp Business Account, nömrə, şablonlar və message webhook abunəsini seçin."
-              : guide.formChannelId === "instagram"
-                ? "Professional Instagram hesabını Instagram Login və ya bağlı Facebook Page ilə qoşun."
-                : "Facebook Page seçin və Messenger üçün Page messages girişini verin.",
-          verifyTitle: "3. Webhook və test",
-          verifyDescription: "Webhook-u abunə edin, kanalı LeadDrive-da saxlayın və canlı trafikdən əvvəl Inbox-a bir test DM/mesaj göndərin.",
-          badge: "Meta qoşulması",
-        }
-      : {
-          title: "Meta setup: the exact path",
-          description: "These channels connect through Meta. Confirm access and permissions first, save the credentials in LeadDrive, then send one controlled inbound conversation before live traffic.",
-          appTitle: "1. Meta App and permissions",
-          appDescription: "Open Meta Developers or Business Manager, then confirm App ID, App Secret, Verify Token and the required permissions.",
-          accountTitle:
-            guide.formChannelId === "whatsapp-business"
-              ? "2. WABA and phone number"
-              : guide.formChannelId === "instagram"
-                ? "2. Instagram Login or linked Page"
-                : "2. Facebook Page",
-          accountDescription:
-            guide.formChannelId === "whatsapp-business"
-              ? "Choose the WhatsApp Business Account, phone number, templates and message webhook subscription."
-              : guide.formChannelId === "instagram"
-                ? "Connect the professional Instagram account through Instagram Login or a linked Facebook Page."
-                : "Choose the Facebook Page and grant Page messaging access for Messenger.",
-          verifyTitle: "3. Webhook and test",
-          verifyDescription: "Subscribe the webhook, save the channel in LeadDrive and send one test DM/message into Inbox before live traffic.",
-          badge: "Meta connection",
-        }
-  const metaSetupItems = [
-    {
-      title: metaCopy.appTitle,
-      description: metaCopy.appDescription,
-      icon: ShieldCheck,
-    },
-    {
-      title: metaCopy.accountTitle,
-      description: metaCopy.accountDescription,
-      icon: guide.formChannelId === "instagram" ? AtSign : MessagesSquare,
-    },
-    {
-      title: metaCopy.verifyTitle,
-      description: metaCopy.verifyDescription,
-      icon: Webhook,
-    },
-  ]
-  const chatwootCopy = loc === "ru"
-    ? {
-        title: "TikTok подключается через Chatwoot",
-        description: "LeadDrive не подключает TikTok напрямую. Chatwoot принимает TikTok DM, а LeadDrive зеркалит диалог в Inbox как отдельный TikTok-канал.",
-        inboxTitle: "1. TikTok inbox в Chatwoot",
-        inboxDescription: "Создайте или выберите TikTok inbox в Chatwoot и убедитесь, что туда приходит тестовый DM.",
-        credentialsTitle: "2. Ключи Chatwoot",
-        credentialsDescription: "Подготовьте Base URL, Account ID, API access token и webhook secret. Inbox ID в LeadDrive не вводится.",
-        leadDriveTitle: "3. LeadDrive mirror",
-        leadDriveDescription: "Сохраните канал как TikTok через Chatwoot, затем проверьте один TikTok DM в LeadDrive Inbox.",
-        badge: "Chatwoot bridge",
-      }
-    : loc === "az"
-      ? {
-          title: "TikTok Chatwoot vasitəsilə qoşulur",
-          description: "LeadDrive TikTok-u birbaşa qoşmur. Chatwoot TikTok DM-ləri qəbul edir, LeadDrive isə dialoqu Inbox-da ayrıca TikTok kanalı kimi göstərir.",
-          inboxTitle: "1. Chatwoot-da TikTok inbox",
-          inboxDescription: "Chatwoot-da TikTok inbox yaradın və ya seçin, test DM-in ora gəldiyini yoxlayın.",
-          credentialsTitle: "2. Chatwoot açarları",
-          credentialsDescription: "Base URL, Account ID, API access token və webhook secret hazırlayın. LeadDrive-da Inbox ID yazılmır.",
-          leadDriveTitle: "3. LeadDrive mirror",
-          leadDriveDescription: "Kanalı TikTok via Chatwoot kimi saxlayın, sonra LeadDrive Inbox-da bir TikTok DM yoxlayın.",
-          badge: "Chatwoot bridge",
-        }
-      : {
-          title: "TikTok connects through Chatwoot",
-          description: "LeadDrive does not connect TikTok directly. Chatwoot receives TikTok DMs, while LeadDrive mirrors the thread into Inbox as its own TikTok channel.",
-          inboxTitle: "1. TikTok inbox in Chatwoot",
-          inboxDescription: "Create or select the TikTok inbox in Chatwoot and confirm one test DM reaches it.",
-          credentialsTitle: "2. Chatwoot credentials",
-          credentialsDescription: "Prepare Base URL, Account ID, API access token and webhook secret. LeadDrive does not ask for Inbox ID.",
-          leadDriveTitle: "3. LeadDrive mirror",
-          leadDriveDescription: "Save the channel as TikTok via Chatwoot, then verify one TikTok DM in LeadDrive Inbox.",
-          badge: "Chatwoot bridge",
-        }
-  const chatwootSetupItems = [
-    {
-      title: chatwootCopy.inboxTitle,
-      description: chatwootCopy.inboxDescription,
-      icon: MessageCircle,
-    },
-    {
-      title: chatwootCopy.credentialsTitle,
-      description: chatwootCopy.credentialsDescription,
-      icon: ShieldCheck,
-    },
-    {
-      title: chatwootCopy.leadDriveTitle,
-      description: chatwootCopy.leadDriveDescription,
-      icon: Webhook,
-    },
-  ]
-  const readinessSummaryItems = guide.eligibility.steps.map((step, index) => ({
-    label: step.label,
-    answer: typeof readinessAnswers[index] === "number"
-      ? step.options[readinessAnswers[index]]
-      : undefined,
-  }))
   const credentialFormBlock = effectiveFormInitialData ? (
     <div id="channel-credential-form" className="mt-6 scroll-mt-24" data-channel-config-form>
       <ChannelConfigForm
@@ -2993,52 +2845,34 @@ function ChannelConnectInner() {
           <ArrowRight className="h-4 w-4" />
         </Link>
       </Button>
-      <Button asChild variant="ghost" className="text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/50 dark:hover:text-orange-300">
+      <Button asChild variant="outline" className="border-border bg-card text-foreground hover:bg-muted">
         <Link href={credentialHref}>{guide.connect.secondary}</Link>
       </Button>
     </div>
   ) : null
-  const connectionMapItems = [
-    {
-      title: c.providerWorkTitle,
-      description: c.providerWorkDesc,
-      icon: ExternalLink,
-      items: providerPreviewSteps.slice(0, 3),
-      tone: "neutral" as const,
-    },
-    {
-      title: c.leadDriveWorkTitle,
-      description: c.leadDriveWorkDesc,
-      icon: ShieldCheck,
-      items: leadDrivePreviewSteps.slice(0, 3),
-      tone: "accent" as const,
-    },
-    {
-      title: c.validationWorkTitle,
-      description: c.validationWorkDesc,
-      icon: CheckCircle2,
-      items: channelRequirements.verify.slice(0, 3),
-      tone: "success" as const,
-    },
+  // The single explanation on the intro screen. Each column is the one place its steps appear:
+  // the provider list, the LeadDrive list and the verification list used to be printed two or three
+  // times each (map cards, standalone lists, sidebar boxes, Meta/Chatwoot cards).
+  const introGuideColumns = [
+    { title: c.providerWorkTitle, items: providerPreviewSteps.slice(0, 3) },
+    { title: c.leadDriveWorkTitle, items: leadDrivePreviewSteps.slice(0, 3) },
+    { title: c.validationWorkTitle, items: channelRequirements.verify.slice(0, 3) },
   ]
   const compactConnectSteps = [
     {
       title: c.providerWorkTitle,
       description: providerPreviewSteps[0] || channelRequirements.prepare[0],
       icon: ExternalLink,
-      tone: "neutral" as const,
     },
     {
       title: c.leadDriveWorkTitle,
       description: tutorialScreen.leadDriveFields.slice(0, 3).join(" · "),
       icon: ShieldCheck,
-      tone: "accent" as const,
     },
     {
       title: c.validationWorkTitle,
       description: channelRequirements.verify[0] || tutorialScreen.finalCheck,
       icon: CheckCircle2,
-      tone: "success" as const,
     },
   ]
   const statusCopy = whatsappCredentialStatusCopy[loc]
@@ -3122,343 +2956,87 @@ function ChannelConnectInner() {
     }
   }
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-background text-foreground shadow-sm lg:overflow-visible">
-      <div className={cn(
-        "grid min-h-[calc(100vh-170px)]",
-        stage === "connect" ? "lg:grid-cols-[280px_minmax(0,1fr)]" : "lg:grid-cols-[320px_minmax(0,1fr)]",
-      )}>
+    <div className="overflow-hidden rounded-xl border border-border bg-background text-foreground shadow-sm">
+      {/* The channel description is context, not the task: on a phone it goes under the action,
+          and on a wide screen it is a column short enough to need no scrollbar of its own. */}
+      <div className="grid lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside
           data-tour-id={isWhatsAppCallingGuide ? "whatsapp-calls-sidebar" : undefined}
-          className={cn(
-            "min-w-0 border-b border-border bg-card p-6 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r",
-            stage === "connect" ? "order-last lg:order-none lg:p-5" : "",
-          )}
+          className="order-last min-w-0 border-t border-border bg-card p-5 lg:order-none lg:border-t-0 lg:border-r"
         >
-          <Button asChild variant="ghost" className={cn("-ml-2 gap-2 text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/50 dark:hover:text-orange-300", stage === "connect" ? "mb-5" : "mb-8")}>
+          <Button asChild variant="ghost" className="-ml-2 mb-5 hidden gap-2 text-muted-foreground hover:text-foreground lg:inline-flex">
             <Link href="/settings/channels">
               <ArrowLeft className="h-4 w-4" />
               {c.back}
             </Link>
           </Button>
 
-          <div className={cn(
-            "grid place-items-center border border-orange-200 bg-orange-50 font-black text-orange-600 shadow-inner dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800",
-            stage === "connect" ? "h-14 w-14 rounded-xl" : "h-28 w-28 rounded-[32px] text-3xl",
-          )}>
-            <Icon className={cn(stage === "connect" ? "h-7 w-7" : "h-14 w-14")} />
+          <div className="grid h-12 w-12 place-items-center rounded-xl border border-border bg-muted text-foreground">
+            <Icon className="h-6 w-6" />
           </div>
-          <h1 className={cn("break-words font-semibold leading-tight tracking-tight", stage === "connect" ? "mt-4 text-xl" : "mt-7 text-3xl")}>{guide.title}</h1>
-          <p className={cn("max-w-[24rem] text-sm text-muted-foreground", stage === "connect" ? "mt-2 leading-6" : "mt-5 leading-7")}>{guide.sideDescription}</p>
+          <h1 className="mt-4 break-words text-xl font-semibold leading-tight tracking-tight">{guide.title}</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{guide.sideDescription}</p>
 
-          {stage !== "connect" ? (
-            <button
-              type="button"
-              onClick={() => openTutorial(0)}
-              className="mt-8 flex items-center gap-3 text-left text-sm font-semibold text-orange-700 hover:text-orange-800 dark:text-orange-300 dark:hover:text-orange-300"
-            >
-              <PlayCircle className="h-4 w-4" />
-              {c.videoTutorial}
-            </button>
-          ) : null}
-
-          <div className={cn("rounded-xl border border-border bg-muted p-4", stage === "connect" ? "mt-5" : "mt-8")}>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              {c.processTitle}
-            </p>
-            <div className="mt-4 space-y-2">
-              {processSteps.map((item, index) => {
-                const isActive = item.key === stage
-                const isDone = index < activeStepIndex
-                return (
-                  <Link
-                    data-video-target={isWhatsAppCallingGuide ? `whatsapp-calls-stage-${item.key}` : undefined}
-                    key={item.key}
-                    href={stageHref(item.key)}
-                    aria-current={isActive ? "step" : undefined}
-                    aria-label={`${index + 1}. ${item.label}`}
+          <p className="mt-6 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            {c.processTitle}
+          </p>
+          <div className="mt-3 space-y-1">
+            {processSteps.map((item, index) => {
+              const isActive = item.key === stage
+              const isDone = index < activeStepIndex
+              return (
+                <Link
+                  data-video-target={isWhatsAppCallingGuide ? `whatsapp-calls-stage-${item.key}` : undefined}
+                  key={item.key}
+                  href={stageHref(item.key)}
+                  aria-current={isActive ? "step" : undefined}
+                  aria-label={`${index + 1}. ${item.label}`}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition",
+                    isActive
+                      ? "border-border bg-muted font-semibold text-foreground"
+                      : "border-transparent font-medium text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <span
                     className={cn(
-                      "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition",
+                      "grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold",
                       isActive
-                        ? "border-orange-300 bg-card text-[hsl(var(--crm-accent-text))] shadow-sm dark:border-orange-800"
+                        ? "bg-orange-600 text-white"
                         : isDone
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800"
-                          : "border-transparent bg-transparent text-muted-foreground hover:border-orange-200 hover:bg-card hover:text-[hsl(var(--crm-accent-text))]",
+                          ? "text-emerald-700 ring-1 ring-emerald-300 dark:text-emerald-300 dark:ring-emerald-800"
+                          : "text-muted-foreground ring-1 ring-border",
                     )}
+                    aria-hidden="true"
                   >
-                    <span
-                      className={cn(
-                        "grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs",
-                        isActive
-                          ? "bg-orange-600 text-white"
-                          : isDone
-                            ? "bg-emerald-600 text-white"
-                            : "bg-card text-muted-foreground ring-1 ring-zinc-200",
-                      )}
-                      aria-hidden="true"
-                    >
-                      {isDone ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
-                    </span>
-                    <span>{item.label}</span>
-                  </Link>
-                )
-              })}
-            </div>
+                    {isDone ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                  </span>
+                  <span className="min-w-0 break-words">{item.label}</span>
+                </Link>
+              )
+            })}
           </div>
-
-          {stage !== "connect" ? (
-            <>
-              <div className="mt-5 grid gap-3">
-                <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 dark:bg-orange-950/30 dark:border-orange-800">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">
-                    {c.readyBeforeTitle}
-                  </p>
-                  <ul className="mt-3 space-y-2">
-                    {channelRequirements.prepare.slice(0, 3).map((item) => (
-                      <li key={item} className="flex gap-2 text-xs leading-5 text-foreground">
-                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-300" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:bg-emerald-950/30 dark:border-emerald-800">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
-                    {c.afterConnectTitle}
-                  </p>
-                  <ul className="mt-3 space-y-2">
-                    {channelRequirements.verify.slice(0, 2).map((item) => (
-                      <li key={item} className="flex gap-2 text-xs leading-5 text-foreground">
-                        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-700 dark:text-emerald-300" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              <div className="mt-10">
-                <h2 className="text-lg font-semibold">{c.additionalResources}</h2>
-                <ul className="mt-4 space-y-3 text-sm leading-6 text-orange-700 dark:text-orange-300">
-                  {guide.resources.map((resource, index) => (
-                    <li key={resource}>
-                      <button
-                        type="button"
-                        onClick={() => openTutorial(index)}
-                        aria-label={`${resource}. ${c.resourceAction}`}
-                        className="group flex w-full gap-3 rounded-xl border border-transparent p-2 text-left transition hover:border-orange-200 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 dark:hover:bg-orange-950/50"
-                      >
-                        <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-orange-500" />
-                        <span className="min-w-0 break-words">
-                          <span className="block text-foreground group-hover:text-orange-800">{resource}</span>
-                          <span className="mt-1 block text-xs font-semibold text-orange-600 dark:text-orange-300">{c.resourceAction}</span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <Button asChild variant="secondary" className="mt-5 border border-border bg-card">
-                  <Link href="/knowledge-base">
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    {c.learnMore}
-                  </Link>
-                </Button>
-              </div>
-            </>
-          ) : (
-            <div className="mt-5 rounded-xl border border-orange-200 bg-orange-50 p-4 dark:bg-orange-950/30 dark:border-orange-800">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">{c.tutorialPlayerFieldMap}</p>
-              <p className="mt-2 break-words text-sm font-semibold leading-6 text-orange-950 dark:text-orange-300">
-                {tutorialScreen.leadDriveFields.slice(0, 3).join(" · ")}
-              </p>
-              <button
-                type="button"
-                onClick={() => openTutorial(0)}
-                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-orange-700 hover:text-orange-900 dark:text-orange-300 dark:hover:text-orange-300"
-              >
-                <PlayCircle className="h-4 w-4" />
-                {c.quickStartGuideAction}
-              </button>
-            </div>
-          )}
         </aside>
 
-        <main
-          className={cn(
-            "relative min-w-0 p-6 lg:p-10",
-            stage === "connect" ? "order-first lg:order-none" : "",
-          )}
-        >
+        <main className="relative order-first min-w-0 p-5 lg:order-none lg:p-8">
           <div className="mx-auto max-w-5xl">
-            {stage !== "connect" ? (
-              <div className="mb-8 flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground shadow-sm">
-                <Info className="h-5 w-5 shrink-0 text-orange-600 dark:text-orange-300" />
-                <span>{c.helpBanner}</span>
-              </div>
-            ) : null}
-
-            {stage !== "connect" ? (
-              <section
-                data-tour-id={isWhatsAppCallingGuide ? "whatsapp-calls-map" : undefined}
-                className="mb-8 overflow-hidden rounded-xl border border-border bg-card shadow-sm"
-              >
-                <div className="border-b border-border bg-muted px-5 py-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">
-                        {c.channelSetup}
-                      </p>
-                      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                        {c.connectionMapTitle}
-                      </h2>
-                      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                        {c.connectionMapDesc}
-                      </p>
-                    </div>
-                    {guide.badge ? (
-                      <Badge className="w-fit border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-950/50">
-                        {guide.badge}
-                      </Badge>
-                    ) : null}
-                  </div>
-                </div>
-                <div
-                  className="grid gap-4 p-5"
-                  style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 20rem), 1fr))" }}
-                >
-                  {connectionMapItems.map((item, index) => {
-                    const MapIcon = item.icon
-                    const iconClass =
-                      item.tone === "success"
-                        ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300"
-                        : item.tone === "accent"
-                          ? "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-950/30 dark:text-orange-300"
-                          : "bg-muted text-foreground ring-zinc-200"
-                    const numberClass =
-                      item.tone === "success"
-                        ? "bg-emerald-600 text-white"
-                        : item.tone === "accent"
-                          ? "bg-orange-600 text-white"
-                          : "bg-card text-muted-foreground ring-1 ring-zinc-200"
-                    return (
-                      <article
-                        key={item.title}
-                        className={cn(
-                          "relative min-w-0 rounded-[1.35rem] border p-4",
-                          item.tone === "success"
-                            ? "border-emerald-200 bg-emerald-50/55 dark:bg-emerald-950/30 dark:border-emerald-800"
-                            : item.tone === "accent"
-                              ? "border-orange-200 bg-orange-50/60 dark:bg-orange-950/30 dark:border-orange-800"
-                              : "border-border bg-muted",
-                        )}
-                      >
-                        {index < connectionMapItems.length - 1 ? (
-                          <div
-                            aria-hidden="true"
-                            className="absolute -right-5 top-10 z-10 hidden h-10 w-10 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-sm lg:grid"
-                          >
-                            <ArrowRight className="h-4 w-4" />
-                          </div>
-                        ) : null}
-                        <div className="flex items-start gap-3">
-                          <div className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl ring-1", iconClass)}>
-                            <MapIcon className="h-5 w-5" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className={cn("grid h-6 w-6 place-items-center rounded-full text-xs font-bold", numberClass)}>
-                                {index + 1}
-                              </span>
-                              <h3 className="break-words text-sm font-semibold leading-6 text-foreground">{item.title}</h3>
-                            </div>
-                            <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">{item.description}</p>
-                          </div>
-                        </div>
-                        <ul className="mt-4 space-y-2">
-                          {item.items.slice(0, 3).map((step) => (
-                            <li key={step} className="flex gap-2 text-xs leading-5 text-foreground">
-                              <CheckCircle2
-                                className={cn(
-                                  "mt-0.5 h-3.5 w-3.5 shrink-0",
-                                  item.tone === "success"
-                                    ? "text-emerald-600 dark:text-emerald-300"
-                                    : item.tone === "accent"
-                                      ? "text-orange-600 dark:text-orange-300"
-                                      : "text-muted-foreground",
-                                )}
-                              />
-                              <span className="min-w-0 break-words">{step}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </article>
-                    )
-                  })}
-                </div>
-              </section>
-            ) : null}
-
-            <div
-              className={cn(
-                "mb-8 rounded-xl border border-border bg-card p-5 shadow-sm lg:hidden",
-                stage === "connect" ? "hidden" : "",
-              )}
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600 dark:text-orange-300">{c.processTitle}</p>
-                  <p className="mt-2 text-sm text-muted-foreground">{guide.connect.description}</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {processSteps.map((item, index) => {
-                    const isActive = item.key === stage
-                    const isDone = index < activeStepIndex
-                    return (
-                      <Link
-                        key={item.key}
-                        href={stageHref(item.key)}
-                        aria-current={isActive ? "step" : undefined}
-                        aria-label={`${index + 1}. ${item.label}`}
-                        className={cn(
-                          "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition",
-                          isActive
-                            ? "border-orange-300 bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800"
-                            : isDone
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800"
-                              : "border-border bg-muted text-muted-foreground hover:border-orange-200 hover:bg-muted hover:text-foreground",
-                        )}
-                      >
-                        {isActive ? (
-                          <span className="grid h-5 w-5 place-items-center rounded-full bg-orange-600 text-[10px] text-white" aria-hidden="true">
-                            {index + 1}
-                          </span>
-                        ) : isDone ? (
-                          <span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-600 text-[10px] text-white" aria-hidden="true">
-                            <CheckCircle2 className="h-3 w-3" />
-                          </span>
-                        ) : (
-                          <span className="grid h-5 w-5 place-items-center rounded-full bg-card text-[10px] text-muted-foreground" aria-hidden="true">
-                            {index + 1}
-                          </span>
-                        )}
-                        {item.label}
-                      </Link>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-
+            <Button asChild variant="ghost" className="-ml-2 mb-3 gap-2 text-muted-foreground hover:text-foreground lg:hidden">
+              <Link href="/settings/channels">
+                <ArrowLeft className="h-4 w-4" />
+                {c.back}
+              </Link>
+            </Button>
             {isWhatsAppCallingGuide ? (
               <section
                 data-tour-id="whatsapp-calls-readiness"
-                className="mb-8 rounded-xl border border-orange-200 bg-card p-5 shadow-sm dark:border-orange-800"
+                className="mb-4 rounded-xl border border-border bg-card p-5 shadow-sm"
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                       {c.readinessSummary}
                     </p>
-                    <h2 className="mt-2 text-xl font-semibold text-foreground">{statusCopy.title}</h2>
+                    <h2 className="mt-1 text-xl font-semibold text-foreground">{statusCopy.title}</h2>
                     <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                       {whatsappReadinessMessage}
                     </p>
@@ -3469,8 +3047,8 @@ function ChannelConnectInner() {
                       whatsappModuleDisabled
                         ? "border-border bg-muted text-muted-foreground hover:bg-muted"
                         : whatsappCredentialsReady
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-950/50"
-                        : "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-950/50"
+                        ? "border-border bg-card text-emerald-700 hover:bg-card dark:text-emerald-300"
+                        : "border-border bg-card text-amber-700 hover:bg-card dark:text-amber-300"
                     )}>
                       {whatsappModuleDisabled
                         ? statusCopy.unavailable
@@ -3490,8 +3068,8 @@ function ChannelConnectInner() {
                           className={cn(
                             "min-w-0 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium",
                             check.ready
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800"
-                              : "border-amber-200 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800"
+                              ? "border-border bg-card text-foreground"
+                              : "border-border border-l-4 border-l-amber-500 bg-card text-foreground"
                           )}
                         >
                           {check.ready ? (
@@ -3505,7 +3083,7 @@ function ChannelConnectInner() {
                       ))}
                     </div>
                     {!whatsappCredentialsReady ? (
-                      <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800">
+                      <p className="mt-4 rounded-xl border border-border border-l-4 border-l-amber-500 bg-card px-4 py-3 text-sm leading-6 text-foreground">
                         {statusCopy.blocked}
                       </p>
                     ) : null}
@@ -3522,9 +3100,9 @@ function ChannelConnectInner() {
                   </Button>
                 )}
 
-                <div data-tour-id="whatsapp-calls-webhook" className="mt-5 rounded-xl border border-orange-200 bg-orange-50/70 p-4 dark:bg-orange-950/30 dark:border-orange-800">
+                <div data-tour-id="whatsapp-calls-webhook" className="mt-5 rounded-xl border border-border border-l-4 border-l-orange-500 bg-card p-4">
                   <div className="flex items-start gap-3">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-card text-[hsl(var(--crm-accent-text))] ring-1 ring-orange-200">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground ring-1 ring-border">
                       <Webhook className="h-4 w-4" />
                     </span>
                     <div className="min-w-0 flex-1">
@@ -3532,23 +3110,23 @@ function ChannelConnectInner() {
                       <p className="mt-2 text-sm leading-6 text-foreground">{c.whatsappCallingWebhookHint}</p>
                       <dl className="mt-4 grid gap-3">
                         <div>
-                          <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">{c.whatsappCallingWebhookCallback}</dt>
-                          <dd className="mt-2 break-all rounded-xl border border-orange-200 bg-card px-3 py-2 font-mono text-xs text-orange-900 dark:text-orange-300 dark:border-orange-800">
+                          <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{c.whatsappCallingWebhookCallback}</dt>
+                          <dd className="mt-2 break-all rounded-xl border border-border bg-muted px-3 py-2 font-mono text-xs text-foreground">
                             {whatsappCallingCallbackUrl}
                           </dd>
                           {!orgSlug ? (
-                            <p className="mt-2 text-xs leading-5 text-orange-800 dark:text-orange-300">{c.whatsappCallingTenantFallback}</p>
+                            <p className="mt-2 text-xs leading-5 text-muted-foreground">{c.whatsappCallingTenantFallback}</p>
                           ) : null}
                         </div>
                         <div>
-                          <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">{c.whatsappCallingWebhookVerify}</dt>
-                          <dd className="mt-2 rounded-xl border border-orange-200 bg-card px-3 py-2 text-xs font-medium text-orange-900 dark:text-orange-300 dark:border-orange-800">
+                          <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{c.whatsappCallingWebhookVerify}</dt>
+                          <dd className="mt-2 rounded-xl border border-border bg-muted px-3 py-2 text-xs font-medium text-foreground">
                             {statusCopy.verifyToken}
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">{c.whatsappCallingWebhookSubscribe}</dt>
-                          <dd className="mt-2 rounded-xl border border-orange-200 bg-card px-3 py-2 text-xs font-medium text-orange-900 dark:text-orange-300 dark:border-orange-800">
+                          <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{c.whatsappCallingWebhookSubscribe}</dt>
+                          <dd className="mt-2 rounded-xl border border-border bg-muted px-3 py-2 text-xs font-medium text-foreground">
                             calls
                           </dd>
                         </div>
@@ -3557,11 +3135,11 @@ function ChannelConnectInner() {
                   </div>
                 </div>
 
-                <div data-tour-id="whatsapp-calls-smoke" className="mt-5 rounded-xl border border-border bg-muted p-4">
+                <div data-tour-id="whatsapp-calls-smoke" className="mt-4 rounded-xl border border-border bg-card p-4">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-card text-[hsl(var(--crm-accent-text))] ring-1 ring-orange-200">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground ring-1 ring-border">
                           <PhoneCall className="h-4 w-4" />
                         </span>
                         <p className="text-sm font-semibold text-foreground">{c.whatsappCallingSmokeTitle}</p>
@@ -3586,7 +3164,7 @@ function ChannelConnectInner() {
                   </div>
 
                   {!whatsappSmokeCanRun && whatsappSmokeDisabledReason ? (
-                    <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800">
+                    <p className="mt-4 rounded-xl border border-border border-l-4 border-l-amber-500 bg-card px-4 py-3 text-sm leading-6 text-foreground">
                       {whatsappSmokeDisabledReason}
                     </p>
                   ) : null}
@@ -3597,8 +3175,8 @@ function ChannelConnectInner() {
                       className={cn(
                         "mt-4 rounded-xl border px-4 py-3 text-sm leading-6",
                         whatsappSmokeResult.ok
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800"
-                          : "border-red-200 bg-red-50 text-red-900 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800",
+                          ? "border-border border-l-4 border-l-emerald-500 bg-card text-foreground"
+                          : "border-border border-l-4 border-l-red-500 bg-card text-foreground",
                       )}
                     >
                       {whatsappSmokeResult.ok ? (
@@ -3632,314 +3210,176 @@ function ChannelConnectInner() {
             {stage === "intro" ? (
               <section
                 data-tour-id={isWhatsAppCallingGuide ? "whatsapp-calls-intro" : undefined}
-                className="grid max-w-6xl gap-6"
+                className="grid gap-4"
               >
-                <div className="space-y-6">
-                  <div>
-                    <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-950/50">
-                      <ShieldCheck className="mr-1 h-3.5 w-3.5" />
-                      {c.channelSetup}
-                    </Badge>
-                    <h2 className="mt-5 max-w-3xl text-3xl font-semibold tracking-tight">{guide.connect.title}</h2>
-                    <p className="mt-4 max-w-3xl text-base leading-8 text-muted-foreground">{guide.bodyDescription}</p>
-                  </div>
-
-                  <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-                    <div className="grid gap-5 border-b border-border bg-muted p-5">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge className="border-border bg-card text-foreground hover:bg-card">
-                            {guide.tutorial.duration}
-                          </Badge>
-                          {guide.badge ? (
-                            <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-950/50">{guide.badge}</Badge>
-                          ) : null}
-                        </div>
-                        <h3 className="mt-4 text-xl font-semibold tracking-tight text-foreground">{guide.tutorial.title}</h3>
-                        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{guide.tutorial.description}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => openTutorial(0)}
-                        className="group flex h-full min-h-32 items-center justify-center rounded-[1.35rem] border border-orange-200 bg-card p-5 text-center shadow-sm transition hover:border-orange-300 hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-950/50"
-                      >
-                        <span className="grid h-16 w-16 place-items-center rounded-full bg-orange-600 text-white shadow-[0_14px_30px_rgba(249,115,22,0.24)] transition group-hover:scale-105">
-                          <PlayCircle className="h-8 w-8" />
-                        </span>
-                        <span className="sr-only">{c.tutorialPlayerOpenFull}</span>
-                      </button>
-                    </div>
-                    <div className="p-5">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                        {c.tutorialStepsTitle}
-                      </p>
-                      <ol className="mt-4 grid gap-3">
-                        {guide.tutorial.steps.map((step, index) => (
-                          <li key={step} className="flex gap-3 rounded-xl border border-border bg-muted px-3 py-3 text-sm leading-6 text-foreground">
-                            <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-orange-100 text-[11px] font-bold text-orange-700 dark:bg-orange-950/30 dark:text-orange-300">
-                              {index + 1}
-                            </span>
-                            <span>{step}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-                  </div>
-
-                  {isMetaGuide ? (
-                    <section className="rounded-xl border border-orange-200 bg-orange-50/70 p-5 shadow-sm dark:bg-orange-950/30 dark:border-orange-800">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
-                          <Badge className="border-orange-200 bg-card text-[hsl(var(--crm-accent-text))] hover:bg-card dark:border-orange-800">
-                            {metaCopy.badge}
-                          </Badge>
-                          <h3 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
-                            {metaCopy.title}
-                          </h3>
-                          <p className="mt-2 max-w-3xl text-sm leading-6 text-orange-950/75 dark:text-orange-300">
-                            {metaCopy.description}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-5 grid gap-3">
-                        {metaSetupItems.map((item) => {
-                          const ItemIcon = item.icon
-                          return (
-                            <article key={item.title} className="rounded-[1.35rem] border border-orange-200 bg-card p-4 dark:border-orange-800">
-                              <div className="flex items-start gap-3">
-                                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-orange-100 text-orange-700 ring-1 ring-orange-200 dark:bg-orange-950/30 dark:text-orange-300">
-                                  <ItemIcon className="h-5 w-5" />
-                                </div>
-                                <div>
-                                  <h4 className="text-sm font-semibold leading-6 text-foreground">{item.title}</h4>
-                                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.description}</p>
-                                </div>
-                              </div>
-                            </article>
-                          )
-                        })}
-                      </div>
-                    </section>
-                  ) : null}
-
-                  {isTikTokChatwootGuide ? (
-                    <TikTokChannelHub orgId={orgId} locale={loc} />
-                  ) : null}
-
-                  {isTikTokChatwootGuide ? (
-                    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
-                          <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-950/50">
-                            {chatwootCopy.badge}
-                          </Badge>
-                          <h3 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
-                            {chatwootCopy.title}
-                          </h3>
-                          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                            {chatwootCopy.description}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-5 grid gap-3">
-                        {chatwootSetupItems.map((item) => {
-                          const ItemIcon = item.icon
-                          return (
-                            <article key={item.title} className="rounded-[1.35rem] border border-border bg-muted p-4">
-                              <div className="flex items-start gap-3">
-                                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-card text-[hsl(var(--crm-accent-text))] ring-1 ring-orange-200">
-                                  <ItemIcon className="h-5 w-5" />
-                                </div>
-                                <div>
-                                  <h4 className="text-sm font-semibold leading-6 text-foreground">{item.title}</h4>
-                                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.description}</p>
-                                </div>
-                              </div>
-                            </article>
-                          )
-                        })}
-                      </div>
-                    </section>
-                  ) : null}
-
-                  <div className="grid gap-4">
-                    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                      <div className="flex items-center gap-3">
-                        <div className="grid h-10 w-10 place-items-center rounded-xl bg-muted text-foreground">
-                          <ExternalLink className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                            {c.tutorialProviderSide}
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-foreground">{guide.title}</p>
-                        </div>
-                      </div>
-                      <ol className="mt-5 space-y-3">
-                        {providerPreviewSteps.map((step, index) => (
-                          <li key={step} className="flex gap-3 text-sm leading-6 text-foreground">
-                            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-muted text-[11px] font-bold text-foreground ring-1 ring-zinc-200">
-                              {index + 1}
-                            </span>
-                            <span>{step}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    </section>
-
-                    <section className="rounded-xl border border-orange-200 bg-orange-50 p-5 shadow-sm dark:bg-orange-950/30 dark:border-orange-800">
-                      <div className="flex items-center gap-3">
-                        <div className="grid h-10 w-10 place-items-center rounded-xl bg-card text-[hsl(var(--crm-accent-text))] ring-1 ring-orange-200">
-                          <ShieldCheck className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">
-                            {c.tutorialLeadDriveSide}
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-foreground">{c.channelSetup}</p>
-                        </div>
-                      </div>
-                      <ol className="mt-5 space-y-3">
-                        {leadDrivePreviewSteps.map((step, index) => (
-                          <li key={step} className="flex gap-3 text-sm leading-6 text-foreground">
-                            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-orange-600 text-[11px] font-bold text-white">
-                              {index + providerPreviewSteps.length + 1}
-                            </span>
-                            <span>{step}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    </section>
-                  </div>
-                </div>
-
-                <aside
+                {/* One card, and it is the task: pick the scenario, see what that scenario needs,
+                    press one of two worded buttons. Everything explanatory sits below it, folded. */}
+                <div
                   data-tour-id={isWhatsAppCallingGuide ? "whatsapp-calls-scenario" : undefined}
                   className="rounded-xl border border-border bg-card p-5 shadow-sm"
                 >
-                  <h3 className="text-lg font-semibold">{c.selectScenario}</h3>
-                  <div className="mt-5 space-y-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        {c.channelSetup}
+                      </p>
+                      <h2 className="mt-1 break-words text-2xl font-semibold tracking-tight">{guide.connect.title}</h2>
+                    </div>
+                    {guide.badge ? (
+                      <Badge className="shrink-0 border-border bg-card text-muted-foreground hover:bg-card">
+                        {guide.badge}
+                      </Badge>
+                    ) : null}
+                  </div>
+
+                  <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    {c.selectScenario}
+                  </p>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
                     {scenarioOptions.map((option) => {
                       const selected = mode === option.value
-                      const optionToneClass = selected
-                        ? "border-orange-300 bg-orange-50 text-orange-950 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800"
-                        : "border-border bg-card text-foreground hover:border-orange-200"
                       return (
                         <button
                           key={option.value}
                           type="button"
+                          aria-pressed={selected}
                           onClick={() => setMode(option.value)}
                           className={cn(
-                            "flex w-full gap-3 rounded-xl border p-4 text-left transition",
-                            optionToneClass,
+                            "flex min-w-0 gap-3 rounded-xl border p-4 text-left transition",
+                            selected
+                              ? "border-foreground/25 bg-muted"
+                              : "border-border bg-card hover:bg-muted",
                           )}
                         >
-                          <span className={cn("mt-1 h-4 w-4 shrink-0 rounded-full border", selected ? "border-orange-600 bg-orange-600" : "border-zinc-400")} />
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              "mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border-2",
+                              selected ? "border-orange-600" : "border-input",
+                            )}
+                          >
+                            {selected ? <span className="h-2 w-2 rounded-full bg-orange-600" /> : null}
+                          </span>
                           <span className="min-w-0">
-                            <span className="block text-sm font-semibold">{option.title}</span>
-                            <span className={cn(
-                              "mt-1 block text-xs leading-5",
-                              selected ? "text-orange-800 dark:text-orange-300" : "text-muted-foreground",
-                            )}>{option.description}</span>
-                            {option.checklist.length ? (
-                              <span className="mt-3 flex flex-wrap gap-1.5">
-                                {option.checklist.slice(0, 4).map((item) => (
-                                  <span
-                                    key={item}
-                                    className={cn(
-                                      "rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1",
-                                      selected
-                                        ? "bg-card/80 text-orange-900 ring-orange-200 dark:text-orange-300"
-                                        : "bg-muted text-muted-foreground ring-zinc-200",
-                                    )}
-                                  >
-                                    {item}
-                                  </span>
-                                ))}
-                              </span>
-                            ) : null}
+                            <span className="block text-sm font-semibold text-foreground">{option.title}</span>
+                            <span className="mt-1 block text-xs leading-5 text-muted-foreground">{option.description}</span>
                           </span>
                         </button>
                       )
                     })}
                   </div>
-                  <div className="mt-5 rounded-xl border border-orange-200 bg-orange-50 p-4 dark:bg-orange-950/30 dark:border-orange-800">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">{c.selectedScenario}</p>
-                    <p className="mt-2 text-sm font-semibold text-orange-950 dark:text-orange-300">{selectedScenarioTitle}</p>
-                    <p className="mt-1 text-xs leading-5 text-orange-800 dark:text-orange-300">{selectedScenarioDescription}</p>
-                    {selectedScenario.checklist.length ? (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
+
+                  {selectedScenario.checklist.length ? (
+                    <div className="mt-4 border-t border-border pt-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        {c.readyBeforeTitle}
+                      </p>
+                      {/* Tied to the chosen scenario, so the page says what THIS path needs instead of
+                          printing one generic list next to another. */}
+                      <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-1.5">
                         {selectedScenario.checklist.slice(0, 4).map((item) => (
-                          <span key={item} className="rounded-full bg-card px-2.5 py-1 text-[11px] font-semibold text-orange-900 ring-1 ring-orange-200 dark:text-orange-300">
-                            {item}
-                          </span>
+                          <li key={item} className="flex min-w-0 items-center gap-2 text-xs leading-5 text-foreground">
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                            <span className="min-w-0 break-words">{item}</span>
+                          </li>
                         ))}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="mt-6 flex flex-col gap-3">
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
                     <Button
                       type="button"
                       onClick={() => goToStage("eligibility")}
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                     >
                       {c.getStarted}
+                      <ArrowRight className="h-4 w-4" />
                     </Button>
-                    {effectiveFormInitialData ? (
-                      <Link
-                        href={stageHref("connect")}
-                        className={cn(buttonVariants({ variant: "ghost" }), "text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/50 dark:hover:text-orange-300")}
-                      >
-                        {c.skip}
+                    <Button asChild variant="outline" className="border-border bg-card text-foreground hover:bg-muted">
+                      <Link href={effectiveFormInitialData ? stageHref("connect") : credentialHref}>
+                        {c.continueManual}
                       </Link>
-                    ) : (
-                      <Button asChild variant="ghost" className="text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/50 dark:hover:text-orange-300">
-                        <Link href={credentialHref}>{c.skip}</Link>
-                      </Button>
-                    )}
+                    </Button>
                   </div>
-                  <div className="mt-7 rounded-xl border border-border bg-muted p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.readyBeforeTitle}</p>
-                    <ul className="mt-3 space-y-2">
-                      {readyChecklist.map((item) => (
-                        <li key={item} className="flex gap-2 text-xs leading-5 text-muted-foreground">
-                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-300" />
-                          <span>{item}</span>
-                        </li>
+                </div>
+
+                {isTikTokChatwootGuide ? (
+                  <TikTokChannelHub orgId={orgId} locale={loc} />
+                ) : null}
+
+                <details
+                  data-tour-id={isWhatsAppCallingGuide ? "whatsapp-calls-map" : undefined}
+                  className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+                >
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-foreground transition hover:bg-muted [&::-webkit-details-marker]:hidden">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Info className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="break-words">{c.connectionMapTitle}</span>
+                    </span>
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                      {c.connectionMapSteps} · {guide.tutorial.duration}
+                    </span>
+                  </summary>
+                  <div className="border-t border-border p-5">
+                    <div className="grid gap-5 md:grid-cols-3">
+                      {introGuideColumns.map((column, index) => (
+                        <section
+                          key={column.title}
+                          className={cn("min-w-0", index > 0 ? "md:border-l md:border-border md:pl-5" : "")}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold text-muted-foreground ring-1 ring-border">
+                              {index + 1}
+                            </span>
+                            <h3 className="min-w-0 break-words text-sm font-semibold text-foreground">{column.title}</h3>
+                          </div>
+                          <ul className="mt-3 space-y-1.5">
+                            {column.items.map((item) => (
+                              <li key={item} className="break-words text-xs leading-5 text-muted-foreground">{item}</li>
+                            ))}
+                          </ul>
+                        </section>
                       ))}
-                    </ul>
+                    </div>
+                    <div className="mt-5 flex flex-wrap gap-2 border-t border-border pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openTutorial(0)}
+                        className="border-border bg-card text-foreground hover:bg-muted"
+                      >
+                        <PlayCircle className="mr-2 h-4 w-4" />
+                        {c.resourceAction}
+                      </Button>
+                    </div>
                   </div>
-                </aside>
+                </details>
               </section>
             ) : stage === "eligibility" && currentStep ? (
               <section
                 data-tour-id={isWhatsAppCallingGuide ? "whatsapp-calls-eligibility" : undefined}
                 className="max-w-6xl"
               >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                  <div>
-                    <Badge className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-950/50">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                       {c.eligibilityBadge}
-                    </Badge>
-                    <h2 className="mt-5 max-w-3xl text-3xl font-semibold tracking-tight">{guide.eligibility.title}</h2>
-                    <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">{c.readinessQuestionDesc}</p>
+                    </p>
+                    <h2 className="mt-1 break-words text-2xl font-semibold tracking-tight">{guide.eligibility.title}</h2>
                   </div>
-                  <Badge className="w-fit border-border bg-card text-foreground hover:bg-card">
+                  <span className="shrink-0 text-sm font-semibold text-muted-foreground">
                     {stepIndex + 1}/{guide.eligibility.steps.length}
-                  </Badge>
+                  </span>
                 </div>
 
-                <div className="mt-8 grid max-w-5xl gap-6">
+                <div className="mt-4 grid gap-4">
                   <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-                    <div className="border-b border-border bg-muted px-5 py-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">
-                        {c.readinessQuestionTitle}
-                      </p>
-                      <p className="mt-2 text-lg font-semibold leading-7 text-foreground">{currentStep.question}</p>
-                    </div>
-
                     <div className="p-5">
-                      <div className="grid gap-3">
+                      {/* The step list is a row of chips, not a stack of full-width cards: it is a
+                          position indicator, not the question. */}
+                      <div className="flex flex-wrap gap-2">
                         {guide.eligibility.steps.map((step, index) => {
                           const answered = typeof readinessAnswers[index] === "number"
                           const active = index === stepIndex
@@ -3952,40 +3392,41 @@ function ChannelConnectInner() {
                                 setSelectedOption(readinessAnswers[index] ?? 0)
                               }}
                               className={cn(
-                                "flex items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm font-semibold transition",
+                                "flex max-w-full items-center gap-2 rounded-full border px-3 py-1.5 text-left text-xs font-semibold transition",
                                 active
-                                  ? "border-orange-300 bg-orange-50 text-orange-950 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800"
-                                  : answered
-                                    ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800"
-                                    : "border-border bg-card text-muted-foreground hover:border-orange-200 hover:bg-muted hover:text-foreground",
+                                  ? "border-foreground/25 bg-muted text-foreground"
+                                  : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
                               )}
                             >
                               <span
+                                aria-hidden="true"
                                 className={cn(
-                                  "grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold",
+                                  "grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold",
                                   active
                                     ? "bg-orange-600 text-white"
                                     : answered
-                                      ? "bg-emerald-600 text-white"
-                                      : "bg-muted text-muted-foreground",
+                                      ? "text-emerald-700 ring-1 ring-emerald-300 dark:text-emerald-300 dark:ring-emerald-800"
+                                      : "text-muted-foreground ring-1 ring-border",
                                 )}
                               >
-                                {answered && !active ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                                {answered && !active ? <CheckCircle2 className="h-3 w-3" /> : index + 1}
                               </span>
-                              <span className="min-w-0">{step.label}</span>
+                              <span className="min-w-0 truncate">{step.label}</span>
                             </button>
                           )
                         })}
                       </div>
 
+                      <p className="mt-5 text-lg font-semibold leading-7 text-foreground">{currentStep.question}</p>
+
                       {currentStep.info ? (
-                        <div className="mt-5 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm leading-6 text-orange-950 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800">
-                          <Info className="mr-2 inline h-4 w-4 text-orange-700 dark:text-orange-300" />
+                        <div className="mt-3 rounded-xl border border-border border-l-4 border-l-orange-500 bg-card px-4 py-3 text-sm leading-6 text-muted-foreground">
+                          <Info className="mr-2 inline h-4 w-4 text-orange-600 dark:text-orange-300" />
                           {currentStep.info}
                         </div>
                       ) : null}
 
-                      <div className="mt-6 space-y-3">
+                      <div className="mt-4 space-y-2">
                         {currentStep.options.map((option, index) => {
                           const active = currentAnswerIndex === index
                           return (
@@ -4002,35 +3443,28 @@ function ChannelConnectInner() {
                                   },
                                 }))
                               }}
+                              aria-pressed={active}
                               className={cn(
-                                "flex w-full items-start gap-4 rounded-xl border px-4 py-4 text-left transition",
+                                "flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left transition",
                                 active
-                                  ? "border-orange-300 bg-orange-50 text-orange-950 shadow-sm dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800"
-                                  : "border-border bg-card text-foreground hover:border-orange-200 hover:bg-muted",
+                                  ? "border-foreground/25 bg-muted text-foreground"
+                                  : "border-border bg-card text-foreground hover:bg-muted",
                               )}
                             >
                               <span
+                                aria-hidden="true"
                                 className={cn(
-                                  "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full border-2",
-                                  active ? "border-orange-600 bg-card" : "border-input bg-muted",
+                                  "mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border-2",
+                                  active ? "border-orange-600" : "border-input",
                                 )}
                               >
-                                {active ? <span className="h-3 w-3 rounded-full bg-orange-600" /> : null}
+                                {active ? <span className="h-2 w-2 rounded-full bg-orange-600" /> : null}
                               </span>
-                              <span className="min-w-0">
-                                <span className="block text-sm font-semibold leading-6">{option}</span>
-                              </span>
+                              <span className="min-w-0 break-words text-sm font-semibold leading-6">{option}</span>
                             </button>
                           )
                         })}
                       </div>
-
-                      {selectedAnswer ? (
-                        <div className="mt-5 rounded-xl border border-border bg-muted p-4 text-sm leading-6 text-foreground">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.currentChoice}</p>
-                          <p className="mt-2 font-medium text-foreground">{selectedAnswer}</p>
-                        </div>
-                      ) : null}
 
                       <div className="mt-6 flex flex-wrap items-center gap-3">
                         <Button
@@ -4055,79 +3489,13 @@ function ChannelConnectInner() {
                           {isLastStep ? c.yesContinue : c.next}
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
-                        {effectiveFormInitialData ? (
-                          <Link
-                            href={stageHref("connect")}
-                            className={cn(buttonVariants({ variant: "ghost" }), "text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/50 dark:hover:text-orange-300")}
-                          >
-                            {c.skip}
-                          </Link>
-                        ) : (
-                          <Button asChild variant="ghost" className="text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:text-orange-300 dark:hover:bg-orange-950/50 dark:hover:text-orange-300">
-                            <Link href={credentialHref}>{c.skip}</Link>
-                          </Button>
-                        )}
+                        <Button asChild variant="outline" className="border-border bg-card text-foreground hover:bg-muted">
+                          <Link href={effectiveFormInitialData ? stageHref("connect") : credentialHref}>{c.skip}</Link>
+                        </Button>
                       </div>
                     </div>
                   </div>
 
-                  <aside className="space-y-4">
-                    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.readinessProgress}</p>
-                      <div className="mt-4 space-y-2">
-                        {readinessSummaryItems.map((item, index) => (
-                          <button
-                            key={`${item.label}-${index}`}
-                            type="button"
-                            onClick={() => {
-                              setStepIndex(index)
-                              setSelectedOption(readinessAnswers[index] ?? 0)
-                            }}
-                            className="flex w-full items-start gap-3 rounded-xl border border-border bg-muted px-3 py-2.5 text-left transition hover:border-orange-200 hover:bg-card"
-                          >
-                            <span
-                              className={cn(
-                                "mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold text-white",
-                                item.answer ? "bg-emerald-600" : index === stepIndex ? "bg-orange-600" : "bg-zinc-400",
-                              )}
-                            >
-                              {item.answer ? <CheckCircle2 className="h-3.5 w-3.5" /> : index + 1}
-                            </span>
-                            <span className="min-w-0">
-                              <span className="block text-xs font-semibold text-foreground">{item.label}</span>
-                              <span className={cn("mt-1 block text-xs leading-5", item.answer ? "text-muted-foreground" : "text-amber-700 dark:text-amber-300")}>
-                                {item.answer || c.wizardNotAnswered}
-                              </span>
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </section>
-
-                    <section className="rounded-xl border border-orange-200 bg-orange-50 p-5 shadow-sm dark:bg-orange-950/30 dark:border-orange-800">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:text-orange-300">{c.selectedScenario}</p>
-                      <p className="mt-2 text-sm font-semibold leading-6 text-orange-950 dark:text-orange-300">{selectedScenarioTitle}</p>
-                      <p className="mt-2 text-xs leading-5 text-orange-800 dark:text-orange-300">{selectedScenarioDescription}</p>
-                      {selectedScenario.checklist.length ? (
-                        <div className="mt-3 flex flex-wrap gap-1.5">
-                          {selectedScenario.checklist.slice(0, 4).map((item) => (
-                            <span key={item} className="rounded-full bg-card px-2.5 py-1 text-[11px] font-semibold text-orange-900 ring-1 ring-orange-200 dark:text-orange-300">
-                              {item}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
-                    </section>
-
-                    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.readinessWhyTitle}</p>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{c.readinessWhyDesc}</p>
-                      <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:bg-emerald-950/30 dark:border-emerald-800">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">{c.readinessNextTitle}</p>
-                        <p className="mt-2 text-xs leading-5 text-emerald-900 dark:text-emerald-300">{c.readinessNextDesc}</p>
-                      </div>
-                    </section>
-                  </aside>
                 </div>
               </section>
             ) : (
@@ -4135,12 +3503,8 @@ function ChannelConnectInner() {
                 data-tour-id={isWhatsAppCallingGuide ? "whatsapp-calls-connect" : undefined}
                 className="max-w-5xl"
               >
-                <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-950/50">
-                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                  {c.channelSetup}
-                </Badge>
-                <h2 className="mt-5 text-3xl font-semibold tracking-tight">{guide.connect.title}</h2>
-                <p className="mt-5 max-w-4xl text-base leading-8 text-foreground">{guide.connect.description}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.channelSetup}</p>
+                <h2 className="mt-1 break-words text-2xl font-semibold tracking-tight">{guide.connect.title}</h2>
                 {showOauthResult ? (
                   <div
                     data-testid="oauth-result-banner"
@@ -4148,10 +3512,10 @@ function ChannelConnectInner() {
                     className={cn(
                       "mt-5 rounded-xl border p-4",
                       oauthBannerTone === "success"
-                        ? "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800"
+                        ? "border-border border-l-4 border-l-emerald-500 bg-card"
                         : (oauthBannerTone === "pending" || oauthBannerTone === "neutral")
                           ? "border-border bg-muted"
-                          : "border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800",
+                          : "border-border border-l-4 border-l-amber-500 bg-card",
                     )}
                   >
                     <p className={cn(
@@ -4177,7 +3541,7 @@ function ChannelConnectInner() {
                   </div>
                 ) : null}
                 {oauthError ? (
-                  <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 dark:bg-red-950/30 dark:border-red-800">
+                  <div className="mt-5 rounded-xl border border-border border-l-4 border-l-red-500 bg-card p-4">
                     <p className="text-sm font-semibold text-red-800 dark:text-red-300">{c.oauthErrorTitle}</p>
                     <p className="mt-1 text-sm leading-6 text-red-700 dark:text-red-300">
                       {c.oauthErrorDesc.replace("{code}", oauthError)}
@@ -4193,26 +3557,20 @@ function ChannelConnectInner() {
                 <div className="mt-6 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
                   <div className="flex flex-col gap-3 border-b border-border bg-muted px-5 py-4 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">{c.afterConnectTitle}</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{c.afterConnectTitle}</p>
                       <p className="mt-2 max-w-3xl text-sm leading-6 text-foreground">{c.setupOutcomeDesc}</p>
                     </div>
-                    <Badge className="w-fit border-orange-200 bg-card text-[hsl(var(--crm-accent-text))] hover:bg-card dark:border-orange-800">
+                    <Badge className="w-fit shrink-0 border-border bg-card text-muted-foreground hover:bg-card">
                       {selectedScenarioTitle}
                     </Badge>
                   </div>
                   <div className="grid divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
                     {compactConnectSteps.map((item, index) => {
                       const StepIcon = item.icon
-                      const iconClass =
-                        item.tone === "success"
-                          ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300"
-                          : item.tone === "accent"
-                            ? "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-950/30 dark:text-orange-300"
-                            : "bg-muted text-foreground ring-zinc-200"
                       return (
                         <article key={item.title} className="min-w-0 p-4">
                           <div className="flex items-start gap-3">
-                            <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl ring-1", iconClass)}>
+                            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground ring-1 ring-border">
                               <StepIcon className="h-4 w-4" />
                             </span>
                             <div className="min-w-0">
@@ -4241,10 +3599,10 @@ function ChannelConnectInner() {
                   </summary>
                   <div className="grid gap-5 border-t border-border p-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                     <section className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">{c.tutorialPlayerFieldMap}</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{c.tutorialPlayerFieldMap}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {tutorialScreen.leadDriveFields.slice(0, 5).map((field) => (
-                          <span key={field} className="max-w-full break-words rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium leading-5 text-orange-900 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800">
+                          <span key={field} className="max-w-full break-words rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium leading-5 text-foreground">
                             {field}
                           </span>
                         ))}
@@ -4255,7 +3613,7 @@ function ChannelConnectInner() {
                           variant="outline"
                           size="sm"
                           onClick={() => openTutorial(0)}
-                          className="border-orange-200 bg-card text-orange-700 hover:bg-orange-50 hover:text-orange-800 dark:text-orange-300 dark:border-orange-800 dark:hover:bg-orange-950/50 dark:hover:text-orange-300"
+                          className="border-border bg-card text-foreground hover:bg-muted"
                         >
                           <PlayCircle className="mr-2 h-4 w-4" />
                           {c.quickStartGuideAction}
@@ -4294,9 +3652,6 @@ function ChannelConnectInner() {
               </section>
             )}
 
-            <p className="mt-14 text-center text-sm text-muted-foreground">
-              {c.guideFooter} <ExternalLink className="inline h-3.5 w-3.5" />
-            </p>
           </div>
         </main>
       </div>

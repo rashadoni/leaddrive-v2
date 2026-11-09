@@ -2350,6 +2350,7 @@
   "taskTemplates": {
     "title": "Task Templates",
     "description": "Description",
+    "subtitle": "Ready-made tasks for recurring work: title, priority, due date and subtasks filled in with one click.",
     "newTemplate": "New template",
     "editTemplate": "Edit template",
     "deleteTemplate": "Delete template",

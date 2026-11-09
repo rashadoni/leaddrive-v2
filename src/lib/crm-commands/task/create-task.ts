@@ -8,6 +8,7 @@ import { validateRequiredCustomFields } from "@/lib/custom-fields-validation"
 import { recalcProjectCompletion } from "@/lib/project-rollup"
 import { parseRecurrenceRule } from "@/lib/recurrence/parse"
 import { generateTaskKey } from "@/lib/tasks/task-key"
+import { taskNotificationLocale, taskNotificationText } from "@/lib/tasks/task-notification-text"
 import {
   canCreateTask,
   canMoveToStatus,
@@ -253,18 +254,25 @@ export async function createTaskCommand(
     }
     executeWorkflows(orgId, "task", "created", createdTask).catch(() => {})
     const urgent = createdTask.priority === "urgent" || createdTask.priority === "critical"
-    createNotification({
-      organizationId: orgId,
-      userId: createdTask.assignedTo || "",
-      type: urgent ? "warning" : "info",
-      title: "New Task",
-      message: `Task created: "${createdTask.title}"${urgent ? ` (${String(createdTask.priority).toUpperCase()})` : ""}`,
-      entityType: "task",
-      entityId: createdTask.id,
-      push: true,
-      kind: "task.created",
-      email: Boolean(createdTask.assignedTo) && createdTask.assignedTo !== userId,
-    }).catch(() => {})
+    void (async () => {
+      // In the assignee's language (task-notification-text.ts).
+      const recipient = createdTask.assignedTo
+        ? await prisma.user.findFirst({ where: { id: createdTask.assignedTo, organizationId: orgId }, select: { preferredLanguage: true } }).catch(() => null)
+        : null
+      const text = taskNotificationText("created", taskNotificationLocale(recipient?.preferredLanguage, actor.locale), createdTask)
+      await createNotification({
+        organizationId: orgId,
+        userId: createdTask.assignedTo || "",
+        type: urgent ? "warning" : "info",
+        title: text.title,
+        message: text.message,
+        entityType: "task",
+        entityId: createdTask.id,
+        push: true,
+        kind: "task.created",
+        email: Boolean(createdTask.assignedTo) && createdTask.assignedTo !== userId,
+      })
+    })().catch(() => {})
   })
 
   return { entity: createdTask }

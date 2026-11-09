@@ -97,6 +97,7 @@ export const PATCH = withRlsAuth("tasks", "write", async (req: NextRequest, auth
       userId: authResult.userId,
       role: authResult.role,
       requestId: req.headers.get("x-request-id"),
+      locale: req.headers.get("x-locale"),
     }), id, filteredBody)
     return NextResponse.json({ success: true, data: result.entity })
   } catch (error) {

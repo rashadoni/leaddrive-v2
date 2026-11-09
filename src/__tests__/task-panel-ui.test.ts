@@ -101,6 +101,21 @@ async function open() {
 }
 
 describe("task card panel", () => {
+  it("shows a CRM status the board has no column for as the column the board puts it in", async () => {
+    // The quick-add row writes «pending»; the card printed the raw word (2026-11-09).
+    const was = TASK.status
+    TASK.status = "pending"
+    try {
+      await open()
+      const status = [...container.querySelectorAll("select")].find((s) => [...s.options].some((o) => o.text === "Completed"))!
+      expect(status.value).toBe("todo")
+      expect([...status.options].map((o) => o.text)).toEqual(["New task", "In progress", "Completed"])
+      expect(calls.some((c) => c.startsWith("PATCH"))).toBe(false)
+    } finally {
+      TASK.status = was
+    }
+  })
+
   it("shows the fields, the board path, subtasks with their people, and a time line in words", async () => {
     await open()
     const text = container.textContent ?? ""

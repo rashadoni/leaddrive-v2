@@ -28,6 +28,12 @@ export interface CrmCommandActorContext {
   voiceAction?: string
   actionIntentId?: string
   providerToolCallId?: string
+  /**
+   * The language of the screen the action came from (the proxy's `x-locale`).
+   * Text the command writes for other people — a notification — falls back to
+   * it when the recipient never chose a language.
+   */
+  locale?: string
 }
 
 export function createRestActorContext(input: {
@@ -35,6 +41,7 @@ export function createRestActorContext(input: {
   userId?: string | null
   role?: Role | null
   requestId?: string | null
+  locale?: string | null
 }): CrmCommandActorContext {
   if (!input.organizationId.trim()) throw new TypeError("organizationId is required")
   return {
@@ -43,5 +50,6 @@ export function createRestActorContext(input: {
     role: input.role ?? "admin",
     source: "rest",
     ...(input.requestId?.trim() ? { requestId: input.requestId.trim() } : {}),
+    ...(input.locale?.trim() ? { locale: input.locale.trim() } : {}),
   }
 }
