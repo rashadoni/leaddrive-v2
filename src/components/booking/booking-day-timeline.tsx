@@ -18,6 +18,7 @@
  * the right so the name underneath it stays readable, because that name is
  * exactly what the person has to read before deciding.
  */
+import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { CalendarPlus, Clock3, TriangleAlert, Users } from "lucide-react"
 import { Hint, HintValue } from "@/components/hint"
@@ -261,11 +262,22 @@ export interface HostChip {
   id: string
   name: string
   meta: string
+  /** Meetings on the shown day — what decides whether this chip earns its row. */
+  count: number
 }
+
+/** Above this many colleagues the row stops being a filter and becomes a wall. */
+const CHIPS_ALWAYS_SHOWN = 6
 
 /**
  * Whose day the rail shows. A chip instead of a select because the count beside
  * each name is the reason to pick one, and a closed select hides every count.
+ *
+ * But that count is also what makes most of them not worth a row: an
+ * organization with thirty colleagues got thirty chips reading «0 meetings»,
+ * and they pushed the day itself off the screen. So the row holds whoever has
+ * something that day, plus the one chosen, and the rest wait behind a single
+ * button. A small team is shown whole — collapsing four names helps nobody.
  */
 export function BookingHostChips({ hosts, anyMeta, selected, onSelect }: {
   hosts: HostChip[]
@@ -274,19 +286,36 @@ export function BookingHostChips({ hosts, anyMeta, selected, onSelect }: {
   onSelect: (id: string) => void
 }) {
   const t = useTranslations("booking")
+  const [expanded, setExpanded] = useState(false)
   const chip = (active: boolean) => cn(
     "flex min-h-11 max-w-full items-center gap-2.5 rounded-full border py-1 pl-1.5 pr-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
     active ? "border-primary bg-primary/5 ring-1 ring-inset ring-primary" : "border-border bg-card hover:border-primary/50",
   )
+  // Everyone, while the team is small or the row is open; otherwise the ones
+  // with meetings today and the selected one, so the filter can be undone.
+  const big = hosts.length > CHIPS_ALWAYS_SHOWN
+  const shown = expanded || !big ? hosts : hosts.filter((host) => host.count > 0 || host.id === selected)
+  const hidden = hosts.length - shown.length
+  const collapsible = big && (hidden > 0 || expanded)
   return <div className="flex flex-wrap gap-2" role="group" aria-label={t("colHosts")}>
     <button type="button" data-crm-filter="" data-state={selected ? "inactive" : "active"} aria-pressed={!selected} onClick={() => onSelect("")} className={chip(!selected)}>
       <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"><Users className="h-4 w-4" /></span>
       <span className="min-w-0 truncate text-sm"><span className="font-semibold">{t("availableTeam")}</span>{anyMeta ? <span className="ml-1.5 text-muted-foreground">{anyMeta}</span> : null}</span>
     </button>
-    {hosts.map((host) => <button type="button" key={host.id} data-crm-filter="" data-state={selected === host.id ? "active" : "inactive"} aria-pressed={selected === host.id} onClick={() => onSelect(host.id)} className={chip(selected === host.id)}>
+    {shown.map((host) => <button type="button" key={host.id} data-crm-filter="" data-state={selected === host.id ? "active" : "inactive"} aria-pressed={selected === host.id} onClick={() => onSelect(host.id)} className={chip(selected === host.id)}>
       <BookingAvatar name={host.name} className="h-8 w-8 text-xs" />
       <span className="min-w-0 truncate text-sm"><span className="font-semibold">{host.name}</span>{host.meta ? <span className="ml-1.5 text-muted-foreground">{host.meta}</span> : null}</span>
     </button>)}
+    {collapsible ? (
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+        className="flex min-h-11 items-center rounded-full border border-dashed border-border px-4 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {expanded ? t("hostsFewer") : t("hostsMore", { count: hidden })}
+      </button>
+    ) : null}
   </div>
 }
 

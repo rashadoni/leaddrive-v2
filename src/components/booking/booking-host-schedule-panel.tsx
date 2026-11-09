@@ -80,10 +80,17 @@ export function BookingHostSchedulePanel() {
   }
 
   const own = weekly !== null
-  return <section className="max-w-2xl space-y-5">
+  // Who already has hours of their own. Without it the tab was a select with
+  // nothing above it: you had to open every colleague to learn the answer.
+  const custom = (data?.users ?? []).filter((user) => data?.schedules.some((row) => row.userId === user.id))
+  return <section className="space-y-5 rounded-2xl border bg-card p-5 shadow-sm">
     <header><h2 className="text-lg font-semibold">{t("scheduleTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("scheduleHint")}</p></header>
     {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
     {!data ? <p role="status">{t("workspaceLoading")}</p> : <>
+      <div className="rounded-xl border border-border/60 bg-muted/50 p-3">
+        <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-muted-foreground">{t("scheduleCustomTitle")}</p>
+        <p className="mt-1.5 text-sm">{custom.length ? custom.map((user) => user.name).join(", ") : <span className="text-muted-foreground">{t("scheduleCustomNone")}</span>}</p>
+      </div>
       <div className="space-y-2">
         <Label htmlFor="booking-schedule-host">{t("schedulePerson")}</Label>
         <select id="booking-schedule-host" className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm" value={host} disabled={busy} onChange={(event) => choose(event.target.value)}>
