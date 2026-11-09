@@ -144,6 +144,10 @@ const POISONED_ARGS: Record<VoiceProposeToolName, Record<string, unknown>> = {
   propose_decide_attendance_request: { agentName: POISON, decision: "reject", reason: POISON },
   propose_publish_field_route: { agentName: POISON, day: "tomorrow", overrideReason: POISON },
   propose_assign_field_contact: { clientName: POISON, agentName: POISON, reason: POISON },
+  // Этап 3: компания и контакт — словами; карточка ленты — тоже словами.
+  propose_create_contact: { fullName: POISON, position: POISON, companyName: POISON },
+  propose_update_contact: { contactName: POISON, fullName: POISON, position: POISON, companyName: POISON },
+  propose_log_activity: { recordType: "contact", recordName: POISON, kind: "call", subject: POISON, details: POISON },
 }
 
 beforeEach(() => {

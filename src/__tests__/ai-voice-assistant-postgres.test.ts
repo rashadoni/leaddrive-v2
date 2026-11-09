@@ -2899,4 +2899,213 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
       }))).toBe(0)
     })
   })
+
+  /**
+   * Этап 3 (владелец 2026-11-09): клиенты. Контакт создают и правят голосом,
+   * а заметку, звонок, письмо и встречу пишут в ленту карточки — контакта,
+   * компании, сделки, лида. Записи должны лечь ровно туда, где их читает
+   * экран этой карточки, иначе «записал» голосом означало бы «потерял».
+   */
+  describe("сценарий: клиенты — контакт и лента карточки", () => {
+    let activitiesRoute!: typeof import("@/app/api/v1/activities/route")
+    let contactRoute!: typeof import("@/app/api/v1/contacts/[id]/route")
+
+    beforeAll(async () => {
+      activitiesRoute = await import("@/app/api/v1/activities/route")
+      contactRoute = await import("@/app/api/v1/contacts/[id]/route")
+    })
+
+    async function screenActivities(query: string): Promise<Array<{ id: string; type: string; subject: string; description: string | null; scheduledAt: string | null; createdBy: string | null }>> {
+      const response = await activitiesRoute.GET(get(`/api/v1/activities?${query}`))
+      const body = await response.json() as { data: { activities: Array<{ id: string; type: string; subject: string; description: string | null; scheduledAt: string | null; createdBy: string | null }> } }
+      return body.data.activities
+    }
+
+    it("контакт голосом: компания по имени, предупреждение о том же человеке, одна запись", async () => {
+      const created = await propose("propose_create_contact", {
+        fullName: "Anar Məmmədov",
+        phone: "+994 50 222 33 44",
+        position: "Satınalma meneceri",
+        companyName: "Azmart",
+      })
+      expect(created.status).toBe(201)
+      const receipt = created.body.data!
+      // Компания в квитанции — найденная сервером карточка, а не сказанное слово.
+      expect(previewField(receipt, "companyId")).toBe("company-1")
+      expect((await pressCreate(receipt)).status).toBe(200)
+      const contact = await bypass(() => prisma.contact.findFirstOrThrow({
+        where: { organizationId: ORG, fullName: "Anar Məmmədov" },
+      }))
+      expect(contact.companyId).toBe("company-1")
+      expect(contact.position).toBe("Satınalma meneceri")
+
+      // Тот же номер в другой записи — предупреждение с первой карточкой до
+      // подтверждения. Решает человек: он отменяет.
+      const again = await propose("propose_create_contact", { fullName: "Anar M.", phone: "0502223344" })
+      expect(again.status).toBe(201)
+      const warned = JSON.stringify(again.body.data!.warnings ?? [])
+      expect(warned).toContain("POSSIBLE_DUPLICATE")
+      expect(warned).toContain(contact.id)
+      expect((await pressClose(again.body.data!)).status).toBe(200)
+      expect(await bypass(() => prisma.contact.count({ where: { organizationId: ORG, fullName: { startsWith: "Anar" } } }))).toBe(1)
+
+      // Компании, которой нет, голос не придумывает: вопрос, а не пустая ссылка.
+      const unknown = await propose("propose_create_contact", { fullName: "Leyla Hüseynova", companyName: "Yoxdur Şirkəti" })
+      expect(unknown.body.needsClarification).toBe(true)
+      expect(unknown.body.code).toBe("COMPANY_NOT_FOUND")
+    })
+
+    it("правка контакта: до и после в квитанции; чужая правка в промежутке — отказ", async () => {
+      const contact = await bypass(() => prisma.contact.create({
+        data: { organizationId: ORG, fullName: "Səbinə Əliyeva", position: "Mühasib" },
+      }))
+      const receipt = (await propose(
+        "propose_update_contact",
+        { position: "Baş mühasib" },
+        { screen: { recordType: "contact", recordId: contact.id } },
+      )).body.data!
+      expect(previewField(receipt, "position")).toBe("Baş mühasib")
+
+      // Коллега тем временем меняет телефон на экране.
+      await bypass(() => prisma.contact.update({ where: { id: contact.id }, data: { phone: "+994501112233" } }))
+      const refused = await pressCreate(receipt)
+      expect(refused.status).toBe(409)
+      const after = await bypass(() => prisma.contact.findFirstOrThrow({ where: { id: contact.id } }))
+      expect(after.position).toBe("Mühasib")
+      expect(after.phone).toBe("+994501112233")
+
+      // Повтор фразы считается от новой версии и проходит, не трогая телефон.
+      const fresh = (await propose(
+        "propose_update_contact",
+        { contactName: "Səbinə", position: "Baş mühasib" },
+      )).body.data!
+      expect((await pressCreate(fresh)).status).toBe(200)
+      const saved = await bypass(() => prisma.contact.findFirstOrThrow({ where: { id: contact.id } }))
+      expect(saved.position).toBe("Baş mühasib")
+      expect(saved.phone).toBe("+994501112233")
+    })
+
+    it("звонок, заметка, встреча — в ленте той карточки, где их читает экран", async () => {
+      const contact = await bypass(() => prisma.contact.create({
+        data: { organizationId: ORG, fullName: "Tural Həsənov", companyId: "company-1" },
+      }))
+      const deal = await bypass(() => prisma.deal.create({
+        data: { organizationId: ORG, name: "Tural təchizat", stage: "LEAD", pipelineId: "pipeline-1" },
+      }))
+      const lead = await bypass(() => prisma.lead.create({
+        data: { organizationId: ORG, contactName: "Kamilə Rzayeva", status: "new" },
+      }))
+
+      // Звонок контакту — по имени.
+      const call = (await propose("propose_log_activity", {
+        recordType: "contact",
+        recordName: "Tural",
+        kind: "call",
+        subject: "Qiymət barədə zəng",
+        details: "Endirim istəyir, cümə günü cavab verəcəyik",
+      })).body.data!
+      expect(previewField(call, "type")).toBe("call")
+      expect((await pressCreate(call)).status).toBe(200)
+
+      // Встреча в сделке, открытой на экране, — во времени организации.
+      await bypass(() => prisma.user.update({ where: { id: USER }, data: { timezone: "Asia/Baku" } }))
+      try {
+        const meeting = (await propose(
+          "propose_log_activity",
+          { kind: "meeting", subject: "Ofisdə görüş", when: "2026-11-10T15:00" },
+          { screen: { recordType: "deal", recordId: deal.id } },
+        )).body.data!
+        expect(previewField(meeting, "scheduledAt")).toBe("2026-11-10T11:00:00.000Z")
+        expect((await pressCreate(meeting)).status).toBe(200)
+      } finally {
+        await bypass(() => prisma.user.update({ where: { id: USER }, data: { timezone: null } }))
+      }
+
+      // Заметка в компании и в лиде.
+      for (const [args, over] of [
+        [{ recordType: "company", recordName: "Azmart", kind: "note", subject: "Yeni anbar açırlar" }, {}],
+        [{ kind: "email", subject: "Təklif göndərildi" }, { screen: { recordType: "lead", recordId: lead.id } }],
+      ] as const) {
+        const receipt = (await propose("propose_log_activity", args, over)).body.data!
+        expect((await pressCreate(receipt)).status).toBe(200)
+      }
+
+      // Экран карточки контакта: лента из его собственного маршрута.
+      const contactScreen = await contactRoute.GET(get(`/api/v1/contacts/${contact.id}`), { params: Promise.resolve({ id: contact.id }) })
+      const contactBody = await contactScreen.json() as { data: { activities: Array<{ type: string; subject: string; description: string | null; createdBy: string | null }> } }
+      expect(contactBody.data.activities).toEqual([expect.objectContaining({
+        type: "call",
+        subject: "Qiymət barədə zəng",
+        description: "Endirim istəyir, cümə günü cavab verəcəyik",
+        createdBy: USER,
+      })])
+
+      const dealFeed = await screenActivities(`relatedType=deal&relatedId=${deal.id}`)
+      expect(dealFeed.map((row) => [row.type, row.subject, row.scheduledAt]))
+        .toEqual([["meeting", "Ofisdə görüş", "2026-11-10T11:00:00.000Z"]])
+      expect((await screenActivities("companyId=company-1")).map((row) => row.subject)).toContain("Yeni anbar açırlar")
+      expect((await screenActivities(`relatedType=lead&relatedId=${lead.id}`)).map((row) => [row.type, row.subject]))
+        .toEqual([["email", "Təklif göndərildi"]])
+    })
+
+    it("одно имя у компании и у сделки — вопрос «какая карточка», не догадка", async () => {
+      await bypass(async () => {
+        await prisma.company.create({ data: { organizationId: ORG, name: "Qala Servis" } })
+        await prisma.deal.create({ data: { organizationId: ORG, name: "Qala Servis", stage: "LEAD", pipelineId: "pipeline-1" } })
+      })
+      const before = await bypass(() => prisma.activity.count({ where: { organizationId: ORG } }))
+      const asked = await propose("propose_log_activity", { recordName: "Qala Servis", kind: "note", subject: "Zəng etdik" })
+      expect(asked.body.needsClarification).toBe(true)
+      expect(asked.body.code).toBe("RECORD_AMBIGUOUS")
+      expect(asked.body.candidates).toEqual(expect.arrayContaining(["company · Qala Servis", "deal · Qala Servis"]))
+      expect(await activeReceipt()).toBeNull()
+
+      // Человек уточняет: сделка.
+      const receipt = (await propose("propose_log_activity", {
+        recordType: "deal", recordName: "Qala Servis", kind: "note", subject: "Zəng etdik",
+      })).body.data!
+      expect((await pressCreate(receipt)).status).toBe(200)
+      expect(await bypass(() => prisma.activity.count({ where: { organizationId: ORG } }))).toBe(before + 1)
+    })
+
+    it("наблюдатель не пишет в карточку голосом", async () => {
+      ;(auth as { role: string }).role = "viewer"
+      try {
+        const refused = await propose(
+          "propose_log_activity",
+          { kind: "note", subject: "Baxdım" },
+          { screen: { recordType: "company", recordId: "company-1" } },
+        )
+        expect(refused.status).toBe(403)
+        const contactRefused = await propose("propose_create_contact", { fullName: "Viewer Yazdı" })
+        expect(contactRefused.status).toBe(403)
+      } finally {
+        ;(auth as { role: string }).role = "admin"
+      }
+      expect(await bypass(() => prisma.activity.count({ where: { organizationId: ORG, subject: "Baxdım" } }))).toBe(0)
+      expect(await bypass(() => prisma.contact.count({ where: { fullName: "Viewer Yazdı" } }))).toBe(0)
+    })
+
+    it("экран ленты не пишет в чужую организацию: внешний ключ RLS не видит, команда видит", async () => {
+      const foreign = await bypass(async () => {
+        await prisma.organization.create({ data: { id: "org-foreign-feed", name: "Foreign", slug: "foreign-feed" } })
+        return prisma.contact.create({ data: { organizationId: "org-foreign-feed", fullName: "Yad adam" } })
+      })
+      const response = await activitiesRoute.POST(post("/api/v1/activities", {
+        type: "note", subject: "Sızma", contactId: foreign.id,
+      }))
+      expect(response.status).toBe(404)
+      const contactResponse = await contactRoute.PUT(
+        new NextRequest(`http://localhost:3000/api/v1/contacts/${foreign.id}`, {
+          method: "PUT",
+          headers: { "content-type": "application/json", origin: "http://localhost:3000" },
+          body: JSON.stringify({ fullName: "Dəyişdi" }),
+        }),
+        { params: Promise.resolve({ id: foreign.id }) },
+      )
+      expect(contactResponse.status).toBe(404)
+      expect(await bypass(() => prisma.activity.count({ where: { subject: "Sızma" } }))).toBe(0)
+      expect((await bypass(() => prisma.contact.findFirstOrThrow({ where: { id: foreign.id } }))).fullName).toBe("Yad adam")
+    })
+  })
 })

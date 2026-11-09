@@ -1,7 +1,8 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { getMtmSettings } from "@/lib/mtm-settings"
-import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
+import { dateInputValueInTimezone, isValidTimezone, localDateTimeToUtc } from "@/lib/timezone"
+import { loadVoiceReportingTimezone } from "./reporting-timezone"
 import { quickTaskDueDate } from "@/lib/mtm/task-quick-due"
 import { resolveMtmRouteActor, type MtmRouteActor } from "@/lib/mtm/route-permissions"
 import { buildContactAssignmentPreview } from "@/lib/mtm/contact-bulk-assignment"
@@ -77,9 +78,13 @@ export type VoiceProposeResolution =
       | "FIELD_ROUTE_AMBIGUOUS"
       | "FIELD_CONTACT_NOT_FOUND"
       | "FIELD_CONTACT_AMBIGUOUS"
+      | "CONTACT_TARGET_REQUIRED"
+      | "RECORD_NOT_FOUND"
+      | "RECORD_AMBIGUOUS"
+      | "RECORD_TARGET_REQUIRED"
     field:
       | "assigneeName" | "leadName" | "companyName" | "contactName" | "taskTitle" | "dealName" | "status" | "stage"
-      | "itemTitle" | "agentName" | "kind" | "day" | "clientName"
+      | "itemTitle" | "agentName" | "kind" | "day" | "clientName" | "recordName"
     candidates: readonly Readonly<{ id: string; label: string }>[]
   }>
   | Readonly<{ kind: "invalid"; issues: readonly Readonly<{ path: string; message: string }>[] }>
@@ -949,10 +954,163 @@ export async function resolveVoiceProposal(
     }
   }
 
+  if (tool === "propose_create_contact" || tool === "propose_update_contact") {
+    if (tool === "propose_update_contact") {
+      // Имя контакта здесь — «какой», а не новое значение (новое — fullName).
+      delete payload.contactName
+      if (typeof args.contactName === "string") {
+        const contact = await resolveContact(auth, args.contactName)
+        if (!contact.ok) {
+          return {
+            kind: "clarify",
+            code: contact.ambiguous ? "CONTACT_AMBIGUOUS" : "CONTACT_NOT_FOUND",
+            field: "contactName",
+            candidates: contact.candidates,
+          }
+        }
+        targetEntityId = contact.id
+      } else if (screen.recordType === "contact" && screen.recordId) {
+        targetEntityId = screen.recordId
+      } else {
+        return { kind: "clarify", code: "CONTACT_TARGET_REQUIRED", field: "contactName", candidates: [] }
+      }
+    }
+    if (typeof args.companyName === "string") {
+      const company = await resolveCompany(auth, args.companyName)
+      if (!company.ok) {
+        return {
+          kind: "clarify",
+          code: company.ambiguous ? "COMPANY_AMBIGUOUS" : "COMPANY_NOT_FOUND",
+          field: "companyName",
+          candidates: company.candidates,
+        }
+      }
+      payload.companyId = company.id
+      delete payload.companyName
+    }
+    if (tool === "propose_update_contact" && Object.keys(payload).length === 0) {
+      return { kind: "invalid", issues: [{ path: "(root)", message: "Name at least one field to change" }] }
+    }
+  }
+
+  if (tool === "propose_log_activity") {
+    // Полезная нагрузка — заново: вид и имя карточки — не поля записи.
+    for (const key of Object.keys(payload)) delete payload[key]
+    const record = await resolveActivityRecord(
+      auth,
+      args.recordType as ActivityRecordType | undefined,
+      typeof args.recordName === "string" ? args.recordName : undefined,
+      screen,
+    )
+    if (!record.ok) return record.clarify
+    targetEntityId = record.id
+    payload.type = args.kind
+    payload.subject = args.subject
+    if (typeof args.details === "string" && args.details) payload.description = args.details
+    if (typeof args.when === "string") {
+      let timezone = "UTC"
+      try {
+        timezone = await loadVoiceReportingTimezone(auth.orgId, auth.userId)
+      } catch {
+        return { kind: "invalid", issues: [{ path: "when", message: "The organization's time zone could not be read; try again" }] }
+      }
+      try {
+        payload.scheduledAt = localDateTimeToUtc(args.when, timezone).toISOString()
+      } catch {
+        return { kind: "invalid", issues: [{ path: "when", message: "Use a real local date and time" }] }
+      }
+    }
+    return {
+      kind: "resolved",
+      actionType: ACTIVITY_ACTION_TYPES[record.type],
+      payload,
+      targetEntityId,
+    }
+  }
+
   return {
     kind: "resolved",
     actionType,
     payload,
     ...(targetEntityId ? { targetEntityId } : {}),
+  }
+}
+
+type ActivityRecordType = "contact" | "company" | "deal" | "lead"
+
+const ACTIVITY_ACTION_TYPES: Readonly<Record<ActivityRecordType, AiVoiceActionType>> = {
+  contact: "log_contact_activity",
+  company: "log_company_activity",
+  deal: "log_deal_activity",
+  lead: "log_lead_activity",
+}
+
+type ClarifyResolution = Extract<VoiceProposeResolution, { kind: "clarify" }>
+
+/**
+ * Карточка, в ленту которой пишется заметка, звонок или встреча (этап 3).
+ *
+ * Без имени — открытая на экране. С именем и видом — поиск в этом виде.
+ * С именем без вида — поиск во всех четырёх: одно совпадение берётся, иначе
+ * вопрос со списком «вид · имя», чтобы человек сказал, какую карточку он имел
+ * в виду, — «Азмарт» бывает и компанией, и сделкой.
+ */
+async function resolveActivityRecord(
+  auth: AuthResult,
+  recordType: ActivityRecordType | undefined,
+  recordName: string | undefined,
+  screen: VoiceScreenContext,
+): Promise<
+  | Readonly<{ ok: true; type: ActivityRecordType; id: string }>
+  | Readonly<{ ok: false; clarify: ClarifyResolution }>
+> {
+  if (!recordName) {
+    const onScreen = screen.recordType as ActivityRecordType | undefined
+    if (
+      onScreen && screen.recordId && onScreen in ACTIVITY_ACTION_TYPES
+      && (!recordType || recordType === onScreen)
+    ) {
+      return { ok: true, type: onScreen, id: screen.recordId }
+    }
+    return {
+      ok: false,
+      clarify: { kind: "clarify", code: "RECORD_TARGET_REQUIRED", field: "recordName", candidates: [] },
+    }
+  }
+
+  const types: ActivityRecordType[] = recordType ? [recordType] : ["contact", "company", "deal", "lead"]
+  const found: Array<{ type: ActivityRecordType; id: string; label: string; exact: boolean }> = []
+  for (const type of types) {
+    const match = type === "contact"
+      ? await resolveContact(auth, recordName)
+      : type === "company"
+        ? await resolveCompany(auth, recordName)
+        : type === "deal"
+          ? await resolveDealByName(auth, recordName)
+          : await resolveLeadByName(auth, recordName).then((lead) => lead.ok
+            ? { ok: true as const, id: lead.leadId }
+            : { ok: false as const, ambiguous: lead.code === "LEAD_AMBIGUOUS", candidates: lead.candidates })
+    if (match.ok) {
+      found.push({ type, id: match.id, label: "", exact: true })
+    } else {
+      for (const candidate of match.candidates) {
+        found.push({ type, id: candidate.id, label: candidate.label, exact: false })
+      }
+    }
+  }
+  const settled = found.filter((row) => row.exact)
+  if (settled.length === 1) return { ok: true, type: settled[0].type, id: settled[0].id }
+  const options = found.filter((row) => row.exact ? true : settled.length === 0)
+  return {
+    ok: false,
+    clarify: {
+      kind: "clarify",
+      code: options.length === 0 ? "RECORD_NOT_FOUND" : "RECORD_AMBIGUOUS",
+      field: "recordName",
+      candidates: options.slice(0, MAX_CANDIDATES).map((row) => ({
+        id: row.id,
+        label: `${row.type} · ${row.label || recordName}`,
+      })),
+    },
   }
 }

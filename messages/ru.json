@@ -29290,7 +29290,12 @@
       "routeId": "Маршрут",
       "overrideReason": "Причина публикации с конфликтом",
       "fieldContactId": "Клиент",
-      "reason": "Причина"
+      "reason": "Причина",
+      "fullName": "Имя",
+      "position": "Должность",
+      "subject": "Тема",
+      "type": "Вид записи",
+      "scheduledAt": "Когда"
     },
     "values": {
       "status": {
@@ -29326,6 +29331,12 @@
       "decision": {
         "APPROVED": "Одобрить",
         "REJECTED": "Отклонить"
+      },
+      "type": {
+        "note": "Заметка",
+        "call": "Звонок",
+        "email": "Письмо",
+        "meeting": "Встреча"
       }
     }
   },
@@ -29376,7 +29387,13 @@
         "send_field_message": "Сообщение агенту",
         "decide_attendance_request": "Решение по заявке",
         "publish_field_route": "Опубликовать маршрут",
-        "assign_field_contact": "Привязать клиента к сотруднику"
+        "assign_field_contact": "Привязать клиента к сотруднику",
+        "create_contact": "Создать контакт",
+        "update_contact": "Изменить контакт",
+        "log_contact_activity": "Запись в карточку контакта",
+        "log_company_activity": "Запись в карточку компании",
+        "log_deal_activity": "Запись в карточку сделки",
+        "log_lead_activity": "Запись в карточку лида"
       },
       "confirm": {
         "create_task": "Создать задачу",
@@ -29396,7 +29413,13 @@
         "send_field_message": "Отправить агенту",
         "decide_attendance_request": "Сохранить решение",
         "publish_field_route": "Опубликовать",
-        "assign_field_contact": "Привязать"
+        "assign_field_contact": "Привязать",
+        "create_contact": "Создать контакт",
+        "update_contact": "Сохранить контакт",
+        "log_contact_activity": "Записать",
+        "log_company_activity": "Записать",
+        "log_deal_activity": "Записать",
+        "log_lead_activity": "Записать"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "Похожая запись уже есть:",

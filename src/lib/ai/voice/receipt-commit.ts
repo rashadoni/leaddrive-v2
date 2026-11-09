@@ -285,6 +285,7 @@ const RESULT_ROUTES: Record<AiVoiceActionEntityType, (id: string) => string> = {
   // У маршрута дня нет своей страницы: он открывается в плане маршрутов.
   mtm_route: () => "/mtm/routes",
   mtm_contact: (id) => `/mtm/contacts/${id}`,
+  contact: (id) => `/contacts/${id}`,
 }
 
 export function voiceResultHref(entityType: AiVoiceActionEntityType, entityId: string): string {

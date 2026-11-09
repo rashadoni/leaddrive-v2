@@ -21,7 +21,7 @@ vi.mock("@/lib/prisma", () => ({
     socialAccount: { updateMany: vi.fn() },
     currency: { findMany: vi.fn(), create: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
     company: { findMany: vi.fn() },
-    contact: { findMany: vi.fn() },
+    contact: { findMany: vi.fn(), findFirst: vi.fn() },
     deal: { findMany: vi.fn() },
     lead: { findMany: vi.fn() },
     task: { findMany: vi.fn() },
@@ -126,6 +126,8 @@ describe("Activities", () => {
   it("POST creates activity", async () => {
     const activity = { id: "a2", type: "call", subject: "Follow up", organizationId: "org-1", contactId: "c1" }
     vi.mocked(prisma.activity.create).mockResolvedValue(activity as any)
+    // Контакт этой организации: команда проверяет, что карточка своя.
+    vi.mocked(prisma.contact.findFirst).mockResolvedValue({ id: "c1" } as any)
 
     const res = await activitiesPOST(
       req("/api/v1/activities", {
@@ -136,6 +138,22 @@ describe("Activities", () => {
     expect(res.status).toBe(201)
     const json = await res.json()
     expect(json.success).toBe(true)
+  })
+
+  it("POST refuses a contact of another organization", async () => {
+    vi.mocked(prisma.activity.create).mockClear()
+    vi.mocked(prisma.contact.findFirst).mockResolvedValue(null)
+    const res = await activitiesPOST(
+      req("/api/v1/activities", {
+        method: "POST",
+        body: JSON.stringify({ type: "note", subject: "x", contactId: "foreign-contact" }),
+      })
+    )
+    expect(res.status).toBe(404)
+    expect(prisma.contact.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "foreign-contact", organizationId: "org-1" },
+    }))
+    expect(prisma.activity.create).not.toHaveBeenCalled()
   })
 
   it("POST rejects invalid body", async () => {

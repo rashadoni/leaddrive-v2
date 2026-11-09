@@ -81,7 +81,7 @@ const EXPIRY_TICK_MS = 15_000
 export const VOICE_RECEIPT_CHANGED_EVENT = "leaddrive:voice-receipt-changed"
 
 /** Payload fields whose values come from a closed, translatable vocabulary. */
-const ENUM_FIELDS = new Set(["status", "priority", "relatedType", "decision"])
+const ENUM_FIELDS = new Set(["status", "priority", "relatedType", "decision", "type"])
 
 type ReceiptLayout = "anchored" | "sheet" | "inline"
 

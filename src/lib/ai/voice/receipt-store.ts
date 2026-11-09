@@ -212,6 +212,7 @@ function normalizeCandidates(
 const WARNING_ENTITY_TYPES: Record<string, AiVoiceActionEntityType> = {
   create_deal: "deal",
   create_company: "company",
+  create_contact: "contact",
 }
 
 function normalizeWarnings(value: unknown, actionType: string): readonly VoiceReceiptWarning[] {

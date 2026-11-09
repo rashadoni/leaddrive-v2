@@ -776,6 +776,69 @@ async function resolveLeadDraftTarget(auth: AuthResult, targetEntityId: string):
   }
 }
 
+/**
+ * Контакт: правка голосом или запись в его ленту (этап 3). `before` — ровно
+ * то, что квитанция правки может показать.
+ */
+async function resolveContactTarget(auth: AuthResult, targetEntityId: string): Promise<DraftTarget> {
+  const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "contact", {
+    id: targetEntityId,
+    organizationId: auth.orgId,
+  })
+  const contact = await prisma.contact.findFirst({
+    where,
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      phone: true,
+      position: true,
+      companyId: true,
+      updatedAt: true,
+    },
+  })
+  if (!contact) {
+    throw new AiVoiceActionDraftError("TARGET_NOT_FOUND", "The target record was not found", 404)
+  }
+  return {
+    entityType: "contact",
+    id: contact.id,
+    label: contact.fullName,
+    status: null,
+    updatedAt: contact.updatedAt,
+    before: {
+      fullName: contact.fullName,
+      email: contact.email,
+      phone: contact.phone,
+      position: contact.position,
+      companyId: contact.companyId,
+    },
+  }
+}
+
+/** Компания — только как карточка, в ленту которой пишется запись (этап 3). */
+async function resolveCompanyTarget(auth: AuthResult, targetEntityId: string): Promise<DraftTarget> {
+  const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "company", {
+    id: targetEntityId,
+    organizationId: auth.orgId,
+  })
+  const company = await prisma.company.findFirst({
+    where,
+    select: { id: true, name: true, updatedAt: true },
+  })
+  if (!company) {
+    throw new AiVoiceActionDraftError("TARGET_NOT_FOUND", "The target record was not found", 404)
+  }
+  return {
+    entityType: "company",
+    id: company.id,
+    label: company.name,
+    status: null,
+    updatedAt: company.updatedAt,
+    before: { name: company.name },
+  }
+}
+
 function resolveDraftTarget(
   auth: AuthResult,
   entityType: AiVoiceActionTargetType,
@@ -783,6 +846,8 @@ function resolveDraftTarget(
 ): Promise<DraftTarget> {
   if (entityType === "task") return resolveTaskTarget(auth, targetEntityId)
   if (entityType === "deal") return resolveDealTarget(auth, targetEntityId)
+  if (entityType === "contact") return resolveContactTarget(auth, targetEntityId)
+  if (entityType === "company") return resolveCompanyTarget(auth, targetEntityId)
   return resolveLeadDraftTarget(auth, targetEntityId)
 }
 
@@ -1245,6 +1310,44 @@ async function duplicateWarnings(
     return safeCandidates.length > 0
       ? [{ code: "POSSIBLE_DUPLICATE", candidates: safeCandidates }]
       : []
+  }
+
+  if (actionType === "create_contact") {
+    // Тот же человек уже есть: та же почта, тот же телефон (в любой записи
+    // номера) или то же имя. Предупреждение, а не запрет — решает человек.
+    const email = typeof payload.email === "string" ? payload.email.trim() : ""
+    const phones = phoneVariants(payload.phone)
+    const last9 = phones.map((value) => value.replace(/\D/g, "")).find((value) => value.length >= 9)?.slice(-9)
+    const fullName = typeof payload.fullName === "string" ? payload.fullName.trim() : ""
+    const or: Prisma.ContactWhereInput[] = []
+    if (email) or.push({ email: { equals: email, mode: "insensitive" } })
+    if (phones.length > 0) or.push({ phone: { in: phones } })
+    if (last9) {
+      // Номер на экране пишут как угодно: «+994 50 222 33 44», «050-222-33-44».
+      // Сравниваются цифры, а не строка, — иначе тот же человек с пробелами в
+      // номере проходил бы мимо предупреждения.
+      const sameDigits = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "contacts"
+         WHERE "organizationId" = ${auth.orgId}
+           AND regexp_replace(coalesce("phone", ''), '[^0-9]', '', 'g') LIKE ${`%${last9}`}
+         LIMIT 5`
+      if (sameDigits.length > 0) or.push({ id: { in: sameDigits.map((row: { id: string }) => row.id) } })
+    }
+    if (fullName) or.push({ fullName: { equals: fullName, mode: "insensitive" } })
+    if (or.length === 0) return []
+    const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "contact", {
+      organizationId: auth.orgId,
+      OR: or,
+    })
+    const rows = await prisma.contact.findMany({
+      where,
+      select: { id: true, fullName: true, email: true, phone: true },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    })
+    const candidates = (rows as Array<{ id: string; fullName: string; email: string | null; phone: string | null }>)
+      .map((row) => ({ id: row.id, name: row.fullName, email: row.email, phone: row.phone }))
+    return candidates.length > 0 ? [{ code: "POSSIBLE_DUPLICATE", candidates }] : []
   }
 
   if (actionType === "create_company") {
