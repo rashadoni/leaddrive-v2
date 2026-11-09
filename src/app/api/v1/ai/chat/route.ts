@@ -3,6 +3,7 @@ import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import Anthropic from "@anthropic-ai/sdk"
 import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { ModelStreamStalledError, streamRoundGuarded } from "@/lib/ai/model-stream-guard"
 import { calculateAiCost, resolveAiModel } from "@/lib/ai/budget"
 import { checkRateLimit, RATE_LIMIT_CONFIG } from "@/lib/rate-limit"
 import { TOOL_META, filterToolsByTenantModules, getEnabledTools, getEnabledToolsForAgent, type RiskLevel } from "@/lib/ai/tools"
@@ -470,15 +471,21 @@ Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown
       timing.modelCall()
       if (live) {
         live.startRound()
-        const roundStream = client.messages.stream(roundParams)
-        roundStream.on("streamEvent", (event) => {
-          if (event.type === "content_block_start" && event.content_block.type === "tool_use") live.toolUse()
-          else if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            timing.firstText()
-            live.text(event.delta.text)
-          }
+        // A stream that goes silent is cut off and asked once more
+        // (src/lib/ai/model-stream-guard.ts).
+        const liveRound = live
+        response = await streamRoundGuarded({
+          open: () => client.messages.stream(roundParams),
+          onEvent: (event: Anthropic.MessageStreamEvent) => {
+            if (event.type === "content_block_start" && event.content_block.type === "tool_use") liveRound.toolUse()
+            else if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+              timing.firstText()
+              liveRound.text(event.delta.text)
+            }
+          },
+          onRetry: () => liveRound.restartRound(),
+          onStall: (attempt) => console.warn(JSON.stringify({ evt: "ai_model_stall", attempt, round, model: roundParams.model })),
         })
-        response = await roundStream.finalMessage()
       } else {
         response = await client.messages.create(roundParams)
       }
@@ -817,6 +824,10 @@ Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown
       },
     })
   } catch (e) {
+    if (e instanceof ModelStreamStalledError) {
+      // The model went silent twice: say so, rather than a connection error.
+      return NextResponse.json({ error: "Da Vinci did not answer in time" }, { status: 504 })
+    }
     console.error("Da Vinci chat error:", e)
     return NextResponse.json({ error: "Da Vinci request failed" }, { status: 500 })
   }
