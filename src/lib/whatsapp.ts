@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { isCloudApiPaused } from "@/lib/whatsapp-account-update"
 
 // ═══════════════════════════════════════════════════════════════════════
 // WhatsApp Cloud API — multi-tenant send library
@@ -62,6 +63,15 @@ export async function resolveWhatsAppConfig(
       : { organizationId, channelType: "whatsapp", isActive: true },
   })
   if (!row) return null
+
+  // Meta has told us this number's Cloud API side is temporarily down — a coexistence client who
+  // changed phone or re-registered (`ACCOUNT_OFFBOARDED`). Its guidance is to hold sends: they fail
+  // while reonboarding runs, and a failed reminder is retried on every run. Holding them is the
+  // honest answer; the pause is lifted by `ACCOUNT_RECONNECTED` (lib/whatsapp-account-update).
+  if (isCloudApiPaused(row.settings)) {
+    console.warn(`[WhatsApp] channel ${row.id} is paused by Meta (reonboarding) — holding sends`)
+    return null
+  }
 
   // New columns first; fall back to legacy names for un-migrated rows.
   const accessToken   = row.accessToken   || row.apiKey      || null

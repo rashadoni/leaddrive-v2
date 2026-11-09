@@ -3923,6 +3923,12 @@ model ChannelMessage {
   //     WHERE direction='inbound' AND channelType IN ('whatsapp','facebook','instagram')
   //     AND externalId IS NOT NULL
   //     — migration 20260920160000_meta_inbound_idempotency (Meta App Review security gate).
+  // A FOURTH one guards the only OUTBOUND rows Meta can redeliver — replies typed in the WhatsApp
+  // Business app of a coexistence number, mirrored to us as `smb_message_echoes`:
+  //   • `channel_messages_business_app_echo_uniq` on (organizationId, externalId)
+  //     WHERE direction='outbound' AND channelType='whatsapp' AND externalId IS NOT NULL
+  //     AND metadata->>'source' = 'business_app'
+  //     — migration 20261109120000_whatsapp_app_echo_idempotency.
   @@map("channel_messages")
 }
 
