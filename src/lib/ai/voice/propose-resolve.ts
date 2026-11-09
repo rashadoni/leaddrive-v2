@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { dateInputValueInTimezone, isValidTimezone, localDateTimeToUtc } from "@/lib/timezone"
-import { loadVoiceReportingTimezone } from "./reporting-timezone"
+import { loadVoiceWallClockTimezone } from "./reporting-timezone"
 import { quickTaskDueDate } from "@/lib/mtm/task-quick-due"
 import { resolveMtmRouteActor, type MtmRouteActor } from "@/lib/mtm/route-permissions"
 import { buildContactAssignmentPreview } from "@/lib/mtm/contact-bulk-assignment"
@@ -93,6 +93,8 @@ export type VoiceProposeResolution =
 export type VoiceScreenContext = Readonly<{
   recordType?: string
   recordId?: string
+  /** IANA-пояс браузера: только если у пользователя и организации пояса нет. */
+  timeZone?: string
 }>
 
 const MAX_CANDIDATES = 5
@@ -284,15 +286,34 @@ async function resolveContact(auth: AuthResult, spokenName: string) {
   })
   const rows = await prisma.contact.findMany({
     where,
-    select: { id: true, fullName: true },
+    select: { id: true, fullName: true, email: true, company: { select: { name: true } } },
     orderBy: { fullName: "asc" },
     take: MAX_CANDIDATES + 1,
-  })
-  return matchNamedRecord(
-    (rows as ContactRow[]).map((row: ContactRow) => ({ id: row.id, label: row.fullName })),
+  }) as ContactCandidateRow[]
+  const match = matchNamedRecord(
+    rows.map((row) => ({ id: row.id, label: row.fullName })),
     spokenName,
   )
+  if (match.ok) return match
+  // Вопрос «какой?» со словами, по которым людей различают: у двух
+  // «Rashad Rahimov» (так на проде 2026-11-09) одинаковое имя — нужна
+  // компания или почта, иначе выбрать не из чего.
+  const detail = new Map(rows.map((row) => [
+    row.id,
+    [row.fullName, row.company?.name?.trim() || row.email?.trim() || null].filter(Boolean).join(" · "),
+  ]))
+  return {
+    ...match,
+    candidates: match.candidates.map((candidate) => ({ ...candidate, label: detail.get(candidate.id) ?? candidate.label })),
+  }
 }
+
+type ContactCandidateRow = Readonly<{
+  id: string
+  fullName: string
+  email: string | null
+  company: Readonly<{ name: string }> | null
+}>
 
 /**
  * The first stage of the organization's default pipeline.
@@ -1010,7 +1031,7 @@ export async function resolveVoiceProposal(
     if (typeof args.when === "string") {
       let timezone = "UTC"
       try {
-        timezone = await loadVoiceReportingTimezone(auth.orgId, auth.userId)
+        timezone = await loadVoiceWallClockTimezone(auth.orgId, auth.userId, screen.timeZone)
       } catch {
         return { kind: "invalid", issues: [{ path: "when", message: "The organization's time zone could not be read; try again" }] }
       }

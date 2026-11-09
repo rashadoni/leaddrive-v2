@@ -86,6 +86,15 @@ import { navItemPathname } from "@/lib/nav-items"
  * this tab with the user's same-origin cookie, so RBAC/RLS remain authoritative.
  */
 
+/** IANA-пояс браузера; пусто, если браузер его не называет. */
+function browserTimeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * Что ассистент говорит пользователю, когда черновик подготовить не удалось.
  *
@@ -514,6 +523,8 @@ function ConsoleInner({
           args: (args ?? {}) as Record<string, unknown>,
           ...(toolCallId ? { providerToolCallId: toolCallId } : {}),
           ...(record ? { screen: { recordType: record.type, recordId: record.id } } : {}),
+          // Часы человека: «встреча в 15:00» — по ним, если пояс не задан в CRM.
+          ...(browserTimeZone() ? { timeZone: browserTimeZone() } : {}),
         }),
       })
       const body = await response.json().catch(() => null) as

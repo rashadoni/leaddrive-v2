@@ -3048,6 +3048,58 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
         .toEqual([["email", "Təklif göndərildi"]])
     })
 
+    it("пояс не задан ни у человека, ни у организации — время по часам браузера, а не UTC", async () => {
+      // Так на проде 2026-11-09: пояса нет ни у одной организации, и «15:00»
+      // в Баку легло бы в базу как 19:00.
+      const deal = await bypass(() => prisma.deal.create({
+        data: { organizationId: ORG, name: "Saat yoxlaması", stage: "LEAD", pipelineId: "pipeline-1" },
+      }))
+      const meeting = (await propose(
+        "propose_log_activity",
+        { kind: "meeting", subject: "Görüş", when: "2026-11-10T15:00" },
+        { screen: { recordType: "deal", recordId: deal.id }, timeZone: "Asia/Baku" },
+      )).body.data!
+      expect(previewField(meeting, "scheduledAt")).toBe("2026-11-10T11:00:00.000Z")
+      expect((await pressClose(meeting)).status).toBe(200)
+
+      // Пояс человека в CRM главнее браузера: он может говорить из поездки,
+      // но встречи считает по своим часам.
+      await bypass(() => prisma.user.update({ where: { id: USER }, data: { timezone: "Europe/Istanbul" } }))
+      try {
+        const own = (await propose(
+          "propose_log_activity",
+          { kind: "meeting", subject: "Görüş", when: "2026-11-10T15:00" },
+          { screen: { recordType: "deal", recordId: deal.id }, timeZone: "Asia/Baku" },
+        )).body.data!
+        expect(previewField(own, "scheduledAt")).toBe("2026-11-10T12:00:00.000Z")
+        expect((await pressClose(own)).status).toBe(200)
+      } finally {
+        await bypass(() => prisma.user.update({ where: { id: USER }, data: { timezone: null } }))
+      }
+
+      // Чепуха вместо пояса — это UTC, а не отказ и не чужое время.
+      const junk = (await propose(
+        "propose_log_activity",
+        { kind: "meeting", subject: "Görüş", when: "2026-11-10T15:00" },
+        { screen: { recordType: "deal", recordId: deal.id }, timeZone: "Mars/Olympus" },
+      )).body.data!
+      expect(previewField(junk, "scheduledAt")).toBe("2026-11-10T15:00:00.000Z")
+      expect((await pressClose(junk)).status).toBe(200)
+    })
+
+    it("два контакта с одним именем — в вопросе видно, чем они различаются", async () => {
+      await bypass(async () => {
+        await prisma.contact.create({ data: { organizationId: ORG, fullName: "Orxan Quliyev", companyId: "company-1" } })
+        await prisma.contact.create({ data: { organizationId: ORG, fullName: "Orxan Quliyev", email: "orxan@nar.az" } })
+      })
+      const asked = await propose("propose_log_activity", { recordType: "contact", recordName: "Orxan Quliyev", kind: "note", subject: "Qeyd" })
+      expect(asked.body.code).toBe("RECORD_AMBIGUOUS")
+      expect(asked.body.candidates).toEqual(expect.arrayContaining([
+        "contact · Orxan Quliyev · Azmart MMC",
+        "contact · Orxan Quliyev · orxan@nar.az",
+      ]))
+    })
+
     it("одно имя у компании и у сделки — вопрос «какая карточка», не догадка", async () => {
       await bypass(async () => {
         await prisma.company.create({ data: { organizationId: ORG, name: "Qala Servis" } })
