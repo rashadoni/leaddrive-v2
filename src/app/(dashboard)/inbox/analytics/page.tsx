@@ -16,7 +16,7 @@ import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import {
-  Loader2, ArrowDownLeft, ArrowUpRight, MessageSquare, BarChart3, Users, Clock, Gauge, Timer, Inbox,
+  Megaphone, Loader2, ArrowDownLeft, ArrowUpRight, MessageSquare, BarChart3, Users, Clock, Gauge, Timer, Inbox,
   Download, X, TrendingUp, TrendingDown, ArrowRight, PhoneCall,
 } from "lucide-react"
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
@@ -42,6 +42,8 @@ type AnalyticsPayload = InboxAnalytics & {
     wonDeals: number
   }[]
   messageStatuses?: { status: string; inbound: number; outbound: number; total: number }[]
+  /** Chats that arrived from a Click-to-WhatsApp ad, and which ads brought them. */
+  fromAds?: { total: number; ads: { sourceId: string | null; headline: string | null; count: number }[] }
 }
 type HandoffPayload = {
   totals: {
@@ -754,6 +756,26 @@ export default function InboxAnalyticsPage() {
                     </table>
                   </div>
                 </section>
+              </div>
+            </Card>
+          )}
+
+          {/* ── Which ads brought chats ──
+              Only drawn when at least one conversation carries an ad: a company
+              that does not advertise should not get an empty card telling it so. */}
+          {data.fromAds && data.fromAds.total > 0 && (
+            <Card title={t("fromAdsTitle")} icon={<Megaphone className="h-4 w-4" />} hint={t("fromAdsHint")}>
+              <div className="p-4">
+                <div className="text-2xl font-semibold tabular-nums">{data.fromAds.total}</div>
+                <div className="text-[11px] text-muted-foreground">{t("fromAdsTotal")}</div>
+                <ul className="mt-3 space-y-1.5">
+                  {data.fromAds.ads.map((ad) => (
+                    <li key={`${ad.sourceId ?? "none"}-${ad.headline ?? ""}`} className="flex items-baseline justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-2">
+                      <span className="min-w-0 truncate text-sm">{ad.headline || (ad.sourceId ? `#${ad.sourceId}` : t("fromAdsUnnamed"))}</span>
+                      <span className="shrink-0 text-sm font-semibold tabular-nums">{ad.count}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </Card>
           )}

@@ -28392,6 +28392,10 @@
     "loadError": "Couldn't load website activity — try again later"
   },
   "inboxAnalytics": {
+    "fromAdsTitle": "Chats from ads",
+    "fromAdsHint": "Conversations that started from a Click-to-WhatsApp ad, and which ads brought them.",
+    "fromAdsTotal": "conversations from ads",
+    "fromAdsUnnamed": "Ad without a name",
     "title": "Inbox Analytics",
     "subtitle": "Message volume, conversation status, and first-response time — across channels.",
     "range_7d": "7 days",
@@ -28537,6 +28541,8 @@
     "cancel": "Cancel",
     "inbox": "Inbox",
     "channels": "Channels",
+    "fromAd": "Came from an ad",
+    "fromAdUnnamed": "Click-to-WhatsApp ad",
     "folders": "Folders",
     "view_all": "All",
     "view_me": "Me",

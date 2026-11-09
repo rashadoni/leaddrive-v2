@@ -4998,6 +4998,15 @@ model SocialConversation {
   aiReplyClaimedUntil        DateTime? // Lease expiry. Flow ai_reply can hold longer than webhook tight-loop without webhook reclaiming it after 8s.
   aiReplyPendingMessageId    String? // Wake marker: at least one inbound arrived while an AI reply lease was active. ChannelMessage rows remain the durable ordered queue.
   folderId                   String? // Phase 5 — team folder (null = no folder)
+  /// Which advertisement brought this conversation — Meta's `referral` on the
+  /// first Click-to-WhatsApp message, kept first-touch so a later tap cannot
+  /// rewrite last month's report. The rest of the payload (body, creative,
+  /// ctwa_clid) rides in `metadata.adReferral`; these four are what a report
+  /// groups by. See src/lib/inbox/ad-referral.ts.
+  adSourceType               String?
+  adSourceId                 String?
+  adHeadline                 String?
+  adReferralAt               DateTime?
   metadata                   Json      @default("{}")
   createdAt                  DateTime  @default(now())
   updatedAt                  DateTime  @updatedAt
@@ -5017,6 +5026,7 @@ model SocialConversation {
   @@index([organizationId, snoozedUntil])
   @@index([organizationId, closeOutcome])
   @@index([organizationId, customerStage])
+  @@index([organizationId, adReferralAt])
   @@map("social_conversations")
 }
 

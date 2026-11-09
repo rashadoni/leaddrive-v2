@@ -557,6 +557,16 @@ jobs:
         env:
           DEMO_SOCIAL_CONNECT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           DEMO_SOCIAL_CONNECT_DB_GATE: required
+      - name: WhatsApp ad referral database gate
+        # Which advertisement brought a chat: Meta puts `referral` on the first
+        # Click-to-WhatsApp message and we record it first-touch. The rule is
+        # one conditional UPDATE, and a mocked Prisma cannot show what happens
+        # when Meta redelivers that message, when the customer taps a second ad
+        # a week later, or when the statement names another tenant's row.
+        run: npx vitest run src/__tests__/whatsapp-ad-referral-postgres.test.ts
+        env:
+          WHATSAPP_AD_REFERRAL_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          WHATSAPP_AD_REFERRAL_DB_GATE: required
       - name: Demo assistant voice budget database gate
         # The guide's voice minutes (twenty per person who requested a demo,
         # across all their grants; 300 a day) are claimed in

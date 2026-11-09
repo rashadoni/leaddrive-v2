@@ -144,6 +144,23 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
     })),
   )
 
+  // ── Which ads brought chats. The question an owner paying for Click-to-
+  //    WhatsApp asks and that nothing in the product answered: Meta tells us on
+  //    the first message, we record it first-touch (lib/inbox/ad-referral), and
+  //    here it becomes «so many chats, and these ads brought them».
+  //    Same window and filters as everything else on the screen.
+  const adRows = await prisma.$queryRaw<{ sourceId: string | null; headline: string | null; count: number }[]>`
+    SELECT "adSourceId" AS "sourceId", "adHeadline" AS headline, COUNT(*)::int AS count
+    FROM social_conversations
+    WHERE ${Prisma.join(convConds, " AND ")} AND "adReferralAt" IS NOT NULL
+    GROUP BY "adSourceId", "adHeadline"
+    ORDER BY count DESC
+    LIMIT 10`
+  const fromAds = {
+    total: adRows.reduce((sum, row) => sum + row.count, 0),
+    ads: adRows.map((row) => ({ sourceId: row.sourceId, headline: row.headline, count: row.count })),
+  }
+
   // ── avg conversation lifetime (resolved): updatedAt - createdAt, hours.
   //    Date-hygiene ([P3] 2026-06-10): exclude epoch-dirt rows so one 1970 createdAt
   //    can't drag the average to absurd values.
@@ -299,6 +316,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
       outcome: { ...outcome, closeConversionRate },
       customerSegments,
       managerSegments,
+      fromAds,
     },
   })
 })

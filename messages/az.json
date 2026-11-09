@@ -28388,6 +28388,10 @@
     "loadError": "Saytdakı aktivliyi yükləmək mümkün olmadı — sonra yenidən cəhd edin"
   },
   "inboxAnalytics": {
+    "fromAdsTitle": "Reklamdan gələn söhbətlər",
+    "fromAdsHint": "Click-to-WhatsApp reklamından başlayan söhbətlər və onları gətirən reklamlar.",
+    "fromAdsTotal": "söhbət reklamdan",
+    "fromAdsUnnamed": "Adsız reklam",
     "title": "Gələnlər analitikası",
     "subtitle": "Mesaj həcmi, söhbət statusları və ilk cavab vaxtı — bütün kanallar üzrə.",
     "range_7d": "7 gün",
@@ -28533,6 +28537,8 @@
     "cancel": "Ləğv et",
     "inbox": "Gələnlər",
     "channels": "Kanallar",
+    "fromAd": "Reklamdan gəlib",
+    "fromAdUnnamed": "Click-to-WhatsApp reklamı",
     "folders": "Qovluqlar",
     "view_all": "Hamısı",
     "view_me": "Mənim",
