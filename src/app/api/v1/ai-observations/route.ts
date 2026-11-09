@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { withRls } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import { PiiMasker } from "@/lib/ai/pii-masker"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicOrRefusal, isAiUnavailable } from "@/lib/ai/gateway"
 
 export const POST = withRls(async (req, { orgId }) => {
   const { tab } = await req.json()
@@ -76,8 +76,8 @@ export const POST = withRls(async (req, { orgId }) => {
       overhead: "Дай 3 наблюдения об overhead расходах: какие самые крупные, где можно оптимизировать, какие риски.",
     }
 
-    const client = process.env.ANTHROPIC_API_KEY ? getAnthropicClient() : null
-    if (!client) {
+    const client = await anthropicOrRefusal(orgId, "cost-model")
+    if (isAiUnavailable(client)) {
       return NextResponse.json({ success: true, data: { observations: [], fallback: true } })
     }
 

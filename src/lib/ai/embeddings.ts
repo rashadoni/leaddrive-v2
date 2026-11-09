@@ -1,4 +1,4 @@
-import { getAnthropicClient } from "./anthropic-client"
+import { anthropicFor } from "./gateway"
 import { PiiMasker } from "./pii-masker"
 import { prisma } from "@/lib/prisma"
 
@@ -18,7 +18,7 @@ function maskEmbeddingText(text: string): string {
  * Generate embedding vector for text using Voyage AI (Anthropic's embedding partner).
  * Falls back to a simple hash-based approach if Voyage is not configured.
  */
-async function generateEmbedding(text: string): Promise<number[]> {
+async function generateEmbedding(orgId: string, text: string): Promise<number[]> {
   const safeText = maskEmbeddingText(text)
   const voyageKey = process.env.VOYAGE_API_KEY
   if (voyageKey) {
@@ -44,7 +44,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
   // Fallback: use Anthropic to create a semantic hash
   // This is a workaround — generates a pseudo-embedding by asking Claude to rate relevance
   // For production, configure VOYAGE_API_KEY for real embeddings
-  const anthropic = getAnthropicClient()
+  const anthropic = await anthropicFor(orgId, "embeddings")
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 50,
@@ -78,7 +78,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
 export async function embedKbArticle(articleId: string, orgId: string, title: string, content: string): Promise<void> {
   try {
     const text = maskEmbeddingText(`${title}\n\n${content}`).slice(0, 8000)
-    const vector = await generateEmbedding(text)
+    const vector = await generateEmbedding(orgId, text)
 
     // Upsert: update if exists, create if not
     const existing = await prisma.kbEmbedding.findUnique({ where: { articleId } })
@@ -107,7 +107,7 @@ export async function embedKbArticle(articleId: string, orgId: string, title: st
  */
 export async function searchKbByVector(orgId: string, query: string, limit = 5): Promise<Array<{ articleId: string; content: string; similarity: number }>> {
   try {
-    const queryVector = await generateEmbedding(query)
+    const queryVector = await generateEmbedding(orgId, query)
     const vectorStr = `[${queryVector.join(",")}]`
 
     const results = (await prisma.$queryRaw<KbVectorRow[]>`

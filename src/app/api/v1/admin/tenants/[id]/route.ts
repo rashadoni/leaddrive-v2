@@ -64,6 +64,7 @@ export async function GET(
         serverIp: tenant.serverIp,
         maxUsers: tenant.maxUsers,
         maxContacts: tenant.maxContacts,
+        aiPlatformKey: tenant.aiPlatformKey,
         features: tenant.features,
         modules: tenant.modules,
         branding: tenant.branding,
@@ -149,6 +150,9 @@ export async function PUT(
     if (body.isActive !== undefined) updateData.isActive = body.isActive
     if (body.serverType !== undefined) updateData.serverType = body.serverType
     if (body.serverIp !== undefined) updateData.serverIp = body.serverIp
+    // AI on the platform's own keys when the client has not entered its own
+    // (src/lib/ai/gateway). Only here: the superadmin decides it per client.
+    if (typeof body.aiPlatformKey === "boolean") updateData.aiPlatformKey = body.aiPlatformKey
 
     // Settings are merged (not overwritten) to preserve unrelated keys
     if (body.settings !== undefined && typeof body.settings === "object") {
@@ -180,7 +184,7 @@ export async function PUT(
     }
 
     logAudit(auth.orgId, "update", "tenant", id, existing.name, {
-      oldValue: { plan: existing.plan, isActive: existing.isActive },
+      oldValue: { plan: existing.plan, isActive: existing.isActive, aiPlatformKey: existing.aiPlatformKey },
       newValue: updateData,
     })
 
@@ -193,6 +197,7 @@ export async function PUT(
         isActive: updated.isActive,
         maxUsers: updated.maxUsers,
         maxContacts: updated.maxContacts,
+        aiPlatformKey: updated.aiPlatformKey,
         features: updated.features,
         modules: updated.modules,
         addons: updated.addons,

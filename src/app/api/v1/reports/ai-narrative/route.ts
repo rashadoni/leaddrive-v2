@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { generateRevenueForecast } from "@/lib/ai/predictive"
 import { calculateChurnRisk } from "@/lib/ai/predictive"
 import { PiiMasker } from "@/lib/ai/pii-masker"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { orgStageVocabulary } from "@/lib/deal-stage-vocabulary"
 
@@ -68,7 +68,7 @@ export const GET = withRls(async (_req, { orgId }) => {
       topChurnRisks: churnRisks.slice(0, 3).map((c: any) => ({ company: c.companyName, score: c.riskScore })),
     }
 
-    const anthropic = getAnthropicClient()
+    const anthropic = await anthropicFor(orgId, "reports", { skipBudget: true })
     const piiMasker = new PiiMasker()
     const maskedContext = piiMasker.mask(JSON.stringify(context))
     const response = await anthropic.messages.create({

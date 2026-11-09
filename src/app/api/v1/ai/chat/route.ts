@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
-import Anthropic from "@anthropic-ai/sdk"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import type Anthropic from "@anthropic-ai/sdk"
+import { anthropicAccess, aiUnavailableText, isAiUnavailable } from "@/lib/ai/gateway"
 import { ModelStreamStalledError, streamRoundGuarded } from "@/lib/ai/model-stream-guard"
 import { calculateAiCost, resolveAiModel } from "@/lib/ai/budget"
 import { checkRateLimit, RATE_LIMIT_CONFIG } from "@/lib/rate-limit"
@@ -51,11 +51,6 @@ import {
   COMPANY_LEGAL_ADDRESS,
 } from "@/lib/constants"
 import { applyRecordFilter } from "@/lib/sharing-rules"
-
-function getClient(): Anthropic | null {
-  if (!process.env.ANTHROPIC_API_KEY) return null
-  return getAnthropicClient()
-}
 
 const MAX_TOOL_ROUNDS = 5
 
@@ -106,8 +101,10 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
   const { message, context, history, locale, previousAgentId, sessionId, stream } = await req.json()
   if (!message) return NextResponse.json({ error: "Message required" }, { status: 400 })
 
-  const client = getClient()
-  if (!client) return NextResponse.json({ error: "Da Vinci AI requires configuration. Please set ANTHROPIC_API_KEY in Settings → Integrations." }, { status: 503 })
+  // The organization's key (or the platform's) and its AI budget, read while
+  // the turn is prepared (src/lib/ai/gateway). A refusal is answered in words.
+  const clientAccess = anthropicAccess(orgId, "davinci-chat")
+  clientAccess.catch(() => {})
 
   // The answer streams (src/lib/ai/chat-live-reply.ts) only when the panel
   // asks for it and nothing has to inspect the whole reply first: for a user
@@ -256,6 +253,7 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
     )
     timing.mark("routed")
     timing.classified(classified)
+    const client = (await clientAccess)(agentConfig?.id)
 
     // Record handoff if agent changed
     if (isHandoff && previousAgentId && agentConfig) {
@@ -824,6 +822,7 @@ Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown
       },
     })
   } catch (e) {
+    if (isAiUnavailable(e)) return NextResponse.json({ error: aiUnavailableText(e, locale) }, { status: 503 })
     if (e instanceof ModelStreamStalledError) {
       // The model went silent twice: say so, rather than a connection error.
       return NextResponse.json({ error: "Da Vinci did not answer in time" }, { status: 504 })

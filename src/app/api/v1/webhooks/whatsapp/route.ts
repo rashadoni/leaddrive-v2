@@ -8,7 +8,7 @@ import { fetchAndStoreWaMedia } from "@/lib/whatsapp-media"
 import { sanitizeForPrompt, sanitizeLog } from "@/lib/sanitize"
 import { describeWaMessage } from "@/lib/whatsapp-message-text"
 import { holdsAutomaticReply } from "@/lib/inbox/whatsapp-reply-hold"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicAvailable, anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { scoreAiResponse, qualityMetadata } from "@/lib/ai/response-scorer"
 import { readAiReplyPolicy, decideAiReplyAction, isInAiRollout } from "@/lib/inbox/ai-reply-gate"
@@ -1602,9 +1602,10 @@ async function handleAiAutoReply(
   // menu) once that's created, bleeding it into WhatsApp tech-support. See getSupportAgentConfig.
   const agentConfig = await getSupportAgentConfig(organizationId)
 
-  // If no active agent config or no API key — skip auto-reply
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.log("[WA AI] No ANTHROPIC_API_KEY — skipping auto-reply")
+  // No Claude for this organization (no key of its own, platform key not
+  // allowed or absent) — skip auto-reply. The budget is checked at the call.
+  if (!(await anthropicAvailable(organizationId))) {
+    console.log("[WA AI] AI not connected for this organization — skipping auto-reply")
     return
   }
 
@@ -1737,7 +1738,7 @@ async function handleAiAutoReply(
   const cleanMessages = whatsappAiHistory(history, userMessage)
 
   try {
-    const client = getAnthropicClient()
+    const client = await anthropicFor(organizationId, "whatsapp-reply", { agentId: agentConfig?.id })
     const model = resolveAiModel(agentConfig?.model, "claude-haiku-4-5-20251001")
     const maxTokens = Math.min(agentConfig?.maxTokens || 512, 1024, capVerdict.limits.maxOutputTokens) // Keep short for WhatsApp; A6 org clamp
 

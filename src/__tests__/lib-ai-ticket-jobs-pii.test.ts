@@ -41,6 +41,10 @@ vi.mock("@/lib/ai/budget", () => ({
 import { generateTriageSuggestion } from "@/lib/ai/triage"
 import { classifyTicketSentiment } from "@/lib/ai/sentiment"
 
+// The AI gateway (src/lib/ai/gateway) falls back to the platform key, and an
+// installation without one has no AI: the mocked client stands behind this one.
+process.env.ANTHROPIC_API_KEY ??= "test-key"
+
 beforeEach(() => {
   h.lastRequest = null
   h.responseText = "{}"

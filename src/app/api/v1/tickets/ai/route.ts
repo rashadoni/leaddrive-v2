@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server"
 import { withRls } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
-import Anthropic from "@anthropic-ai/sdk"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor, isAiUnavailable } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { isSupportAiEnabled, SUPPORT_AI_DISABLED_ERROR } from "@/lib/ai/support-feature"
-
-function getClient(): Anthropic | null {
-  if (!process.env.ANTHROPIC_API_KEY) return null
-  return getAnthropicClient()
-}
 
 async function logAiInteraction(
   orgId: string,
@@ -155,7 +149,11 @@ Status: ${ticket.status} | Priority: ${ticket.priority} | Category: ${ticket.cat
 Description: ${ticket.description || "No description"}
 Comments:\n${commentsText || "No comments yet"}`)
 
-    const client = getClient()
+    // No AI for this organization (no key, budget used up): the text fallbacks below answer.
+    const client = await anthropicFor(orgId, "tickets").catch((error: unknown) => {
+      if (isAiUnavailable(error)) return null
+      throw error
+    })
 
     if (action === "reply") {
       // Search KB for relevant articles + similar resolved tickets

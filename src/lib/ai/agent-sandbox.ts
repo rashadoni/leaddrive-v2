@@ -11,7 +11,7 @@
  * Mirrors meeting-recap / meddpicc-suggest: shared timeout-bounded client, cost
  * logged to aiInteractionLog, strict bounds on input.
  */
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { prisma } from "@/lib/prisma"
 import { calculateAiCost, KNOWN_AI_MODELS } from "@/lib/ai/budget"
 
@@ -80,7 +80,7 @@ export async function runAgentSandbox(
   const temperature = typeof config.temperature === "number" ? Math.min(2, Math.max(0, config.temperature)) : 0.7
   const maxTokens = Math.min(SANDBOX_MAX_OUTPUT_TOKENS, Math.max(64, config.maxTokens ?? SANDBOX_MAX_OUTPUT_TOKENS))
 
-  const anthropic = getAnthropicClient()
+  const anthropic = await anthropicFor(orgId, "agent-test")
   const start = Date.now()
   let response: { content?: Array<{ type?: string; text?: string }>; usage?: { input_tokens?: number; output_tokens?: number } }
   try {

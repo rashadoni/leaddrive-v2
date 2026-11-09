@@ -8,7 +8,7 @@ import { pageChosenWidgetLang, widgetLangMetadata } from "@/lib/web-chat-visitor
 import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { sendPushToUser } from "@/lib/push-send"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { calculateAiCost, checkConversationAiLimits } from "@/lib/ai/budget"
 import { scoreAiResponse, qualityMetadata, type AiQualityMetadata } from "@/lib/ai/response-scorer"
@@ -296,9 +296,6 @@ async function generateAiReply(
   lang: "en" | "ru" | "az",
   maxOutputTokens = 400,
 ): Promise<{ text: string; quality: AiQualityMetadata; logId?: string; forceHandoff: boolean } | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return null
-
   const history = await prisma.webChatMessage.findMany({
     where: { sessionId },
     orderBy: { createdAt: "asc" },
@@ -321,7 +318,7 @@ async function generateAiReply(
   }))
 
   try {
-    const client = getAnthropicClient({ apiKey })
+    const client = await anthropicFor(orgId, "web-chat")
     const model = "claude-haiku-4-5-20251001"
     const startTime = Date.now()
     const res = await client.messages.create({

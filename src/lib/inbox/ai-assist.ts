@@ -3,7 +3,7 @@
 // logs to AiInteractionLog so the spend is visible to checkAiBudget (same accounting as
 // the auto-reply bot). Returns PLAIN TEXT (one suggestion), not JSON — the composer just
 // drops it into the reply box for the agent to edit before sending.
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { prisma } from "@/lib/prisma"
 import { checkAiBudget, calculateAiCost } from "@/lib/ai/budget"
@@ -101,7 +101,7 @@ export async function runAiAssist(input: AiAssistInput): Promise<AiAssistOutcome
   const prompt = buildPrompt(action, draft, lastInbound, langLabel(lang), kbContext)
   const piiMasker = new PiiMasker()
   const maskedPrompt = piiMasker.mask(prompt)
-  const anthropic = getAnthropicClient()
+  const anthropic = await anthropicFor(organizationId, "inbox-assist", { skipBudget: true })
   const start = Date.now()
 
   let response: AiAssistModelResponse

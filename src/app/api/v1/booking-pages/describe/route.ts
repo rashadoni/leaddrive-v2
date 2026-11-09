@@ -13,7 +13,7 @@ import { withRlsAuth } from "@/lib/with-rls"
 import { orgHasModule } from "@/lib/api-auth"
 import { bookingAccess } from "@/lib/booking/access"
 import { calculateAiCost, checkAiBudget } from "@/lib/ai/budget"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicAvailable, anthropicFor } from "@/lib/ai/gateway"
 import { cleanServiceDescription, serviceDescriptionPrompt } from "@/lib/booking/service-description"
 
 const MODEL = "claude-haiku-4-5-20251001"
@@ -36,7 +36,7 @@ export const POST = withRlsAuth("bookings", "write", async (req: NextRequest, au
   if (!(await orgHasModule(auth.orgId, "ai"))) return NextResponse.json({ code: "AI_DISABLED" }, { status: 403 })
   // The form hides the button when the host has no key, but a second tab opened
   // before a restart would still ask: say so instead of answering with silence.
-  if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ code: "AI_UNAVAILABLE" }, { status: 503 })
+  if (!(await anthropicAvailable(auth.orgId))) return NextResponse.json({ code: "AI_UNAVAILABLE" }, { status: 503 })
 
   const budget = await checkAiBudget(auth.orgId)
   if (!budget.allowed) return NextResponse.json({ code: "AI_BUDGET" }, { status: 429 })
@@ -46,7 +46,7 @@ export const POST = withRlsAuth("bookings", "write", async (req: NextRequest, au
   const input = parsed.data
 
   try {
-    const response = await getAnthropicClient().messages.create({
+    const response = await (await anthropicFor(auth.orgId, "booking-pages", { skipBudget: true })).messages.create({
       model: MODEL,
       max_tokens: 400,
       messages: [{

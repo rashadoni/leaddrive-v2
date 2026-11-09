@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { checkAiBudget, calculateAiCost } from "@/lib/ai/budget"
 
 /**
@@ -244,7 +244,7 @@ Write the letter in ${LETTER_LANGUAGE_LABELS[input.language]}. Requirements:
 - End with a signature placeholder block.
 - Output ONLY the letter text, no markdown, no commentary.`
 
-  const anthropic = getAnthropicClient()
+  const anthropic = await anthropicFor(input.organizationId, "social")
   const start = Date.now()
   let response: { content?: Array<{ type?: string; text?: string }>; usage?: { input_tokens?: number; output_tokens?: number } }
   try {

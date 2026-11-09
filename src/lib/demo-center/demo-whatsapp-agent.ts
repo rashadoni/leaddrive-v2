@@ -1,4 +1,4 @@
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { platformAnthropic } from "@/lib/ai/gateway"
 import { calculateAiCost } from "@/lib/ai/budget"
 import { detectOmnichannelReplyLocale, guardOmnichannelCommitments, OMNICHANNEL_COMMITMENT_RULES } from "@/lib/inbox/omnichannel-commitment-rules"
 import { prisma } from "@/lib/prisma"
@@ -600,7 +600,7 @@ function demoServiceDeskFrame(ticketNumber: string): string {
  */
 export function demoAgentGenerator(bounds?: { timeout: number; maxRetries: number }): DemoAgentGenerate {
   return async ({ system, history }) => {
-    const response = await getAnthropicClient(bounds).messages.create({
+    const response = await platformAnthropic("demo", bounds).messages.create({
       model: DEMO_WHATSAPP_AGENT_MODEL,
       max_tokens: MAX_TOKENS,
       temperature: LEADDRIVE_AGENT_PROFILE.temperature,

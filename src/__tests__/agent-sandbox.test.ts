@@ -25,6 +25,10 @@ import { POST } from "@/app/api/v1/ai-configs/[id]/test/route"
 import { prisma } from "@/lib/prisma"
 import { requireAuth } from "@/lib/api-auth"
 
+// The AI gateway (src/lib/ai/gateway) falls back to the platform key, and an
+// installation without one has no AI: the mocked client stands behind this one.
+process.env.ANTHROPIC_API_KEY ??= "test-key"
+
 const ctx = (id: string) => ({ params: Promise.resolve({ id }) })
 const req = (body: unknown) =>
   new NextRequest("http://localhost/x", {

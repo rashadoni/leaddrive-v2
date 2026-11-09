@@ -16282,6 +16282,8 @@
       "copied": "Kopyalandı!",
       "server": "Server",
       "maxUsersHint": "-1 = limitsiz",
+      "aiPlatformKey": "Sİ bizim açarla",
+      "aiPlatformKeyHint": "Müştəri öz Sİ açarını daxil etməyibsə, Sİ platformanın açarı ilə işləyir və biz ödəyirik. Söndürülüb: öz açarı olmadan müştəridə Sİ işləmir.",
       "seedDemoData": "Sürətli başlanğıc — demo məlumatlar",
       "seedDemoDataDesc": "CRM-in bütün 60+ bölməsini real demo məlumatlarla doldurun (şirkətlər, kontaktlar, sövdələşmələr, fakturalar, biletlər, MTM, büdcə və s.). Müştəri demoları üçün idealdır.",
       "landingPage": "Girişdən sonra başlanğıc səhifə",

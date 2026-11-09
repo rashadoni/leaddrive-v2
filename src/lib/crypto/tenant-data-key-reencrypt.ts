@@ -28,6 +28,8 @@ import { reencryptForTenantDataKey } from "@/lib/crypto/tenant-pii-encryption"
  * 19 routes; `tenant-data-key-reencrypt.test.ts` checks each against the schema.
  */
 export const REENCRYPTABLE_COLUMNS: Readonly<Record<string, readonly string[]>> = {
+  // An organization's own AI provider keys (src/lib/ai/gateway/credentials.ts).
+  tenant_ai_credentials: ["secret"],
   health_patients: [
     "fullName", "sexAtBirth", "taxId", "addressLine1", "city", "postalCode", "country",
     "insuranceCarrier", "insurancePolicyId", "emergencyContactName", "emergencyContactPhone",

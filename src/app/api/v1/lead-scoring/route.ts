@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withRls } from "@/lib/with-rls"
 import { PiiMasker } from "@/lib/ai/pii-masker"
-import Anthropic from "@anthropic-ai/sdk"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import type Anthropic from "@anthropic-ai/sdk"
+import { anthropicOrRefusal, isAiUnavailable } from "@/lib/ai/gateway"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { modelConversionProbability } from "@/lib/leads/conversion-probability"
 
@@ -245,13 +245,11 @@ export const POST = withRls(async (req, { orgId }) => {
 
   const leads = await prisma.lead.findMany({ where })
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  const useAI = !!apiKey
-  let client: Anthropic | null = null
-
-  if (useAI) {
-    client = getAnthropicClient({ apiKey })
-  }
+  // The organization's key or the platform's, within its AI budget; without
+  // either every lead is scored by the rules below.
+  const ai = await anthropicOrRefusal(orgId, "lead-scoring")
+  const client: Anthropic | null = isAiUnavailable(ai) ? null : ai
+  const useAI = client !== null
 
   let scored = 0
   const results: Array<{ id: string; name: string; score: number; grade: string }> = []

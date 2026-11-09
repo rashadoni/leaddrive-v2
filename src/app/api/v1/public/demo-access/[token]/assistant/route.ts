@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { platformAnthropic } from "@/lib/ai/gateway"
 import { calculateAiCost } from "@/lib/ai/budget"
 import { noStoreHeaders, validRawDemoToken } from "@/lib/demo-center/access"
 import { loadActiveDemoGrant } from "@/lib/demo-center/active-grant"
@@ -199,7 +199,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     let promptTokens = 0
     let completionTokens = 0
     try {
-      const response = await getAnthropicClient().messages.create({
+      const response = await platformAnthropic("demo").messages.create({
         model: DEMO_ASSISTANT_MODEL,
         max_tokens: DEMO_ASSISTANT_MAX_TOKENS,
         system: buildAssistantSystemPrompt(grounding),

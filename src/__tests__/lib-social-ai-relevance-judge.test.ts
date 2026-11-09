@@ -43,7 +43,7 @@ describe("ai relevance judge", () => {
   it("returns the three supported verdicts verbatim", async () => {
     for (const verdict of ["about_subject", "not_about_subject", "unsure"] as const) {
       deps.create.mockResolvedValueOnce(reply(verdict))
-      await expect(judgeSubjectRelevance(input)).resolves.toEqual({
+      await expect(judgeSubjectRelevance("org-1", input)).resolves.toEqual({
         verdict,
         errorClass: null,
         version: AI_RELEVANCE_JUDGE_VERSION,
@@ -53,7 +53,7 @@ describe("ai relevance judge", () => {
 
   it("treats anything else as an invalid response instead of guessing", async () => {
     deps.create.mockResolvedValueOnce(reply("probably about the brand"))
-    await expect(judgeSubjectRelevance(input)).resolves.toMatchObject({
+    await expect(judgeSubjectRelevance("org-1", input)).resolves.toMatchObject({
       verdict: null,
       errorClass: "INVALID_RESPONSE",
     })
@@ -61,9 +61,9 @@ describe("ai relevance judge", () => {
 
   it("fails closed without an API key and without a text", async () => {
     delete process.env.ANTHROPIC_API_KEY
-    await expect(judgeSubjectRelevance(input)).resolves.toMatchObject({ errorClass: "MISSING_KEY" })
+    await expect(judgeSubjectRelevance("org-1", input)).resolves.toMatchObject({ errorClass: "MISSING_KEY" })
     process.env.ANTHROPIC_API_KEY = "test-key"
-    await expect(judgeSubjectRelevance({ ...input, text: "   " })).resolves.toMatchObject({
+    await expect(judgeSubjectRelevance("org-1", { ...input, text: "   " })).resolves.toMatchObject({
       errorClass: "INVALID_INPUT",
     })
     expect(deps.create).not.toHaveBeenCalled()
@@ -71,15 +71,15 @@ describe("ai relevance judge", () => {
 
   it("classifies provider failures so a worker can retry deliberately", async () => {
     deps.create.mockRejectedValueOnce(Object.assign(new Error("rate"), { status: 429 }))
-    await expect(judgeSubjectRelevance(input, { logErrors: false })).resolves.toMatchObject({
+    await expect(judgeSubjectRelevance("org-1", input, { logErrors: false })).resolves.toMatchObject({
       errorClass: "RATE_LIMIT",
     })
     deps.create.mockRejectedValueOnce(Object.assign(new Error("auth"), { status: 401 }))
-    await expect(judgeSubjectRelevance(input, { logErrors: false })).resolves.toMatchObject({
+    await expect(judgeSubjectRelevance("org-1", input, { logErrors: false })).resolves.toMatchObject({
       errorClass: "AUTHENTICATION",
     })
     deps.create.mockRejectedValueOnce(Object.assign(new Error("upstream"), { status: 503 }))
-    await expect(judgeSubjectRelevance(input, { logErrors: false })).resolves.toMatchObject({
+    await expect(judgeSubjectRelevance("org-1", input, { logErrors: false })).resolves.toMatchObject({
       errorClass: "UPSTREAM",
     })
   })
@@ -88,7 +88,7 @@ describe("ai relevance judge", () => {
   // продолжал бы занимать слот провайдера после конца лизы крона.
   it("disables SDK retries and bounds the request", async () => {
     deps.create.mockResolvedValueOnce(reply("unsure"))
-    await judgeSubjectRelevance(input, { timeoutMs: 5_000 })
+    await judgeSubjectRelevance("org-1", input, { timeoutMs: 5_000 })
     expect(deps.getAnthropicClient).toHaveBeenCalledWith(
       expect.objectContaining({ maxRetries: 0, timeout: 5_000 }),
     )
@@ -101,7 +101,7 @@ describe("ai relevance judge", () => {
 
   it("masks personal data before sending the record", async () => {
     deps.create.mockResolvedValueOnce(reply("unsure"))
-    await judgeSubjectRelevance({ ...input, text: "звоните мне +994501234567" })
+    await judgeSubjectRelevance("org-1", { ...input, text: "звоните мне +994501234567" })
     const sent = deps.create.mock.calls[0]?.[0]?.messages?.[0]?.content as string
     expect(sent).toContain("[phone]")
     expect(sent).not.toContain("994501234567")
@@ -138,7 +138,7 @@ describe("ai relevance judge", () => {
    */
   it("starts the answer for the model so it cannot open with a preamble", async () => {
     deps.create.mockResolvedValueOnce(reply("about_subject"))
-    await judgeSubjectRelevance(input)
+    await judgeSubjectRelevance("org-1", input)
 
     const [request] = deps.create.mock.calls[0]
     expect(request.messages.at(-1)).toEqual({ role: "assistant", content: "verdict:" })

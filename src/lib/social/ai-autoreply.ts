@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicAvailable, anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { sanitizeForPrompt } from "@/lib/sanitize"
 import { checkAiBudget, calculateAiCost, getAiLimits, checkConversationAiLimits } from "@/lib/ai/budget"
@@ -445,8 +445,8 @@ export async function generateChannelAiReply(opts: {
 }): Promise<AiReplyResult> {
   const { orgId, channel, externalId, userMessage, senderName, contactId, conversationId } = opts
   const persistAssistant = opts.persistAssistant !== false
-  if (!process.env.ANTHROPIC_API_KEY) return { reply: null, escalate: false, skipped: "no_api_key" }
   if (!orgId || !externalId || !userMessage?.trim()) return { reply: null, escalate: false, skipped: "missing_input" }
+  if (!(await anthropicAvailable(orgId))) return { reply: null, escalate: false, skipped: "no_api_key" }
 
   // Budget guard — never let auto-reply blow the org's daily AI budget.
   try {
@@ -665,7 +665,7 @@ export async function generateChannelAiReply(opts: {
   const maskedSystemPrompt = pii.mask(systemPrompt)
 
   try {
-    const client = getAnthropicClient()
+    const client = await anthropicFor(opts.orgId, "inbox-reply", { agentId: agent?.id })
     const masked = clean.map((m: { role: "user" | "assistant"; content: string }) => ({ ...m, content: pii.mask(m.content) }))
     const startTime = Date.now()
     const res = await client.messages.create({

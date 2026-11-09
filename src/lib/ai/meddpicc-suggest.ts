@@ -10,7 +10,7 @@
  * JSON, cost logging. Cheap Haiku model — this is structured extraction, not
  * generation.
  */
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { prisma } from "@/lib/prisma"
 import { calculateAiCost } from "@/lib/ai/budget"
@@ -157,7 +157,7 @@ Write "note" and "next" in the same language as the evidence. Keep each under 16
   masker.addKnownCompanies([deal.company?.name || "", deal.name].filter(Boolean))
   const maskedPrompt = masker.mask(prompt)
 
-  const anthropic = getAnthropicClient()
+  const anthropic = await anthropicFor(orgId, "deals")
   const start = Date.now()
   let response: { content?: Array<{ type?: string; text?: string }>; usage?: { input_tokens?: number; output_tokens?: number } }
   try {

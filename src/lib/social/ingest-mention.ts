@@ -1385,7 +1385,7 @@ export async function ingestMentionWithResult(
               : crudeSentiment(acceptedInput.text),
           }
         } else {
-          try { acceptedInput = { ...acceptedInput, sentiment: await classifySentiment(acceptedInput.text) } } catch {
+          try { acceptedInput = { ...acceptedInput, sentiment: await classifySentiment(effectiveInput.organizationId, acceptedInput.text) } } catch {
             // Sentiment enrichment is non-blocking; accepted source evidence must
             // not be lost because an AI/provider classifier is unavailable.
           }

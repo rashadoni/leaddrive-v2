@@ -6,7 +6,7 @@
  * Conservative per-1M-input-token rate: $0.02 (voyage-3-lite, as of 2026-Q2).
  *
  * Usage: call AFTER a successful generateEmbedding() so that the budget gate
- * (checkAiBudget, which sums AiInteractionLog.costUsd) meters embedding spend.
+ * (checkAiBudget, which sums the gateway journal `ai_usage`) meters embedding spend.
  *
  * Fire-and-forget inside the route — a failed persist does NOT fail the request;
  * but the spend IS understated until the next call. Mirrors the existing CLM
@@ -16,6 +16,7 @@
  */
 
 import { prisma } from "@/lib/prisma"
+import { recordAiUsage } from "@/lib/ai/gateway/usage"
 
 const VOYAGE_USD_PER_1M_INPUT = 0.02   // voyage-3-lite conservative estimate
 const MIN_COST_USD             = 0.000_01 // floor to avoid $0 records on tiny texts
@@ -52,7 +53,16 @@ export async function logEmbeddingSpend(
       },
     })
   } catch (err) {
-    // Non-fatal: budget gate sees understated spend for this call.
     console.error("[embedding-spend] Failed to log AiInteractionLog:", err)
   }
+  // The budget and the spend report read the gateway's journal.
+  await recordAiUsage({
+    orgId,
+    feature: "embeddings",
+    provider: "voyage",
+    keySource: "platform",
+    model: "voyage-3-lite",
+    inputTokens,
+    costUsd,
+  })
 }

@@ -358,7 +358,7 @@ export async function judgeAmbiguousAliasRejections(options: {
         continue
       }
     } else {
-      verdict = await judgeSubjectRelevance(common)
+      verdict = await judgeSubjectRelevance(candidate.organizationId, common)
     }
     result.judged += 1
     if (!verdict.verdict) {

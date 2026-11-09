@@ -6,7 +6,7 @@ import { createNotification } from "@/lib/notifications"
 import { canRunAiAutomation, calculateAiCost } from "@/lib/ai/budget"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { getDigestRecipients, markDigestSent } from "@/lib/digest/subscriptions"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { orgStageVocabulary } from "@/lib/deal-stage-vocabulary"
 
@@ -372,7 +372,7 @@ async function generateNarrative(orgId: string, data: BriefingData, lang: string
   const langName = langMap[lang] || "RUSSIAN"
 
   try {
-    const anthropic = getAnthropicClient()
+    const anthropic = await anthropicFor(orgId, "daily-briefing")
 
     const piiMasker = new PiiMasker()
     const dataSnapshot = piiMasker.mask(JSON.stringify({

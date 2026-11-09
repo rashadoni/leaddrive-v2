@@ -31,6 +31,10 @@ import {
   type LegalReportCaseData,
 } from "@/lib/social/legal-case"
 
+// The AI gateway (src/lib/ai/gateway) falls back to the platform key, and an
+// installation without one has no AI: the mocked client stands behind this one.
+process.env.ANTHROPIC_API_KEY ??= "test-key"
+
 const sampleCase: LegalReportCaseData = {
   caseId: "case-1",
   category: "defamation",

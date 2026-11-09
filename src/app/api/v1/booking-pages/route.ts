@@ -4,6 +4,7 @@
  *   POST → create
  */
 import type { Prisma } from "@prisma/client"
+import { anthropicAvailable } from "@/lib/ai/gateway"
 import { NextRequest, NextResponse } from "next/server"
 import { bookingDb as prisma } from "@/lib/booking/db"
 import { withRlsAuth } from "@/lib/with-rls"
@@ -45,7 +46,7 @@ export const GET = withRlsAuth("bookings", "read", async (_req, auth) => {
       // Whether the form may offer to write the description. Both halves are
       // server-side facts: the organisation's module, and whether this host can
       // reach the model at all.
-      ai: aiModule && Boolean(process.env.ANTHROPIC_API_KEY),
+      ai: aiModule && await anthropicAvailable(orgId),
       users,
       pages: pages.map((page: (typeof pages)[number]) => ({
         ...page,

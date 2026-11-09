@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { prisma, logAudit } from "@/lib/prisma"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import {
   INBOX_QUALIFICATION_BOARD_PREFIX,
@@ -201,11 +201,17 @@ function parseDecision(text: string): QualificationDecision | null {
   }
 }
 
-async function classifyCommercialMessage(text: string, model = MODEL): Promise<QualificationDecision | null> {
-  if (!process.env.ANTHROPIC_API_KEY) return null
+async function classifyCommercialMessage(
+  orgId: string,
+  agentId: string | null,
+  text: string,
+  model = MODEL,
+): Promise<QualificationDecision | null> {
   const masked = new PiiMasker().mask(text)
   try {
-    const response = await getAnthropicClient().messages.create({
+    // No key or no budget for this organization throws here: no decision.
+    const client = await anthropicFor(orgId, "inbox-lead-qualification", { agentId })
+    const response = await client.messages.create({
       model,
       max_tokens: 320,
       temperature: 0,
@@ -399,7 +405,7 @@ export async function maybeCreateQualifiedLeadTask(opts: {
   }
   if (!phone) return { created: false, reason: "phone-required" }
 
-  const classified = await classifyCommercialMessage(qualificationText, agent.model || MODEL)
+  const classified = await classifyCommercialMessage(opts.orgId, agent.id ?? null, qualificationText, agent.model || MODEL)
   const decision: QualificationDecision = classified
     && classified.realCustomer
     && classified.commercialIntent

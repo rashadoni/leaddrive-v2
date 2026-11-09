@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { withRlsAuth } from "@/lib/with-rls"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { aiUnavailableText, anthropicOrRefusal, isAiUnavailable } from "@/lib/ai/gateway"
 
 /**
  * AI summary of a segmentation aggregate. Caller posts the aggregated data
@@ -18,9 +18,9 @@ produce 3–5 concise bullet insights a sales manager can act on. Rules:
 - Return JSON ONLY: { "insights": string[] }. No markdown.`
 
 export const POST = withRlsAuth("contacts", "read", async (req, auth) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    return NextResponse.json({ success: false, error: "AI not configured" }, { status: 503 })
+  const client = await anthropicOrRefusal(auth.orgId, "reports")
+  if (isAiUnavailable(client)) {
+    return NextResponse.json({ success: false, error: aiUnavailableText(client) }, { status: 503 })
   }
 
   const body = await req.json().catch(() => null)
@@ -29,7 +29,6 @@ export const POST = withRlsAuth("contacts", "read", async (req, auth) => {
   }
 
   try {
-    const client = getAnthropicClient({ apiKey })
     const res = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 700,

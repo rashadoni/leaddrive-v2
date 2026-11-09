@@ -1,4 +1,4 @@
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { prisma } from "@/lib/prisma"
 import { calculateAiCost } from "@/lib/ai/budget"
@@ -68,7 +68,7 @@ export async function matchTicketToKb(
   })
   if (articles.length === 0) return null
 
-  const anthropic = getAnthropicClient()
+  const anthropic = await anthropicFor(ticket.organizationId, "automation")
 
   const articleCatalog = articles.map((a: { id: string; title: string; content: string | null }, idx: number) =>
     `[${idx}] ${a.id} — ${a.title}${a.content ? `\n   Summary: ${a.content.slice(0, 200)}` : ""}`

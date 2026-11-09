@@ -754,6 +754,16 @@ jobs:
           TENANT_DATA_KEYS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           TENANT_DATA_KEYS_DB_GATE: required
 
+      - name: AI gateway database gate
+        # One way to Claude for every feature (src/lib/ai/gateway): the
+        # organization's own key sealed and kept from every other tenant under
+        # FORCE RLS, the platform key only where the superadmin allows it, each
+        # paid call journaled in ai_usage, and the daily budget read from it.
+        run: npx vitest run src/__tests__/ai-gateway-postgres.test.ts
+        env:
+          AI_GATEWAY_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          AI_GATEWAY_DB_GATE: required
+
       - name: AI voice assistant database gate
         # Весь голосовой помощник, проигранный без микрофона: настоящие роуты
         # предложения/черновика/подтверждения/записи, настоящие CRM-команды и

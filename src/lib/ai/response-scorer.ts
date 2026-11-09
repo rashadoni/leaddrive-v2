@@ -15,7 +15,7 @@
  *  - PII: inputs are masked before the judge sees them; output is numeric JSON, no unmask needed.
  */
 import { prisma } from "@/lib/prisma"
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicAvailable, anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { calculateAiCost } from "@/lib/ai/budget"
 
@@ -109,7 +109,7 @@ export async function scoreAiResponse(opts: {
   const question = opts.question?.trim()
   const response = opts.response?.trim()
   if (!opts.organizationId || !question || !response) return fail("missing_input")
-  if (!process.env.ANTHROPIC_API_KEY) return fail("no_api_key")
+  if (!(await anthropicAvailable(opts.organizationId))) return fail("no_api_key")
 
   const model = opts.model || SCORER_MODEL
   const pii = new PiiMasker()
@@ -119,7 +119,7 @@ export async function scoreAiResponse(opts: {
     `ОТВЕТ АССИСТЕНТА:\n${pii.mask(response.slice(0, 2000))}`
 
   try {
-    const client = getAnthropicClient({ timeout: SCORER_TIMEOUT_MS, maxRetries: 0 })
+    const client = await anthropicFor(opts.organizationId, "inbox-reply-score", { timeout: SCORER_TIMEOUT_MS, maxRetries: 0 })
     const startTime = Date.now()
     const res = await client.messages.create({
       model,

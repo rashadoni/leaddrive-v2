@@ -1,4 +1,4 @@
-import { getAnthropicClient } from "@/lib/ai/anthropic-client"
+import { anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { prisma } from "@/lib/prisma"
 import { calculateAiCost } from "@/lib/ai/budget"
@@ -94,7 +94,7 @@ export async function draftSocialReply(
   monitoredSubjectName?: string | null,
   forbiddenResponderNames: string[] = [],
 ): Promise<SocialReplyDraft | null> {
-  const anthropic = getAnthropicClient()
+  const anthropic = await anthropicFor(mention.organizationId, "automation")
 
   const langLabel = lang === "ru" ? "Russian" : lang === "az" ? "Azerbaijani" : "English"
   // The org's configured Social agent persona (character/voice) takes priority; the

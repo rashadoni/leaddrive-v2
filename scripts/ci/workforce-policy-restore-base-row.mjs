@@ -15,7 +15,11 @@ try {
     // The candidate client can materialize defaults for newly added columns
     // even with select:{id:true}. Seed this historical fixture using only the
     // columns in its pinned schema; do not alter the pre-anchor database.
-    await owner.organization.create({ data: { id: org, name: "Additive migration existing fixture", slug: org }, select: { id: true } })
+    // Raw, like the user below: the candidate client writes every column it
+    // knows, and a column added to organizations after the pinned base (e.g.
+    // "aiPlatformKey", 2026-11-09) does not exist in this database.
+    await owner.$executeRaw`INSERT INTO organizations (id, name, slug, "createdAt", "updatedAt")
+      VALUES (${org}, 'Additive migration existing fixture', ${org}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
     await owner.$executeRaw`INSERT INTO users (id, "organizationId", email, name, role, "passwordHash", "createdAt", "updatedAt")
       VALUES (${user}, ${org}, ${user + "@example.test"}, 'Fixture actor', 'admin', ${randomUUID()}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
     await owner.workforcePolicy.create({ data: { id, organizationId: org, version: 1, name: "Existing legacy draft", effectiveFrom: new Date("2090-01-01"), definition, definitionHash, createdByUserId: user }, select: { id: true } })

@@ -541,7 +541,7 @@ export async function autoTriageStoredReviewEnvelopes(options: {
         } else {
           result.aiAttempted += 1
           const attemptedAt = options.now ?? new Date()
-          const ai = await aiSentimentDetailed(candidate.text ?? "", {
+          const ai = await aiSentimentDetailed(candidate.organizationId, candidate.text ?? "", {
             logErrors: false,
             timeoutMs: aiTimeoutMs,
           })
