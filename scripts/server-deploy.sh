@@ -9550,9 +9550,17 @@ for warm_route in \
   curl -s -o /dev/null --max-time 20 -X "${warm_route%% *}" "$HEALTH_URL${warm_route#* }" 2>/dev/null &
   WARM_PIDS+=("$!")
 done
+# Da Vinci's chat code (the tool layer, 1.7 s to load on production): the first
+# question after a deploy waited 13.2 s for its first word on 2026-11-08, the
+# next 1.2 s. An anonymous request is redirected to /login by the proxy before
+# the route loads, so this one carries the cron secret. It reads nothing and
+# calls no model; a release without the route answers 404 and changes nothing.
+curl -s -o /dev/null --max-time 30 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" \
+  "$HEALTH_URL/api/cron/ai-chat-warm" 2>/dev/null &
+WARM_PIDS+=("$!")
 # Only these: a Fund cutover keeps its own lock holder in the background.
 wait "${WARM_PIDS[@]}" || true
-log "Warmed the phone station's routes on the new process"
+log "Warmed the phone station's routes and Da Vinci's chat on the new process"
 
 HEALTHY=false
 for i in 1 2 3 4 5; do

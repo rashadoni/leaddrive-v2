@@ -19,6 +19,7 @@ import { generateNextBestActions } from "@/lib/ai/next-best-action"
 import { routeToAgent } from "@/lib/ai/agent-router"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { LiveReply, sseFrame } from "@/lib/ai/chat-live-reply"
+import { startChatTiming } from "@/lib/ai/chat-timing"
 import { isPhoneRestrictedPrincipal } from "@/lib/customer-phone-privacy"
 import { dateInputValueInTimezone } from "@/lib/timezone"
 import {
@@ -91,6 +92,9 @@ type AiToolAction = {
 
 export const POST = withRlsAuth("ai", "read", async (req, session) => {
   const { orgId, userId } = session
+  // Prep, first word and total of this turn, into the log (cold start after
+  // a deploy: src/lib/ai/chat-timing.ts).
+  const timing = startChatTiming()
 
   const aiLimitKey = `ai:${orgId}`
   if (!checkRateLimit(aiLimitKey, RATE_LIMIT_CONFIG.ai)) {
@@ -121,6 +125,7 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
     // Started here, inside the request's tenant scope, so every query of the
     // turn keeps its RLS context (src/lib/rls-context.ts).
     const result = answer((unmask) => new LiveReply(push, unmask))
+    void result.then((response) => timing.finish(response.status, true), () => timing.finish(500, true))
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
         controllerRef = controller
@@ -142,7 +147,10 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
       },
     })
   }
-  return answer(null)
+  const reply = await answer(null)
+  timing.firstText()
+  timing.finish(reply.status, false)
+  return reply
 
   async function answer(openLive: ((unmask: (text: string) => string) => LiveReply) | null): Promise<NextResponse> {
   try {
@@ -429,12 +437,16 @@ ${CURRENT_STATE_GROUNDING_RULES}
           : {}),
       }
       let response: Anthropic.Message
+      timing.modelCall()
       if (live) {
         live.startRound()
         const roundStream = client.messages.stream(roundParams)
         roundStream.on("streamEvent", (event) => {
           if (event.type === "content_block_start" && event.content_block.type === "tool_use") live.toolUse()
-          else if (event.type === "content_block_delta" && event.delta.type === "text_delta") live.text(event.delta.text)
+          else if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            timing.firstText()
+            live.text(event.delta.text)
+          }
         })
         response = await roundStream.finalMessage()
       } else {
