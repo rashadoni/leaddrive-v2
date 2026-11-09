@@ -186,10 +186,11 @@ export function VoiceOrb({
         data-placement={activeInlineHost ? "inline" : "floating"}
         aria-label={loadFailed ? t("staleBuild") : t("start")}
         title={loadFailed ? t("staleBuild") : t("start")}
-        className={`relative flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${activeInlineHost ? "h-9 w-9" : "h-14 w-14"}`}
+        className={`relative flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${activeInlineHost ? "h-9" : "h-14 w-14"}`}
       >
-        <span className={`relative flex items-center justify-center rounded-full text-white shadow-lg shadow-black/20 animate-[pulse_3s_ease-in-out_infinite] ${loadFailed ? "bg-destructive" : "bg-muted-foreground/70"} ${activeInlineHost ? "h-9 w-9 shadow-sm" : "h-14 w-14"}`}>
+        <span className={`relative flex items-center justify-center rounded-full text-white shadow-lg ${loadFailed ? "bg-destructive shadow-destructive/40" : "bg-primary shadow-primary/30"} ${activeInlineHost ? "h-9 gap-1.5 px-3.5 text-sm font-semibold shadow-sm" : "h-14 w-14"}`}>
           <Mic className={activeInlineHost ? "h-4 w-4" : "h-5 w-5"} />
+          {activeInlineHost && <span data-testid="voice-assistant-launcher-label">{t("orbLabel")}</span>}
         </span>
       </button>
 
