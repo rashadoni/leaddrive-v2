@@ -36,6 +36,18 @@ export function readReplyHoldSetting(settings: unknown): ReplyHoldSetting {
 }
 
 /**
+ * Is the deferred turn in play on this channel — held now, answerable later?
+ *
+ * `always` is the one held case that never becomes an answer: the owner said this channel's replies
+ * are a person's job, full stop. So the worker that gives the booking agent its turn back a minute
+ * later must ask THIS question, not `holdsAutomaticReply`, or it would answer on a channel whose
+ * whole point is that we do not (lib/booking/whatsapp-deferred-turn).
+ */
+export function deferredReplyEnabled(settings: unknown): boolean {
+  return holdsAutomaticReply(settings) && readReplyHoldSetting(settings) !== "always"
+}
+
+/**
  * Should this channel's automatic replies wait for a human instead of going out now?
  *
  * Read once per inbound message and applied to every automatic sender in the turn — the booking

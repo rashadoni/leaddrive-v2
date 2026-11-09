@@ -3901,6 +3901,12 @@ model ChannelMessage {
   conversationId  String?
   mediaUrl        String?
   messageType     String   @default("text")
+  /// Stamped when the deferred-turn worker took responsibility for answering this customer message
+  /// on a held WhatsApp channel (lib/booking/whatsapp-deferred-turn). An atomic claim: the worker
+  /// only ever updates a row where this is still null, so one message gets at most one automatic
+  /// answer however many runs overlap. Null means "nobody has decided yet", which for every message
+  /// outside a held channel is simply forever.
+  deferredTurnAt  DateTime?
   createdAt       DateTime @default(now())
 
   channelConfig ChannelConfig?      @relation(fields: [channelConfigId], references: [id])
@@ -3929,6 +3935,10 @@ model ChannelMessage {
   //     WHERE direction='outbound' AND channelType='whatsapp' AND externalId IS NOT NULL
   //     AND metadata->>'source' = 'business_app'
   //     — migration 20261109120000_whatsapp_app_echo_idempotency.
+  // And a partial INDEX (not unique) backs the deferred-turn worker's one query:
+  //   • `channel_messages_deferred_turn_pending_idx` on (channelConfigId, createdAt)
+  //     WHERE direction='inbound' AND channelType='whatsapp' AND "deferredTurnAt" IS NULL
+  //     — migration 20261109160000_whatsapp_deferred_turn.
   @@map("channel_messages")
 }
 
