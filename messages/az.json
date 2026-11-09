@@ -29286,7 +29286,12 @@
       "routeId": "Marşrut",
       "overrideReason": "Konfliktə baxmayaraq dərc səbəbi",
       "fieldContactId": "Müştəri",
-      "reason": "Səbəb"
+      "reason": "Səbəb",
+      "fullName": "Ad",
+      "position": "Vəzifə",
+      "subject": "Mövzu",
+      "type": "Qeyd növü",
+      "scheduledAt": "Nə vaxt"
     },
     "values": {
       "status": {
@@ -29322,6 +29327,12 @@
       "decision": {
         "APPROVED": "Təsdiqlə",
         "REJECTED": "Rədd et"
+      },
+      "type": {
+        "note": "Qeyd",
+        "call": "Zəng",
+        "email": "Məktub",
+        "meeting": "Görüş"
       }
     }
   },
@@ -29372,7 +29383,13 @@
         "send_field_message": "Agentə mesaj",
         "decide_attendance_request": "Sorğu üzrə qərar",
         "publish_field_route": "Marşrutu dərc et",
-        "assign_field_contact": "Müştərini əməkdaşa bağla"
+        "assign_field_contact": "Müştərini əməkdaşa bağla",
+        "create_contact": "Kontakt yarat",
+        "update_contact": "Kontaktı dəyiş",
+        "log_contact_activity": "Kontakt kartına qeyd",
+        "log_company_activity": "Şirkət kartına qeyd",
+        "log_deal_activity": "Sövdələşmə kartına qeyd",
+        "log_lead_activity": "Lid kartına qeyd"
       },
       "confirm": {
         "create_task": "Tapşırıq yarat",
@@ -29392,7 +29409,13 @@
         "send_field_message": "Agentə göndər",
         "decide_attendance_request": "Qərarı saxla",
         "publish_field_route": "Dərc et",
-        "assign_field_contact": "Bağla"
+        "assign_field_contact": "Bağla",
+        "create_contact": "Kontakt yarat",
+        "update_contact": "Kontaktı saxla",
+        "log_contact_activity": "Yaz",
+        "log_company_activity": "Yaz",
+        "log_deal_activity": "Yaz",
+        "log_lead_activity": "Yaz"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "Oxşar qeyd artq mövcuddur:",

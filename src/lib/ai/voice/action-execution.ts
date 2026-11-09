@@ -9,6 +9,8 @@ import { convertLeadToDealCommand } from "@/lib/crm-commands/lead/convert-lead-t
 import { updateTaskCommand } from "@/lib/crm-commands/task/update-task"
 import { updateDealCommand } from "@/lib/crm-commands/deal/update-deal"
 import { createCompanyCommand } from "@/lib/crm-commands/company/create-company"
+import { createContactCommand, updateContactCommand } from "@/lib/crm-commands/contact/contact"
+import { createActivityCommand } from "@/lib/crm-commands/activity/create-activity"
 import {
   addTaskChecklistItemCommand,
   addTaskCommentCommand,
@@ -29,6 +31,7 @@ import {
 import { hashAiActionIntentPayload } from "./action-intent"
 import { hashAiVoiceActionExecutionLeaseToken } from "./action-execution-lease"
 import {
+  AI_VOICE_ACTION_ENTITY_TYPES,
   getAiVoiceActionDefinition,
   isAiVoiceActionType,
   parseAiVoiceActionPayload,
@@ -102,7 +105,10 @@ function storedResultPayload(intent: ExecutableIntent): StoredResultPayload {
     || (payload as JsonObject).contract !== 1
     || !isAiVoiceActionType((payload as JsonObject).actionType)
     || (payload as JsonObject).actionType !== intent.actionType
-    || !["task", "lead", "deal"].includes(String((payload as JsonObject).entityType))
+    // Все виды результата, а не только первые три: иначе повтор уже
+    // выполненного действия с компанией или записью поля отвечал «результат
+    // испорчен» вместо самого результата.
+    || !(AI_VOICE_ACTION_ENTITY_TYPES as readonly string[]).includes(String((payload as JsonObject).entityType))
     || typeof (payload as JsonObject).entityId !== "string"
     || !(payload as JsonObject).entityId
     || intent.resultEntityType !== (payload as JsonObject).entityType
@@ -196,6 +202,34 @@ async function runCanonicalCommand(
     entityId = (await publishFieldRouteCommand(actor, payload, execution)).entity.id
   } else if (intent.actionType === "assign_field_contact") {
     entityId = (await assignFieldContactCommand(actor, payload, execution)).entity.contactId
+  } else if (intent.actionType === "create_contact") {
+    entityId = (await createContactCommand(actor, payload, execution)).entity.id
+  } else if (intent.actionType === "update_contact") {
+    if (!intent.targetEntityId) {
+      throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)
+    }
+    entityId = (await updateContactCommand(actor, intent.targetEntityId, payload, execution)).entity.id
+  } else if (
+    intent.actionType === "log_contact_activity"
+    || intent.actionType === "log_company_activity"
+    || intent.actionType === "log_deal_activity"
+    || intent.actionType === "log_lead_activity"
+  ) {
+    // Запись в ленту карточки. Карточка — цель черновика, проверенная при
+    // подготовке квитанции; в полях её нет. Ссылки — те же, что ставит экран
+    // этой карточки, иначе запись не появилась бы в её ленте.
+    if (!intent.targetEntityId) {
+      throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)
+    }
+    const id = intent.targetEntityId
+    const link = {
+      log_contact_activity: { contactId: id, relatedType: "contact", relatedId: id },
+      log_company_activity: { companyId: id },
+      log_deal_activity: { relatedType: "deal", relatedId: id },
+      log_lead_activity: { relatedType: "lead", relatedId: id },
+    }[intent.actionType]
+    await createActivityCommand(actor, { ...payload, ...link }, execution)
+    entityId = id
   } else if (intent.actionType === "update_task") {
     if (!intent.targetEntityId) {
       throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)

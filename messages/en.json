@@ -29290,7 +29290,12 @@
       "routeId": "Route",
       "overrideReason": "Reason to publish despite a conflict",
       "fieldContactId": "Client",
-      "reason": "Reason"
+      "reason": "Reason",
+      "fullName": "Name",
+      "position": "Position",
+      "subject": "Subject",
+      "type": "Entry type",
+      "scheduledAt": "When"
     },
     "values": {
       "status": {
@@ -29326,6 +29331,12 @@
       "decision": {
         "APPROVED": "Approve",
         "REJECTED": "Reject"
+      },
+      "type": {
+        "note": "Note",
+        "call": "Call",
+        "email": "Email",
+        "meeting": "Meeting"
       }
     }
   },
@@ -29376,7 +29387,13 @@
         "send_field_message": "Message to an agent",
         "decide_attendance_request": "Decision on a request",
         "publish_field_route": "Publish a route",
-        "assign_field_contact": "Attach a client to an employee"
+        "assign_field_contact": "Attach a client to an employee",
+        "create_contact": "Create contact",
+        "update_contact": "Edit contact",
+        "log_contact_activity": "Entry on the contact card",
+        "log_company_activity": "Entry on the company card",
+        "log_deal_activity": "Entry on the deal card",
+        "log_lead_activity": "Entry on the lead card"
       },
       "confirm": {
         "create_task": "Create task",
@@ -29396,7 +29413,13 @@
         "send_field_message": "Send to the agent",
         "decide_attendance_request": "Save the decision",
         "publish_field_route": "Publish",
-        "assign_field_contact": "Attach"
+        "assign_field_contact": "Attach",
+        "create_contact": "Create contact",
+        "update_contact": "Save contact",
+        "log_contact_activity": "Save entry",
+        "log_company_activity": "Save entry",
+        "log_deal_activity": "Save entry",
+        "log_lead_activity": "Save entry"
       },
       "warning": {
         "POSSIBLE_DUPLICATE": "A similar record already exists:",

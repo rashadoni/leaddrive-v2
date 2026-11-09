@@ -276,7 +276,8 @@ describe("POST /api/v1/contacts", () => {
       "create",
       "contact",
       "c1",
-      "Bob Smith"
+      "Bob Smith",
+      { userId: "user-1" },
     )
   })
 
@@ -563,7 +564,7 @@ describe("PUT /api/v1/contacts/:id", () => {
       "contact",
       "c1",
       "Updated Name",
-      { newValue: { fullName: "Updated Name" } }
+      { newValue: { fullName: "Updated Name" }, userId: "user-1" }
     )
     expect(executeWorkflows).toHaveBeenCalledWith(
       "org-1",

@@ -16,6 +16,8 @@ import {
 } from "@/lib/crm-commands/schemas/lead"
 import { createDealCommandSchema, updateDealCommandSchema } from "@/lib/crm-commands/schemas/deal"
 import { createCompanyCommandSchema } from "@/lib/crm-commands/schemas/company"
+import { createContactCommandSchema, updateContactCommandSchema } from "@/lib/crm-commands/schemas/contact"
+import { voiceActivityCommandSchema } from "@/lib/crm-commands/schemas/activity"
 import {
   assignFieldContactCommandSchema,
   decideAttendanceRequestCommandSchema,
@@ -47,6 +49,13 @@ export const AI_VOICE_ACTION_TYPES = [
   // Этап 2б: маршрут и клиенты поля.
   "publish_field_route",
   "assign_field_contact",
+  // Этап 3 (владелец 2026-11-09): клиенты — контакт и запись в карточке.
+  "create_contact",
+  "update_contact",
+  "log_contact_activity",
+  "log_company_activity",
+  "log_deal_activity",
+  "log_lead_activity",
 ] as const
 
 export type AiVoiceActionType = (typeof AI_VOICE_ACTION_TYPES)[number]
@@ -70,6 +79,9 @@ export type AiVoiceActionCommand =
   | "decideAttendanceRequestCommand"
   | "publishFieldRouteCommand"
   | "assignFieldContactCommand"
+  | "createContactCommand"
+  | "updateContactCommand"
+  | "createActivityCommand"
 export type AiVoiceActionDedupePolicy =
   | "idempotency_key"
   | "lead_contact_coordinates"
@@ -101,9 +113,19 @@ export type AiVoiceActionEntityType =
   | "mtm_task" | "mtm_message" | "mtm_attendance_request"
   // Этап 2б: маршрут дня и клиент поля.
   | "mtm_route" | "mtm_contact"
+  // Этап 3: контакт (человек у клиента).
+  | "contact"
+
+/** Все виды результата — для проверки сохранённого результата при повторе. */
+export const AI_VOICE_ACTION_ENTITY_TYPES: readonly AiVoiceActionEntityType[] = [
+  "task", "lead", "deal", "company",
+  "mtm_task", "mtm_message", "mtm_attendance_request",
+  "mtm_route", "mtm_contact",
+  "contact",
+]
 
 /** The kinds of record a voice update may target. */
-export type AiVoiceActionTargetType = "lead" | "task" | "deal"
+export type AiVoiceActionTargetType = "lead" | "task" | "deal" | "contact" | "company"
 
 export type AiVoiceActionTarget = Readonly<{
   entityType: AiVoiceActionTargetType
@@ -323,6 +345,11 @@ const DECIDE_ATTENDANCE_REQUEST_FIELDS = ["attendanceRequestId", "decision", "no
 // человеку в квитанции они не показываются (как expectedUpdatedAt).
 const PUBLISH_FIELD_ROUTE_FIELDS = ["routeId", "overrideReason", "expectedVersion"] as const
 const ASSIGN_FIELD_CONTACT_FIELDS = ["fieldContactId", "agentId", "reason", "previewToken"] as const
+// Этап 3: контакт — то, что говорят вслух; компанию сервер находит по имени.
+const CREATE_CONTACT_FIELDS = ["fullName", "email", "phone", "position", "companyId"] as const
+const UPDATE_CONTACT_FIELDS = [...CREATE_CONTACT_FIELDS, "expectedUpdatedAt"] as const
+// Запись в карточке: карточку сервер берёт из цели черновика, не из полей.
+const LOG_ACTIVITY_FIELDS = ["type", "subject", "description", "scheduledAt"] as const
 /** Служебные поля квитанции: сервер их ставит, человек их не правит. */
 const SERVER_SIDE_FIELDS: ReadonlySet<string> = new Set(["expectedUpdatedAt", "expectedVersion", "previewToken"])
 
@@ -429,6 +456,24 @@ const WRITE_DEALS: readonly AiVoiceActionPermission[] = [
 const WRITE_COMPANIES: readonly AiVoiceActionPermission[] = [
   { module: "companies", action: "write", tenantModule: "crm" },
 ]
+const WRITE_CONTACTS: readonly AiVoiceActionPermission[] = [
+  { module: "contacts", action: "write", tenantModule: "crm" },
+]
+const CONTACT_TARGET: AiVoiceActionTarget = {
+  entityType: "contact",
+  requestField: "targetEntityId",
+  bindExpectedUpdatedAt: true,
+}
+
+/**
+ * Карточки, в ленту которых пишется заметка, звонок или встреча. К версии
+ * карточки запись не привязана: чужая правка телефона не делает заметку о
+ * звонке неверной (см. bindExpectedUpdatedAt).
+ */
+function activityParentTarget(entityType: AiVoiceActionTargetType): AiVoiceActionTarget {
+  return { entityType, requestField: "targetEntityId", bindExpectedUpdatedAt: false }
+}
+
 const WRITE_ROUTE_FIELD: readonly AiVoiceActionPermission[] = [
   { module: "mtm", action: "write", tenantCapability: "route-field" },
 ]
@@ -478,6 +523,40 @@ function taskWorkEntry(input: {
       operation: "create",
       entityType: "task",
       previewFields: input.fields,
+    }),
+  }
+}
+
+/**
+ * Запись в ленту карточки (заметка, звонок, письмо, встреча). Результат — сама
+ * карточка: на неё ведёт «готово», там запись и видна. Право — писать в эту
+ * карточку: экран ленты прав не спрашивал вовсе, голос строже.
+ */
+function activityEntry(input: {
+  actionType: AiVoiceActionType
+  target: AiVoiceActionTargetType & AiVoiceActionEntityType
+  permissions: readonly AiVoiceActionPermission[]
+}): AiVoiceActionRegistryEntry {
+  return {
+    actionType: input.actionType,
+    command: "createActivityCommand",
+    commandSchema: voiceActivityCommandSchema,
+    allowedFields: LOG_ACTIVITY_FIELDS,
+    permissions: input.permissions,
+    fieldPermissionEntity: input.target,
+    fieldPermissionNames: () => [],
+    risk: "standard",
+    ttlMs: STANDARD_TTL_MS,
+    dedupePolicy: "idempotency_key",
+    target: activityParentTarget(input.target),
+    operation: "create",
+    resultEntityType: input.target,
+    previewFields: LOG_ACTIVITY_FIELDS,
+    renderPreview: createPreviewRenderer({
+      actionType: input.actionType,
+      operation: "create",
+      entityType: input.target,
+      previewFields: LOG_ACTIVITY_FIELDS,
     }),
   }
 }
@@ -796,6 +875,54 @@ export const AI_VOICE_ACTION_REGISTRY: Readonly<Record<AiVoiceActionType, AiVoic
     resultEntityType: "mtm_contact",
     risk: "standard",
   }),
+  create_contact: {
+    actionType: "create_contact",
+    command: "createContactCommand",
+    commandSchema: createContactCommandSchema,
+    allowedFields: CREATE_CONTACT_FIELDS,
+    permissions: WRITE_CONTACTS,
+    fieldPermissionEntity: "contact",
+    fieldPermissionNames: (payload) => ownPayloadFields(payload),
+    risk: "standard",
+    ttlMs: STANDARD_TTL_MS,
+    dedupePolicy: "idempotency_key",
+    target: null,
+    operation: "create",
+    resultEntityType: "contact",
+    previewFields: CREATE_CONTACT_FIELDS,
+    renderPreview: createPreviewRenderer({
+      actionType: "create_contact",
+      operation: "create",
+      entityType: "contact",
+      previewFields: CREATE_CONTACT_FIELDS,
+    }),
+  },
+  update_contact: {
+    actionType: "update_contact",
+    command: "updateContactCommand",
+    commandSchema: updateContactCommandSchema.strict(),
+    allowedFields: UPDATE_CONTACT_FIELDS,
+    permissions: WRITE_CONTACTS,
+    fieldPermissionEntity: "contact",
+    fieldPermissionNames: (payload) => ownPayloadFields(payload, ["expectedUpdatedAt"]),
+    risk: "sensitive",
+    ttlMs: SENSITIVE_TTL_MS,
+    dedupePolicy: "target_revision",
+    target: CONTACT_TARGET,
+    operation: "update",
+    resultEntityType: "contact",
+    previewFields: CREATE_CONTACT_FIELDS,
+    renderPreview: createPreviewRenderer({
+      actionType: "update_contact",
+      operation: "update",
+      entityType: "contact",
+      previewFields: CREATE_CONTACT_FIELDS,
+    }),
+  },
+  log_contact_activity: activityEntry({ actionType: "log_contact_activity", target: "contact", permissions: WRITE_CONTACTS }),
+  log_company_activity: activityEntry({ actionType: "log_company_activity", target: "company", permissions: WRITE_COMPANIES }),
+  log_deal_activity: activityEntry({ actionType: "log_deal_activity", target: "deal", permissions: WRITE_DEALS }),
+  log_lead_activity: activityEntry({ actionType: "log_lead_activity", target: "lead", permissions: WRITE_LEADS }),
 })
 
 const ACTION_TYPE_SET = new Set<string>(AI_VOICE_ACTION_TYPES)

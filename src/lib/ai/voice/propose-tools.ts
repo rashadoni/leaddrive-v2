@@ -44,6 +44,9 @@ export const VOICE_PROPOSE_TOOL_NAMES = [
   "propose_decide_attendance_request",
   "propose_publish_field_route",
   "propose_assign_field_contact",
+  "propose_create_contact",
+  "propose_update_contact",
+  "propose_log_activity",
 ] as const
 
 export type VoiceProposeToolName = (typeof VOICE_PROPOSE_TOOL_NAMES)[number]
@@ -68,6 +71,11 @@ export const VOICE_PROPOSE_ACTION_TYPES: Readonly<Record<VoiceProposeToolName, A
     propose_decide_attendance_request: "decide_attendance_request",
     propose_publish_field_route: "publish_field_route",
     propose_assign_field_contact: "assign_field_contact",
+    propose_create_contact: "create_contact",
+    propose_update_contact: "update_contact",
+    // Одна фраза для модели, четыре действия у сервера: какое — решает вид
+    // карточки (контакт, компания, сделка, лид), см. propose-resolve.ts.
+    propose_log_activity: "log_contact_activity",
   })
 
 const personName = z.string().trim().min(2).max(120)
@@ -349,6 +357,39 @@ export const VOICE_PROPOSE_SCHEMAS = {
     agentName: personName,
     reason: z.string().trim().min(3).max(500).optional(),
   }),
+  /*
+   * Этап 3 (владелец 2026-11-09): клиенты. Контакт — человек у клиента;
+   * компания — по имени, сервер находит её сам.
+   */
+  propose_create_contact: z.strictObject({
+    fullName: shortText,
+    email: z.string().trim().email().max(255).optional(),
+    phone: z.string().trim().min(6).max(40).optional(),
+    position: z.string().trim().max(200).optional(),
+    companyName: shortText.optional(),
+  }),
+  propose_update_contact: z.strictObject({
+    /** Omit for the contact open on screen. */
+    contactName: shortText.optional(),
+    fullName: shortText.optional(),
+    email: z.string().trim().email().max(255).optional(),
+    phone: z.string().trim().min(6).max(40).optional(),
+    position: z.string().trim().max(200).optional(),
+    companyName: shortText.optional(),
+  }),
+  propose_log_activity: z.strictObject({
+    /** Which kind of card. Omit together with recordName for the card open on screen. */
+    recordType: z.enum(["contact", "company", "deal", "lead"]).optional(),
+    /** The card as the user named it: a person, a company, a deal or a lead. */
+    recordName: shortText.optional(),
+    kind: z.enum(["note", "call", "email", "meeting"]),
+    /** A short title in the user's language. */
+    subject: z.string().trim().min(1).max(500),
+    /** What was said or agreed, in the user's own words. */
+    details: z.string().trim().max(5000).optional(),
+    /** Only for a meeting or call at a set time: local YYYY-MM-DDTHH:MM. */
+    when: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Use local YYYY-MM-DDTHH:MM").optional(),
+  }),
 } as const satisfies Record<VoiceProposeToolName, z.ZodTypeAny>
 
 export type VoiceProposeArgs<T extends VoiceProposeToolName> =
@@ -389,6 +430,12 @@ const DESCRIPTIONS: Readonly<Record<VoiceProposeToolName, string>> = {
     "Prepare PUBLISHING the draft route of one field employee for a day, for the user to confirm. This does NOT publish anything. agentName as the user said it; day is today, tomorrow or YYYY-MM-DD. Publishing sends the route to the agent's phone. If the CRM says the route conflicts with another one, tell the user; publish anyway only if the user gives a reason (overrideReason).",
   propose_assign_field_contact:
     "Prepare ATTACHING one field client (a doctor, pharmacist or other field contact) to a field employee, for the user to confirm. This does NOT change anything. clientName and agentName as the user said them. The first employee of a client becomes the responsible one, the next ones are additional; nobody is detached. Add a short reason only if the user gave one.",
+  propose_create_contact:
+    "Prepare a new CONTACT — a person at a client — for the user to confirm. This does NOT save anything. fullName is required; add email, phone, position and the company name only if the user said them. The company is found by name in the CRM; if it is not there, say so — create the company first with propose_create_company. For a sales enquiry that is not yet a client, use propose_create_lead instead.",
+  propose_update_contact:
+    "Prepare a change to ONE existing contact (a person at a client) for the user to confirm. This does NOT save anything. Omit contactName for the contact open on screen; otherwise give the name the user said. Send only the fields being changed: fullName, email, phone, position, companyName.",
+  propose_log_activity:
+    "Prepare a NOTE, a logged CALL, an EMAIL or a MEETING in the history of ONE card — a contact, a company, a deal or a lead — for the user to confirm. This does NOT save anything. Omit recordType and recordName for the card open on screen; otherwise give the kind of card and its name as the user said it. kind: note, call, email or meeting. subject is a short title; details is what was said or agreed, in the user's own words — do not invent anything. when (local YYYY-MM-DDTHH:MM) only for a meeting or call at a time the user named; resolve relative days first. To give someone a job to do, use propose_create_task instead.",
   propose_create_deal:
     "Prepare a NEW deal that does not come from a lead, for the user to confirm on screen. This does NOT create the deal: it shows a receipt the user confirms by saying yes or pressing the button. Name the company and contact as the user says them; never invent an id. Do not pass a stage, pipeline or probability — the CRM chooses them. If the user is converting an existing lead, use propose_convert_lead_to_deal instead.",
 }
