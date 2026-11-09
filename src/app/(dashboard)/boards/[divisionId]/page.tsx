@@ -38,6 +38,8 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
 import { InlineTasksTable, type InlineTask, type InlineUser } from "@/components/tasks/inline-tasks-table"
+import { applyTaskPatch, revertTaskPatch } from "@/lib/client/optimistic-task-patch"
+import { quietReloader } from "@/lib/client/quiet-reload"
 import { resolveLaneKey } from "@/lib/tasks/board-columns"
 import { fetchAllBoardTasks } from "@/lib/tasks/fetch-board-tasks"
 import { BOARD_VIEWS, DEFAULT_BOARD_VIEW, type BoardView } from "@/lib/tasks/board-view"
@@ -243,10 +245,15 @@ function BoardInner() {
     return () => clearTimeout(id)
   }, [search, type, priority, assignee, eventType, mine, mineCreated, pathname, router])
 
-  const loadTasks = useCallback(async () => {
-    // All of them, not the API's first 200 — see fetch-board-tasks.ts.
-    setTasks(await fetchAllBoardTasks<Task>(divisionId))
-  }, [divisionId])
+  // Edits show on the board at once and go to the server behind it
+  // (owner, 2026-11-09); a load never paints over one still on its way —
+  // see quiet-reload.ts. All tasks, not the API's first 200 — see
+  // fetch-board-tasks.ts.
+  const tasksRef = useRef<Task[]>([])
+  useEffect(() => { tasksRef.current = tasks }, [tasks])
+  const reloader = useMemo(() => quietReloader(() => fetchAllBoardTasks<Task>(divisionId), setTasks), [divisionId])
+  const loadTasks = reloader.load
+  const tracked = reloader.track
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -367,49 +374,56 @@ function BoardInner() {
   // Board move: co-write status (canonical = the target column's mapsToStatus)
   // AND boardColumnKey (the lane), optimistically and on the wire.
   async function move(taskId: string, col: BoardCol, boardPosition?: number) {
-    const prev = tasks
-    setTasks((ts) => ts.map((x) => (x.id === taskId ? {
-      ...x,
+    const original = tasksRef.current.find((x) => x.id === taskId)
+    const patch = {
       status: col.mapsToStatus,
       boardColumnKey: col.key,
       ...(boardPosition !== undefined ? { boardPosition } : {}),
-    } : x)))
-    try {
-      const res = await fetch(`/api/v1/tasks/${taskId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          status: col.mapsToStatus,
-          boardColumnKey: col.key,
-          ...(boardPosition !== undefined ? { boardPosition } : {}),
-        }),
-      })
-      if (!res.ok) {
-        setTasks(prev) // rollback
-        flashToast(res.status === 403 ? t("noPermission") : t("changeFailed"))
-      }
-    } catch {
-      setTasks(prev)
-      flashToast(t("networkError"))
     }
+    setTasks((ts) => ts.map((x) => (x.id === taskId ? applyTaskPatch(x, patch) : x)))
+    // Refused: only this card goes back — another card moved meanwhile stays.
+    const undo = () => { if (original) setTasks((ts) => ts.map((x) => (x.id === taskId ? revertTaskPatch(x, original, patch) : x))) }
+    await tracked(async () => {
+      try {
+        const res = await fetch(`/api/v1/tasks/${taskId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(patch),
+        })
+        if (!res.ok) {
+          undo()
+          flashToast(res.status === 403 ? t("noPermission") : t("changeFailed"))
+        }
+      } catch {
+        undo()
+        flashToast(t("networkError"))
+      }
+    }, false)
   }
 
-  // Generic quick-action PATCH from the card ⋯ menu (priority/type/assignee).
-  // Status changes go through move() (which co-writes boardColumnKey). Refetch on
-  // success so derived display (assignee name, type color) updates.
+  // Generic quick-action PATCH from the card ⋯ menu (priority/type/assignee)
+  // and the list's inline edits. Status changes from the kanban go through
+  // move() (which co-writes boardColumnKey). Shown at once; refused — only
+  // this edit's fields go back. The board is loaded again once quiet, for
+  // what the screen cannot know itself (the server's own side effects).
   const patchTask = useCallback(async (taskId: string, patch: Record<string, unknown>) => {
-    try {
-      const res = await fetch(`/api/v1/tasks/${taskId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(patch),
-      })
-      if (!res.ok) { flashToast(res.status === 403 ? t("noEditPermission") : t("changeFailed")); return }
-      loadTasks().catch(() => {})
-    } catch { flashToast(t("networkError")) }
-  }, [flashToast, loadTasks, t])
+    const original = tasksRef.current.find((x) => x.id === taskId)
+    const people = [...(assignablesRef.current ?? []), ...assigneeOptions]
+    setTasks((ts) => ts.map((x) => (x.id === taskId ? applyTaskPatch(x, patch, people) : x)))
+    const undo = () => { if (original) setTasks((ts) => ts.map((x) => (x.id === taskId ? revertTaskPatch(x, original, patch) : x))) }
+    await tracked(async () => {
+      try {
+        const res = await fetch(`/api/v1/tasks/${taskId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(patch),
+        })
+        if (!res.ok) { undo(); flashToast(res.status === 403 ? t("noEditPermission") : t("changeFailed")) }
+      } catch { undo(); flashToast(t("networkError")) }
+    }, true)
+  }, [assigneeOptions, flashToast, tracked, t])
 
   // ── List view (Bordio-style table of THIS board's tasks) ──────────────────
   // Reuses the same <InlineTasksTable> as /tasks: its own search + Open/Closed
@@ -486,12 +500,18 @@ function BoardInner() {
     } catch { flashToast(t("networkError")) }
   }, [divisionId, flashToast, loadTasks, t])
   const listDelete = useCallback(async (id: string) => {
-    try {
-      const res = await fetch(`/api/v1/tasks/${id}`, { method: "DELETE", credentials: "include" })
-      if (!res.ok) { flashToast(res.status === 403 ? t("noEditPermission") : t("changeFailed")); return }
-      loadTasks().catch(() => {})
-    } catch { flashToast(t("networkError")) }
-  }, [flashToast, loadTasks, t])
+    const at = tasksRef.current.findIndex((x) => x.id === id)
+    const original = tasksRef.current[at]
+    setTasks((ts) => ts.filter((x) => x.id !== id))
+    // Refused: the task comes back where it was.
+    const undo = () => { if (original) setTasks((ts) => (ts.some((x) => x.id === id) ? ts : [...ts.slice(0, at), original, ...ts.slice(at)])) }
+    await tracked(async () => {
+      try {
+        const res = await fetch(`/api/v1/tasks/${id}`, { method: "DELETE", credentials: "include" })
+        if (!res.ok) { undo(); flashToast(res.status === 403 ? t("noEditPermission") : t("changeFailed")) }
+      } catch { undo(); flashToast(t("networkError")) }
+    }, true)
+  }, [flashToast, tracked, t])
 
   // Lazy assignable-users list for the card ⋯ menu (cached after first open).
   const assignablesRef = useRef<OrgUser[] | null>(null)

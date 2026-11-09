@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { formatDate } from "@/lib/format-date"
 import { TaskPanelFeed } from "@/components/tasks/task-panel/task-panel-feed"
 import { TaskPanelSubtasks, endOfDayIso, type Subtask } from "@/components/tasks/task-panel/task-panel-subtasks"
+import { applyTaskPatch, revertTaskPatch } from "@/lib/client/optimistic-task-patch"
 
 /**
  * The task card as a panel on the right of the board — Bordio's card (owner,
@@ -89,6 +90,13 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
   const fileRef = useRef<HTMLInputElement>(null)
 
   const reload = useCallback(() => setReloadKey((key) => key + 1), [])
+  // Edits show at once and go to the server behind the screen. While any is
+  // on its way a load must not paint the card over it: the load started
+  // before the edit landed and would put the old value back for a moment.
+  // The last edit to come back loads the card again.
+  const inFlight = useRef(0)
+  const taskRef = useRef<PanelTask | null>(null)
+  useEffect(() => { taskRef.current = task }, [task])
   const [boardInfo, setBoardInfo] = useState<{ columns: PanelColumn[]; path: string } | null>(null)
   const taskBoard = task?.divisionId ?? null
   const needBoard = !givenColumns?.length && Boolean(taskBoard)
@@ -122,7 +130,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
       fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}`, { credentials: "include" }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))),
       fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/time`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]).then(([taskJson, timeJson]) => {
-      if (!alive) return
+      if (!alive || inFlight.current > 0) return
       const loaded = taskJson.data as PanelTask
       setTask(loaded)
       setTitle(loaded.title)
@@ -162,16 +170,26 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
 
   const patch = useCallback(async (fields: Record<string, unknown>) => {
     setError(null)
+    const original = taskRef.current
+    if (original) setTask((current) => (current ? applyTaskPatch(current, fields, people) : current))
+    inFlight.current += 1
     const res = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(fields),
     }).catch(() => null)
+    inFlight.current -= 1
     if (!res?.ok) {
+      // Refused: only this edit's fields go back; an edit still on its way stays.
+      if (original) setTask((current) => (current ? revertTaskPatch(current, original, fields) : current))
+      if ("title" in fields) setTitle(original?.title ?? "")
+      if ("description" in fields) setDescription(original?.description ?? "")
       const json = await res?.json().catch(() => null)
       setError(json?.error ?? t("saveFailed"))
     }
-    reload()
-    onMutated()
-  }, [taskId, reload, onMutated, t])
+    if (inFlight.current === 0) {
+      reload()
+      onMutated()
+    }
+  }, [taskId, people, reload, onMutated, t])
 
   const timeAction = async (body: Record<string, unknown>) => {
     const res = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/time`, {
