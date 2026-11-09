@@ -165,6 +165,8 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
   const fetchMock = vi.fn<typeof fetch>()
 
   beforeEach(() => {
+    // Приветствие — раз в день в браузере; каждый тест — новый день.
+    try { window.localStorage.removeItem("ld.voice.greetedOn") } catch { /* ignore */ }
     vi.useFakeTimers()
     container = document.createElement("div")
     document.body.appendChild(container)

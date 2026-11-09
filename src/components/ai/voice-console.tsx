@@ -88,6 +88,32 @@ import { navItemPathname } from "@/lib/nav-items"
  * this tab with the user's same-origin cookie, so RBAC/RLS remain authoritative.
  */
 
+const GREETED_ON_KEY = "ld.voice.greetedOn"
+
+/**
+ * Первый запуск помощника за день в этом браузере? Отмечает день сразу.
+ * Хранилище недоступно (приватное окно) — здороваться, как раньше.
+ */
+export function shouldGreetToday(now: Date = new Date(), storage: Pick<Storage, "getItem" | "setItem"> | null = safeLocalStorage()): boolean {
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+  if (!storage) return true
+  try {
+    if (storage.getItem(GREETED_ON_KEY) === today) return false
+    storage.setItem(GREETED_ON_KEY, today)
+  } catch {
+    return true
+  }
+  return true
+}
+
+function safeLocalStorage(): Storage | null {
+  try {
+    return typeof window === "undefined" ? null : window.localStorage
+  } catch {
+    return null
+  }
+}
+
 /** IANA-пояс браузера; пусто, если браузер его не называет. */
 function browserTimeZone(): string | undefined {
   try {
@@ -1404,10 +1430,17 @@ function ConsoleInner({
       lastActivityRef.current = Date.now()
       setActive(true)
       setPhase("processing")
-      connected.sendRealtimeInput({
-        text: `Greet the user briefly in ${voiceLanguage(locale)}${started.firstName ? ` and address them as ${started.firstName}` : ""}.`,
-      })
-      armResponseWatchdog()
+      // Здороваться — раз в день, а не на каждом нажатии (владелец 2026-11-09:
+      // «каждый раз после нажатия… начинает здороваться, это триггерит»).
+      // Повторный запуск в тот же день сразу слушает.
+      if (shouldGreetToday()) {
+        connected.sendRealtimeInput({
+          text: `Greet the user briefly in ${voiceLanguage(locale)}${started.firstName ? ` and address them as ${started.firstName}` : ""}.`,
+        })
+        armResponseWatchdog()
+      } else {
+        setPhase("listening")
+      }
     } catch (caught) {
       if (generationRef.current !== generation) return
       const providerBody = (caught as { body?: { error?: unknown } } | null)?.body
@@ -1548,7 +1581,9 @@ function ConsoleInner({
       : starting
         ? "bg-amber-500 shadow-amber-500/40"
         : !active
-          ? "bg-muted-foreground/70 shadow-black/20"
+          // Готов к разговору — цветом CRM, а не серым: серый кружок в шапке
+          // владелец не замечал (2026-11-09: «сделай более заметной»).
+          ? "bg-primary shadow-primary/30"
           : isSpeaking
             ? "bg-primary shadow-primary/50"
             : hearingSignal
@@ -1572,17 +1607,22 @@ function ConsoleInner({
           data-placement={inline ? "inline" : "floating"}
           aria-label={label}
           title={label}
-          className={`relative flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${inline ? "h-9 w-9" : "h-14 w-14"}`}
+          className={`relative flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${inline ? "h-9" : "h-14 w-14"}`}
         >
           {active && isSpeaking && <span className={`absolute inset-0 animate-ping rounded-full ${tone} opacity-40`} />}
           <span className={[
             "relative flex items-center justify-center rounded-full text-white shadow-lg transition-colors duration-300",
-            inline ? "h-9 w-9 shadow-sm" : "h-14 w-14",
+            // В шапке — кнопка со словом: значок без подписи не читается.
+            inline ? "h-9 gap-1.5 px-3.5 text-sm font-semibold shadow-sm" : "h-14 w-14",
             tone,
-            !active && !starting ? "animate-[pulse_3s_ease-in-out_infinite]" : "",
             starting ? "animate-pulse" : "",
           ].join(" ")}>
             <Mic className={inline ? "h-4 w-4" : "h-5 w-5"} />
+            {inline && (
+              <span data-testid="voice-assistant-launcher-label">
+                {active || starting ? t("orbStop") : t("orbLabel")}
+              </span>
+            )}
           </span>
         </button>
         {(error || notice || active || micSilent || transcriptionWarning || noiseSuppressionOff) && (() => {
