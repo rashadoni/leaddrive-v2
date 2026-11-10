@@ -241,6 +241,44 @@ export function parseWhatsAppCallPermissionState(
   }
 }
 
+/** Meta's answer to «are calls switched on for this number», reused for a while. */
+const callingEnabledCache = new Map<string, { enabled: boolean | null; until: number }>()
+const CALLING_ENABLED_TTL_MS = 10 * 60_000
+const CALLING_UNKNOWN_TTL_MS = 60_000
+
+/**
+ * Whether Meta has calling switched on for this number (`settings.calling.status`
+ * = ENABLED). `null` — Meta did not say (network, refusal): the caller decides
+ * without it. Calls are switched on per number in Meta, and an organization
+ * may hold numbers that cannot have them at all — a WhatsApp Business app
+ * (coexistence) number, or one below Meta's 2,000 messaging limit.
+ */
+export async function fetchWhatsAppCallingEnabled(config: WhatsAppConfig): Promise<boolean | null> {
+  const key = `${config.phoneNumberId}:${config.id}`
+  const cached = callingEnabledCache.get(key)
+  if (cached && cached.until > Date.now()) return cached.enabled
+  let enabled: boolean | null = null
+  try {
+    const res = await fetch(`${CALLING_GRAPH_API_BASE}/${config.phoneNumberId}/settings?fields=calling`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${config.accessToken}` },
+      signal: AbortSignal.timeout(5_000),
+    })
+    const data = await readJsonObject(res)
+    const calling = isRecord(data.calling) ? data.calling : null
+    if (res.ok && calling) enabled = calling.status === "ENABLED"
+  } catch {
+    enabled = null
+  }
+  callingEnabledCache.set(key, { enabled, until: Date.now() + (enabled === null ? CALLING_UNKNOWN_TTL_MS : CALLING_ENABLED_TTL_MS) })
+  return enabled
+}
+
+/** Test hook: forget what Meta said about calling. */
+export function resetWhatsAppCallingEnabledCache() {
+  callingEnabledCache.clear()
+}
+
 export async function fetchWhatsAppCallPermissionState({
   organizationId,
   channelConfigId,

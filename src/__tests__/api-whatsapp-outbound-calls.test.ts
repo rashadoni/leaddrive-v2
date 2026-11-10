@@ -42,6 +42,7 @@ vi.mock("@/lib/prisma", () => ({
       findFirst: vi.fn(async () => ({ phone: "+994501234567", fullName: "Aysel" })),
     },
     channelConfig: {
+      findMany: vi.fn(async () => [{ id: "cfg_wa" }]),
       findFirst: vi.fn(async () => ({
         id: "cfg_wa",
         organizationId: "org_1",

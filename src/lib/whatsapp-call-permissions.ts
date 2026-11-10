@@ -1,8 +1,10 @@
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import {
+  fetchWhatsAppCallingEnabled,
   fetchWhatsAppCallPermissionState,
   resolveWhatsAppConfig,
+  type WhatsAppConfig,
   type WhatsAppCallPermissionActionState,
   type WhatsAppCallPermissionState,
   type WhatsAppCallPermissionStatus,
@@ -92,6 +94,43 @@ export function serializeWhatsAppCallPermission(row: PermissionRow | null): Seri
   }
 }
 
+/**
+ * The organization's number to call from. A conversation remembers the number
+ * the customer wrote to LAST, and that is often a number without calls: on
+ * 2026-11-10 one message from the owner to his WhatsApp Business app number
+ * (where Meta never allows calls), then that number switched off, and the call
+ * button went dead although calls worked on another number of the same
+ * organization. So: the conversation's number when calls are on there,
+ * otherwise the first active number of the organization where they are on.
+ * When Meta says nothing useful, the conversation's number as before.
+ */
+export async function chooseWhatsAppCallingNumber(
+  organizationId: string,
+  conversationChannelConfigId: string | null,
+): Promise<WhatsAppConfig | null> {
+  const own = conversationChannelConfigId
+    ? await resolveWhatsAppConfig(organizationId, { channelConfigId: conversationChannelConfigId })
+    : null
+  const rows = await prisma.channelConfig.findMany({
+    where: { organizationId, channelType: "whatsapp", isActive: true },
+    select: { id: true },
+    orderBy: { createdAt: "asc" },
+  })
+  const others: WhatsAppConfig[] = []
+  for (const row of rows) {
+    if (row.id === own?.id) continue
+    const config = await resolveWhatsAppConfig(organizationId, { channelConfigId: row.id })
+    if (config) others.push(config)
+  }
+  const candidates = own ? [own, ...others] : others
+  // One number — nothing to choose; Meta answers about calls on the check itself.
+  if (candidates.length <= 1) return candidates[0] ?? null
+  for (const config of candidates) {
+    if (await fetchWhatsAppCallingEnabled(config)) return config
+  }
+  return own ?? candidates[0]
+}
+
 export async function resolveWhatsAppCallTarget(
   organizationId: string,
   conversationId: string,
@@ -120,7 +159,7 @@ export async function resolveWhatsAppCallTarget(
     return { target: null, error: "WhatsApp user phone is missing for this conversation", status: 400 }
   }
 
-  const config = await resolveWhatsAppConfig(organizationId, { channelConfigId: conversation.channelConfigId })
+  const config = await chooseWhatsAppCallingNumber(organizationId, conversation.channelConfigId)
   if (!config) return { target: null, error: "WhatsApp not configured for this tenant", status: 400 }
 
   return {
