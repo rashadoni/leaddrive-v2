@@ -284,6 +284,8 @@ const CALL_UI_COPY = {
     insights: "AI insights",
     diagnostics: "WhatsApp diagnostics",
     technicalDetails: "Technical details",
+    outgoingCall: "Outgoing call",
+    incomingCall: "Incoming call",
   },
   ru: {
     call: "Позвонить",
@@ -304,6 +306,8 @@ const CALL_UI_COPY = {
     insights: "AI-инсайты",
     diagnostics: "Диагностика WhatsApp",
     technicalDetails: "Технические подробности",
+    outgoingCall: "Исходящий звонок",
+    incomingCall: "Входящий звонок",
   },
   az: {
     call: "Zəng et",
@@ -324,6 +328,8 @@ const CALL_UI_COPY = {
     insights: "AI analitika",
     diagnostics: "WhatsApp diaqnostikası",
     technicalDetails: "Texniki təfərrüat",
+    outgoingCall: "Gedən zəng",
+    incomingCall: "Gələn zəng",
   },
 } as const
 
@@ -2552,7 +2558,8 @@ export default function InboxV2Page() {
                   if (item.kind === "call") {
                     const call = item.call
                     const out = call.direction !== "inbound"
-                    const summary = callSummaryLine(call, locale, callTime)
+                    // The title already says which way; the line goes on from there.
+                    const summary = callSummaryLine(call, locale, callTime, { withDirection: false })
                     const diagnostics = callDiagnosticLines(call, 3)
                     const diagnosticsTitle = call.provider === "whatsapp"
                       ? callText.diagnostics
@@ -2568,7 +2575,7 @@ export default function InboxV2Page() {
                               <Phone className="h-4 w-4" />
                             </span>
                             <div>
-                              <div>{out ? callText.callContact : callText.calls}</div>
+                              <div>{out ? callText.outgoingCall : callText.incomingCall}</div>
                               <div className="text-xs font-normal text-muted-foreground">
                                 {out ? call.toNumber : call.fromNumber}
                               </div>
@@ -2576,8 +2583,8 @@ export default function InboxV2Page() {
                             </div>
                           </div>
                           <div className="mt-1 text-[10px] text-muted-foreground">
-                            {new Date(call.createdAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-                            {call.provider ? ` · ${call.provider}` : ""}
+                            {callTime(new Date(call.createdAt))}
+                            {call.provider ? ` · ${call.provider === "whatsapp" ? "WhatsApp" : call.provider}` : ""}
                           </div>
                           {diagnostics.length > 0 && (call.provider === "whatsapp" ? (
                             // Meta's raw journal is for whoever debugs a call, not the manager reading it: folded.

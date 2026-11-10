@@ -44,6 +44,11 @@ describe("the call card's line", () => {
       .toBe("Входящий · не состоялся")
   })
 
+  it("leaves the direction out where the card's title already says it", () => {
+    expect(callSummaryLine({ direction: "outbound", status: "completed", duration: 9, provider: "whatsapp", notes: ANSWERED }, "az", utc, { withDirection: false }))
+      .toBe("cavab verdi 10:47 · 9 san · bitdi")
+  })
+
   it("prints none of Meta's journal", () => {
     const line = callSummaryLine({ direction: "outbound", status: "completed", duration: 14, provider: "whatsapp", notes: ANSWERED }, "az", utc)
     expect(line).not.toMatch(/WhatsApp Calling|webhook|raw=|completed|T10:/)

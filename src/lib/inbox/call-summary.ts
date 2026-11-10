@@ -71,9 +71,14 @@ export type CallSummaryInput = {
 }
 
 /** «Gedən · cavab verdi 14:47 · 14 san · bitdi» — time in the reader's own clock, as `formatTime` gives it. */
-export function callSummaryLine(call: CallSummaryInput, locale: string, formatTime: (at: Date) => string): string {
+export function callSummaryLine(
+  call: CallSummaryInput,
+  locale: string,
+  formatTime: (at: Date) => string,
+  options: { withDirection?: boolean } = {},
+): string {
   const copy = COPY[localeOf(locale)]
-  const parts: string[] = [call.direction === "inbound" ? copy.inbound : copy.outbound]
+  const parts: string[] = options.withDirection === false ? [] : [call.direction === "inbound" ? copy.inbound : copy.outbound]
   const answeredAt = call.provider === "whatsapp" ? whatsappCallAnsweredAt(call.notes) : null
   if (answeredAt) parts.push(copy.answered.replace("{time}", formatTime(answeredAt)))
   if (typeof call.duration === "number" && call.duration > 0) parts.push(copy.seconds.replace("{seconds}", String(call.duration)))
