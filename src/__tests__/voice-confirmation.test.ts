@@ -372,6 +372,6 @@ describe("отказ в подготовке черновика объясняе
   it("остаётся единственным местом, которое отвечает модели на отказ", () => {
     const rejections = [...console_.matchAll(/return `REJECTED \(/g)]
     expect(rejections).toHaveLength(1)
-    expect(console_).toMatch(/return proposeRefusalMessage\(body\?\.code, response\.status\)/)
+    expect(console_).toMatch(/return proposeRefusalMessage\(body\?\.code, response\.status, body\?\.issues\?\.\[0\]\?\.message\)/)
   })
 })

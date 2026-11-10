@@ -262,6 +262,8 @@ export type VoiceReceiptOutcomeDetail = Readonly<{
   entityId?: string
   /** Who decided: a spoken answer or the button. */
   via: "voice" | "button"
+  /** Подтверждение телефонного заказа: ответ 1С (receipt-commit.ts). */
+  erp?: "none" | "created" | "refused" | "unknown"
 }>
 
 /**
@@ -276,10 +278,16 @@ export function voiceOutcomeMessage(detail: VoiceReceiptOutcomeDetail): string {
   if (detail.kind === "cancelled") {
     return "CRM_RESULT: the user cancelled the draft. Nothing was saved. Say so in one short sentence."
   }
+  if (detail.kind === "succeeded" && detail.erp === "refused") {
+    return `CRM_RESULT: ${who} 1C REFUSED the order and wrote nothing; the order is NOT confirmed and the pharmacy was told nothing. The order is open on screen with 1C's reason on each line. Tell the user in one short sentence and ask them to look at the lines.`
+  }
+  if (detail.kind === "succeeded" && detail.erp === "unknown") {
+    return `CRM_RESULT: ${who} The order went to 1C but 1C gave no clear answer, so it is NOT confirmed yet. Tell the user in one short sentence: open the order on screen and press Confirm there in a minute — the CRM will ask 1C first whether it has the document. Do not say it was confirmed.`
+  }
   if (detail.kind === "succeeded") {
     const entity = detail.entityType === "task" || detail.entityType === "lead" || detail.entityType === "deal"
       ? detail.entityType
-      : "record"
+      : detail.entityType === "phone_order" ? "phone order" : "record"
     // Owner, 2026-09-21: after a change the result must be on screen, so the
     // user sees whether everything is right. The console opens it.
     return `CRM_RESULT: ${who} The ${entity} is saved in the CRM and is now open on the user's screen. Tell the user in one short sentence that it is saved and ask them to check on screen that everything is right.`
@@ -334,6 +342,8 @@ export const VOICE_DRAFT_SHOWN =
  */
 export function voiceMayConfirm(actionType: string, fieldKeys: readonly string[]): boolean {
   if (actionType === "reply_to_ticket") return false
+  // Заказ уходит в 1С и аптеке (WhatsApp) — назад не вернуть.
+  if (actionType === "confirm_phone_order" || actionType === "reject_phone_order") return false
   if (actionType === "update_ticket" && fieldKeys.includes("status")) return false
   return true
 }
@@ -341,6 +351,7 @@ export function voiceMayConfirm(actionType: string, fieldKeys: readonly string[]
 /** То же правило со стороны модели: по инструменту и его аргументам. */
 export function voiceProposalNeedsButton(tool: string, args: unknown): boolean {
   if (tool === "propose_reply_to_ticket") return true
+  if (tool === "propose_confirm_phone_order" || tool === "propose_reject_phone_order") return true
   if (tool === "propose_update_ticket") {
     return Boolean(args && typeof args === "object" && "status" in args && (args as { status?: unknown }).status !== undefined)
   }

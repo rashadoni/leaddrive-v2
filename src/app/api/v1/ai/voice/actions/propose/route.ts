@@ -34,7 +34,9 @@ import { RECORD_TYPE_NAMES } from "@/lib/ai/voice/record-types"
  */
 
 const screenSchema = z.strictObject({
-  recordType: z.enum(RECORD_TYPE_NAMES).optional(),
+  // `phone_order` — открытая карточка телефонного заказа: голосом она не
+  // читается, но «поменяй вторую строку» относится к ней.
+  recordType: z.enum([...RECORD_TYPE_NAMES, "phone_order"]).optional(),
   recordId: z.string().trim().min(1).max(191).optional(),
 })
 

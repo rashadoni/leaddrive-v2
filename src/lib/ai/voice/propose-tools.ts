@@ -51,6 +51,11 @@ export const VOICE_PROPOSE_TOOL_NAMES = [
   "propose_add_ticket_note",
   "propose_reply_to_ticket",
   "propose_update_ticket",
+  "propose_change_phone_order_line",
+  "propose_add_phone_order_line",
+  "propose_remove_phone_order_line",
+  "propose_confirm_phone_order",
+  "propose_reject_phone_order",
 ] as const
 
 export type VoiceProposeToolName = (typeof VOICE_PROPOSE_TOOL_NAMES)[number]
@@ -84,6 +89,11 @@ export const VOICE_PROPOSE_ACTION_TYPES: Readonly<Record<VoiceProposeToolName, A
     propose_add_ticket_note: "add_ticket_note",
     propose_reply_to_ticket: "reply_to_ticket",
     propose_update_ticket: "update_ticket",
+    propose_change_phone_order_line: "update_phone_order_line",
+    propose_add_phone_order_line: "add_phone_order_line",
+    propose_remove_phone_order_line: "remove_phone_order_line",
+    propose_confirm_phone_order: "confirm_phone_order",
+    propose_reject_phone_order: "reject_phone_order",
   })
 
 const personName = z.string().trim().min(2).max(120)
@@ -428,6 +438,36 @@ export const VOICE_PROPOSE_SCHEMAS = {
     priority: z.enum(["low", "medium", "high", "critical"]).optional(),
     assigneeName: personName.optional(),
   }),
+  /*
+   * Этап 5 (владелец 2026-11-10): телефонные заказы аптек. Заказ — номером
+   * («1015», «TS-1015»), словами аптеки или тот, что открыт на экране. Строка —
+   * её номером («2») или словами товара. Товар — словами, сервер ищет его в
+   * каталоге 1С. Подтверждение уходит в 1С и аптеке — только кнопкой.
+   */
+  propose_change_phone_order_line: z.strictObject({
+    order: shortText.optional(),
+    line: shortText,
+    product: shortText.optional(),
+    quantity: z.number().int().min(1).max(100_000).optional(),
+  }),
+  propose_add_phone_order_line: z.strictObject({
+    order: shortText.optional(),
+    product: shortText,
+    quantity: z.number().int().min(1).max(100_000),
+    /** The word the user used for the unit, e.g. "qutu"; omit if not said. */
+    unit: z.string().trim().min(1).max(24).optional(),
+  }),
+  propose_remove_phone_order_line: z.strictObject({
+    order: shortText.optional(),
+    line: shortText,
+  }),
+  propose_confirm_phone_order: z.strictObject({
+    order: shortText.optional(),
+  }),
+  propose_reject_phone_order: z.strictObject({
+    order: shortText.optional(),
+    reason: z.string().trim().min(1).max(500),
+  }),
 } as const satisfies Record<VoiceProposeToolName, z.ZodTypeAny>
 
 export type VoiceProposeArgs<T extends VoiceProposeToolName> =
@@ -480,6 +520,16 @@ const DESCRIPTIONS: Readonly<Record<VoiceProposeToolName, string>> = {
     "Prepare an INTERNAL NOTE in ONE support ticket, for the user to confirm — only colleagues see it, the customer does not. This does NOT save anything. ticket is its number (\"TK-0012\", \"12\") or words of its subject; omit it for the ticket open on screen. note in the user's own words.",
   propose_reply_to_ticket:
     "Prepare a REPLY TO THE CUSTOMER in ONE support ticket. This does NOT send anything. ticket is its number or words of its subject; omit it for the ticket open on screen. message is exactly what the customer will read, in the user's own words — do not rewrite, translate or add anything. If the ticket came from WhatsApp, the customer gets it in WhatsApp. It goes out ONLY when the user presses the button on the draft: tell them so; a spoken yes does not send it. For a note only colleagues see, use propose_add_ticket_note.",
+  propose_change_phone_order_line:
+    "Prepare a change to ONE line of a pharmacy PHONE ORDER, for the user to confirm. This does NOT save anything. order is the order number (\"1015\", \"TS-1015\") or the pharmacy's name; omit it for the order open on screen. line is the line number (\"2\") or words of its product. Give quantity for a new count, product (the product's name as the user says it) to put another catalog product on that line, or both. If the server answers with several products, read them to the user and call again with the exact name they choose.",
+  propose_add_phone_order_line:
+    "Prepare a NEW LINE in a pharmacy PHONE ORDER, for the user to confirm. This does NOT save anything. order is the order number or the pharmacy's name; omit it for the order open on screen. product is the product's name as the user says it; the server finds it in the 1C catalog. If several products match, read them out and call again with the exact name chosen.",
+  propose_remove_phone_order_line:
+    "Prepare removing ONE line from a pharmacy PHONE ORDER, for the user to confirm. This does NOT save anything. order as above; line is the line number or words of its product. The last line of an order cannot be removed — reject the order instead.",
+  propose_confirm_phone_order:
+    "Prepare CONFIRMING a pharmacy PHONE ORDER. This does NOT confirm anything. order is the order number or the pharmacy's name; omit it for the order open on screen. Confirming sends the order to 1C and tells the pharmacy on WhatsApp, so it is confirmed ONLY with the button on the draft: tell the user so; a spoken yes does not confirm it.",
+  propose_reject_phone_order:
+    "Prepare REJECTING a pharmacy PHONE ORDER. This does NOT reject anything. order as above; reason is why, in the user's words — the pharmacy is told on WhatsApp. It goes ONLY with the button on the draft: tell the user so.",
   propose_update_ticket:
     "Prepare a change to ONE support ticket — its status, priority or assignee — for the user to confirm. This does NOT save anything. ticket is its number or words of its subject; omit it for the ticket open on screen. status: new, open, in_progress, waiting, resolved, closed or escalated. A status change can message the customer (resolved asks them to confirm closing and sends a survey), so it is confirmed ONLY with the button on the draft: tell the user so.",
   propose_create_deal:

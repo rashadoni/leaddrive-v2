@@ -20,7 +20,9 @@ describe("AI voice action registry", () => {
   // 2026-09-28: tasks and deals are edited by voice (2026-09-21), and a deal
   // can be moved between the stages of its own pipeline. Growing this list is
   // a decision, so it stays pinned.
-  it("is a closed twenty-eight-action allowlist with no executable callback", () => {
+  // Thirty-three since 2026-11-10: a pharmacy phone order — a line changed,
+  // added or removed, the order confirmed (to 1C) or rejected (owner: этап 5).
+  it("is a closed thirty-three-action allowlist with no executable callback", () => {
     expect(AI_VOICE_ACTION_TYPES).toEqual([
       "create_task",
       "create_lead",
@@ -50,6 +52,11 @@ describe("AI voice action registry", () => {
       "add_ticket_note",
       "reply_to_ticket",
       "update_ticket",
+      "update_phone_order_line",
+      "add_phone_order_line",
+      "remove_phone_order_line",
+      "confirm_phone_order",
+      "reject_phone_order",
     ])
     expect(Object.keys(AI_VOICE_ACTION_REGISTRY)).toEqual(AI_VOICE_ACTION_TYPES)
     expect(isAiVoiceActionType("create_lead")).toBe(true)

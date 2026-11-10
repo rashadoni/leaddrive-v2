@@ -67,6 +67,21 @@ vi.mock("@/lib/integrations/webhook-url-guard", async (importOriginal) => {
   } }
 })
 
+/**
+ * The catalog the voice receipt re-reads before a product goes on a line
+ * (phone-order-voice.ts). The screen's picker reads the same snapshot through
+ * its own path, which these tests do not reach; this stands in for the snapshot.
+ */
+vi.mock("@/lib/pharmacy-orders/orders", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/pharmacy-orders/orders")>()
+  return { ...actual, phoneOrderCatalogItem: async (_db: unknown, _orgId: string, _id: string, externalId: string) => {
+    const item = CATALOG.find(externalId)
+    if (!item) throw new actual.PhoneOrderError("invalid", 400)
+    return { externalId: item.externalId, itemCode: item.itemCode, name: item.nameAz ?? item.name, sourceName: item.name,
+      price: item.listPrice ? { amount: item.listPrice.amount, per: item.listPrice.per } : null }
+  } }
+})
+
 const ROOT = process.cwd()
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
 const MIGRATION = "prisma/migrations/20261103090000_pharmacy_phone_orders/migration.sql"
@@ -1259,6 +1274,133 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
       expect((await (await patch(order.id, { action: "confirm", revision: 1 })).json()).data).toMatchObject({ status: "confirmed",
         erp: { connection: "off", state: null } })
       expect(erp.calls).toHaveLength(0)
+    })
+  })
+
+  /* ─── The same work by voice (этап 5, owner 2026-11-10) ───────────── */
+
+  /** What the voice receipt does on «Подтвердить»: the command inside its own transaction, effects after commit. */
+  async function byVoice(actionType: Parameters<typeof import("@/lib/crm-commands/phone-order/phone-order-voice").runVoicePhoneOrderCommand>[1],
+    payload: Record<string, unknown>) {
+    const { runVoicePhoneOrderCommand } = await import("@/lib/crm-commands/phone-order/phone-order-voice")
+    const { runWithTenant } = await import("@/lib/rls-context")
+    const effects: Array<() => void | Promise<void>> = []
+    const actor = { organizationId: ZEYTUN, userId: "user-zeytun", role: "admin" as const, source: "voice" as const }
+    const result = await runWithTenant(ZEYTUN, () => app.$transaction(tx =>
+      runVoicePhoneOrderCommand(actor, actionType, payload, { transaction: tx, postCommitEffects: effects })))
+    return { result, effects }
+  }
+
+  it("changes a line by voice under the order's revision, and a draft the order outgrew writes nothing", async () => {
+    await saveCall(70, LIST)
+    const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(70) }, include: { lines: { orderBy: { position: "asc" } } } })
+    // The third line was never found: by voice the manager puts No-şpa on it and sets the count.
+    const nospa = CATALOG.find(NOSPA)!
+    await byVoice("update_phone_order_line", { orderId: order.id, revision: 1, lineId: order.lines[2].id, quantity: 2,
+      externalId: NOSPA, itemCode: nospa.itemCode, productName: nospa.nameAz, sourceName: nospa.name, unitPrice: "12.5" })
+    const after = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id }, include: { lines: { orderBy: { position: "asc" } } } })
+    expect([after.revision, after.totalAmount?.toFixed(2)]).toEqual([3, "150.00"])
+    expect([after.lines[2].status, after.lines[2].externalId, after.lines[2].quantity, after.lines[2].lineTotal?.toFixed(2)])
+      .toEqual(["resolved", NOSPA, 2, "25.00"])
+    expect((after.managerEdits as Array<Record<string, unknown>>).map(edit => [edit.action, edit.position, edit.by]))
+      .toEqual([["pick_product", 3, "user-zeytun"], ["set_quantity", 3, "user-zeytun"]])
+
+    // The receipt was prepared at revision 1; the order is at 3 now. Nothing is written.
+    await expect(byVoice("update_phone_order_line", { orderId: order.id, revision: 1, lineId: order.lines[0].id, quantity: 99 }))
+      .rejects.toMatchObject({ code: "STALE_WRITE", status: 409 })
+    // A price the receipt showed that 1C no longer has: refused, not written at today's price.
+    await expect(byVoice("update_phone_order_line", { orderId: order.id, revision: 3, lineId: order.lines[0].id,
+      externalId: NOSPA, itemCode: nospa.itemCode, productName: nospa.nameAz, sourceName: nospa.name, unitPrice: "11.0" }))
+      .rejects.toMatchObject({ code: "STALE_WRITE" })
+    expect((await admin.pharmacyPhoneOrderLine.findFirstOrThrow({ where: { id: order.lines[0].id } })).quantity).toBe(10)
+    expect((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })).revision).toBe(3)
+
+    // Add and remove a line, as the card does.
+    await byVoice("add_phone_order_line", { orderId: order.id, revision: 3, externalId: NOSPA, itemCode: nospa.itemCode,
+      productName: nospa.nameAz, sourceName: nospa.name, unitPrice: "12.5", quantity: 1, unit: "qutu" })
+    await byVoice("remove_phone_order_line", { orderId: order.id, revision: 4, lineId: order.lines[1].id })
+    const lines = await admin.pharmacyPhoneOrderLine.findMany({ where: { orderId: order.id }, orderBy: { position: "asc" } })
+    expect(lines.map(line => [line.position, line.externalId, line.quantity])).toEqual([[1, NOSPA, 10], [3, NOSPA, 2], [4, NOSPA, 1]])
+  })
+
+  it("does not change an order by voice while its call is on the line, nor one of another organization", async () => {
+    await saveCall(71, LIST)
+    const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(71) }, include: { lines: true } })
+    await admin.callLog.create({ data: { organizationId: ZEYTUN, provider: "asterisk", providerCallId: callId(71), direction: "inbound",
+      fromNumber: PHONE, toNumber: "+994120000000", status: "in_progress", startedAt: new Date() } })
+    await expect(byVoice("remove_phone_order_line", { orderId: order.id, revision: 1, lineId: order.lines[0].id }))
+      .rejects.toMatchObject({ code: "CONFLICT", safeDetails: { reason: "call_in_progress" } })
+    await admin.callLog.deleteMany({})
+    const { runVoicePhoneOrderCommand } = await import("@/lib/crm-commands/phone-order/phone-order-voice")
+    const { runWithTenant } = await import("@/lib/rls-context")
+    await expect(runWithTenant(OTHER, () => app.$transaction(tx => runVoicePhoneOrderCommand(
+      { organizationId: OTHER, userId: "user-other", role: "admin", source: "voice" }, "confirm_phone_order",
+      { orderId: order.id, revision: 1 }, { transaction: tx, postCommitEffects: [] })))).rejects.toMatchObject({ code: "NOT_FOUND" })
+    expect((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })).revision).toBe(1)
+  })
+
+  it("confirms by voice without 1C in the receipt's transaction, and tells the pharmacy only after it commits", async () => {
+    await withErp(null, async scopeKey => {
+      await saveForErp(72, scopeKey, [LIST[0]])
+      const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(72) } })
+      const { effects } = await byVoice("confirm_phone_order", { orderId: order.id, revision: 1 })
+      expect(await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })).toMatchObject({
+        status: "confirmed", confirmedById: "user-zeytun", erpState: null, pharmacyNotice: null })
+      // The WhatsApp to the pharmacy waits for the commit: one effect, not yet run.
+      expect(effects).toHaveLength(1)
+      const { finishVoicePhoneOrderConfirm } = await import("@/lib/crm-commands/phone-order/phone-order-voice")
+      const { runWithTenant } = await import("@/lib/rls-context")
+      expect(await runWithTenant(ZEYTUN, () => finishVoicePhoneOrderConfirm(ZEYTUN, "user-zeytun", order.id))).toEqual({ erp: "none" })
+    })
+  })
+
+  it("claims the 1C send with the receipt, sends it after the commit, and a rolled-back receipt claims nothing", async () => {
+    await withErp(ORDERS, async scopeKey => {
+      await saveForErp(73, scopeKey, [LIST[0]])
+      const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(73) } })
+      const { runVoicePhoneOrderCommand, finishVoicePhoneOrderConfirm } = await import("@/lib/crm-commands/phone-order/phone-order-voice")
+      const { runWithTenant } = await import("@/lib/rls-context")
+
+      // The receipt's transaction fails after the claim (its own result could not be stored): the order stays untouched.
+      await expect(runWithTenant(ZEYTUN, () => app.$transaction(async tx => {
+        await runVoicePhoneOrderCommand({ organizationId: ZEYTUN, userId: "user-zeytun", role: "admin", source: "voice" },
+          "confirm_phone_order", { orderId: order.id, revision: 1 }, { transaction: tx, postCommitEffects: [] })
+        throw new Error("receipt result lost")
+      }))).rejects.toThrow("receipt result lost")
+      expect(await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })).toMatchObject({ erpState: null, revision: 1 })
+      expect(erp.calls).toHaveLength(0)
+
+      // The receipt commits: the order is claimed, nothing sent yet, the screen cannot send it a second time.
+      const { effects } = await byVoice("confirm_phone_order", { orderId: order.id, revision: 1 })
+      expect(effects).toHaveLength(0)
+      const claimed = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })
+      expect([claimed.status, claimed.erpState, claimed.revision]).toEqual(["pending_review", "sending", 2])
+      expect(erp.calls).toHaveLength(0)
+      expect((await (await patch(order.id, { action: "confirm", revision: 2 })).json()).error).toBe("erp_pending")
+
+      // After the commit: 1C is asked first, then writes the document; the order is confirmed by the voice user.
+      erp.answer = url => url === STATUS ? { status: 200, json: { code: 0, data: { Найден: false } } }
+        : { status: 200, json: { code: 0, data: { Создан: true, Документ: { Guid: "doc-v", Номер: "ЗК-000200" } } } }
+      expect(await runWithTenant(ZEYTUN, () => finishVoicePhoneOrderConfirm(ZEYTUN, "user-zeytun", order.id)))
+        .toEqual({ erp: "created", document: expect.objectContaining({ number: "ЗК-000200" }) })
+      expect(erp.calls.map(call => call.url)).toEqual([STATUS, CREATE])
+      expect(await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })).toMatchObject({
+        status: "confirmed", erpState: "created", confirmedById: "user-zeytun" })
+      // A second finish (a replayed receipt) sends nothing more.
+      expect(await runWithTenant(ZEYTUN, () => finishVoicePhoneOrderConfirm(ZEYTUN, "user-zeytun", order.id)))
+        .toMatchObject({ erp: "created" })
+      expect(erp.calls).toHaveLength(2)
+    })
+  })
+
+  it("does not reject by voice an order 1C may already hold", async () => {
+    await withErp(ORDERS, async scopeKey => {
+      await saveForErp(74, scopeKey, [LIST[0]])
+      const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(74) } })
+      await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { erpState: "unknown" } })
+      await expect(byVoice("reject_phone_order", { orderId: order.id, revision: 1, reason: "Dublikat" }))
+        .rejects.toMatchObject({ code: "CONFLICT", safeDetails: { reason: "erp_pending" } })
+      expect((await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } })).status).toBe("pending_review")
     })
   })
 })

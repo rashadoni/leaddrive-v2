@@ -14,6 +14,7 @@ import { createActivityCommand } from "@/lib/crm-commands/activity/create-activi
 import { createTicketCommand } from "@/lib/crm-commands/ticket/create-ticket"
 import { addTicketCommentCommand } from "@/lib/crm-commands/ticket/ticket-comment"
 import { updateTicketCommand } from "@/lib/crm-commands/ticket/update-ticket"
+import { runVoicePhoneOrderCommand } from "@/lib/crm-commands/phone-order/phone-order-voice"
 import {
   addTaskChecklistItemCommand,
   addTaskCommentCommand,
@@ -249,6 +250,15 @@ async function runCanonicalCommand(
       throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)
     }
     entityId = (await updateTicketCommand(actor, intent.targetEntityId, payload, execution)).entity.id
+  } else if (
+    intent.actionType === "update_phone_order_line"
+    || intent.actionType === "add_phone_order_line"
+    || intent.actionType === "remove_phone_order_line"
+    || intent.actionType === "confirm_phone_order"
+    || intent.actionType === "reject_phone_order"
+  ) {
+    // Заказ, строку и товар положил сервер; команда сверяет версию заказа.
+    entityId = (await runVoicePhoneOrderCommand(actor, intent.actionType, payload, execution)).orderId
   } else if (intent.actionType === "update_task") {
     if (!intent.targetEntityId) {
       throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)

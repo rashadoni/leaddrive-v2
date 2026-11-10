@@ -29239,6 +29239,12 @@
   },
   "aiVoiceActions": {
     "fields": {
+      "orderId": "Sifariş",
+      "lineId": "Sətir",
+      "quantity": "Miqdar",
+      "productName": "Məhsul",
+      "unitPrice": "Qiymət",
+      "unit": "Vahid",
       "industry": "Sahə",
       "website": "Veb sayt",
       "address": "Ünvan",
@@ -29382,6 +29388,11 @@
         "executing": "İcra olunur"
       },
       "action": {
+        "update_phone_order_line": "Telefon sifarişinin sətrini dəyiş",
+        "add_phone_order_line": "Telefon sifarişinə sətir əlavə et",
+        "remove_phone_order_line": "Telefon sifarişindən sətri çıxar",
+        "confirm_phone_order": "Telefon sifarişini təsdiqlə",
+        "reject_phone_order": "Telefon sifarişini rədd et",
         "create_task": "Tapşırıq yarat",
         "create_lead": "Lid yarat",
         "update_lead": "Lidi dəyiş",
@@ -29412,6 +29423,11 @@
         "update_ticket": "Tiketi dəyiş"
       },
       "confirm": {
+        "update_phone_order_line": "Sətri saxla",
+        "add_phone_order_line": "Sətri əlavə et",
+        "remove_phone_order_line": "Sətri çıxar",
+        "confirm_phone_order": "Təsdiqlə və 1C-yə göndər",
+        "reject_phone_order": "Sifarişi rədd et",
         "create_task": "Tapşırıq yarat",
         "create_lead": "Lid yarat",
         "update_lead": "Dəyişiklikləri saxla",
@@ -29447,6 +29463,11 @@
         "DEAL_STAGE_LOST": "Bu, sövdələşməni itirilmiş kimi işarələyir və onun kontaktını işləyən kadanslardan çıxarır."
       },
       "result": {
+        "erp": {
+          "created": "Hazırdır. 1C sifarişi yazdı, aptekə WhatsApp-da mesaj gedir.",
+          "refused": "1C imtina etdi və heç nə yazmadı. Səbəb sifarişdə hər sətrin yanındadır.",
+          "unknown": "1C aydın cavab vermədi — sifariş hələ təsdiqlənməyib. Onu açın və bir dəqiqədən sonra yenə «Təsdiqlə» basın: CRM əvvəlcə 1C-dən soruşacaq."
+        },
         "done": "Hazırdır. Qeyd saxlanıldı.",
         "alreadyDone": "Artq edilib — bu əməliyyat əvvəlcə saxlanılmışdı.",
         "failed": "CRM bu əməliyyatı qəbul etmədi. Düzəliş edib yenidən diqtə edin.",

@@ -31,6 +31,12 @@ export type VoiceCommitOutcome =
     entityType: AiVoiceActionEntityType
     entityId: string
     replayed: boolean
+    /**
+     * Подтверждение телефонного заказа: что ответила 1С. `none` — у
+     * организации 1С нет, заказ подтверждён в CRM; `refused` — 1С ничего не
+     * записала, причины на карточке; `unknown` — ясного ответа нет.
+     */
+    erp?: "none" | "created" | "refused" | "unknown"
   }>
   /** The action is finished and will not succeed. Editing or a new draft is the way out. */
   | Readonly<{ kind: "failed"; code: string; message: string }>
@@ -191,7 +197,11 @@ export async function commitVoiceReceipt(
     !isRecord(result)
     || typeof result.entityId !== "string"
     || !result.entityId
-    || (result.entityType !== "task" && result.entityType !== "lead" && result.entityType !== "deal")
+    // Любой вид результата, у которого есть страница. До 2026-11-10 здесь
+    // стояли только задача, лид и сделка: компания, контакт, тикет, запись в
+    // ленту и всё MTM, уже записанные, показывались «не вышло, повторите».
+    || typeof result.entityType !== "string"
+    || !Object.prototype.hasOwnProperty.call(RESULT_ROUTES, result.entityType)
   ) {
     // The server said 200, so the record exists; we simply cannot link to it.
     // Reporting this as a failure would tell the user a lie in the one
@@ -199,11 +209,15 @@ export async function commitVoiceReceipt(
     return { kind: "retriable", code: "RESULT_MALFORMED" }
   }
 
+  const phoneOrder = isRecord(data) && isRecord(data.phoneOrder) ? data.phoneOrder.erp : undefined
   return {
     kind: "succeeded",
-    entityType: result.entityType,
+    entityType: result.entityType as AiVoiceActionEntityType,
     entityId: result.entityId,
     replayed: isRecord(data) && data.replayed === true,
+    ...(phoneOrder === "none" || phoneOrder === "created" || phoneOrder === "refused" || phoneOrder === "unknown"
+      ? { erp: phoneOrder }
+      : {}),
   }
 }
 
@@ -287,6 +301,7 @@ const RESULT_ROUTES: Record<AiVoiceActionEntityType, (id: string) => string> = {
   mtm_contact: (id) => `/mtm/contacts/${id}`,
   contact: (id) => `/contacts/${id}`,
   ticket: (id) => `/tickets/${id}`,
+  phone_order: (id) => `/pharmacy-orders/${id}`,
 }
 
 export function voiceResultHref(entityType: AiVoiceActionEntityType, entityId: string): string {

@@ -170,6 +170,37 @@ describe("confirm and commit one receipt", () => {
     await expect(commit()).resolves.toEqual({ kind: "retriable", code: "RESULT_MALFORMED" })
   })
 
+  // До 2026-11-10 успехом считались только задача, лид и сделка: созданная
+  // голосом компания, контакт, тикет или запись MTM показывались «не вышло».
+  it("reports every saved kind of record as saved, with a link to it", async () => {
+    for (const [entityType, href] of [
+      ["company", "/companies/c-1"], ["contact", "/contacts/c-1"], ["ticket", "/tickets/c-1"],
+      ["mtm_task", "/mtm/tasks/c-1"], ["phone_order", "/pharmacy-orders/c-1"],
+    ] as const) {
+      fetchMock.mockReset()
+      fetchMock
+        .mockReturnValueOnce(response(201, proof))
+        .mockReturnValueOnce(response(200, { ...committed, data: { ...committed.data, result: { entityType, entityId: "c-1" } } }))
+      await expect(commit()).resolves.toEqual({ kind: "succeeded", entityType, entityId: "c-1", replayed: false })
+      expect(voiceResultHref(entityType, "c-1")).toBe(href)
+    }
+    fetchMock.mockReset()
+    fetchMock
+      .mockReturnValueOnce(response(201, proof))
+      .mockReturnValueOnce(response(200, { ...committed, data: { ...committed.data, result: { entityType: "spaceship", entityId: "c-1" } } }))
+    await expect(commit()).resolves.toEqual({ kind: "retriable", code: "RESULT_MALFORMED" })
+  })
+
+  it("carries 1C's answer to a confirmed phone order", async () => {
+    fetchMock
+      .mockReturnValueOnce(response(201, proof))
+      .mockReturnValueOnce(response(200, { ...committed, data: { ...committed.data, actionType: "confirm_phone_order",
+        result: { entityType: "phone_order", entityId: "o-1" }, phoneOrder: { erp: "refused", document: null } } }))
+    await expect(commit()).resolves.toEqual({
+      kind: "succeeded", entityType: "phone_order", entityId: "o-1", replayed: false, erp: "refused",
+    })
+  })
+
   it("does not commit on a malformed confirmation", async () => {
     fetchMock.mockReturnValueOnce(response(201, { success: true, data: { confirmationEventId: "e" } }))
 

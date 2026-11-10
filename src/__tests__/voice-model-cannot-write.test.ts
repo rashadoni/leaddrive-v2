@@ -48,7 +48,7 @@ describe("the voice model has no write capability", () => {
   it("keeps every proposal tool pointed at a draft, never at an execution", () => {
     for (const tool of VOICE_PROPOSE_TOOL_NAMES) {
       expect(VOICE_PROPOSE_ACTION_TYPES[tool])
-        .toMatch(/^(create_task|create_lead|update_lead|convert_lead_to_deal|create_deal|update_task|update_deal|move_deal_stage|create_company|add_task_comment|add_task_checklist_item|set_task_checklist_item_done|log_task_time|give_field_task|send_field_message|decide_attendance_request|publish_field_route|assign_field_contact|create_contact|update_contact|log_contact_activity|create_ticket|add_ticket_note|reply_to_ticket|update_ticket)$/)
+        .toMatch(/^(create_task|create_lead|update_lead|convert_lead_to_deal|create_deal|update_task|update_deal|move_deal_stage|create_company|add_task_comment|add_task_checklist_item|set_task_checklist_item_done|log_task_time|give_field_task|send_field_message|decide_attendance_request|publish_field_route|assign_field_contact|create_contact|update_contact|log_contact_activity|create_ticket|add_ticket_note|reply_to_ticket|update_ticket|update_phone_order_line|add_phone_order_line|remove_phone_order_line|confirm_phone_order|reject_phone_order)$/)
     }
   })
 

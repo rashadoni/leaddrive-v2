@@ -17,6 +17,7 @@ import {
   executeClaimedAiVoiceAction,
 } from "@/lib/ai/voice/action-execution"
 import { CrmCommandError } from "@/lib/crm-commands/errors"
+import { finishVoicePhoneOrderConfirm } from "@/lib/crm-commands/phone-order/phone-order-voice"
 
 const identifierSchema = z.string().trim().min(1).max(191).regex(/^[A-Za-z0-9_-]+$/)
 const commitSchema = z.strictObject({
@@ -169,6 +170,17 @@ export const POST = withRlsSessionAuth<RouteContext>(async (req, auth, ctx) => {
       intentId: claim.intentId,
       executionLeaseToken: claim.executionLeaseToken,
     })
+    if (result.actionType === "confirm_phone_order" && !result.replayed) {
+      // Заказ занят под отправку вместе с квитанцией; сама отправка в 1С —
+      // здесь, после коммита, и человек видит её ответ в квитанции. Повтор
+      // квитанции ничего не шлёт: отправку уже начал первый ответ.
+      const phoneOrder = await finishVoicePhoneOrderConfirm(auth.orgId, auth.userId, result.result.entityId)
+        .catch((error: unknown) => {
+          console.error("[voice action commit phone order]", safeErrorIdentity(error))
+          return { erp: "unknown" as const, document: null }
+        })
+      return json({ success: true, data: { ...result, phoneOrder } }, 200)
+    }
     return json({ success: true, data: result }, 200)
   } catch (error) {
     const failure = terminalFailure(error)

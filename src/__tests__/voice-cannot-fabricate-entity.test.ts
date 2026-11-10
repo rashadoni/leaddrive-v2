@@ -28,6 +28,9 @@ const DB_IDS = {
   fieldRoute: "db-field-route-0001",
   fieldContact: "db-field-contact-0001",
   ticket: "db-ticket-0001",
+  phoneOrder: "db-phone-order-0001",
+  phoneOrderLine: "db-phone-order-line-0001",
+  catalogItem: "00000000-0000-4000-8000-0000000000aa",
 } as const
 
 const mocks = vi.hoisted(() => ({
@@ -46,6 +49,9 @@ const mocks = vi.hoisted(() => ({
   fieldRoutes: vi.fn(),
   fieldContacts: vi.fn(),
   tickets: vi.fn(),
+  phoneOrders: vi.fn(),
+  phoneOrderLines: vi.fn(),
+  catalog: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -64,7 +70,17 @@ vi.mock("@/lib/prisma", () => ({
     mtmRoute: { findMany: mocks.fieldRoutes },
     mtmContact: { findMany: mocks.fieldContacts },
     ticket: { findMany: mocks.tickets },
+    pharmacyPhoneOrder: { findMany: mocks.phoneOrders, findFirst: vi.fn(async () => null) },
+    pharmacyPhoneOrderLine: { findMany: mocks.phoneOrderLines },
   },
+}))
+// Телефонные заказы (этап 5): раздел открыт, звонок окончен, каталог отвечает
+// своим товаром — не тем, что сказала модель.
+vi.mock("@/lib/pharmacy-orders/orders", () => ({
+  PhoneOrderError: class PhoneOrderError extends Error {},
+  phoneOrdersEnabled: vi.fn(async () => true),
+  callStillRunning: vi.fn(async () => false),
+  searchPhoneOrderCatalog: mocks.catalog,
 }))
 // Начальник в «Маршрутах и поле» со всей организацией в команде.
 vi.mock("@/lib/mtm/route-permissions", () => ({
@@ -99,6 +115,7 @@ const POISON = "clxpoisoned0000000000001"
 const REFERENCE_FIELDS = [
   "assignedTo", "companyId", "contactId", "relatedId", "pipelineId", "campaignId", "checklistItemId",
   "agentId", "attendanceRequestId", "routeId", "fieldContactId",
+  "orderId", "lineId", "externalId",
 ]
 
 /** Every string argument each tool accepts, filled with the poison. */
@@ -156,6 +173,12 @@ const POISONED_ARGS: Record<VoiceProposeToolName, Record<string, unknown>> = {
   propose_add_ticket_note: { ticket: POISON, note: POISON },
   propose_reply_to_ticket: { ticket: POISON, message: POISON },
   propose_update_ticket: { ticket: POISON, status: "in_progress", assigneeName: POISON },
+  // Этап 5: заказ, строка и товар — словами; id и товар каталога находит сервер.
+  propose_change_phone_order_line: { order: POISON, line: POISON, product: POISON, quantity: 3 },
+  propose_add_phone_order_line: { order: POISON, product: POISON, quantity: 2, unit: "qutu" },
+  propose_remove_phone_order_line: { order: POISON, line: POISON },
+  propose_confirm_phone_order: { order: POISON },
+  propose_reject_phone_order: { order: POISON, reason: POISON },
 }
 
 beforeEach(() => {
@@ -175,6 +198,16 @@ beforeEach(() => {
     id: DB_IDS.fieldContact, displayName: POISON, firstName: POISON, lastName: POISON, middleName: null,
   }])
   mocks.tickets.mockResolvedValue([{ id: DB_IDS.ticket, ticketNumber: "TK-0001", subject: POISON }])
+  mocks.phoneOrders.mockResolvedValue([{
+    id: DB_IDS.phoneOrder, number: 1015, status: "pending_review", revision: 4, providerCallId: "call-1",
+    pharmacyName: POISON, totalAmount: null, currency: "AZN", company: { name: POISON },
+  }])
+  mocks.phoneOrderLines.mockResolvedValue([{
+    id: DB_IDS.phoneOrderLine, position: 1, productName: POISON, sourceName: null, spokenText: POISON, quantity: 1, unit: "qutu",
+  }])
+  mocks.catalog.mockResolvedValue({ observedAt: "2026-11-10T00:00:00Z", items: [{
+    externalId: DB_IDS.catalogItem, itemCode: "0001", name: POISON, sourceName: POISON, price: { amount: "1.50", per: "qutu" },
+  }] })
   mocks.hrmRequests.mockResolvedValue([{
     id: DB_IDS.attendanceRequest,
     startDate: new Date("2026-11-10T00:00:00Z"),

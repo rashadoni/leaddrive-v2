@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { VOICE_RECORD_CHANGED_EVENT, type VoiceRecordChangedDetail } from "@/lib/ai/voice/voice-confirmation"
 import { PHONE_ORDER_CALLER_CANCELLED } from "@/lib/pharmacy-orders/caller-cancelled"
 import { readableProductName } from "@/lib/pharmacy-orders/product-label"
 import { cn } from "@/lib/utils"
@@ -76,6 +77,15 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
     setOrder((await response.json()).data)
   }, [orderId])
   useEffect(() => { void load() }, [load])
+  // Голосовая правка ЭТОГО заказа только что записана: показать новые строки.
+  useEffect(() => {
+    const onChanged = (event: Event) => {
+      const detail = (event as CustomEvent<VoiceRecordChangedDetail>).detail
+      if (detail?.entityType === "phone_order" && detail.entityId === orderId) void load()
+    }
+    window.addEventListener(VOICE_RECORD_CHANGED_EVENT, onChanged)
+    return () => window.removeEventListener(VOICE_RECORD_CHANGED_EVENT, onChanged)
+  }, [load, orderId])
 
   const act = useCallback(async (body: Record<string, unknown>) => {
     if (!order) return false
