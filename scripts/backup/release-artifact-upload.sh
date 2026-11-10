@@ -59,6 +59,13 @@ set +a
 : "${WAL_REPO_KEY:?}" "${WAL_REPO_KEY_SECRET:?}"
 : "${WAL_ARTIFACT_PREFIX:=artifacts}"
 : "${WAL_ARTIFACT_KEEP:=5}"
+# How hard the copy tries. The only chance to copy the release that is live
+# now is now, so a single swallowed upload must not end it: see the loop below
+# for what production did on 2026-11-10. Production leaves all three alone;
+# tests turn the waiting off.
+: "${WAL_ARTIFACT_UPLOAD_ATTEMPTS:=3}"
+: "${WAL_ARTIFACT_VERIFY_ATTEMPTS:=3}"
+: "${WAL_ARTIFACT_RETRY_SECONDS:=5}"
 # Tests point this at a stub; production never sets it.
 : "${AWS_BIN:=aws}"
 
@@ -100,6 +107,18 @@ esac
 case "$WAL_ARTIFACT_KEEP" in
   [1-9] | [1-9][0-9]) ;;
   *) printf '[artifact-upload] FATAL WAL_ARTIFACT_KEEP must be 1..99\n' >&2; exit 1 ;;
+esac
+case "$WAL_ARTIFACT_UPLOAD_ATTEMPTS" in
+  [1-9]) ;;
+  *) printf '[artifact-upload] FATAL WAL_ARTIFACT_UPLOAD_ATTEMPTS must be 1..9\n' >&2; exit 1 ;;
+esac
+case "$WAL_ARTIFACT_VERIFY_ATTEMPTS" in
+  [1-9]) ;;
+  *) printf '[artifact-upload] FATAL WAL_ARTIFACT_VERIFY_ATTEMPTS must be 1..9\n' >&2; exit 1 ;;
+esac
+case "$WAL_ARTIFACT_RETRY_SECONDS" in
+  [0-9] | [1-9][0-9]) ;;
+  *) printf '[artifact-upload] FATAL WAL_ARTIFACT_RETRY_SECONDS must be 0..99\n' >&2; exit 1 ;;
 esac
 
 log() { printf '[artifact-upload] %s\n' "$*"; }
@@ -286,18 +305,19 @@ fi
 key="$WAL_ARTIFACT_PREFIX/$SHA.tar.gz"
 bytes="$(stat -c %s -- "$TARBALL")"
 digest="$(sha256sum -- "$TARBALL" | awk '{print $1}')"
-log "uploading $bytes bytes, sha256 $digest -> s3://$WAL_REPO_BUCKET/$key"
 
-"$AWS_BIN" s3 cp "$TARBALL" "s3://$WAL_REPO_BUCKET/$key" "${S3[@]}" \
-  --metadata "sha256=$digest,deploysha=$SHA" --only-show-errors \
-  || { log "FATAL upload failed (freed $freed bytes first; the storage cap is accounted with a lag of minutes)"; exit 1; }
-
-# Read it back. An upload that reports success and stored something else is the
-# failure this exists to prevent: the restore would find a corrupt artifact at
-# the worst possible moment.
-head_json="$("$AWS_BIN" s3api head-object "${S3[@]}" --bucket "$WAL_REPO_BUCKET" --key "$key" 2>&1)" \
-  || { log "FATAL cannot read back the uploaded object: $(printf '%s' "$head_json" | tail -1)"; exit 1; }
-remote="$(printf '%s' "$head_json" | python3 -I -c '
+# Read the object back and say what the bucket actually holds: 0 — this
+# artifact; 10 — no such key at all; 20 — something else, which is the failure
+# the read-back exists to prevent, because a restore must not find a truncated
+# artifact at the worst possible moment.
+verify_detail=''
+verify_stored() {
+  local head_json remote remote_bytes remote_digest remote_sha
+  head_json="$("$AWS_BIN" s3api head-object "${S3[@]}" --bucket "$WAL_REPO_BUCKET" --key "$key" 2>&1)" || {
+    verify_detail="cannot read back the uploaded object: $(printf '%s' "$head_json" | tail -1)"
+    return 10
+  }
+  remote="$(printf '%s' "$head_json" | python3 -I -c '
 import json, sys
 try:
     d = json.loads(sys.stdin.read())
@@ -307,11 +327,76 @@ except Exception:
 meta = d.get("Metadata") or {}
 print("%s|%s|%s" % (d.get("ContentLength", -1), meta.get("sha256", ""), meta.get("deploysha", "")))
 ' 2>/dev/null || printf 'unreadable||')"
-IFS='|' read -r remote_bytes remote_digest remote_sha <<<"$remote"
-[ "$remote_bytes" = "$bytes" ] || { log "FATAL size mismatch: local=$bytes remote=$remote_bytes"; exit 1; }
-[ "$remote_digest" = "$digest" ] || { log 'FATAL stored sha256 metadata differs'; exit 1; }
-[ "$remote_sha" = "$SHA" ] || { log 'FATAL stored deploy sha differs'; exit 1; }
-log 'read back and verified'
+  IFS='|' read -r remote_bytes remote_digest remote_sha <<<"$remote"
+  if [ "$remote_bytes" != "$bytes" ]; then
+    verify_detail="size mismatch: local=$bytes remote=$remote_bytes"
+    return 20
+  fi
+  if [ "$remote_digest" != "$digest" ]; then
+    verify_detail='stored sha256 metadata differs'
+    return 20
+  fi
+  if [ "$remote_sha" != "$SHA" ]; then
+    verify_detail='stored deploy sha differs'
+    return 20
+  fi
+  verify_detail=''
+  return 0
+}
+
+# The one shot is the only shot, so it is taken more than once. Step 10 of the
+# deploy deletes this tarball minutes from now, production cannot rebuild it,
+# and the next deploy copies ITS release and never this one — so whatever does
+# not land here leaves the release that is live RIGHT NOW restorable only from
+# GitHub's 30-day artifact.
+#
+# 2026-11-10, release c676c5395: `s3 cp` moved 187 892 726 bytes and exited 0,
+# and HeadObject answered 404 seven seconds later. The version listing still
+# showed no such key twenty minutes on, so the bytes were never stored — and
+# the next deploy's upload worked from the same host with the same credentials.
+# A read-back that happens once turned that into an hour in which the live
+# release had no copy outside GitHub.
+#
+# A key the bucket does not show is asked for again first: seconds cost
+# nothing, and a bucket merely slow to show an object must not be answered with
+# another 187 MB. Anything else in its place is overwritten, which also leaves
+# the superseded version behind for the sweep below to purge.
+attempt=1
+stored=0
+while :; do
+  log "uploading $bytes bytes, sha256 $digest -> s3://$WAL_REPO_BUCKET/$key (attempt $attempt of $WAL_ARTIFACT_UPLOAD_ATTEMPTS)"
+  if "$AWS_BIN" s3 cp "$TARBALL" "s3://$WAL_REPO_BUCKET/$key" "${S3[@]}" \
+    --metadata "sha256=$digest,deploysha=$SHA" --only-show-errors; then
+    probe=1
+    while :; do
+      verdict=0
+      verify_stored || verdict=$?
+      if [ "$verdict" = 0 ]; then
+        stored=1
+        break
+      fi
+      if [ "$verdict" != 10 ] || [ "$probe" -ge "$WAL_ARTIFACT_VERIFY_ATTEMPTS" ]; then
+        break
+      fi
+      log "attempt $attempt: the bucket shows no such key yet ($verify_detail); asking again in ${WAL_ARTIFACT_RETRY_SECONDS}s"
+      probe=$((probe + 1))
+      sleep "$WAL_ARTIFACT_RETRY_SECONDS"
+    done
+  else
+    verify_detail="upload failed (freed $freed bytes first; the storage cap is accounted with a lag of minutes)"
+  fi
+  if [ "$stored" = 1 ]; then
+    break
+  fi
+  if [ "$attempt" -ge "$WAL_ARTIFACT_UPLOAD_ATTEMPTS" ]; then
+    log "FATAL the bucket does not hold the artifact after $attempt attempt(s): $verify_detail"
+    exit 1
+  fi
+  log "attempt $attempt did not put the artifact in the bucket ($verify_detail); trying again in ${WAL_ARTIFACT_RETRY_SECONDS}s"
+  attempt=$((attempt + 1))
+  sleep "$WAL_ARTIFACT_RETRY_SECONDS"
+done
+log "read back and verified after $attempt attempt(s)"
 
 # The pointer says which artifact production last accepted. A restore reads it
 # instead of guessing from timestamps.
