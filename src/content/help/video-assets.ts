@@ -230,21 +230,29 @@ export function resolveHelpVideoRouteEntry(
   const cleanPath = pathname.split("?")[0]?.replace(/\/$/, "") || "/"
   if (isHelpVideoPathBlocked(cleanPath)) return null
 
+  const matches = HELP_VIDEO_ENTRIES_BY_ROUTE.filter((entry) =>
+    entry.routes.some((route) =>
+      // "/base/*" matches only SUB-paths of /base (e.g. a detail page
+      // /deals/<id>) but NOT /base itself — so a detail guide can differ from
+      // the list guide. Longest-route-first sort makes "/deals/*" win over
+      // "/deals" for /deals/<id>, while "/deals" still wins for /deals.
+      route.endsWith("/*")
+        ? cleanPath.startsWith(`${route.slice(0, -2)}/`)
+        : cleanPath === route || cleanPath.startsWith(`${route}/`)
+    )
+  )
+
+  // A screen that declares its own route owns it, recorded or not. Filtering by
+  // eligibility first left the parent's prefix match standing: /meetings/whatsapp
+  // is registered but unrecorded, so «Video dərslik» offered the four-minute
+  // tour of /meetings instead — the very thing splitting the section into four
+  // screens was meant to end (owner, 2026-11-10). Silence is the honest answer
+  // until that screen has its own film.
+  const own = matches.find((entry) => entry.routes.includes(cleanPath))
+  if (own) return isEligible(own) ? own : null
+
   return (
-    // Eligibility is filtered BEFORE the longest-route match so a section
-    // without its own recording does not silently fall back to the broader
-    // guide of a parent route (e.g. a deal page showing the deals-list video).
-    HELP_VIDEO_ENTRIES_BY_ROUTE.filter(isEligible).find((entry) =>
-      entry.routes.some((route) =>
-        // "/base/*" matches only SUB-paths of /base (e.g. a detail page
-        // /deals/<id>) but NOT /base itself — so a detail guide can differ from
-        // the list guide. Longest-route-first sort makes "/deals/*" win over
-        // "/deals" for /deals/<id>, while "/deals" still wins for /deals.
-        route.endsWith("/*")
-          ? cleanPath.startsWith(`${route.slice(0, -2)}/`)
-          : cleanPath === route || cleanPath.startsWith(`${route}/`)
-      )
-    ) ?? null
+    matches.find(isEligible) ?? null
   )
 }
 

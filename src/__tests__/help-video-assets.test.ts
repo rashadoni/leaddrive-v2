@@ -57,6 +57,19 @@ describe("help video availability", () => {
     }
   })
 
+  it("never offers a parent's film on a screen that has its own address", () => {
+    // Shipped and seen on 2026-11-10: the meetings section became four screens,
+    // three of them unrecorded, and every one of them opened the four-minute
+    // tour of /meetings — with a first-visit prompt inviting the person to
+    // watch it. Splitting the section was precisely about not doing that.
+    for (const path of ["/meetings/services", "/meetings/whatsapp", "/meetings/team"]) {
+      expect(resolveHelpVideoRouteEntry(path)?.routes).toContain(path) // registered…
+      for (const locale of LOCALES) expect(getHelpVideoForPath(path, locale)).toBeNull() // …and silent
+    }
+    // The day screen keeps its own film, which is what /meetings is for.
+    expect(getHelpVideoForPath("/meetings", "az")?.slug).toBe("meetings")
+  })
+
   it("hides the help-drawer video button for unrecorded sections", () => {
     expect(getHelpVideoForSlug("ai-actions", "en")?.slug).toBe("ai-actions")
     expect(getHelpVideoForSlug("campaign-roi", "en")).toBeNull()
