@@ -27269,6 +27269,14 @@
           "Quotes and sales planning"
         ]
       },
+      "booking": {
+        "name": "Meetings",
+        "summary": "Clients pick a time and book themselves.",
+        "benefits": [
+          "Your own booking link",
+          "WhatsApp reminds and books on its own"
+        ]
+      },
       "omnichannel": {
         "name": "Communication",
         "summary": "Handle team conversations in a shared inbox.",

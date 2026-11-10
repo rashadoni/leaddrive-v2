@@ -27265,6 +27265,14 @@
           "Kommersiya təklifləri və satış planı"
         ]
       },
+      "booking": {
+        "name": "Görüşlər",
+        "summary": "Müştərilər özləri vaxt seçib qeydiyyata yazılır.",
+        "benefits": [
+          "Qeydiyyat üçün öz linkiniz",
+          "WhatsApp özü xatırladır və yazır"
+        ]
+      },
       "omnichannel": {
         "name": "Kommunikasiya",
         "summary": "Komandanın yazışmalarını ümumi növbədə işləyin.",

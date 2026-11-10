@@ -21,6 +21,7 @@ export const CAPABILITIES_OVERVIEW_CATALOG: readonly OverviewDefinition[] = [
   { id: "crm", module: "crm", goal: "customers", openPath: "/companies" },
   { id: "boards", module: "boards", goal: "team", openPath: "/boards" },
   { id: "sales", module: "sales", goal: "customers", openPath: "/deals", setupPath: "/settings/pipelines" },
+  { id: "booking", module: "booking", goal: "customers", openPath: "/meetings", setupPath: "/meetings/services" },
   { id: "omnichannel", module: "omnichannel", goal: "customers", openPath: "/inbox", setupPath: "/settings/channels" },
   { id: "voip", module: "voip", goal: "customers", openPath: "/voip/insights", setupPath: "/settings/channels" },
   { id: "marketing", module: "marketing", goal: "customers", openPath: "/campaigns" },
