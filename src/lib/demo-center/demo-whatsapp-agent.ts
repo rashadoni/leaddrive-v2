@@ -397,9 +397,10 @@ async function deliverAnswer(params: {
 
   const started = Date.now()
   let generated: Awaited<ReturnType<Generate>>
+  const system = demoWhatsAppAgentSystemPrompt(ticket?.ticketNumber ? { ticketNumber: ticket.ticketNumber } : undefined)
   try {
     generated = await params.generate({
-      system: demoWhatsAppAgentSystemPrompt(ticket?.ticketNumber ? { ticketNumber: ticket.ticketNumber } : undefined),
+      system,
       history,
     })
   } catch (error) {
@@ -412,7 +413,7 @@ async function deliverAnswer(params: {
   // (a code, a number, unmarked Latin) — the language the agent answered in.
   const fromProspect = detectOmnichannelReplyLocale(inbound.text)
   const locale = fromProspect === "en" ? detectOmnichannelReplyLocale(generated.text) : fromProspect
-  const guarded = guardOmnichannelCommitments(generated.text.trim(), { locale, customerText: inbound.text }).text.trim()
+  const guarded = guardOmnichannelCommitments(generated.text.trim(), { locale, customerText: inbound.text, facts: system }).text.trim()
   if (!guarded) {
     await release()
     return false

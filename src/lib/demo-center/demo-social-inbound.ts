@@ -276,10 +276,11 @@ async function answer(row: InboundRow, senderId: string, text: string, now: Date
       rows.reverse().map((message: { direction: string; text: string }) => ({ role: message.direction === "inbound" ? ("user" as const) : ("assistant" as const), content: message.text })),
       text,
     )
-    const generated = await (deps.generate ?? generateBounded)({ system: demoAgentSystemPrompt(DEMO_MESSENGER_FRAME), history })
+    const system = demoAgentSystemPrompt(DEMO_MESSENGER_FRAME)
+    const generated = await (deps.generate ?? generateBounded)({ system, history })
     const fromProspect = detectOmnichannelReplyLocale(text)
     const locale = fromProspect === "en" ? detectOmnichannelReplyLocale(generated.text) : fromProspect
-    const guarded = guardOmnichannelCommitments(generated.text.trim(), { locale, customerText: text }).text.trim()
+    const guarded = guardOmnichannelCommitments(generated.text.trim(), { locale, customerText: text, facts: system }).text.trim()
     if (!guarded) {
       await giveBack()
       return false

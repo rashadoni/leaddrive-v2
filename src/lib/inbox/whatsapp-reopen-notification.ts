@@ -29,6 +29,8 @@ export async function sendGuardedWhatsAppReopenNotification(
   const guarded = guardOmnichannelCommitments(candidate, {
     customerText: input.customerText,
     locale: detectOmnichannelReplyLocale(input.customerText),
+    // Шаблон без цен и скидок — фактов не нужно.
+    facts: "",
   })
 
   await sendWhatsAppMessage({
