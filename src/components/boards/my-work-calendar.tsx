@@ -3,8 +3,8 @@
 /**
  * «Təqvim» of «Mənim işlərim» — Bordio's My work → Calendar: days as columns
  * stepping one at a time, the waiting list on the right, a task dragged onto
- * a day is planned for it (its «Başlama tarixi»), dragged back it has no day.
- * The deadline is never touched. See src/lib/tasks/my-work-calendar.ts.
+ * a day is planned for it — by this person only, as in Bordio — dragged back it
+ * has no day. The deadline is never touched. See src/lib/tasks/my-work-calendar.ts.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react"
@@ -18,8 +18,8 @@ import { cn } from "@/lib/utils"
 import { formatDate, formatWeekday } from "@/lib/format-date"
 import { boardLabel } from "@/lib/tasks/my-work"
 import {
-  dayKeys, dueNote, firstDayFor, isClosedStatus, localDayKey, planTasks, plannedDay, shiftDayKey,
-  startDateForDay, visibleDayCount, type PlannedTask,
+  dayKeys, dueNote, firstDayFor, isClosedStatus, localDayKey, planForDay, planTasks, plannedDay, shiftDayKey,
+  visibleDayCount, type PlannedTask,
 } from "@/lib/tasks/my-work-calendar"
 import { BOARD_TASKS_PAGE } from "@/lib/tasks/fetch-board-tasks"
 
@@ -74,9 +74,7 @@ export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks
   useEffect(() => {
     let cancelled = false
     const [firstDay, lastDay] = range.split("|")
-    const after = startDateForDay(firstDay)
-    const before = new Date(new Date(startDateForDay(shiftDayKey(lastDay, 1))).getTime() - 1).toISOString()
-    fetch(`/api/v1/tasks?mine=1&status=done,completed,cancelled&startAfter=${encodeURIComponent(after)}&startBefore=${encodeURIComponent(before)}&limit=${BOARD_TASKS_PAGE}`, { credentials: "include" })
+    fetch(`/api/v1/tasks?mine=1&status=done,completed,cancelled&planFrom=${firstDay}&planTo=${lastDay}&limit=${BOARD_TASKS_PAGE}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => { if (!cancelled) setFinished(j?.data?.tasks ?? []) })
       .catch(() => { if (!cancelled) setFinished([]) })
@@ -87,25 +85,24 @@ export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks
   const [waitingAll, setWaitingAll] = useState(false)
   const boardById = useMemo(() => new Map(boards.map((b) => [b.id, b])), [boards])
 
-  /** Plan a task for a day (or take its day away): shown at once, taken back if refused. */
+  /** Plan a task for a day (or take its day away) — for me only: shown at once, taken back if refused. */
   const plan = useCallback(async (task: CalendarTask, day: string | null) => {
     if ((plannedDay(task) ?? null) === day) return
-    const startDate = day ? startDateForDay(day) : null
-    const apply = (value: string | null | undefined) => {
-      if (isClosedStatus(task.status)) setFinished((list) => list.map((x) => (x.id === task.id ? { ...x, startDate: value } : x)))
-      else setOpenTasks((list) => (list ? list.map((x) => (x.id === task.id ? { ...x, startDate: value } : x)) : list))
+    const apply = (plans: { day: string }[] | null | undefined) => {
+      if (isClosedStatus(task.status)) setFinished((list) => list.map((x) => (x.id === task.id ? { ...x, plans } : x)))
+      else setOpenTasks((list) => (list ? list.map((x) => (x.id === task.id ? { ...x, plans } : x)) : list))
     }
-    apply(startDate)
+    apply(day ? [planForDay(day)] : [])
     try {
-      const res = await fetch(`/api/v1/tasks/${task.id}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/v1/tasks/${task.id}/plan`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ startDate }),
+        body: JSON.stringify({ day }),
       })
-      if (!res.ok) { apply(task.startDate); flash(t("changeFailed")) }
+      if (!res.ok) { apply(task.plans); flash(t("changeFailed")) }
     } catch {
-      apply(task.startDate)
+      apply(task.plans)
       flash(t("changeFailed"))
     }
   }, [flash, setOpenTasks, t])

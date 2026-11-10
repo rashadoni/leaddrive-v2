@@ -425,17 +425,17 @@ async function main() {
     await page.close()
     return { tasks: ids.length }
   })
-  await step('«Mənim işlərim → Təqvim»: a task dragged from the waiting list onto today is planned for today, dragged back it has no day; its deadline stays', async () => {
+  await step('«Mənim işlərim → Təqvim»: a task dragged from the waiting list onto today is planned for today — for her only; dragged back it has no day; the task itself stays', async () => {
     const id = f.tasks.pharmaOpen.id
     const read = async () => (await api('marketer', `/api/v1/tasks/${id}`)).json.data
+    const myPlan = async () => ((await api('marketer', '/api/v1/tasks?mine=1&open=1&limit=1000')).json.data.tasks.find((t) => t.id === id)?.plans ?? [])
     const before = await read()
-    assert.equal(before.startDate ?? null, null, 'the fixture task already has a day')
+    assert.deepEqual(await myPlan(), [], 'the fixture task is already planned')
     const page = await sessions.marketer.newPage()
     await page.goto('/boards/mine?view=calendar', { timeout: 180000 })
     const card = `[data-testid="my-work-card"][data-task-id="${id}"]`
     await page.waitForSelector(`[data-testid="my-work-waiting"] ${card}`, { timeout: 120000 })
     const today = await page.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })
-    const todayStart = await page.evaluate((key) => new Date(`${key}T00:00:00`).toISOString(), today)
     const drag = async (from, to) => {
       const a = await page.locator(from).boundingBox()
       const b = await page.locator(to).boundingBox()
@@ -446,16 +446,17 @@ async function main() {
       await page.mouse.up()
     }
     await drag(card, `[data-testid="my-work-day"][data-day="${today}"]`)
-    let planned = before
-    for (let i = 0; i < 20 && !planned.startDate; i++) { await page.waitForTimeout(500); planned = await read() }
-    assert.equal(planned.startDate, todayStart)
-    assert.equal(planned.dueDate, before.dueDate)
+    let planned = []
+    for (let i = 0; i < 20 && planned.length === 0; i++) { await page.waitForTimeout(500); planned = await myPlan() }
+    assert.deepEqual(planned, [{ day: `${today}T00:00:00.000Z` }])
+    const during = await read()
+    assert.equal(during.startDate ?? null, before.startDate ?? null)
+    assert.equal(during.dueDate, before.dueDate)
     await page.waitForSelector(`[data-testid="my-work-day"][data-day="${today}"] ${card}`, { timeout: 30000 })
     await drag(card, '[data-testid="my-work-waiting"] h2')
     let back = planned
-    for (let i = 0; i < 20 && back.startDate; i++) { await page.waitForTimeout(500); back = await read() }
-    assert.equal(back.startDate ?? null, null)
-    assert.equal(back.dueDate, before.dueDate)
+    for (let i = 0; i < 20 && back.length > 0; i++) { await page.waitForTimeout(500); back = await myPlan() }
+    assert.deepEqual(back, [])
     await page.close()
   })
   await step('a message with an @-mention reaches the person, the author is not told', async () => {

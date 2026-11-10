@@ -126,6 +126,8 @@ pgDescribe("tasks brought over from another tool, on a real Postgres", () => {
   let bypass!: typeof import("@/lib/rls-context").runWithRlsBypass
   let importRoute!: typeof import("@/app/api/v1/divisions/[id]/import-external/route").POST
   let listRoute!: typeof import("@/app/api/v1/tasks/route").GET
+  let plansRoute!: typeof import("@/app/api/v1/tasks/import-external/plans/route").POST
+  let planRoute!: typeof import("@/app/api/v1/tasks/[id]/plan/route").PUT
 
   beforeAll(async () => {
     prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `DROP DATABASE IF EXISTS "${scratch!.name}" WITH (FORCE)`)
@@ -135,6 +137,8 @@ pgDescribe("tasks brought over from another tool, on a real Postgres", () => {
     bypass = (await import("@/lib/rls-context")).runWithRlsBypass
     importRoute = (await import("@/app/api/v1/divisions/[id]/import-external/route")).POST
     listRoute = (await import("@/app/api/v1/tasks/route")).GET
+    plansRoute = (await import("@/app/api/v1/tasks/import-external/plans/route")).POST
+    planRoute = (await import("@/app/api/v1/tasks/[id]/plan/route")).PUT
     await bypass(async () => {
       for (const [id, slug] of [[ORG, "zeytun"], [OTHER_ORG, "other"]]) {
         await prisma.organization.create({ data: { id, name: slug, slug, modules: { crm: true, tasks: true } } })
@@ -311,6 +315,70 @@ pgDescribe("tasks brought over from another tool, on a real Postgres", () => {
     expect([again.body.data.updated, again.body.data.moved]).toEqual([1, 0])
     const still = await bypass(() => prisma.task.findFirstOrThrow({ where: { id: before.id }, select: { taskKey: true } }))
     expect(still.taskKey).toBe("DZEY-1")
+  })
+
+  it("carries each person's own calendar day over from the other tool — plans only, quietly", async () => {
+    const sendPlans = async (body: unknown) => {
+      const res = await plansRoute(request("POST", "/api/v1/tasks/import-external/plans", body), { params: Promise.resolve({}) })
+      return { status: res.status, body: await res.json() }
+    }
+    const plans = () => bypass(() => prisma.taskPlan.findMany({
+      where: { organizationId: ORG },
+      select: { userId: true, day: true, task: { select: { externalId: true } } },
+      orderBy: [{ userId: "asc" }],
+    })).then((rows) => rows.map((row) => [row.task.externalId, row.userId, row.day.toISOString().slice(0, 10)]))
+    const openTask = () => bypass(() => prisma.task.findFirst({
+      where: { organizationId: ORG, externalId: OPEN.externalId },
+      select: { id: true, title: true, status: true, dueDate: true, startDate: true, _count: { select: { activities: true } } },
+    }))
+    const before = await openTask()
+
+    // As in Bordio: the same task on Friday for one, on Wednesday for another, in the third one's waiting list.
+    const body = { source: "bordio", plans: [
+      { externalId: OPEN.externalId, userEmail: "gulu.alakbarova@zeytunpharma.az", day: "2026-11-06" },
+      { externalId: OPEN.externalId, userEmail: "Aytan.Mushkurova@zeytunpharma.az", day: "2026-11-04" },
+      { externalId: OPEN.externalId, userEmail: "nazrin.shirinova@zeytunpharma.az", day: null },
+      { externalId: OPEN.externalId, userEmail: "former.member@zeytunpharma.az", day: "2026-11-05" },
+      { externalId: "bordio-never-imported", userEmail: "gulu.alakbarova@zeytunpharma.az", day: "2026-11-05" },
+    ] }
+    const dry = await sendPlans({ ...body, dryRun: true })
+    expect(dry.status, JSON.stringify(dry.body)).toBe(200)
+    expect(dry.body.data).toEqual({
+      dryRun: true, created: 2, moved: 0, removed: 0, unchanged: 1,
+      missingTasks: ["bordio-never-imported"], missingTaskCount: 1,
+      unmatchedEmails: { "former.member@zeytunpharma.az": 1 },
+    })
+    expect(await plans()).toEqual([])
+
+    session.current = { user: { id: "viewer", organizationId: ORG, role: "manager", email: "viewer@zeytun.test", name: "M" } }
+    expect((await sendPlans(body)).status).toBe(403)
+    session.current = { user: { id: "admin", organizationId: ORG, role: "admin", email: "admin@zeytun.test", name: "Admin" } }
+
+    expect((await sendPlans(body)).body.data).toMatchObject({ created: 2, moved: 0, removed: 0 })
+    expect(await plans()).toEqual([[OPEN.externalId, "aytan", "2026-11-04"], [OPEN.externalId, "gullu", "2026-11-06"]])
+    // A re-run changes nothing; the task itself was never touched and nobody was told.
+    expect((await sendPlans(body)).body.data).toMatchObject({ created: 0, moved: 0, removed: 0, unchanged: 3 })
+    const after = await openTask()
+    expect(after).toEqual(before)
+    expect(mail.sent).toEqual([])
+    expect(await bypass(() => prisma.notification.count({ where: { organizationId: ORG } }))).toBe(0)
+
+    // Each person moves only their own day — by the card's own route.
+    session.current = { user: { id: "gullu", organizationId: ORG, role: "manager", email: "gulu.alakbarova@zeytunpharma.az", name: "G" } }
+    const moved = await planRoute(request("PUT", `/api/v1/tasks/${after!.id}/plan`, { day: "2026-11-10" }), { params: Promise.resolve({ id: after!.id }) })
+    expect(moved.status).toBe(200)
+    expect(await plans()).toEqual([[OPEN.externalId, "aytan", "2026-11-04"], [OPEN.externalId, "gullu", "2026-11-10"]])
+    // Her list reads her day only, and her calendar finds it by it.
+    const mine = await (await listRoute(request("GET", "/api/v1/tasks?mine=1&open=1&limit=50"))).json()
+    expect(mine.data.tasks.find((task: { id: string }) => task.id === after!.id).plans).toEqual([{ day: "2026-11-10T00:00:00.000Z" }])
+    const onDay = await (await listRoute(request("GET", "/api/v1/tasks?mine=1&planFrom=2026-11-10&planTo=2026-11-10&limit=50"))).json()
+    expect(onDay.data.tasks.map((task: { id: string }) => task.id)).toEqual([after!.id])
+    const otherDay = await (await listRoute(request("GET", "/api/v1/tasks?mine=1&planFrom=2026-11-04&planTo=2026-11-04&limit=50"))).json()
+    expect(otherDay.data.tasks).toEqual([])
+    const back = await planRoute(request("PUT", `/api/v1/tasks/${after!.id}/plan`, { day: null }), { params: Promise.resolve({ id: after!.id }) })
+    expect(back.status).toBe(200)
+    expect(await plans()).toEqual([[OPEN.externalId, "aytan", "2026-11-04"]])
+    session.current = { user: { id: "admin", organizationId: ORG, role: "admin", email: "admin@zeytun.test", name: "Admin" } }
   })
 
   it("the list hands out a board past 200 tasks page by page, every card exactly once", async () => {

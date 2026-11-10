@@ -50,6 +50,8 @@ export const GET = withRls(async (req, { orgId, session }) => {
           checklist: { select: { completed: true } }, // for the board card progress bar (Q-tasks)
           collaborators: { select: { user: { select: { id: true, name: true, avatar: true } } } },
           _count: { select: { checklist: true, comments: true, attachments: true } }, // attachments: the «Təqvim» card's paperclip
+          // «Mənim işlərim»: the caller's own planned day (each person plans their own, as in Bordio).
+          ...(sp.get("mine") === "1" ? { plans: { where: { userId: session?.userId || "" }, select: { day: true } } } : {}),
         },
       }),
       prisma.task.count({ where }),
