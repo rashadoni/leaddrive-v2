@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 
+import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { decryptForTenantBound } from "@/lib/crypto/tenant-pii-encryption"
 import { phoneOrderPdf, type OrderPdfInput } from "@/lib/pharmacy-orders/order-pdf"
@@ -47,6 +48,49 @@ export function readManagerNoticeSettings(settings: unknown): ManagerNoticeSetti
   const raw = (settings as { pharmacyPhoneOrders?: { managerWhatsApp?: unknown } } | null)?.pharmacyPhoneOrders?.managerWhatsApp
   const parsed = managerNoticeSettingsSchema.safeParse({ phones: Array.isArray(raw) ? raw : [] })
   return parsed.success ? parsed.data : { phones: [] }
+}
+
+/* ─── Which of the organization's numbers these messages go out from ── */
+
+/**
+ * Every phone-order message — the managers' notice, and the two the pharmacy itself gets — used to
+ * resolve its sender as `resolveWhatsAppConfig(orgId)` with no channel named, and that is a bare
+ * `findFirst` with no ordering over the organization's live WhatsApp channels. With one channel it is
+ * that number. With two it is whichever row Postgres happens to return first, so connecting a second
+ * number could move the pharmacy's receipt and its confirmation to it — a sender the pharmacy does
+ * not know, in a WABA where none of these templates is approved, so the message fails instead of
+ * arriving. Same shape as the demo's number (lib/demo-center/whatsapp-number); found 2026-11-10,
+ * before the owner connected another number to test with.
+ *
+ * So the sender is the organization's OLDEST live channel — the one that has been sending all along.
+ * With a single channel this is exactly the previous behaviour. Replacing the number still works: a
+ * disconnected row is not live, so it drops out of the choice.
+ */
+export function pickPhoneOrderSenderRow<T extends { id: string; createdAt: Date }>(rows: readonly T[]): T | null {
+  // `createdAt` alone is not an order — two rows can carry one timestamp, and the pick would be a
+  // coin toss again. The id breaks the tie, so every call answers the same.
+  const sorted = [...rows].sort((a, b) =>
+    a.createdAt.getTime() - b.createdAt.getTime() || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+  return sorted[0] ?? null
+}
+
+/** The sender for this organization's phone-order messages. Null is "not connected", as before. */
+export async function phoneOrderSender(
+  orgId: string,
+  db: Pick<PrismaClient, "channelConfig"> = prisma,
+): Promise<WhatsAppConfig | null> {
+  const rows = await db.channelConfig.findMany({
+    where: { organizationId: orgId, channelType: "whatsapp", isActive: true },
+    select: { id: true, createdAt: true },
+  })
+  const row = pickPhoneOrderSenderRow(rows)
+  if (!row) return null
+  if (rows.length > 1) {
+    // Worth a line: the choice is now ours rather than the planner's, and this says which it was.
+    console.log(`[phone-orders] org ${orgId} has ${rows.length} live WhatsApp channels — sending as the oldest (${row.id})`)
+  }
+  // The credential columns, their legacy aliases and Meta's reonboarding pause stay in one reader.
+  return resolveWhatsAppConfig(orgId, { channelConfigId: row.id })
 }
 
 export type ManagerNotice =
@@ -217,7 +261,7 @@ export async function notifyManagersOfPhoneOrder(db: PrismaClient, orgId: string
     if (!order) return null
     const { phones } = readManagerNoticeSettings(org?.settings)
     if (!phones.length) return record({ status: "no_recipient", at: at() })
-    const sender = await (deps.sender ?? ((id: string) => resolveWhatsAppConfig(id)))(orgId)
+    const sender = await (deps.sender ?? ((id: string) => phoneOrderSender(id, db)))(orgId)
     if (!sender) return record({ status: "not_connected", at: at() })
     const label = phoneOrderLabel(order.number)
     const values = { label: options.unfinished ? `${label} (${UNFINISHED_ORDER_MARK})` : label, pharmacy: order.company?.name ?? order.pharmacyName ?? "—",
@@ -321,7 +365,7 @@ export async function sendPharmacyReceipt(db: PrismaClient, orgId: string, order
     const at = () => now().toISOString()
     const phone = decryptForTenantBound(orgId, PHONE_ORDERS_TABLE, "callerPhone", order.callerPhone)
     if (!/^\+[1-9]\d{7,14}$/u.test(phone)) return record({ status: "no_number", at: at() })
-    const sender = await (deps.sender ?? ((id: string) => resolveWhatsAppConfig(id)))(orgId)
+    const sender = await (deps.sender ?? ((id: string) => phoneOrderSender(id, db)))(orgId)
     if (!sender) return record({ status: "not_connected", at: at() })
     const withPdf = deps.pdfFailed ? { ok: false as const, pdfSkipped: deps.pdfFailed }
       : await sendOrderDocument(sender, phone, PDF_TEMPLATES.received, orderDocument(order, { kind: "received" }), deps.fetch ?? fetch)
@@ -377,7 +421,7 @@ export async function notifyPharmacyOfDecision(db: PrismaClient, orgId: string, 
     const at = () => now().toISOString()
     const phone = decryptForTenantBound(orgId, PHONE_ORDERS_TABLE, "callerPhone", order.callerPhone)
     if (!/^\+[1-9]\d{7,14}$/u.test(phone)) return record({ status: "no_number", kind, at: at() })
-    const sender = await (deps.sender ?? ((id: string) => resolveWhatsAppConfig(id)))(orgId)
+    const sender = await (deps.sender ?? ((id: string) => phoneOrderSender(id, db)))(orgId)
     if (!sender) return record({ status: "not_connected", kind, at: at() })
     const label = phoneOrderLabel(order.number)
     let pdfSkipped: string | undefined
