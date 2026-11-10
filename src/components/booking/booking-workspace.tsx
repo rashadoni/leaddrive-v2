@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
@@ -107,12 +108,23 @@ function weekWindow(day: string) {
   return { start, end: addDays(start, 7), days: Array.from({ length: 7 }, (_, index) => addDays(start, index)) }
 }
 
-export function BookingWorkspace() {
+/** The four screens of the section; each one is a page of its own. */
+export type BookingSection = "meetings" | "pages" | "whatsapp" | "team"
+
+/** Where each section lives, so the nav is links and the help video can differ per screen. */
+export const BOOKING_SECTION_PATHS: Record<BookingSection, string> = {
+  meetings: "/meetings",
+  pages: "/meetings/services",
+  whatsapp: "/meetings/whatsapp",
+  team: "/meetings/team",
+}
+
+export function BookingWorkspace({ section = "meetings" }: { section?: BookingSection } = {}) {
   const t = useTranslations("booking")
   const locale = useLocale()
   const router = useRouter()
   const params = useSearchParams()
-  const tab = params.get("tab") === "pages" ? "pages" : params.get("tab") === "team" ? "team" : "meetings"
+  const tab = section
   const selectedId = params.get("booking")
   const { data: session } = useSession()
   const identity = `${session?.user?.organizationId ?? ""}:${session?.user?.id ?? ""}`
@@ -371,10 +383,24 @@ export function BookingWorkspace() {
         <Button variant="outline" onClick={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }} disabled={loading} aria-label={t("refresh")}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin motion-reduce:animate-none" : ""}`} />{t("refresh")}</Button>
       </div>
     </header>
+    {/* Links, not a switch inside one page: each screen is its own address, so
+        the browser remembers it, it can be sent to a colleague, and the help
+        video belongs to the screen a person actually opened. */}
     <nav data-crm-tabs="" className="flex flex-wrap gap-1 border-b" aria-label={t("workspaceSections")}>
-      {(["meetings", ...(context?.canConfigure ? ["pages", "team"] : [])] as string[]).map((item) => <Button key={item} data-crm-tab="" data-state={tab === item ? "active" : "inactive"} variant={tab === item ? "secondary" : "ghost"} className="min-h-11 rounded-b-none" aria-current={tab === item ? "page" : undefined} onClick={() => navigate({ tab: item === "meetings" ? null : item, booking: null })}>{t(item === "meetings" ? "workspaceMeetings" : item === "pages" ? "workspacePages" : "workspaceTeam")}</Button>)}
+      {(["meetings", ...(context?.canConfigure ? ["pages", "whatsapp", "team"] : [])] as BookingSection[]).map((item) => <Button
+        key={item}
+        asChild
+        data-crm-tab=""
+        data-state={tab === item ? "active" : "inactive"}
+        variant={tab === item ? "secondary" : "ghost"}
+        className="min-h-11 rounded-b-none"
+      >
+        <Link href={BOOKING_SECTION_PATHS[item]} aria-current={tab === item ? "page" : undefined}>
+          {t(item === "meetings" ? "workspaceMeetings" : item === "pages" ? "workspacePages" : item === "whatsapp" ? "waBookingTitle" : "workspaceTeam")}
+        </Link>
+      </Button>)}
     </nav>
-    {tab === "pages" ? context?.canConfigure ? <BookingPagesPanel /> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : tab === "team" ? context?.canConfigure ? <div className="grid items-start gap-5 lg:grid-cols-2"><BookingHostSchedulePanel /><BookingCoordinatorsPanel /></div> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : <>
+    {tab === "pages" || tab === "whatsapp" ? context?.canConfigure ? <BookingPagesPanel show={tab === "whatsapp" ? "whatsapp" : "services"} /> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : tab === "team" ? context?.canConfigure ? <div className="grid items-start gap-5 lg:grid-cols-2"><BookingHostSchedulePanel /><BookingCoordinatorsPanel /></div> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : <>
       <BookingRequestsPanel timezone={timezone} onReviewed={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }} />
       {view === "day" ? null : <section className="flex flex-wrap items-end gap-3" aria-label={t("workspaceFilters")}>
         {searchField}
@@ -468,7 +494,7 @@ export function BookingWorkspace() {
 <span className="mt-1 block text-xs sm:text-sm">{calendarLoading ? <span className="text-muted-foreground">…</span> : counts[value] ? <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">{t("dayCount", { count: counts[value] })}</span> : null}</span><span className="sr-only">{formatDate(`${value}T12:00:00Z`, locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}</span></button>)}</div>}
           <h2 className="text-lg font-semibold">{date(atMidnight(selectedDay))}</h2>
         </section> : null}
-        {error ? <CrmSection role="alert" tone="destructive"><p>{error}</p><Button className="mt-3" variant="outline" onClick={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }}>{t("retry")}</Button></CrmSection> : loading && !items.length ? <p role="status" className="py-12 text-center text-muted-foreground">{t("workspaceLoading")}</p> : !items.length ? <CrmSection className="px-5 py-12 text-center"><CalendarCheck className="mx-auto mb-3 h-7 w-7 text-muted-foreground" /><h2 className="font-medium">{t("meetingsEmpty")}</h2><p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">{t(query || host || page || status !== "all" ? "meetingsEmptyFilters" : "meetingsEmptyHint")}</p>{context?.canConfigure ? <Button className="mt-4" variant="outline" onClick={() => navigate({ tab: "pages" })}>{t("workspacePages")}</Button> : null}</CrmSection> : <section aria-label={t("workspaceMeetings")} aria-busy={loading} className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card text-card-foreground">
+        {error ? <CrmSection role="alert" tone="destructive"><p>{error}</p><Button className="mt-3" variant="outline" onClick={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }}>{t("retry")}</Button></CrmSection> : loading && !items.length ? <p role="status" className="py-12 text-center text-muted-foreground">{t("workspaceLoading")}</p> : !items.length ? <CrmSection className="px-5 py-12 text-center"><CalendarCheck className="mx-auto mb-3 h-7 w-7 text-muted-foreground" /><h2 className="font-medium">{t("meetingsEmpty")}</h2><p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">{t(query || host || page || status !== "all" ? "meetingsEmptyFilters" : "meetingsEmptyHint")}</p>{context?.canConfigure ? <Button className="mt-4" variant="outline" asChild><Link href={BOOKING_SECTION_PATHS.pages}>{t("workspacePages")}</Link></Button> : null}</CrmSection> : <section aria-label={t("workspaceMeetings")} aria-busy={loading} className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card text-card-foreground">
           {items.map((item) => <button type="button" key={item.id} className="grid min-h-24 w-full gap-2 p-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[10rem_minmax(0,1fr)_minmax(7rem,auto)] sm:items-center" onClick={() => navigate({ booking: item.id })}>
             <span><span className="block text-sm font-medium">{date(item.startsAt)}</span><span className="text-sm tabular-nums text-muted-foreground">{time(item.startsAt)}–{time(item.endsAt)}</span></span>
             <span className="min-w-0"><span className="block break-words font-medium">{item.name}</span><span className="block break-words text-sm text-muted-foreground">{item.bookingPage.title}</span><span className="mt-1 block text-xs text-muted-foreground">{item.hostName ?? t("hostUnknown")} · {t(`location_${["office", "phone", "online"].includes(item.bookingPage.locationType) ? item.bookingPage.locationType : "office"}`)}</span></span>

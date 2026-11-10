@@ -86,7 +86,7 @@ async function fetchBookingPages(): Promise<{ pages: PageRow[]; users: BookingHo
   return body?.success ? body.data : null
 }
 
-export function BookingPagesPanel() {
+export function BookingPagesPanel({ show = "all" }: { show?: "all" | "services" | "whatsapp" } = {}) {
   const t = useTranslations("booking")
   const locale = useLocale()
   const [pages, setPages] = useState<PageRow[]>([])
@@ -270,7 +270,7 @@ export function BookingPagesPanel() {
       {/* Editing a service takes the screen: the editor brings its own name,
           its own index and its own actions, so the list's heading would be a
           second heading above a page that already has one. */}
-      {draft ? null : (
+      {draft || show === "whatsapp" ? null : (
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
@@ -295,7 +295,7 @@ export function BookingPagesPanel() {
           that decides whether the number answers at all (owner, 2026-11-10 —
           «никто не скролит, всё должно быть под рукой»). It stays one card
           high, so the list it sits above is still the first thing read. */}
-      {!draft ? <BookingWhatsAppCard services={pages.map(({ id, title, price, priceCurrency }) => ({ id, title, price, priceCurrency }))} hosts={users} /> : null}
+      {!draft && show !== "services" ? <BookingWhatsAppCard services={pages.map(({ id, title, price, priceCurrency }) => ({ id, title, price, priceCurrency }))} hosts={users} /> : null}
 
       {draft ? (
         <BookingPageEditor
@@ -312,7 +312,7 @@ export function BookingPagesPanel() {
           onSave={(another) => void save(another)}
           onCancel={() => setDraft(null)}
         />
-      ) : loading ? <p role="status">{t("workspaceLoading")}</p> : error ? <Button variant="outline" onClick={() => { setLoading(true); load() }}>{t("retry")}</Button> : pages.length === 0 ? (
+      ) : show === "whatsapp" ? null : loading ? <p role="status">{t("workspaceLoading")}</p> : error ? <Button variant="outline" onClick={() => { setLoading(true); load() }}>{t("retry")}</Button> : pages.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">{t("emptyList")}</CardContent>
         </Card>
@@ -369,7 +369,7 @@ export function BookingPagesPanel() {
       {/* Calendly's date-specific hours, in the half a salon actually says:
           closed. One list for the whole organization — a holiday marked on
           twenty services is nineteen chances to miss one. */}
-      {!draft ? (
+      {!draft && show !== "whatsapp" ? (
         <div className="rounded-2xl border bg-card p-5 shadow-sm">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h2 className="flex items-center gap-2 text-[17px] font-bold tracking-tight">
