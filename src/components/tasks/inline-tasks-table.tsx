@@ -118,6 +118,12 @@ interface Props {
       empty groups (owner, 2026-11-08 — a board opened from the sidebar showed
       «0 nəticə» and an empty table for a moment before its 93 tasks). */
   loading?: boolean
+  /** The search text, when the caller keeps it — a board keeps it in its URL
+      (`?q=`) and shares it between its Lövhə and Siyahı views. Without these
+      the table keeps its own; with them, a link carrying `?q=` opened in the
+      list showed the whole board under an empty box (found 2026-11-09). */
+  search?: string
+  onSearchChange?: (search: string) => void
 }
 
 const STATUS_OPTIONS = ["pending", "in_progress", "completed", "cancelled"] as const
@@ -274,12 +280,14 @@ export function InlineTasksTable({
   onUpdate, onCreate, onDelete, onEdit, onOpenDetail,
   rowClassName, categoryColumnLabel, statusLabels, priorityLabels,
   customFieldDefs, users, projects = [], groupOpenClosed = false, customGroups, groupKeyOf, statusOptions, sortBy, onSortChange,
-  loading = false,
+  loading = false, search: searchProp, onSearchChange,
 }: Props) {
   const t = useTranslations("tasks")
   const tc = useTranslations("common")
   const waiting = loading && tasks.length === 0
-  const [search, setSearch] = useState("")
+  const [ownSearch, setOwnSearch] = useState("")
+  const search = searchProp ?? ownSearch
+  const setSearch = onSearchChange ?? setOwnSearch
 
   // Column visibility (Roadmap #12). Hidden = explicitly excluded by user via
   // the "Columns" popover. Persisted to localStorage so the user's choice
@@ -337,8 +345,8 @@ export function InlineTasksTable({
   const isVisible = (key: string) => !hiddenColumns.has(key)
 
   const filtered = useMemo(() => {
-    if (!search) return tasks
-    const q = search.toLowerCase()
+    const q = search.trim().toLowerCase()
+    if (!q) return tasks
     return tasks.filter(task => task.title.toLowerCase().includes(q))
   }, [tasks, search])
 
