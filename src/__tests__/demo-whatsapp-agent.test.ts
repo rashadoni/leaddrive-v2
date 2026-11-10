@@ -294,7 +294,7 @@ describe("answers until the day or the allowance runs out", () => {
 
 describe("the words the agent may say", () => {
   it("closes with a line the product's guard lets through unchanged", () => {
-    expect(guardOmnichannelCommitments(DEMO_WHATSAPP_CLOSING, { locale: "az" }).violations).toEqual([])
+    expect(guardOmnichannelCommitments(DEMO_WHATSAPP_CLOSING, { locale: "az", facts: "" }).violations).toEqual([])
   })
 
   it("answers from exactly what the demo's «AI agent» screen shows: the prompt with its style, the knowledge base, the model", () => {
@@ -425,7 +425,7 @@ describe("ticket mode", () => {
   })
 
   it("closes with a line the product's guard lets through unchanged", () => {
-    expect(guardOmnichannelCommitments(demoWhatsAppTicketClosing("WA-0031"), { locale: "az" }).violations).toEqual([])
+    expect(guardOmnichannelCommitments(demoWhatsAppTicketClosing("WA-0031"), { locale: "az", facts: "" }).violations).toEqual([])
   })
 
   it("opens exactly one new ticket when the team deleted the one the thread held", async () => {

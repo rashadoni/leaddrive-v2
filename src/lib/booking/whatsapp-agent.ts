@@ -24,6 +24,7 @@ import { bookingDb as prisma } from "./db"
 import { anthropicFor } from "@/lib/ai/gateway"
 import { calculateAiCost, checkAiBudget, checkConversationAiLimits, resolveAiModel } from "@/lib/ai/budget"
 import { PiiMasker } from "@/lib/ai/pii-masker"
+import { isUngroundedOffer, offerFactsFrom } from "@/lib/ai/offer-grounding"
 import { sanitizeForPrompt } from "@/lib/sanitize"
 import { hmacToken } from "@/lib/secure-token"
 import { dateInputValueInTimezone, getOffsetMinutes } from "@/lib/timezone"
@@ -296,7 +297,16 @@ export function readDecision(input: unknown, context: DecisionContext): BookingD
     const choices = Array.isArray(value.choices)
       ? value.choices.filter((choice): choice is string => typeof choice === "string" && choice.trim().length > 0).map((choice) => choice.trim().slice(0, 20)).slice(0, 3)
       : []
-    return question ? { action: "ask", language, question, choices } : { action: "not_booking" }
+    if (!question) return { action: "not_booking" }
+    // Вопрос и кнопки — свободный текст модели, и уходят клиенту как есть.
+    // Цена или выгода в них — только из прайса услуг (offer-grounding, одно
+    // правило для всех каналов); выдуманная — вопрос не отправляется, разговор
+    // уходит общему ассистенту с его проверкой ответа.
+    const facts = offerFactsFrom(context.services
+      .map((service) => `${service.title ?? ""} ${servicePriceLabel(service, "az") ?? ""}`)
+      .join("\n"))
+    if ([question, ...choices].some((text) => isUngroundedOffer(text, facts))) return { action: "not_booking" }
+    return { action: "ask", language, question, choices }
   }
   if (value.action === "offer") {
     const serviceId = oneOf(value.serviceId, context.services.map((service) => service.id))

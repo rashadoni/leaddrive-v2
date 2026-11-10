@@ -122,6 +122,16 @@ describe("a model decision, checked against the salon's own lists", () => {
     expect(readDecision(null, context)).toEqual({ action: "not_booking" })
   })
 
+  it("an ask with a price or discount the salon never set is not sent (offer-grounding)", () => {
+    const priced = { ...context, services: [{ id: "haircut", title: "Saç kəsimi", price: 25, priceCurrency: "AZN" }] as never[] }
+    expect(readDecision({ action: "ask", language: "az", question: "Sizə 50% endirim var — hansı xidmət?", choices: ["Saç kəsimi"] }, priced))
+      .toEqual({ action: "not_booking" })
+    expect(readDecision({ action: "ask", language: "az", question: "Hansı xidmət?", choices: ["Pulsuz kəsim"] }, priced))
+      .toEqual({ action: "not_booking" })
+    expect(readDecision({ action: "ask", language: "az", question: "Saç kəsimi 25 ₼ — hansı gün?", choices: [] }, priced))
+      .toEqual({ action: "ask", language: "az", question: "Saç kəsimi 25 ₼ — hansı gün?", choices: [] })
+  })
+
   it("keeps a question short, with at most three choices that fit a button", () => {
     const asked = readDecision({ action: "ask", language: "az", question: "Hansı manikür?", choices: ["Örtüklü manikür 90 dəq", "Örtüksüz", "", "Pedikür", "Dördüncü"] }, context)
     expect(asked).toEqual({ action: "ask", language: "az", question: "Hansı manikür?", choices: ["Örtüklü manikür 90 d", "Örtüksüz", "Pedikür"] })

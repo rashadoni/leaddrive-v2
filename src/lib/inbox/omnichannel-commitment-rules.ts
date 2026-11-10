@@ -1,3 +1,5 @@
+import { isUngroundedOffer, offerFactsFrom, UNGROUNDED_OFFER_FALLBACK } from "@/lib/ai/offer-grounding"
+
 /**
  * Non-negotiable customer-commitment rules for every omnichannel AI reply.
  *
@@ -24,6 +26,7 @@ export type OmnichannelReplyLocale = "ru" | "az" | "en"
 export type OmnichannelCommitmentViolation =
   | "unconfirmed_time"
   | "unsupported_completion"
+  | "ungrounded_offer"
 
 export type OmnichannelCommitmentGuardResult = {
   text: string
@@ -36,16 +39,19 @@ const SAFE_FALLBACKS: Record<
   Record<OmnichannelCommitmentViolation, string>
 > = {
   ru: {
+    ungrounded_offer: UNGROUNDED_OFFER_FALLBACK.ru,
     unconfirmed_time: "Точное время связи не подтверждено. Для уточнения нужен менеджер.",
     unsupported_completion:
       "Я не могу подтвердить, что это действие уже выполнено. Для проверки нужен менеджер.",
   },
   az: {
+    ungrounded_offer: UNGROUNDED_OFFER_FALLBACK.az,
     unconfirmed_time: "Əlaqə vaxtı təsdiqlənməyib. Dəqiqləşdirmə üçün menecerin cavabı lazımdır.",
     unsupported_completion:
       "Bu əməliyyatın tamamlandığını təsdiqləyə bilmirəm. Yoxlama üçün menecerin cavabı lazımdır.",
   },
   en: {
+    ungrounded_offer: UNGROUNDED_OFFER_FALLBACK.en,
     unconfirmed_time:
       "The contact time has not been confirmed. A manager needs to confirm the details.",
     unsupported_completion:
@@ -424,9 +430,17 @@ export function guardOmnichannelCommitments(
   opts: {
     locale?: OmnichannelReplyLocale
     customerText?: string
-  } = {},
+    /**
+     * Что компания сама дала модели: системный промпт ДО контекста клиента
+     * (инструкции, база знаний, прайс услуг). Цена, скидка, промокод в ответе
+     * проходят, только если они есть здесь (src/lib/ai/offer-grounding.ts).
+     * Обязательно: пустая строка — «фактов нет», и любая цена уйдёт к человеку.
+     */
+    facts: string
+  },
 ): OmnichannelCommitmentGuardResult {
   const violations: OmnichannelCommitmentViolation[] = []
+  const offerFacts = offerFactsFrom(opts.facts)
   // Sentence-level surgery, not amputation. This guard used to replace the
   // WHOLE reply with a one-line fallback as soon as any clause offended, so a
   // customer who asked for a price received "I cannot confirm that this action
@@ -441,6 +455,12 @@ export function guardOmnichannelCommitments(
   for (const sentence of reply.split(SENTENCE_BOUNDARY_RE)) {
     if (!sentence.trim()) continue
     let offends = false
+    // Цена и выгода — по предложению целиком: деление на части по запятой
+    // разрезало бы «1,500 AZN».
+    if (isUngroundedOffer(sentence, offerFacts)) {
+      offends = true
+      if (!violations.includes("ungrounded_offer")) violations.push("ungrounded_offer")
+    }
     for (const clause of clausesOf(sentence)) {
       if (hasUnconfirmedTimePromise(clause)) {
         offends = true
@@ -468,7 +488,17 @@ export function guardOmnichannelCommitments(
   // calculator link, which is how this was found. The hand-off still fires, so
   // a human is still pulled in; the customer simply is not told about the
   // sentence they never saw.
-  if (body) return { text: body, violations, forceHandoff: true }
+  if (body) {
+    // Убранная цена — ответ на вопрос клиента, и молча пропавшая она читается
+    // как «бот проигнорировал». Поэтому здесь, в отличие от обещаний, одна
+    // строка о том, что цену подтвердит человек.
+    if (violations.includes("ungrounded_offer")) {
+      const witness = hasLetters(opts.customerText ?? "") ? (opts.customerText as string) : reply
+      const offerLocale = detectOmnichannelReplyLocale(witness, opts.locale)
+      return { text: `${body} ${SAFE_FALLBACKS[offerLocale].ungrounded_offer}`, violations, forceHandoff: true }
+    }
+    return { text: body, violations, forceHandoff: true }
+  }
 
   // Nothing survived — the reply WAS the promise, so the fallback is the whole
   // answer and has to stand on its own.
@@ -481,10 +511,39 @@ export function guardOmnichannelCommitments(
   const locale = detectOmnichannelReplyLocale(languageWitness, opts.locale)
   const primary = violations.includes("unconfirmed_time")
     ? "unconfirmed_time"
-    : "unsupported_completion"
+    : violations.includes("ungrounded_offer")
+      ? "ungrounded_offer"
+      : "unsupported_completion"
   return {
     text: SAFE_FALLBACKS[locale][primary],
     violations,
     forceHandoff: true,
   }
+}
+
+/**
+ * Только правило цены и выгоды — для канала, где остальные правила этого файла
+ * не подходят: портал клиента сам создаёт тикет по ответу ИИ, и «тикет
+ * создаётся» там — правда, а не выдуманное действие. Цена же везде одна:
+ * только из фактов (src/lib/ai/offer-grounding.ts).
+ */
+export function guardOmnichannelOffers(
+  reply: string,
+  opts: { locale?: OmnichannelReplyLocale; customerText?: string; facts: string },
+): OmnichannelCommitmentGuardResult {
+  const offerFacts = offerFactsFrom(opts.facts)
+  const kept: string[] = []
+  let removed = false
+  for (const sentence of reply.split(SENTENCE_BOUNDARY_RE)) {
+    if (!sentence.trim()) continue
+    if (isUngroundedOffer(sentence, offerFacts)) removed = true
+    else kept.push(sentence.trim())
+  }
+  if (!removed) return { text: reply, violations: [], forceHandoff: false }
+  const witness = hasLetters(opts.customerText ?? "") ? (opts.customerText as string) : reply
+  const locale = detectOmnichannelReplyLocale(witness, opts.locale)
+  const text = [kept.join(" ").replace(/\s+/g, " ").trim(), SAFE_FALLBACKS[locale].ungrounded_offer]
+    .filter(Boolean)
+    .join(" ")
+  return { text, violations: ["ungrounded_offer"], forceHandoff: true }
 }

@@ -736,6 +736,9 @@ export async function generateChannelAiReply(opts: {
     const commitmentGuard = guardOmnichannelCommitments(raw, {
       customerText: userMessage,
       locale: detectOmnichannelReplyLocale(userMessage),
+      // Только то, что дала компания: промпт агента и база знаний, без
+      // контекста клиента.
+      facts: basePrompt + kbContext,
     })
     if (commitmentGuard.forceHandoff) {
       raw = commitmentGuard.text
