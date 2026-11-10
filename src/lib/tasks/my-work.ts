@@ -78,3 +78,17 @@ export function boardLabel(
   const folder = all.find((d) => d.id === board.parentDivisionId)?.name
   return folder ? `${folder} · ${board.name}` : board.name
 }
+
+/**
+ * A column's name as the reader should see it: a board's own name for it, or —
+ * when the column still carries one of the stock English names (Bordio's «New
+ * task», «In progress», the seed «TO DO») — the stage in the reader's language.
+ * Returns the stage key to translate, or null to show the label as it is.
+ */
+const STOCK_COLUMN_NAMES = new Set([
+  "new task", "to do", "todo", "in progress", "testing", "review", "in review", "done", "completed", "backlog", "canceled", "cancelled",
+])
+export function stockColumnStage(column: { label: string; mapsToStatus: string } | null | undefined): string | null {
+  if (!column) return null
+  return STOCK_COLUMN_NAMES.has(column.label.trim().toLowerCase()) ? column.mapsToStatus : null
+}

@@ -2036,6 +2036,10 @@ model TaskPlan {
   userId         String
   user           User         @relation("TaskPlans", fields: [userId], references: [id], onDelete: Cascade)
   day            DateTime     @db.Date
+  // Where the card stands in that person's day, ascending — Bordio keeps
+  // each time block's own order («60 Sumqayıt» above «Aksiya Email»). Null:
+  // after the ordered ones.
+  rank           Float?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 

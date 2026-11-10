@@ -457,7 +457,9 @@ async function main() {
     await drag(card, `[data-testid="my-work-day"][data-day="${today}"]`)
     let planned = []
     for (let i = 0; i < 20 && planned.length === 0; i++) { await page.waitForTimeout(500); planned = await myPlan() }
-    assert.deepEqual(planned, [{ day: `${today}T00:00:00.000Z` }])
+    assert.equal(planned.length, 1)
+    assert.equal(planned[0].day, `${today}T00:00:00.000Z`)
+    assert.equal(typeof planned[0].rank, 'number') // its place in her day
     const during = await read()
     assert.equal(during.startDate ?? null, before.startDate ?? null)
     assert.equal(during.dueDate, before.dueDate)

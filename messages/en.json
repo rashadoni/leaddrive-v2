@@ -33232,6 +33232,17 @@
       "dropHere": "Drop here",
       "showMore": "{count} more"
     },
+    "stage": {
+      "backlog": "Backlog",
+      "todo": "New task",
+      "in_progress": "In progress",
+      "testing": "Testing",
+      "review": "In review",
+      "done": "Done"
+    },
+    "messages": "{count, plural, one {# message} other {# messages}}",
+    "files": "{count, plural, one {# file} other {# files}}",
+    "lateBy": "{days, plural, one {# day overdue} other {# days overdue}}",
     "groups": {
       "overdue": "Overdue",
       "today": "Today",

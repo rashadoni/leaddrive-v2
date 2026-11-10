@@ -57,3 +57,13 @@ describe("the board's name on a row", () => {
     expect(boardLabel(all[3], all)).toBe("Traditional Marketing · Zeytun")
   })
 })
+
+describe("a column's name in the reader's language", () => {
+  it("translates the stock English names (Bordio's «New task»), keeps a board's own", async () => {
+    const { stockColumnStage } = await import("@/lib/tasks/my-work")
+    expect(stockColumnStage({ label: "New task", mapsToStatus: "todo" })).toBe("todo")
+    expect(stockColumnStage({ label: "IN PROGRESS", mapsToStatus: "in_progress" })).toBe("in_progress")
+    expect(stockColumnStage({ label: "Dizaynda", mapsToStatus: "in_progress" })).toBeNull()
+    expect(stockColumnStage(null)).toBeNull()
+  })
+})

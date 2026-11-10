@@ -51,7 +51,7 @@ export const GET = withRls(async (req, { orgId, session }) => {
           collaborators: { select: { user: { select: { id: true, name: true, avatar: true } } } },
           _count: { select: { checklist: true, comments: true, attachments: true } }, // attachments: the «Təqvim» card's paperclip
           // «Mənim işlərim»: the caller's own planned day (each person plans their own, as in Bordio).
-          ...(sp.get("mine") === "1" ? { plans: { where: { userId: session?.userId || "" }, select: { day: true } } } : {}),
+          ...(sp.get("mine") === "1" ? { plans: { where: { userId: session?.userId || "" }, select: { day: true, rank: true } } } : {}),
         },
       }),
       prisma.task.count({ where }),

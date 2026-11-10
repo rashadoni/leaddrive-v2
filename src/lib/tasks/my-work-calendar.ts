@@ -22,7 +22,7 @@ export interface PlannedTask {
   priority?: string | null
   dueDate: string | null
   /** The caller's own plan for the task — at most one; empty = waiting list. */
-  plans?: { day: string }[] | null
+  plans?: { day: string; rank?: number | null }[] | null
 }
 
 const isClosed = (status: string) => (CLOSED_TASK_STATUSES as readonly string[]).includes(status)
@@ -39,8 +39,29 @@ export function dayKeys(first: string, count: number): string[] {
 }
 
 /** How a plan for a day comes back from the API (a DATE column, serialised at midnight UTC). */
-export function planForDay(key: string): { day: string } {
-  return { day: `${key}T00:00:00.000Z` }
+export function planForDay(key: string, rank: number | null = null): { day: string; rank: number | null } {
+  return { day: `${key}T00:00:00.000Z`, rank }
+}
+
+const planRank = (task: { plans?: { rank?: number | null }[] | null }) => task.plans?.[0]?.rank ?? null
+
+/**
+ * The rank that puts a card between two others in a day (ascending); with
+ * nothing below it goes under `before`, with nothing above it over `after`.
+ */
+export function rankBetween(before: number | null | undefined, after: number | null | undefined): number {
+  if (before != null && after != null) return (before + after) / 2
+  if (before != null) return before + 1_000_000
+  if (after != null) return after - 1_000_000
+  return Date.now()
+}
+
+/** Where a card dropped on `target` lands: just above it, below the card that was there. */
+export function rankBefore(dayList: readonly PlannedTask[], targetId: string, movingId: string): number {
+  const list = dayList.filter((task) => task.id !== movingId)
+  const at = list.findIndex((task) => task.id === targetId)
+  if (at < 0) return rankBetween(planRank(list[list.length - 1] ?? {}), null)
+  return rankBetween(at > 0 ? planRank(list[at - 1]) : null, planRank(list[at]))
 }
 
 /** The caller's planned day of a task, or null (waiting list). A calendar day: no time zone moves it. */
@@ -97,9 +118,15 @@ export function planTasks<T extends PlannedTask>(
   // days ago …); no deadline at the end.
   const dueDesc = (t: PlannedTask) => (t.dueDate ? -new Date(t.dueDate).getTime() : Infinity)
   waiting.sort((a, b) => dueDesc(a) - dueDesc(b) || rank(a.priority) - rank(b.priority) || a.title.localeCompare(b.title))
-  for (const list of byDay.values()) {
-    list.sort((a, b) => Number(isClosed(a.status)) - Number(isClosed(b.status)) || rank(a.priority) - rank(b.priority) || a.title.localeCompare(b.title))
+  // Inside a day: the person's own order, as in Bordio (finished cards stay in
+  // their place); cards without one after, by priority and title.
+  const byRank = (a: T, b: T) => {
+    const ra = planRank(a), rb = planRank(b)
+    if (ra !== null && rb !== null && ra !== rb) return ra - rb
+    if ((ra === null) !== (rb === null)) return ra === null ? 1 : -1
+    return rank(a.priority) - rank(b.priority) || a.title.localeCompare(b.title)
   }
+  for (const list of byDay.values()) list.sort(byRank)
   return { waiting, byDay }
 }
 
