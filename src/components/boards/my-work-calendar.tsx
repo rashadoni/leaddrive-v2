@@ -69,17 +69,34 @@ export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks
   const days = useMemo(() => dayKeys(start, count), [start, count])
 
   // Finished tasks are read only for the days in view (open ones are all here already).
-  const [finished, setFinished] = useState<CalendarTask[]>([])
+  // Finished tasks: the ones planned for the days in view, and — as in Bordio —
+  // the ones without a day, which wait in the waiting list too.
+  const CLOSED = "status=done,completed,cancelled"
+  const [closedOnDays, setClosedOnDays] = useState<CalendarTask[]>([])
+  const [closedWaiting, setClosedWaiting] = useState<CalendarTask[]>([])
   const range = `${days[0]}|${days[days.length - 1]}`
   useEffect(() => {
     let cancelled = false
     const [firstDay, lastDay] = range.split("|")
-    fetch(`/api/v1/tasks?mine=1&status=done,completed,cancelled&planFrom=${firstDay}&planTo=${lastDay}&limit=${BOARD_TASKS_PAGE}`, { credentials: "include" })
+    fetch(`/api/v1/tasks?mine=1&${CLOSED}&planFrom=${firstDay}&planTo=${lastDay}&limit=${BOARD_TASKS_PAGE}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => { if (!cancelled) setFinished(j?.data?.tasks ?? []) })
-      .catch(() => { if (!cancelled) setFinished([]) })
+      .then((j) => { if (!cancelled) setClosedOnDays(j?.data?.tasks ?? []) })
+      .catch(() => { if (!cancelled) setClosedOnDays([]) })
     return () => { cancelled = true }
   }, [range])
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/v1/tasks?mine=1&${CLOSED}&unplanned=1&limit=${BOARD_TASKS_PAGE}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (!cancelled) setClosedWaiting(j?.data?.tasks ?? []) })
+      .catch(() => { if (!cancelled) setClosedWaiting([]) })
+    return () => { cancelled = true }
+  }, [])
+  const finished = useMemo(() => {
+    const byId = new Map<string, CalendarTask>(closedWaiting.map((x) => [x.id, x]))
+    for (const x of closedOnDays) byId.set(x.id, x)
+    return [...byId.values()]
+  }, [closedOnDays, closedWaiting])
 
   const { waiting, byDay } = useMemo(() => planTasks<CalendarTask>(openTasks, finished, days), [openTasks, finished, days])
   const [waitingAll, setWaitingAll] = useState(false)
@@ -89,8 +106,11 @@ export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks
   const plan = useCallback(async (task: CalendarTask, day: string | null) => {
     if ((plannedDay(task) ?? null) === day) return
     const apply = (plans: { day: string }[] | null | undefined) => {
-      if (isClosedStatus(task.status)) setFinished((list) => list.map((x) => (x.id === task.id ? { ...x, plans } : x)))
-      else setOpenTasks((list) => (list ? list.map((x) => (x.id === task.id ? { ...x, plans } : x)) : list))
+      if (isClosedStatus(task.status)) {
+        const swap = (list: CalendarTask[]) => list.map((x) => (x.id === task.id ? { ...x, plans } : x))
+        setClosedOnDays(swap)
+        setClosedWaiting(swap)
+      } else setOpenTasks((list) => (list ? list.map((x) => (x.id === task.id ? { ...x, plans } : x)) : list))
     }
     apply(day ? [planForDay(day)] : [])
     try {
@@ -257,7 +277,9 @@ function TaskCard({ task, board, boards, place, onOpen, priorityLabel, dueText }
   dueText: { text: string; late: boolean } | null
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task.id })
-  const closed = isClosedStatus(task.status)
+  // Greyed and struck through on a day; in the waiting list a finished task
+  // looks like any other, as in Bordio.
+  const closed = isClosedStatus(task.status) && place === "day"
   const comments = task._count?.comments ?? 0
   const files = task._count?.attachments ?? 0
   return (

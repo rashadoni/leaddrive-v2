@@ -43,6 +43,8 @@ export interface TaskListFilters {
   startRange?: { gte?: Date; lte?: Date } | null
   /** The caller's OWN planned day (TaskPlan) within these calendar days, yyyy-mm-dd inclusive. */
   planRange?: { gte?: Date; lte?: Date } | null
+  /** Only tasks the caller has NOT planned for any day — their waiting list. */
+  unplanned?: boolean
 }
 
 const dayParam = (value: string | null): Date | undefined =>
@@ -81,6 +83,7 @@ export function parseTaskListFilters(sp: URLSearchParams): TaskListFilters {
     planRange: sp.get("planFrom") || sp.get("planTo")
       ? { gte: dayParam(sp.get("planFrom")), lte: dayParam(sp.get("planTo")) }
       : null,
+    unplanned: sp.get("unplanned") === "1",
   }
 }
 
@@ -132,6 +135,7 @@ export async function buildTaskListWhere(
   if (f.mine) and.push(myBoardTasksWhere(userId, false))
   if (f.open) and.push({ status: { notIn: [...CLOSED_TASK_STATUSES] } })
   if (f.planRange) and.push({ plans: { some: { userId, day: f.planRange } } })
+  if (f.unplanned) and.push({ plans: { none: { userId } } })
   if (and.length) where.AND = and
 
   // CRM sharing-rules: managers+ unrestricted; lower roles narrowed to own /

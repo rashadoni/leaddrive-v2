@@ -65,7 +65,6 @@ export function firstDayFor(today: string, count: number): string {
 
 const PRIORITY_RANK: Record<string, number> = { critical: 0, urgent: 0, high: 1, medium: 2, low: 3 }
 const rank = (p?: string | null) => PRIORITY_RANK[p ?? ""] ?? 4
-const dueTime = (t: PlannedTask) => (t.dueDate ? new Date(t.dueDate).getTime() : Infinity)
 
 /**
  * The waiting list (open tasks with no day, most pressing first — the latest
@@ -86,12 +85,18 @@ export function planTasks<T extends PlannedTask>(
     seen.add(task.id)
     const day = plannedDay(task)
     if (!day) {
-      if (!isClosed(task.status)) waiting.push(task)
+      // As in Bordio, finished tasks without a day wait here too (53 Sabunçu,
+      // completed, sat in Nazrin's Waiting list of 146 — owner, 2026-11-10:
+      // «сделай как в бордио»).
+      waiting.push(task)
       continue
     }
     if (shown.has(day)) byDay.get(day)!.push(task)
   }
-  waiting.sort((a, b) => dueTime(a) - dueTime(b) || rank(a.priority) - rank(b.priority) || a.title.localeCompare(b.title))
+  // Bordio's order: the latest deadline first (due tomorrow, then 8, 19, 22
+  // days ago …); no deadline at the end.
+  const dueDesc = (t: PlannedTask) => (t.dueDate ? -new Date(t.dueDate).getTime() : Infinity)
+  waiting.sort((a, b) => dueDesc(a) - dueDesc(b) || rank(a.priority) - rank(b.priority) || a.title.localeCompare(b.title))
   for (const list of byDay.values()) {
     list.sort((a, b) => Number(isClosed(a.status)) - Number(isClosed(b.status)) || rank(a.priority) - rank(b.priority) || a.title.localeCompare(b.title))
   }

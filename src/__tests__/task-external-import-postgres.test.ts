@@ -378,6 +378,12 @@ pgDescribe("tasks brought over from another tool, on a real Postgres", () => {
     const back = await planRoute(request("PUT", `/api/v1/tasks/${after!.id}/plan`, { day: null }), { params: Promise.resolve({ id: after!.id }) })
     expect(back.status).toBe(200)
     expect(await plans()).toEqual([[OPEN.externalId, "aytan", "2026-11-04"]])
+    // Without her day it waits in her list — although a colleague planned it.
+    const waiting = await (await listRoute(request("GET", "/api/v1/tasks?mine=1&unplanned=1&limit=50"))).json()
+    expect(waiting.data.tasks.map((task: { id: string }) => task.id)).toContain(after!.id)
+    session.current = { user: { id: "aytan", organizationId: ORG, role: "viewer", email: "aytan.mushkurova@zeytunpharma.az", name: "A" } }
+    const hers = await (await listRoute(request("GET", "/api/v1/tasks?mine=1&unplanned=1&limit=50"))).json()
+    expect(hers.data.tasks.map((task: { id: string }) => task.id)).not.toContain(after!.id)
     session.current = { user: { id: "admin", organizationId: ORG, role: "admin", email: "admin@zeytun.test", name: "Admin" } }
   })
 
