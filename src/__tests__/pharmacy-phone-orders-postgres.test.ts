@@ -830,6 +830,47 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: {} } })
   })
 
+  // Connecting a second number must not move the order's messages onto it. Before 2026-11-10 the
+  // sender was an unordered `findFirst` over the live channels, so the pharmacy's receipt could go
+  // out from a number it does not know — and in a WABA where the template is not approved, which
+  // means not go out at all. Here nothing is injected: this is the real sender choosing.
+  it("keeps sending a phone order's messages from the oldest live WhatsApp number", async () => {
+    const { notifyManagersOfPhoneOrder } = await import("@/lib/pharmacy-orders/manager-notice")
+    await saveCall(44, LIST)
+    const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(44) } })
+    await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: { pharmacyPhoneOrders: { managerWhatsApp: ["+994501112233"] } } } })
+    const channel = (configName: string, phoneNumberId: string, createdAt: string) =>
+      admin.channelConfig.create({ data: { organizationId: ZEYTUN, channelType: "whatsapp", configName,
+        phoneNumberId, accessToken: `token-${phoneNumberId}`, isActive: true, createdAt: new Date(createdAt) } })
+    // The line's number, and the one the owner connects today to test disconnect/connect with. The
+    // NEWER row is inserted first on purpose: an unordered `findFirst` over this table hands back the
+    // row it reaches first, so with the previous code this case goes to "pn-test" and reds. Insert
+    // them the other way round and the test passes either way, proving nothing.
+    const fresh = await channel("Test number", "pn-test", "2026-11-10T09:00:00Z")
+    const line = await channel("Zeytun line", "pn-line", "2026-10-24T09:00:00Z")
+    const sent: string[] = []
+    const fetchOk = (async (url: string) => {
+      sent.push(url)
+      return new Response(JSON.stringify({ messages: [{ id: "wamid.n" }] }), { status: 200 })
+    }) as unknown as typeof fetch
+
+    expect(await notifyManagersOfPhoneOrder(app as unknown as PrismaClient, ZEYTUN, order.id, { fetch: fetchOk }))
+      .toMatchObject({ status: "sent", sent: 1 })
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toContain("/pn-line/messages")
+
+    // Switch the line's number off, as the card's button does, and the newer one takes over — the
+    // choice follows a replaced number instead of freezing on a dead row.
+    await admin.channelConfig.update({ where: { id: line.id }, data: { isActive: false } })
+    await admin.pharmacyPhoneOrder.update({ where: { id: order.id }, data: { managerNotice: Prisma.DbNull } })
+    expect(await notifyManagersOfPhoneOrder(app as unknown as PrismaClient, ZEYTUN, order.id, { fetch: fetchOk }))
+      .toMatchObject({ status: "sent", sent: 1 })
+    expect(sent[1]).toContain("/pn-test/messages")
+
+    await admin.channelConfig.deleteMany({ where: { id: { in: [line.id, fresh.id] } } })
+    await admin.organization.update({ where: { id: ZEYTUN }, data: { settings: {} } })
+  })
+
   // Owner, 2026-10-27: a long order must not be lost. The agent saves the list
   // after every line, so the managers hear of it when the call is over, and
   // the card does not change while the agent is still writing it.
