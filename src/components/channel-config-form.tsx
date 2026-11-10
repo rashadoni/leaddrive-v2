@@ -97,6 +97,8 @@ const localCopy: Record<Loc, Record<string, string>> = {
     whatsappEsKeepAppHint: "The same number keeps working in the WhatsApp Business app on your phone, and LeadDrive answers alongside it. Needs the WhatsApp Business app 2.24.17 or newer, and the phone in your hand to confirm.",
     whatsappEsMoveButton: "Move the number to the API",
     whatsappEsMoveHint: "For teams that will work only from LeadDrive. The number moves to the official API and can no longer be used in the WhatsApp Business app.",
+    whatsappEsAgentBlockedHint: "If Meta says its AI agent is already linked to this number, turn the agent off in the WhatsApp Business app on your phone: Tools → Meta Business Agent → Reply settings.",
+    whatsappEsOffboardingHint: "If Meta says the account is being released, wait a few minutes and press again.",
     whatsappEsManaged: "Connected through Meta: {number}. LeadDrive manages the webhook and the number's registration, so there is no Verify Token or App Secret to enter. To switch the account or number, connect again with Meta.",
     whatsappMessagingOnly: "This connects WhatsApp Business messaging: inbound inbox messages, approved templates, and notifications. WhatsApp Business Calling is prepared separately from the Channels readiness guide; use Settings -> VoIP only for regular phone providers and call logs.",
     whatsappWebhookTitle: "Meta webhook callback on the test domain",
@@ -201,6 +203,8 @@ const localCopy: Record<Loc, Record<string, string>> = {
     whatsappEsKeepAppHint: "Тот же номер продолжает работать в приложении WhatsApp Business на телефоне, а LeadDrive отвечает рядом. Нужны приложение версии 2.24.17 или новее и телефон под рукой для подтверждения.",
     whatsappEsMoveButton: "Перенести номер в API",
     whatsappEsMoveHint: "Для команд, которые будут работать только из LeadDrive. Номер переедет на официальный API, и приложением WhatsApp Business пользоваться будет нельзя.",
+    whatsappEsAgentBlockedHint: "Если Meta ответит, что на номере уже подключён её ИИ-агент, выключите его в приложении WhatsApp Business на телефоне: Инструменты → Meta Business Agent → Настройки ответов.",
+    whatsappEsOffboardingHint: "Если Meta ответит, что аккаунт отвязывается, подождите несколько минут и нажмите снова.",
     whatsappEsManaged: "Подключено через Meta: {number}. Вебхуком и регистрацией номера управляет LeadDrive, поэтому Verify Token и App Secret вводить не нужно. Чтобы сменить аккаунт или номер, подключитесь через Meta ещё раз.",
     whatsappMessagingOnly: "Здесь подключается WhatsApp Business messaging: входящие сообщения в inbox, одобренные шаблоны и уведомления. WhatsApp Business Calling готовится отдельно через чеклист в Каналах; Настройки -> VoIP используйте только для обычной телефонии и журнала звонков.",
     whatsappWebhookTitle: "Meta webhook callback на тестовом домене",
@@ -305,6 +309,8 @@ const localCopy: Record<Loc, Record<string, string>> = {
     whatsappEsKeepAppHint: "Həmin nömrə telefonunuzdakı WhatsApp Business tətbiqində işləməyə davam edir, LeadDrive isə onunla birgə cavab verir. Tətbiqin 2.24.17 və ya daha yeni versiyası və təsdiq üçün telefon lazımdır.",
     whatsappEsMoveButton: "Nömrəni API-yə köçür",
     whatsappEsMoveHint: "Yalnız LeadDrive-dan işləyəcək komandalar üçün. Nömrə rəsmi API-yə keçir və WhatsApp Business tətbiqində istifadə edilə bilməyəcək.",
+    whatsappEsAgentBlockedHint: "Meta bu nömrəyə öz süni intellekt agentinin artıq qoşulduğunu bildirsə, agenti telefonunuzdakı WhatsApp Business tətbiqində söndürün: Alətlər → Meta Business Agent → Cavab parametrləri.",
+    whatsappEsOffboardingHint: "Meta hesabın ayrıldığını bildirsə, bir neçə dəqiqə gözləyin və yenidən basın.",
     whatsappEsManaged: "Meta ilə qoşulub: {number}. Webhook-u və nömrənin qeydiyyatını LeadDrive idarə edir, ona görə Verify Token və App Secret daxil etmək lazım deyil. Hesabı və ya nömrəni dəyişmək üçün Meta ilə yenidən qoşulun.",
     whatsappMessagingOnly: "Burada WhatsApp Business messaging qoşulur: inbox-a gələn mesajlar, təsdiqlənmiş şablonlar və bildirişlər. WhatsApp Business Calling Kanallardakı checklist ilə ayrıca hazırlanır; Tənzimləmələr -> VoIP yalnız adi telefon provayderləri və zəng jurnalı üçündür.",
     whatsappWebhookTitle: "Test domenində Meta webhook callback",
@@ -1716,6 +1722,8 @@ export function ChannelConfigForm({
                     keepAppHint: c.whatsappEsKeepAppHint,
                     moveButton: c.whatsappEsMoveButton,
                     moveHint: c.whatsappEsMoveHint,
+                    agentBlockedHint: c.whatsappEsAgentBlockedHint,
+                    offboardingHint: c.whatsappEsOffboardingHint,
                   }}
                   onConnected={() => onSaved()}
                 />
