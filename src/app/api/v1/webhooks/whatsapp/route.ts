@@ -33,6 +33,7 @@ import {
 import { appendWhatsAppBotReplyToTicket, syncWhatsAppExchangeToTicket } from "@/lib/inbox/ticket-sync"
 import { ensureInboundWhatsAppTicket } from "@/lib/inbox/whatsapp-inbound-ticket"
 import { WHATSAPP_CHAT_DESCRIPTION_HEAD, chatTicketDescription } from "@/lib/ticketing/chat-transcript"
+import { transcribeInboundVoice, voiceMessageBody, type VoiceTranscription } from "@/lib/inbox/inbound-voice-transcript"
 import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 import { whatsappTicketSubject } from "@/lib/ticketing/customer-ticket-text"
 import { ensureComplaintRegistered, notifyComplaintRegistered } from "@/lib/inbox/complaint-register"
@@ -1175,7 +1176,8 @@ async function processMessages(
     // What the message says, and under which type it is stored. One reader for this and for the
     // echo of a reply typed in the WhatsApp Business app, so both sides of a coexistence thread
     // describe a sticker or a voice note with the same words (lib/whatsapp-message-text).
-    const { text, messageType } = describeWaMessage(msg)
+    const { text: describedText, messageType } = describeWaMessage(msg)
+    let text = describedText
 
     // Skip reaction messages (don't create separate message records)
     if (msg.type === "reaction") continue
@@ -1184,14 +1186,27 @@ async function processMessages(
     // just "[Изображение]". Best-effort — a download failure leaves mediaUrl null and the text
     // placeholder still stands (media ingestion must never break message persistence).
     let mediaUrl: string | null = null
+    let voiceTranscription: VoiceTranscription | null = null
     if (waMediaToken && typeof msg.type === "string" && MEDIA_TYPES.has(msg.type)) {
       const mediaPayload = msg.type && typeof msg[msg.type] === "object" ? msg[msg.type] as WaMediaPayload : null
       const mediaId = mediaPayload?.id
       if (typeof mediaId === "string" && mediaId) {
         const stored = await fetchAndStoreWaMedia(String(mediaId), waMediaToken, orgId)
         if (stored) mediaUrl = stored.url
+        // A voice note becomes words before the message is saved, so the manager reads it and the
+        // AI, the rules and the ticket below take it like typed text (lib/inbox/inbound-voice-transcript).
+        if (stored && (msg.type === "audio" || msg.type === "voice")) {
+          voiceTranscription = await transcribeInboundVoice({
+            organizationId: orgId,
+            source: "WhatsApp",
+            audio: { bytes: stored.bytes, contentType: stored.mime },
+          })
+          if (voiceTranscription) text = voiceMessageBody(voiceTranscription.text)
+        }
       }
     }
+    // A transcribed voice note is answered like a typed message: the agents below read words, not types.
+    const readsAsText = msg.type === "text" || voiceTranscription !== null
 
     // Try to match sender phone to existing contact
     let contactId: string | undefined
@@ -1296,6 +1311,7 @@ async function processMessages(
             waMessageType: messageType,
             profileName: senderName,
             timestamp: timestamp ? Number(timestamp) : undefined,
+            ...(voiceTranscription ? { transcription: voiceTranscription } : {}),
           },
         },
       })
@@ -1422,7 +1438,7 @@ async function processMessages(
         },
       }
     }
-    if (!replyHeld && !flowTookOwnership && msg.type === "text" && text.trim()) {
+    if (!replyHeld && !flowTookOwnership && readsAsText && text.trim()) {
       const { handleDemoWhatsAppInbound } = await import("@/lib/demo-center/demo-whatsapp-agent")
       const demo = await handleDemoWhatsAppInbound({
         organizationId: orgId,
@@ -1445,7 +1461,7 @@ async function processMessages(
     // Only a typed message or a tapped button: other interactive replies (a
     // call permission, say) carry no words to book from.
     const replyId = asStringOrNull(msg.interactive?.button_reply?.id) ?? asStringOrNull(msg.interactive?.list_reply?.id)
-    if (!replyHeld && !flowTookOwnership && convId && text.trim() && (msg.type === "text" || (msg.type === "interactive" && replyId))) {
+    if (!replyHeld && !flowTookOwnership && convId && text.trim() && (readsAsText || (msg.type === "interactive" && replyId))) {
       try {
         const { handleWhatsAppBookingTurn } = await import("@/lib/booking/whatsapp-agent")
         const booking = await handleWhatsAppBookingTurn({
@@ -1480,7 +1496,7 @@ async function processMessages(
         companyId: ticketCompanyId,
         channelMessageId: savedMsg.id,
         waMessageId: messageId,
-        reopenResolved: msg.type === "text",
+        reopenResolved: readsAsText,
       })
       : { ticketId: null, ticketNumber: null, created: false, commentAdded: false, reopened: false }
 
@@ -1516,7 +1532,7 @@ async function processMessages(
     // turn (sent or deliberately rate-limited) we skip the AI → no double-reply.
     // DORMANT unless the org opts in (features.chatbotAutoReply); isolated try.
     let botOwned = false
-    if (msg.type === "text" && text.trim()) {
+    if (readsAsText && text.trim()) {
       try {
         const { maybeAutoReply, chatbotTookOwnership } = await import("@/lib/chatbot-autoreply")
         const r = await maybeAutoReply({
@@ -1531,7 +1547,7 @@ async function processMessages(
 
     // Da Vinci Auto-Reply: only for text messages, and only when a rule didn't own it.
     // Preserve the legacy mode policy, with a fail-closed recipient-bound test override.
-    if (msg.type === "text" && text.trim() && !botOwned && convId) {
+    if (readsAsText && text.trim() && !botOwned && convId) {
       try {
         await withWhatsAppAiPolicy({ organizationId: orgId, channelConfigId: channelConfig.id, conversationId: convId, phone: waId }, channelConfig.settings,
           async (stillOwned, aiTestRunId) => handleAiAutoReply(orgId, waId, text, contactId, leadId, senderName, ticketCompanyId, {

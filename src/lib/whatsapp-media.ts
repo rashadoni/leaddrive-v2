@@ -46,7 +46,7 @@ export async function fetchAndStoreWaMedia(
   mediaId: string,
   accessToken: string,
   organizationId: string,
-): Promise<{ url: string; mime: string } | null> {
+): Promise<{ url: string; mime: string; bytes: Buffer } | null> {
   if (!mediaId || !accessToken || !organizationId) return null
   try {
     // 1. Resolve the temporary media URL + mime from the Graph API.
@@ -79,7 +79,7 @@ export async function fetchAndStoreWaMedia(
     await mkdir(rootDir, { recursive: true })
     await writeFile(path.join(rootDir, storedName), sealTenantFile(organizationId, buf))
 
-    return { url: `/${path.posix.join(baseDir, storedName)}`, mime }
+    return { url: `/${path.posix.join(baseDir, storedName)}`, mime, bytes: buf }
   } catch {
     return null
   }

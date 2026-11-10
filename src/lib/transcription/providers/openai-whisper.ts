@@ -54,7 +54,7 @@ export function createOpenAIWhisperClient(cfg: OpenAIWhisperConfig): Transcripti
     async transcribe(req: TranscriptionRequest): Promise<TranscriptionResult> {
       // Validate up front so a malformed input doesn't waste a paid
       // call or expose an SSRF surface via the audio fetch.
-      if (!isValidAudioUrl(req.audioUrl)) {
+      if (!req.audio && !isValidAudioUrl(req.audioUrl)) {
         throw new Error("OpenAI Whisper: invalid audioUrl")
       }
       if (req.prompt && req.prompt.length > TRANSCRIPTION_LIMITS.maxPromptLength) {
@@ -63,31 +63,44 @@ export function createOpenAIWhisperClient(cfg: OpenAIWhisperConfig): Transcripti
       if (req.language && req.language.length > TRANSCRIPTION_LIMITS.maxLanguageLength) {
         throw new Error("OpenAI Whisper: language code too long")
       }
-      // Step 1: fetch the audio bytes through a transport that validates every
-      // A/AAAA answer, pins the validated IP into the socket lookup, and
-      // repeats validation on every redirect. A validate-then-global-fetch
-      // sequence would still permit DNS rebinding and redirect-based SSRF.
-      const audioRes = await downloadOutboundResource(req.audioUrl, {
-        timeoutMs,
-        maxResponseBytes: MAX_AUDIO_BYTES,
-        resolver: cfg.resolveHost,
-        transport: cfg.audioTransport,
-      })
-      if (!audioRes.ok) {
-        throw new Error(`OpenAI Whisper: audio fetch failed (HTTP ${audioRes.status})`)
+      let audioBytes: Uint8Array
+      let contentType: string
+      let filename: string
+      if (req.audio) {
+        // The caller already holds the bytes (an inbound voice note): nothing to fetch.
+        audioBytes = req.audio.bytes
+        if (audioBytes.byteLength === 0) throw new Error("OpenAI Whisper: empty audio")
+        if (audioBytes.byteLength > MAX_AUDIO_BYTES) {
+          throw new Error(`OpenAI Whisper: audio exceeds ${MAX_AUDIO_BYTES} byte limit`)
+        }
+        contentType = req.audio.contentType?.split(";")[0].trim() || ""
+        filename = req.audio.filename || filenameFromUrl("https://audio.invalid/voice", contentType)
+      } else {
+        // Step 1: fetch the audio bytes through a transport that validates every
+        // A/AAAA answer, pins the validated IP into the socket lookup, and
+        // repeats validation on every redirect. A validate-then-global-fetch
+        // sequence would still permit DNS rebinding and redirect-based SSRF.
+        const audioRes = await downloadOutboundResource(req.audioUrl, {
+          timeoutMs,
+          maxResponseBytes: MAX_AUDIO_BYTES,
+          resolver: cfg.resolveHost,
+          transport: cfg.audioTransport,
+        })
+        if (!audioRes.ok) {
+          throw new Error(`OpenAI Whisper: audio fetch failed (HTTP ${audioRes.status})`)
+        }
+        const contentLength = Number(audioRes.headers?.["content-length"] || "0")
+        if (contentLength > MAX_AUDIO_BYTES) {
+          throw new Error(`OpenAI Whisper: audio exceeds ${MAX_AUDIO_BYTES} byte limit`)
+        }
+        audioBytes = audioRes.bodyBytes
+        if (audioBytes.byteLength > MAX_AUDIO_BYTES) {
+          throw new Error(`OpenAI Whisper: audio exceeds ${MAX_AUDIO_BYTES} byte limit`)
+        }
+        // Filename extension helps Whisper detect the codec.
+        contentType = audioRes.headers?.["content-type"]?.split(";")[0].trim() || ""
+        filename = filenameFromUrl(req.audioUrl, contentType)
       }
-      const contentLength = Number(audioRes.headers?.["content-length"] || "0")
-      if (contentLength > MAX_AUDIO_BYTES) {
-        throw new Error(`OpenAI Whisper: audio exceeds ${MAX_AUDIO_BYTES} byte limit`)
-      }
-      const audioBytes = audioRes.bodyBytes
-      if (audioBytes.byteLength > MAX_AUDIO_BYTES) {
-        throw new Error(`OpenAI Whisper: audio exceeds ${MAX_AUDIO_BYTES} byte limit`)
-      }
-
-      // Filename extension helps Whisper detect the codec.
-      const contentType = audioRes.headers?.["content-type"]?.split(";")[0].trim() || ""
-      const filename = filenameFromUrl(req.audioUrl, contentType)
       const audioBlob = new Blob(
         [Uint8Array.from(audioBytes)],
         contentType ? { type: contentType } : undefined,

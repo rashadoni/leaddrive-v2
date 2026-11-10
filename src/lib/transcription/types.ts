@@ -21,8 +21,13 @@ export type TranscriptionProvider = (typeof TRANSCRIPTION_PROVIDERS)[number]
 export interface TranscriptionRequest {
   /** Publicly-accessible audio URL (mp3 / wav / m4a / webm / ogg).
    *  Provider implementations must download it through the shared
-   *  DNS-pinned, redirect-validating outbound transport. */
+   *  DNS-pinned, redirect-validating outbound transport. Ignored when
+   *  `audio` is given. */
   audioUrl: string
+  /** The audio itself, when the caller already holds it — an inbound
+   *  WhatsApp or Telegram voice note is downloaded with the channel's own
+   *  token and kept encrypted, so there is no public URL to give. */
+  audio?: { bytes: Uint8Array; contentType?: string; filename?: string }
   /** Optional ISO 639-1 language hint. Whisper auto-detects when
    *  absent but accuracy improves with a hint for short clips. */
   language?: string
