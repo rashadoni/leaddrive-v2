@@ -290,6 +290,13 @@ export function BookingPagesPanel() {
         </p>
       ) : null}
 
+      {/* The agent that answers WhatsApp stands above the services, not under
+          them: nobody scrolls past twenty service cards to find the switch
+          that decides whether the number answers at all (owner, 2026-11-10 —
+          «никто не скролит, всё должно быть под рукой»). It stays one card
+          high, so the list it sits above is still the first thing read. */}
+      {!draft ? <BookingWhatsAppCard services={pages.map(({ id, title, price, priceCurrency }) => ({ id, title, price, priceCurrency }))} hosts={users} /> : null}
+
       {draft ? (
         <BookingPageEditor
           key={editorSeq}
@@ -358,8 +365,6 @@ export function BookingPagesPanel() {
           ))}
         </div>
       )}
-
-      {!draft ? <BookingWhatsAppCard services={pages.map(({ id, title, price, priceCurrency }) => ({ id, title, price, priceCurrency }))} hosts={users} /> : null}
 
       {/* Calendly's date-specific hours, in the half a salon actually says:
           closed. One list for the whole organization — a holiday marked on

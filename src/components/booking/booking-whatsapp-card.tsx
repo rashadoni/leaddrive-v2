@@ -70,17 +70,21 @@ export function BookingWhatsAppCard({ services, hosts }: { services: RuleService
   return (
     <Card data-testid="booking-whatsapp-card">
       <CardContent className="p-5">
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
-            <MessageCircle className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold">{t("waBookingTitle")}</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">{t("waBookingDesc")}</p>
+        {/* Name and switch on one line: the card sits at the top of the
+            screen now, and a switch a row below its own title was the half of
+            it people stopped reading. */}
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+              <MessageCircle className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold">{t("waBookingTitle")}</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">{t("waBookingDesc")}</p>
+            </div>
           </div>
-        </div>
 
-        <div role="radiogroup" aria-label={t("waBookingTitle")} className="mt-4 grid grid-cols-2 gap-1 rounded-lg bg-muted/60 p-1 text-sm font-semibold">
+          <div role="radiogroup" aria-label={t("waBookingTitle")} className="grid w-full shrink-0 grid-cols-2 gap-1 rounded-lg bg-muted/60 p-1 text-sm font-semibold sm:w-80">
           {modes.map(({ mode, label }) => {
             const active = setting.mode === mode
             const blocked = mode === "book" && noNumber
@@ -103,28 +107,32 @@ export function BookingWhatsAppCard({ services, hosts }: { services: RuleService
               </Hint>
             )
           })}
+          </div>
         </div>
 
-        {channels.length > 1 ? (
-          <label className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-            <span className="font-medium">{t("waBookingChannel")}</span>
-            <select
-              className="h-9 min-w-0 rounded-md border border-input bg-background px-3 text-sm"
-              value={setting.channelConfigId ?? ""}
-              disabled={saving}
-              onChange={(event) => void save({ ...setting, channelConfigId: event.target.value || null })}
-            >
-              <option value="">{t("waBookingAllNumbers")}</option>
-              {channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
-            </select>
-          </label>
-        ) : channels.length === 1 ? (
-          <p className="mt-3 text-sm">{t("waBookingNumber", { name: channels[0].name })}</p>
-        ) : (
-          <p className="mt-3 text-sm text-muted-foreground">{t("waBookingNoNumber")}</p>
-        )}
-
-        <p className="mt-3 text-xs text-muted-foreground">{t("waBookingHint", { minutes: OFFER_HOLD_MINUTES })}</p>
+        {/* Number and the hold, one line: both answer «which phone and for how
+            long», and neither earns a block of its own. */}
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+          {channels.length > 1 ? (
+            <label className="flex flex-wrap items-center gap-2">
+              <span className="font-medium">{t("waBookingChannel")}</span>
+              <select
+                className="h-9 min-w-0 rounded-md border border-input bg-background px-3 text-sm"
+                value={setting.channelConfigId ?? ""}
+                disabled={saving}
+                onChange={(event) => void save({ ...setting, channelConfigId: event.target.value || null })}
+              >
+                <option value="">{t("waBookingAllNumbers")}</option>
+                {channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name}</option>)}
+              </select>
+            </label>
+          ) : channels.length === 1 ? (
+            <span>{t("waBookingNumber", { name: channels[0].name })}</span>
+          ) : (
+            <span className="text-muted-foreground">{t("waBookingNoNumber")}</span>
+          )}
+          <span className="text-xs text-muted-foreground">{t("waBookingHint", { minutes: OFFER_HOLD_MINUTES })}</span>
+        </div>
 
         {/* The rules only matter once the agent is on. */}
         {setting.mode === "book" ? <BookingWhatsAppRules
@@ -132,6 +140,7 @@ export function BookingWhatsAppCard({ services, hosts }: { services: RuleService
           services={services}
           hosts={hosts}
           disabled={saving}
+          defaultOpen={setting.rules.serviceIds !== null || setting.rules.hostIds !== null || setting.rules.hours !== null || setting.rules.maxPrice !== null}
           onChange={(rules) => void save({ ...setting, rules })}
         /> : null}
         {error ? <p role="alert" className="mt-2 text-sm text-destructive">{error}</p> : null}
