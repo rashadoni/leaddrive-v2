@@ -136,7 +136,12 @@ export default function MyWorkPage() {
     const before = ticked.get(task.id)
     let patch: { status: string; boardColumnKey: string | null }
     if (before) {
-      patch = before
+      // Back where it stood. The server takes a column only together with
+      // its own stage; a task whose saved column and status disagree (an
+      // older status-only edit) gets its status back and no column — the
+      // board then places it by that status.
+      const stood = board?.boardColumns?.find((c) => c.key === before.boardColumnKey)
+      patch = stood && stood.mapsToStatus === before.status ? before : { status: before.status, boardColumnKey: null }
     } else {
       const done = doneColumnOf(board?.boardColumns ?? [])
       patch = { status: done?.mapsToStatus ?? "done", boardColumnKey: done?.key ?? null }

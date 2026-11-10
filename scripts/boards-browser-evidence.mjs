@@ -419,7 +419,9 @@ async function main() {
     let back = after
     for (let i = 0; i < 20 && back.status === 'done'; i++) { await page.waitForTimeout(500); back = await read() }
     assert.equal(back.status, before.status)
-    assert.equal(back.boardColumnKey, before.boardColumnKey)
+    // Its column comes back too — unless it never matched its status (an older
+    // status-only edit left it so), and then the board places it by status.
+    assert.equal(back.boardColumnKey, before.boardColumnKey === `c_${before.status}` ? before.boardColumnKey : null)
     await page.close()
     return { tasks: ids.length }
   })

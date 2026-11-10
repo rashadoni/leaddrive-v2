@@ -53,6 +53,8 @@ const TASKS = [
   { id: "t-today", title: "Story 46", status: "todo", boardColumnKey: "c_todo", dueDate: day(0), divisionId: "p1" },
   { id: "t-plakat", title: "Plakat", status: "todo", dueDate: day(0), divisionId: "z2" },
   { id: "t-none", title: "Brendbuk", status: "todo", dueDate: null, divisionId: "z1" },
+  // An older status-only edit: in progress, still saved in the «Yeni» column.
+  { id: "t-odd", title: "Afişa", status: "in_progress", boardColumnKey: "c_todo", dueDate: day(30), divisionId: "p1" },
 ]
 
 let container: HTMLDivElement
@@ -99,9 +101,10 @@ describe("Mənim işlərim", () => {
     expect(groups()).toEqual([
       ["overdue", ["t-late"]],
       ["today", ["t-plakat", "t-today"]],
+      ["later", ["t-odd"]],
       ["none", ["t-none"]],
     ])
-    expect(container.querySelector('[data-testid="my-work-counts"]')?.textContent).toBe("Открыто: 4 · просрочено: 1")
+    expect(container.querySelector('[data-testid="my-work-counts"]')?.textContent).toBe("Открыто: 5 · просрочено: 1")
   })
 
   it("names the board, with its folder when two boards share a name, and the column the task stands in", async () => {
@@ -118,10 +121,18 @@ describe("Mənim işlərim", () => {
     await tick("t-late")
     expect(calls.at(-1)).toEqual({ url: "/api/v1/tasks/t-late", method: "PATCH", body: { status: "done", boardColumnKey: "c_done" } })
     expect(container.querySelector('[data-task-id="t-late"] [data-testid="my-work-tick"]')?.getAttribute("aria-pressed")).toBe("true")
-    expect(container.querySelector('[data-testid="my-work-counts"]')?.textContent).toBe("Открыто: 3")
+    expect(container.querySelector('[data-testid="my-work-counts"]')?.textContent).toBe("Открыто: 4")
     await tick("t-late")
     expect(calls.at(-1)).toEqual({ url: "/api/v1/tasks/t-late", method: "PATCH", body: { status: "in_progress", boardColumnKey: "c_work" } })
     expect(container.querySelector('[data-task-id="t-late"] [data-testid="my-work-tick"]')?.getAttribute("aria-pressed")).toBe("false")
+  })
+
+  it("a task whose saved column disagreed with its status gets its status back, and the board places it", async () => {
+    await render()
+    await tick("t-odd")
+    expect(calls.at(-1)?.body).toEqual({ status: "done", boardColumnKey: "c_done" })
+    await tick("t-odd")
+    expect(calls.at(-1)?.body).toEqual({ status: "in_progress", boardColumnKey: null })
   })
 
   it("a refused tick is taken back and said in words", async () => {
