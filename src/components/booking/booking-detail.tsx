@@ -27,7 +27,7 @@ import type { WorkspaceBooking } from "./booking-workspace"
 export { avatarTone, nameInitials }
 
 export function integrationLabel(type: string): string {
-  return ({ "booking.push": "deliveryPush", "booking.host-email": "deliveryHostEmail", "booking.calendar": "deliveryCalendar", "booking.email": "deliveryEmail", "booking.project": "deliveryCrm", "booking.notify": "deliveryNotification" } as Record<string, string>)[type] ?? "deliveryOther"
+  return ({ "booking.push": "deliveryPush", "booking.host-email": "deliveryHostEmail", "booking.calendar": "deliveryCalendar", "booking.email": "deliveryEmail", "booking.customer-whatsapp": "deliveryCustomerWhatsApp", "booking.project": "deliveryCrm", "booking.notify": "deliveryNotification" } as Record<string, string>)[type] ?? "deliveryOther"
 }
 
 /** Three outcomes, in the words someone would use about a message they sent. */

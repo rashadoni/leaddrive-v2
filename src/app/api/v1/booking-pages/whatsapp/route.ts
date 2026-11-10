@@ -45,6 +45,11 @@ const body = z.object({
     maxPrice: z.number().min(0).max(1_000_000_000).nullable(),
     newClients: z.boolean(),
   }).optional(),
+  // The approved template names. A screen that does not know them leaves them
+  // out and keeps what is stored; "" clears one.
+  reminderTemplate: z.string().max(200).nullable().optional(),
+  changeTemplate: z.string().max(200).nullable().optional(),
+  cancelTemplate: z.string().max(200).nullable().optional(),
 })
 
 export const PUT = withRlsAuth("bookings", "write", async (req, auth) => {
@@ -62,10 +67,22 @@ export const PUT = withRlsAuth("bookings", "write", async (req, auth) => {
   }
   // Read back through the same reader the agent uses: what is stored is what
   // it will obey, not what the form happened to send.
+  //
+  // The key is replaced whole below, so anything this body does not carry has
+  // to be carried over by hand. Until 2026-11-10 it was not, and saving the
+  // card silently dropped the approved template names — the reminders and the
+  // change notices then fell back to «cannot reach them outside 24 hours».
+  const organization = await prisma.organization.findUnique({ where: { id: auth.orgId }, select: { settings: true } })
+  const stored = readWhatsAppBookingSetting(organization?.settings)
+  const keep = (sent: string | null | undefined, current: string | null) =>
+    sent === undefined ? current : sent && sent.trim() ? sent.trim() : null
   const value = {
     mode: parsed.data.mode,
     channelConfigId: parsed.data.channelConfigId,
     rules: readAutonomyRules(parsed.data.rules),
+    reminderTemplate: keep(parsed.data.reminderTemplate, stored.reminderTemplate),
+    changeTemplate: keep(parsed.data.changeTemplate, stored.changeTemplate),
+    cancelTemplate: keep(parsed.data.cancelTemplate, stored.cancelTemplate),
   }
   // One key, set in place: the rest of settings belongs to other screens and
   // must not be read and written back around it.

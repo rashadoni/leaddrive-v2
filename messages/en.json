@@ -32143,6 +32143,7 @@
     "deliveryNeedsCheck": "Result needs verification",
     "deliveryCalendar": "Google Calendar",
     "deliveryEmail": "Client email",
+    "deliveryCustomerWhatsApp": "Client WhatsApp",
     "deliveryCrm": "Related CRM records",
     "deliveryNotification": "Employee notification",
     "deliveryOther": "Booking processing",

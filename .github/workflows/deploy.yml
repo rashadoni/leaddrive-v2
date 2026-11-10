@@ -536,6 +536,14 @@ jobs:
           BOOKING_CLIENT_LINK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           BOOKING_CLIENT_LINK_DB_GATE: required
 
+      - name: Booking change notice database gate
+        # Same gate as in pr-checks: a move restarts the reminders and the
+        # client hears about a move or a cancellation on WhatsApp.
+        run: npx vitest run src/__tests__/booking-change-notice-postgres.test.ts
+        env:
+          BOOKING_CHANGE_NOTICE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          BOOKING_CHANGE_NOTICE_DB_GATE: required
+
       - name: Finance open items database gate
         # Same gate as in pr-checks: the overview and the A/R and A/P tabs count
         # the same debt (see the test's header).
