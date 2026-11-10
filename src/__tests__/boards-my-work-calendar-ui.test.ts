@@ -43,6 +43,10 @@ const OPEN = [
   { id: "w-soon", title: "74 Nizami", status: "todo", priority: "critical", dueDate: dueIn(1), plans: [], divisionId: "mx", _count: { comments: 4, attachments: 4 } },
   { id: "d-today", title: "Banner", status: "in_progress", priority: "critical", dueDate: dueIn(0), plans: [planForDay(today)], divisionId: "z1" },
 ]
+// Finished, never given a day: Bordio keeps it in the waiting list (53 Sabunçu in Nazrin's).
+const FINISHED_WAITING = [
+  { id: "w-done", title: "53 Sabunçu Posterminal", status: "done", priority: "high", dueDate: dueIn(-3), plans: [], divisionId: "mx" },
+]
 const FINISHED = [
   { id: "d-done", title: "Aksiya Email", status: "done", priority: "medium", dueDate: null, plans: [planForDay(shiftDayKey(today, -1))], divisionId: "mx" },
 ]
@@ -61,6 +65,7 @@ beforeEach(() => {
     urls.push(url)
     if (url === "/api/v1/divisions") return new Response(JSON.stringify({ success: true, data: { divisions: DIVISIONS } }))
     if (url.includes("open=1")) return new Response(JSON.stringify({ success: true, data: { tasks: OPEN, total: OPEN.length } }))
+    if (url.includes("unplanned=1")) return new Response(JSON.stringify({ success: true, data: { tasks: FINISHED_WAITING, total: 1 } }))
     if (url.includes("planFrom=")) return new Response(JSON.stringify({ success: true, data: { tasks: FINISHED, total: 1 } }))
     return new Response(JSON.stringify({ success: true, data: { tasks: [], total: 0 } }))
   }))
@@ -90,10 +95,12 @@ describe("Mənim işlərim → Təqvim", () => {
     await render()
     expect(ids(`[data-day="${today}"]`)).toEqual(["d-today"])
     expect(ids(`[data-day="${shiftDayKey(today, -1)}"]`)).toEqual(["d-done"])
-    expect(ids('[data-testid="my-work-waiting"]')).toEqual(["w-late", "w-soon"])
+    // Bordio's order — the latest deadline first — and the finished one among them.
+    expect(ids('[data-testid="my-work-waiting"]')).toEqual(["w-soon", "w-done", "w-late"])
+    expect(urls.some((u) => u.includes("mine=1&status=done,completed,cancelled&unplanned=1"))).toBe(true)
     const finishedRead = urls.filter((u) => u.includes("planFrom=")).at(-1)!
     expect(finishedRead).toContain(`mine=1&status=done,completed,cancelled&planFrom=${shiftDayKey(today, -1)}&planTo=${shiftDayKey(today, 2)}`)
-    expect(container.querySelector('[data-testid="my-work-waiting"] h2')?.textContent).toBe("Лист ожидания 2")
+    expect(container.querySelector('[data-testid="my-work-waiting"] h2')?.textContent).toBe("Лист ожидания 3")
     expect(container.querySelector(`[data-day="${today}"] [data-testid="my-work-day-count"]`)?.textContent).toBe("1 задача")
   })
 
@@ -104,6 +111,10 @@ describe("Mənim işlərim → Təqvim", () => {
     expect(due("w-soon")).toBe("срок завтра")
     expect(due("d-today")).toBe("срок сегодня")
     expect(container.querySelector('[data-task-id="d-done"] [data-testid="my-work-card-due"]')).toBeNull()
+    // In the waiting list a finished task looks like the rest: deadline shown, not struck through.
+    expect(due("w-done")).toBe("просрочено на 3 дня")
+    expect(container.querySelector('[data-task-id="w-done"] .line-through')).toBeNull()
+    expect(container.querySelector('[data-task-id="d-done"] .line-through')).not.toBeNull()
   })
 
   it("steps one day at a time, and «Сегодня» comes back", async () => {

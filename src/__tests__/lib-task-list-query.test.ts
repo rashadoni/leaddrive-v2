@@ -167,3 +167,12 @@ describe("buildTaskListWhere — «Mənim işlərim» (mine=1, open=1)", () => {
     expect(where.AND).toBeUndefined()
   })
 })
+
+describe("buildTaskListWhere — the caller's waiting list (unplanned=1)", () => {
+  it("keeps the tasks the caller has given no day, whoever else planned them", async () => {
+    vi.mocked(getAccessibleDivisionIds).mockResolvedValue("all")
+    const f = parseTaskListFilters(new URLSearchParams("mine=1&unplanned=1"))
+    const { where } = await buildTaskListWhere("org1", "u1", "admin", f)
+    expect(where.AND).toContainEqual({ plans: { none: { userId: "u1" } } })
+  })
+})

@@ -48,8 +48,8 @@ describe("which task goes where", () => {
   ]
   const { waiting, byDay } = planTasks(open, finished, days)
 
-  it("the waiting list holds open tasks without a day — the deadline is not the day — most pressing first", () => {
-    expect(waiting.map((x) => x.id)).toEqual(["late", "soon", "nodue"])
+  it("the waiting list holds every task without a day — finished ones too, as in Bordio — the latest deadline first", () => {
+    expect(waiting.map((x) => x.id)).toEqual(["soon", "late", "nodue", "done-nodate"])
   })
   it("a day holds what is planned for it, open ones by priority, finished ones after", () => {
     expect(byDay.get("2026-11-10")!.map((x) => x.id)).toEqual(["tue-crit", "tue-low", "done-tue"])
