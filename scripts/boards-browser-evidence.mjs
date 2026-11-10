@@ -380,6 +380,15 @@ async function main() {
     await page.close()
     return { title, subtasks: checklist.length }
   })
+  await step('a board link carrying ?q= opens its list already searched, under the board\'s own name', async () => {
+    const page = await sessions.boardsOnly.newPage()
+    await page.goto(`/boards/${f.boards.DZEYTUN.id}?q=${encodeURIComponent(f.tasks.zeytunOne.title)}`, { timeout: 180000 })
+    await page.waitForFunction(() => /\d+ nəticə/.test(document.body.innerText), null, { timeout: 180000 })
+    assert.equal(await resultCount(page), 1)
+    assert.equal(await page.getByPlaceholder('Tapşırıq axtar...').inputValue(), f.tasks.zeytunOne.title)
+    assert.equal((await page.innerText('h1')).trim(), 'Zeytun')
+    await page.close()
+  })
   await step('a message with an @-mention reaches the person, the author is not told', async () => {
     const res = await api('marketer', `/api/v1/tasks/${f.tasks.zeytunOne.id}/comments`, { method: 'POST', body: { content: `bax @${f.users.manager.name}`, mentions: [f.users.manager.id] } })
     assert.ok([200, 201].includes(res.status), JSON.stringify(res.json))

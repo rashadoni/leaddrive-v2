@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { ChevronRight, Columns3, Folder, FolderOpen } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { boardIdFromPath, boardNavTree, type BoardNavLeaf, type TabDivision } from "@/lib/tasks/board-tabs"
+import { rememberBoardNames } from "@/lib/tasks/board-names-cache"
 
 /**
  * The folders and their boards inside the sidebar's «Boards» section (owner,
@@ -40,7 +41,11 @@ export function SidebarBoardTree({ pathname, visible }: { pathname: string; visi
     readAt.current = Date.now()
     fetch("/api/v1/divisions")
       .then((res) => (res.ok ? res.json() : null))
-      .then((json) => { if (mounted.current && Array.isArray(json?.data?.divisions)) setDivisions(json.data.divisions) })
+      .then((json) => {
+        if (!Array.isArray(json?.data?.divisions)) return
+        rememberBoardNames(json.data.divisions)
+        if (mounted.current) setDivisions(json.data.divisions)
+      })
       .catch(() => { readAt.current = 0 })
   }, [pathname, onBoards])
 

@@ -38,6 +38,7 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
 import { endOfDayIso } from "@/components/tasks/task-panel/task-panel-subtasks"
+import { knownBoardName, rememberBoardNames } from "@/lib/tasks/board-names-cache"
 import { InlineTasksTable, type InlineTask, type InlineUser } from "@/components/tasks/inline-tasks-table"
 import { applyTaskPatch, revertTaskPatch } from "@/lib/client/optimistic-task-patch"
 import { quietReloader } from "@/lib/client/quiet-reload"
@@ -201,6 +202,9 @@ function BoardInner() {
   // The tabs above the board come from the board list; it is shown as soon as
   // it arrives, not after every task has loaded (BoardProjectTabs holds the place).
   const [divisionsLoaded, setDivisionsLoaded] = useState(false)
+  // The title shows at once on a board switch: the name the sidebar (or the
+  // previous board) already read, until this board's own read lands.
+  const boardTitle = (division?.id === divisionId ? division.name : null) ?? knownBoardName(divisionId)
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -270,6 +274,7 @@ function BoardInner() {
           if (!divRes.ok) return
           const dj = await divRes.json()
           const list: Division[] = dj?.data?.divisions ?? []
+          rememberBoardNames(list)
           setDivisions(list)
           setDivision(list.find((d) => d.id === divisionId) ?? null)
         })
@@ -634,7 +639,9 @@ function BoardInner() {
             {t("boardsTitle")}
           </Link>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: C.text }}>{division?.name ?? "Board"}</h1>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: C.text }}>{boardTitle ?? (divisionsLoaded ? "Board" : (
+              <span aria-hidden className="inline-block h-7 w-40 animate-pulse rounded align-middle" style={{ background: C.border }} />
+            ))}</h1>
             <HelpButton slug="board-view" variant="label" />
             {divisions.length > 1 ? (
               <select
@@ -812,6 +819,8 @@ function BoardInner() {
             categoryColumnLabel={tc("quarter")}
             sortBy={listSort}
             onSortChange={setListSort}
+            search={search}
+            onSearchChange={setSearch}
           />
         </div>
       )}
