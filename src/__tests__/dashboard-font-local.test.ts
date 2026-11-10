@@ -51,7 +51,22 @@ describe("the CRM's font is served from the repository", () => {
     expect(module).toContain('variable: "--font-dashboard"')
     expect(module).toContain('display: "swap"')
     expect(module).toContain("adjustFontFallback: false")
-    expect(module).toContain(`fallback: ['"Plus Jakarta Sans Fallback"']`)
+    expect(module).toContain(`fallback: ["'Plus Jakarta Sans Fallback'"]`)
+  })
+
+  it("keeps double quotes out of the font names, or `next dev` cannot parse the font module", () => {
+    // Turbopack generates `fontFamily: "'dashboardFont', <fallback…>"` — a
+    // double-quoted JS string with the fallback list pasted in verbatim. On
+    // 2026-11-10 `"Plus Jakarta Sans Fallback"` closed that string early:
+    // `Expected ',', got 'ident'`, 500 on every dashboard page in dev and in
+    // the dev-server E2E jobs, while the webpack production build was fine.
+    const module = read("src/lib/fonts/dashboard-font.ts")
+    const fallback = /fallback: \[([^\]]*)\]/.exec(module)
+    expect(fallback, "the fallback list").not.toBeNull()
+    for (const entry of fallback![1].split(",").map((part) => part.trim()).filter(Boolean)) {
+      expect(entry.startsWith('"') && entry.endsWith('"'), `JS string literal ${entry}`).toBe(true)
+      expect(entry.slice(1, -1), `font name inside ${entry}`).not.toContain('"')
+    }
   })
 
   it("draws every Azerbaijani letter — and every character Google's four subsets carried", () => {

@@ -36,5 +36,9 @@ export const dashboardFont = localFont({
   display: "swap",
   variable: "--font-dashboard",
   adjustFontFallback: false,
-  fallback: ['"Plus Jakarta Sans Fallback"'],
+  // Single quotes, never double: Turbopack (`next dev`) pastes this list as is
+  // into a double-quoted JS string (`fontFamily: "'dashboardFont', …"`), and a
+  // `"` inside it broke the module — every dev page under the dashboard was a
+  // 500 on 2026-11-10. Webpack (`next build`) only joins it into CSS.
+  fallback: ["'Plus Jakarta Sans Fallback'"],
 })
