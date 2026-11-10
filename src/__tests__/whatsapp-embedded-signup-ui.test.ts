@@ -17,6 +17,8 @@ const labels = {
   keepAppHint: "The number keeps working on your phone.",
   moveButton: "Move the number to the API",
   moveHint: "The app stops working with this number.",
+  agentBlockedHint: "If Meta says its AI agent holds this number, turn the agent off on your phone.",
+  offboardingHint: "If Meta says the account is being released, wait a few minutes and press again.",
 }
 const sessionMessage = {
   type: "WA_EMBEDDED_SIGNUP",
@@ -73,6 +75,10 @@ describe("WhatsApp Embedded Signup registration result", () => {
     expect(onConnected).toHaveBeenCalledExactlyOnceWith("channel-1")
     expect(container.textContent).toContain("Connected: +994501234567")
     expect(container.querySelector('a[href="https://business.facebook.com/wa/manage/home/"]')).not.toBeNull()
+    // What to do about Meta's refusals is troubleshooting for the step that just succeeded, not a
+    // standing instruction: a finished connection says nothing about turning agents off.
+    expect(container.textContent).not.toContain(labels.agentBlockedHint)
+    expect(container.textContent).not.toContain(labels.offboardingHint)
   })
 
   it.each([
@@ -138,6 +144,19 @@ describe("the choice the customer is given when connecting", () => {
     // Neither choice is made silently: both consequences are on screen.
     expect(container.textContent).toContain(labels.keepAppHint)
     expect(container.textContent).toContain(labels.moveHint)
+  })
+
+  it("names Meta's two refusals, on the same screen but after the choice", () => {
+    // Meta refuses inside its own popup, in its own wording, and hands the dialog no code — so the
+    // customer comes back to this screen with the refusal still on theirs, and both answers have
+    // to be plainly on it, not folded away. They follow the buttons rather than lead them: this is
+    // for the few who were refused, and everyone else should meet the choice first.
+    const text = container.textContent || ""
+    expect(text).toContain(labels.agentBlockedHint)
+    expect(text).toContain(labels.offboardingHint)
+    const buttons = Array.from(container.querySelectorAll("button"))
+    expect(buttons).toHaveLength(2)
+    expect(text.indexOf(labels.agentBlockedHint)).toBeGreaterThan(text.indexOf(buttons[1].textContent || ""))
   })
 
   it("asks Meta for the WhatsApp Business app path only on the first button", async () => {

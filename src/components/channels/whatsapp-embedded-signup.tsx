@@ -27,6 +27,9 @@ export type WhatsAppEmbeddedSignupLabels = {
   /** «Move the number to the API» — and the honest warning that the app stops working. */
   moveButton: string
   moveHint: string
+  /** Meta's own two refusals on this step, and what the customer does about each. */
+  agentBlockedHint: string
+  offboardingHint: string
 }
 
 type SdkLoginResponse = { authResponse?: { code?: string } | null }
@@ -380,6 +383,19 @@ export function WhatsAppEmbeddedSignup({
               {labels.moveButton}
             </button>
             <p className="text-[11px] leading-snug text-emerald-800">{labels.moveHint}</p>
+          </div>
+          {/* Meta refuses this step in its own popup, with its own wording, and the dialog hands us
+              no code — so the customer comes back to this screen with the refusal still on theirs.
+              Two of them actually happen: Meta's AI agent holds the number (#3441060), and the
+              account is still being released from a previous owner (#3441055). The agent section
+              exists in the phone app only while the agent is on, so this is written as «if Meta
+              says», not «do this first» — otherwise everyone else goes looking for a menu that is
+              not there. The menu names are the ones the app shows, read off the app itself. It sits
+              under the two buttons, not over them: it is for the few who were refused, and the rest
+              should meet the choice first, not a wall of what might go wrong. */}
+          <div className="space-y-1 border-t border-emerald-200 pt-2">
+            <p className="text-[11px] leading-snug text-emerald-800">{labels.agentBlockedHint}</p>
+            <p className="text-[11px] leading-snug text-emerald-800">{labels.offboardingHint}</p>
           </div>
         </div>
       )}
