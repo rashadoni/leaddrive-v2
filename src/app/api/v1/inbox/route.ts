@@ -12,6 +12,7 @@ import { PAGE_SIZE } from "@/lib/constants"
 import { ensureConversation } from "@/lib/inbox-ensure-conversation"
 import { markMarketingContacted } from "@/lib/inbox/customer-stage"
 import { whatsappThreadReplyBinding } from "@/lib/inbox/whatsapp-reply-channel"
+import { attachInboxChannelAccounts } from "@/lib/inbox/conversation-channel"
 
 export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
   const { searchParams } = new URL(req.url)
@@ -550,6 +551,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
         createdAt: Date
         conversation: {
           id: string
+          channelConfigId: string | null
           platform: string
           externalId: string
           contactId: string | null
@@ -572,6 +574,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
         } | null
       }
       type CallOnlyConversationStub = {
+        channelConfigId: string | null
         contactId: string | null
         contactName: string
         contactEmail: string | null
@@ -632,6 +635,8 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
           conversation: {
             select: {
               id: true,
+              // A call that arrived before any message is still a thread on one of our numbers.
+              channelConfigId: true,
               platform: true,
               externalId: true,
               contactId: true,
@@ -669,6 +674,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
           ? new Date(Math.max(new Date(previous.lastMessageAt).getTime(), new Date(callAt).getTime()))
           : new Date(callAt)
         callOnlyByConversation.set(call.conversationId, {
+          channelConfigId: conv.channelConfigId,
           contactId: conv.contactId,
           contactName: conv.contactName || customerPhone || "WhatsApp caller",
           contactEmail: null,
@@ -783,6 +789,30 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
     const isDeleted = (c: { socialConversationId?: string | null }) =>
       !!c.socialConversationId && deletedIds.has(c.socialConversationId)
     conversations = trashView ? conversations.filter(isDeleted) : conversations.filter((c) => !isDeleted(c))
+
+    // Which of our accounts each thread reached, and which address the customer writes from. Read
+    // from the messages' own `channelConfigId` — one field for every platform — so a workspace with
+    // three WhatsApp numbers can tell its conversations apart (lib/inbox/conversation-channel).
+    try {
+      conversations = await attachInboxChannelAccounts(conversations, (ids) =>
+        prisma.channelConfig.findMany({
+          where: { id: { in: ids }, organizationId: orgId },
+          // Exactly the columns the card prints. Credentials (accessToken, appSecret, verifyToken)
+          // must never ride along with a conversation listing.
+          select: {
+            id: true,
+            channelType: true,
+            configName: true,
+            displayName: true,
+            phoneNumber: true,
+            settings: true,
+          },
+        }),
+      )
+    } catch (e) {
+      // Additive: a thread without this line is the screen as it was, never a failed inbox.
+      console.error("[inbox GET channel accounts]", e)
+    }
 
     // Stats
     const totalMessages = messages.length

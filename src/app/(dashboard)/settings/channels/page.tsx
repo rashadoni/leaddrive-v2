@@ -44,6 +44,7 @@ import { ChannelConfigForm } from "@/components/channel-config-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { useWhatsAppEmbeddedSignup } from "@/components/channels/whatsapp-embedded-signup"
 import { metaOAuthReturnBanner } from "@/lib/channels/meta-oauth-return-banner"
+import { channelNumberLabel } from "@/lib/channels/channel-number-label"
 import { HelpButton } from "@/components/help/help-button"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
@@ -1654,30 +1655,6 @@ function channelProvider(channel: ChannelConfig): string | undefined {
     return typeof settings.provider === "string" ? settings.provider : undefined
   }
   return undefined
-}
-
-/**
- * Which number this row is, in words a person can match against their phone.
- *
- * The line printed `channel.phoneNumber`, and on a WhatsApp row that column carries Meta's
- * `phone_number_id` — fifteen digits that read like a phone number and are not one. On 2026-11-10 one
- * workspace had three live WhatsApp channels: two showed nothing at all under the name and the third
- * showed `984538588084578`, so «Ayır» offered three rows that could not be told apart (owner: «не
- * виден какой номер на каком ватсап канале»). Disconnecting the wrong one is one click.
- *
- * Embedded Signup stores the number as Meta displays it (`displayPhoneNumber`), so show that. Where
- * only the id exists — a row connected by hand, before the signup wrote it — say that it is an id
- * rather than print it bare.
- */
-function channelNumberLabel(channel: ChannelConfig, idPrefix: string): string | undefined {
-  const settings = channel.settings || {}
-  const shown = typeof settings.displayPhoneNumber === "string" ? settings.displayPhoneNumber.trim() : ""
-  if (shown) return shown
-  const raw = typeof channel.phoneNumber === "string" ? channel.phoneNumber.trim() : ""
-  if (!raw) return undefined
-  // Anywhere else that column is the number itself, and a number written in full stays as it is.
-  if (channel.channelType !== "whatsapp" || raw.startsWith("+")) return raw
-  return `${idPrefix} ${raw}`
 }
 
 function channelMatchesCard(card: CatalogCard, channel: ChannelConfig) {

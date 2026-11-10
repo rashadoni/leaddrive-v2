@@ -200,6 +200,19 @@ export interface InboxConversation {
     assignedToName: string | null
     createdAt: string
   } | null
+  /**
+   * Which of our accounts this thread reached — the channel's name and its number, resolved by the
+   * server from the messages' own `channelConfigId` (lib/inbox/conversation-channel). Null when
+   * nothing says which: a thread older than the channel row, or a platform that records no address.
+   */
+  channelAccount?: {
+    channelType: string | null
+    name: string | null
+    number: string | null
+    numberIsMetaId: boolean
+  } | null
+  /** The address the customer writes from on this channel, when the channel records one. */
+  channelAddress?: string | null
   // Present only for web-chat threads (read from WebChatSession, not ChannelMessage).
   // The send path routes replies for these to WebChatMessage(agent).
   webChatSessionId?: string | null
@@ -221,6 +234,20 @@ function safeInboxText(value: unknown, fallback = ""): string {
   if (typeof value === "string") return value
   if (typeof value === "number" || typeof value === "boolean") return String(value)
   return fallback
+}
+
+function normalizeChannelAccount(value: unknown): InboxConversation["channelAccount"] {
+  if (!value || typeof value !== "object") return null
+  const raw = value as Record<string, unknown>
+  const name = typeof raw.name === "string" && raw.name.trim() ? raw.name.trim() : null
+  const number = typeof raw.number === "string" && raw.number.trim() ? raw.number.trim() : null
+  if (!name && !number) return null
+  return {
+    channelType: typeof raw.channelType === "string" ? raw.channelType : null,
+    name,
+    number,
+    numberIsMetaId: raw.numberIsMetaId === true,
+  }
 }
 
 /**
@@ -282,6 +309,8 @@ export function normalizeInboxConversations(value: unknown): InboxConversation[]
       messageCount: typeof raw.messageCount === "number" ? raw.messageCount : messages.length,
       channels,
       messages,
+      channelAccount: normalizeChannelAccount(raw.channelAccount),
+      channelAddress: typeof raw.channelAddress === "string" ? raw.channelAddress : null,
     } as InboxConversation]
   })
 }
