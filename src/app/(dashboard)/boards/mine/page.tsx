@@ -76,6 +76,13 @@ export default function MyWorkPage() {
   const [showDone, setShowDone] = useState(false)
   const [doneTasks, setDoneTasks] = useState<MyTask[] | null>(null)
   const [ticked, setTicked] = useState<Map<string, Ticked>>(new Map())
+  // Beside the state: a read of the list that began earlier has to tell which
+  // ticks it may forget without waiting for a render first.
+  const tickedRef = useRef(ticked)
+  const changeTicked = useCallback((change: (current: Map<string, Ticked>) => Map<string, Ticked>) => {
+    tickedRef.current = change(tickedRef.current)
+    setTicked(tickedRef.current)
+  }, [])
   const [busy, setBusy] = useState<Set<string>>(new Set())
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -87,23 +94,43 @@ export default function MyWorkPage() {
     toastTimer.current = setTimeout(() => setToast(null), 3500)
   }, [])
 
+  /**
+   * A read of the list answers for the moment it BEGAN, and two reads overlap
+   * easily: React mounts a page twice in development, and closing the task
+   * panel reads the list again. So the answer that comes back last is not
+   * always the newest word, and two rules keep it from undoing the person:
+   *  · only the newest read is applied — an older answer cannot overwrite it;
+   *  · a read forgets only the ticks that were already there when it began.
+   * A row ticked while a read was under way used to come back open on screen
+   * although the server had the task finished, and nothing ticks it again — it
+   * stayed wrong until the page was read anew. The boards browser run failed
+   * on exactly that, every other time (2026-11-10).
+   */
+  const reads = useRef(0)
   const load = useCallback(async () => {
+    const seq = (reads.current += 1)
+    const knownTicks = [...tickedRef.current.keys()]
     setFailed(false)
     try {
       const [divisionsRes, open] = await Promise.all([
         fetch("/api/v1/divisions", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
         readTasks("open=1"),
       ])
+      if (seq !== reads.current) return
       const list: Board[] = divisionsRes?.data?.divisions ?? []
       rememberBoardNames(list)
       setBoards(list)
       setTasks(open.tasks)
       setTotal(open.total)
-      setTicked(new Map())
+      changeTicked((current) => {
+        const next = new Map(current)
+        for (const id of knownTicks) next.delete(id)
+        return next
+      })
     } catch {
-      setFailed(true)
+      if (seq === reads.current) setFailed(true)
     }
-  }, [])
+  }, [changeTicked])
   useEffect(() => { load() }, [load])
 
   const loadDone = useCallback(async () => {
@@ -146,7 +173,7 @@ export default function MyWorkPage() {
   async function toggle(task: MyTask) {
     if (busy.has(task.id)) return
     const board = task.divisionId ? boardById.get(task.divisionId) : undefined
-    const before = ticked.get(task.id)
+    const before = tickedRef.current.get(task.id)
     let patch: { status: string; boardColumnKey: string | null }
     if (before) {
       // Back where it stood. The server takes a column only together with
@@ -160,13 +187,13 @@ export default function MyWorkPage() {
       patch = { status: done?.mapsToStatus ?? "done", boardColumnKey: done?.key ?? null }
     }
     setBusy((s) => new Set(s).add(task.id))
-    setTicked((m) => {
+    changeTicked((m) => {
       const next = new Map(m)
       if (before) next.delete(task.id)
       else next.set(task.id, { status: task.status, boardColumnKey: task.boardColumnKey ?? null })
       return next
     })
-    const undo = () => setTicked((m) => {
+    const undo = () => changeTicked((m) => {
       const next = new Map(m)
       if (before) next.set(task.id, before)
       else next.delete(task.id)

@@ -4,7 +4,7 @@
  * tasks from every board, grouped by due day, rendered with the real Russian
  * copy; the tick moves a task into its board's «done» column and back.
  */
-import { act, createElement } from "react"
+import { StrictMode, act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { readFileSync } from "node:fs"
@@ -20,7 +20,11 @@ vi.mock("next-intl", async (importOriginal) => {
   }
 })
 vi.mock("@/components/tasks/task-panel/task-panel", () => ({
-  TaskPanel: ({ taskId }: { taskId: string }) => createElement("div", { "data-testid": "task-panel", "data-task": taskId }),
+  TaskPanel: ({ taskId, onClose }: { taskId: string; onClose: () => void }) => createElement(
+    "div",
+    { "data-testid": "task-panel", "data-task": taskId },
+    createElement("button", { "data-testid": "task-panel-close", onClick: onClose }),
+  ),
 }))
 
 import MyWorkPage from "@/app/(dashboard)/boards/mine/page"
@@ -93,6 +97,9 @@ const tick = async (id: string) => {
   await act(async () => { (container.querySelector(`[data-task-id="${id}"] [data-testid="my-work-tick"]`) as HTMLButtonElement).click() })
   await flush()
 }
+const ticks = (id: string) => container.querySelector(`[data-task-id="${id}"] [data-testid="my-work-tick"]`)
+const pressed = (id: string) => ticks(id)?.getAttribute("aria-pressed")
+const open = (id: string) => container.querySelector(`[data-task-id="${id}"] button:not([data-testid])`) as HTMLButtonElement
 
 describe("Mənim işlərim", () => {
   it("reads only the person's open tasks and lays them out by due day, overdue first", async () => {
@@ -141,6 +148,64 @@ describe("Mənim işlərim", () => {
     await tick("t-today")
     expect(container.querySelector('[data-task-id="t-today"] [data-testid="my-work-tick"]')?.getAttribute("aria-pressed")).toBe("false")
     expect(container.textContent).toContain("Изменение не сохранилось")
+  })
+
+  // Both of these are the same rule from two sides: a read of the list
+  // answers for the moment it began, so it must not undo what the person did
+  // since. Without it the row quietly came back open although the server had
+  // the task finished — and nothing ticks it again.
+  it("the read still under way when the page opens does not take a tick back (React mounts a page twice in development)", async () => {
+    const held: (() => void)[] = []
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : undefined })
+      if (url === "/api/v1/divisions") return new Response(JSON.stringify({ success: true, data: { divisions: DIVISIONS } }))
+      if (url.startsWith("/api/v1/tasks?")) {
+        await new Promise<void>((release) => { held.push(release) })
+        return new Response(JSON.stringify({ success: true, data: { tasks: TASKS, total: 4 } }))
+      }
+      if (url.startsWith("/api/v1/tasks/")) return new Response("{}", { status: 200 })
+      return new Response("{}", { status: 404 })
+    }))
+    await act(async () => { root.render(createElement(StrictMode, null, createElement(MyWorkPage))) })
+    await flush()
+    expect(held.length).toBe(2)
+    const answer = async () => { held.shift()!(); await flush() }
+    // Tick as soon as the rows are on screen — with the other read still out.
+    while (!ticks("t-late") && held.length) await answer()
+    await tick("t-late")
+    expect(pressed("t-late")).toBe("true")
+    expect(calls.at(-1)).toEqual({ url: "/api/v1/tasks/t-late", method: "PATCH", body: { status: "done", boardColumnKey: "c_done" } })
+    while (held.length) await answer()
+    expect(pressed("t-late")).toBe("true")
+    expect(ticks("t-late")?.hasAttribute("disabled")).toBe(false)
+  })
+
+  it("the read that closing the task panel starts forgets the ticks it knew of, and only those", async () => {
+    await render()
+    await tick("t-today")
+    let release: (() => void) | null = null
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : undefined })
+      if (url === "/api/v1/divisions") return new Response(JSON.stringify({ success: true, data: { divisions: DIVISIONS } }))
+      if (url.startsWith("/api/v1/tasks?")) {
+        await new Promise<void>((hold) => { release = hold })
+        return new Response(JSON.stringify({ success: true, data: { tasks: TASKS, total: 4 } }))
+      }
+      if (url.startsWith("/api/v1/tasks/")) return new Response("{}", { status: 200 })
+      return new Response("{}", { status: 404 })
+    }))
+    await act(async () => { open("t-odd").click() })
+    await act(async () => { (container.querySelector('[data-testid="task-panel-close"]') as HTMLButtonElement).click() })
+    await flush()
+    expect(release).toBeTypeOf("function")
+    await tick("t-late")
+    await act(async () => { release!() })
+    await flush()
+    // The read was begun after t-today was ticked and before t-late was: it
+    // may forget the first — that is how a ticked row is let go of — and not
+    // the second.
+    expect(pressed("t-today")).toBe("false")
+    expect(pressed("t-late")).toBe("true")
   })
 
   it("the board filter keeps one board's tasks", async () => {

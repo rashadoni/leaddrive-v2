@@ -414,7 +414,13 @@ async function main() {
     for (let i = 0; i < 20 && after.status === before.status; i++) { await page.waitForTimeout(500); after = await read() }
     assert.equal(after.status, 'done')
     assert.equal(after.boardColumnKey, 'c_done')
-    await page.waitForSelector(`${row} [data-testid="my-work-tick"][aria-pressed="true"]:not([disabled])`, { timeout: 30000 })
+    // The same wait, but a failure says what the tick showed instead of only
+    // «timed out»: a tick wiped by a list read that was still under way looked
+    // exactly like a hung request here (2026-11-10).
+    await page.waitForSelector(`${row} [data-testid="my-work-tick"][aria-pressed="true"]:not([disabled])`, { timeout: 30000 }).catch(async (error) => {
+      const seen = await page.$eval(`${row} [data-testid="my-work-tick"]`, (el) => ({ pressed: el.getAttribute('aria-pressed'), busy: el.hasAttribute('disabled') })).catch(() => 'the row is gone')
+      throw new Error(`${error.message}\n     the server has the task done; the tick showed ${JSON.stringify(seen)}`)
+    })
     await page.click(`${row} [data-testid="my-work-tick"]`)
     let back = after
     for (let i = 0; i < 20 && back.status === 'done'; i++) { await page.waitForTimeout(500); back = await read() }
@@ -430,6 +436,9 @@ async function main() {
     const read = async () => (await api('marketer', `/api/v1/tasks/${id}`)).json.data
     const myPlan = async () => ((await api('marketer', '/api/v1/tasks?mine=1&open=1&limit=1000')).json.data.tasks.find((t) => t.id === id)?.plans ?? [])
     const before = await read()
+    // Said in one line: the step before puts this task back as it was. Without
+    // it, its leftovers only show up as two blind minutes on the wait below.
+    assert.ok(!['done', 'completed', 'cancelled'].includes(before.status), `the fixture task is ${before.status}, not open — the step before left it finished`)
     assert.deepEqual(await myPlan(), [], 'the fixture task is already planned')
     const page = await sessions.marketer.newPage()
     await page.goto('/boards/mine?view=calendar', { timeout: 180000 })
