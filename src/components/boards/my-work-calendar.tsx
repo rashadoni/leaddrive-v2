@@ -238,7 +238,9 @@ function WaitingList({ title, count, children }: { title: string; count: number;
     <section
       ref={setNodeRef}
       data-testid="my-work-waiting"
-      className={cn("rounded-lg border p-2", isOver && "bg-primary/10")}
+      // As tall as a day column at least: with one or two tasks left, a card
+      // dropped under them must still land here (found on prod 2026-11-10).
+      className={cn("min-h-[16rem] rounded-lg border p-2", isOver && "bg-primary/10")}
     >
       <h2 className="mb-2 text-sm font-semibold">
         {title} <span className="font-normal text-muted-foreground">{count}</span>
