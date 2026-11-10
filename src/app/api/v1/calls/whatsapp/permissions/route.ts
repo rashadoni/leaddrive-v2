@@ -10,7 +10,10 @@ import {
   resolveWhatsAppCallTarget,
 } from "@/lib/whatsapp-call-permissions"
 
-const DEFAULT_PERMISSION_MESSAGE = "We would like to call you on WhatsApp to help with your request."
+// The text above Meta's «allow calls» button, read by the business's
+// customers — in Azerbaijani (owner, 2026-11-10: the English one went out on
+// the first live request). Meta draws the button itself, in the reader's language.
+const DEFAULT_PERMISSION_MESSAGE = "Sorğunuzla bağlı kömək etmək üçün sizə WhatsApp-da zəng etmək istəyirik."
 
 async function readBody(req: NextRequest): Promise<Record<string, unknown>> {
   try {
