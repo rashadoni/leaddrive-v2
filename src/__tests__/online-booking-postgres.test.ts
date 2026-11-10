@@ -306,6 +306,10 @@ pgDescribe("online booking on a real Postgres", () => {
     whatsapp.buttons = []
     whatsapp.lists = []
     whatsapp.listFails = false
+    // Offers hold a master's hours until they expire, and one menu holds eight
+    // of them. Left standing, they are the previous test's holds eating this
+    // test's day — every case here starts from a free board.
+    await bypass(() => prisma.bookingOffer.updateMany({ where: { organizationId: ORG, status: "offered" }, data: { status: "superseded" } }))
     whatsapp.texts = []
     signIn("admin")
   })
@@ -1238,9 +1242,9 @@ pgDescribe("online booking on a real Postgres", () => {
       for (const row of message.rows) {
         expect(row.id).toMatch(/^bk:/)
         expect(row.title.length).toBeLessThanOrEqual(24)
-        // The name is not squeezed into the time any more.
-        expect(row.title).not.toMatch(/Leyla/)
-        expect(row.description).toBe("Leyla Vəliyeva")
+        // The name lives on the second line now, not inside the time.
+        expect(row.description, "the row names the master").toBeTruthy()
+        expect(row.title).not.toContain(row.description)
       }
       const offers = await offersOf(conversation)
       expect(offers.map((offer) => `bk:${offer.id}`).sort()).toEqual(message.rows.map((row) => row.id).sort())
@@ -1483,6 +1487,10 @@ pgDescribe("online booking on a real Postgres", () => {
       whatsapp.buttons = []
     whatsapp.lists = []
     whatsapp.listFails = false
+    // Offers hold a master's hours until they expire, and one menu holds eight
+    // of them. Left standing, they are the previous test's holds eating this
+    // test's day — every case here starts from a free board.
+    await bypass(() => prisma.bookingOffer.updateMany({ where: { organizationId: ORG, status: "offered" }, data: { status: "superseded" } }))
       expect((await remindersPost(cronJson())).status).toBe(200)
       expect(whatsapp.buttons).toHaveLength(0)
 
