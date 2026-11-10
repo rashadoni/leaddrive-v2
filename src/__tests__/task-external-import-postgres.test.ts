@@ -126,6 +126,7 @@ pgDescribe("tasks brought over from another tool, on a real Postgres", () => {
   let bypass!: typeof import("@/lib/rls-context").runWithRlsBypass
   let importRoute!: typeof import("@/app/api/v1/divisions/[id]/import-external/route").POST
   let listRoute!: typeof import("@/app/api/v1/tasks/route").GET
+  let daysRoute!: typeof import("@/app/api/v1/tasks/import-external/planned-days/route").POST
 
   beforeAll(async () => {
     prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `DROP DATABASE IF EXISTS "${scratch!.name}" WITH (FORCE)`)
@@ -135,6 +136,7 @@ pgDescribe("tasks brought over from another tool, on a real Postgres", () => {
     bypass = (await import("@/lib/rls-context")).runWithRlsBypass
     importRoute = (await import("@/app/api/v1/divisions/[id]/import-external/route")).POST
     listRoute = (await import("@/app/api/v1/tasks/route")).GET
+    daysRoute = (await import("@/app/api/v1/tasks/import-external/planned-days/route")).POST
     await bypass(async () => {
       for (const [id, slug] of [[ORG, "zeytun"], [OTHER_ORG, "other"]]) {
         await prisma.organization.create({ data: { id, name: slug, slug, modules: { crm: true, tasks: true } } })
@@ -311,6 +313,54 @@ pgDescribe("tasks brought over from another tool, on a real Postgres", () => {
     expect([again.body.data.updated, again.body.data.moved]).toEqual([1, 0])
     const still = await bypass(() => prisma.task.findFirstOrThrow({ where: { id: before.id }, select: { taskKey: true } }))
     expect(still.taskKey).toBe("DZEY-1")
+  })
+
+  it("carries the other tool's calendar day into «Başlama tarixi» — that field only, quietly, by the day in Baku", async () => {
+    const sendDays = async (body: unknown) => {
+      const res = await daysRoute(request("POST", "/api/v1/tasks/import-external/planned-days", body), { params: Promise.resolve({}) })
+      return { status: res.status, body: await res.json() }
+    }
+    const read = () => bypass(() => prisma.task.findMany({
+      where: { organizationId: ORG, externalId: { in: [OPEN.externalId, DONE.externalId] } },
+      select: { externalId: true, startDate: true, title: true, status: true, dueDate: true, updatedAt: true, _count: { select: { activities: true } } },
+      orderBy: { externalId: "asc" },
+    }))
+    // As the first import left it: Bordio's hidden «start», written as 00:00Z.
+    await bypass(() => prisma.task.updateMany({ where: { organizationId: ORG, externalId: OPEN.externalId }, data: { startDate: new Date("2026-11-04T00:00:00.000Z") } }))
+    await bypass(() => prisma.task.updateMany({ where: { organizationId: ORG, externalId: DONE.externalId }, data: { startDate: new Date("2026-11-02T00:00:00.000Z") } }))
+    const before = await read()
+
+    const body = { source: "bordio", timeZone: "Asia/Baku", days: [
+      { externalId: OPEN.externalId, day: "2026-11-06" }, // the calendar shows it on Friday
+      { externalId: DONE.externalId, day: "2026-11-02" }, // same day already — left as it is
+      { externalId: "bordio-never-imported", day: "2026-11-05" },
+    ] }
+    const dry = await sendDays({ ...body, dryRun: true })
+    expect(dry.status, JSON.stringify(dry.body)).toBe(200)
+    expect(dry.body.data).toEqual({ dryRun: true, matched: 2, changed: 1, cleared: 0, missing: ["bordio-never-imported"], missingCount: 1 })
+    expect(await read()).toEqual(before)
+
+    session.current = { user: { id: "viewer", organizationId: ORG, role: "manager", email: "viewer@zeytun.test", name: "M" } }
+    expect((await sendDays(body)).status).toBe(403)
+    session.current = { user: { id: "admin", organizationId: ORG, role: "admin", email: "admin@zeytun.test", name: "Admin" } }
+
+    const run = await sendDays(body)
+    expect(run.status, JSON.stringify(run.body)).toBe(200)
+    const after = await read()
+    const open = after.find((task) => task.externalId === OPEN.externalId)!
+    const done = after.find((task) => task.externalId === DONE.externalId)!
+    expect(open.startDate?.toISOString()).toBe("2026-11-05T20:00:00.000Z") // midnight of 6 Nov in Baku
+    expect(done.startDate?.toISOString()).toBe("2026-11-02T00:00:00.000Z")
+    // Nothing else moved and no history line was written.
+    const was = before.find((task) => task.externalId === OPEN.externalId)!
+    expect([open.title, open.status, open.dueDate, open._count.activities]).toEqual([was.title, was.status, was.dueDate, was._count.activities])
+
+    // No day in the other tool's calendar: the waiting list.
+    const clear = await sendDays({ source: "bordio", timeZone: "Asia/Baku", days: [{ externalId: OPEN.externalId, day: null }] })
+    expect(clear.body.data).toMatchObject({ changed: 1, cleared: 1 })
+    expect((await read()).find((task) => task.externalId === OPEN.externalId)!.startDate).toBeNull()
+    expect(mail.sent).toEqual([])
+    expect(await bypass(() => prisma.notification.count({ where: { organizationId: ORG } }))).toBe(0)
   })
 
   it("the list hands out a board past 200 tasks page by page, every card exactly once", async () => {
