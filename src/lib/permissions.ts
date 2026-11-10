@@ -169,6 +169,9 @@ export const PERMISSION_MODULE_TO_MODULE_ID: Record<string, ModuleId> = {
   // BOARDS_MODULE_ID). LEGACY_MODULE_MAP keeps `tasks: "crm"` for the
   // legacy-record expansion in hasModule; this bridge is only the live gate.
   tasks: "boards",
+  // Meetings and booking pages answer to their own module since 2026-11-10;
+  // the legacy map still says `sales` for old records, this bridge is the gate.
+  bookings: "booking",
 }
 
 /**

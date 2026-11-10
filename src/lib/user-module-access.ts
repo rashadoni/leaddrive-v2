@@ -3,6 +3,7 @@ import { hasModule, type GroupModuleId, type ModuleId } from "./modules"
 // modules.ts BOARDS_MODULE_ID, spelled out: several suites mock "./modules" with
 // a fixed export list, and this file is imported by the auth layer they test.
 const BOARDS_MODULE_ID = "boards" satisfies GroupModuleId
+const BOOKING_MODULE_ID = "booking" satisfies GroupModuleId
 import { isTenantCapabilityEnabled, type FieldTenantCapabilityId } from "./tenant-capabilities"
 
 /**
@@ -68,6 +69,7 @@ const MASKED_GROUP_IDS: readonly GroupModuleId[] = [...HIDEABLE_GROUP_IDS, "sett
 export const USER_HIDEABLE_MODULE_IDS: readonly UserHideableId[] = [
   "crm",
   BOARDS_MODULE_ID,
+  BOOKING_MODULE_ID,
   ...HIDEABLE_GROUP_IDS.filter((id) => id !== "crm"),
   WORKFORCE_HIDEABLE_ID,
 ]
@@ -182,6 +184,9 @@ export function applyUserModuleMask(
   // Boards first and always explicit: left implicit they would follow the
   // pinned `crm` below, and hiding CRM would take them away too.
   result[BOARDS_MODULE_ID] = !hiddenSet.has(BOARDS_MODULE_ID) && hasModule(org, BOARDS_MODULE_ID)
+  // Booking for the same reason: left implicit it would follow the pinned
+  // module below, and a salon that only has bookings would lose them.
+  result[BOOKING_MODULE_ID] = !hiddenSet.has(BOOKING_MODULE_ID) && hasModule(org, BOOKING_MODULE_ID)
   for (const id of MASKED_GROUP_IDS) {
     result[id] = !hiddenSet.has(id) && hasModule(org, id)
   }
