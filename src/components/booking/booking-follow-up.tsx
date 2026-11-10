@@ -28,7 +28,10 @@ export function BookingFollowUp({ booking, timezone }: { booking: WorkspaceBooki
     title: t("followUpTitle", { name: booking.name }),
     description: `/meetings?booking=${encodeURIComponent(booking.id)}`,
     ...(nextVisitDay ? { dueDate: nextVisitDay } : {}),
-    ...(booking.leadId ? { relatedType: "lead", relatedId: booking.leadId, relatedName: booking.name } : {}),
+    // A meeting booked for a customer the CRM already had carries the contact
+    // instead of a lead of its own, so the follow-up lands on that customer.
+    ...(booking.leadId ? { relatedType: "lead", relatedId: booking.leadId, relatedName: booking.name }
+      : booking.contactId ? { relatedType: "contact", relatedId: booking.contactId, relatedName: booking.name } : {}),
   }))
   if (!booking.canCreateFollowUp) return null
   return <CrmSection title={t("followUpSection")} icon={<ClipboardCheck aria-hidden="true" className="h-4 w-4" />}>

@@ -41,12 +41,15 @@ async function project(tx: Prisma.TransactionClient, row: Booking) {
   let leadId = row.leadId, taskId = row.taskId
   // A legacy missing link may represent an orphan created before the old HTTP request crashed.
   // Preserve that ambiguity instead of generating a second customer record.
-  if (row.snapshot && !leadId && row.source !== "legacy") {
+  // A meeting booked for a customer the CRM already holds carries that link
+  // from creation: filing a lead for them as well is the duplicate the staff
+  // search exists to stop.
+  if (row.snapshot && !leadId && !row.contactId && row.source !== "legacy") {
     const lead = await tx.lead.create({ data: { id: safeId("booking_lead", row.organizationId, row.id), organizationId: row.organizationId, contactName: row.name, phone: row.phone, email: row.email, source: `booking:${snapshot(row).slug ?? row.bookingPageId}`, sourceDetail: snapshot(row).title, status: "new", assignedTo: row.hostUserId, notes: row.note, adAttribution: row.adAttribution ? row.adAttribution as Prisma.InputJsonValue : undefined } })
     leadId = lead.id
   }
   if (row.snapshot && !taskId && row.source !== "legacy") {
-    const task = await tx.task.create({ data: { id: safeId("booking_task", row.organizationId, row.id), organizationId: row.organizationId, title: `${snapshot(row).title} — ${row.name}`, description: row.note, assignedTo: row.hostUserId, dueDate: row.startsAt, priority: "high", ...(leadId ? { relatedType: "lead", relatedId: leadId } : {}) } })
+    const task = await tx.task.create({ data: { id: safeId("booking_task", row.organizationId, row.id), organizationId: row.organizationId, title: `${snapshot(row).title} — ${row.name}`, description: row.note, assignedTo: row.hostUserId, dueDate: row.startsAt, priority: "high", ...(leadId ? { relatedType: "lead" as const, relatedId: leadId } : row.contactId ? { relatedType: "contact" as const, relatedId: row.contactId } : {}) } })
     taskId = task.id
   }
   if (taskId) await tx.task.updateMany({ where: { id: taskId, organizationId: row.organizationId }, data: { dueDate: row.startsAt, assignedTo: row.hostUserId, status: row.status === "completed" ? "completed" : ["cancelled", "no_show"].includes(row.status) ? "cancelled" : "pending", completedAt: row.status === "completed" ? new Date() : null } })

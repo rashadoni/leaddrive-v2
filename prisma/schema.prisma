@@ -23901,6 +23901,11 @@ model Booking {
   /// sha256 of the token in the customer's cancel link.
   cancelTokenHash String      @unique
   leadId          String?
+  /// The contact this meeting was booked for, when staff picked an existing
+  /// customer instead of typing a new one. No foreign key, like leadId: the
+  /// row survives the customer being deleted, and the booking release contract
+  /// only admits added columns.
+  contactId       String?
   taskId          String?
   googleEventId   String?
   cancelledAt     DateTime?

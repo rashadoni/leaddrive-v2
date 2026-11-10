@@ -8,6 +8,7 @@ import { createStoredBooking } from "@/lib/booking/create"
 import { BookingCommandError } from "@/lib/booking/command-error"
 import { IdempotencyConflictError } from "@/lib/event-platform/errors"
 import { bookingFilters, listBookings } from "@/lib/booking/queries"
+import { checkPermission } from "@/lib/permissions"
 
 export const GET = withRlsAuth("bookings", "read", async (req: NextRequest, auth) => {
   const access = await bookingAccess(auth)
@@ -24,12 +25,25 @@ export const GET = withRlsAuth("bookings", "read", async (req: NextRequest, auth
 })
 
 
-const createInput = bookSchema.extend({ pageId: z.string().min(1).max(64), hostUserId: z.string().min(1).max(64).optional() })
+const createInput = bookSchema.extend({
+  pageId: z.string().min(1).max(64),
+  hostUserId: z.string().min(1).max(64).optional(),
+  // Only a member of staff books for a customer the CRM already has; the
+  // public form posts elsewhere and its schema has no such field.
+  client: z.object({ type: z.enum(["contact", "lead"]), id: z.string().min(1).max(64) }).optional(),
+})
 export const POST = withRlsAuth("bookings", "write", async (req: NextRequest, auth) => {
   const access = await bookingAccess(auth)
   if (access instanceof NextResponse) return access
   const parsed = createInput.safeParse(await req.json().catch(() => null))
   if (!parsed.success || parsed.data.website) return NextResponse.json({ code: "INVALID_INPUT" }, { status: 400 })
+  // A meeting is filed on a customer only by somebody who may read that
+  // customer — the same gate the panel's search answers through, so a hand-made
+  // request cannot reach past it.
+  const link = parsed.data.client
+  if (link && !checkPermission(auth.role, link.type === "contact" ? "contacts" : "leads", "read")) {
+    return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 })
+  }
   try {
     const result = await createStoredBooking(auth.orgId, parsed.data.pageId, { ...parsed.data, attribution: readAttribution(parsed.data.attribution, { userAgent: req.headers.get("user-agent") }) }, new Date(), access)
     if (!result.ok) return NextResponse.json({ code: result.reason === "taken" ? "SLOT_TAKEN" : "NOT_FOUND" }, { status: result.reason === "taken" ? 409 : 404 })

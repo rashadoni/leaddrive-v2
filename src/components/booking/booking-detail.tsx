@@ -195,7 +195,8 @@ export function BookingDetail({ booking, context, identity, schedule, onSaved, o
     <div className="mt-4 space-y-4">
       <BookingFollowUp key={booking.id} booking={booking} timezone={timezone} />
       <BookingHistory booking={booking} timezone={timezone} cacheScope={`${identity}:${Boolean(booking.phoneRestricted)}`} />
-      {booking.leadId || booking.taskId ? <CrmSection><div className="flex flex-wrap gap-2">
+      {booking.leadId || booking.contactId || booking.taskId ? <CrmSection><div className="flex flex-wrap gap-2">
+        {booking.contactId ? <Button variant="outline" size="sm" asChild><a href={`/contacts/${encodeURIComponent(booking.contactId)}`}>{t("openContact")}</a></Button> : null}
         {booking.leadId ? <Button variant="outline" size="sm" asChild><a href={`/leads/${encodeURIComponent(booking.leadId)}`}>{t("openLead")}</a></Button> : null}
         {booking.taskId ? <Button variant="ghost" size="sm" asChild><a href={`/tasks/${encodeURIComponent(booking.taskId)}`}>{t("openTask")}</a></Button> : null}
       </div></CrmSection> : null}

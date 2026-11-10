@@ -528,6 +528,14 @@ jobs:
         env:
           BOOKING_RELEASE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
 
+      - name: Booking client link database gate
+        # Same gate as in pr-checks: the staff form finds a customer by any
+        # number format and files the meeting on them instead of a new lead.
+        run: npx vitest run src/__tests__/booking-client-link-postgres.test.ts
+        env:
+          BOOKING_CLIENT_LINK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          BOOKING_CLIENT_LINK_DB_GATE: required
+
       - name: Finance open items database gate
         # Same gate as in pr-checks: the overview and the A/R and A/P tabs count
         # the same debt (see the test's header).

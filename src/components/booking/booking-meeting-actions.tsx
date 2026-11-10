@@ -18,7 +18,7 @@ import type { DaySlots } from "@/lib/booking/availability"
 import type { WorkspaceBooking } from "./booking-workspace"
 
 export interface BookingActionContext { timezone: string; hosts: { id: string; name: string; isActive: boolean }[]; writableHostIds: string[] | null }
-export const BOOKING_ERROR_KEYS: Record<string, string> = { SLOT_TAKEN: "errTaken", VERSION_CONFLICT: "meetingChanged", AVAILABILITY_CHANGED: "meetingChanged", CALENDAR_UNAVAILABLE: "calendarUnavailable", FORBIDDEN: "workspaceForbidden", NOT_FOUND: "meetingUnavailable", CORRECTION_REQUIRES_REASON: "correctionReasonRequired", INVALID_STATE: "invalidMeetingState", INVALID_HOST: "invalidHost", IDEMPOTENCY_CONFLICT: "meetingChanged", CONFIRMATION_EXPIRED: "confirmationExpired" }
+export const BOOKING_ERROR_KEYS: Record<string, string> = { SLOT_TAKEN: "errTaken", VERSION_CONFLICT: "meetingChanged", AVAILABILITY_CHANGED: "meetingChanged", CALENDAR_UNAVAILABLE: "calendarUnavailable", FORBIDDEN: "workspaceForbidden", NOT_FOUND: "meetingUnavailable", CORRECTION_REQUIRES_REASON: "correctionReasonRequired", INVALID_STATE: "invalidMeetingState", INVALID_HOST: "invalidHost", IDEMPOTENCY_CONFLICT: "meetingChanged", CONFIRMATION_EXPIRED: "confirmationExpired", CLIENT_NOT_FOUND: "clientGone" }
 
 export function BookingMeetingActions({ booking, context, onSaved }: { booking: WorkspaceBooking; context: BookingActionContext; onSaved: () => void }) {
   const t = useTranslations("booking"), locale = useLocale()

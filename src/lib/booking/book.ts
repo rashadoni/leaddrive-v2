@@ -303,6 +303,13 @@ export interface BookingInput {
   /** Where the customer came from (src/lib/ad-conversions/attribution.ts). */
   attribution?: AdAttribution | null
   /**
+   * The customer this meeting is for, picked by staff from the records the
+   * organization already has. Honoured only when the caller is a member of
+   * staff (createStoredBooking's `access`); the public form never sends it.
+   * A meeting that carries one is not filed as a fresh lead.
+   */
+  client?: { type: "contact" | "lead"; id: string }
+  /**
    * Set only by the WhatsApp agent, never from a request body: the booking is
    * recorded as coming from WhatsApp, and this conversation's own holds do
    * not block it. Ignored on a staff booking.
