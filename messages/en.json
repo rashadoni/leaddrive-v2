@@ -533,7 +533,8 @@
     "boardTree": {
       "title": "Folders and boards",
       "expand": "Expand {name}",
-      "collapse": "Collapse {name}"
+      "collapse": "Collapse {name}",
+      "myWork": "My work"
     },
     "adConversions": "Ad conversions",
     "onlineBooking": "Online booking",
@@ -33119,5 +33120,30 @@
     "ownKey2": "LeadDrive's limit does not apply to it — you set the ceiling in the provider's console.",
     "ownKey3": "In the report above such rows are marked \"Your key\".",
     "ownKeyActive": "Claude runs on your key — LeadDrive's limit does not apply to it."
+  },
+  "myWork": {
+    "title": "My work",
+    "openCount": "{count} open",
+    "overdueCount": "{count} overdue",
+    "allBoards": "All boards",
+    "showDone": "Show finished",
+    "hideDone": "Hide finished",
+    "markDone": "Mark «{title}» as done",
+    "markOpen": "Reopen «{title}»",
+    "empty": "No open tasks assigned to you",
+    "emptyHint": "Tasks assigned to you on a board show up here.",
+    "failed": "Couldn't load the list",
+    "retry": "Try again",
+    "changeFailed": "The change wasn't saved",
+    "tooMany": "Showing the first {count} tasks",
+    "groups": {
+      "overdue": "Overdue",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "week": "This week",
+      "later": "Later",
+      "none": "No due date",
+      "done": "Finished (last 14 days)"
+    }
   }
 }

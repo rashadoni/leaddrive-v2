@@ -533,7 +533,8 @@
     "boardTree": {
       "title": "Qovluqlar və lövhələr",
       "expand": "{name} — aç",
-      "collapse": "{name} — bağla"
+      "collapse": "{name} — bağla",
+      "myWork": "Mənim işlərim"
     },
     "adConversions": "Reklam konversiyaları",
     "onlineBooking": "Onlayn yazılış",
@@ -33115,5 +33116,30 @@
     "ownKey2": "LeadDrive limiti ona tətbiq olunmur — həddi provayderin kabinetində özünüz qoyursunuz.",
     "ownKey3": "Yuxarıdakı hesabatda belə sətirlər «Sizin açar» kimi qeyd olunur.",
     "ownKeyActive": "Claude sizin açarınızla işləyir — LeadDrive limiti ona tətbiq olunmur."
+  },
+  "myWork": {
+    "title": "Mənim işlərim",
+    "openCount": "{count} açıq",
+    "overdueCount": "{count} gecikmiş",
+    "allBoards": "Bütün lövhələr",
+    "showDone": "Bitənləri göstər",
+    "hideDone": "Bitənləri gizlət",
+    "markDone": "«{title}» — bitdi kimi qeyd et",
+    "markOpen": "«{title}» — yenidən aç",
+    "empty": "Sizə təyin olunmuş açıq tapşırıq yoxdur",
+    "emptyHint": "Lövhədə tapşırıq sizə təyin olunanda burada görünəcək.",
+    "failed": "Siyahını açmaq alınmadı",
+    "retry": "Yenidən cəhd et",
+    "changeFailed": "Dəyişiklik saxlanmadı",
+    "tooMany": "İlk {count} tapşırıq göstərilir",
+    "groups": {
+      "overdue": "Gecikmiş",
+      "today": "Bu gün",
+      "tomorrow": "Sabah",
+      "week": "Bu həftə",
+      "later": "Sonra",
+      "none": "Tarixsiz",
+      "done": "Bitənlər (son 14 gün)"
+    }
   }
 }

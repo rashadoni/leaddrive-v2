@@ -141,3 +141,29 @@ describe("buildTaskListWhere — board isolation (per-board report safety)", () 
     expect(boardScope.OR).toEqual(expect.arrayContaining([collabClause]))
   })
 })
+
+describe("buildTaskListWhere — «Mənim işlərim» (mine=1, open=1)", () => {
+  it("narrows to the caller's own tasks on live boards, unfinished ones only, inside the access rules", async () => {
+    vi.mocked(getAccessibleDivisionIds).mockResolvedValue(["b1"])
+    const f = parseTaskListFilters(new URLSearchParams("mine=1&open=1"))
+    expect(f.mine).toBe(true)
+    expect(f.open).toBe(true)
+    const { where } = await buildTaskListWhere("org1", "u1", "sales", f)
+    const and = where.AND as unknown[]
+    expect(and).toContainEqual({
+      division: { is: { isActive: true } },
+      OR: [{ assignedTo: "u1" }, { collaborators: { some: { userId: "u1" } } }],
+    })
+    expect(and).toContainEqual({ status: { notIn: ["done", "completed", "cancelled"] } })
+    // The board scope is still AND-ed on — «mine» never widens what may be seen.
+    expect(JSON.stringify(and)).toContain('"divisionId":{"in":["b1"]}')
+  })
+
+  it("leaves an ordinary list as it was", async () => {
+    vi.mocked(getAccessibleDivisionIds).mockResolvedValue("all")
+    const f = parseTaskListFilters(new URLSearchParams("assigneeId=u1"))
+    expect(f.mine).toBe(false)
+    const { where } = await buildTaskListWhere("org1", "u1", "admin", f)
+    expect(where.AND).toBeUndefined()
+  })
+})
