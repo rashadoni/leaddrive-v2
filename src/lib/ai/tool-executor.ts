@@ -4,6 +4,7 @@ import { decimalToNumber } from "@/lib/prisma-decimal"
 import { recordStageTransition } from "@/lib/revenue-intelligence/transition-recorder"
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
 import { TOOL_META } from "./tools"
+import { aiToolDenialMessage, aiWriteToolPermission } from "./tool-permissions"
 import type { Role } from "@/lib/permissions"
 import { withDealEvents } from "@/lib/deals/deal-events"
 
@@ -33,6 +34,18 @@ export async function executeTool(
   if (meta.category === "read") {
     const { executeReadTool } = await import("./read-tool-executor")
     return executeReadTool(toolName, input, orgId, userId, role, timezone)
+  }
+
+  // Права роли — до карточки одобрения и до записи (src/lib/ai/tool-permissions.ts).
+  // Решает код, а не модель: что бы ни было написано в чате, действие идёт
+  // с правами того, кто вошёл. При одобрении `role` — роль одобряющего.
+  const permission = aiWriteToolPermission(role, toolName, input)
+  if (!permission.allowed) {
+    logAudit(orgId, "ai_action_denied", toolName, "", `AI: ${toolName} denied for role ${role ?? "none"}`, {
+      userId,
+      newValue: { missing: permission.missing },
+    })
+    return { success: false, error: aiToolDenialMessage(permission) }
   }
 
   // High-risk tools require approval (unless already approved)

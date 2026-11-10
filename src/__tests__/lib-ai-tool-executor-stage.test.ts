@@ -53,6 +53,7 @@ describe("executeTool: update_deal_stage", () => {
       "org-1",
       "u-1",
       true, // skip approval gate
+      "admin",
     )
     expect(res.success).toBe(true)
 
@@ -84,6 +85,7 @@ describe("executeTool: update_deal_stage", () => {
       "org-1",
       "u-1",
       true,
+      "admin",
     )
     expect(res.success).toBe(true)
 
@@ -102,6 +104,7 @@ describe("executeTool: update_deal_stage", () => {
       "org-1",
       "u-1",
       true,
+      "admin",
     )
     expect(res.success).toBe(false)
     expect(prisma.deal.update).not.toHaveBeenCalled()
