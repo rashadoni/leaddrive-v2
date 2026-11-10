@@ -170,7 +170,7 @@ export function channelAccountOf(row: InboxChannelRow): InboxChannelAccount {
  * from the caller so the two screens read from the same message catalogue.
  */
 export function channelAccountLine(
-  account: InboxChannelAccount | null | undefined,
+  account: (Pick<InboxChannelAccount, "name" | "number" | "numberIsMetaId"> & Partial<InboxChannelAccount>) | null | undefined,
   metaIdPrefix: string,
 ): string | null {
   if (!account) return null
