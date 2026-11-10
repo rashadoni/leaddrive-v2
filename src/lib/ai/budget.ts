@@ -77,7 +77,8 @@ export function calculateAiCost(
 /**
  * Check if organization has remaining AI budget for today.
  * Sums today's (UTC) spend in the gateway's journal `ai_usage` — every paid
- * AI call, whichever key paid for it (src/lib/ai/gateway). Until 2026-11-09 it
+ * AI call on the platform's key (src/lib/ai/gateway); calls on the
+ * organization's own key are its own business at its provider. Until 2026-11-09 it
  * summed AiInteractionLog.costUsd, which only the features that remembered to
  * log wrote, and only for Claude.
  * Returns { allowed, spent, limit, remaining }.
@@ -100,6 +101,9 @@ export async function checkAiBudget(orgId: string): Promise<{
       where: {
         organizationId: orgId,
         createdAt: { gte: todayStart },
+        // The limit guards the platform's key. A call on the organization's
+        // own key is paid by the organization at its provider.
+        keySource: "platform",
       },
       _sum: { costUsd: true },
     }),

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
-import { ChevronRight, CreditCard, Users, Zap, LayoutDashboard, Lock, FileText, Plug, Keyboard, BellRing, Globe2, Building2, Bot, Sparkles, Radio } from "lucide-react"
+import { ChevronRight, CreditCard, Users, Zap, LayoutDashboard, Lock, FileText, Plug, Keyboard, BellRing, Globe2, Building2, Bot, Sparkles, Radio, Wallet } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { useSession } from "next-auth/react"
 import { accessibleNavItems, orgFromSession } from "@/lib/nav-items"
@@ -40,6 +40,7 @@ export default function SettingsPage() {
     { icon: Keyboard, title: t("macrosTitle"), description: t("macrosDesc"), href: "/settings/macros", hint: t("macrosHint") },
     { icon: Globe2, title: t("customDomainsTitle"), description: t("customDomainsDesc"), href: "/settings/custom-domains", hint: t("hintCustomDomains") },
     { icon: Bot, title: t("aiAutomationTitle"), description: t("aiAutomationDesc"), href: "/settings/ai-automation", hint: t("aiAutomationHint") },
+    { icon: Wallet, title: t("aiSpendTitle"), description: t("aiSpendDesc"), href: "/settings/ai-spend", hint: t("aiSpendHint") },
   ]
   // A card is a second door to a page the sidebar already gates, so it follows
   // the sidebar's answer: a manager used to get all thirteen here, most of them

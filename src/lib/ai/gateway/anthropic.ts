@@ -4,8 +4,10 @@
  *  1. Key: the organization's own, if it entered one; else the platform's, if
  *     the platform superadmin allows this organization to use it
  *     (`organizations.aiPlatformKey`); else `AiUnavailableError("not_connected")`.
- *  2. Budget: the organization's daily AI budget (`checkAiBudget`) is checked
- *     before the call; over it — `AiUnavailableError("budget_exceeded")`.
+ *  2. Budget: on the platform's key, the organization's daily AI budget
+ *     (`checkAiBudget`, set by the platform superadmin) is checked before the
+ *     call; over it — `AiUnavailableError("budget_exceeded")`. On its own key
+ *     the organization sets its ceiling at the provider.
  *  3. Journal: every finished `messages.create` / `messages.stream` writes its
  *     tokens and price to `ai_usage`, with the feature and the agent.
  *
@@ -122,7 +124,9 @@ export async function anthropicAccess(
   options: Omit<AnthropicForOptions, "agentId"> = {},
 ): Promise<(agentId?: string | null) => Anthropic> {
   const { apiKey, keySource } = await anthropicKey(orgId)
-  if (!options.skipBudget) await assertBudget(orgId)
+  // The daily limit is the platform's: on its own key the organization sets
+  // its ceiling at the provider.
+  if (!options.skipBudget && keySource === "platform") await assertBudget(orgId)
   return (agentId) => metered(getAnthropicClient({
     apiKey,
     ...(options.timeout !== undefined ? { timeout: options.timeout } : {}),

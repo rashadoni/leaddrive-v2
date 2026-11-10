@@ -11,7 +11,13 @@
  *    off for it ("решаю по каждому клиенту", owner 2026-11-09).
  *  - Every finished call is one `ai_usage` row: feature, agent, tokens,
  *    price with the cache priced in, and whose key paid.
- *  - The daily budget reads that journal and refuses the next call.
+ *  - The daily budget reads that journal and refuses the next call — only
+ *    for spend on the platform's key: on its own key the organization is
+ *    neither counted nor stopped.
+ *  - The spend report («Настройки → ИИ и расходы») buckets the journal by
+ *    day, week or month in the viewer's time zone, returns every period of
+ *    the window (an empty one as zero), names the agent, and shows nothing
+ *    of another organization.
  *
  * The one stand-in is Claude itself: `getAnthropicClient` returns a client
  * that records which key it was built with and answers with fixed usage.
@@ -229,5 +235,83 @@ function schemaWithoutEmbeddings(): string {
     expect(state).toMatchObject({ allowed: false, spent: 0.02 })
     await expect(gateway.anthropicFor(ORG, "davinci-chat")).rejects.toMatchObject({ reason: "budget_exceeded" })
     expect(built.keys).toEqual([])
+  })
+  it("limits only spend on the platform key: the organization's own key is neither counted nor stopped", async () => {
+    await rls.runWithRlsBypass(() => prisma.organization.update({ where: { id: ORG }, data: { settings: { aiDailyBudgetUsd: 0.01 } } }))
+    const checkBudget = () => rls.runWithTenant(ORG, () => budget.checkAiBudget(ORG))
+    await gateway.recordAiUsage({ orgId: ORG, feature: "social", provider: "anthropic", keySource: "tenant", costUsd: 5 })
+    expect(await checkBudget()).toMatchObject({ allowed: true, spent: 0 })
+
+    await gateway.recordAiUsage({ orgId: ORG, feature: "social", provider: "anthropic", keySource: "platform", costUsd: 0.02 })
+    await expect(gateway.anthropicFor(ORG, "davinci-chat")).rejects.toMatchObject({ reason: "budget_exceeded" })
+
+    // Over the platform's limit, the organization's own key still answers.
+    await gateway.saveTenantAiCredential({ orgId: ORG, provider: "anthropic", secret: TENANT_KEY })
+    await gateway.anthropicFor(ORG, "davinci-chat")
+    expect(built.keys).toEqual([TENANT_KEY])
+
+    await gateway.deleteTenantAiCredential(ORG, "anthropic")
+    await expect(gateway.anthropicFor(ORG, "davinci-chat")).rejects.toMatchObject({ reason: "budget_exceeded" })
+  })
+
+  it("reports spend by day, week and month in the viewer's zone, every period of the window, and only its own", async () => {
+    const agent = await rls.runWithRlsBypass(() => prisma.aiAgentConfig.create({ data: { organizationId: ORG, configName: "Support Pro" } }))
+    const localDay = (at: Date, timeZone: string) =>
+      new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(at)
+    const now = new Date()
+    // 30 seconds after midnight in Baku today: still yesterday in UTC.
+    const bakuToday = localDay(now, "Asia/Baku")
+    const bakuMidnight = new Date(`${bakuToday}T00:00:30+04:00`)
+    const rows = [
+      { at: now, feature: "davinci-chat", agentId: agent.id, keySource: "platform", costUsd: 0.5, model: "claude-haiku-4-5-20251001" },
+      { at: bakuMidnight, feature: "davinci-chat", agentId: agent.id, keySource: "platform", costUsd: 0.1, model: "claude-haiku-4-5-20251001" },
+      { at: new Date(now.getTime() - 3 * 86_400_000), feature: "social", agentId: null, keySource: "platform", costUsd: 1.25, model: "claude-sonnet-4-6" },
+      { at: now, feature: "inbox-reply", agentId: null, keySource: "tenant", costUsd: 0.25, model: "claude-haiku-4-5-20251001" },
+      { at: new Date(now.getTime() - 20 * 86_400_000), feature: "social", agentId: null, keySource: "platform", costUsd: 7, model: "claude-sonnet-4-6" },
+    ]
+    await rls.runWithRlsBypass(async () => {
+      for (const r of rows) {
+        await prisma.aiUsage.create({ data: {
+          organizationId: ORG, feature: r.feature, agentId: r.agentId, provider: "anthropic", model: r.model,
+          inputTokens: 1000, outputTokens: 100, cacheReadTokens: 10, keySource: r.keySource, costUsd: r.costUsd, createdAt: r.at,
+        } })
+      }
+      await prisma.aiUsage.create({ data: { organizationId: OTHER, feature: "social", provider: "anthropic", keySource: "platform", costUsd: 9 } })
+    })
+
+    for (const timeZone of ["Asia/Baku", "UTC"]) {
+      const report = await gateway.aiSpendReport(ORG, { granularity: "day", range: "7d", timeZone })
+      expect(report.timeZone).toBe(timeZone)
+      // Seven days, today last, each present even when nothing was spent.
+      expect(report.periods).toHaveLength(7)
+      expect(report.periods.at(-1)!.period).toBe(localDay(now, timeZone))
+      const expected = new Map<string, number>()
+      for (const r of rows.slice(0, 4)) expected.set(localDay(r.at, timeZone), (expected.get(localDay(r.at, timeZone)) ?? 0) + r.costUsd)
+      for (const p of report.periods) expect(p.costUsd).toBeCloseTo(expected.get(p.period) ?? 0, 9)
+      expect(report.totals).toEqual({ calls: 4, costUsd: 2.1 })
+    }
+
+    const report = await gateway.aiSpendReport(ORG, { granularity: "day", range: "7d", timeZone: "Asia/Baku" })
+    expect(report.rows).toEqual([
+      { feature: "social", agentId: null, agentName: null, provider: "anthropic", model: "claude-sonnet-4-6", keySource: "platform", calls: 1, inputTokens: 1010, outputTokens: 100, costUsd: 1.25 },
+      { feature: "davinci-chat", agentId: agent.id, agentName: "Support Pro", provider: "anthropic", model: "claude-haiku-4-5-20251001", keySource: "platform", calls: 2, inputTokens: 2020, outputTokens: 200, costUsd: 0.6 },
+      { feature: "inbox-reply", agentId: null, agentName: null, provider: "anthropic", model: "claude-haiku-4-5-20251001", keySource: "tenant", calls: 1, inputTokens: 1010, outputTokens: 100, costUsd: 0.25 },
+    ])
+    // Today's limit counts the platform key only, by the UTC day.
+    const utcToday = rows.filter((r) => r.keySource === "platform" && localDay(r.at, "UTC") === localDay(now, "UTC")).reduce((s, r) => s + r.costUsd, 0)
+    expect(report.today.spent).toBeCloseTo(utcToday, 9)
+
+    // Weeks start on Monday and add up to the window's total; months likewise.
+    const weeks = await gateway.aiSpendReport(ORG, { granularity: "week", range: "30d", timeZone: "Asia/Baku" })
+    for (const p of weeks.periods) expect(new Date(`${p.period}T00:00:00Z`).getUTCDay()).toBe(1)
+    expect(weeks.periods.reduce((s, p) => s + p.costUsd, 0)).toBeCloseTo(weeks.totals.costUsd, 9)
+    expect(weeks.totals.costUsd).toBeCloseTo(9.1, 9)
+    const months = await gateway.aiSpendReport(ORG, { granularity: "month", range: "12m", timeZone: "Asia/Baku" })
+    expect(months.periods).toHaveLength(12)
+    for (const p of months.periods) expect(p.period.endsWith("-01")).toBe(true)
+    expect(months.totals.costUsd).toBeCloseTo(9.1, 9)
+
+    // A zone the runtime does not know reads as UTC rather than failing.
+    expect((await gateway.aiSpendReport(ORG, { granularity: "day", range: "7d", timeZone: "Mars/Olympus" })).timeZone).toBe("UTC")
   })
 })

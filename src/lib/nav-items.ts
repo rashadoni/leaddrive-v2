@@ -512,6 +512,8 @@ export const navItems: NavItem[] = [
   { module: "settings", href: "/settings/leaderboard", icon: Gauge, tKey: "kpiArenaConfig", group: "Settings", permissionScope: "settings" },
   { module: "settings", href: "/settings/call-tasks", icon: ClipboardList, tKey: "callTaskSettings", group: "Settings", permissionScope: "settings" },
   { module: "settings", href: "/settings/ai-automation", icon: Bot, tKey: "aiAutomation", group: "Settings", addon: "ai", permissionScope: "settings" },
+  // Spend and keys exist without the AI add-on too (inbox replies, social monitoring); admins only, server-side.
+  { module: "settings", href: "/settings/ai-spend", icon: Wallet, tKey: "aiSpend", group: "Settings", permissionScope: "settings" },
 ]
 
 /**
