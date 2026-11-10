@@ -499,99 +499,116 @@ export async function importExternalTasks(
 }
 
 /**
- * The day another tool's calendar shows each task on — Bordio's time blocks,
- * its My work → Calendar (owner, 2026-11-10: «Да, перенеси дни»). The CRM keeps
- * that day as the task's «Başlama tarixi» (Task.startDate), which is what
- * «Mənim işlərim → Təqvim» lays tasks out by; `null` puts the task in the
- * waiting list. The first import had filled startDate from Bordio's hidden
- * task «start», which is not the day its calendar shows (355 Sabunçu: start
- * 4 Nov, calendar 6 Nov; 74 Nizami: start 4 Nov, waiting list in Bordio).
+ * Each person's day for a task in another tool's calendar — Bordio's time
+ * blocks, its My work → Calendar (owner, 2026-11-10: «Да, перенеси дни» → «Да,
+ * свой у каждого»). In Bordio every assignee places the same task on their own
+ * day (53 Sabunçu: one on 2 Nov, two in the waiting list), so the CRM keeps
+ * one TaskPlan per task and person, which «Mənim işlərim → Təqvim» reads.
+ * `day: null` is that person's waiting list: their plan row goes.
  *
- * Only startDate changes, and only where the day differs (compared in the
- * given time zone, so a day the first import wrote as 00:00Z is not rewritten
- * to the same day at local midnight). Nothing else on the task, no history
- * line, nobody told: a plan carried over is not a change anyone made.
+ * Only plans change: nothing on the task, no history line, nobody told — a
+ * plan carried over is not a change anyone made. A re-run writes only what
+ * differs. A person the organization does not have is counted, not created.
  */
-export const externalPlannedDaysSchema = z.strictObject({
+export const externalPlansSchema = z.strictObject({
   source: z.string().regex(/^[a-z0-9_-]{1,40}$/u, "source must be a short lowercase name"),
   dryRun: z.boolean().default(false),
-  // The people's own time zone: the day is midnight there.
-  timeZone: z.string().min(1).max(64).refine((zone) => {
-    try { new Intl.DateTimeFormat("en-CA", { timeZone: zone }); return true } catch { return false }
-  }, "Unknown time zone"),
-  days: z.array(z.strictObject({
+  plans: z.array(z.strictObject({
     externalId: z.string().min(1).max(100),
+    userEmail: email,
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).nullable(),
-  })).min(1).max(1000),
+  })).min(1).max(2000),
 })
-export type ExternalPlannedDaysInput = z.infer<typeof externalPlannedDaysSchema>
+export type ExternalPlansInput = z.infer<typeof externalPlansSchema>
 
-export interface ExternalPlannedDaysResult {
+export interface ExternalPlansResult {
   dryRun: boolean
-  /** Tasks of this source found in the organization. */
-  matched: number
-  /** Of them, the ones whose day changes (set, moved or cleared). */
-  changed: number
-  /** Of `changed`, the ones that lose their day — they go to the waiting list. */
-  cleared: number
-  /** externalIds this source never brought over (first 20). */
-  missing: string[]
-  missingCount: number
+  /** Plan rows written new, moved to another day, removed (to the waiting list). */
+  created: number
+  moved: number
+  removed: number
+  unchanged: number
+  /** externalIds this source never brought over (first 20) and how many. */
+  missingTasks: string[]
+  missingTaskCount: number
+  /** E-mails in the payload nobody in the organization has, with how often. */
+  unmatchedEmails: Record<string, number>
 }
 
-/** yyyy-mm-dd of an instant in a time zone. */
-export function dayInZone(at: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(at)
-}
+const dayKey = (at: Date) => at.toISOString().slice(0, 10)
 
-/** The instant a day starts in a time zone. */
-export function midnightInZone(day: string, timeZone: string): Date {
-  const [y, m, d] = day.split("-").map(Number)
-  const guess = Date.UTC(y, m - 1, d)
-  // The zone's offset at that moment, from how the zone writes it.
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
-    timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
-  }).formatToParts(new Date(guess)).map((part) => [part.type, part.value]))
-  const shown = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second))
-  return new Date(guess - (shown - guess))
-}
-
-export async function setExternalPlannedDays(
+export async function importExternalPlans(
   tx: Tx,
-  args: { organizationId: string; input: ExternalPlannedDaysInput },
-): Promise<ExternalPlannedDaysResult> {
+  args: { organizationId: string; input: ExternalPlansInput },
+): Promise<ExternalPlansResult> {
   const { organizationId, input } = args
-  const ids = input.days.map((entry) => entry.externalId)
-  if (new Set(ids).size !== ids.length) throw new ExternalImportError("externalId repeats inside the batch", 400)
-
-  const tasks = await tx.task.findMany({
-    where: { organizationId, externalSource: input.source, externalId: { in: ids }, deletedAt: null },
-    select: { id: true, externalId: true, startDate: true },
-  })
-  const byExternal = new Map(tasks.map((task) => [task.externalId!, task]))
-  const missing = ids.filter((id) => !byExternal.has(id))
-
-  const changes: Array<{ id: string; startDate: Date | null }> = []
-  for (const entry of input.days) {
-    const task = byExternal.get(entry.externalId)
-    if (!task) continue
-    const current = task.startDate ? dayInZone(task.startDate, input.timeZone) : null
-    if (current === entry.day) continue
-    changes.push({ id: task.id, startDate: entry.day ? midnightInZone(entry.day, input.timeZone) : null })
+  const pairs = new Set<string>()
+  for (const plan of input.plans) {
+    const key = `${plan.externalId}|${plan.userEmail}`
+    if (pairs.has(key)) throw new ExternalImportError("A task and person repeat inside the batch", 400)
+    pairs.add(key)
   }
 
-  const result: ExternalPlannedDaysResult = {
+  const ids = [...new Set(input.plans.map((plan) => plan.externalId))]
+  const emails = [...new Set(input.plans.map((plan) => plan.userEmail))]
+  const [tasks, users] = await Promise.all([
+    tx.task.findMany({
+      where: { organizationId, externalSource: input.source, externalId: { in: ids }, deletedAt: null },
+      select: { id: true, externalId: true },
+    }),
+    tx.user.findMany({
+      where: { organizationId, email: { in: emails, mode: "insensitive" } },
+      select: { id: true, email: true },
+    }),
+  ])
+  const taskByExternal = new Map(tasks.map((task) => [task.externalId!, task.id]))
+  const userByEmail = new Map(users.map((user) => [user.email.toLowerCase(), user.id]))
+  const missing = ids.filter((id) => !taskByExternal.has(id))
+  const unmatchedEmails: Record<string, number> = {}
+
+  const current = await tx.taskPlan.findMany({
+    where: { organizationId, taskId: { in: tasks.map((task) => task.id) } },
+    select: { taskId: true, userId: true, day: true },
+  })
+  const planOf = new Map(current.map((plan) => [`${plan.taskId}|${plan.userId}`, dayKey(plan.day)]))
+
+  const writes: Array<{ taskId: string; userId: string; day: string | null; kind: "created" | "moved" | "removed" }> = []
+  let unchanged = 0
+  for (const plan of input.plans) {
+    const taskId = taskByExternal.get(plan.externalId)
+    if (!taskId) continue
+    const userId = userByEmail.get(plan.userEmail)
+    if (!userId) {
+      unmatchedEmails[plan.userEmail] = (unmatchedEmails[plan.userEmail] ?? 0) + 1
+      continue
+    }
+    const now = planOf.get(`${taskId}|${userId}`) ?? null
+    if (now === plan.day) { unchanged++; continue }
+    writes.push({ taskId, userId, day: plan.day, kind: plan.day === null ? "removed" : now === null ? "created" : "moved" })
+  }
+
+  const result: ExternalPlansResult = {
     dryRun: input.dryRun,
-    matched: tasks.length,
-    changed: changes.length,
-    cleared: changes.filter((change) => change.startDate === null).length,
-    missing: missing.slice(0, 20),
-    missingCount: missing.length,
+    created: writes.filter((write) => write.kind === "created").length,
+    moved: writes.filter((write) => write.kind === "moved").length,
+    removed: writes.filter((write) => write.kind === "removed").length,
+    unchanged,
+    missingTasks: missing.slice(0, 20),
+    missingTaskCount: missing.length,
+    unmatchedEmails,
   }
   if (input.dryRun) return result
-  for (const change of changes) {
-    // updateMany: the organization stays in the WHERE, not only in RLS.
-    await tx.task.updateMany({ where: { id: change.id, organizationId }, data: { startDate: change.startDate } })
+  for (const write of writes) {
+    if (write.day === null) {
+      await tx.taskPlan.deleteMany({ where: { organizationId, taskId: write.taskId, userId: write.userId } })
+      continue
+    }
+    const day = new Date(`${write.day}T00:00:00.000Z`)
+    await tx.taskPlan.upsert({
+      where: { taskId_userId: { taskId: write.taskId, userId: write.userId } },
+      create: { organizationId, taskId: write.taskId, userId: write.userId, day },
+      update: { day },
+    })
   }
   return result
 }

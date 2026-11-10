@@ -153,6 +153,7 @@ model Organization {
   boardNotes       BoardNote[]
   taskFollowers    TaskFollower[]
   taskTimeEntries  TaskTimeEntry[]
+  taskPlans        TaskPlan[]
   boardColumns     BoardColumn[]
   taskActivities   TaskActivity[]
 
@@ -831,6 +832,7 @@ model User {
   reportedTasks    Task[]            @relation("TaskReporter")
   checklistItems   TaskChecklist[]   @relation("TaskChecklistAssignee")
   taskFollows      TaskFollower[]    @relation("TaskFollows")
+  taskPlans        TaskPlan[]        @relation("TaskPlans")
   taskTimeEntries  TaskTimeEntry[]   @relation("TaskTimeEntries")
   taskActivities   TaskActivity[]
   headedDivisions  Division[]        @relation("DivisionHead")
@@ -1939,6 +1941,7 @@ model Task {
   tags               String[]           @default([])
   followers          TaskFollower[]
   timeEntries        TaskTimeEntry[]
+  plans              TaskPlan[]
 
   // Architect P1 — concurrent-completion race protection. Two PATCHes
   // hitting `complete` on the same recurring task simultaneously would
@@ -2018,6 +2021,29 @@ model TaskFollower {
 
 /// Time spent on a task (Bordio «Start timer» / «Log time»). A running timer is
 /// a row without `endedAt`; one per person (partial unique index in the migration).
+// The day a person plans to work on a task — their own, as in Bordio's
+// calendar, where each assignee places the same task on their own day (owner,
+// 2026-11-10: «Да, свой у каждого»). «Mənim işlərim → Təqvim» lays one's open
+// tasks out by it; no row = the task waits in that person's waiting list. A
+// calendar day, not an instant: no time zone can move it. Not the task's
+// «Başlama tarixi» (startDate), which is one for everybody.
+model TaskPlan {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  taskId         String
+  task           Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation("TaskPlans", fields: [userId], references: [id], onDelete: Cascade)
+  day            DateTime     @db.Date
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([taskId, userId])
+  @@index([organizationId, userId, day])
+  @@map("task_plans")
+}
+
 model TaskTimeEntry {
   id             String       @id @default(cuid())
   organizationId String

@@ -5,7 +5,7 @@ const tz = process.env.TZ
 process.env.TZ = "Asia/Baku"
 afterAll(() => { if (tz === undefined) delete process.env.TZ; else process.env.TZ = tz })
 
-const { dayKeys, dueNote, firstDayFor, planTasks, plannedDay, shiftDayKey, startDateForDay, visibleDayCount } =
+const { dayKeys, dueNote, firstDayFor, planForDay, planTasks, plannedDay, shiftDayKey, visibleDayCount } =
   await import("@/lib/tasks/my-work-calendar")
 
 describe("days in the «Təqvim» of Mənim işlərim", () => {
@@ -15,10 +15,11 @@ describe("days in the «Təqvim» of Mənim işlərim", () => {
     expect(dayKeys("2026-11-09", 3)).toEqual(["2026-11-09", "2026-11-10", "2026-11-11"])
   })
 
-  it("a planned day is the local midnight the task panel writes, and reads back as the same day", () => {
-    expect(startDateForDay("2026-11-12")).toBe("2026-11-11T20:00:00.000Z")
-    expect(plannedDay({ startDate: "2026-11-11T20:00:00.000Z" })).toBe("2026-11-12")
-    expect(plannedDay({ startDate: null })).toBeNull()
+  it("a plan is a calendar day, read back as the same day whatever the time zone", () => {
+    expect(planForDay("2026-11-12")).toEqual({ day: "2026-11-12T00:00:00.000Z" })
+    expect(plannedDay({ plans: [{ day: "2026-11-12T00:00:00.000Z" }] })).toBe("2026-11-12")
+    expect(plannedDay({ plans: [] })).toBeNull()
+    expect(plannedDay({})).toBeNull()
   })
 
   it("shows as many days as fit, like Bordio — one on a phone — and keeps yesterday in view from three", () => {
@@ -34,16 +35,16 @@ describe("days in the «Təqvim» of Mənim işlərim", () => {
 describe("which task goes where", () => {
   const days = ["2026-11-09", "2026-11-10", "2026-11-11"]
   const open = [
-    { id: "late", title: "53 Sabunçu", status: "todo", priority: "high", dueDate: "2026-11-02T19:59:59.000Z", startDate: null },
-    { id: "nodue", title: "Brendbuk", status: "todo", priority: "medium", dueDate: null, startDate: null },
-    { id: "soon", title: "74 Nizami", status: "in_progress", priority: "critical", dueDate: "2026-11-11T19:59:59.000Z", startDate: null },
-    { id: "tue-low", title: "Afişa", status: "todo", priority: "low", dueDate: null, startDate: startDateForDay("2026-11-10") },
-    { id: "tue-crit", title: "Banner", status: "todo", priority: "critical", dueDate: "2026-11-10T19:59:59.000Z", startDate: startDateForDay("2026-11-10") },
-    { id: "far", title: "Yeni il", status: "todo", priority: "medium", dueDate: null, startDate: startDateForDay("2026-12-01") },
+    { id: "late", title: "53 Sabunçu", status: "todo", priority: "high", dueDate: "2026-11-02T19:59:59.000Z", plans: [] },
+    { id: "nodue", title: "Brendbuk", status: "todo", priority: "medium", dueDate: null, plans: [] },
+    { id: "soon", title: "74 Nizami", status: "in_progress", priority: "critical", dueDate: "2026-11-11T19:59:59.000Z", plans: [] },
+    { id: "tue-low", title: "Afişa", status: "todo", priority: "low", dueDate: null, plans: [planForDay("2026-11-10")] },
+    { id: "tue-crit", title: "Banner", status: "todo", priority: "critical", dueDate: "2026-11-10T19:59:59.000Z", plans: [planForDay("2026-11-10")] },
+    { id: "far", title: "Yeni il", status: "todo", priority: "medium", dueDate: null, plans: [planForDay("2026-12-01")] },
   ]
   const finished = [
-    { id: "done-tue", title: "Aksiya Email", status: "done", priority: "medium", dueDate: null, startDate: startDateForDay("2026-11-10") },
-    { id: "done-nodate", title: "Old", status: "completed", priority: "medium", dueDate: null, startDate: null },
+    { id: "done-tue", title: "Aksiya Email", status: "done", priority: "medium", dueDate: null, plans: [planForDay("2026-11-10")] },
+    { id: "done-nodate", title: "Old", status: "completed", priority: "medium", dueDate: null, plans: [] },
   ]
   const { waiting, byDay } = planTasks(open, finished, days)
 

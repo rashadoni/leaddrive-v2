@@ -28,7 +28,7 @@ process.env.TZ = "Asia/Baku"
 afterAll(() => { if (tz === undefined) delete process.env.TZ; else process.env.TZ = tz })
 
 const { default: MyWorkPage } = await import("@/app/(dashboard)/boards/mine/page")
-const { localDayKey, shiftDayKey, startDateForDay } = await import("@/lib/tasks/my-work-calendar")
+const { localDayKey, planForDay, shiftDayKey } = await import("@/lib/tasks/my-work-calendar")
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -39,12 +39,12 @@ const DIVISIONS = [
   { id: "mx", name: "Cust-Serv / 2026", color: "#00B8D9", boardColumns: [] },
 ]
 const OPEN = [
-  { id: "w-late", title: "53 Sabunçu", status: "todo", priority: "high", dueDate: dueIn(-8), startDate: null, divisionId: "mx", _count: { comments: 1, attachments: 0 } },
-  { id: "w-soon", title: "74 Nizami", status: "todo", priority: "critical", dueDate: dueIn(1), startDate: null, divisionId: "mx", _count: { comments: 4, attachments: 4 } },
-  { id: "d-today", title: "Banner", status: "in_progress", priority: "critical", dueDate: dueIn(0), startDate: startDateForDay(today), divisionId: "z1" },
+  { id: "w-late", title: "53 Sabunçu", status: "todo", priority: "high", dueDate: dueIn(-8), plans: [], divisionId: "mx", _count: { comments: 1, attachments: 0 } },
+  { id: "w-soon", title: "74 Nizami", status: "todo", priority: "critical", dueDate: dueIn(1), plans: [], divisionId: "mx", _count: { comments: 4, attachments: 4 } },
+  { id: "d-today", title: "Banner", status: "in_progress", priority: "critical", dueDate: dueIn(0), plans: [planForDay(today)], divisionId: "z1" },
 ]
 const FINISHED = [
-  { id: "d-done", title: "Aksiya Email", status: "done", priority: "medium", dueDate: null, startDate: startDateForDay(shiftDayKey(today, -1)), divisionId: "mx" },
+  { id: "d-done", title: "Aksiya Email", status: "done", priority: "medium", dueDate: null, plans: [planForDay(shiftDayKey(today, -1))], divisionId: "mx" },
 ]
 
 let container: HTMLDivElement
@@ -61,7 +61,7 @@ beforeEach(() => {
     urls.push(url)
     if (url === "/api/v1/divisions") return new Response(JSON.stringify({ success: true, data: { divisions: DIVISIONS } }))
     if (url.includes("open=1")) return new Response(JSON.stringify({ success: true, data: { tasks: OPEN, total: OPEN.length } }))
-    if (url.includes("startAfter=")) return new Response(JSON.stringify({ success: true, data: { tasks: FINISHED, total: 1 } }))
+    if (url.includes("planFrom=")) return new Response(JSON.stringify({ success: true, data: { tasks: FINISHED, total: 1 } }))
     return new Response(JSON.stringify({ success: true, data: { tasks: [], total: 0 } }))
   }))
 })
@@ -86,14 +86,13 @@ describe("Mənim işlərim → Təqvim", () => {
     expect(days).toEqual([shiftDayKey(today, -1), today, shiftDayKey(today, 1), shiftDayKey(today, 2)])
   })
 
-  it("puts planned tasks on their day — finished ones too, read for the days in view — and the rest in the waiting list", async () => {
+  it("puts planned tasks on their day — finished ones too, read for the days in view by my own plan — and the rest in the waiting list", async () => {
     await render()
     expect(ids(`[data-day="${today}"]`)).toEqual(["d-today"])
     expect(ids(`[data-day="${shiftDayKey(today, -1)}"]`)).toEqual(["d-done"])
     expect(ids('[data-testid="my-work-waiting"]')).toEqual(["w-late", "w-soon"])
-    const finishedRead = urls.find((u) => u.includes("startAfter="))!
-    expect(finishedRead).toContain("mine=1&status=done,completed,cancelled")
-    expect(decodeURIComponent(finishedRead)).toContain(`startAfter=${startDateForDay(shiftDayKey(today, -1))}`)
+    const finishedRead = urls.filter((u) => u.includes("planFrom=")).at(-1)!
+    expect(finishedRead).toContain(`mine=1&status=done,completed,cancelled&planFrom=${shiftDayKey(today, -1)}&planTo=${shiftDayKey(today, 2)}`)
     expect(container.querySelector('[data-testid="my-work-waiting"] h2')?.textContent).toBe("Лист ожидания 2")
     expect(container.querySelector(`[data-day="${today}"] [data-testid="my-work-day-count"]`)?.textContent).toBe("1 задача")
   })

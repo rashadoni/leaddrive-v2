@@ -41,7 +41,12 @@ export interface TaskListFilters {
   open?: boolean
   /** Planned day («Başlama tarixi») within this range — the «Təqvim» of Mənim işlərim. */
   startRange?: { gte?: Date; lte?: Date } | null
+  /** The caller's OWN planned day (TaskPlan) within these calendar days, yyyy-mm-dd inclusive. */
+  planRange?: { gte?: Date; lte?: Date } | null
 }
+
+const dayParam = (value: string | null): Date | undefined =>
+  value && /^\d{4}-\d{2}-\d{2}$/u.test(value) ? new Date(`${value}T00:00:00.000Z`) : undefined
 
 // ISO-8601 range; a malformed bound is ignored (not an error) — filter bars may
 // send partial ranges.
@@ -73,6 +78,9 @@ export function parseTaskListFilters(sp: URLSearchParams): TaskListFilters {
     mine: sp.get("mine") === "1",
     open: sp.get("open") === "1",
     startRange: dateRange(sp.get("startAfter"), sp.get("startBefore")),
+    planRange: sp.get("planFrom") || sp.get("planTo")
+      ? { gte: dayParam(sp.get("planFrom")), lte: dayParam(sp.get("planTo")) }
+      : null,
   }
 }
 
@@ -123,6 +131,7 @@ export async function buildTaskListWhere(
   // still decide what may be seen at all.
   if (f.mine) and.push(myBoardTasksWhere(userId, false))
   if (f.open) and.push({ status: { notIn: [...CLOSED_TASK_STATUSES] } })
+  if (f.planRange) and.push({ plans: { some: { userId, day: f.planRange } } })
   if (and.length) where.AND = and
 
   // CRM sharing-rules: managers+ unrestricted; lower roles narrowed to own /
