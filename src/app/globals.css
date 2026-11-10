@@ -785,7 +785,18 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] .ai-search-btn {
   width: 18px;
   height: 18px;
   flex: none;
+}
+
+/* The accent belongs to the sparkle in the field. The send arrow sits on the
+   action button and takes its foreground: painted with the field's colour it
+   vanished on the wallpaper, white on the near-white button (owner,
+   2026-11-10: «что с кнопкой поиска случилось»). */
+.dashboard-welcome-command > div > svg {
   color: oklch(0.76 0.17 46);
+}
+
+.dashboard-welcome-command button svg {
+  color: inherit;
 }
 
 .dashboard-welcome-command input {
@@ -1222,7 +1233,7 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-comman
   background: var(--welcome-glass-strong);
 }
 
-html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-command svg {
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-command > div > svg {
   color: hsl(0 0% 100% / 0.8);
 }
 
