@@ -116,7 +116,7 @@ describe("Mənim işlərim → Təqvim", () => {
     expect(container.querySelector('[data-task-id="w-done"] .line-through')).toBeNull()
     // On its day a finished card is greyed, as in Bordio — nothing struck through, priority still there.
     expect(container.querySelector('[data-task-id="d-done"] .line-through')).toBeNull()
-    expect(container.querySelector('[data-task-id="d-done"]')?.className).toContain("text-muted-foreground")
+    expect(container.querySelector('[data-task-id="d-done"]')?.className).toContain("bg-gray-50")
     expect(container.querySelector('[data-task-id="d-done"]')?.textContent).toContain("Средний")
   })
 

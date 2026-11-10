@@ -33209,6 +33209,17 @@
       "dropHere": "Bura buraxın",
       "showMore": "Daha {count}"
     },
+    "stage": {
+      "backlog": "Backlog",
+      "todo": "Yeni tapşırıq",
+      "in_progress": "İcrada",
+      "testing": "Testdə",
+      "review": "Yoxlamada",
+      "done": "Tamamlandı"
+    },
+    "messages": "{count} mesaj",
+    "files": "{count} fayl",
+    "lateBy": "{days} gün gecikib",
     "groups": {
       "overdue": "Gecikmiş",
       "today": "Bu gün",

@@ -40,11 +40,7 @@ const cardFirst: CollisionDetection = (args) => {
 }
 const WAITING_SHOWN = 30
 const priorityKey = (p: string) => `priority${p[0].toUpperCase()}${p.slice(1)}`
-const PRIORITY_TONE: Record<string, string> = {
-  critical: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
-  urgent: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
-  high: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-}
+const HOT = new Set(["critical", "urgent"])
 
 export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks, boards, onOpenTask, flash }: {
   openTasks: T[]
@@ -192,12 +188,12 @@ export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks
   return (
     <div ref={box} data-testid="my-work-calendar">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium capitalize" data-testid="my-work-calendar-month">{monthTitle}</span>
+        <span className="text-[15px] font-bold capitalize text-gray-900 dark:text-gray-100" data-testid="my-work-calendar-month">{monthTitle}</span>
         <div className="ml-auto flex items-center gap-1.5">
-          <button type="button" onClick={() => setFirst(null)} className="h-8 rounded-md border bg-background px-3 text-sm hover:bg-muted" data-testid="my-work-calendar-today">
+          <button type="button" onClick={() => setFirst(null)} className="h-9 rounded-lg border px-3 text-sm font-medium border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" data-testid="my-work-calendar-today">
             {t("calendar.today")}
           </button>
-          <label className="relative inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border bg-background hover:bg-muted" title={t("calendar.pickDate")}>
+          <label className="relative inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" title={t("calendar.pickDate")}>
             <CalendarDays className="h-4 w-4" aria-hidden="true" />
             <input
               type="date"
@@ -207,10 +203,10 @@ export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks
               className="absolute inset-0 cursor-pointer opacity-0"
             />
           </label>
-          <button type="button" onClick={() => setFirst(shiftDayKey(start, -1))} aria-label={t("calendar.prevDay")} className="inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background hover:bg-muted" data-testid="my-work-calendar-prev">
+          <button type="button" onClick={() => setFirst(shiftDayKey(start, -1))} aria-label={t("calendar.prevDay")} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" data-testid="my-work-calendar-prev">
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           </button>
-          <button type="button" onClick={() => setFirst(shiftDayKey(start, 1))} aria-label={t("calendar.nextDay")} className="inline-flex h-8 w-8 items-center justify-center rounded-md border bg-background hover:bg-muted" data-testid="my-work-calendar-next">
+          <button type="button" onClick={() => setFirst(shiftDayKey(start, 1))} aria-label={t("calendar.nextDay")} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" data-testid="my-work-calendar-next">
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
@@ -218,7 +214,7 @@ export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks
 
       <DndContext sensors={sensors} collisionDetection={cardFirst} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
         <div
-          className="grid items-start gap-2 sm:gap-3"
+          className="grid items-start gap-2 rounded-2xl bg-[#F4F5F7] p-2 sm:gap-3 sm:p-3 dark:bg-gray-900/40"
           style={{ gridTemplateColumns: count === 1 ? "minmax(0,1fr)" : `repeat(${count}, minmax(0,1fr)) 17rem` }}
         >
           {days.map((day) => {
@@ -226,29 +222,29 @@ export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks
             const date = new Date(`${day}T12:00:00`)
             return (
               <DayColumn key={day} id={day} today={day === today}>
-                <div className="mb-2 flex items-baseline justify-between gap-2 border-b pb-1.5">
-                  <span className={cn("text-sm font-medium", day === today && "text-primary")}>
+                <div className="mb-2 flex items-baseline justify-between gap-2 border-b border-gray-100 px-1 pb-2 dark:border-gray-800">
+                  <span className={cn("text-[15px] font-bold text-gray-900 dark:text-gray-100", day === today && "text-[#EA580C] dark:text-[#FB923C]")}>
                     {date.getDate()} {formatWeekday(date, locale)}{day === today ? ` · ${t("calendar.todayMark")}` : ""}
                   </span>
-                  <span className="text-[11px] text-muted-foreground" data-testid="my-work-day-count">{t("calendar.tasksCount", { count: list.length })}</span>
+                  <span className="text-xs font-medium text-gray-500" data-testid="my-work-day-count">{t("calendar.tasksCount", { count: list.length })}</span>
                 </div>
-                <div className="space-y-1.5">{list.map((task) => card(task, "day"))}</div>
-                {dragging && <div className="mt-1.5 rounded-md border border-dashed border-primary/50 py-2 text-center text-[11px] text-primary">{t("calendar.dropHere")}</div>}
+                <div className="space-y-2">{list.map((task) => card(task, "day"))}</div>
+                {dragging && <div className="mt-2 rounded-lg border-2 border-dashed border-[#EA580C]/60 py-2 text-center text-xs font-medium text-[#C2410C]">{t("calendar.dropHere")}</div>}
               </DayColumn>
             )
           })}
           <WaitingList title={t("calendar.waiting")} count={waiting.length}>
             {waitingShown.map((task) => card(task, "waiting"))}
             {!waitingAll && waiting.length > WAITING_SHOWN && (
-              <button type="button" onClick={() => setWaitingAll(true)} className="w-full rounded-md border bg-background py-1.5 text-xs hover:bg-muted" data-testid="my-work-waiting-more">
+              <button type="button" onClick={() => setWaitingAll(true)} className="w-full rounded-lg border py-2 text-sm font-medium border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" data-testid="my-work-waiting-more">
                 {t("calendar.showMore", { count: waiting.length - WAITING_SHOWN })}
               </button>
             )}
-            {waiting.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">{t("calendar.waitingEmpty")}</p>}
+            {waiting.length === 0 && <p className="py-4 text-center text-sm text-gray-500">{t("calendar.waitingEmpty")}</p>}
           </WaitingList>
         </div>
         <DragOverlay dropAnimation={null}>
-          {dragging ? <div className="w-56 rounded-md border bg-card p-2 text-sm shadow-lg">{dragging.title}</div> : null}
+          {dragging ? <div className="w-56 rounded-lg border border-gray-300 bg-white p-2.5 text-sm font-semibold text-gray-900 shadow-lg">{dragging.title}</div> : null}
         </DragOverlay>
       </DndContext>
     </div>
@@ -262,7 +258,7 @@ function DayColumn({ id, today, children }: { id: string; today: boolean; childr
       ref={setNodeRef}
       data-testid="my-work-day"
       data-day={id}
-      className={cn("min-h-[16rem] rounded-lg bg-muted/50 p-2", today && "ring-1 ring-primary/60", isOver && "bg-primary/10")}
+      className={cn("min-h-[16rem] rounded-xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-950", today && "border-2 border-[#EA580C]", isOver && "bg-orange-50 dark:bg-orange-950/30")}
     >
       {children}
     </section>
@@ -277,12 +273,12 @@ function WaitingList({ title, count, children }: { title: string; count: number;
       data-testid="my-work-waiting"
       // As tall as a day column at least: with one or two tasks left, a card
       // dropped under them must still land here (found on prod 2026-11-10).
-      className={cn("min-h-[16rem] rounded-lg border p-2", isOver && "bg-primary/10")}
+      className={cn("min-h-[16rem] rounded-xl border border-gray-200 bg-white p-2 dark:border-gray-800 dark:bg-gray-950", isOver && "bg-orange-50 dark:bg-orange-950/30")}
     >
-      <h2 className="mb-2 text-sm font-semibold">
-        {title} <span className="font-normal text-muted-foreground">{count}</span>
+      <h2 className="mb-2 border-b border-gray-100 px-1 pb-2 text-[15px] font-bold text-gray-900 dark:border-gray-800 dark:text-gray-100">
+        {title} <span className="text-sm font-medium text-gray-500">{count}</span>
       </h2>
-      <div className="space-y-1.5">{children}</div>
+      <div className="space-y-2">{children}</div>
     </section>
   )
 }
@@ -318,17 +314,17 @@ function TaskCard({ task, board, boards, place, onOpen, priorityLabel, dueText }
       data-task-id={task.id}
       data-place={place}
       className={cn(
-        "cursor-grab touch-manipulation rounded-md border bg-card p-2 text-left text-sm active:cursor-grabbing",
-        closed && "bg-muted/60 text-muted-foreground",
-        drop.isOver && !isDragging && "border-t-2 border-t-primary",
+        "cursor-grab touch-manipulation rounded-lg border border-gray-200 bg-white p-2.5 text-left text-sm shadow-sm transition-colors hover:border-gray-400 active:cursor-grabbing dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-500",
+        closed && "bg-gray-50 shadow-none dark:bg-gray-900/60",
+        drop.isOver && !isDragging && "border-t-4 border-t-[#EA580C]",
         isDragging && "opacity-40",
       )}
     >
-      <div className="leading-snug">{task.title}</div>
+      <div className={cn("text-[14px] font-semibold leading-snug text-gray-900 dark:text-gray-100", closed && "text-gray-500 dark:text-gray-400")}>{task.title}</div>
       {priorityLabel && (
-        <span className={cn("mt-1 inline-block rounded px-1.5 py-0.5 text-[11px]", closed ? "bg-muted text-muted-foreground" : PRIORITY_TONE[task.priority ?? ""] ?? "bg-muted text-muted-foreground")}>{priorityLabel}</span>
+        <div className={cn("mt-1 text-xs", HOT.has(task.priority ?? "") && !closed ? "font-semibold text-red-600" : "text-gray-600 dark:text-gray-300")}>{priorityLabel}</div>
       )}
-      <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+      <div className={cn("mt-1.5 flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-300", closed && "text-gray-500 dark:text-gray-400")}>
         <span className="inline-flex min-w-0 items-center gap-1 truncate">
           {board && <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: board.color || "#94a3b8" }} aria-hidden="true" />}
           <span className="truncate">{board ? boardLabel(board, boards) : ""}</span>
@@ -336,7 +332,7 @@ function TaskCard({ task, board, boards, place, onOpen, priorityLabel, dueText }
         <span className="inline-flex shrink-0 items-center gap-2">
           {comments > 0 && <span className="inline-flex items-center gap-0.5"><MessageSquare className="h-3 w-3" aria-hidden="true" />{comments}</span>}
           {files > 0 && <span className="inline-flex items-center gap-0.5"><Paperclip className="h-3 w-3" aria-hidden="true" />{files}</span>}
-          {dueText && !closed && <span className={cn(dueText.late && "text-red-600")} data-testid="my-work-card-due">{dueText.text}</span>}
+          {dueText && !closed && <span className={cn("tabular-nums", dueText.late && "font-semibold text-red-600")} data-testid="my-work-card-due">{dueText.text}</span>}
         </span>
       </div>
     </div>
