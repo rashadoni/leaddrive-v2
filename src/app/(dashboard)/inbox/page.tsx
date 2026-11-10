@@ -3276,8 +3276,8 @@ export default function InboxV2Page() {
                   </span>
                 ))}
               </div>
-              {accountLine && <Detail icon={InboxIcon} label={t("arrivedAt")} value={accountLine} />}
-              {customerChannelAddress && <Detail icon={AtSign} label={t("writesFrom")} value={customerChannelAddress} />}
+              {accountLine && <Detail icon={InboxIcon} label={t("arrivedAt")} value={accountLine} wrap />}
+              {customerChannelAddress && <Detail icon={AtSign} label={t("writesFrom")} value={customerChannelAddress} wrap />}
             </Section>
 
             {/* Which ad brought this chat. Shown only when Meta told us, so a
@@ -3753,12 +3753,23 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function Detail({ icon: Icon, label, value }: { icon: typeof Mail; label: string; value: string }) {
+/**
+ * `wrap` is for a value whose end is the point of it. A phone or a date is short and clipping it
+ * costs nothing, but «LeadDrive WhatsApp Business · +994 10 531 30 65» — one of this workspace's own
+ * channels — is the number the operator came here to read, and `truncate` ate exactly that half
+ * (seen on the live screen, 2026-11-10). Such a row takes a second line instead.
+ */
+function Detail({ icon: Icon, label, value, wrap = false }: {
+  icon: typeof Mail
+  label: string
+  value: string
+  wrap?: boolean
+}) {
   return (
-    <div className="flex items-center gap-2 text-xs">
-      <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+    <div className={cn("flex gap-2 text-xs", wrap ? "items-start" : "items-center")}>
+      <Icon className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0", wrap && "mt-[1px]")} />
       <span className="text-muted-foreground w-20 shrink-0">{label}</span>
-      <span className="truncate font-medium" title={value}>{value}</span>
+      <span className={cn("font-medium", wrap ? "min-w-0 break-words" : "truncate")} title={value}>{value}</span>
     </div>
   )
 }
