@@ -366,4 +366,23 @@ function schemaWithoutEmbeddings(): string {
     ]))
     expect(rows).toHaveLength(2)
   })
+  it("prices a voice session by Google's token count when the console sends it, never below its incoming audio", async () => {
+    const voiceBudget = await import("@/lib/ai/voice/budget")
+    const started = new Date()
+    // Two turns of a real conversation: the context billed twice, text and audio apart.
+    const usage = { textIn: 18_000, audioIn: 1_200, textOut: 40, audioOut: 900, turns: 2 }
+    await rls.runWithTenant(ORG, () => voiceBudget.settleVoiceSeconds(ORG, "user-1", 300, 60, started, usage))
+    // A console that reports almost nothing still pays a minute of incoming audio.
+    const tiny = { textIn: 1, audioIn: 0, textOut: 0, audioOut: 0, turns: 1 }
+    await rls.runWithTenant(ORG, () => voiceBudget.settleVoiceSeconds(ORG, "user-1", 300, 60, started, tiny))
+
+    const rows = (await usageRows(ORG))
+      .sort((a, b) => b.costUsd - a.costUsd)
+      .map(({ feature, model, inputTokens, outputTokens, costUsd }) => ({ feature, model, inputTokens, outputTokens, costUsd }))
+    expect(rows).toEqual([
+      { feature: "voice-assistant", model: "gemini-live", inputTokens: 19_200, outputTokens: 940,
+        costUsd: expect.closeTo((18_000 * 0.75 + 1_200 * 3 + 40 * 4.5 + 900 * 12) / 1e6, 12) },
+      { feature: "voice-assistant", model: "gemini-live", inputTokens: 1, outputTokens: 0, costUsd: expect.closeTo(0.0045, 12) },
+    ])
+  })
 })

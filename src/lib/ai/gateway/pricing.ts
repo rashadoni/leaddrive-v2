@@ -46,6 +46,21 @@ export const UNIT_PRICING = {
   visionImage: 0.0015,
 } as const
 
+/**
+ * Gemini Live (gemini-3.8-live), USD per million tokens — the phone line's
+ * table (ai.google.dev/gemini-api/docs/pricing, read 2026-11-04 for
+ * scripts/zeytun-line/stand-crm.ts). Every turn bills the whole context.
+ */
+export const LIVE_TOKEN_PRICING = { textIn: 0.75, audioIn: 3, textOut: 4.5, audioOut: 12 } as const
+
+export function liveUsageCostUsd(tokens: { textIn: number; audioIn: number; textOut: number; audioOut: number }): number {
+  return (tokens.textIn * LIVE_TOKEN_PRICING.textIn + tokens.audioIn * LIVE_TOKEN_PRICING.audioIn
+    + tokens.textOut * LIVE_TOKEN_PRICING.textOut + tokens.audioOut * LIVE_TOKEN_PRICING.audioOut) / 1_000_000
+}
+
+/** The least a connected Live minute costs: its incoming audio once (25 tokens a second at the audio-in price). */
+export const LIVE_AUDIO_IN_MINUTE_USD = 25 * 60 * LIVE_TOKEN_PRICING.audioIn / 1_000_000
+
 export function perMinuteCostUsd(pricePerMinute: number, seconds: number): number {
   return Math.max(0, seconds) / 60 * pricePerMinute
 }

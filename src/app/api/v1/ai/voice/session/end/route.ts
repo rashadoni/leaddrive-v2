@@ -6,6 +6,7 @@ import { settleVoiceSeconds } from "@/lib/ai/voice/budget"
 import { voiceScopedWhere } from "@/lib/ai/voice/scoped-where"
 import { MAX_SESSION_SECONDS } from "@/lib/ai/voice/config"
 import { voiceMarkerIsPreConnection } from "@/lib/ai/voice/session-marker"
+import { parseLiveUsage } from "@/lib/ai/voice/live-usage"
 
 /**
  * Confirmed end of a conversation: close the row and hand back the unused part
@@ -16,10 +17,13 @@ import { voiceMarkerIsPreConnection } from "@/lib/ai/voice/session-marker"
  */
 export const POST = withRlsAuth("ai", "read", async (req, auth) => {
   const body = await req.json().catch(() => null)
-  const { voiceSessionId, elapsedSeconds } = (body ?? {}) as {
+  const { voiceSessionId, elapsedSeconds, usage } = (body ?? {}) as {
     voiceSessionId?: unknown
     elapsedSeconds?: unknown
+    /** Gemini Live's token counts, as the console added up its turns (live-usage.ts). */
+    usage?: unknown
   }
+  const liveUsage = parseLiveUsage(usage)
   if (typeof voiceSessionId !== "string" || !voiceSessionId) {
     return NextResponse.json({ error: "voiceSessionId required" }, { status: 400 })
   }
@@ -79,7 +83,8 @@ export const POST = withRlsAuth("ai", "read", async (req, auth) => {
 
     // Settle the same month in which the reservation was made. This matters
     // for a session that crosses a month boundary by a few minutes.
-    await settleVoiceSeconds(auth.orgId, auth.userId, session.reservedSeconds, billed, session.startedAt)
+    if (liveUsage) await settleVoiceSeconds(auth.orgId, auth.userId, session.reservedSeconds, billed, session.startedAt, liveUsage)
+    else await settleVoiceSeconds(auth.orgId, auth.userId, session.reservedSeconds, billed, session.startedAt)
 
     await logAudit(auth.orgId, "voice_session_ended", "voice_session", session.id, undefined, {
       userId: auth.userId,

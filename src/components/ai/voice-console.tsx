@@ -4,6 +4,7 @@ import { SpeechRelay } from "@/lib/ai/voice/speech-relay"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import type { FunctionCall, FunctionResponse, LiveServerMessage, Session as GeminiLiveSession } from "@google/genai"
+import { addLiveUsage, EMPTY_LIVE_USAGE, type LiveUsageTotals } from "@/lib/ai/voice/live-usage"
 import { usePathname, useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { Mic } from "lucide-react"
@@ -274,6 +275,7 @@ async function settleVoiceSession(
   session: SessionInfo,
   startedAtMs: number,
   reason: string,
+  usage?: LiveUsageTotals,
 ): Promise<void> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), SETTLE_TIMEOUT_MS)
@@ -286,6 +288,8 @@ async function settleVoiceSession(
         voiceSessionId: session.voiceSessionId,
         elapsedSeconds: Math.max(0, Math.ceil((Date.now() - startedAtMs) / 1000)),
         reason,
+        // What Google counted, turn by turn: the server prices the conversation by it.
+        ...(usage && usage.turns > 0 ? { usage } : {}),
       }),
       keepalive: true,
       signal: controller.signal,
@@ -397,6 +401,8 @@ function ConsoleInner({
   const micMeterRef = useRef<{ context: AudioContext; timer: number; source: MediaStreamAudioSourceNode } | null>(null)
   const generationRef = useRef(0)
   const startedAtRef = useRef(0)
+  /** Gemini Live's usageMetadata of this conversation's turns, added up (live-usage.ts). */
+  const liveUsageRef = useRef<LiveUsageTotals>(EMPTY_LIVE_USAGE)
   const lastActivityRef = useRef(0)
   const failureStreakRef = useRef(0)
   // Ceilings on how much the model may do in one breath. Counted here because
@@ -766,7 +772,7 @@ function ConsoleInner({
     setStarting(false)
     closeMedia()
     if (stopNotice && generationRef.current === expectedGeneration + 1) setNotice(stopNotice)
-    if (current) await settleVoiceSession(current, startedAtRef.current, reason)
+    if (current) await settleVoiceSession(current, startedAtRef.current, reason, liveUsageRef.current)
   }, [closeMedia])
 
   const failConversation = useCallback(async (
@@ -908,6 +914,7 @@ function ConsoleInner({
   ) => {
     if (generationRef.current !== generation || liveSessionRef.current !== live) return
     lastActivityRef.current = Date.now()
+    if (message.usageMetadata) liveUsageRef.current = addLiveUsage(liveUsageRef.current, message.usageMetadata)
 
     // Any new model generation or function call invalidates an older
     // checkpoint locally, even if a resumable:false update is lost with an
@@ -1440,6 +1447,7 @@ function ConsoleInner({
       )
       setSession(started)
       startedAtRef.current = Date.now()
+      liveUsageRef.current = EMPTY_LIVE_USAGE
       lastActivityRef.current = Number.POSITIVE_INFINITY
       failureStreakRef.current = 0
 
@@ -1643,9 +1651,13 @@ function ConsoleInner({
       const elapsedSeconds = Math.ceil((Date.now() - startedAtRef.current) / 1000)
       const accepted = navigator.sendBeacon?.(
         "/api/v1/ai/voice/session/end",
-        new Blob([JSON.stringify({ voiceSessionId: current.voiceSessionId, elapsedSeconds })], { type: "application/json" }),
+        new Blob([JSON.stringify({
+          voiceSessionId: current.voiceSessionId,
+          elapsedSeconds,
+          ...(liveUsageRef.current.turns > 0 ? { usage: liveUsageRef.current } : {}),
+        })], { type: "application/json" }),
       )
-      if (accepted !== true) void settleVoiceSession(current, startedAtRef.current, "page_unload")
+      if (accepted !== true) void settleVoiceSession(current, startedAtRef.current, "page_unload", liveUsageRef.current)
     }
     window.addEventListener("pagehide", tearDown)
     return () => {

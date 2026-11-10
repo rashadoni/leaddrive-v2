@@ -64,6 +64,14 @@ function request(elapsedSeconds = 20) {
   })
 }
 
+function withUsage(usage: unknown) {
+  return new NextRequest("http://localhost/api/v1/ai/voice/session/end", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ voiceSessionId: "voice-session-1", elapsedSeconds: 20, usage }),
+  })
+}
+
 beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(NOW)
@@ -183,5 +191,15 @@ describe("voice session end settlement", () => {
     expect(deps.findFirst).toHaveBeenCalledTimes(4)
     expect(deps.settleVoiceSeconds).not.toHaveBeenCalled()
     expect(deps.logAudit).not.toHaveBeenCalled()
+  })
+  it("hands Gemini's token totals from the console to the settlement, and ignores a malformed count", async () => {
+    const usage = { textIn: 18_000, audioIn: 1_200, textOut: 40, audioOut: 900, turns: 2 }
+    deps.findFirst.mockResolvedValueOnce(session("gemini:connected:nonce"))
+    await POST(withUsage(usage))
+    expect(deps.settleVoiceSeconds).toHaveBeenLastCalledWith("org-1", "user-1", 300, expect.any(Number), new Date("2026-08-12T11:59:30.000Z"), usage)
+
+    deps.findFirst.mockResolvedValueOnce(session("gemini:connected:nonce"))
+    await POST(withUsage({ ...usage, turns: -1 }))
+    expect(deps.settleVoiceSeconds.mock.lastCall).toHaveLength(5)
   })
 })
