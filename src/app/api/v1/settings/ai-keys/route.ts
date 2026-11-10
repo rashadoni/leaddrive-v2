@@ -6,11 +6,13 @@ import {
   AI_PROVIDERS, deleteTenantAiCredential, isSelfKeyProvider, listTenantAiCredentials, saveTenantAiCredential,
   verifyProviderKey, type AiProvider,
 } from "@/lib/ai/gateway"
+import { providerUses } from "@/lib/ai/gateway/provider-uses"
 
 /**
  * The organization's own AI provider keys («Настройки → ИИ и расходы»).
  *
- * GET    — each provider: the key's last four characters and state, never the key.
+ * GET    — each provider: the key's last four characters and state, never the key;
+ *          which of the organization's modules call it, and its 30-day spend.
  * PUT    { provider, key } — checked at the provider with a free request, then
  *        sealed and saved; a key the provider refuses is not saved.
  * DELETE ?provider= — back to the platform's key (if the superadmin allows it).
@@ -22,11 +24,13 @@ const isProvider = (value: unknown): value is AiProvider =>
   typeof value === "string" && (AI_PROVIDERS as readonly string[]).includes(value)
 
 async function state(orgId: string) {
-  const [org, keys] = await Promise.all([
+  const [org, keys, providers] = await Promise.all([
     prisma.organization.findUnique({ where: { id: orgId }, select: { aiPlatformKey: true } }),
     listTenantAiCredentials(orgId),
+    // Which of its modules call each provider, and what each cost in 30 days.
+    providerUses(orgId),
   ])
-  return { platformAllowed: org?.aiPlatformKey !== false, keys }
+  return { platformAllowed: org?.aiPlatformKey !== false, keys, providers }
 }
 
 export const GET = withRlsSessionAuth(async (_req, auth) => {

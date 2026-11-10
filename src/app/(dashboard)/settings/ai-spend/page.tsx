@@ -13,7 +13,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { Hint } from "@/components/hint"
 import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
-import { aiFeatureLabel } from "@/lib/ai/gateway/features"
+import { aiFeatureLabel, AI_USES, PROVIDER_KEY_SOURCE, PROVIDER_USES, type AiUseId } from "@/lib/ai/gateway/features"
 import type { SpendGranularity, SpendRange, SpendReport, SpendRow } from "@/lib/ai/gateway/spend-report"
 
 const RANGES_FOR: Record<SpendGranularity, readonly SpendRange[]> = {
@@ -29,14 +29,15 @@ const OTHER_COLOR = "#9ca3af"
 const OTHER = "__other"
 
 type KeyRow = { provider: string; keyHint: string; status: string; lastCheckedAt: string | null }
-type KeysState = { platformAllowed: boolean; keys: KeyRow[] }
+type ProviderUseRow = { provider: string; uses: AiUseId[]; costUsd: number; calls: number }
+type KeysState = { platformAllowed: boolean; keys: KeyRow[]; providers?: ProviderUseRow[] }
 
 const PROVIDER_ROWS = [
-  { id: "anthropic", name: "Claude", vendor: "Anthropic", uses: "usesAnthropic" },
-  { id: "gemini", name: "Gemini", vendor: "Google", uses: "usesGemini" },
-  { id: "openai", name: "OpenAI", vendor: "", uses: "usesOpenai" },
-  { id: "voyage", name: "Voyage", vendor: "", uses: "usesVoyage" },
-  { id: "google_vision", name: "Google Vision", vendor: "Google Cloud", uses: "usesGoogle" },
+  { id: "anthropic", name: "Claude", vendor: "Anthropic", path: "API Keys" },
+  { id: "gemini", name: "Gemini", vendor: "Google", path: "Get API key" },
+  { id: "openai", name: "OpenAI", vendor: "", path: "API keys" },
+  { id: "voyage", name: "Voyage", vendor: "", path: "API Keys" },
+  { id: "google_vision", name: "Google Vision", vendor: "Google Cloud", path: "APIs & Services → Credentials" },
 ] as const
 
 function intlLocale(locale: string) {
@@ -203,10 +204,8 @@ export default function AiSpendPage() {
         )}
       </section>
 
-      <div className="grid items-stretch gap-6 lg:grid-cols-2">
-        <KeysCard keys={keys} onChange={setKeys} t={t} nf={nf} />
-        <LimitCard report={report} keys={keys} money={money} nf={nf} t={t} />
-      </div>
+      <KeysCard keys={keys} onChange={setKeys} t={t} nf={nf} money={money} count={count} />
+      <LimitCard report={report} keys={keys} money={money} nf={nf} t={t} />
     </div>
   )
 }
@@ -459,7 +458,18 @@ function niceStep(peak: number) {
   return (unit <= 1 ? 1 : unit <= 2 ? 2 : unit <= 5 ? 5 : 10) * power
 }
 
-function KeysCard({ keys, onChange, t, nf }: { keys: KeysState | null; onChange: (k: KeysState) => void; t: T; nf: string }) {
+/** The menu's own name of a use, in the person's language (`nav` namespace). */
+function menuLabel(tNav: T, id: AiUseId) {
+  const label = AI_USES[id].label
+  return "nav" in label ? tNav(label.nav) : tNav(`groups.${label.group}`)
+}
+
+const KEY_GRID = "grid gap-x-6 gap-y-2 md:grid-cols-[13rem_1fr_8rem_16rem]"
+
+function KeysCard({ keys, onChange, t, nf, money, count }: {
+  keys: KeysState | null; onChange: (k: KeysState) => void; t: T; nf: string; money: (v: number) => string; count: (v: number) => string
+}) {
+  const tNav = useTranslations("nav")
   // The provider whose key is being typed, or the one asked about removing.
   const [editing, setEditing] = useState<string | null>(null)
   const [value, setValue] = useState("")
@@ -469,6 +479,9 @@ function KeysCard({ keys, onChange, t, nf }: { keys: KeysState | null; onChange:
   const platformAllowed = keys?.platformAllowed !== false
   const ownKey = (provider: string) => keys?.keys.find((k) => k.provider === provider) ?? null
   const nameOf = (provider: string | null) => PROVIDER_ROWS.find((p) => p.id === provider)?.name ?? ""
+  const usesOf = (provider: string) => keys?.providers?.find((p) => p.provider === provider)
+  // Providers this organization uses first; the ones none of its modules call go to the bottom.
+  const rows = [...PROVIDER_ROWS].sort((a, b) => Number(!(usesOf(a.id)?.uses.length ?? 1)) - Number(!(usesOf(b.id)?.uses.length ?? 1)))
 
   async function save(provider: string) {
     setSaving(true)
@@ -506,25 +519,33 @@ function KeysCard({ keys, onChange, t, nf }: { keys: KeysState | null; onChange:
   const date = (iso: string | null) => iso ? formatDay(new Date(iso), nf, false) : ""
 
   return (
-    <section className="flex flex-col rounded-xl border border-border bg-card p-6">
+    <section className="rounded-xl border border-border bg-card p-6" data-testid="ai-keys">
       <h2 className="text-base font-semibold">{t("keysTitle")}</h2>
       <p className="mt-1 text-xs text-muted-foreground">{t("keysSubtitle")}</p>
-      <div className="mt-4 divide-y divide-border/60">
-        {PROVIDER_ROWS.map((p) => {
+      <div className={`${KEY_GRID} mt-4 hidden border-b border-border pb-2 text-xs text-muted-foreground md:grid`}>
+        <div>{t("colProviderKey")}</div><div>{t("colUses")}</div><div className="text-right">{t("col30d")}</div><div>{t("colOwnKey")}</div>
+      </div>
+      <div className="divide-y divide-border/60">
+        {rows.map((p) => {
           const own = ownKey(p.id)
           const off = !own && !platformAllowed
+          const use = usesOf(p.id)
+          // Before the server answered, nothing is greyed out.
+          const unused = Boolean(use && use.uses.length === 0)
+          const source = PROVIDER_KEY_SOURCE[p.id]
           return (
-            <div key={p.id} className="py-3">
-              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 sm:flex-nowrap">
-                <div className="min-w-0 sm:flex-1">
+            <div key={p.id} className="py-4" data-testid={`ai-key-${p.id}`}>
+              <div className={`${KEY_GRID} items-start ${unused ? "opacity-60" : ""}`}>
+                <div className="min-w-0">
                   <div className="text-sm font-semibold">{p.name}{p.vendor && <span className="font-normal text-muted-foreground"> · {p.vendor}</span>}</div>
-                  <div className="text-xs text-muted-foreground">{t(p.uses)}</div>
                   <div className="mt-1">
                     {own ? (
                       <span className="flex flex-wrap items-center gap-x-1.5 text-xs">
                         <i className="h-2 w-2 rounded-full bg-sky-500" />{t("statusOwn", { hint: own.keyHint })}
                         {own.lastCheckedAt && <span className="text-muted-foreground">· {t("checkedAt", { date: date(own.lastCheckedAt) })}</span>}
                       </span>
+                    ) : unused ? (
+                      <span className="text-xs text-muted-foreground">{t("notUsed")}</span>
                     ) : off ? (
                       <Hint text={t("statusOffHint")}>
                         <span className="inline-flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400" tabIndex={0}><i className="h-2 w-2 rounded-full bg-red-500" />{t("statusOff")}</span>
@@ -534,9 +555,33 @@ function KeysCard({ keys, onChange, t, nf }: { keys: KeysState | null; onChange:
                     )}
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {editing !== p.id && (
+                <div className="min-w-0">
+                  {unused ? (
+                    <p className="text-xs text-muted-foreground">{t("neededFor", { modules: PROVIDER_USES[p.id].map((id) => menuLabel(tNav, id)).join(", ") })}</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5 text-xs">
+                      {(use?.uses ?? PROVIDER_USES[p.id]).map((id) => (
+                        <span key={id} className="rounded-md border border-border px-2 py-1">{menuLabel(tNav, id)}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="md:text-right">
+                  {use && !unused && (use.calls > 0 ? (
                     <>
+                      <div className="text-sm font-semibold tabular-nums">{money(use.costUsd)}</div>
+                      <div className="text-[11px] text-muted-foreground">{t("callsCount", { n: count(use.calls) })}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-sm font-semibold tabular-nums text-muted-foreground">{money(0)}</div>
+                      <div className="text-[11px] text-muted-foreground">{t("notCalled")}</div>
+                    </>
+                  ))}
+                </div>
+                <div className="min-w-0">
+                  {editing !== p.id && (
+                    <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={() => { setEditing(p.id); setValue(""); setError("") }} className="h-8 whitespace-nowrap rounded-lg border border-border px-3 text-xs font-medium hover:bg-muted">
                         {t(own ? "replaceKey" : "enterKey")}
                       </button>
@@ -545,12 +590,22 @@ function KeysCard({ keys, onChange, t, nf }: { keys: KeysState | null; onChange:
                           {t("removeKey")}
                         </button>
                       )}
-                    </>
+                    </div>
+                  )}
+                  {unused && !own ? (
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">{t("noKeyNeeded")}</p>
+                  ) : (
+                    <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
+                      {t("whereToGet")}{" "}
+                      <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">{new URL(source.url).host}</a>
+                      {" → "}{p.path}. {t("startsWith")} <code className="rounded bg-muted px-1">{source.prefix}</code>.
+                      {p.id === "google_vision" && <> {t("visionKeyNote")}</>}
+                    </p>
                   )}
                 </div>
               </div>
               {editing === p.id && (
-                <div className="mt-3 space-y-2">
+                <div className="mt-3 space-y-2 md:ml-[calc(13rem+1.5rem)]">
                   <input
                     type="password"
                     autoComplete="off"
@@ -576,7 +631,7 @@ function KeysCard({ keys, onChange, t, nf }: { keys: KeysState | null; onChange:
           )
         })}
       </div>
-      <p className="mt-auto pt-3 text-[11px] text-muted-foreground">{t("keysFooter")}</p>
+      <p className="pt-3 text-[11px] text-muted-foreground">{t("keysFooter")}</p>
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(open) => { if (!open) setRemoving(null) }}
@@ -600,10 +655,13 @@ function LimitCard({ report, keys, money, nf, t }: { report: SpendReport | null;
     : ""
   const ownNames = PROVIDER_ROWS.filter((p) => keys?.keys.some((k) => k.provider === p.id)).map((p) => p.name)
   return (
-    <section className="flex flex-col rounded-xl border border-border bg-card p-6">
+    <section className="rounded-xl border border-border bg-card p-6">
       <h2 className="text-base font-semibold">{t("limitTitle")}</h2>
       <p className="mt-1 text-xs text-muted-foreground">{t("limitSubtitle")}</p>
-      <div className="mt-6 flex items-end justify-between">
+      {/* One full-width card: today against the limit, what happens at the limit, what an own key changes. */}
+      <div className="mt-4 grid items-stretch gap-6 md:grid-cols-3">
+      <div>
+      <div className="flex items-end justify-between">
         <div><div className="text-xs text-muted-foreground">{t("limitSpent")}</div><div className="text-3xl font-bold tabular-nums">{today ? money(today.spent) : "—"}</div></div>
         <div className="text-right"><div className="text-xs text-muted-foreground">{t("limitPerDay")}</div><div className="text-3xl font-bold tabular-nums">{today ? money(today.limit) : "—"}</div></div>
       </div>
@@ -614,11 +672,12 @@ function LimitCard({ report, keys, money, nf, t }: { report: SpendReport | null;
         <span>{t("limitShare", { share: new Intl.NumberFormat(nf, { maximumFractionDigits: 0 }).format(share) })}</span>
         <span>{t("limitReset", { time: reset })}</span>
       </div>
-      <div className={`mt-6 rounded-lg border border-border border-l-4 p-4 text-sm ${over ? "border-l-red-500" : "border-l-amber-500"}`}>
+      </div>
+      <div className={`rounded-lg border border-border border-l-4 p-4 text-sm ${over ? "border-l-red-500" : "border-l-amber-500"}`}>
         <div className="font-semibold">{t(over ? "limitOverTitle" : "limitWhenTitle")}</div>
         <div className="mt-1 text-xs text-muted-foreground">{t("limitWhenBody")}</div>
       </div>
-      <div className="mt-4 rounded-lg border border-border border-l-4 border-l-sky-500 p-4 text-sm">
+      <div className="rounded-lg border border-border border-l-4 border-l-sky-500 p-4 text-sm">
         {ownNames.length > 0 ? (
           <div className="text-xs">{t("ownKeyActive", { providers: ownNames.join(", ") })}</div>
         ) : (
@@ -631,6 +690,7 @@ function LimitCard({ report, keys, money, nf, t }: { report: SpendReport | null;
             </ul>
           </>
         )}
+      </div>
       </div>
     </section>
   )
