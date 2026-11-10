@@ -51,6 +51,27 @@ function browserTimeZone() {
   }
 }
 
+/**
+ * A day or a month in the person's language. Chrome has no Azerbaijani month
+ * names and prints «M08 10», so for az the names are spelled here.
+ */
+const AZ_MONTHS = ["yan", "fev", "mar", "apr", "may", "iyn", "iyl", "avq", "sen", "okt", "noy", "dek"]
+const AZ_MONTHS_LONG = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avqust", "sentyabr", "oktyabr", "noyabr", "dekabr"]
+
+function formatDay(at: Date, nf: string, utc = true): string {
+  if (nf.startsWith("az")) {
+    const day = utc ? at.getUTCDate() : at.getDate()
+    const month = utc ? at.getUTCMonth() : at.getMonth()
+    return `${day} ${AZ_MONTHS[month]}`
+  }
+  return new Intl.DateTimeFormat(nf, { day: "numeric", month: "short", ...(utc ? { timeZone: "UTC" } : {}) }).format(at)
+}
+
+function formatMonth(at: Date, nf: string, long: boolean): string {
+  if (nf.startsWith("az")) return `${(long ? AZ_MONTHS_LONG : AZ_MONTHS)[at.getUTCMonth()]} ${at.getUTCFullYear()}`
+  return new Intl.DateTimeFormat(nf, { month: long ? "long" : "short", year: "numeric", timeZone: "UTC" }).format(at)
+}
+
 function modelLabel(provider: string, model: string | null) {
   const claude = model?.match(/claude-(opus|sonnet|haiku)-(\d+)-(\d+)/)
   if (claude) return `Claude · ${claude[1][0].toUpperCase()}${claude[1].slice(1)} ${claude[2]}.${claude[3]}`
@@ -193,7 +214,7 @@ export default function AiSpendPage() {
 type T = ReturnType<typeof useTranslations>
 
 function Kpis({ report, money, count, nf, t, locale }: { report: SpendReport; money: (v: number) => string; count: (v: number) => string; nf: string; t: T; locale: string }) {
-  const day = (iso: string) => new Intl.DateTimeFormat(nf, { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`))
+  const day = (iso: string) => formatDay(new Date(`${iso}T00:00:00Z`), nf)
   const byFeature = new Map<string, number>()
   for (const row of report.rows) byFeature.set(row.feature, (byFeature.get(row.feature) ?? 0) + row.costUsd)
   const [topFeature, topCost] = [...byFeature.entries()].sort((a, b) => b[1] - a[1])[0] ?? [null, 0]
@@ -251,11 +272,10 @@ function Report({ report, money, count, tokens, nf, t, locale }: {
 
   const periodLabel = (iso: string, long = false) => {
     const d = new Date(`${iso}T00:00:00Z`)
-    if (report.granularity === "month") return new Intl.DateTimeFormat(nf, { month: long ? "long" : "short", year: "numeric", timeZone: "UTC" }).format(d)
-    const f = new Intl.DateTimeFormat(nf, { day: "numeric", month: "short", timeZone: "UTC" })
-    if (report.granularity === "day") return f.format(d)
+    if (report.granularity === "month") return formatMonth(d, nf, long)
+    if (report.granularity === "day") return formatDay(d, nf)
     const end = new Date(d.getTime() + 6 * 86_400_000)
-    return `${f.format(d)} – ${f.format(end)}`
+    return `${formatDay(d, nf)} – ${formatDay(end, nf)}`
   }
 
   const empty = report.totals.calls === 0
@@ -479,7 +499,7 @@ function KeysCard({ keys, onChange, t, nf }: { keys: KeysState | null; onChange:
     onChange((await res.json()).data)
   }
 
-  const date = (iso: string | null) => iso ? new Intl.DateTimeFormat(nf, { day: "numeric", month: "short" }).format(new Date(iso)) : ""
+  const date = (iso: string | null) => iso ? formatDay(new Date(iso), nf, false) : ""
 
   return (
     <section className="flex flex-col rounded-xl border border-border bg-card p-6">
