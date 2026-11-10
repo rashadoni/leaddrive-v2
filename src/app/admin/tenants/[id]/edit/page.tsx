@@ -727,19 +727,7 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
               </div>
             </div>
 
-            <div className="mt-5 pt-5 border-t border-zinc-200/60 dark:border-zinc-700/60 grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>AI daily budget (USD)</Label>
-                <Input
-                  type="number" step="0.5" min="0"
-                  value={form.aiDailyBudgetUsd}
-                  placeholder="5.00"
-                  onChange={(e) => setForm({ ...form, aiDailyBudgetUsd: e.target.value })}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Cap on Claude/GPT spend per day for this tenant. Empty = system default ($5).
-                </p>
-              </div>
+            <div className="mt-5 pt-5 border-t border-zinc-200/60 dark:border-zinc-700/60">
               <div className="space-y-1.5">
                 <Label>{t("tenants.landingPage")}</Label>
                 <Select
@@ -831,6 +819,17 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
                 <span className="block text-xs text-muted-foreground">{t("tenants.aiPlatformKeyHint")}</span>
               </span>
             </label>
+            <div className="mt-4 grid grid-cols-[10rem_1fr] items-center gap-x-4 gap-y-1 border-t border-zinc-200/60 pt-4 dark:border-zinc-700/60">
+              <Label htmlFor="ai-daily-limit">{t("tenants.aiDailyLimit")}</Label>
+              <p className="row-span-2 text-xs text-muted-foreground">{t("tenants.aiDailyLimitHint")}</p>
+              <Input
+                id="ai-daily-limit"
+                type="number" step="0.5" min="0"
+                value={form.aiDailyBudgetUsd}
+                placeholder="5.00"
+                onChange={(e) => setForm({ ...form, aiDailyBudgetUsd: e.target.value })}
+              />
+            </div>
           </Card>
 
           <VoiceNumbersPanel tenantId={tenantId} />

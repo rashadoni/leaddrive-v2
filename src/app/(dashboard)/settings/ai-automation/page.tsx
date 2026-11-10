@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
+import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -238,7 +239,6 @@ export default function AiAutomationPage() {
   const orgId = (session?.user as { organizationId?: string } | undefined)?.organizationId
   const [features, setFeatures] = useState<AiFeature[]>([])
   const [budget, setBudget] = useState<{ spent: number; limit: number; remaining: number } | null>(null)
-  const [budgetLimit, setBudgetLimit] = useState("")
   // A6 — granular AI limits (per-conversation, per-contact/day, output tokens).
   const [aiLimits, setAiLimits] = useState<{ maxRepliesPerConversation: string; maxRepliesPerContactPerDay: string; maxOutputTokens: string }>({ maxRepliesPerConversation: "", maxRepliesPerContactPerDay: "", maxOutputTokens: "" })
   const [savingLimits, setSavingLimits] = useState(false)
@@ -251,7 +251,6 @@ export default function AiAutomationPage() {
     actionTypeDailyLimit: "25",
     maxAutonomyLevel: "L2" as AdvisorSettingsPayload["settings"]["maxAutonomyLevel"],
   })
-  const [savingBudget, setSavingBudget] = useState(false)
   const [savingAdvisor, setSavingAdvisor] = useState(false)
   const [advisorBusyKey, setAdvisorBusyKey] = useState<string | null>(null)
   const [delivery, setDelivery] = useState({ telegramBotToken: "", telegramChatId: "", slackWebhookUrl: "" })
@@ -325,7 +324,6 @@ export default function AiAutomationPage() {
           })
         }
         setBudget(budgetRes.data)
-        setBudgetLimit(String(budgetRes.data.limit))
       }
 
       if (deliveryRes?.data) {
@@ -357,21 +355,6 @@ export default function AiAutomationPage() {
       await update()
     } catch {}
     setToggling(null)
-  }
-
-  const saveBudgetLimit = async () => {
-    const val = parseFloat(budgetLimit)
-    if (isNaN(val) || val <= 0) return
-    setSavingBudget(true)
-    try {
-      await fetch("/api/v1/settings/ai-budget", {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({ limit: val }),
-      })
-      setBudget(prev => prev ? { ...prev, limit: val, remaining: Math.max(0, val - prev.spent) } : prev)
-    } catch {}
-    setSavingBudget(false)
   }
 
   const saveAiLimits = async () => {
@@ -646,18 +629,10 @@ export default function AiAutomationPage() {
               />
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <label className="text-xs text-muted-foreground whitespace-nowrap">{t("dailyLimit")}: $</label>
-              <input
-                type="number"
-                step="0.5"
-                min="0.5"
-                value={budgetLimit}
-                onChange={e => setBudgetLimit(e.target.value)}
-                className="h-7 w-20 text-xs border border-input rounded px-2 bg-background"
-              />
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={saveBudgetLimit} disabled={savingBudget}>
-                {savingBudget ? "..." : t("save")}
-              </Button>
+              {/* The limit guards the platform's key, so the platform sets it; the
+                  organization sees it, and its spend, in «ИИ и расходы». */}
+              <span className="text-xs text-muted-foreground">{t("dailyLimit")}: ${budget.limit.toFixed(2)}</span>
+              <Link href="/settings/ai-spend" className="text-xs font-medium text-primary hover:underline">{t("spendLink")}</Link>
               <span className="text-[10px] text-muted-foreground sm:ml-auto">{t("budgetRemaining")}: ${budget.remaining.toFixed(3)}</span>
             </div>
             {/* A6 — granular limits: one level below the daily USD cap. */}
