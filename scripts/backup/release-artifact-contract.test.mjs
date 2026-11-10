@@ -60,6 +60,19 @@ if [ "\$svc" = s3 ] && [ "\$op" = cp ]; then
   else
     k="\$(key_of "\$dst")"
     [ -z "\${FAKE_CAP_EXCEEDED:-}" ] || { echo "AccessDenied: storage cap exceeded" >&2; exit 1; }
+    case "\$k" in
+      *.tar.gz)
+        printf 'cp %s\\n' "\$k" >> "\${FAKE_UPLOAD_LOG:-/dev/null}"
+        # An upload the bucket swallows: exit 0 and store nothing. This is what
+        # the provider did to production on 2026-11-10, and no error says so.
+        lost_file="\$bucket_dir/../stub-lost-uploads"
+        lost="\$(cat "\$lost_file" 2>/dev/null || echo 0)"
+        if [ "\$lost" -lt "\${FAKE_LOSE_UPLOADS:-0}" ]; then
+          printf '%s' "\$((lost + 1))" > "\$lost_file"
+          exit 0
+        fi
+        ;;
+    esac
     stash_current "\$k"
     rm -f -- "\$bucket_dir/markers/\$k"
     mkdir -p "\$(dirname "\$bucket_dir/objects/\$k")" "\$(dirname "\$bucket_dir/meta/\$k")"
@@ -72,6 +85,14 @@ if [ "\$svc" = s3 ] && [ "\$op" = cp ]; then
 fi
 if [ "\$svc" = s3api ] && [ "\$op" = head-object ]; then
   k="\$(get_opt key)"
+  # A stored object the bucket does not show yet: 404 now, there in a moment.
+  miss_file="\$bucket_dir/../stub-head-misses"
+  miss="\$(cat "\$miss_file" 2>/dev/null || echo 0)"
+  if [ "\$miss" -lt "\${FAKE_HEAD_MISS:-0}" ]; then
+    printf '%s' "\$((miss + 1))" > "\$miss_file"
+    echo "Not Found" >&2
+    exit 254
+  fi
   [ -f "\$bucket_dir/objects/\$k" ] || { echo "Not Found" >&2; exit 254; }
   size="\$(stat -c %s -- "\$bucket_dir/objects/\$k")"
   [ -z "\${FAKE_HEAD_SIZE:-}" ] || size="\$FAKE_HEAD_SIZE"
@@ -252,15 +273,90 @@ test('an upload that stored something else fails instead of reporting success', 
     const tar = makeTarball(world.dir, 'release.tar.gz', 'x'.repeat(5000));
     const bad = run('scripts/backup/release-artifact-upload.sh', ['--tarball', tar, '--sha', SHA_A], world, {
       FAKE_HEAD_SIZE: '12',
+      WAL_ARTIFACT_RETRY_SECONDS: '0',
     });
     assert.notEqual(bad.status, 0);
     assert.match(bad.stdout, /size mismatch/);
 
     const wrongDigest = run('scripts/backup/release-artifact-upload.sh', ['--tarball', tar, '--sha', SHA_A], world, {
       FAKE_HEAD_SHA: 'f'.repeat(64),
+      WAL_ARTIFACT_RETRY_SECONDS: '0',
     });
     assert.notEqual(wrongDigest.status, 0);
     assert.match(wrongDigest.stdout, /sha256 metadata differs/);
+  } finally {
+    rmSync(world.dir, { recursive: true, force: true });
+  }
+});
+
+test('an upload the bucket swallowed is tried again, not left to the next deploy', () => {
+  // Production, 2026-11-10, release c676c5395: `s3 cp` moved 187 892 726 bytes
+  // and exited 0, HeadObject answered 404 seven seconds later, and the version
+  // listing still showed no such key twenty minutes on. Nothing errored. The
+  // tarball is deleted minutes later and the next deploy copies ITS release,
+  // so one swallowed upload left the live release restorable only from
+  // GitHub's 30-day artifact.
+  const world = makeWorld();
+  try {
+    const tar = makeTarball(world.dir, 'release.tar.gz', 'это релиз\n'.repeat(300));
+    const uploads = join(world.dir, 'uploads.log');
+    const up = run('scripts/backup/release-artifact-upload.sh', ['--tarball', tar, '--sha', SHA_A], world, {
+      FAKE_LOSE_UPLOADS: '1',
+      FAKE_UPLOAD_LOG: uploads,
+      WAL_ARTIFACT_RETRY_SECONDS: '0',
+    });
+    assert.equal(up.status, 0, up.stdout);
+    assert.match(up.stdout, /attempt 2 of 3/);
+    assert.match(up.stdout, /read back and verified after 2 attempt/);
+    assert.equal(readFileSync(uploads, 'utf8').trim().split('\n').length, 2);
+    // And the bucket holds the artifact itself, not merely a key of that name.
+    const dest = join(world.dir, 'fetched.tar.gz');
+    const down = run('scripts/backup/release-artifact-restore.sh', ['--dest', dest], world);
+    assert.equal(down.status, 0, down.stdout);
+    assert.equal(
+      execFileSync('sha256sum', [dest], { encoding: 'utf8' }).split(' ')[0],
+      execFileSync('sha256sum', [tar], { encoding: 'utf8' }).split(' ')[0],
+    );
+  } finally {
+    rmSync(world.dir, { recursive: true, force: true });
+  }
+});
+
+test('a key the bucket has not shown yet is asked for again, not uploaded again', () => {
+  // The cheap half of the retry: a read-back that 404s may mean the bucket is
+  // slow to show an object it has, and answering that with another 187 MB
+  // would be the expensive way to find out.
+  const world = makeWorld();
+  try {
+    const tar = makeTarball(world.dir, 'release.tar.gz', 'y'.repeat(4096));
+    const uploads = join(world.dir, 'uploads.log');
+    const up = run('scripts/backup/release-artifact-upload.sh', ['--tarball', tar, '--sha', SHA_A], world, {
+      FAKE_HEAD_MISS: '2',
+      FAKE_UPLOAD_LOG: uploads,
+      WAL_ARTIFACT_RETRY_SECONDS: '0',
+    });
+    assert.equal(up.status, 0, up.stdout);
+    assert.match(up.stdout, /shows no such key yet/);
+    assert.match(up.stdout, /read back and verified after 1 attempt/);
+    assert.equal(readFileSync(uploads, 'utf8').trim().split('\n').length, 1);
+  } finally {
+    rmSync(world.dir, { recursive: true, force: true });
+  }
+});
+
+test('an artifact the bucket never stores fails the step instead of reporting success', () => {
+  const world = makeWorld();
+  try {
+    const tar = makeTarball(world.dir, 'release.tar.gz', 'z'.repeat(2048));
+    const up = run('scripts/backup/release-artifact-upload.sh', ['--tarball', tar, '--sha', SHA_A], world, {
+      FAKE_LOSE_UPLOADS: '9',
+      WAL_ARTIFACT_RETRY_SECONDS: '0',
+    });
+    assert.notEqual(up.status, 0);
+    assert.match(up.stdout, /FATAL the bucket does not hold the artifact after 3 attempt/);
+    // No pointer either: a pointer naming an artifact that is not there would
+    // send the restore after a key the bucket does not have.
+    assert.equal(areaFiles(world.bucket, 'objects'), '');
   } finally {
     rmSync(world.dir, { recursive: true, force: true });
   }
@@ -463,9 +559,10 @@ test('a tripped storage cap still gets the dead bytes back', () => {
     const tar = makeTarball(world.dir, 'release.tar.gz', 'релиз\n'.repeat(30));
     const up = run('scripts/backup/release-artifact-upload.sh', ['--tarball', tar, '--sha', SHA_C], world, {
       FAKE_CAP_EXCEEDED: '1',
+      WAL_ARTIFACT_RETRY_SECONDS: '0',
     });
     assert.notEqual(up.status, 0, 'a refused upload must still fail');
-    assert.match(up.stdout, /FATAL upload failed \(freed \d+ bytes first/);
+    assert.match(up.stdout, /FATAL .*upload failed \(freed \d+ bytes first/);
     assert.equal(areaBytes(world.bucket, 'noncurrent'), 0, 'the deploy left the cap exactly where it found it');
   } finally {
     rmSync(world.dir, { recursive: true, force: true });
