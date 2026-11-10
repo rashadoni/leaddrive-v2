@@ -37,6 +37,7 @@ import {
 } from "@dnd-kit/core"
 import { CSS } from "@dnd-kit/utilities"
 import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
+import { endOfDayIso } from "@/components/tasks/task-panel/task-panel-subtasks"
 import { InlineTasksTable, type InlineTask, type InlineUser } from "@/components/tasks/inline-tasks-table"
 import { applyTaskPatch, revertTaskPatch } from "@/lib/client/optimistic-task-patch"
 import { quietReloader } from "@/lib/client/quiet-reload"
@@ -1112,7 +1113,11 @@ function CreateTaskDialog({
           priority,
           ...(category ? { category } : {}),
           ...(assignedTo ? { assignedTo } : {}),
-          ...(dueDate ? { dueDate: new Date(dueDate).toISOString() } : {}),
+          // The end of the chosen day in the person's own time, as everywhere
+          // else on the boards (task panel, subtasks): `new Date("yyyy-mm-dd")`
+          // is midnight UTC — 04:00 in Baku — so the task was overdue from the
+          // morning of its due day (found 2026-11-09).
+          ...(dueDate ? { dueDate: endOfDayIso(dueDate) } : {}),
           ...(description.trim() ? { description: description.trim() } : {}),
         }),
       })
