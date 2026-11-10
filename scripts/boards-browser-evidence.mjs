@@ -170,7 +170,7 @@ async function main() {
   const sessions = {}
 
   async function login(key, slug = f.slug) {
-    const context = await browser.newContext({ baseURL: origin.origin, viewport: { width: 1440, height: 1000 }, locale: 'az-AZ' })
+    const context = await browser.newContext({ baseURL: origin.origin, viewport: { width: 1440, height: 1000 }, locale: 'az-AZ', timezoneId: 'Asia/Baku' })
     await context.addCookies([{ name: 'NEXT_LOCALE', value: 'az', url: origin.origin }])
     const { csrfToken } = await (await context.request.get('/api/auth/csrf', { timeout: 120000 })).json()
     const response = await context.request.post('/api/auth/callback/credentials', { timeout: 120000,
@@ -349,7 +349,7 @@ async function main() {
   })
   await step('boards-only marketer: a task template fills the board\'s new-task form, its subtasks come along', async () => {
     const made = await api('boardsOnly', '/api/v1/task-templates', { method: 'POST', body: {
-      name: 'Həftəlik story', taskTitle: 'Story {{week}}', priority: 'high', checklist: [{ title: 'Mətn' }, { title: 'Dizayn' }],
+      name: 'Həftəlik story', taskTitle: 'Story {{week}}', priority: 'high', dueDateOffsetDays: 2, checklist: [{ title: 'Mətn' }, { title: 'Dizayn' }],
     } })
     assert.ok([200, 201].includes(made.status), JSON.stringify(made.json))
     const page = await sessions.boardsOnly.newPage()
@@ -368,6 +368,9 @@ async function main() {
     }
     assert.ok(task, `no task «${title}» on the board`)
     assert.equal(task.priority, 'high')
+    // The due day ends at 23:59:59 in Baku (UTC+4) — not at midnight UTC, which
+    // made a task overdue from 04:00 on its own due day.
+    assert.match(task.dueDate ?? '', /T19:59:59\.000Z$/, `dueDate ${task.dueDate}`)
     let checklist = []
     for (let i = 0; i < 20 && checklist.length < 2; i++) {
       if (i) await page.waitForTimeout(500)

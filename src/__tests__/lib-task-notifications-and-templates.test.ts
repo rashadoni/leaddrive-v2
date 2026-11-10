@@ -55,3 +55,19 @@ describe("a task template fills the board's «Yeni Tapşırıq» dialog", () => 
     expect(filled.checklist).toEqual([])
   })
 })
+
+describe("a due day picked on the board ends at the end of that day where the person is", () => {
+  it("is 23:59:59 in Baku, not midnight UTC (04:00 in Baku — overdue from the morning of its own day)", async () => {
+    const tz = process.env.TZ
+    process.env.TZ = "Asia/Baku"
+    try {
+      const { endOfDayIso } = await import("@/components/tasks/task-panel/task-panel-subtasks")
+      expect(endOfDayIso("2026-11-12")).toBe("2026-11-12T19:59:59.000Z")
+      expect(new Date("2026-11-12").toISOString()).toBe("2026-11-12T00:00:00.000Z")
+      expect(endOfDayIso("")).toBeNull()
+    } finally {
+      if (tz === undefined) delete process.env.TZ
+      else process.env.TZ = tz
+    }
+  })
+})
