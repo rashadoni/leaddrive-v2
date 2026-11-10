@@ -9,6 +9,7 @@ const report = readFileSync("src/components/tickets/ticketing-report.tsx", "utf8
 const aiSettings = readFileSync("src/app/(dashboard)/support/ai-settings/support-ai-settings-client.tsx", "utf8")
 const dashboardLayout = readFileSync("src/app/(dashboard)/layout.tsx", "utf8")
 const globals = readFileSync("src/app/globals.css", "utf8")
+const dashboardFont = readFileSync("src/lib/fonts/dashboard-font.ts", "utf8")
 
 describe("Service Desk mutating flow evidence contract", () => {
   it("can run only against a disposable local evidence target", () => {
@@ -205,9 +206,12 @@ describe("Service Desk mutating flow evidence contract", () => {
   })
 
   it("keeps Russian dashboard copy in the intentional sans-serif system", () => {
-    expect(dashboardLayout).toContain('variable: "--font-dashboard"')
+    // The font itself lives in src/lib/fonts/dashboard-font.ts since 2026-11-10;
+    // the layout only puts its variable on <main>, never its className.
+    expect(dashboardFont).toContain('variable: "--font-dashboard"')
     expect(dashboardLayout).toContain("font-dashboard relative")
-    expect(dashboardLayout).not.toContain("jakarta.className")
+    expect(dashboardLayout).toContain("${dashboardFont.variable}")
+    expect(dashboardLayout).not.toContain("dashboardFont.className")
     expect(globals).toContain("font-family: var(--font-dashboard), ui-sans-serif, system-ui")
     expect(globals).toContain('BlinkMacSystemFont, "Segoe UI", sans-serif;')
   })
