@@ -5,6 +5,7 @@ import { checkPermission, type Role } from "@/lib/permissions"
 import { organizationTimezone } from "@/lib/ticketing/customer-locale"
 import { isValidTimezone } from "@/lib/timezone"
 import { bookingScope, bookingHostWhere, isBookingOperator, type BookingAccess } from "./access"
+import { bookingPageUrl } from "./book"
 
 export const bookingFilters = z.object({
   from: z.string().datetime({ offset: true }).optional(),
@@ -52,10 +53,13 @@ export async function bookingContext(access: BookingAccess) {
   const [org, hosts, pages] = await Promise.all([
     prisma.organization.findUnique({ where: { id: access.orgId }, select: { settings: true } }),
     prisma.user.findMany({ where: { organizationId: access.orgId, ...(access.hostIds === null ? {} : { id: { in: access.hostIds } }) }, select: { id: true, name: true, isActive: true, role: true, hiddenModules: true }, orderBy: { name: "asc" } }),
-    prisma.bookingPage.findMany({ where: { organizationId: access.orgId, ...(access.hostIds === null ? {} : { hostIds: { hasSome: access.hostIds } }) }, select: { id: true, title: true, hostIds: true, isActive: true, category: true }, orderBy: { title: "asc" } }),
+    prisma.bookingPage.findMany({ where: { organizationId: access.orgId, ...(access.hostIds === null ? {} : { hostIds: { hasSome: access.hostIds } }) }, // `slug` so the day screen can show the link the salon sends to clients
+    // without asking for the administrator-only service list: the link is
+    // public by design, and whoever works the day may have to send it.
+    select: { id: true, title: true, hostIds: true, isActive: true, category: true, slug: true }, orderBy: { title: "asc" } }),
   ])
   const timezone = organizationTimezone(org?.settings)
-  return { writableHostIds: access.writableHostIds, timezone: isValidTimezone(timezone) ? timezone : "Asia/Baku", hosts: hosts.map(({ role, hiddenModules, ...host }) => ({ ...host, canReceiveBookings: isBookingOperator(role) && (["admin", "superadmin"].includes(role) || !hiddenModules.includes("sales")) })), pages: pages.map((page) => ({ ...page, hostIds: page.hostIds.filter((id) => access.writableHostIds === null || access.writableHostIds.includes(id)) })), canConfigure: access.administrator, canCoordinate: access.hostIds === null || access.hostIds.length > 1, userId: access.userId }
+  return { writableHostIds: access.writableHostIds, timezone: isValidTimezone(timezone) ? timezone : "Asia/Baku", hosts: hosts.map(({ role, hiddenModules, ...host }) => ({ ...host, canReceiveBookings: isBookingOperator(role) && (["admin", "superadmin"].includes(role) || !hiddenModules.includes("sales")) })), pages: pages.map(({ slug, ...page }) => ({ ...page, url: bookingPageUrl(slug), hostIds: page.hostIds.filter((id) => access.writableHostIds === null || access.writableHostIds.includes(id)) })), canConfigure: access.administrator, canCoordinate: access.hostIds === null || access.hostIds.length > 1, userId: access.userId }
 }
 
 /** Reminder state for a page of meetings, keyed by meeting. */
