@@ -83,3 +83,21 @@ export function videoEmbedUrl(mediaUrl: string | null | undefined): string | nul
   }
   return null
 }
+
+/**
+ * A voice note or audio file plays in the thread instead of sitting there as «Attachment» — the
+ * transcript is written under it (lib/inbox/inbound-voice-transcript), the player is above.
+ * WhatsApp marks voice notes "audio"/"voice"; Telegram leaves the type empty and the stored file
+ * carries the extension; Meta and TikTok mark "audio".
+ */
+const AUDIO_EXT_RE = /\.(oga|ogg|opus|mp3|m4a|aac|amr|wav|weba)(\?|#|$)/i
+
+export function isAudioPreview(
+  messageType: string | null | undefined,
+  mediaUrl: string | null | undefined,
+): boolean {
+  if (!mediaUrl) return false
+  if (messageType === "audio" || messageType === "voice") return true
+  if (messageType && messageType !== "text" && messageType !== "document") return false
+  return AUDIO_EXT_RE.test(mediaUrl)
+}
