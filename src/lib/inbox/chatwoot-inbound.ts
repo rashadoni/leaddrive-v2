@@ -9,6 +9,7 @@ import {
   handleTikTokInboundAudio,
   INSTAGRAM_AUDIO_TEXT_FALLBACK,
 } from "@/lib/social/instagram-inbound-audio"
+import { transcribeAndStoreInboundVoice } from "@/lib/inbox/inbound-voice-transcript"
 import { chatwootSourceStillUnanswered } from "@/lib/inbox/chatwoot-source-guard"
 
 export type ChatwootInboundPayload = Record<string, unknown>
@@ -307,6 +308,19 @@ export async function runChatwootInboundAutomation(
           content: INSTAGRAM_AUDIO_TEXT_FALLBACK,
           organizationId: context.organizationId,
           channelConfigId: context.channelConfig.id,
+        })
+      }
+    }
+  } else {
+    // A person answers here: the words still go under the voice note, for them to read.
+    for (const context of contexts.filter((item) => !item.hasRealText)) {
+      if (context.messageType === "audio" && context.mediaUrl) {
+        await transcribeAndStoreInboundVoice({
+          organizationId: context.organizationId,
+          messageId: context.messageId,
+          audioUrl: context.mediaUrl,
+          metadata: context.metadata,
+          source: "TikTok",
         })
       }
     }

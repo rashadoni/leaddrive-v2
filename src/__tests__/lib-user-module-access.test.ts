@@ -57,9 +57,10 @@ describe("the hideable catalog", () => {
   })
 
   it("lists only what the tenant has", () => {
-    // Boards come with CRM: a tenant never toggles them on their own.
-    expect(tenantHideableModules(org({ crm: true, sales: true, settings: true }))).toEqual(["crm", "boards", "sales"])
-    expect(tenantHideableModules(org({ crm: false, sales: true }))).toEqual(["sales"])
+    // Boards follow CRM and booking follows sales: a tenant that has the one
+    // has the other until an admin says otherwise.
+    expect(tenantHideableModules(org({ crm: true, sales: true, settings: true }))).toEqual(["crm", "boards", "booking", "sales"])
+    expect(tenantHideableModules(org({ crm: false, sales: true }))).toEqual(["booking", "sales"])
     // The historical `mtm` grant dual-reads as both field capabilities.
     expect(tenantHideableModules(org({ crm: true, mtm: true }))).toEqual(["crm", "boards", "mtm"])
     // A Workforce-only tenant has HRM without Route & Field.

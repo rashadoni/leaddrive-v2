@@ -11,7 +11,8 @@ const grantsFor = (principal) => grants.filter((g) => g.includes(`User:${princip
 
 test('each service identity gets only the access its job needs', () => {
   const connect = grantsFor(PRINCIPALS.connect)
-  assert.equal(connect.filter((g) => /--topic ld\.prod\.[a-z-]+\.events\.v1 /.test(g)).length, 28)
+  // 29 since 2026-11-10: the `booking` domain of the meetings module.
+  assert.equal(connect.filter((g) => /--topic ld\.prod\.[a-z-]+\.events\.v1 /.test(g)).length, 29)
   for (const g of connect.filter((g) => /\.events\.v1 /.test(g))) assert.doesNotMatch(g, /--operation Read/, 'connect never reads business events')
   assert.ok(!connect.some((g) => /(replay|quarantine)\.v1/.test(g)), 'connect cannot reach replay or quarantine')
   assert.ok(!connect.some((g) => /--operation (Create|Alter|Delete|All)\b/.test(g)))

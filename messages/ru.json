@@ -285,6 +285,9 @@
     "adConversions": "Лиды и выигранные сделки — в Meta (реклама в Facebook и Instagram)",
     "onlineBooking": "Ссылка, по которой клиент сам записывается на свободное время",
     "bookingWorkspace": "Встречи команды, онлайн-запись и страницы бронирования",
+    "bookingServices": "Ваши услуги и ссылка для записи",
+    "bookingWhatsApp": "Искусственный интеллект записывает клиента сам",
+    "bookingTeam": "Рабочие дни сотрудников и чьи встречи вы видите",
     "skillRouting": "Навыки агентов и очереди тикетов",
     "escalationRules": "Эскалации при нарушении SLA",
     "dashboard": "Обзор KPI и активности",
@@ -538,7 +541,10 @@
     },
     "adConversions": "Конверсии в рекламу",
     "onlineBooking": "Онлайн-запись",
-    "bookingWorkspace": "Встречи и запись",
+    "bookingWorkspace": "Расписание",
+    "bookingServices": "Услуги",
+    "bookingWhatsApp": "WhatsApp",
+    "bookingTeam": "Команда",
     "skillRouting": "Маршрутизация",
     "escalationRules": "Правила эскалации",
     "expand": "Развернуть навигацию",
@@ -733,6 +739,7 @@
     "groups": {
       "CRM": "Основная",
       "Boards": "Доски",
+      "Booking": "Встречи",
       "Sales": "Продажи",
       "Contracts Control": "Управление контрактами",
       "Marketing": "Маркетинг",
@@ -27262,6 +27269,14 @@
           "Коммерческие предложения и план продаж"
         ]
       },
+      "booking": {
+        "name": "Встречи",
+        "summary": "Клиенты сами выбирают время и записываются.",
+        "benefits": [
+          "Своя ссылка для записи",
+          "WhatsApp сам напоминает и записывает"
+        ]
+      },
       "omnichannel": {
         "name": "Коммуникации",
         "summary": "Обрабатывайте переписки команды в общей очереди.",
@@ -32014,6 +32029,10 @@
     "openPage": "Открыть страницу",
     "copyLink": "Скопировать ссылку",
     "linkCopied": "Скопировано",
+    "myLinkTitle": "Ссылка, которую вы отправляете клиенту",
+    "myLinkAll": "Все ссылки",
+    "myLinkNone": "Услуги пока нет — значит, нет и ссылки.",
+    "myLinkAsk": "Услугу создаёт администратор.",
     "edit": "Изменить",
     "statusOn": "Открыта",
     "statusOff": "Закрыта",
@@ -32058,9 +32077,9 @@
     "workspaceTitle": "Встречи и запись",
     "workspaceHint": "Кто, к кому и когда придёт. Записи клиентов и страницы записи в одном месте.",
     "workspaceSections": "Разделы встреч",
-    "workspaceMeetings": "Встречи",
+    "workspaceMeetings": "Расписание",
     "workspacePages": "Услуги",
-    "workspaceTeam": "Координаторы",
+    "workspaceTeam": "Команда",
     "workspaceFilters": "Фильтры встреч",
     "workspaceSearch": "Поиск",
     "workspaceSearchHint": "Клиент или название встречи",

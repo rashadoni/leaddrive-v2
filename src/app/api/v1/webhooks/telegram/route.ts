@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { sanitizeLog } from "@/lib/sanitize"
 import { notifyConversationRecipients } from "@/lib/social/notify-recipients"
 import { fetchAndStoreTelegramMedia } from "@/lib/telegram-media"
+import { transcribeInboundVoice, voiceMessageBody, type VoiceTranscription } from "@/lib/inbox/inbound-voice-transcript"
 import { matchInboundLeadId } from "@/lib/inbound-lead-match"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
 import { consumeDemoTelegramUpdate } from "@/lib/demo-center/phone-telegram"
@@ -62,7 +63,8 @@ export async function POST(req: NextRequest) {
       mediaPlaceholder = message.sticker.emoji ? `[Стикер ${message.sticker.emoji}]` : "[Стикер]"
     }
 
-    const text = message.text || message.caption || mediaPlaceholder || ""
+    let text = message.text || message.caption || mediaPlaceholder || ""
+    const isVoice = !!(message.voice?.file_id || message.audio?.file_id)
     const fromUser = message.from
     const senderName = [fromUser?.first_name, fromUser?.last_name].filter(Boolean).join(" ") || "Unknown"
 
@@ -95,9 +97,19 @@ export async function POST(req: NextRequest) {
     // Download inbound media so the thread renders the real file instead of just "[Фото]".
     // Best-effort — a failure leaves mediaUrl null and the text placeholder stands.
     let mediaUrl: string | null = null
+    let voiceTranscription: VoiceTranscription | null = null
     if (mediaFileId) {
       const stored = await fetchAndStoreTelegramMedia(mediaFileId, botToken, orgId)
       if (stored) mediaUrl = stored.url
+      // A voice note becomes words before the message is saved (lib/inbox/inbound-voice-transcript).
+      if (stored && isVoice && !message.caption) {
+        voiceTranscription = await transcribeInboundVoice({
+          organizationId: orgId,
+          source: "Telegram",
+          audio: { bytes: stored.bytes, contentType: stored.mime },
+        })
+        if (voiceTranscription) text = voiceMessageBody(voiceTranscription.text)
+      }
     }
 
     // Try to match telegram sender to an existing contact
@@ -143,6 +155,7 @@ export async function POST(req: NextRequest) {
           chatId,
           telegramUserId: fromUser?.id,
           username: fromUser?.username,
+          ...(voiceTranscription ? { transcription: voiceTranscription } : {}),
         },
       },
     })

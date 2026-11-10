@@ -126,7 +126,7 @@ every token; validation must reject any remaining placeholder.
 1. Run `node scripts/ci/test-event-platform-assets.mjs` in the exact release
    commit.
 2. Expand `topics.v1.json`; have capacity and domain owners approve partition
-   counts because Kafka partitions cannot be reduced. Create all 89 topics and
+   counts because Kafka partitions cannot be reduced. Create all 92 topics and
    verify their effective broker configs before granting producer access.
 3. Register the base envelope first, then the five pilot subjects and their
    references. Set and verify BACKWARD_TRANSITIVE compatibility per subject.

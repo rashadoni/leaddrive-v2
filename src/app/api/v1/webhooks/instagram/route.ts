@@ -14,6 +14,7 @@ import {
   handleInstagramInboundAudio,
   parseInstagramAttachment,
 } from "@/lib/social/instagram-inbound-audio"
+import { transcribeAndStoreInboundVoice } from "@/lib/inbox/inbound-voice-transcript"
 
 /**
  * Instagram-Login webhook ("Path B" — "Instagram API with Instagram Login").
@@ -304,6 +305,15 @@ export async function POST(req: NextRequest) {
                 })
               }
             },
+          })
+        } else if (messageType === "audio" && mediaUrl) {
+          // A person answers here: the words still go under the voice note, for them to read.
+          await transcribeAndStoreInboundVoice({
+            organizationId: channel.organizationId,
+            messageId: inboundMessage.id,
+            audioUrl: mediaUrl,
+            metadata: messageMetadata,
+            source: "Instagram",
           })
         }
       }

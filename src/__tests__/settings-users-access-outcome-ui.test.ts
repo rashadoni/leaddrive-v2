@@ -155,7 +155,10 @@ describe("user card — what this person gets", () => {
     expect(rows()).toEqual({
       "Основная": [false, "Скрыт", null],
       // Boards come with CRM and have a tick of their own (owner, 2026-11-06),
-      // named after their own sidebar section since 2026-11-08.
+      // named after their own sidebar section since 2026-11-08. Meetings the
+      // same way since 2026-11-10: a salon buys the booking section and no
+      // Sales, so hiding one must not touch the other.
+      "Встречи": [false, "Скрыт", null],
       "Доски": [false, "Скрыт", null],
       "Продажи": [false, "Скрыт", null],
       "Финансы": [false, "Скрыт", null],
@@ -170,7 +173,7 @@ describe("user card — what this person gets", () => {
     await act(async () => { sales?.querySelector<HTMLInputElement>("input")?.click() })
 
     expect(rows()["Продажи"]).toEqual([
-      true, "По-разному", "Сделки, Лиды: всё, включая удаление · Предложения, Встречи: просмотр и правка",
+      true, "По-разному", "Сделки, Лиды: всё, включая удаление · Предложения: просмотр и правка",
     ])
   })
 
@@ -184,8 +187,11 @@ describe("user card — what this person gets", () => {
     await choose(role, "admin")
     const admin = rows()
     expect([...new Set(Object.values(admin).map(([tick]) => tick))]).toEqual([null])
-    // Meetings: nobody deletes them, the admin included (checkPermission).
-    expect(admin["Продажи"]).toEqual([null, "По-разному", "Сделки, Лиды, Предложения: всё, включая удаление · Встречи: просмотр и правка"])
+    // Meetings are their own row now, so Sales is plainly everything and the
+    // exception is stated where it applies: nobody deletes a meeting, the
+    // admin included (checkPermission).
+    expect(admin["Продажи"]).toEqual([null, "Всё, включая удаление", null])
+    expect(admin["Встречи"]).toEqual([null, "Просмотр и правка", null])
     expect(admin["Маршруты и поле · Персонал"]).toEqual([
       null, "Всё, включая удаление", "Администратор видит всё поле без карточки сотрудника.",
     ])
@@ -333,7 +339,8 @@ describe("user card — every module with one tick", () => {
     await act(async () => { sales?.querySelector<HTMLInputElement>("input")?.click() })
     expect(Object.entries(ticks()).filter(([, on]) => on).map(([label]) => label)).toEqual(["Продажи"])
     expect(allModules()?.indeterminate).toBe(true)
-    expect(document.querySelector('[data-testid="user-modules-all"]')?.textContent).toContain("отмечено 1 из 5")
+    // Six ticks since 2026-11-10: Meetings have their own.
+    expect(document.querySelector('[data-testid="user-modules-all"]')?.textContent).toContain("отмечено 1 из 6")
 
     await save()
     const sent = writes.find((write) => write.method === "PUT")?.body as { hiddenModules: string[] }

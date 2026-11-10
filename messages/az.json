@@ -285,6 +285,9 @@
     "adConversions": "Lidlər və qazanılan sövdələşmələr — Meta-ya (Facebook və Instagram reklamı)",
     "onlineBooking": "Müştərinin boş vaxta özü yazıldığı link",
     "bookingWorkspace": "Komanda görüşləri, onlayn yazılış və yazılış səhifələri",
+    "bookingServices": "Təklif etdiyiniz xidmətlər və yazılış linki",
+    "bookingWhatsApp": "Süni intellekt müştərini özü yazır",
+    "bookingTeam": "İşçilərin iş günləri və kimin görüşlərini görürsünüz",
     "skillRouting": "Agent bacarıqları və bilet növbələri",
     "escalationRules": "SLA pozuntuları üçün eskalasiya qaydaları",
     "dashboard": "KPI və fəaliyyət icmalı",
@@ -538,7 +541,10 @@
     },
     "adConversions": "Reklam konversiyaları",
     "onlineBooking": "Onlayn yazılış",
-    "bookingWorkspace": "Görüşlər və yazılış",
+    "bookingWorkspace": "Cədvəl",
+    "bookingServices": "Xidmətlər",
+    "bookingWhatsApp": "WhatsApp",
+    "bookingTeam": "Komanda",
     "skillRouting": "Bacarıq marşrutu",
     "escalationRules": "Eskalasiya qaydaları",
     "expand": "Naviqasiyanı genişləndir",
@@ -733,6 +739,7 @@
     "groups": {
       "CRM": "Əsas",
       "Boards": "Lövhələr",
+      "Booking": "Görüşlər",
       "Sales": "Satış",
       "Contracts Control": "Müqavilə nəzarəti",
       "Marketing": "Marketinq",
@@ -27258,6 +27265,14 @@
           "Kommersiya təklifləri və satış planı"
         ]
       },
+      "booking": {
+        "name": "Görüşlər",
+        "summary": "Müştərilər özləri vaxt seçib qeydiyyata yazılır.",
+        "benefits": [
+          "Qeydiyyat üçün öz linkiniz",
+          "WhatsApp özü xatırladır və yazır"
+        ]
+      },
       "omnichannel": {
         "name": "Kommunikasiya",
         "summary": "Komandanın yazışmalarını ümumi növbədə işləyin.",
@@ -32010,6 +32025,10 @@
     "openPage": "Səhifəni aç",
     "copyLink": "Linki kopyala",
     "linkCopied": "Kopyalandı",
+    "myLinkTitle": "Müştəriyə göndərdiyiniz link",
+    "myLinkAll": "Bütün linklər",
+    "myLinkNone": "Hələ xidmət yoxdur — göndərməyə link də yoxdur.",
+    "myLinkAsk": "Xidməti administrator yaradır.",
     "edit": "Dəyiş",
     "statusOn": "Açıqdır",
     "statusOff": "Bağlıdır",
@@ -32026,7 +32045,7 @@
     "fieldHours": "İş saatları",
     "dayOff": "İstirahət",
     "fieldBuffer": "Görüşlər arası fasilə",
-    "fieldNotice": "Ən gec",
+    "fieldNotice": "Yazılmaq olar — ən gec",
     "fieldAhead": "Neçə gün irəli yazılmaq olar",
     "noBuffer": "Fasiləsiz",
     "hoursBefore": "görüşdən {count} saat əvvəl",
@@ -32054,9 +32073,9 @@
     "workspaceTitle": "Görüşlər və yazılış",
     "workspaceHint": "Kim, kiminlə və nə vaxt görüşəcək. Müştəri görüşləri və yazılış səhifələri bir yerdə.",
     "workspaceSections": "Görüş bölmələri",
-    "workspaceMeetings": "Görüşlər",
+    "workspaceMeetings": "Cədvəl",
     "workspacePages": "Xidmətlər",
-    "workspaceTeam": "Koordinatorlar",
+    "workspaceTeam": "Komanda",
     "workspaceFilters": "Görüş filtrləri",
     "workspaceSearch": "Axtarış",
     "workspaceSearchHint": "Müştəri və ya görüşün adı",

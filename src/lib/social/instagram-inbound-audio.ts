@@ -1,6 +1,5 @@
-import { prisma } from "@/lib/prisma"
-import { resolveTranscriptionClient } from "@/lib/transcription/transcribe"
 import type { Prisma } from "@prisma/client"
+import { storeVoiceTranscript, transcribeInboundVoice } from "@/lib/inbox/inbound-voice-transcript"
 
 type MetaAttachment = {
   type?: unknown
@@ -57,47 +56,35 @@ type InboundAudioInput = {
 
 async function handleInboundAudio(
   input: InboundAudioInput,
-  source: "Instagram" | "TikTok",
+  source: "Instagram" | "TikTok" | "Facebook",
 ): Promise<"transcribed" | "fallback"> {
-  const client = await resolveTranscriptionClient(input.organizationId, "inbox-audio")
-  if (!client) {
+  // One transcription for every messenger (lib/inbox/inbound-voice-transcript); this path adds
+  // only what an AI-answered channel needs on top — the reply, or a request to type it instead.
+  const transcription = await transcribeInboundVoice({
+    organizationId: input.organizationId,
+    source,
+    audioUrl: input.audioUrl,
+  })
+  if (!transcription) {
     await input.sendFallback(INSTAGRAM_AUDIO_TEXT_FALLBACK)
     return "fallback"
   }
-
-  let transcript: string
   try {
-    const result = await client.transcribe({
-      audioUrl: input.audioUrl,
-      prompt: `Müştəri ${source} vasitəsilə şirkətə Azərbaycan, rus və ya türk dilində müraciət edir.`,
-    })
-    transcript = result.transcript.trim()
-    if (!transcript) throw new Error("empty transcript")
-
-    await prisma.channelMessage.updateMany({
-      where: { id: input.messageId, organizationId: input.organizationId },
-      data: {
-        body: `[Səsli mesaj]\n${transcript}`,
-        metadata: {
-          ...input.metadata,
-          transcription: {
-            text: transcript,
-            provider: result.provider,
-            language: result.language || null,
-            durationSeconds: result.durationSeconds ?? null,
-          },
-        },
-      },
+    await storeVoiceTranscript({
+      organizationId: input.organizationId,
+      messageId: input.messageId,
+      metadata: input.metadata,
+      transcription,
     })
   } catch (error) {
-    console.error(`[${source} audio] transcription failed:`, error instanceof Error ? error.message : "unknown error")
+    console.error(`[${source} audio] saving the transcript failed:`, error instanceof Error ? error.message : "unknown error")
     await input.sendFallback(INSTAGRAM_AUDIO_TEXT_FALLBACK)
     return "fallback"
   }
 
   // A downstream AI/rules failure is not a transcription failure. Do not tell
   // the customer to resend text after their audio was already understood.
-  await input.onTranscript(transcript)
+  await input.onTranscript(transcription.text)
   return "transcribed"
 }
 
@@ -107,4 +94,8 @@ export function handleInstagramInboundAudio(input: InboundAudioInput) {
 
 export function handleTikTokInboundAudio(input: InboundAudioInput) {
   return handleInboundAudio(input, "TikTok")
+}
+
+export function handleFacebookInboundAudio(input: InboundAudioInput) {
+  return handleInboundAudio(input, "Facebook")
 }

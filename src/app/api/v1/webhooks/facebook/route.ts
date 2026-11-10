@@ -16,9 +16,11 @@ import {
   type MetaSurface,
 } from "@/lib/social/inbound-channel-ranking"
 import {
+  handleFacebookInboundAudio,
   handleInstagramInboundAudio,
   parseInstagramAttachment,
 } from "@/lib/social/instagram-inbound-audio"
+import { transcribeAndStoreInboundVoice } from "@/lib/inbox/inbound-voice-transcript"
 import { handleDemoSocialEntry } from "@/lib/demo-center/demo-social-inbound"
 
 const VERIFY_TOKEN = process.env.FACEBOOK_VERIFY_TOKEN
@@ -346,11 +348,16 @@ export async function POST(req: NextRequest) {
           } catch (e) {
             console.error("[FB Webhook] auto-reply failed:", e)
           }
-        } else if (platform === "instagram" && messageType === "audio" && mediaUrl && replyMode === "ai" && outboundToken) {
-          const { sendInstagramMessage } = await import("@/lib/facebook")
+        } else if (messageType === "audio" && mediaUrl && replyMode === "ai" && outboundToken) {
+          // A voice note on an AI-answered page: understood, then answered like typed text — on
+          // Messenger too, not only Instagram (owner, 2026-11-10).
+          const { sendFacebookMessage, sendInstagramMessage } = await import("@/lib/facebook")
           const send = (reply: string) =>
-            sendInstagramMessage(senderId, reply, outboundToken, channel.organizationId)
-          await handleInstagramInboundAudio({
+            platform === "instagram"
+              ? sendInstagramMessage(senderId, reply, outboundToken, channel.organizationId)
+              : sendFacebookMessage(senderId, reply, outboundToken, channel.organizationId)
+          const handleAudio = platform === "instagram" ? handleInstagramInboundAudio : handleFacebookInboundAudio
+          await handleAudio({
             organizationId: channel.organizationId,
             messageId: inboundMessage.id,
             audioUrl: mediaUrl,
@@ -360,7 +367,7 @@ export async function POST(req: NextRequest) {
               const { maybeAutoReply, chatbotTookOwnership } = await import("@/lib/chatbot-autoreply")
               const ruleResult = await maybeAutoReply({
                 orgId: channel.organizationId,
-                channelType: "instagram",
+                channelType: platform,
                 conversationId: conv.id,
                 inboundText: transcript,
                 to: senderId,
@@ -370,7 +377,7 @@ export async function POST(req: NextRequest) {
                 await maybeAiAutoReply({
                   orgId: channel.organizationId,
                   channelConfigId: channel.id,
-                  platform: "instagram",
+                  platform,
                   conversationId: conv.id,
                   pageId,
                   externalId: senderId,
@@ -380,6 +387,15 @@ export async function POST(req: NextRequest) {
                 })
               }
             },
+          })
+        } else if (messageType === "audio" && mediaUrl) {
+          // A person answers here: the words still go under the voice note, for them to read.
+          await transcribeAndStoreInboundVoice({
+            organizationId: channel.organizationId,
+            messageId: inboundMessage.id,
+            audioUrl: mediaUrl,
+            metadata: messageMetadata,
+            source: platform === "instagram" ? "Instagram" : "Facebook",
           })
         }
       }

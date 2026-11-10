@@ -195,6 +195,20 @@ export const navItems: NavItem[] = [
   // (src/components/sidebar-board-tree.tsx), so switching boards needs no
   // trip back to the list.
   { module: "boards", href: "/boards", icon: Columns3, tKey: "boards", group: "Boards" },
+  // ── Booking ──────────────────────────────────────────────────────────────
+  // Its own group and module since 2026-11-10: a salon buys the bookings and
+  // nothing else, and each of the four screens is an address of its own, so
+  // the help video belongs to the screen a person opened.
+  ...(BOOKING_WORKSPACE_ENABLED ? [
+    { module: "booking", href: "/meetings", icon: CalendarCheck, tKey: "bookingWorkspace", searchKeys: ["onlineBooking"], group: "Booking", permissionScope: "bookings" },
+    // The other three set the section up, and only an administrator may
+    // (`canConfigure`). As tabs they were simply absent for everyone else; as
+    // menu entries they would be three links to a screen that refuses the
+    // person, which the role sandbox caught at once.
+    { module: "booking", href: "/meetings/services", icon: Tag, tKey: "bookingServices", group: "Booking", permissionScope: "bookings", allowedRoles: ADMIN_ROLES },
+    { module: "booking", href: "/meetings/whatsapp", icon: MessageCircle, tKey: "bookingWhatsApp", group: "Booking", permissionScope: "bookings", allowedRoles: ADMIN_ROLES },
+    { module: "booking", href: "/meetings/team", icon: Users, tKey: "bookingTeam", group: "Booking", permissionScope: "bookings", allowedRoles: ADMIN_ROLES },
+  ] satisfies NavItem[] : []),
   // ── Sales ────────────────────────────────────────────────────────────────
   // Dedicated Sales group/module (1 группа = 1 модуль): the seller's daily path
   // — leads → deals → quotes (CPQ) → sequences (cadences) → forecast — plus the
@@ -209,7 +223,6 @@ export const navItems: NavItem[] = [
   { module: "sales", href: "/deals", icon: Handshake, tKey: "deals", group: "Sales" },
   // Owner, 2026-10-26: phone orders are sales («продажи»), not field work; rights as deals.
   { module: "sales", feature: "pharmacy_phone_orders", href: "/pharmacy-orders", icon: PhoneIncoming, tKey: "pharmacyPhoneOrders", group: "Sales", permissionScope: "deals" },
-  ...(BOOKING_WORKSPACE_ENABLED ? [{ module: "sales", href: "/meetings", icon: CalendarCheck, tKey: "bookingWorkspace", searchKeys: ["onlineBooking"], group: "Sales", permissionScope: "bookings" } satisfies NavItem] : []),
   { module: "sales", href: "/quotes", icon: FileBadge, tKey: "quotes", group: "Sales" },
   { module: "sales", href: "/sequences", icon: Zap, tKey: "sequences", group: "Sales" },
   { module: "sales", href: "/forecast", icon: TrendingUp, tKey: "forecast", group: "Sales" },
@@ -547,6 +560,7 @@ export const NAV_GROUP_ORDER: string[] = [...new Set(navItems.map((i) => i.group
 export const GROUP_LAUNCHER_STYLE: Record<string, { chip: string; icon: string; dot: string }> = {
   CRM:                    { chip: "bg-orange-500/15",  icon: "text-orange-500",  dot: "bg-orange-500" },
   Boards:                 { chip: "bg-orange-500/15",  icon: "text-orange-600",  dot: "bg-orange-600" },
+  Booking:                { chip: "bg-emerald-500/15", icon: "text-emerald-600", dot: "bg-emerald-500" },
   Sales:                  { chip: "bg-red-500/15",     icon: "text-red-500",     dot: "bg-red-500" },
   "Contracts Control":    { chip: "bg-blue-500/15",    icon: "text-blue-500",    dot: "bg-blue-500" },
   Marketing:              { chip: "bg-pink-500/15",    icon: "text-pink-500",    dot: "bg-pink-500" },

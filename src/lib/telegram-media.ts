@@ -44,7 +44,7 @@ export async function fetchAndStoreTelegramMedia(
   fileId: string,
   botToken: string,
   organizationId: string,
-): Promise<{ url: string; mime: string } | null> {
+): Promise<{ url: string; mime: string; bytes: Buffer } | null> {
   if (!fileId || !botToken || !organizationId) return null
   try {
     // 1. getFile → file_path (+ size guard).
@@ -75,7 +75,7 @@ export async function fetchAndStoreTelegramMedia(
     await mkdir(rootDir, { recursive: true })
     await writeFile(path.join(rootDir, storedName), sealTenantFile(organizationId, buf))
 
-    return { url: `/${path.posix.join(baseDir, storedName)}`, mime }
+    return { url: `/${path.posix.join(baseDir, storedName)}`, mime, bytes: buf }
   } catch {
     return null
   }

@@ -30,6 +30,12 @@ const HELP_VIDEO_ENTRIES_RAW = [
   { slug: "quotes", routes: ["/quotes"] },
   { slug: "sequences", routes: ["/sequences"] },
   { slug: "meetings", routes: ["/meetings"] },
+  // One screen, one address, one short film: the section's own tabs became
+  // pages so a person gets the video of the screen they opened, not a
+  // four-minute tour of all four (owner, 2026-11-10).
+  { slug: "meetings-services", routes: ["/meetings/services"] },
+  { slug: "meetings-whatsapp", routes: ["/meetings/whatsapp"] },
+  { slug: "meetings-team", routes: ["/meetings/team"] },
   { slug: "forecast", routes: ["/forecast"] },
   { slug: "sales-forecast-settings", routes: ["/settings/sales-forecast"], helpSlugs: ["sales-forecast-settings"] },
   { slug: "forecast-snapshots", routes: ["/forecast/snapshots"] },
@@ -170,6 +176,9 @@ const HELP_VIDEO_TITLE_OVERRIDES: Record<string, string> = {
   "loyalty-pos": "Loyalty POS",
   "loyalty-promo-codes": "Loyalty Promo Codes",
   "loyalty-tiers": "Loyalty Tiers",
+  "meetings-services": "Meetings · Services",
+  "meetings-team": "Meetings · Team",
+  "meetings-whatsapp": "Meetings · WhatsApp",
   "mtm-activity": "MTM Activity",
   "mtm-agents": "MTM Agents",
   "mtm-alerts": "MTM Alerts",

@@ -78,6 +78,16 @@ export const EVENT_DOMAIN_CATALOG = [
     implementation: planned,
   },
   {
+    domainId: "booking",
+    title: "Booking",
+    // Meetings became a tenant module of their own on 2026-11-10; for a tenant
+    // that never bought it the switch still follows `sales` (modules.ts).
+    scopes: ["booking"],
+    profiles: ["B"],
+    migrationWave: 3,
+    implementation: planned,
+  },
+  {
     domainId: "contracts",
     title: "Contracts",
     scopes: ["contracts"],
