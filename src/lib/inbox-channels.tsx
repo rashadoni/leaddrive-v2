@@ -206,6 +206,7 @@ export interface InboxConversation {
    * nothing says which: a thread older than the channel row, or a platform that records no address.
    */
   channelAccount?: {
+    id: string | null
     channelType: string | null
     name: string | null
     number: string | null
@@ -243,11 +244,36 @@ function normalizeChannelAccount(value: unknown): InboxConversation["channelAcco
   const number = typeof raw.number === "string" && raw.number.trim() ? raw.number.trim() : null
   if (!name && !number) return null
   return {
+    id: typeof raw.id === "string" && raw.id ? raw.id : null,
     channelType: typeof raw.channelType === "string" ? raw.channelType : null,
     name,
     number,
     numberIsMetaId: raw.numberIsMetaId === true,
   }
+}
+
+/** One of the workspace's live numbers or pages, as the inbox rail lists it. */
+export type InboxChannelAccountEntry = NonNullable<InboxConversation["channelAccount"]> & { id: string }
+
+/**
+ * The accounts the rail lists under each platform: only where there are two or more of one platform,
+ * on any platform. One number has nothing to tell apart, and its platform line stays alone.
+ */
+export function inboxAccountsByChannel(accounts: InboxChannelAccountEntry[]): Record<string, InboxChannelAccountEntry[]> {
+  const grouped: Record<string, InboxChannelAccountEntry[]> = {}
+  for (const account of accounts) {
+    const key = account.channelType as string
+    ;(grouped[key] ||= []).push(account)
+  }
+  for (const key of Object.keys(grouped)) if (grouped[key].length < 2) delete grouped[key]
+  return grouped
+}
+
+export function normalizeInboxChannelAccounts(value: unknown): InboxChannelAccountEntry[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map(normalizeChannelAccount)
+    .filter((account): account is InboxChannelAccountEntry => !!account?.id && !!account.channelType)
 }
 
 /**

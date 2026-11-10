@@ -62,7 +62,11 @@ type InboxThread = {
 }
 
 /** The workspace of 2026-11-10: three WhatsApp numbers, two Meta pages, one SMS sender. */
-const CHANNELS = [
+const CHANNELS: Array<{
+  id: string; organizationId: string; channelType: string; configName: string; displayName: null
+  phoneNumber: string | null; settings: Record<string, unknown>; isActive?: boolean
+  accessToken: string; appSecret: string; verifyToken: string
+}> = [
   {
     id: "wa-coexistence",
     organizationId: ORG_ID,
@@ -97,6 +101,19 @@ const CHANNELS = [
     phoneNumber: "123456789012345",
     settings: {},
     accessToken: "EAA-secret-legacy",
+    appSecret: "app-secret",
+    verifyToken: "verify-secret",
+  },
+  {
+    id: "wa-switched-off",
+    organizationId: ORG_ID,
+    channelType: "whatsapp",
+    configName: "Lead Drive (old)",
+    displayName: null,
+    phoneNumber: "1334335789757477",
+    settings: { displayPhoneNumber: "+994 51 206 08 38" },
+    isActive: false,
+    accessToken: "EAA-secret-old",
     appSecret: "app-secret",
     verifyToken: "verify-secret",
   },
@@ -139,10 +156,13 @@ beforeEach(() => {
 
   // Prisma hands back only the columns the handler selects, and only this org's rows.
   vi.mocked(prisma.channelConfig.findMany).mockImplementation((async (args: {
-    where: { id: { in: string[] }; organizationId: string }
+    where: { id?: { in: string[] }; organizationId: string; isActive?: boolean; channelType?: { in: string[] } }
     select?: Record<string, boolean>
   }) => CHANNELS
-    .filter((row) => row.organizationId === args.where.organizationId && args.where.id.in.includes(row.id))
+    .filter((row) => row.organizationId === args.where.organizationId)
+    .filter((row) => !args.where.id || args.where.id.in.includes(row.id))
+    .filter((row) => args.where.isActive === undefined || (row.isActive ?? true) === args.where.isActive)
+    .filter((row) => !args.where.channelType || args.where.channelType.in.includes(row.channelType))
     .map((row) => (args.select
       ? Object.fromEntries(Object.entries(row).filter(([column]) => args.select?.[column]))
       : row))) as never)
@@ -179,6 +199,7 @@ describe("GET /api/v1/inbox — which account the thread reached", () => {
     ])
 
     expect(thread.channelAccount).toEqual({
+      id: "wa-fanum",
       channelType: "whatsapp",
       name: "Fanum Sec",
       number: "+994 10 531 80 49",
@@ -323,5 +344,33 @@ describe("what the card prints", () => {
     expect(sameChannelAddress("994501234567", "994773201000")).toBe(false)
     expect(sameChannelAddress("client@test.com", "CLIENT@test.com")).toBe(true)
     expect(sameChannelAddress("client@test.com", null)).toBe(false)
+  })
+})
+
+describe("GET /api/v1/inbox — the workspace's numbers and pages for the rail", () => {
+  async function railChannels() {
+    vi.mocked(prisma.channelMessage.findMany).mockResolvedValue([] as never)
+    const res = await GET_INBOX(makeRequest())
+    expect(res.status).toBe(200)
+    return (await res.json()).data.channels as Array<Record<string, unknown>>
+  }
+
+  it("lists every live number and page, each with the id the rail filters by", async () => {
+    const channels = await railChannels()
+    expect(channels.map((c) => [c.id, c.channelType, c.name, c.number])).toEqual([
+      ["wa-coexistence", "whatsapp", "Lead Drive", "+994 77 320 10 00"],
+      ["wa-fanum", "whatsapp", "Fanum Sec", "+994 10 531 80 49"],
+      ["wa-legacy", "whatsapp", "LeadDrive WhatsApp", "123456789012345"],
+      ["fb-shop", "facebook", "LeadDrive Shop", null],
+    ])
+  })
+
+  it("leaves out a switched-off number", async () => {
+    expect((await railChannels()).map((c) => c.id)).not.toContain("wa-switched-off")
+  })
+
+  it("carries no credentials", async () => {
+    const text = JSON.stringify(await railChannels())
+    expect(text).not.toMatch(/EAA-secret|app-secret|verify-secret|page-token/)
   })
 })
