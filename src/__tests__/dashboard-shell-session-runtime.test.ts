@@ -28,7 +28,7 @@ vi.mock("next-auth/react", () => ({
 }))
 const router = { replace: (href: string) => { state.replaced.push(href) }, push: () => {} }
 vi.mock("next/navigation", () => ({ usePathname: () => state.pathname, useRouter: () => router }))
-vi.mock("next/font/google", () => ({ Plus_Jakarta_Sans: () => ({ variable: "synthetic-font" }) }))
+vi.mock("@/lib/fonts/dashboard-font", () => ({ dashboardFont: { variable: "synthetic-font" } }))
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }))
 vi.mock("next/web-vitals", () => ({ useReportWebVitals: () => undefined }))
 vi.mock("@/hooks/use-mtm-org-settings", () => ({ useNavOrgContext: (user: unknown) => orgFromSession(user) }))

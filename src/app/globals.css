@@ -211,6 +211,19 @@
   }
 }
 
+/* What `--font-dashboard` shows until Plus Jakarta Sans arrives: Arial sized to
+   the same letter widths and line box. These are next/font/google's own
+   precalculated numbers for the family (capsize metrics of its Regular), kept
+   when the font moved into the repository — see src/lib/fonts/dashboard-font.ts. */
+@font-face {
+  font-family: "Plus Jakarta Sans Fallback";
+  src: local("Arial");
+  ascent-override: 98.88%;
+  descent-override: 21.15%;
+  line-gap-override: 0.00%;
+  size-adjust: 104.98%;
+}
+
 @layer base {
   * {
     @apply border-border;
