@@ -12,7 +12,7 @@ import { PAGE_SIZE } from "@/lib/constants"
 import { ensureConversation } from "@/lib/inbox-ensure-conversation"
 import { markMarketingContacted } from "@/lib/inbox/customer-stage"
 import { whatsappThreadReplyBinding } from "@/lib/inbox/whatsapp-reply-channel"
-import { attachInboxChannelAccounts } from "@/lib/inbox/conversation-channel"
+import { attachInboxChannelAccounts, channelAccountOf, INBOX_ACCOUNT_CHANNEL_TYPES, type InboxChannelAccount } from "@/lib/inbox/conversation-channel"
 
 export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
   const { searchParams } = new URL(req.url)
@@ -814,6 +814,28 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
       console.error("[inbox GET channel accounts]", e)
     }
 
+    // Every live number and page of the workspace, for the rail: with several of one platform it
+    // lists them one by one, so a conversation can be found by the number it reached.
+    let channels: InboxChannelAccount[] = []
+    try {
+      const rows = await prisma.channelConfig.findMany({
+        where: { organizationId: orgId, isActive: true, channelType: { in: [...INBOX_ACCOUNT_CHANNEL_TYPES] } },
+        // The same label columns as above — never credentials.
+        select: {
+          id: true,
+          channelType: true,
+          configName: true,
+          displayName: true,
+          phoneNumber: true,
+          settings: true,
+        },
+        orderBy: { createdAt: "asc" },
+      })
+      channels = rows.map(channelAccountOf)
+    } catch (e) {
+      console.error("[inbox GET channels]", e)
+    }
+
     // Stats
     const totalMessages = messages.length
     const inboundCount = messages.filter((m: any) => m.direction === "inbound").length
@@ -823,6 +845,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
       success: true,
       data: {
         conversations,
+        channels,
         stats: {
           totalMessages,
           inbound: inboundCount,

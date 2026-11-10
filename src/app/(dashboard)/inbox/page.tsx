@@ -27,7 +27,7 @@ import { isImagePreview } from "@/lib/media-preview"
 import { readJsonSafely } from "@/lib/http/read-json-safely"
 import { applySnippetVariables, type MessageSnippetLike } from "@/lib/inbox/snippet-vars"
 import { whatsappCallAuditLines } from "@/lib/whatsapp-call-audit"
-import { channelAccountLine, sameChannelAddress } from "@/lib/inbox/conversation-channel"
+import { channelAccountLine, channelAccountShortLabel, sameChannelAddress } from "@/lib/inbox/conversation-channel"
 import { dialFailureDiagnostic, formatDialDiagnostic } from "@/lib/calls/dial-diagnostics"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -41,6 +41,7 @@ import { HelpButton } from "@/components/help/help-button"
 import { ClickToCallButton } from "@/components/call-widget"
 import { WhatsAppCallControls } from "@/components/inbox/whatsapp-call-controls"
 import { WhatsAppOutboundCallControl } from "@/components/inbox/whatsapp-outbound-call-control"
+import { InboxChannelAccounts } from "@/components/inbox/inbox-channel-accounts"
 import { AiDraftPanel } from "@/components/inbox/ai-draft-panel"
 import { AiDebugDrawer } from "@/components/inbox/ai-debug-drawer"
 import { MessageDeliveryStatus } from "@/components/inbox/message-delivery-status"
@@ -64,8 +65,8 @@ import {
 import {
   CHANNELS, REPLY_CHANNELS, ChannelIcon, channelColor, channelLabel,
   avatarTint, initials, extractQuickReplies, appendTag, dropTag, convStatusTab, convMatchesView, extractAttachments,
-  normalizeInboxConversations,
-  type InboxConversation, type InboxStats, type MacroLike, type InboxCallLog,
+  normalizeInboxConversations, normalizeInboxChannelAccounts, inboxAccountsByChannel,
+  type InboxConversation, type InboxStats, type MacroLike, type InboxCallLog, type InboxChannelAccountEntry,
 } from "@/lib/inbox-channels"
 
 /* ── Folder rail definitions ── */
@@ -429,6 +430,9 @@ export default function InboxV2Page() {
   const [bulkNotice, setBulkNotice] = useState<{ tone: "success" | "warning" | "error"; text: string } | null>(null)
   const [search, setSearch] = useState("")
   const [channelFilter, setChannelFilter] = useState<string>("all")
+  // One number or page of the workspace, inside `channelFilter`'s platform; null = all of them.
+  const [accountFilter, setAccountFilter] = useState<string | null>(null)
+  const [channelAccounts, setChannelAccounts] = useState<InboxChannelAccountEntry[]>([])
   const [view, setView] = useState<ViewKey>("all")
   const [statusTab, setStatusTab] = useState<StatusTab>("opened")
   const [lifecycleFilter, setLifecycleFilter] = useState<string>("all")
@@ -610,9 +614,10 @@ export default function InboxV2Page() {
       if (view === "trash") query.set("view", "trash")
       const params = query.toString() ? `?${query}` : ""
       const res = await fetch(`/api/v1/inbox${params}`, { headers })
-      const json = await readJsonSafely<ApiEnvelope<{ conversations?: InboxConversation[]; stats?: InboxStats }>>(res)
+      const json = await readJsonSafely<ApiEnvelope<{ conversations?: InboxConversation[]; channels?: unknown; stats?: InboxStats }>>(res)
       if (json?.success && json.data) {
         setConversations(normalizeInboxConversations(json.data.conversations))
+        setChannelAccounts(normalizeInboxChannelAccounts(json.data.channels))
         setStats(json.data.stats || { totalMessages: 0, inbound: 0, outbound: 0, conversations: 0 })
       }
     } catch (err) {
@@ -787,6 +792,20 @@ export default function InboxV2Page() {
     return counts
   }, [conversations])
 
+  // A platform with several live numbers or pages lists them under itself, always open (owner,
+  // 2026-11-10: «если номеров несколько, то должно быть раскрытым всегда, не только ватсап»).
+  // One account — nothing to tell apart, the platform line stands alone as before.
+  const accountsByChannel = useMemo(() => inboxAccountsByChannel(channelAccounts), [channelAccounts])
+
+  const accountCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const c of conversations) {
+      const id = c.channelAccount?.id
+      if (id) counts[id] = (counts[id] || 0) + 1
+    }
+    return counts
+  }, [conversations])
+
   const lifecycleOptions = useMemo(() => {
     const present = new Set(conversations.map((c) => c.contactLifecycleStage).filter(Boolean) as string[])
     return [
@@ -858,6 +877,7 @@ export default function InboxV2Page() {
     const base = conversations.filter((c) => {
       if (!convMatchesView(c, view, myUserId)) return false
       if (folderFilter && c.folderId !== folderFilter) return false
+      if (accountFilter && c.channelAccount?.id !== accountFilter) return false
       return matchesSearchAndN3Filters(c, q)
     })
     return {
@@ -865,7 +885,7 @@ export default function InboxV2Page() {
       closed: base.filter((c) => convStatusTab(c, now) === "closed").length,
       snoozed: base.filter((c) => convStatusTab(c, now) === "snoozed").length,
     } as Record<StatusTab, number>
-  }, [conversations, search, view, myUserId, folderFilter, matchesSearchAndN3Filters])
+  }, [conversations, search, view, myUserId, folderFilter, accountFilter, matchesSearchAndN3Filters])
 
   /* ── Filtered list: status tab (Phase 2) + search ── */
   const pendingFolderActive = folders.find((folder) => folder.id === folderFilter)?.name === "Gözləmədə"
@@ -878,12 +898,13 @@ export default function InboxV2Page() {
       if (!pendingFolderActive && convStatusTab(c, now) !== statusTab) return false
       if (!convMatchesView(c, view, myUserId)) return false
       if (folderFilter && c.folderId !== folderFilter) return false
+      if (accountFilter && c.channelAccount?.id !== accountFilter) return false
       return matchesSearchAndN3Filters(c, q)
     }).sort((a, b) => {
       const diff = new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
       return sortOrder === "newest" ? diff : -diff
     })
-  }, [conversations, search, statusTab, view, myUserId, folderFilter, matchesSearchAndN3Filters, sortOrder, pendingFolderActive])
+  }, [conversations, search, statusTab, view, myUserId, folderFilter, accountFilter, matchesSearchAndN3Filters, sortOrder, pendingFolderActive])
 
   // Track the open conversation by a STABLE key (social-conversation / contact / first-message id),
   // NOT the list index — a re-sort after sending or a new inbound message would otherwise point the
@@ -937,7 +958,7 @@ export default function InboxV2Page() {
   }
   // Filter/view switches change what the keys refer to visually — never carry a
   // selection across them (mirrors every place the single `selected` resets).
-  useEffect(() => { setBulkSelected(new Set()) }, [view, statusTab, channelFilter, folderFilter, search, lifecycleFilter, customerStageFilter, conversationTagFilter, unrepliedOnly])
+  useEffect(() => { setBulkSelected(new Set()) }, [view, statusTab, channelFilter, accountFilter, folderFilter, search, lifecycleFilter, customerStageFilter, conversationTagFilter, unrepliedOnly])
 
   const runBulk = async (
     action: "close" | "pending" | "assign" | "folder" | "tags",
@@ -1728,7 +1749,7 @@ export default function InboxV2Page() {
               <button
                 key={v.key}
                 disabled={v.later}
-                onClick={() => { if (!v.later) { setView(v.key); setSelected(null); if (v.key === "all") setChannelFilter("all") } }}
+                onClick={() => { if (!v.later) { setView(v.key); setSelected(null); if (v.key === "all") { setChannelFilter("all"); setAccountFilter(null) } } }}
                 title={v.later ? t("comingLater") : undefined}
                 className={cn(
                   "w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors",
@@ -1748,19 +1769,34 @@ export default function InboxV2Page() {
           {CHANNELS.filter((c) => c !== "all").map((ch) => {
             const active = channelFilter === ch
             const count = channelCounts[ch] || 0
+            const accounts = accountsByChannel[ch] ?? []
             return (
-              <button
-                key={ch}
-                onClick={() => { setChannelFilter(active ? "all" : ch); setSelected(null) }}
-                className={cn(
-                  "w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors",
-                  active ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                )}
-              >
-                <ChannelIcon channel={ch} className="h-4 w-4 shrink-0 text-muted-foreground/70" />
-                <span className="flex-1 text-left truncate">{channelLabel(ch)}</span>
-                {count > 0 && <span className="text-[11px] tabular-nums text-muted-foreground/70">{count}</span>}
-              </button>
+              <div key={ch}>
+                <button
+                  onClick={() => {
+                    // The platform line is «all its numbers»: from one of them it widens, from itself it clears.
+                    setChannelFilter(active && !accountFilter ? "all" : ch)
+                    setAccountFilter(null)
+                    setSelected(null)
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors",
+                    active && !accountFilter ? "bg-muted text-foreground font-medium" : active ? "text-foreground font-medium hover:bg-muted/60" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                  )}
+                >
+                  <ChannelIcon channel={ch} className="h-4 w-4 shrink-0 text-muted-foreground/70" />
+                  <span className="flex-1 text-left truncate">{channelLabel(ch)}</span>
+                  {count > 0 && <span className="text-[11px] tabular-nums text-muted-foreground/70">{count}</span>}
+                </button>
+                <InboxChannelAccounts
+                  channel={ch}
+                  accounts={accounts}
+                  counts={accountCounts}
+                  activeId={accountFilter}
+                  fallbackLabel={channelLabel(ch)}
+                  onSelect={(accountId) => { setChannelFilter(ch); setAccountFilter(accountId); setSelected(null) }}
+                />
+              </div>
             )
           })}
 
@@ -2108,6 +2144,21 @@ export default function InboxV2Page() {
                     {c.channels.slice(0, 2).map((ch) => (
                       <ChannelIcon key={ch} channel={ch} className="h-3 w-3 shrink-0 text-muted-foreground/70" />
                     ))}
+                    {/* Which of the workspace's numbers or pages the thread reached — only where there is a choice. */}
+                    {(() => {
+                      const account = c.channelAccount
+                      if (!account?.channelType || !accountsByChannel[account.channelType]) return null
+                      const label = channelAccountShortLabel(account)
+                      if (!label) return null
+                      return (
+                        <span
+                          title={channelAccountLine(account, t("channelMetaIdPrefix")) ?? label}
+                          className="min-w-0 max-w-[60%] truncate rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground"
+                        >
+                          {label}
+                        </span>
+                      )
+                    })()}
                     {pill && (
                       <span className={cn("truncate rounded-full px-1.5 py-0.5 text-[10px] font-medium", pill.cls)}>
                         {pill.text}

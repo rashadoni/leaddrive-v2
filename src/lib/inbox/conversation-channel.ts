@@ -17,6 +17,8 @@
 import { channelNumber } from "@/lib/channels/channel-number-label"
 
 export type InboxChannelAccount = {
+  /** The `ChannelConfig` row — what the inbox rail filters a number or a page by. */
+  id: string | null
   channelType: string | null
   /** What «Ayarlar → Kanallar» calls this channel — the same `configName` that screen prints. */
   name: string | null
@@ -152,6 +154,7 @@ function conversationArrivalAddress(conversation: InboxChannelConversationLike):
 export function channelAccountOf(row: InboxChannelRow): InboxChannelAccount {
   const number = channelNumber(row)
   return {
+    id: row.id,
     channelType: text(row.channelType),
     // The settings row prints `configName`; the two screens must say the same name for the same
     // channel, so `displayName` is only a fallback for a row saved without one.
@@ -167,7 +170,7 @@ export function channelAccountOf(row: InboxChannelRow): InboxChannelAccount {
  * from the caller so the two screens read from the same message catalogue.
  */
 export function channelAccountLine(
-  account: InboxChannelAccount | null | undefined,
+  account: (Pick<InboxChannelAccount, "name" | "number" | "numberIsMetaId"> & Partial<InboxChannelAccount>) | null | undefined,
   metaIdPrefix: string,
 ): string | null {
   if (!account) return null
@@ -219,7 +222,7 @@ export async function attachInboxChannelAccounts<T extends InboxChannelConversat
       if (arrival) {
         account = account
           ? { ...account, number: arrival }
-          : { channelType: null, name: null, number: arrival, numberIsMetaId: false }
+          : { id: null, channelType: null, name: null, number: arrival, numberIsMetaId: false }
       }
     }
     if (account && !account.name && !account.number) account = null
@@ -229,4 +232,21 @@ export async function attachInboxChannelAccounts<T extends InboxChannelConversat
       channelAddress: conversationCustomerAddress(conversation),
     }
   })
+}
+
+/**
+ * The platforms whose accounts the inbox rail lists one by one. A workspace may hold several numbers
+ * or pages of one platform (LeadDrive Inc. on 2026-11-10: three WhatsApp numbers, five Facebook
+ * pages), and the rail showed one «WhatsApp» line for all of them (owner: «не понятно на какой
+ * ватсап пишут … тут только одна вкладка от каждого»).
+ */
+export const INBOX_ACCOUNT_CHANNEL_TYPES = [
+  "whatsapp", "facebook", "instagram", "telegram", "sms", "email", "vkontakte", "tiktok",
+] as const
+
+/** What the rail and the list row print for an account: its number, or its name when it has none. */
+export function channelAccountShortLabel(account: Pick<InboxChannelAccount, "name" | "number" | "numberIsMetaId"> | null | undefined): string | null {
+  if (!account) return null
+  if (account.number && !account.numberIsMetaId) return account.number
+  return account.name ?? null
 }
