@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { usePathname, useRouter } from "next/navigation"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { Plus_Jakarta_Sans } from "next/font/google"
+import { dashboardFont } from "@/lib/fonts/dashboard-font"
 import { Sidebar } from "@/components/sidebar"
 import { SupportMobileNavigation } from "@/components/support-mobile-navigation"
 import { Header } from "@/components/header"
@@ -38,13 +38,6 @@ import { ReviewerWatermark } from "@/components/reviewer-watermark"
 import { CrmAppearanceProvider } from "@/components/ui/crm-appearance"
 import { PageSkeleton } from "@/components/ui/page-skeleton"
 import { WebVitalsReporter } from "@/components/web-vitals-reporter"
-
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  variable: "--font-dashboard",
-})
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -205,7 +198,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 sessionLoaded={sessionLoaded}
                 onOpenLauncher={() => setLauncherOpen(true)}
               />
-              <main className={`font-dashboard relative flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${jakarta.variable}`} data-crm-workspace="" ref={mainRef}>
+              <main className={`font-dashboard relative flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${dashboardFont.variable}`} data-crm-workspace="" ref={mainRef}>
                 {!childrenReady ? (
                   <PageSkeleton />
                 ) : pageBlocked ? (

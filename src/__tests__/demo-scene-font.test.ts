@@ -1,12 +1,13 @@
 /**
  * The demo's scenes in the CRM's own font (owner, 2026-10-20: the intro clips
  * are re-filmed so that they match the CRM). The CRM sets its pages in Plus
- * Jakarta Sans — `next/font` in the dashboard layout, `font-dashboard` on its
+ * Jakarta Sans — `next/font/local` in `src/lib/fonts/dashboard-font.ts`, put on
+ * the dashboard's <main> with `font-dashboard`
  * <main>. The clips had been filmed in the body's Inter/Arial, which the
  * filming box drew as Liberation Sans.
  *
  * `next/font` runs only under Next's compiler, so what is checked is the
- * wiring: the same font call as the dashboard's, the variable defined on every
+ * wiring: the dashboard's very font object, the variable defined on every
  * demo route, and the scene container that reads it.
  */
 import { readFileSync } from "node:fs"
@@ -15,19 +16,15 @@ import { describe, expect, it } from "vitest"
 
 const read = (file: string) => readFileSync(path.join(process.cwd(), file), "utf8")
 
-/** The options object of the first `Plus_Jakarta_Sans({ … })` call, whitespace folded. */
-function jakartaOptions(source: string): string {
-  const match = /Plus_Jakarta_Sans\(\{([\s\S]*?)\}\)/.exec(source)
-  expect(match, "a Plus_Jakarta_Sans({ … }) call").not.toBeNull()
-  return match![1].replace(/\s+/g, " ").trim()
-}
-
 describe("the demo's scenes are set in the CRM's font", () => {
-  it("loads Plus Jakarta Sans with the dashboard's very options, under its variable", () => {
-    const dashboard = jakartaOptions(read("src/app/(dashboard)/layout.tsx"))
-    const demo = jakartaOptions(read("src/components/demo-center/journey/demo-scene-font.ts"))
-    expect(demo).toBe(dashboard)
-    expect(demo).toContain('variable: "--font-dashboard"')
+  it("uses the dashboard's very font object, under its variable", () => {
+    const dashboard = read("src/app/(dashboard)/layout.tsx")
+    const demo = read("src/components/demo-center/journey/demo-scene-font.ts")
+    expect(dashboard).toContain('import { dashboardFont } from "@/lib/fonts/dashboard-font"')
+    expect(dashboard).toContain("${dashboardFont.variable}")
+    expect(demo).toContain('import { dashboardFont } from "@/lib/fonts/dashboard-font"')
+    expect(demo).toMatch(/export const demoSceneFont = dashboardFont\n/)
+    expect(read("src/lib/fonts/dashboard-font.ts")).toContain('variable: "--font-dashboard"')
   })
 
   it.each(["demo-open", "demo-access", "demo-preview"])("defines the variable on /%s without a box of its own", (route) => {
