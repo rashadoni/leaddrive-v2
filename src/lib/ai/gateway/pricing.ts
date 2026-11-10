@@ -15,10 +15,56 @@ export const MODEL_PRICING: Record<string, { input: number; output: number }> = 
   "claude-haiku-4-5": { input: 1.0, output: 5.0 },
   "claude-sonnet-4-6": { input: 3.0, output: 15.0 },
   "claude-opus-4-8": { input: 5.0, output: 25.0 },
+  // Other providers, list prices as published by third-party price trackers
+  // on 2026-11-10 (the providers' own pages could not be read then) — check
+  // before relying on them for billing:
+  // Gemini 3.8 Flash: introductory $0.75 / $3.75, to $1.50 / $7.50 from 2027-01-01.
+  "gemini-3.8-flash": { input: 0.75, output: 3.75 },
+  // GPT-5.6 Luna after the 2026-07-30 price cut.
+  "gpt-5.6-luna": { input: 0.2, output: 1.2 },
+  // Voyage voyage-3-lite: input only.
+  "voyage-3-lite": { input: 0.02, output: 0 },
+}
+
+/**
+ * What a call billed by time or by item costs, in USD — same sources and
+ * date as above. Gemini Live is billed in audio tokens (25 a second; $3 in,
+ * $12 out per million): a minute of conversation is priced as if both sides
+ * spoke all of it, an estimate from above. Gemini speech output ($10 per
+ * million audio tokens) likewise.
+ */
+export const UNIT_PRICING = {
+  /** OpenAI whisper-1, per minute of audio. */
+  whisperMinute: 0.006,
+  /** Google Speech-to-Text v2 chirp_3 (standard tier), per minute of audio. */
+  chirpMinute: 0.016,
+  /** Gemini Live conversation, per minute of session. */
+  geminiLiveMinute: 0.0225,
+  /** Gemini / Vertex speech synthesis, per minute of speech produced. */
+  geminiSpeechMinute: 0.015,
+  /** Google Vision TEXT_DETECTION, per image. */
+  visionImage: 0.0015,
+} as const
+
+export function perMinuteCostUsd(pricePerMinute: number, seconds: number): number {
+  return Math.max(0, seconds) / 60 * pricePerMinute
 }
 
 /** A model nobody priced is counted at the Haiku price, as it always was. */
 const UNPRICED = MODEL_PRICING["claude-haiku-4-5-20251001"]
+
+/**
+ * The price of a model id as the provider answers it: exact, or the longest
+ * priced id it starts with — OpenAI answers "gpt-5.6-luna-2026-07-30" for a
+ * request to "gpt-5.6-luna".
+ */
+function modelPricing(model: string): { input: number; output: number } {
+  if (MODEL_PRICING[model]) return MODEL_PRICING[model]
+  const prefix = Object.keys(MODEL_PRICING)
+    .filter((priced) => model.startsWith(`${priced}-`))
+    .sort((a, b) => b.length - a.length)[0]
+  return prefix ? MODEL_PRICING[prefix] : UNPRICED
+}
 
 /**
  * Prompt-cache prices as a share of the input price: a read costs a tenth, a
@@ -38,7 +84,7 @@ export function aiCallCostUsd(
   outputTokens: number,
   cache?: { readTokens?: number; writeTokens?: number },
 ): number {
-  const pricing = MODEL_PRICING[model] ?? UNPRICED
+  const pricing = modelPricing(model)
   const cachedInput = (cache?.readTokens || 0) * CACHE_READ_PRICE_FACTOR
     + (cache?.writeTokens || 0) * CACHE_WRITE_5M_PRICE_FACTOR
   return ((inputTokens + cachedInput) * pricing.input + outputTokens * pricing.output) / 1_000_000

@@ -333,7 +333,7 @@ async function executeStage(
     return persistDetectedText(observation, "PLATFORM_CAPTION", descriptor.platformTranscript ?? "", "platform", stage.modelVersion, 1, signalRetentionDays)
   }
   if (stage.stage === "COVER_OCR") {
-    const client = resolveVisionOcrClient()
+    const client = await resolveVisionOcrClient(observation.organizationId, "social")
     if (!client) throw new Error("Vision OCR provider is not configured")
     const imageUrl = descriptor.thumbnailUrl ?? (descriptor.mediaType === "IMAGE" ? descriptor.sourceUrl : null)
     if (!imageUrl) throw new Error("Cover image is unavailable")
@@ -352,7 +352,7 @@ async function executeStage(
     }
   }
   if (stage.stage === "FRAME_OCR") {
-    const client = resolveVisionOcrClient()
+    const client = await resolveVisionOcrClient(observation.organizationId, "social")
     if (!client) throw new Error("Vision OCR provider is not configured")
     let signals = 0
     let promoted = 0
@@ -367,7 +367,7 @@ async function executeStage(
     return { signals, promoted, summary: { frames: summaries } }
   }
   if (stage.stage === "ASR") {
-    const client = resolveTranscriptionClient()
+    const client = await resolveTranscriptionClient(observation.organizationId, "social")
     if (!client) throw new Error("ASR provider is not configured")
     if (!descriptor.audioUrl) throw new Error("Audio URL is unavailable")
     const result = await client.transcribe({ audioUrl: descriptor.audioUrl, language: descriptor.language })

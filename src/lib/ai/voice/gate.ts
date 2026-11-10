@@ -34,6 +34,7 @@ const VOICE_ELIGIBLE_ROLES = new Set(["admin", "manager", "superadmin"])
 
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
+import { aiProviderAvailable } from "@/lib/ai/gateway"
 
 export type VoiceGateResult = { ok: true } | { ok: false; reason: string }
 
@@ -97,7 +98,15 @@ export async function checkVoicePilotAccess(auth: {
     return { ok: false, reason: "voice_provider_not_gemini_live" }
   }
 
-  if (!cfg.geminiApiKey) {
+  // A Gemini key the organization may use: its own, or the platform's where
+  // the superadmin allows it (src/lib/ai/gateway).
+  let providerReady = false
+  try {
+    providerReady = await aiProviderAvailable(auth.orgId, "gemini")
+  } catch {
+    return { ok: false, reason: "voice_provider_check_failed" }
+  }
+  if (!providerReady) {
     return { ok: false, reason: "voice_provider_not_configured" }
   }
 

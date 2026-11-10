@@ -97,10 +97,10 @@ export async function postWithClient(
   }
 
   // Resolve provider — explicit-injected wins for tests + DI.
-  const client = injectedClient !== undefined ? injectedClient : resolveTranscriptionClient()
+  const client = injectedClient !== undefined ? injectedClient : await resolveTranscriptionClient(auth.orgId, "call-transcription")
   if (!client) {
     return NextResponse.json(
-      { error: "Transcription provider not configured (set OPENAI_API_KEY)" },
+      { error: "Transcription is not available for this organization (no OpenAI key it may use, or the daily AI limit is spent)" },
       { status: 503 },
     )
   }

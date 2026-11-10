@@ -5,6 +5,7 @@ import { withRlsSessionAuth } from "@/lib/with-rls"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { guardInteractiveJsonMutation } from "@/lib/social/review-apply-request"
 import { checkVoicePilotAccess } from "@/lib/ai/voice/gate"
+import { journalPlatformAiCall, perMinuteCostUsd, UNIT_PRICING } from "@/lib/ai/gateway"
 import {
   CONSOLE_SPEECH_MAX_CHARS,
   CONSOLE_SPEECH_SAMPLE_RATE,
@@ -90,6 +91,19 @@ export const POST = withRlsSessionAuth(async (req, auth) => {
     return NextResponse.json({ error: "Speech failed", code: "SPEECH_EMPTY" }, { status: 502 })
   }
 
+  // The organization's AI journal (src/lib/ai/gateway): the speech this phrase
+  // produced, by its length. Vertex runs on the platform's credentials.
+  let bytes = first.value.length
+  let journaled = false
+  const journal = () => {
+    if (journaled) return
+    journaled = true
+    const seconds = bytes / (CONSOLE_SPEECH_SAMPLE_RATE * 2)
+    journalPlatformAiCall(auth.orgId, "gemini", "voice-assistant", {
+      model: "gemini-3.8-flash-tts",
+      costUsd: perMinuteCostUsd(UNIT_PRICING.geminiSpeechMinute, seconds),
+    })
+  }
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
       controller.enqueue(new Uint8Array(first.value))
@@ -99,18 +113,22 @@ export const POST = withRlsSessionAuth(async (req, auth) => {
         const next = await chunks.next()
         if (next.done) {
           clearTimeout(whole)
+          journal()
           controller.close()
           return
         }
+        bytes += next.value.length
         controller.enqueue(new Uint8Array(next.value))
       } catch {
         // Обрыв посреди фразы: вкладка доиграет то, что пришло.
         clearTimeout(whole)
+        journal()
         controller.close()
       }
     },
     cancel() {
       clearTimeout(whole)
+      journal()
       upstream.abort()
     },
   })

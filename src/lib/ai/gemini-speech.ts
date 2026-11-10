@@ -19,6 +19,7 @@
  *     answered are not to be kept anywhere, there either.
  * Nothing here logs a key, a text, an answer or audio.
  */
+import { platformAiKey } from "@/lib/ai/gateway/platform-key"
 
 const GEMINI_API = "https://generativelanguage.googleapis.com/v1beta"
 
@@ -36,8 +37,9 @@ export function geminiSpeechReadsTextVerbatim(model: string): boolean {
  * for the recording scripts' rotation; the first one is the key.
  */
 export function geminiApiKey(env: Readonly<Record<string, string | undefined>> = process.env): string | null {
-  const first = (env.GEMINI_API_KEY ?? "").split(",")[0]?.trim()
-  return first ? first : null
+  // The platform's key, read in one place (src/lib/ai/gateway/platform-key.ts):
+  // the speaking demo serves prospects, not an organization.
+  return platformAiKey("gemini", env)
 }
 
 function headers(apiKey: string): Record<string, string> {

@@ -23,6 +23,8 @@ import { CALLBACK_MARKER, callbackMarker } from "./zeytun-waitlist-callback"
 import { combineAssortment, confirmedOrdersSource, createCallAssortments, type AssortmentSource,
   type LoadedAssortment } from "./zeytun-pharmacy-assortment"
 import { CHIRP_KEY_FILE, createChirpRecognizer, createZeytunSecondEar, type ZeytunSecondEar } from "./zeytun-chirp"
+import { journalPlatformAiCall } from "@/lib/ai/gateway/access"
+import { perMinuteCostUsd, UNIT_PRICING } from "@/lib/ai/gateway/pricing"
 import type { PrismaClient } from "@prisma/client"
 
 // 2026-10-25 live call: the session request got 503 and the station ended the
@@ -300,7 +302,12 @@ export function createInboundPilotHost(options: {
     },
     isClaimed,
     findPharmacies,
-    ...(secondEar ? { secondEar } : {}),
+    ...(secondEar ? {
+      secondEar,
+      // Chirp runs on the platform's service account; the phrase is still the organization's spend.
+      journalHearing: (organizationId: string, seconds: number) => journalPlatformAiCall(organizationId, "google_speech", "phone-line",
+        { model: "chirp_3", costUsd: perMinuteCostUsd(UNIT_PRICING.chirpMinute, seconds) }),
+    } : {}),
     ...(options.organizationSettings ? {
       // Owner, 2026-10-31: the organization edits its line's greeting, goodbye and notes itself.
       loadLineSpeech: async (config) => config.orderOrganizationId && await allowedOrganization(config)
@@ -365,7 +372,7 @@ export function createInboundPilotHost(options: {
       if (order && (order.status !== "pending_review" || order.finishedOnCallAt || order.erpState !== null || order.revision !== order.stationRevision)) {
         return { status: "not_needed" }
       }
-      const lines = await read(transcript)
+      const lines = await read(transcript, orgId)
       if (!lines?.length) return { status: "nothing_read" }
       const catalog = await this.loadCatalog(config)
       const merged = recoveredOrderLines(order?.lines ?? [], lines,

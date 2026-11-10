@@ -59,17 +59,33 @@ export function parseTranscriptOrder(text: string | null): TranscriptOrderLine[]
   }
 }
 
-/** Gemini's text model over HTTPS, the key in a header (never the address); null on any failure. */
-export function geminiTranscriptReader(apiKey: string | null, fetcher: typeof fetch = fetch, timeoutMs = 20_000) {
-  return async (transcript: string): Promise<TranscriptOrderLine[] | null> => {
-    if (!apiKey) return null
+/** The organization's Gemini key and journal (src/lib/ai/gateway), or null when it has none it may use. */
+export type GeminiKeyFor = (orgId: string) => Promise<{ apiKey: string; journal?: (entry: { model: string; inputTokens: number; outputTokens: number }) => void } | null>
+
+/**
+ * Gemini's text model over HTTPS, the key in a header (never the address); null on any failure.
+ * The key is the order's organization's — its own or the platform's — and the call goes into its journal.
+ */
+export function geminiTranscriptReader(keyFor: GeminiKeyFor, fetcher: typeof fetch = fetch, timeoutMs = 20_000) {
+  return async (transcript: string, orgId: string): Promise<TranscriptOrderLine[] | null> => {
     try {
+      const access = await keyFor(orgId)
+      if (!access) return null
       const response = await fetcher(`https://generativelanguage.googleapis.com/v1beta/models/${TRANSCRIPT_MODEL}:generateContent`, {
-        method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": access.apiKey },
         body: JSON.stringify(transcriptOrderRequest(transcript)), signal: AbortSignal.timeout(timeoutMs),
       })
       if (!response.ok) return null
-      const body = await response.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] }
+      const body = await response.json() as {
+        candidates?: { content?: { parts?: { text?: string }[] } }[]
+        usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number }
+      }
+      access.journal?.({
+        model: TRANSCRIPT_MODEL,
+        inputTokens: body.usageMetadata?.promptTokenCount ?? 0,
+        // Thinking is billed as output.
+        outputTokens: (body.usageMetadata?.candidatesTokenCount ?? 0) + (body.usageMetadata?.thoughtsTokenCount ?? 0),
+      })
       return parseTranscriptOrder(body.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? null)
     } catch {
       return null

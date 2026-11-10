@@ -33,6 +33,7 @@ import { checkAiBudget, isAiFeatureEnabled } from "@/lib/ai/budget"
 import { checkRateLimit, RATE_LIMIT_CONFIG } from "@/lib/rate-limit"
 import { logEmbeddingSpend } from "@/lib/ai/embedding-spend"
 import { PiiMasker } from "@/lib/ai/pii-masker"
+import { voyageEmbedding } from "@/lib/ai/voyage-embedding"
 
 const bodySchema = z.object({
   query:     z.string().min(1, "query is required").max(2000),
@@ -44,27 +45,10 @@ function maskEmbeddingText(text: string): string {
   return new PiiMasker().mask(text)
 }
 
-async function generateEmbedding(text: string): Promise<number[]> {
+async function generateEmbedding(orgId: string, text: string): Promise<number[]> {
   const safeText = maskEmbeddingText(text)
-  const voyageKey = process.env.VOYAGE_API_KEY
-  if (voyageKey) {
-    const response = await fetch("https://api.voyageai.com/v1/embeddings", {
-      signal: AbortSignal.timeout(30_000),
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${voyageKey}`,
-      },
-      body: JSON.stringify({
-        model: "voyage-3-lite",
-        input: [safeText.slice(0, 8000)],
-      }),
-    })
-    const data = await response.json()
-    if (data.data?.[0]?.embedding) {
-      return data.data[0].embedding
-    }
-  }
+  const voyage = await voyageEmbedding(orgId, safeText, "contracts")
+  if (voyage) return voyage
 
   // Fallback: deterministic hash-based pseudo-embedding
   const DIMS = 512
@@ -127,7 +111,7 @@ export const POST = withRlsAuth("contracts", "read", async (req, auth) => {
   let queryVector: number[]
   const embedStart = Date.now()
   try {
-    queryVector = await generateEmbedding(safeQuery)
+    queryVector = await generateEmbedding(orgId, safeQuery)
   } catch (err) {
     console.error("ContractSemanticSearch embedding failed:", err)
     return NextResponse.json(

@@ -10,7 +10,6 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
-import { checkAiBudget } from "@/lib/ai/budget"
 
 export const SPEND_GRANULARITIES = ["day", "week", "month"] as const
 export type SpendGranularity = (typeof SPEND_GRANULARITIES)[number]
@@ -144,7 +143,7 @@ export async function aiSpendReport(
         where: { organizationId: orgId, createdAt: { gte: start } },
         _min: { createdAt: true },
       }),
-      checkAiBudget(orgId),
+      import("@/lib/ai/budget").then(({ checkAiBudget }) => checkAiBudget(orgId)),
     ])
 
     const periods: SpendPeriod[] = []

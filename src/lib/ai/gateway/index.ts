@@ -9,7 +9,11 @@ export { recordAiUsage, type AiUsageEntry, type AiKeySource } from "./usage"
 export {
   tenantAiAccess, saveTenantAiCredential, deleteTenantAiCredential, listTenantAiCredentials, forgetTenantAiAccess, keyHint,
 } from "./credentials"
-export { aiCallCostUsd, MODEL_PRICING } from "./pricing"
+export { aiCallCostUsd, MODEL_PRICING, UNIT_PRICING, perMinuteCostUsd } from "./pricing"
+export {
+  aiKeyFor, aiKeyOrRefusal, aiProviderAvailable, journalPlatformAiCall, journalAiCallOnCurrentKey, platformAiKey,
+  type AiKeyAccess, type AiJournalEntry, type AiAccessOptions,
+} from "./access"
 export { verifyProviderKey, type KeyCheck } from "./verify-key"
 export {
   aiSpendReport, RANGES_FOR, SPEND_GRANULARITIES, SPEND_RANGES, isSpendGranularity, isSpendRange, spendTimeZone,

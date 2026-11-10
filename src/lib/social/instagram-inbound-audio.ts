@@ -59,7 +59,7 @@ async function handleInboundAudio(
   input: InboundAudioInput,
   source: "Instagram" | "TikTok",
 ): Promise<"transcribed" | "fallback"> {
-  const client = resolveTranscriptionClient()
+  const client = await resolveTranscriptionClient(input.organizationId, "inbox-audio")
   if (!client) {
     await input.sendFallback(INSTAGRAM_AUDIO_TEXT_FALLBACK)
     return "fallback"

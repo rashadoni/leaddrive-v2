@@ -1,16 +1,29 @@
+import { aiKeyOrRefusal, isAiUnavailable, UNIT_PRICING, type AiFeature } from "@/lib/ai/gateway"
 import { createGoogleVisionClient } from "@/lib/vision/providers/google-vision"
 import type { VisionOcrClient } from "@/lib/vision/types"
 
-export function resolveVisionOcrClient(): VisionOcrClient | null {
+/**
+ * The organization's OCR client through the AI gateway: its own Google Vision
+ * key or the platform's, the daily limit on the platform's, and a journal line
+ * per image read. Null when OCR is not available to the organization.
+ */
+export async function resolveVisionOcrClient(orgId: string, feature: AiFeature): Promise<VisionOcrClient | null> {
   const provider = process.env.VISION_OCR_PROVIDER ?? "google-vision"
   if (provider !== "google-vision") return null
-  const apiKey = process.env.GOOGLE_VISION_API_KEY
-  if (!apiKey) return null
-  return createGoogleVisionClient({
-    apiKey,
+  const access = await aiKeyOrRefusal(orgId, "google_vision", feature)
+  if (isAiUnavailable(access)) return null
+  const client = createGoogleVisionClient({
+    apiKey: access.apiKey,
     endpoint: process.env.GOOGLE_VISION_ENDPOINT,
     timeoutMs: parseTimeout(process.env.VISION_OCR_TIMEOUT_MS),
   })
+  return {
+    async detectText(request) {
+      const result = await client.detectText(request)
+      access.journal({ model: "google-vision-text-detection", costUsd: UNIT_PRICING.visionImage })
+      return result
+    },
+  }
 }
 
 function parseTimeout(raw: string | undefined): number | undefined {

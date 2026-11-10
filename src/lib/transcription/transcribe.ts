@@ -1,41 +1,48 @@
 /**
  * C4 Call Transcription — provider router.
  *
- * Resolves a TranscriptionClient based on env config. Routes use:
+ * Resolves the organization's TranscriptionClient through the AI gateway:
  *
- *   const client = resolveTranscriptionClient()
- *   if (!client) return 503  // not configured
+ *   const client = await resolveTranscriptionClient(orgId, "call-transcription")
+ *   if (!client) return 503  // not configured / not allowed / limit spent
  *   const result = await client.transcribe({ audioUrl, language })
  *
- * Why a router instead of direct provider import: lets us swap
- * providers per-tenant later (channel config), or stand up a
- * self-hosted Whisper instance without touching call routes.
+ * The key is the organization's own OpenAI key or the platform's
+ * (src/lib/ai/gateway), the platform's daily limit applies on the platform's
+ * key, and every finished transcription is journaled by its audio length.
  *
  * For tests, callers can inject a mock client directly into the
  * route handler (see `__tests__/api-calls-transcribe.test.ts`).
  */
 
+import { aiKeyOrRefusal, isAiUnavailable, perMinuteCostUsd, UNIT_PRICING, type AiFeature } from "@/lib/ai/gateway"
 import { createOpenAIWhisperClient } from "./providers/openai-whisper"
 import type { TranscriptionClient } from "./types"
 
-/** Resolve the configured client based on env. Returns null when
- *  transcription isn't configured — routes should respond with 503
- *  rather than 500 in that case. */
-export function resolveTranscriptionClient(): TranscriptionClient | null {
+/** The organization's client, or null when transcription is not available to
+ *  it — routes should respond with 503 rather than 500 in that case. */
+export async function resolveTranscriptionClient(orgId: string, feature: AiFeature): Promise<TranscriptionClient | null> {
   const provider = process.env.TRANSCRIPTION_PROVIDER || "openai-whisper"
-
-  if (provider === "openai-whisper") {
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) return null
-    return createOpenAIWhisperClient({
-      apiKey,
-      baseUrl: process.env.OPENAI_BASE_URL,
-      timeoutMs: parseTimeoutMs(process.env.TRANSCRIPTION_TIMEOUT_MS),
-    })
-  }
-
   // Unknown provider — fail closed.
-  return null
+  if (provider !== "openai-whisper") return null
+
+  const access = await aiKeyOrRefusal(orgId, "openai", feature)
+  if (isAiUnavailable(access)) return null
+  const client = createOpenAIWhisperClient({
+    apiKey: access.apiKey,
+    baseUrl: process.env.OPENAI_BASE_URL,
+    timeoutMs: parseTimeoutMs(process.env.TRANSCRIPTION_TIMEOUT_MS),
+  })
+  return {
+    async transcribe(request) {
+      const result = await client.transcribe(request)
+      // Whisper bills the audio's length; without it, nothing to price.
+      if (typeof result.durationSeconds === "number") {
+        access.journal({ model: "whisper-1", costUsd: perMinuteCostUsd(UNIT_PRICING.whisperMinute, result.durationSeconds) })
+      }
+      return result
+    },
+  }
 }
 
 function parseTimeoutMs(raw: string | undefined): number | undefined {

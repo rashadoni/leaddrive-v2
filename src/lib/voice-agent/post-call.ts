@@ -1,3 +1,4 @@
+import { aiKeyOrRefusal, isAiUnavailable } from "@/lib/ai/gateway/access"
 import { createHash } from "node:crypto"
 import { z } from "zod"
 
@@ -161,8 +162,12 @@ export async function analyzeVoiceCall(params: {
   callId: string
   turns: VoiceAgentTurn[]
 }): Promise<{ analysis: PostCallAnalysis; model: string }> {
-  const apiKey = process.env.OPENAI_API_KEY?.trim()
-  if (!apiKey) throw new Error("OpenAI post-call analysis is not configured")
+  // The organization's OpenAI key or the platform's, through the AI gateway;
+  // refused (no key it may use, or the platform's limit spent) — the caller
+  // falls back to the extractive summary.
+  const access = await aiKeyOrRefusal(params.organizationId, "openai", "call-analysis")
+  if (isAiUnavailable(access)) throw new Error(`OpenAI post-call analysis is not available (${access.reason})`)
+  const apiKey = access.apiKey
 
   const model = process.env.VOICE_POSTCALL_MODEL?.trim() || "gpt-5.6-luna"
   const transcript = formatVoiceTranscript(params.turns)
@@ -236,7 +241,12 @@ export async function analyzeVoiceCall(params: {
     if (!response.ok) {
       throw new Error(`OpenAI post-call analysis failed (HTTP ${response.status})`)
     }
-    const body = await response.json() as { model?: unknown }
+    const body = await response.json() as { model?: unknown; usage?: { input_tokens?: number; output_tokens?: number } }
+    access.journal({
+      model: typeof body.model === "string" ? body.model : model,
+      inputTokens: body.usage?.input_tokens ?? 0,
+      outputTokens: body.usage?.output_tokens ?? 0,
+    })
     const text = outputText(body)
     if (!text) throw new Error("OpenAI post-call response has no output text")
     const analysis = postCallAnalysisSchema.parse(JSON.parse(text))

@@ -39,7 +39,9 @@ export const DEFAULT_AI_MODEL = "claude-sonnet-4-6"
  * the AI call or be metered at the wrong rate. Used by the ai-configs validators.
  */
 export const KNOWN_AI_MODELS = Object.keys(MODEL_PRICING)
-  .filter((model) => !RETIRED_AI_MODELS.has(model))
+  // Agents talk through the Claude client; the price table also prices the
+  // gateway's other providers, which an agent cannot be configured to.
+  .filter((model) => model.startsWith("claude-") && !RETIRED_AI_MODELS.has(model))
 
 /**
  * The model to actually call, given whatever a tenant's config happens to hold.

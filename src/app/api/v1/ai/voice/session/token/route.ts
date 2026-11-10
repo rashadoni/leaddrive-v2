@@ -8,7 +8,8 @@ import { checkRateLimit } from "@/lib/rate-limit"
 import { checkVoicePilotAccess } from "@/lib/ai/voice/gate"
 import { getOrgModuleContext } from "@/lib/api-auth"
 import { accessibleVoiceSectionKeys } from "@/lib/ai/voice/read-access"
-import { MAX_SESSION_SECONDS, readVoicePilotConfig, voiceWritesEnabled } from "@/lib/ai/voice/config"
+import { MAX_SESSION_SECONDS, voiceWritesEnabled } from "@/lib/ai/voice/config"
+import { aiKeyOrRefusal, isAiUnavailable } from "@/lib/ai/gateway"
 import {
   createGeminiLiveToken,
   GEMINI_LIVE_API_VERSION,
@@ -59,8 +60,11 @@ export const POST = withRlsAuth("ai", "read", async (req, auth) => {
     return NextResponse.json({ error: "Session expired" }, { status: 409 })
   }
 
-  const apiKey = readVoicePilotConfig().geminiApiKey
-  if (!apiKey) return NextResponse.json({ error: "Voice provider unavailable" }, { status: 503 })
+  // The organization's own Gemini key or the platform's (src/lib/ai/gateway);
+  // on the platform's, its daily AI limit must not be spent.
+  const access = await aiKeyOrRefusal(auth.orgId, "gemini", "voice-assistant")
+  if (isAiUnavailable(access)) return NextResponse.json({ error: "Voice provider unavailable", reason: access.reason }, { status: 503 })
+  const apiKey = access.apiKey
 
   const [me, orgCtx] = await Promise.all([
     prisma.user.findFirst({

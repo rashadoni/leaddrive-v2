@@ -40,6 +40,11 @@ export const AI_FEATURES = {
   "social": { ru: "Соцмониторинг", az: "Sosial monitorinq", en: "Social monitoring" },
   "agent-test": { ru: "Проверка ИИ-агента", az: "AI agentinin yoxlanışı", en: "AI agent test" },
   "embeddings": { ru: "Поиск по смыслу", az: "Mənaya görə axtarış", en: "Semantic search" },
+  "voice-assistant": { ru: "Голосовой ассистент", az: "Səsli assistent", en: "Voice assistant" },
+  "call-transcription": { ru: "Расшифровка звонков", az: "Zənglərin transkripsiyası", en: "Call transcription" },
+  "call-analysis": { ru: "Разбор звонка после разговора", az: "Zəngdən sonra təhlil", en: "After-call analysis" },
+  "inbox-audio": { ru: "Переписка — расшифровка голосовых", az: "Yazışma — səsli mesajların transkripsiyası", en: "Inbox — voice message transcription" },
+  "phone-line": { ru: "Телефонная линия заказов", az: "Sifariş telefon xətti", en: "Phone order line" },
 } as const satisfies Record<string, Label>
 
 export type AiFeature = keyof typeof AI_FEATURES
@@ -49,11 +54,11 @@ export const AI_PROVIDERS = ["anthropic", "gemini", "openai", "voyage", "google_
 export type AiProvider = (typeof AI_PROVIDERS)[number]
 
 /**
- * Providers whose own key the organization can enter today: those whose every
- * call goes through the gateway. The others still run on the platform's key
- * (plan, stage 3), so a key entered for them would be stored and never used.
+ * Providers whose own key the organization can enter: those whose every call
+ * goes through the gateway (stage 3, 2026-11-10). Google Speech-to-Text is not
+ * one: it runs on the platform's service-account file, only for the phone line.
  */
-export const SELF_KEY_PROVIDERS = ["anthropic"] as const satisfies readonly AiProvider[]
+export const SELF_KEY_PROVIDERS = ["anthropic", "gemini", "openai", "voyage", "google_vision"] as const satisfies readonly AiProvider[]
 
 export function isSelfKeyProvider(provider: string): provider is (typeof SELF_KEY_PROVIDERS)[number] {
   return (SELF_KEY_PROVIDERS as readonly string[]).includes(provider)

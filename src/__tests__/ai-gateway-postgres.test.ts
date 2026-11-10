@@ -14,6 +14,9 @@
  *  - The daily budget reads that journal and refuses the next call — only
  *    for spend on the platform's key: on its own key the organization is
  *    neither counted nor stopped.
+ *  - Gemini, OpenAI, Voyage and Google Vision (stage 3) take the same key
+ *    rules, and their calls land in the same journal — the voice assistant's
+ *    by its billed length, on the key the organization holds when it ends.
  *  - The spend report («Настройки → ИИ и расходы») buckets the journal by
  *    day, week or month in the viewer's time zone, returns every period of
  *    the window (an empty one as zero), names the agent, and shows nothing
@@ -54,6 +57,9 @@ const scratch = vi.hoisted(() => {
   process.env.DATABASE_URL = app.toString()
   process.env.TENANT_PII_MASTER_KEY = "0123456789abcdef".repeat(4) // gitleaks:allow — synthetic test key
   process.env.ANTHROPIC_API_KEY = "sk-ant-platform-key-for-tests" // gitleaks:allow — not a key
+  process.env.GEMINI_API_KEY = "gemini-platform-key-for-tests,second-key" // gitleaks:allow — not a key
+  process.env.OPENAI_API_KEY = "sk-openai-platform-key-for-tests" // gitleaks:allow — not a key
+  delete process.env.VOYAGE_API_KEY // no platform Voyage key: the refusal case
   return { name, role, adminDb: db.toString() }
 })
 
@@ -313,5 +319,51 @@ function schemaWithoutEmbeddings(): string {
 
     // A zone the runtime does not know reads as UTC rather than failing.
     expect((await gateway.aiSpendReport(ORG, { granularity: "day", range: "7d", timeZone: "Mars/Olympus" })).timeZone).toBe("UTC")
+  })
+  it("gives Gemini, OpenAI, Voyage and Vision the same key rules and the same journal", async () => {
+    // Platform key (the first of Gemini's comma list), journaled as the platform's.
+    const gemini = await gateway.aiKeyFor(ORG, "gemini", "phone-line")
+    expect(gemini).toMatchObject({ apiKey: "gemini-platform-key-for-tests", keySource: "platform" })
+    gemini.journal({ model: "gemini-3.8-flash", inputTokens: 1000, outputTokens: 200 })
+
+    // The organization's own OpenAI key wins over the platform's.
+    await gateway.saveTenantAiCredential({ orgId: ORG, provider: "openai", secret: "sk-org-own-openai-key-0001" })
+    const openai = await gateway.aiKeyFor(ORG, "openai", "call-transcription")
+    expect(openai).toMatchObject({ apiKey: "sk-org-own-openai-key-0001", keySource: "tenant" })
+    openai.journal({ model: "whisper-1", costUsd: 0.009 })
+
+    // No platform Voyage key on this installation: refused, not a crash.
+    expect(await gateway.aiKeyOrRefusal(ORG, "voyage", "embeddings")).toMatchObject({ reason: "not_connected" })
+    // The superadmin switched the platform key off: only an own key opens a provider.
+    expect(await gateway.aiProviderAvailable(OFF, "gemini")).toBe(false)
+    await gateway.saveTenantAiCredential({ orgId: OFF, provider: "google_vision", secret: "AIza-org-own-vision-key-01" })
+    expect(await gateway.aiKeyFor(OFF, "google_vision", "social")).toMatchObject({ keySource: "tenant" })
+    await settle()
+
+    const rows = (await usageRows(ORG)).map(({ feature, provider, model, keySource, inputTokens, outputTokens, costUsd }) =>
+      ({ feature, provider, model, keySource, inputTokens, outputTokens, costUsd }))
+    expect(rows).toEqual(expect.arrayContaining([
+      // $0.75 in, $3.75 out per million.
+      { feature: "phone-line", provider: "gemini", model: "gemini-3.8-flash", keySource: "platform", inputTokens: 1000, outputTokens: 200, costUsd: expect.closeTo(0.0015, 12) },
+      { feature: "call-transcription", provider: "openai", model: "whisper-1", keySource: "tenant", inputTokens: 0, outputTokens: 0, costUsd: 0.009 },
+    ]))
+    expect(rows).toHaveLength(2)
+  })
+
+  it("journals a closed voice session by its billed length, on the key the organization holds", async () => {
+    const voiceBudget = await import("@/lib/ai/voice/budget")
+    const started = new Date()
+    await rls.runWithTenant(ORG, () => voiceBudget.settleVoiceSeconds(ORG, "user-1", 300, 120, started))
+    await gateway.saveTenantAiCredential({ orgId: ORG, provider: "gemini", secret: "org-own-gemini-key-000001" })
+    await rls.runWithTenant(ORG, () => voiceBudget.settleVoiceSeconds(ORG, "user-1", 300, 60, started))
+    // A session that never connected costs nothing and writes nothing.
+    await rls.runWithTenant(ORG, () => voiceBudget.settleVoiceSeconds(ORG, "user-1", 300, 0, started))
+
+    const rows = (await usageRows(ORG)).map(({ feature, provider, keySource, costUsd }) => ({ feature, provider, keySource, costUsd }))
+    expect(rows).toEqual(expect.arrayContaining([
+      { feature: "voice-assistant", provider: "gemini", keySource: "platform", costUsd: expect.closeTo(0.045, 12) },
+      { feature: "voice-assistant", provider: "gemini", keySource: "tenant", costUsd: expect.closeTo(0.0225, 12) },
+    ]))
+    expect(rows).toHaveLength(2)
   })
 })

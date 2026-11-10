@@ -30,6 +30,7 @@ import { checkAiBudget, isAiFeatureEnabled } from "@/lib/ai/budget"
 import { checkRateLimit, RATE_LIMIT_CONFIG } from "@/lib/rate-limit"
 import { logEmbeddingSpend } from "@/lib/ai/embedding-spend"
 import { PiiMasker } from "@/lib/ai/pii-masker"
+import { voyageEmbedding } from "@/lib/ai/voyage-embedding"
 
 // Max chars to embed — Voyage voyage-3-lite handles up to ~120k tokens;
 // 32k chars (~8k tokens) is a safe practical cap per contract.
@@ -41,27 +42,10 @@ function maskEmbeddingText(text: string): string {
 
 // Inline minimal embedding helper so we don't import the entire embeddings.ts
 // module (which has Anthropic fallback) — we mirror the Voyage call shape exactly.
-async function generateEmbedding(text: string): Promise<number[]> {
+async function generateEmbedding(orgId: string, text: string): Promise<number[]> {
   const safeText = maskEmbeddingText(text)
-  const voyageKey = process.env.VOYAGE_API_KEY
-  if (voyageKey) {
-    const response = await fetch("https://api.voyageai.com/v1/embeddings", {
-      signal: AbortSignal.timeout(30_000),
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${voyageKey}`,
-      },
-      body: JSON.stringify({
-        model: "voyage-3-lite",
-        input: [safeText.slice(0, 8000)],
-      }),
-    })
-    const data = await response.json()
-    if (data.data?.[0]?.embedding) {
-      return data.data[0].embedding
-    }
-  }
+  const voyage = await voyageEmbedding(orgId, safeText, "contracts")
+  if (voyage) return voyage
 
   // Fallback: deterministic hash-based pseudo-embedding (same logic as embeddings.ts)
   const DIMS = 512
@@ -139,7 +123,7 @@ export const POST = withRlsAuth("contracts", "write", async (req, auth, { params
   let vector: number[]
   const embedStart = Date.now()
   try {
-    vector = await generateEmbedding(embeddingText)
+    vector = await generateEmbedding(orgId, embeddingText)
   } catch (err) {
     console.error("ContractEmbedding generation failed:", err)
     return NextResponse.json(

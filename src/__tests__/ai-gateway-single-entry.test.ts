@@ -31,11 +31,14 @@ const FORBIDDEN: Array<[string, RegExp]> = [
   ["imports the low-level client factory", /from\s+["'](?:@\/lib\/ai|\.{1,2}(?:\/[\w-]+)*)\/anthropic-client["']/],
   ["builds its own client (new Anthropic)", /\bnew\s+Anthropic\s*\(/],
   ["reads the platform key itself", /process\.env\.ANTHROPIC_API_KEY/],
+  // Stage 3 (2026-11-10): Gemini, OpenAI, Voyage and Google Vision go through
+  // the same door; their platform keys are read only in gateway/platform-key.ts.
+  ["reads a platform provider key itself", /\benv\.(?:GEMINI_API_KEY|OPENAI_API_KEY|VOYAGE_API_KEY|GOOGLE_VISION_API_KEY)\b/],
   ["imports the SDK as a value (types only outside the gateway)", /^import\s+(?!type\b)[^"']*?from\s+["']@anthropic-ai\/sdk["']/m],
 ]
 
-describe("one door to Claude", () => {
-  it("no file outside src/lib/ai/gateway builds a client or reads the key", () => {
+describe("one door to every AI provider", () => {
+  it("no file outside src/lib/ai/gateway builds a Claude client or reads a provider key", () => {
     const offenders: string[] = []
     for (const file of sources(ROOT)) {
       const relative = path.relative(ROOT, file)
@@ -52,7 +55,11 @@ describe("one door to Claude", () => {
     const unnamed: string[] = []
     for (const file of sources(ROOT)) {
       const text = readFileSync(file, "utf8")
-      for (const call of text.matchAll(/\b(?:anthropicFor|anthropicAccess|anthropicOrRefusal)\([^,()]+,\s*"([\w-]+)"/g)) {
+      for (const call of text.matchAll(/\b(?:anthropicFor|anthropicAccess|anthropicOrRefusal|resolveTranscriptionClient|resolveVisionOcrClient|voyageEmbedding)\([^,()]+,\s*"([\w-]+)"/g)) {
+        if (!named.has(call[1])) unnamed.push(`${path.relative(ROOT, file)}: ${call[1]}`)
+      }
+      // The provider is the second argument of the plain-HTTP door.
+      for (const call of text.matchAll(/\b(?:aiKeyFor|aiKeyOrRefusal|journalPlatformAiCall|journalAiCallOnCurrentKey)\([^,()]+,\s*"[\w-]+",\s*"([\w-]+)"/g)) {
         if (!named.has(call[1])) unnamed.push(`${path.relative(ROOT, file)}: ${call[1]}`)
       }
     }

@@ -830,12 +830,17 @@ function announceLineOrderLater(organizationId: string, callId: string) {
 function recoverLineOrder(callId: string, transcription: string) {
   // Loaded here, not at the top: the line's host belongs to the line process, not to every result.
   void (async () => {
-    const [{ zeytunLineHost }, { geminiTranscriptReader }, { geminiApiKey }] = await Promise.all([
+    const [{ zeytunLineHost }, { geminiTranscriptReader }, gateway] = await Promise.all([
       import("@/lib/voice-agent/pharmacy/zeytun-line-host"), import("@/lib/voice-agent/pharmacy/zeytun-transcript-recovery"),
-      import("@/lib/ai/gemini-speech")])
+      import("@/lib/ai/gateway")])
     const host = zeytunLineHost()
     if (!host.recoverOrderFromTranscript) return
-    const result = await host.recoverOrderFromTranscript(callId, transcription, geminiTranscriptReader(geminiApiKey()))
+    // The order's organization's Gemini key — its own or the platform's — and its journal.
+    const keyFor = async (orgId: string) => {
+      const access = await gateway.aiKeyOrRefusal(orgId, "gemini", "phone-line")
+      return gateway.isAiUnavailable(access) ? null : access
+    }
+    const result = await host.recoverOrderFromTranscript(callId, transcription, geminiTranscriptReader(keyFor))
     if (result.status === "saved") console.log("[zeytun-line] transcript order", JSON.stringify(result))
   })().catch((error: unknown) => console.warn("[zeytun-line] transcript order failed", error instanceof Error ? error.name : typeof error))
 }

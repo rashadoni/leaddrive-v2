@@ -30,6 +30,7 @@ import { requireCronAuth } from "@/lib/cron-auth"
 import { isAiFeatureEnabled, checkAiBudget } from "@/lib/ai/budget"
 import { logEmbeddingSpend } from "@/lib/ai/embedding-spend"
 import { PiiMasker } from "@/lib/ai/pii-masker"
+import { voyageEmbedding } from "@/lib/ai/voyage-embedding"
 import { runWithRlsBypass } from "@/lib/rls-context"
 
 export const dynamic = "force-dynamic"
@@ -41,27 +42,10 @@ function maskEmbeddingText(text: string): string {
   return new PiiMasker().mask(text)
 }
 
-async function generateEmbedding(text: string): Promise<number[]> {
+async function generateEmbedding(orgId: string, text: string): Promise<number[]> {
   const safeText = maskEmbeddingText(text)
-  const voyageKey = process.env.VOYAGE_API_KEY
-  if (voyageKey) {
-    const response = await fetch("https://api.voyageai.com/v1/embeddings", {
-      signal: AbortSignal.timeout(30_000),
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${voyageKey}`,
-      },
-      body: JSON.stringify({
-        model: "voyage-3-lite",
-        input: [safeText.slice(0, 8000)],
-      }),
-    })
-    const data = await response.json()
-    if (data.data?.[0]?.embedding) {
-      return data.data[0].embedding
-    }
-  }
+  const voyage = await voyageEmbedding(orgId, safeText, "contracts")
+  if (voyage) return voyage
 
   // Fallback: deterministic hash-based pseudo-embedding
   const DIMS = 512
@@ -158,7 +142,7 @@ export async function POST(req: NextRequest) {
 
         try {
           const embedStart = Date.now()
-          const vector = await generateEmbedding(embeddingText)
+          const vector = await generateEmbedding(orgId, embeddingText)
           const embedLatencyMs = Date.now() - embedStart
 
           const vectorStr = `[${vector.join(",")}]`
