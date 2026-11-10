@@ -384,6 +384,48 @@ describe("POST /api/v1/ai/approve-action", () => {
     expect(executeTool).not.toHaveBeenCalled()
   })
 
+  it("a role without the right cannot approve: 403, card stays pending, nothing runs", async () => {
+    vi.mocked(getSession).mockResolvedValue({ ...SESSION, role: "viewer" } as any)
+    vi.mocked(requireAuth).mockResolvedValue({ ...AUTH, role: "viewer" } as any)
+    vi.mocked(prisma.aiPendingAction.findFirst).mockResolvedValue({
+      id: "a1",
+      toolName: "send_email",
+      toolInput: { to: "customer@example.com" },
+      userId: "u1",
+      expiresAt: new Date(Date.now() + 60000),
+    } as any)
+
+    const res = await POST_APPROVE(
+      makeReq("http://localhost:3000/api/v1/ai/approve-action", {
+        method: "POST",
+        body: JSON.stringify({ actionId: "a1", decision: "approve" }),
+      }),
+    )
+    expect(res.status).toBe(403)
+    expect(prisma.aiPendingAction.updateMany).not.toHaveBeenCalled()
+    expect(executeTool).not.toHaveBeenCalled()
+  })
+
+  it("approval runs with the approver's role", async () => {
+    vi.mocked(prisma.aiPendingAction.findFirst).mockResolvedValue({
+      id: "a1",
+      toolName: "send_email",
+      toolInput: { to: "customer@example.com" },
+      userId: "u1",
+      expiresAt: new Date(Date.now() + 60000),
+    } as any)
+    vi.mocked(prisma.aiPendingAction.updateMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(executeTool).mockResolvedValue({ success: true, data: {} } as any)
+
+    await POST_APPROVE(
+      makeReq("http://localhost:3000/api/v1/ai/approve-action", {
+        method: "POST",
+        body: JSON.stringify({ actionId: "a1", decision: "approve" }),
+      }),
+    )
+    expect(vi.mocked(executeTool).mock.calls[0][5]).toBe("admin")
+  })
+
   it("claims the action before executing it", async () => {
     vi.mocked(prisma.aiPendingAction.findFirst).mockResolvedValue({
       id: "a1",

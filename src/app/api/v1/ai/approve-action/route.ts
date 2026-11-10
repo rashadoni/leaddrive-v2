@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma, logAudit } from "@/lib/prisma"
 import { executeTool } from "@/lib/ai/tool-executor"
+import { aiToolDenialMessage, aiWriteToolPermission } from "@/lib/ai/tool-permissions"
 import { withRls } from "@/lib/with-rls"
 
 /**
@@ -67,6 +68,14 @@ export const POST = withRls(async (req, { orgId, session }) => {
     return NextResponse.json({ success: true, data: { status: "rejected" } })
   }
 
+  // Одобряющий отвечает своими правами: карточку письма или правки контакта не
+  // нажмёт тот, кому это действие закрыто (src/lib/ai/tool-permissions.ts).
+  // Проверка до захвата карточки — отказ оставляет её ждать того, кому можно.
+  const permission = aiWriteToolPermission(session.role, pending.toolName, pending.toolInput)
+  if (!permission.allowed) {
+    return NextResponse.json({ error: aiToolDenialMessage(permission) }, { status: 403 })
+  }
+
   // Claim BEFORE executing — this is the line that makes double-execution impossible.
   const claimed = await prisma.aiPendingAction.updateMany({
     where: { id: actionId, organizationId: orgId, status: "pending" },
@@ -79,7 +88,7 @@ export const POST = withRls(async (req, { orgId, session }) => {
   const toolInput = pending.toolInput as Record<string, any>
   let result: Awaited<ReturnType<typeof executeTool>>
   try {
-    result = await executeTool(pending.toolName, toolInput, orgId, pending.userId, true)
+    result = await executeTool(pending.toolName, toolInput, orgId, pending.userId, true, session.role)
   } catch (err: any) {
     // executeTool swallows tool-level errors, so reaching here means an
     // infrastructure failure. The card stays claimed and terminal either way.

@@ -45,7 +45,7 @@ describe("executeTool: create_deal tenant pinning", () => {
   it("scopes the model-supplied pipelineId to the caller's organization", async () => {
     vi.mocked(prisma.pipeline.findFirst).mockResolvedValue({ id: "p-own" } as any)
 
-    await executeTool("create_deal", { name: "Acme", pipelineId: "p-foreign", stage: "LEAD" }, "org-1", "u-1", true)
+    await executeTool("create_deal", { name: "Acme", pipelineId: "p-foreign", stage: "LEAD" }, "org-1", "u-1", true, "admin")
 
     const lookup = vi.mocked(prisma.pipeline.findFirst).mock.calls[0][0] as any
     expect(lookup.where).toMatchObject({ id: "p-foreign", organizationId: "org-1" })
@@ -58,7 +58,7 @@ describe("executeTool: create_deal tenant pinning", () => {
       .mockResolvedValueOnce(null as any)
       .mockResolvedValueOnce({ id: "p-default" } as any)
 
-    await executeTool("create_deal", { name: "Acme", pipelineId: "p-foreign", stage: "LEAD" }, "org-1", "u-1", true)
+    await executeTool("create_deal", { name: "Acme", pipelineId: "p-foreign", stage: "LEAD" }, "org-1", "u-1", true, "admin")
 
     const created = vi.mocked(prisma.deal.create).mock.calls[0][0] as any
     expect(created.data.pipelineId).toBe("p-default")
@@ -72,7 +72,7 @@ describe("executeTool: create_deal tenant pinning", () => {
   it("leaves pipelineId unset when the org has no default and the supplied one is foreign", async () => {
     vi.mocked(prisma.pipeline.findFirst).mockResolvedValue(null as any)
 
-    await executeTool("create_deal", { name: "Acme", pipelineId: "p-foreign", stage: "LEAD" }, "org-1", "u-1", true)
+    await executeTool("create_deal", { name: "Acme", pipelineId: "p-foreign", stage: "LEAD" }, "org-1", "u-1", true, "admin")
 
     const created = vi.mocked(prisma.deal.create).mock.calls[0][0] as any
     expect(created.data.pipelineId).toBeUndefined()
@@ -81,7 +81,7 @@ describe("executeTool: create_deal tenant pinning", () => {
   it("scopes the stage lookup through the pipeline's owner", async () => {
     vi.mocked(prisma.pipeline.findFirst).mockResolvedValue({ id: "p-own" } as any)
 
-    await executeTool("create_deal", { name: "Acme", pipelineId: "p-own", stage: "QUALIFIED" }, "org-1", "u-1", true)
+    await executeTool("create_deal", { name: "Acme", pipelineId: "p-own", stage: "QUALIFIED" }, "org-1", "u-1", true, "admin")
 
     const stageLookup = vi.mocked(prisma.pipelineStage.findFirst).mock.calls[0][0] as any
     expect(stageLookup.where).toMatchObject({
@@ -96,7 +96,7 @@ describe("executeTool: audit actor", () => {
   it("records who the AI acted for", async () => {
     vi.mocked(prisma.pipeline.findFirst).mockResolvedValue({ id: "p-own" } as any)
 
-    await executeTool("create_deal", { name: "Acme", stage: "LEAD" }, "org-1", "u-42", true)
+    await executeTool("create_deal", { name: "Acme", stage: "LEAD" }, "org-1", "u-42", true, "admin")
 
     const call = vi.mocked(logAudit).mock.calls.at(-1)!
     expect(call[1]).toBe("ai_action")
@@ -107,7 +107,7 @@ describe("executeTool: audit actor", () => {
   it("records the actor for add_note too", async () => {
     vi.mocked(prisma.activity.create).mockResolvedValue({ id: "a1" } as any)
 
-    await executeTool("add_note", { entityType: "deal", entityId: "d1", content: "hi" }, "org-1", "u-7", true)
+    await executeTool("add_note", { entityType: "deal", entityId: "d1", content: "hi" }, "org-1", "u-7", true, "admin")
 
     const call = vi.mocked(logAudit).mock.calls.at(-1)!
     expect(call[5]).toMatchObject({ userId: "u-7" })

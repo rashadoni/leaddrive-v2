@@ -6,6 +6,7 @@ import { anthropicAccess, aiUnavailableText, isAiUnavailable } from "@/lib/ai/ga
 import { ModelStreamStalledError, streamRoundGuarded } from "@/lib/ai/model-stream-guard"
 import { calculateAiCost, resolveAiModel } from "@/lib/ai/budget"
 import { checkRateLimit, RATE_LIMIT_CONFIG } from "@/lib/rate-limit"
+import { aiWriteToolOffered } from "@/lib/ai/tool-permissions"
 import { TOOL_META, filterToolsByTenantModules, getEnabledTools, getEnabledToolsForAgent, type RiskLevel } from "@/lib/ai/tools"
 import { READ_TOOLS, READ_TOOL_NAMES, READ_TOOL_MODULE, READ_TOOL_PERMISSION, type ReadResultData } from "@/lib/ai/read-tools"
 import { VOICE_SUMMARY_TOOLS, type VoiceToolName } from "@/lib/ai/voice/read-tools"
@@ -311,6 +312,10 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
     // happened to include, then re-add the module-allowed ones iff the flag is on.
     // Tenant scoping still holds (RLS + organizationId in every read builder).
     tools = tools.filter((t) => !READ_TOOL_NAMES.includes(t.name))
+    // Пишущие действия — только те, на которые у роли есть право
+    // (src/lib/ai/tool-permissions.ts). Исполнитель проверяет то же самое ещё
+    // раз на каждом вызове; здесь — чтобы модель не предлагала недоступное.
+    tools = tools.filter((t) => aiWriteToolOffered(session.role, t.name))
     if (smartSearchEnabled) {
       const allowedReadTools = READ_TOOLS.filter((t) => {
         const mod = READ_TOOL_MODULE[t.name]
