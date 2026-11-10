@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
-import { CalendarCheck, CalendarDays, CalendarPlus, CalendarRange, CheckCircle2, ChevronLeft, ChevronRight, List, RefreshCw, Search, SlidersHorizontal } from "lucide-react"
+import { CalendarCheck, CalendarDays, CalendarPlus, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Copy, List, RefreshCw, Search, SlidersHorizontal } from "lucide-react"
 import { Hint } from "@/components/hint"
 import { Button } from "@/components/ui/button"
 import { CrmSection } from "@/components/ui/crm-section"
@@ -79,7 +79,7 @@ interface Context {
   canConfigure: boolean
   canCoordinate: boolean
   hosts: { id: string; name: string; isActive: boolean; canReceiveBookings: boolean }[]
-  pages: { id: string; title: string; hostIds: string[]; isActive: boolean; category: string | null }[]
+  pages: { id: string; title: string; hostIds: string[]; isActive: boolean; category: string | null; url: string }[]
 }
 interface BookingList { items: WorkspaceBooking[]; nextCursor: string | null }
 async function readBookingData<T>(url: string, signal: AbortSignal): Promise<T> {
@@ -146,6 +146,7 @@ export function BookingWorkspace({ section = "meetings" }: { section?: BookingSe
   const [dayFilters, setDayFilters] = useState(false)
   /** The meeting just created, shown as a confirmation over the day. */
   const [justBooked, setJustBooked] = useState<string | null>(null)
+  const [linkCopied, setLinkCopied] = useState(false)
   const [instant, setInstant] = useState(() => new Date().toISOString())
   useEffect(() => { const timer = window.setInterval(() => setInstant(new Date().toISOString()), 60_000); return () => window.clearInterval(timer) }, [])
   const timezone = context?.timezone ?? "Asia/Baku"
@@ -237,6 +238,15 @@ export function BookingWorkspace({ section = "meetings" }: { section?: BookingSe
   // a client could actually book, and the day card says which it is.
   const bookablePages = context?.pages.filter((item) => item.isActive && item.hostIds.length) ?? []
   const freePage = bookablePages.find((item) => item.id === page) ?? bookablePages[0] ?? null
+  async function copyClientLink(url: string) {
+    try {
+      await navigator.clipboard.writeText(url)
+      setLinkCopied(true)
+      window.setTimeout(() => setLinkCopied(false), 2000)
+    } catch {
+      window.prompt(t("copyLink"), url)
+    }
+  }
   const slotsRequest = freePage ? new URLSearchParams({ pageId: freePage.id, day: selectedDay, ...(host ? { hostId: host } : {}) }).toString() : ""
   const slotsQuery = useQuery({
     queryKey: ["booking-day-slots", identity, slotsRequest, revision],
@@ -400,6 +410,31 @@ export function BookingWorkspace({ section = "meetings" }: { section?: BookingSe
         </Link>
       </Button>)}
     </nav>
+    {/* The one thing a salon needs on the screen it opens: the link it sends to
+        clients. It used to live one screen away, behind «Dəyiş» on a service
+        card — the owner's point about the section being hard to understand
+        starts here (2026-11-10: «не забудь про простоту в понимании»). */}
+    {tab === "meetings" && context ? <CrmSection className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+      {freePage ? <>
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("myLinkTitle")}</p>
+          <p className="truncate text-sm font-medium">{freePage.url.replace(/^https?:\/\//, "")}</p>
+        </div>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => void copyClientLink(freePage.url)}>
+            {linkCopied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
+            {linkCopied ? t("linkCopied") : t("copyLink")}
+          </Button>
+          <Button variant="ghost" size="sm" asChild><a href={freePage.url} target="_blank" rel="noopener noreferrer">{t("openPage")}</a></Button>
+          {context.canConfigure ? <Button variant="ghost" size="sm" asChild><Link href={BOOKING_SECTION_PATHS.pages}>{t("myLinkAll")}</Link></Button> : null}
+        </div>
+      </> : <>
+        <p className="text-sm text-muted-foreground">{t("myLinkNone")}</p>
+        {context.canConfigure
+          ? <Button className="ml-auto" size="sm" asChild><Link href={BOOKING_SECTION_PATHS.pages}>{t("newPage")}</Link></Button>
+          : <p className="ml-auto text-sm text-muted-foreground">{t("myLinkAsk")}</p>}
+      </>}
+    </CrmSection> : null}
     {tab === "pages" || tab === "whatsapp" ? context?.canConfigure ? <BookingPagesPanel show={tab === "whatsapp" ? "whatsapp" : "services"} /> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : tab === "team" ? context?.canConfigure ? <div className="grid items-start gap-5 lg:grid-cols-2"><BookingHostSchedulePanel /><BookingCoordinatorsPanel /></div> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : <>
       <BookingRequestsPanel timezone={timezone} onReviewed={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }} />
       {view === "day" ? null : <section className="flex flex-wrap items-end gap-3" aria-label={t("workspaceFilters")}>
