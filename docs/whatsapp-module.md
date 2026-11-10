@@ -45,6 +45,32 @@ AI configuration and live channel credentials are not enabled or changed by this
 release. Test first in the owner's conversation before enabling a business-wide
 automation. Unit tests do not establish real WhatsApp delivery or model quality.
 
+## Connecting a number, and what the number may do afterwards
+
+Embedded Signup finishes with six steps, not five: after the channel row is saved it also pulls the
+account's message templates (`syncTemplatesFromMeta`). A connected number that cannot write first is
+half a connection, and nothing on the connect screen suggests that "Load templates from Meta" in
+settings is part of connecting. The pull is best effort — the channel is already registered and
+subscribed, so a Graph failure there is reported (`templatesSynced: null`) and never undoes it.
+
+Saving the row is also not the same as a working line. Meta decides the rest afterwards, and only
+the number's own business can change most of it. `lib/whatsapp-readiness` reads those facts —
+`status`, `quality_rating`, `messaging_limit_tier`, `name_status` on the number, plus
+`account_review_status` and `business_verification_status` on the account — and
+`GET /api/v1/whatsapp/readiness` turns them into one list under the business number in
+Settings → Channels → WhatsApp.
+
+Two states, deliberately: **blocked** means nothing goes out right now (the number is not
+`CONNECTED`, Meta paused the Cloud API side, or the account was rejected); **warn** means the line
+works with a ceiling the customer can lift. An unverified business is a warn, not a failure: it caps
+the number at 250 new recipients per 24 hours, which is the limit a growing tenant meets first and
+the one nothing in the product used to mention. A red quality rating, an unapproved display name and
+an empty template list are warns for the same reason — messages still go out.
+
+One unknown field fails a whole Graph read, so the number node is read once with every field and
+once more with a narrower set if Meta refuses; a missing fact is left `null` and never derived into a
+problem.
+
 ## Phone privacy
 
 An administrator can enable customer-phone hiding in WhatsApp settings. It is off

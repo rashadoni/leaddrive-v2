@@ -13,12 +13,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 // A stand-in for Prisma's rows and arguments, which differ per call; typing them is the real client's job.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>
-const db = vi.hoisted(() => ({ rows: [] as Row[], seq: 0 }))
+const db = vi.hoisted(() => ({ rows: [] as Row[], seq: 0, templates: [] as Row[] }))
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     channelConfig: {
       findFirst: vi.fn(async ({ where }: Row) => {
+        // The row by its own id — how every later read of this channel finds it (resolveWhatsAppConfig).
+        if (where.id) return db.rows.find((r) => r.id === where.id && r.organizationId === where.organizationId) ?? null
         const ids = (where.OR || []).map((c: Row) => c.phoneNumberId ?? c.phoneNumber)
         return db.rows.find((r) =>
           r.channelType === where.channelType
@@ -38,6 +40,16 @@ vi.mock("@/lib/prisma", () => ({
         return { id: r.id }
       }),
     },
+    whatsAppTemplate: {
+      upsert: vi.fn(async ({ where, create }: Row) => {
+        const key = where.organizationId_channelConfigId_name_language
+        const found = db.templates.find((t) => t.name === key.name && t.language === key.language && t.channelConfigId === key.channelConfigId)
+        if (found) return found
+        const row = { ...create }
+        db.templates.push(row)
+        return row
+      }),
+    },
   },
 }))
 
@@ -55,6 +67,7 @@ let phoneStatusAfterRegister: string | null = null
 // What Graph answers for `is_on_biz_app`. "unreadable" stands for the field not existing or the
 // request being refused — which is what we expect from today's live numbers.
 let isOnBizApp: boolean | "unreadable" = "unreadable"
+let templatesOk = true
 
 function stubGraph() {
   calls = []
@@ -71,6 +84,14 @@ function stubGraph() {
       return isOnBizApp === "unreadable"
         ? json({ error: { message: "(#100) Unsupported get request" } }, 400)
         : json({ is_on_biz_app: isOnBizApp, platform_type: "CLOUD_API", id: "444555666" })
+    }
+    if (url.includes("/111222333/message_templates")) {
+      return templatesOk
+        ? json({ data: [
+            { id: "1", name: "order_received", language: "az", status: "APPROVED", category: "UTILITY", components: [{ type: "BODY", text: "Sifarişiniz qəbul edildi." }] },
+            { id: "2", name: "campaign_update", language: "az", status: "APPROVED", category: "MARKETING", components: [{ type: "BODY", text: "{{1}} kampaniyası." }] },
+          ] })
+        : json({ error: { message: "(#200) You do not have permission" } }, 400)
     }
     if (url.endsWith("/111222333/subscribed_apps")) return subscribeOk ? json({ success: true }) : json({ error: { message: "(#200) no permission" } }, 400)
     if (url.endsWith("/444555666/register")) {
@@ -94,6 +115,8 @@ beforeEach(() => {
   subscribeOk = true
   phoneStatusAfterRegister = null
   isOnBizApp = "unreadable"
+  templatesOk = true
+  db.templates.length = 0
   stubGraph()
 })
 
@@ -109,6 +132,8 @@ describe("completeEmbeddedSignup", () => {
       "GET /v27.0/444555666",
       "POST /v21.0/111222333/subscribed_apps",
       "POST /v21.0/444555666/register",
+      // Last, and only after the channel exists: the account's templates (see the templates test below).
+      "GET /v21.0/111222333/message_templates",
     ])
     // The business token rides in the Authorization header on every call after the exchange.
     expect(calls.slice(1).every((c) => c.auth === "Bearer BUSINESS_TOKEN" && !c.url.includes("BUSINESS_TOKEN"))).toBe(true)
@@ -315,5 +340,35 @@ describe("a number that stays in the WhatsApp Business app (coexistence)", () =>
     expect(result).toMatchObject({ ok: true, registration: "registered", coexistence: false })
     expect(calls.some((c) => c.url.endsWith("/register"))).toBe(true)
     expect(db.rows[0].settings).toMatchObject({ coexistence: false, onboardingReason: "no_signal" })
+  })
+
+  it("leaves the workspace able to write first: the account's templates are pulled by connecting", async () => {
+    // Not "a sync request was issued": what matters is that the templates exist in the workspace
+    // afterwards, bound to the channel that was just created. Writing first is impossible without
+    // one, and nothing on the connect screen says a button in settings is part of connecting.
+    const result = await completeEmbeddedSignup(input)
+
+    expect(result).toMatchObject({ ok: true, templatesSynced: 2 })
+    expect(db.templates.map((t) => `${t.name}/${t.language}/${t.status}`)).toEqual([
+      "order_received/az/APPROVED",
+      "campaign_update/az/APPROVED",
+    ])
+    expect(new Set(db.templates.map((t) => t.channelConfigId))).toEqual(new Set([db.rows[0].id]))
+    expect(db.templates.every((t) => t.organizationId === "org_a")).toBe(true)
+    // The pull is the last step, after the channel exists — it reads the row's own credentials.
+    const templatesCall = calls.findIndex((c) => c.url.includes("message_templates"))
+    expect(templatesCall).toBe(calls.length - 1)
+  })
+
+  it("keeps the connection when Meta refuses the templates", async () => {
+    // A template pull that fails is a workspace with no templates yet, not a number that failed to
+    // connect: undoing a registered, subscribed, saved channel over it would be the worse answer.
+    templatesOk = false
+
+    const result = await completeEmbeddedSignup(input)
+
+    expect(result).toMatchObject({ ok: true, registration: "registered", templatesSynced: null })
+    expect(db.rows[0]).toMatchObject({ isActive: true, phoneNumberId: "444555666" })
+    expect(db.templates).toEqual([])
   })
 })
