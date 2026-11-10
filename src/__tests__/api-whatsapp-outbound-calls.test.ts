@@ -88,7 +88,7 @@ vi.mock("@/lib/prisma", () => ({
 }))
 
 import { prisma } from "@/lib/prisma"
-import { POST as POST_PERMISSION } from "@/app/api/v1/calls/whatsapp/permissions/route"
+import { GET as GET_PERMISSION, POST as POST_PERMISSION } from "@/app/api/v1/calls/whatsapp/permissions/route"
 import { POST as POST_OUTBOUND } from "@/app/api/v1/calls/whatsapp/outbound/route"
 
 function req(url: string, body: unknown) {
@@ -232,5 +232,65 @@ describe("WhatsApp outbound calling API", () => {
       session: { sdp_type: "offer", sdp: "v=0\r\n..." },
       biz_opaque_callback_data: "ld_call:call_1",
     })
+  })
+})
+
+describe("WhatsApp call permission check reuses a recent answer", () => {
+  const META_CHECK = "https://graph.facebook.com/v25.0/phone_1/call_permissions?user_wa_id=994501234567"
+  const stored = (checkedSecondsAgo: number, lastError: string | null) => ({
+    id: "perm_1",
+    status: lastError ? "unknown" : "no_permission",
+    canRequest: !lastError,
+    canStartCall: false,
+    requestMessageId: null,
+    responseSource: null,
+    isPermanent: false,
+    requestedAt: null,
+    approvedAt: null,
+    rejectedAt: null,
+    expiresAt: null,
+    lastCheckedAt: new Date(Date.now() - checkedSecondsAgo * 1000),
+    lastProviderStatus: lastError ? "400" : "200",
+    lastError,
+    actions: [],
+  })
+  const get = (query: string) => GET_PERMISSION(new NextRequest(`http://localhost/api/v1/calls/whatsapp/permissions?${query}`))
+
+  it("answers from a check made seconds ago without asking Meta", async () => {
+    vi.mocked(prisma.whatsAppCallPermission.findUnique).mockResolvedValueOnce(stored(10, null) as never)
+    const res = await get("conversationId=sc_1")
+    const json = await res.json()
+    expect(res.status).toBe(200)
+    expect(json.data.permission.canRequest).toBe(true)
+    expect(json.data.provider.canRequest).toBe(true)
+    expect(fetchCalls).toEqual([])
+  })
+
+  it("repeats a recent refusal from Meta as the same 502, without asking again", async () => {
+    vi.mocked(prisma.whatsAppCallPermission.findUnique).mockResolvedValueOnce(stored(10, "Calling API not enabled") as never)
+    const res = await get("conversationId=sc_1")
+    const json = await res.json()
+    expect(res.status).toBe(502)
+    expect(json.data.provider).toMatchObject({ success: false, status: 400, error: "Calling API not enabled" })
+    expect(fetchCalls).toEqual([])
+  })
+
+  it("asks Meta when the stored check is older than a minute", async () => {
+    vi.mocked(prisma.whatsAppCallPermission.findUnique).mockResolvedValueOnce(stored(61, null) as never)
+    const res = await get("conversationId=sc_1")
+    expect(res.status).toBe(200)
+    expect(fetchCalls.map((call) => call.url)).toEqual([META_CHECK])
+  })
+
+  it("asks Meta when there is no stored check", async () => {
+    vi.mocked(prisma.whatsAppCallPermission.findUnique).mockResolvedValueOnce(null as never)
+    await get("conversationId=sc_1")
+    expect(fetchCalls.map((call) => call.url)).toEqual([META_CHECK])
+  })
+
+  it("asks Meta regardless with fresh=1 (after a call that failed)", async () => {
+    vi.mocked(prisma.whatsAppCallPermission.findUnique).mockResolvedValueOnce(stored(10, null) as never)
+    await get("conversationId=sc_1&fresh=1")
+    expect(fetchCalls.map((call) => call.url)).toEqual([META_CHECK])
   })
 })

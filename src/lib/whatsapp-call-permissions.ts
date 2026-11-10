@@ -172,6 +172,26 @@ export async function getLocalWhatsAppCallPermission(target: {
   return serializeWhatsAppCallPermission(row)
 }
 
+/**
+ * How long a check of Meta's call permission is reused. The inbox asks about
+ * the open conversation every time it shows it; Meta answers in 1–3 s, and on
+ * 2026-11-09 one browser asked 276 times about one conversation in a day,
+ * every answer the same «Calling API not enabled». A customer's reply to the
+ * permission request comes by webhook and updates the stored row directly, so
+ * the stored row stays current inside this window without asking Meta.
+ */
+export const WHATSAPP_CALL_PERMISSION_FRESH_MS = 60_000
+
+/** The stored check, when it is recent enough to answer without Meta. */
+export function recentWhatsAppCallPermissionCheck(
+  permission: SerializedWhatsAppCallPermission | null,
+  now = Date.now(),
+): SerializedWhatsAppCallPermission | null {
+  if (!permission?.lastCheckedAt) return null
+  const age = now - Date.parse(permission.lastCheckedAt)
+  return age >= 0 && age < WHATSAPP_CALL_PERMISSION_FRESH_MS ? permission : null
+}
+
 function providerExpiresAt(expirationTime: number | null | undefined): Date | null {
   return typeof expirationTime === "number" && Number.isFinite(expirationTime)
     ? new Date(expirationTime * 1000)

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { sendWhatsAppCallPermissionRequest } from "@/lib/whatsapp"
 import {
   getLocalWhatsAppCallPermission,
+  recentWhatsAppCallPermissionCheck,
   recordWhatsAppCallPermissionRequest,
   refreshWhatsAppCallPermissionForTarget,
   resolveWhatsAppCallTarget,
@@ -51,6 +52,33 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
   if (!refresh) {
     const permission = await getLocalWhatsAppCallPermission(resolved.target)
     return NextResponse.json({ success: true, data: { target: resolved.target, permission, provider: null } })
+  }
+
+  // A check made a moment ago answers again (the inbox asks every time it
+  // shows the conversation); `fresh=1` asks Meta regardless — after a call
+  // that failed, the stored answer is the one in doubt.
+  if (req.nextUrl.searchParams.get("fresh") !== "1") {
+    const recent = recentWhatsAppCallPermissionCheck(await getLocalWhatsAppCallPermission(resolved.target))
+    if (recent) {
+      const success = !recent.lastError
+      return NextResponse.json({
+        success,
+        data: {
+          target: resolved.target,
+          permission: recent,
+          provider: {
+            success,
+            status: recent.lastProviderStatus ? Number(recent.lastProviderStatus) || null : null,
+            permissionStatus: recent.status,
+            canRequest: recent.canRequest,
+            canStartCall: recent.canStartCall,
+            actions: recent.actions,
+            error: recent.lastError,
+            checkedAt: recent.lastCheckedAt,
+          },
+        },
+      }, { status: success ? 200 : 502 })
+    }
   }
 
   const { state, permission } = await refreshWhatsAppCallPermissionForTarget(resolved.target)
