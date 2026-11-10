@@ -335,7 +335,7 @@ pgDescribe("tasks brought over from another tool, on a real Postgres", () => {
 
     // As in Bordio: the same task on Friday for one, on Wednesday for another, in the third one's waiting list.
     const body = { source: "bordio", plans: [
-      { externalId: OPEN.externalId, userEmail: "gulu.alakbarova@zeytunpharma.az", day: "2026-11-06" },
+      { externalId: OPEN.externalId, userEmail: "gulu.alakbarova@zeytunpharma.az", day: "2026-11-06", rank: 17937701285 },
       { externalId: OPEN.externalId, userEmail: "Aytan.Mushkurova@zeytunpharma.az", day: "2026-11-04" },
       { externalId: OPEN.externalId, userEmail: "nazrin.shirinova@zeytunpharma.az", day: null },
       { externalId: OPEN.externalId, userEmail: "former.member@zeytunpharma.az", day: "2026-11-05" },
@@ -356,6 +356,8 @@ pgDescribe("tasks brought over from another tool, on a real Postgres", () => {
 
     expect((await sendPlans(body)).body.data).toMatchObject({ created: 2, moved: 0, removed: 0 })
     expect(await plans()).toEqual([[OPEN.externalId, "aytan", "2026-11-04"], [OPEN.externalId, "gullu", "2026-11-06"]])
+    const rankOf = async (userId: string) => (await bypass(() => prisma.taskPlan.findFirst({ where: { organizationId: ORG, userId }, select: { rank: true } })))?.rank
+    expect(await rankOf("gullu")).toBe(17937701285) // her card's place in the day, from Bordio
     // A re-run changes nothing; the task itself was never touched and nobody was told.
     expect((await sendPlans(body)).body.data).toMatchObject({ created: 0, moved: 0, removed: 0, unchanged: 3 })
     const after = await openTask()
@@ -368,9 +370,15 @@ pgDescribe("tasks brought over from another tool, on a real Postgres", () => {
     const moved = await planRoute(request("PUT", `/api/v1/tasks/${after!.id}/plan`, { day: "2026-11-10" }), { params: Promise.resolve({ id: after!.id }) })
     expect(moved.status).toBe(200)
     expect(await plans()).toEqual([[OPEN.externalId, "aytan", "2026-11-04"], [OPEN.externalId, "gullu", "2026-11-10"]])
+    // Dropped on the day: under its last card — an empty day starts at «now».
+    expect(await rankOf("gullu")).toBeGreaterThan(1.7e12)
+    // Dropped on a card: the place the calendar worked out.
+    const placed = await planRoute(request("PUT", `/api/v1/tasks/${after!.id}/plan`, { day: "2026-11-10", rank: 42.5 }), { params: Promise.resolve({ id: after!.id }) })
+    expect(placed.status).toBe(200)
+    expect(await rankOf("gullu")).toBe(42.5)
     // Her list reads her day only, and her calendar finds it by it.
     const mine = await (await listRoute(request("GET", "/api/v1/tasks?mine=1&open=1&limit=50"))).json()
-    expect(mine.data.tasks.find((task: { id: string }) => task.id === after!.id).plans).toEqual([{ day: "2026-11-10T00:00:00.000Z" }])
+    expect(mine.data.tasks.find((task: { id: string }) => task.id === after!.id).plans).toEqual([{ day: "2026-11-10T00:00:00.000Z", rank: 42.5 }])
     const onDay = await (await listRoute(request("GET", "/api/v1/tasks?mine=1&planFrom=2026-11-10&planTo=2026-11-10&limit=50"))).json()
     expect(onDay.data.tasks.map((task: { id: string }) => task.id)).toEqual([after!.id])
     const otherDay = await (await listRoute(request("GET", "/api/v1/tasks?mine=1&planFrom=2026-11-04&planTo=2026-11-04&limit=50"))).json()

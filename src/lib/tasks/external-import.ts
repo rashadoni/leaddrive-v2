@@ -517,6 +517,8 @@ export const externalPlansSchema = z.strictObject({
     externalId: z.string().min(1).max(100),
     userEmail: email,
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).nullable(),
+    // The card's place inside the day in the other tool (Bordio's time block rank).
+    rank: z.number().finite().nullable().optional(),
   })).min(1).max(2000),
 })
 export type ExternalPlansInput = z.infer<typeof externalPlansSchema>
@@ -568,11 +570,11 @@ export async function importExternalPlans(
 
   const current = await tx.taskPlan.findMany({
     where: { organizationId, taskId: { in: tasks.map((task) => task.id) } },
-    select: { taskId: true, userId: true, day: true },
+    select: { taskId: true, userId: true, day: true, rank: true },
   })
-  const planOf = new Map(current.map((plan) => [`${plan.taskId}|${plan.userId}`, dayKey(plan.day)]))
+  const planOf = new Map(current.map((plan) => [`${plan.taskId}|${plan.userId}`, { day: dayKey(plan.day), rank: plan.rank }]))
 
-  const writes: Array<{ taskId: string; userId: string; day: string | null; kind: "created" | "moved" | "removed" }> = []
+  const writes: Array<{ taskId: string; userId: string; day: string | null; rank: number | null; kind: "created" | "moved" | "removed" }> = []
   let unchanged = 0
   for (const plan of input.plans) {
     const taskId = taskByExternal.get(plan.externalId)
@@ -583,8 +585,10 @@ export async function importExternalPlans(
       continue
     }
     const now = planOf.get(`${taskId}|${userId}`) ?? null
-    if (now === plan.day) { unchanged++; continue }
-    writes.push({ taskId, userId, day: plan.day, kind: plan.day === null ? "removed" : now === null ? "created" : "moved" })
+    // A rank left out keeps the one there is.
+    const rank = plan.rank === undefined ? (now?.rank ?? null) : plan.rank
+    if ((now?.day ?? null) === plan.day && (plan.day === null || (now?.rank ?? null) === rank)) { unchanged++; continue }
+    writes.push({ taskId, userId, day: plan.day, rank, kind: plan.day === null ? "removed" : now === null ? "created" : "moved" })
   }
 
   const result: ExternalPlansResult = {
@@ -606,8 +610,8 @@ export async function importExternalPlans(
     const day = new Date(`${write.day}T00:00:00.000Z`)
     await tx.taskPlan.upsert({
       where: { taskId_userId: { taskId: write.taskId, userId: write.userId } },
-      create: { organizationId, taskId: write.taskId, userId: write.userId, day },
-      update: { day },
+      create: { organizationId, taskId: write.taskId, userId: write.userId, day, rank: write.rank },
+      update: { day, rank: write.rank },
     })
   }
   return result

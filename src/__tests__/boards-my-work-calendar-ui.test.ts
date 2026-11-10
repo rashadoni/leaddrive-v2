@@ -114,7 +114,10 @@ describe("Mənim işlərim → Təqvim", () => {
     // In the waiting list a finished task looks like the rest: deadline shown, not struck through.
     expect(due("w-done")).toBe("просрочено на 3 дня")
     expect(container.querySelector('[data-task-id="w-done"] .line-through')).toBeNull()
-    expect(container.querySelector('[data-task-id="d-done"] .line-through')).not.toBeNull()
+    // On its day a finished card is greyed, as in Bordio — nothing struck through, priority still there.
+    expect(container.querySelector('[data-task-id="d-done"] .line-through')).toBeNull()
+    expect(container.querySelector('[data-task-id="d-done"]')?.className).toContain("text-muted-foreground")
+    expect(container.querySelector('[data-task-id="d-done"]')?.textContent).toContain("Средний")
   })
 
   it("steps one day at a time, and «Сегодня» comes back", async () => {

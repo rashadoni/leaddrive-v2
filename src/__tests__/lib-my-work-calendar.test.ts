@@ -5,7 +5,7 @@ const tz = process.env.TZ
 process.env.TZ = "Asia/Baku"
 afterAll(() => { if (tz === undefined) delete process.env.TZ; else process.env.TZ = tz })
 
-const { dayKeys, dueNote, firstDayFor, planForDay, planTasks, plannedDay, shiftDayKey, visibleDayCount } =
+const { dayKeys, dueNote, firstDayFor, planForDay, planTasks, plannedDay, rankBefore, rankBetween, shiftDayKey, visibleDayCount } =
   await import("@/lib/tasks/my-work-calendar")
 
 describe("days in the «Təqvim» of Mənim işlərim", () => {
@@ -16,7 +16,7 @@ describe("days in the «Təqvim» of Mənim işlərim", () => {
   })
 
   it("a plan is a calendar day, read back as the same day whatever the time zone", () => {
-    expect(planForDay("2026-11-12")).toEqual({ day: "2026-11-12T00:00:00.000Z" })
+    expect(planForDay("2026-11-12")).toEqual({ day: "2026-11-12T00:00:00.000Z", rank: null })
     expect(plannedDay({ plans: [{ day: "2026-11-12T00:00:00.000Z" }] })).toBe("2026-11-12")
     expect(plannedDay({ plans: [] })).toBeNull()
     expect(plannedDay({})).toBeNull()
@@ -51,8 +51,8 @@ describe("which task goes where", () => {
   it("the waiting list holds every task without a day — finished ones too, as in Bordio — the latest deadline first", () => {
     expect(waiting.map((x) => x.id)).toEqual(["soon", "late", "nodue", "done-nodate"])
   })
-  it("a day holds what is planned for it, open ones by priority, finished ones after", () => {
-    expect(byDay.get("2026-11-10")!.map((x) => x.id)).toEqual(["tue-crit", "tue-low", "done-tue"])
+  it("a day holds what is planned for it; without an order of their own, by priority", () => {
+    expect(byDay.get("2026-11-10")!.map((x) => x.id)).toEqual(["tue-crit", "done-tue", "tue-low"])
     expect(byDay.get("2026-11-09")).toEqual([])
     expect([...byDay.values()].flat().some((x) => x.id === "far")).toBe(false)
   })
@@ -66,5 +66,25 @@ describe("the deadline note on a card", () => {
     expect(dueNote("2026-11-11T19:59:59.000Z", now)).toEqual({ kind: "tomorrow" })
     expect(dueNote("2026-11-20T19:59:59.000Z", now).kind).toBe("date")
     expect(dueNote(null, now)).toEqual({ kind: "none" })
+  })
+})
+
+describe("each person's order inside a day, as in Bordio", () => {
+  const day = "2026-11-04"
+  // Nazrin's 4 Nov in Bordio: «60 Sumqayıt» above two «Aksiya Email», finished ones in their places.
+  const tasks = [
+    { id: "aksiya-2", title: "Aksiya Email", status: "done", priority: "medium", dueDate: null, plans: [planForDay(day, 17937883216)] },
+    { id: "sumqayit", title: "60 Sumqayıt", status: "done", priority: "medium", dueDate: null, plans: [planForDay(day, 17937701285)] },
+    { id: "unranked", title: "Afişa", status: "todo", priority: "critical", dueDate: null, plans: [planForDay(day)] },
+    { id: "aksiya-1", title: "Aksiya Email", status: "todo", priority: "medium", dueDate: null, plans: [planForDay(day, 17937883193)] },
+  ]
+  const list = () => planTasks(tasks.filter((x) => x.status !== "done"), tasks.filter((x) => x.status === "done"), [day]).byDay.get(day)!
+  it("keeps the order — finished cards stay where they stand — and puts cards without one after", () => {
+    expect(list().map((x) => x.id)).toEqual(["sumqayit", "aksiya-1", "aksiya-2", "unranked"])
+  })
+  it("a card dropped on another lands just above it; dropped on the first, above all", () => {
+    expect(rankBefore(list(), "aksiya-2", "unranked")).toBe((17937883193 + 17937883216) / 2)
+    expect(rankBefore(list(), "sumqayit", "unranked")).toBe(17937701285 - 1_000_000)
+    expect(rankBetween(5, null)).toBe(1_000_005)
   })
 })

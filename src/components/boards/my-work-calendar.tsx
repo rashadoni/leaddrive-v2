@@ -11,15 +11,15 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import { useLocale, useTranslations } from "next-intl"
 import {
   DndContext, DragOverlay, MouseSensor, TouchSensor, KeyboardSensor, pointerWithin, useDraggable, useDroppable,
-  useSensor, useSensors, type DragEndEvent, type DragStartEvent,
+  useSensor, useSensors, type CollisionDetection, type DragEndEvent, type DragStartEvent,
 } from "@dnd-kit/core"
-import { CalendarDays, Check, ChevronLeft, ChevronRight, MessageSquare, Paperclip } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, MessageSquare, Paperclip } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDate, formatWeekday } from "@/lib/format-date"
 import { boardLabel } from "@/lib/tasks/my-work"
 import {
-  dayKeys, dueNote, firstDayFor, isClosedStatus, localDayKey, planForDay, planTasks, plannedDay, shiftDayKey,
-  visibleDayCount, type PlannedTask,
+  dayKeys, dueNote, firstDayFor, isClosedStatus, localDayKey, planForDay, planTasks, plannedDay, rankBefore, rankBetween,
+  shiftDayKey, visibleDayCount, type PlannedTask,
 } from "@/lib/tasks/my-work-calendar"
 import { BOARD_TASKS_PAGE } from "@/lib/tasks/fetch-board-tasks"
 
@@ -31,6 +31,13 @@ export interface CalendarTask extends PlannedTask {
 }
 
 const WAITING_ID = "__waiting__"
+// Under the pointer, a card wins over the day around it: dropped on a card, the
+// task goes just above it; elsewhere in the day, under the last card.
+const cardFirst: CollisionDetection = (args) => {
+  const hits = pointerWithin(args)
+  const card = hits.find((hit) => String(hit.id).startsWith("card:"))
+  return card ? [card] : hits
+}
 const WAITING_SHOWN = 30
 const priorityKey = (p: string) => `priority${p[0].toUpperCase()}${p.slice(1)}`
 const PRIORITY_TONE: Record<string, string> = {
@@ -99,12 +106,14 @@ export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks
   }, [closedOnDays, closedWaiting])
 
   const { waiting, byDay } = useMemo(() => planTasks<CalendarTask>(openTasks, finished, days), [openTasks, finished, days])
+  const byDayRef = useRef(byDay)
+  byDayRef.current = byDay
   const [waitingAll, setWaitingAll] = useState(false)
   const boardById = useMemo(() => new Map(boards.map((b) => [b.id, b])), [boards])
 
   /** Plan a task for a day (or take its day away) — for me only: shown at once, taken back if refused. */
-  const plan = useCallback(async (task: CalendarTask, day: string | null) => {
-    if ((plannedDay(task) ?? null) === day) return
+  const plan = useCallback(async (task: CalendarTask, day: string | null, rank?: number) => {
+    if ((plannedDay(task) ?? null) === day && rank === undefined) return
     const apply = (plans: { day: string }[] | null | undefined) => {
       if (isClosedStatus(task.status)) {
         const swap = (list: CalendarTask[]) => list.map((x) => (x.id === task.id ? { ...x, plans } : x))
@@ -112,13 +121,15 @@ export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks
         setClosedWaiting(swap)
       } else setOpenTasks((list) => (list ? list.map((x) => (x.id === task.id ? { ...x, plans } : x)) : list))
     }
-    apply(day ? [planForDay(day)] : [])
+    // Dropped on the day itself: under its last card (the server decides the same way).
+    const place = rank ?? (day ? rankBetween(Math.max(-Infinity, ...(byDayRef.current.get(day) ?? []).filter((x) => x.id !== task.id).map((x) => x.plans?.[0]?.rank ?? -Infinity)), null) : null)
+    apply(day ? [planForDay(day, Number.isFinite(place) ? place : Date.now())] : [])
     try {
       const res = await fetch(`/api/v1/tasks/${task.id}/plan`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ day }),
+        body: JSON.stringify(rank === undefined ? { day } : { day, rank }),
       })
       if (!res.ok) { apply(task.plans); flash(t("changeFailed")) }
     } catch {
@@ -142,6 +153,15 @@ export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks
     const task = all.get(String(e.active.id))
     const target = e.over ? String(e.over.id) : null
     if (!task || !target) return
+    // On a card: just above it, in its day — Bordio keeps each person's order.
+    if (target.startsWith("card:")) {
+      const targetId = target.slice(5)
+      if (targetId === task.id) return
+      for (const [day, list] of byDay) {
+        if (list.some((x) => x.id === targetId)) { void plan(task, day, rankBefore(list, targetId, task.id)); return }
+      }
+      return
+    }
     void plan(task, target === WAITING_ID ? null : target)
   }
 
@@ -196,7 +216,7 @@ export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks
         </div>
       </div>
 
-      <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
+      <DndContext sensors={sensors} collisionDetection={cardFirst} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
         <div
           className="grid items-start gap-2 sm:gap-3"
           style={{ gridTemplateColumns: count === 1 ? "minmax(0,1fr)" : `repeat(${count}, minmax(0,1fr)) 17rem` }}
@@ -277,14 +297,17 @@ function TaskCard({ task, board, boards, place, onOpen, priorityLabel, dueText }
   dueText: { text: string; late: boolean } | null
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task.id })
-  // Greyed and struck through on a day; in the waiting list a finished task
-  // looks like any other, as in Bordio.
+  // A card in a day is also a drop target: what lands on it goes just above it.
+  const drop = useDroppable({ id: `card:${task.id}`, disabled: place !== "day" })
+  const setRefs = (node: HTMLDivElement | null) => { setNodeRef(node); drop.setNodeRef(node) }
+  // Greyed on a day, as in Bordio — priority still shown, nothing struck through;
+  // in the waiting list a finished task looks like any other.
   const closed = isClosedStatus(task.status) && place === "day"
   const comments = task._count?.comments ?? 0
   const files = task._count?.attachments ?? 0
   return (
     <div
-      ref={setNodeRef}
+      ref={setRefs}
       {...attributes}
       {...listeners}
       role="button"
@@ -296,13 +319,14 @@ function TaskCard({ task, board, boards, place, onOpen, priorityLabel, dueText }
       data-place={place}
       className={cn(
         "cursor-grab touch-manipulation rounded-md border bg-card p-2 text-left text-sm active:cursor-grabbing",
-        closed && "bg-transparent text-muted-foreground",
+        closed && "bg-muted/60 text-muted-foreground",
+        drop.isOver && !isDragging && "border-t-2 border-t-primary",
         isDragging && "opacity-40",
       )}
     >
-      <div className={cn("leading-snug", closed && "line-through")}>{task.title}</div>
-      {!closed && priorityLabel && (
-        <span className={cn("mt-1 inline-block rounded px-1.5 py-0.5 text-[11px]", PRIORITY_TONE[task.priority ?? ""] ?? "bg-muted text-muted-foreground")}>{priorityLabel}</span>
+      <div className="leading-snug">{task.title}</div>
+      {priorityLabel && (
+        <span className={cn("mt-1 inline-block rounded px-1.5 py-0.5 text-[11px]", closed ? "bg-muted text-muted-foreground" : PRIORITY_TONE[task.priority ?? ""] ?? "bg-muted text-muted-foreground")}>{priorityLabel}</span>
       )}
       <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
         <span className="inline-flex min-w-0 items-center gap-1 truncate">
@@ -310,7 +334,6 @@ function TaskCard({ task, board, boards, place, onOpen, priorityLabel, dueText }
           <span className="truncate">{board ? boardLabel(board, boards) : ""}</span>
         </span>
         <span className="inline-flex shrink-0 items-center gap-2">
-          {closed && <Check className="h-3 w-3" aria-hidden="true" />}
           {comments > 0 && <span className="inline-flex items-center gap-0.5"><MessageSquare className="h-3 w-3" aria-hidden="true" />{comments}</span>}
           {files > 0 && <span className="inline-flex items-center gap-0.5"><Paperclip className="h-3 w-3" aria-hidden="true" />{files}</span>}
           {dueText && !closed && <span className={cn(dueText.late && "text-red-600")} data-testid="my-work-card-due">{dueText.text}</span>}
