@@ -301,7 +301,7 @@ pgDescribe("online booking on a real Postgres", () => {
     if (scratch) prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `DROP DATABASE IF EXISTS "${scratch.name}" WITH (FORCE);`)
   }, 60_000)
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mail.sent = []
     whatsapp.buttons = []
     whatsapp.lists = []
