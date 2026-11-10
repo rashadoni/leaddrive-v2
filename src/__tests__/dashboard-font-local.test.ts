@@ -51,7 +51,16 @@ describe("the CRM's font is served from the repository", () => {
     expect(module).toContain('variable: "--font-dashboard"')
     expect(module).toContain('display: "swap"')
     expect(module).toContain("adjustFontFallback: false")
-    expect(module).toContain(`fallback: ['"Plus Jakarta Sans Fallback"']`)
+    expect(module).toContain(`fallback: ["'Plus Jakarta Sans Fallback'"]`)
+  })
+
+  it("quotes the fallback face with single quotes — `next dev` inlines it into a double-quoted JS string unescaped", () => {
+    const module = read("src/lib/fonts/dashboard-font.ts")
+    const fallback = /fallback:\s*\[([^\]]*)\]/.exec(module)?.[1] ?? ""
+    // The value of each JS string literal in the array, whichever quote delimits it.
+    const entries = [...fallback.matchAll(/(["'])((?:(?!\1).)*)\1/g)].map((m) => m[2])
+    expect(entries.length).toBeGreaterThan(0)
+    for (const entry of entries) expect(entry, entry).not.toContain('"')
   })
 
   it("draws every Azerbaijani letter — and every character Google's four subsets carried", () => {

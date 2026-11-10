@@ -36,5 +36,10 @@ export const dashboardFont = localFont({
   display: "swap",
   variable: "--font-dashboard",
   adjustFontFallback: false,
-  fallback: ['"Plus Jakarta Sans Fallback"'],
+  // Одинарные кавычки, не двойные. Dev-сервер (Turbopack) вставляет запасной
+  // шрифт в JS-строку `"'dashboardFont', …"` без экранирования: с двойными
+  // кавычками модуль шрифта не разбирался («Expected ',', got 'ident'»), и
+  // ни одна страница CRM в `next dev` не открывалась — так упала E2E очереди
+  // мониторинга соцсетей 2026-11-10. Прод-сборка экранирует и работала с обоими.
+  fallback: ["'Plus Jakarta Sans Fallback'"],
 })
