@@ -22,12 +22,29 @@ import type { BookingAccess } from "./access"
 
 const digest = (value: string) => createHash("sha256").update(value).digest("hex")
 
+/**
+ * The picked customer, proven to belong to this organization. RLS already
+ * scopes the read, and the explicit organizationId keeps the check honest if
+ * this is ever called outside a tenant scope.
+ */
+async function resolveBookingClient(orgId: string, client: BookingInput["client"]) {
+  if (!client) return null
+  const row = client.type === "contact"
+    ? await prisma.contact.findFirst({ where: { id: client.id, organizationId: orgId }, select: { id: true } })
+    : await prisma.lead.findFirst({ where: { id: client.id, organizationId: orgId }, select: { id: true } })
+  if (!row) throw new BookingCommandError("CLIENT_NOT_FOUND", 404)
+  return { type: client.type, id: row.id }
+}
+
 export async function createStoredBooking(orgId: string, pageId: string, input: BookingInput, now: Date, access?: BookingAccess): Promise<CreateBookingResult> {
   if (!input.idempotencyKey || !input.recoverySecret) throw new BookingCommandError("REQUEST_IDENTITY_REQUIRED", 400)
   const identity = {
     organizationId: orgId, commandType: "booking.create",
     idempotencyKey: hashCanonicalJson({ orgId, pageId, principal: access?.userId ?? "public", key: input.idempotencyKey }),
-    requestHash: hashCanonicalJson({ pageId, startsAt: input.startsAt, name: input.name, phone: input.phone, email: input.email || null, note: input.note || null, hostUserId: input.hostUserId || null }),
+    // The customer link is only in the hash when there is one, so every request
+    // that carries none hashes byte for byte as it did before links existed —
+    // a retry started before this shipped still replays instead of conflicting.
+    requestHash: hashCanonicalJson({ pageId, startsAt: input.startsAt, name: input.name, phone: input.phone, email: input.email || null, note: input.note || null, hostUserId: input.hostUserId || null, ...(input.client ? { client: `${input.client.type}:${input.client.id}` } : {}) }),
   }
   const secretId = `booking_${identity.idempotencyKey}`
   async function replay(db: Prisma.TransactionClient | typeof prisma) {
@@ -48,6 +65,11 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
   await preloadTenantDataKeys(orgId)
   const existing = await replay(prisma)
   if (existing) return existing
+  // The customer this meeting is for, when a member of staff picked one the
+  // CRM already has. Only a staff booking carries it — the public form has no
+  // such field — and an id this organization does not own is refused rather
+  // than dropped: a link silently lost reads on screen as a link made.
+  const client = access ? await resolveBookingClient(orgId, input.client) : null
   const page = await prisma.bookingPage.findFirst({ where: { id: pageId, organizationId: orgId, isActive: true } })
   if (!page) return { ok: false, reason: "not_found" }
   const org = await orgContext(orgId)
@@ -124,6 +146,11 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
           depositAmount: deposit === null ? null : deposit,
           depositStatus: deposit === null ? null : "awaiting",
           name: input.name, phone: input.phone, email: input.email || null, note: input.note || null,
+          // Linked here, at creation: the effect worker files a lead only for a
+          // meeting that has neither, so this is what stops the same customer
+          // becoming a new lead on every visit.
+          leadId: client?.type === "lead" ? client.id : null,
+          contactId: client?.type === "contact" ? client.id : null,
           cancelTokenHash: hashBookingToken(token), secretId,
           source: access ? "staff" : input.whatsapp ? "whatsapp" : "public_link", createdBy: access?.userId ?? null,
           bufferBefore: currentPage.bufferMinutes, bufferAfter: currentPage.bufferMinutes,

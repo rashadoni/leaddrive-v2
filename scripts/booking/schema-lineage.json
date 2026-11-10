@@ -43,6 +43,12 @@
       "migration": "20261203090000_booking_deposit",
       "bookingAdditive": true,
       "note": "A deposit that holds the time: what the service asks (sum or share, and the free-cancellation window) and what the visit was actually asked for, paid and owed. Nullable columns and one default."
+    },
+    {
+      "schemaHash": "774ce687a30af75a7e772c9220794642d3c87a10e37cd816cf868178952a43e8",
+      "migration": "20261211090000_booking_contact_link",
+      "bookingAdditive": true,
+      "note": "The customer a staff booking was made for, when they picked one already in the CRM: one nullable column on bookings. A release that does not know it keeps booking and reading meetings as before."
     }
   ]
 }

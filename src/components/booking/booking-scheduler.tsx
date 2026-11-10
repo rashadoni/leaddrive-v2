@@ -17,6 +17,7 @@ import { Hint } from "@/components/hint"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { BookingClientPicker, type BookingClientLink } from "./booking-client-picker"
 import type { DaySlots } from "@/lib/booking/availability"
 import { servicePriceLabel } from "@/lib/booking/service"
 import { formatDate, formatTime } from "@/lib/format-date"
@@ -67,6 +68,11 @@ export interface BookingRequest {
   hostUserId?: string
   /** The extras they ticked. */
   addOnIds?: string[]
+  /**
+   * The customer a member of staff picked out of the CRM. The meeting is tied
+   * to that record instead of filing one more lead for the same person.
+   */
+  client?: { type: "contact" | "lead"; id: string }
 }
 
 export interface BookingConfirmation {
@@ -168,6 +174,8 @@ export function BookingScheduler({
     onStartChange?.(next)
   }
   const [form, setForm] = useState({ name: "", phone: "", email: "", note: "" })
+  // Only a staff booking has one: the customer this meeting was pointed at.
+  const [client, setClient] = useState<BookingClientLink | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [confirmed, setConfirmed] = useState<BookingConfirmation | null>(null)
@@ -179,7 +187,7 @@ export function BookingScheduler({
     if (!startsAt || !canSubmit) return
     setBusy(true)
     setError("")
-    const result = await onBook({ startsAt, ...form, hostUserId: page.chosenHostId ?? undefined, addOnIds: page.chosenAddOnIds })
+    const result = await onBook({ startsAt, ...form, hostUserId: page.chosenHostId ?? undefined, addOnIds: page.chosenAddOnIds, ...(client ? { client: { type: client.type, id: client.id } } : {}) })
     setBusy(false)
     if (result.ok) {
       setConfirmed(result.booking)
@@ -273,14 +281,36 @@ export function BookingScheduler({
               <p className="text-lg font-semibold">{format.longDay(startsAt)}, {format.time(startsAt)}</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="booking-name">{t(staff ? "clientName" : "name")}</Label>
-                <Input id="booking-name" className="mt-1" autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              </div>
-              <div>
-                <Label htmlFor="booking-phone">{t("phone")}</Label>
-                <Input id="booking-phone" className="mt-1" type="tel" autoComplete="tel" placeholder="+994 50 000 00 00" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              </div>
+              {/* A member of staff books for somebody the CRM usually already has,
+                  so both fields look for them; a customer on the public page is
+                  typing about themselves and has nothing to look up. */}
+              {staff ? (
+                <BookingClientPicker
+                  name={form.name}
+                  phone={form.phone}
+                  onPatch={(patch) => setForm((current) => ({ ...current, ...patch }))}
+                  linked={client}
+                  onLink={(match) => {
+                    setClient({ type: match.type, id: match.id, name: match.name, subtitle: match.subtitle })
+                    setForm((current) => ({
+                      ...current,
+                      name: match.name,
+                      phone: match.phone ?? current.phone,
+                      email: match.email ?? current.email,
+                    }))
+                  }}
+                  onUnlink={() => setClient(null)}
+                />
+              ) : <>
+                <div>
+                  <Label htmlFor="booking-name">{t("name")}</Label>
+                  <Input id="booking-name" className="mt-1" autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                </div>
+                <div>
+                  <Label htmlFor="booking-phone">{t("phone")}</Label>
+                  <Input id="booking-phone" className="mt-1" type="tel" autoComplete="tel" placeholder="+994 50 000 00 00" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                </div>
+              </>}
               <div className="sm:col-span-2">
                 <Label htmlFor="booking-email">{t("email")}</Label>
                 <Input id="booking-email" className="mt-1" type="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />

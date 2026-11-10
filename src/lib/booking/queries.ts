@@ -101,10 +101,10 @@ async function whatsappExplanation(orgId: string, bookingId: string): Promise<{ 
 }
 
 export async function bookingDetail(access: BookingAccess, id: string, role: Role) {
-  const row = await prisma.booking.findFirst({ where: { AND: [bookingScope(access), { id }] }, select: { ...columns, leadId: true, taskId: true } })
+  const row = await prisma.booking.findFirst({ where: { AND: [bookingScope(access), { id }] }, select: { ...columns, leadId: true, contactId: true, taskId: true } })
   if (!row) return null
   const host = await prisma.user.findFirst({ where: { organizationId: access.orgId, id: row.hostUserId }, select: { name: true, isActive: true } })
-  const { googleEventId, leadId, taskId, snapshot, ...safe } = row
+  const { googleEventId, leadId, contactId, taskId, snapshot, ...safe } = row
   const config = await prisma.bookingPage.findFirst({ where: { id: row.bookingPageId, organizationId: access.orgId }, select: { hostIds: true } })
   const availableHosts = await prisma.user.findMany({ where: bookingHostWhere(access.orgId, (config?.hostIds ?? []).filter((id) => access.writableHostIds === null || access.writableHostIds.includes(id))), select: { id: true, name: true }, orderBy: { name: "asc" } })
   const [events, effects, whatsapp] = await Promise.all([
@@ -120,6 +120,7 @@ export async function bookingDetail(access: BookingAccess, id: string, role: Rol
     remindedHourAt: reminder?.remindedHourAt?.toISOString() ?? null,
     clientConfirmedAt: reminder?.clientConfirmedAt?.toISOString() ?? null,
     leadId: checkPermission(role, "leads", "read") ? leadId : null,
+    contactId: checkPermission(role, "contacts", "read") ? contactId : null,
     taskId: checkPermission(role, "tasks", "read") ? taskId : null,
   }
 }

@@ -67,6 +67,8 @@ export interface WorkspaceBooking {
   /** A WhatsApp meeting: what the client wrote, what was offered, what they tapped. */
   whatsapp?: { asked: string; offered: string[]; chosen: string } | null
   leadId?: string | null
+  /** The customer picked from the CRM when this meeting was booked. */
+  contactId?: string | null
   taskId?: string | null
 }
 interface Context {
