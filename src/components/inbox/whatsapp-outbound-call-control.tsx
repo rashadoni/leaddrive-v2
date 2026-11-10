@@ -95,6 +95,27 @@ async function readJson<T>(res: Response): Promise<{ error?: string; data?: T }>
   return res.json().catch(() => ({} as { error?: string; data?: T }))
 }
 
+type PermissionCheck = { ok: boolean; json: { error?: string; data?: PermissionPayload } }
+
+/**
+ * One permission check per conversation at a time. The inbox shows this
+ * control twice — in the thread header and in the contact card — and each copy
+ * used to ask on its own; the second now waits for the first one's answer.
+ */
+const checksInFlight = new Map<string, Promise<PermissionCheck>>()
+
+function checkPermission(conversationId: string, headers: Record<string, string>, fresh: boolean): Promise<PermissionCheck> {
+  const key = `${conversationId}:${fresh ? "fresh" : "any"}`
+  const pending = checksInFlight.get(key)
+  if (pending) return pending
+  const query = `conversationId=${encodeURIComponent(conversationId)}${fresh ? "&fresh=1" : ""}`
+  const check = fetch(`/api/v1/calls/whatsapp/permissions?${query}`, { headers, cache: "no-store" })
+    .then(async (res) => ({ ok: res.ok, json: await readJson<PermissionPayload>(res) }))
+    .finally(() => checksInFlight.delete(key))
+  checksInFlight.set(key, check)
+  return check
+}
+
 export function WhatsAppOutboundCallControl({
   conversationId,
   headers,
@@ -146,20 +167,25 @@ export function WhatsAppOutboundCallControl({
     return normalized
   }, [])
 
-  const refreshPermission = useCallback(async () => {
+  // The inbox re-renders every 15 s (its list refresh) and hands this control
+  // a new `onStatus` each time. When the check depended on it, every refresh
+  // asked Meta again — 276 checks of one conversation on 2026-11-09. The check
+  // now depends on the conversation alone and reads the rest from refs.
+  const latest = useRef({ headers, onStatus, denied: copy.denied })
+  useEffect(() => {
+    latest.current = { headers, onStatus, denied: copy.denied }
+  }, [copy.denied, headers, onStatus])
+
+  const refreshPermission = useCallback(async (fresh = false) => {
     setBusy((current) => current ?? "checking")
     try {
-      const res = await fetch(`/api/v1/calls/whatsapp/permissions?conversationId=${encodeURIComponent(conversationId)}`, {
-        headers,
-        cache: "no-store",
-      })
-      const json = await readJson<PermissionPayload>(res)
+      const { ok, json } = await checkPermission(conversationId, latest.current.headers, fresh)
       const normalized = applyPermissionPayload(json.data)
-      if (!res.ok) onStatus?.(json.error || normalized.providerError || copy.denied, "error")
+      if (!ok) latest.current.onStatus?.(json.error || normalized.providerError || latest.current.denied, "error")
     } finally {
       setBusy((current) => current === "checking" ? null : current)
     }
-  }, [applyPermissionPayload, conversationId, copy.denied, headers, onStatus])
+  }, [applyPermissionPayload, conversationId])
 
   useEffect(() => {
     void refreshPermission()
@@ -227,7 +253,7 @@ export function WhatsAppOutboundCallControl({
       setActiveCallId(null)
       const raw = err instanceof Error ? err.message : String(err || "unknown")
       onStatus?.(formatCopy(copy.failed, { error: raw }), "error")
-      await refreshPermission()
+      await refreshPermission(true)
     } finally {
       setBusy(null)
     }
