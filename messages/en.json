@@ -33160,6 +33160,26 @@
     "retry": "Try again",
     "changeFailed": "The change wasn't saved",
     "tooMany": "Showing the first {count} tasks",
+    "views": {
+      "list": "List",
+      "calendar": "Calendar"
+    },
+    "calendar": {
+      "today": "Today",
+      "todayMark": "today",
+      "pickDate": "Pick a date",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "waiting": "Waiting list",
+      "waitingEmpty": "Every task has a day",
+      "tasksCount": "{count, plural, one {# task} other {# tasks}}",
+      "dueToday": "due today",
+      "dueTomorrow": "due tomorrow",
+      "late": "{days, plural, one {# day overdue} other {# days overdue}}",
+      "noDate": "no due date",
+      "dropHere": "Drop here",
+      "showMore": "{count} more"
+    },
     "groups": {
       "overdue": "Overdue",
       "today": "Today",

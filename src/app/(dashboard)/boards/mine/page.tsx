@@ -20,6 +20,7 @@ import {
 } from "@/lib/tasks/my-work"
 import { rememberBoardNames } from "@/lib/tasks/board-names-cache"
 import { BOARD_TASKS_PAGE } from "@/lib/tasks/fetch-board-tasks"
+import { MyWorkCalendar, type CalendarTask } from "@/components/boards/my-work-calendar"
 
 interface Board {
   id: string
@@ -30,14 +31,14 @@ interface Board {
   boardColumns?: MyWorkColumn[]
 }
 
-interface MyTask {
-  id: string
-  title: string
-  status: string
+interface MyTask extends CalendarTask {
   boardColumnKey?: string | null
-  dueDate: string | null
   completedAt?: string | null
-  divisionId: string | null
+}
+
+type View = "list" | "calendar"
+const readView = (): View => {
+  try { return new URLSearchParams(window.location.search).get("view") === "calendar" ? "calendar" : "list" } catch { return "list" }
 }
 
 /** A ticked row stays on screen, struck through, until the page is read again — so it can be taken back. */
@@ -57,6 +58,18 @@ export default function MyWorkPage() {
   const locale = useLocale()
   const [boards, setBoards] = useState<Board[]>([])
   const [tasks, setTasks] = useState<MyTask[] | null>(null)
+  // «Siyahı» or «Təqvim» (Bordio's My work → Tasks / Calendar), kept in the URL.
+  const [view, setViewState] = useState<View>("list")
+  useEffect(() => { setViewState(readView()) }, [])
+  const setView = (next: View) => {
+    setViewState(next)
+    try {
+      const url = new URL(window.location.href)
+      if (next === "calendar") url.searchParams.set("view", "calendar")
+      else url.searchParams.delete("view")
+      window.history.replaceState(window.history.state, "", url)
+    } catch { /* the view still changes */ }
+  }
   const [total, setTotal] = useState(0)
   const [failed, setFailed] = useState(false)
   const [boardFilter, setBoardFilter] = useState("")
@@ -226,16 +239,30 @@ export default function MyWorkPage() {
   const shownDone = doneTasks ? visible(doneTasks).filter((x) => !(tasks ?? []).some((open) => open.id === x.id)) : []
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 pb-16">
+    <div className={cn("mx-auto space-y-4 pb-16", view === "list" && "max-w-5xl")}>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+        <div className="inline-flex overflow-hidden rounded-md border" role="group" aria-label={t("title")}>
+          {(["list", "calendar"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              aria-pressed={view === v}
+              data-testid={`my-work-view-${v}`}
+              className={cn("h-8 px-3 text-sm", view === v ? "bg-muted font-medium" : "bg-background text-muted-foreground hover:bg-muted")}
+            >
+              {t(v === "list" ? "views.list" : "views.calendar")}
+            </button>
+          ))}
+        </div>
         {tasks && (
           <span className="text-sm text-muted-foreground" data-testid="my-work-counts">
             {t("openCount", { count: openCount })}
             {overdueCount > 0 && <> · <span className="text-red-600">{t("overdueCount", { count: overdueCount })}</span></>}
           </span>
         )}
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        {view === "list" && <div className="ml-auto flex flex-wrap items-center gap-2">
           <select
             value={boardFilter}
             onChange={(e) => setBoardFilter(e.target.value)}
@@ -255,7 +282,7 @@ export default function MyWorkPage() {
           >
             {t(showDone ? "hideDone" : "showDone")}
           </button>
-        </div>
+        </div>}
       </div>
 
       {failed && (
@@ -273,16 +300,20 @@ export default function MyWorkPage() {
         </div>
       )}
 
+      {tasks && view === "calendar" && (
+        <MyWorkCalendar openTasks={tasks} setOpenTasks={setTasks} boards={boards} onOpenTask={setOpenTaskId} flash={flash} />
+      )}
+
       {tasks && total > tasks.length && <p className="text-xs text-muted-foreground">{t("tooMany", { count: tasks.length })}</p>}
 
-      {tasks && visible(tasks).length === 0 && (
+      {tasks && view === "list" && visible(tasks).length === 0 && (
         <div className="rounded-lg border px-6 py-10 text-center" data-testid="my-work-empty">
           <p className="font-medium">{t("empty")}</p>
           <p className="mt-1 text-sm text-muted-foreground">{t("emptyHint")}</p>
         </div>
       )}
 
-      {tasks && MY_WORK_GROUPS.map((g) => {
+      {tasks && view === "list" && MY_WORK_GROUPS.map((g) => {
         const list = groups.get(g) ?? []
         if (!list.length) return null
         return (
@@ -297,7 +328,7 @@ export default function MyWorkPage() {
         )
       })}
 
-      {showDone && (
+      {showDone && view === "list" && (
         <section data-testid="my-work-group" data-group="done">
           <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
             {t("groups.done")}

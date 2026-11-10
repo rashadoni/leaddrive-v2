@@ -425,6 +425,39 @@ async function main() {
     await page.close()
     return { tasks: ids.length }
   })
+  await step('«Mənim işlərim → Təqvim»: a task dragged from the waiting list onto today is planned for today, dragged back it has no day; its deadline stays', async () => {
+    const id = f.tasks.pharmaOpen.id
+    const read = async () => (await api('marketer', `/api/v1/tasks/${id}`)).json.data
+    const before = await read()
+    assert.equal(before.startDate ?? null, null, 'the fixture task already has a day')
+    const page = await sessions.marketer.newPage()
+    await page.goto('/boards/mine?view=calendar', { timeout: 180000 })
+    const card = `[data-testid="my-work-card"][data-task-id="${id}"]`
+    await page.waitForSelector(`[data-testid="my-work-waiting"] ${card}`, { timeout: 120000 })
+    const today = await page.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })
+    const todayStart = await page.evaluate((key) => new Date(`${key}T00:00:00`).toISOString(), today)
+    const drag = async (from, to) => {
+      const a = await page.locator(from).boundingBox()
+      const b = await page.locator(to).boundingBox()
+      await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(a.x + a.width / 2 + 12, a.y + a.height / 2 + 12, { steps: 4 })
+      await page.mouse.move(b.x + b.width / 2, b.y + Math.min(b.height / 2, 80), { steps: 20 })
+      await page.mouse.up()
+    }
+    await drag(card, `[data-testid="my-work-day"][data-day="${today}"]`)
+    let planned = before
+    for (let i = 0; i < 20 && !planned.startDate; i++) { await page.waitForTimeout(500); planned = await read() }
+    assert.equal(planned.startDate, todayStart)
+    assert.equal(planned.dueDate, before.dueDate)
+    await page.waitForSelector(`[data-testid="my-work-day"][data-day="${today}"] ${card}`, { timeout: 30000 })
+    await drag(card, '[data-testid="my-work-waiting"] h2')
+    let back = planned
+    for (let i = 0; i < 20 && back.startDate; i++) { await page.waitForTimeout(500); back = await read() }
+    assert.equal(back.startDate ?? null, null)
+    assert.equal(back.dueDate, before.dueDate)
+    await page.close()
+  })
   await step('a message with an @-mention reaches the person, the author is not told', async () => {
     const res = await api('marketer', `/api/v1/tasks/${f.tasks.zeytunOne.id}/comments`, { method: 'POST', body: { content: `bax @${f.users.manager.name}`, mentions: [f.users.manager.id] } })
     assert.ok([200, 201].includes(res.status), JSON.stringify(res.json))
