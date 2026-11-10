@@ -13,6 +13,7 @@ import { effectiveHiddenModules, hideableIdForUngatedApiPath } from "@/lib/user-
 import { clientIp } from "@/lib/request-ip"
 import { isDemoRequestApiPath, withDemoRequestCors } from "@/lib/demo-request-cors"
 import { SESSION_EXPIRED_CODE } from "@/lib/session-expired"
+import { CROSS_TENANT_CODE } from "@/lib/cross-tenant-signal"
 import { isWithdrawnCrmPath } from "@/lib/crm-product-availability"
 import { redactOpaquePathSegments } from "@/lib/opaque-path-redaction"
 import { demoAssistantVoiceEnabled } from "@/lib/demo-center/assistant-voice-switch"
@@ -520,7 +521,13 @@ const authMiddleware = auth(async (req) => {
       // the cookie anyway.
       let response: NextResponse
       if (pathname.startsWith("/api/")) {
-        response = NextResponse.json({ error: "Unauthorized", code: SESSION_EXPIRED_CODE }, { status: 401 })
+        // Its own code, not SESSION_EXPIRED_CODE: the session is alive, it just belongs to another
+        // organisation, and the browser needs to say which (lib/cross-tenant-signal). Without it the
+        // tab went quiet — a refusal nobody could see is how this looked like a broken workspace.
+        response = NextResponse.json(
+          { error: "Unauthorized", code: CROSS_TENANT_CODE, sessionSlug: xtSessionSlug ?? null, hostSlug: tenantSlug },
+          { status: 401 },
+        )
       } else {
         const proto = req.headers.get("x-forwarded-proto") || "https"
         const loginUrl = new URL("/login", `${proto}://${host}`)

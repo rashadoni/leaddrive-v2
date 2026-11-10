@@ -801,6 +801,12 @@
     "personnelSettings": "Settings"
   },
   "auth": {
+    "crossTenantTitle": "You are signed in to another organization",
+    "crossTenantBody": "This tab is open on {host}, and this browser is signed in to {session}. One browser works with one organization at a time, so nothing on this page will load.",
+    "crossTenantBodyUnknown": "This tab is open on a different organization from the one this browser is signed in to. One browser works with one organization at a time, so nothing on this page will load.",
+    "crossTenantSignIn": "Sign in here",
+    "crossTenantSignInNamed": "Sign in to {host}",
+    "crossTenantDismiss": "Close",
     "tenantNotFoundTitle": "Workspace not found",
     "tenantNotFoundDesc": "No LeadDrive workspace exists at this address. Check the URL, or contact your administrator for the correct link.",
     "signIn": "Sign in",

@@ -24,6 +24,7 @@ import { DashboardHeroProvider, useDashboardHero } from "@/contexts/dashboard-he
 import { TicketBadgeProvider } from "@/contexts/ticket-badge-context"
 import { DashboardWallpaper } from "@/components/dashboard-wallpaper"
 import { TicketNotifier } from "@/components/ticket-notifier"
+import { CrossTenantNotice } from "@/components/cross-tenant-notice"
 import { VoipCallProvider } from "@/components/voip-call-provider"
 import { ShellEventsProvider } from "@/components/shell-events-provider"
 import { TourProvider } from "@/components/tour/tour-provider"
@@ -254,6 +255,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
           <TourRenderer />
           <TicketNotifier />
+          <CrossTenantNotice />
           <WebVitalsReporter />
           {status === "authenticated" && mtmSyncEnabled ? <PharmacyPromotionOutboxSync sessionKey={outboxSessionKey} /> : null}
           </LauncherPrefsProvider>
