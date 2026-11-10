@@ -1219,7 +1219,7 @@ pgDescribe("online booking on a real Postgres", () => {
     expect(whatsapp.buttons).toHaveLength(0)
   })
 
-  it("WhatsApp: the client's words become three held times, and one tap books exactly one of them", async () => {
+  it("WhatsApp: the client's words become a menu of held times, and one tap books exactly one of them", async () => {
     // The salon works in manats, so the service is created inside the block
     // that sets the currency — the page stamps it when it is saved.
     await withWhatsAppBooking(async () => {
@@ -1274,10 +1274,13 @@ pgDescribe("online booking on a real Postgres", () => {
       expect(whatsapp.texts[0].message).toMatch(/Leyla/)
       expect(whatsapp.texts[0].message).toMatch(/https:\/\/app\.example\.test\/book\/cancel\/[\w-]{20,}/)
 
-      // The two times not chosen are free again the moment the client chose.
+      // Every time not chosen is free again the moment the client chose — all of
+      // them, not the two a three-button message used to hold.
       const after = await offersOf(conversation)
       expect(after.find((offer) => offer.id === tapped.id)).toMatchObject({ status: "booked", bookingId: meetings[0].id })
-      expect(after.filter((offer) => offer.id !== tapped.id).map((offer) => offer.status)).toEqual(["superseded", "superseded"])
+      const others = after.filter((offer) => offer.id !== tapped.id)
+      expect(others.length).toBe(message.rows.length - 1)
+      expect(others.map((offer) => offer.status)).toEqual(others.map(() => "superseded"))
       const released = await offeredTimes(slug)
       for (const offer of after.filter((item) => item.id !== tapped.id)) expect(released).toContain(offer.startsAt.toISOString())
       expect(released).not.toContain(tapped.startsAt.toISOString())
@@ -1475,7 +1478,11 @@ pgDescribe("online booking on a real Postgres", () => {
       const conversation = await conversationWith(phoneDigitsOf(booking.phone), "Günel", "Sabah manikür?")
 
       expect((await remindersPost(cronJson())).status).toBe(200)
-      const reminder = whatsapp.buttons.at(-1)!
+      // This meeting's reminder, not whichever one the cron sent last: the run
+      // reminds every meeting that is due, and another test's chair can be due
+      // in the same minute.
+      const reminder = whatsapp.buttons.find((message) => message.buttons.some((button) => button.id === `rm:confirm:${booking.id}`))!
+      expect(reminder, "a reminder for this meeting").toBeTruthy()
       expect(reminder.body).toMatch(/Manikür/)
       expect(reminder.buttons.map((button) => button.id)).toEqual([
         `rm:confirm:${booking.id}`, `rm:move:${booking.id}`, `rm:cancel:${booking.id}`,
@@ -1485,12 +1492,6 @@ pgDescribe("online booking on a real Postgres", () => {
 
       // A second run says nothing more: the meeting is already reminded.
       whatsapp.buttons = []
-    whatsapp.lists = []
-    whatsapp.listFails = false
-    // Offers hold a master's hours until they expire, and one menu holds eight
-    // of them. Left standing, they are the previous test's holds eating this
-    // test's day — every case here starts from a free board.
-    await bypass(() => prisma.bookingOffer.updateMany({ where: { organizationId: ORG, status: "offered" }, data: { status: "superseded" } }))
       expect((await remindersPost(cronJson())).status).toBe(200)
       expect(whatsapp.buttons).toHaveLength(0)
 
