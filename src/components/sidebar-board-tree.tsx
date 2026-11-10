@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
-import { ChevronRight, Columns3, Folder, FolderOpen } from "lucide-react"
+import { ChevronRight, Columns3, Folder, FolderOpen, UserCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { boardIdFromPath, boardNavTree, type BoardNavLeaf, type TabDivision } from "@/lib/tasks/board-tabs"
 import { rememberBoardNames } from "@/lib/tasks/board-names-cache"
@@ -26,6 +26,8 @@ const REREAD_MS = 30_000
 export function SidebarBoardTree({ pathname, visible }: { pathname: string; visible: boolean }) {
   const t = useTranslations("nav.boardTree")
   const [divisions, setDivisions] = useState<TabDivision[] | null>(null)
+  // «Mənim işlərim»: the person's open tasks on all boards, counted with the list.
+  const [myOpenTasks, setMyOpenTasks] = useState<number | null>(null)
   const readAt = useRef(0)
   const onBoards = pathname === "/boards" || pathname.startsWith("/boards/")
 
@@ -44,7 +46,9 @@ export function SidebarBoardTree({ pathname, visible }: { pathname: string; visi
       .then((json) => {
         if (!Array.isArray(json?.data?.divisions)) return
         rememberBoardNames(json.data.divisions)
-        if (mounted.current) setDivisions(json.data.divisions)
+        if (!mounted.current) return
+        setDivisions(json.data.divisions)
+        setMyOpenTasks(typeof json.data.myOpenTasks === "number" ? json.data.myOpenTasks : null)
       })
       .catch(() => { readAt.current = 0 })
   }, [pathname, onBoards])
@@ -92,6 +96,14 @@ export function SidebarBoardTree({ pathname, visible }: { pathname: string; visi
 
   return (
     <nav aria-label={t("title")} data-testid="sidebar-board-tree" className="mb-1 ml-5 space-y-0.5 border-l border-white/[0.08] pl-1.5">
+      <NavRow
+        href="/boards/mine"
+        active={pathname === "/boards/mine"}
+        icon={<UserCheck className="h-3.5 w-3.5 shrink-0 text-white/50" aria-hidden="true" />}
+        label={t("myWork")}
+        count={myOpenTasks}
+        testId="sidebar-my-work-link"
+      />
       {tree.map((node) => {
         if (!node.isDepartment) return <BoardLink key={node.id} board={node} active={node.id === currentId} icon />
         const isOpen = open.has(node.id)
@@ -126,10 +138,25 @@ export function SidebarBoardTree({ pathname, visible }: { pathname: string; visi
 
 function BoardLink({ board, active, icon = false }: { board: BoardNavLeaf; active: boolean; icon?: boolean }) {
   return (
-    <Link
+    <NavRow
       href={`/boards/${board.id}`}
+      active={active}
+      icon={icon ? <Columns3 className="h-3.5 w-3.5 shrink-0 text-white/50" aria-hidden="true" /> : null}
+      label={board.name}
+      count={board.count}
+      testId="sidebar-board-link"
+    />
+  )
+}
+
+function NavRow({ href, active, icon, label, count, testId }: {
+  href: string; active: boolean; icon: ReactNode; label: string; count: number | null; testId: string
+}) {
+  return (
+    <Link
+      href={href}
       prefetch={false}
-      data-testid="sidebar-board-link"
+      data-testid={testId}
       data-nav-active={active ? "true" : undefined}
       aria-current={active ? "page" : undefined}
       className={cn(
@@ -139,9 +166,9 @@ function BoardLink({ board, active, icon = false }: { board: BoardNavLeaf; activ
           : "text-white/60 hover:bg-white/[0.06] hover:text-white/90",
       )}
     >
-      {icon && <Columns3 className="h-3.5 w-3.5 shrink-0 text-white/50" aria-hidden="true" />}
-      <span className="min-w-0 flex-1 truncate">{board.name}</span>
-      {board.count !== null && <span className="shrink-0 text-[11px] tabular-nums text-white/40">{board.count}</span>}
+      {icon}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {count !== null && <span className="shrink-0 text-[11px] tabular-nums text-white/40">{count}</span>}
     </Link>
   )
 }

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { applyRecordFilter } from "@/lib/sharing-rules"
 import { getAccessibleDivisionIds } from "@/lib/tasks/board-access"
 import type { Role } from "@/lib/permissions"
+import { CLOSED_TASK_STATUSES, myBoardTasksWhere } from "@/lib/tasks/my-work"
 export { statusBucket, statusBucketLabel, type StatusBucket } from "./status-bucket"
 
 /**
@@ -34,6 +35,10 @@ export interface TaskListFilters {
   cfValue: string
   createdRange: { gte?: Date; lte?: Date } | null
   completedRange: { gte?: Date; lte?: Date } | null
+  /** «Mənim işlərim»: the caller's own tasks (assignee or co-assignee) on live boards. */
+  mine?: boolean
+  /** Only unfinished tasks (status not done/completed/cancelled). */
+  open?: boolean
 }
 
 // ISO-8601 range; a malformed bound is ignored (not an error) — filter bars may
@@ -63,6 +68,8 @@ export function parseTaskListFilters(sp: URLSearchParams): TaskListFilters {
     cfValue: sp.get("cfValue") || "",
     createdRange: dateRange(sp.get("createdAfter"), sp.get("createdBefore")),
     completedRange: dateRange(sp.get("completedAfter"), sp.get("completedBefore")),
+    mine: sp.get("mine") === "1",
+    open: sp.get("open") === "1",
   }
 }
 
@@ -108,6 +115,10 @@ export async function buildTaskListWhere(
       ],
     })
   }
+  // «Mənim işlərim» narrows like search: AND-ed, so the access rules below
+  // still decide what may be seen at all.
+  if (f.mine) and.push(myBoardTasksWhere(userId, false))
+  if (f.open) and.push({ status: { notIn: [...CLOSED_TASK_STATUSES] } })
   if (and.length) where.AND = and
 
   // CRM sharing-rules: managers+ unrestricted; lower roles narrowed to own /

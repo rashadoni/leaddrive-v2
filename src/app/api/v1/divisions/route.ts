@@ -6,6 +6,7 @@ import { isValidDivisionKey } from "@/lib/tasks/task-key"
 import { isAdminRole } from "@/lib/tasks/board-permission"
 import { getAccessibleDivisionIds } from "@/lib/tasks/board-access"
 import { buildCanonicalColumns } from "@/lib/tasks/board-columns"
+import { myBoardTasksWhere } from "@/lib/tasks/my-work"
 import { validateDivisionHierarchy, isHierarchyConstraintViolation } from "@/lib/tasks/board-hierarchy"
 import { withRlsAuth } from "@/lib/with-rls"
 
@@ -27,6 +28,18 @@ export const GET = withRlsAuth("tasks", "read", async (_req, auth) => {
     // Departmental isolation: a user only sees boards they can access
     // (admin → all; others → BoardPermission.canView grants ∪ boards they head).
     const accessible = await getAccessibleDivisionIds(prisma, auth.orgId, auth.userId, auth.role)
+    // The sidebar's «Mənim işlərim» count, read alongside the list it already
+    // asks for. Only a count: a failure leaves the number off, never the boards.
+    const countMine = async (): Promise<number | null> => {
+      if (!auth.userId) return null
+      try {
+        return await prisma.task.count({ where: { organizationId: auth.orgId, deletedAt: null, ...myBoardTasksWhere(auth.userId, true) } })
+      } catch (e) {
+        console.error("[divisions GET] my open tasks", e)
+        return null
+      }
+    }
+    const myOpenTasksRead = countMine()
     const divisions = await prisma.division.findMany({
       where: {
         organizationId: auth.orgId,
@@ -40,7 +53,8 @@ export const GET = withRlsAuth("tasks", "read", async (_req, auth) => {
         _count: { select: { tasks: { where: { deletedAt: null } } } }, // soft-delete: extension doesn't reach relation _count (cf. e5112d83)
       },
     })
-    return NextResponse.json({ success: true, data: { divisions } })
+    const myOpenTasks = await myOpenTasksRead
+    return NextResponse.json({ success: true, data: { divisions, myOpenTasks } })
   } catch (e) {
     console.error("[divisions GET]", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

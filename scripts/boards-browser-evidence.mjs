@@ -389,6 +389,40 @@ async function main() {
     assert.equal((await page.innerText('h1')).trim(), 'Zeytun')
     await page.close()
   })
+  await step('«Mənim işlərim»: the person\'s own open tasks from every board, ticked into the board\'s done column and back', async () => {
+    // What the server says is hers — on a real database, so the filter itself is proven, not a mock.
+    const mine = await api('marketer', '/api/v1/tasks?mine=1&open=1&limit=1000')
+    assert.equal(mine.status, 200, JSON.stringify(mine.json))
+    const ids = mine.json.data.tasks.map((t) => t.id)
+    assert.ok(ids.includes(f.tasks.pharmaOpen.id), 'her own task is missing')
+    assert.ok(!ids.includes(f.tasks.pharmaWork.id), 'someone else\'s task is listed')
+    assert.ok(!ids.includes(f.tasks.pharmaDone.id), 'a finished task is listed')
+    const page = await sessions.marketer.newPage()
+    await page.goto('/boards/mine', { timeout: 180000 })
+    await page.waitForSelector('[data-testid="my-work-row"]', { timeout: 120000 })
+    const rows = await page.$$eval('[data-testid="my-work-row"]', (els) => els.map((el) => el.getAttribute('data-task-id')))
+    assert.deepEqual([...rows].sort(), [...ids].sort())
+    const link = page.locator('[data-testid="sidebar-my-work-link"]')
+    await link.waitFor({ timeout: 60000 })
+    assert.match(await link.innerText(), new RegExp(`Mənim işlərim\\s*${ids.length}$`))
+    const row = `[data-testid="my-work-row"][data-task-id="${f.tasks.pharmaOpen.id}"]`
+    assert.equal(await page.innerText(`${row} [data-testid="my-work-board"]`), 'Pharmastore')
+    const read = async () => (await api('marketer', `/api/v1/tasks/${f.tasks.pharmaOpen.id}`)).json.data
+    const before = await read()
+    await page.click(`${row} [data-testid="my-work-tick"]`)
+    let after = before
+    for (let i = 0; i < 20 && after.status === before.status; i++) { await page.waitForTimeout(500); after = await read() }
+    assert.equal(after.status, 'done')
+    assert.equal(after.boardColumnKey, 'c_done')
+    await page.waitForSelector(`${row} [data-testid="my-work-tick"][aria-pressed="true"]:not([disabled])`, { timeout: 30000 })
+    await page.click(`${row} [data-testid="my-work-tick"]`)
+    let back = after
+    for (let i = 0; i < 20 && back.status === 'done'; i++) { await page.waitForTimeout(500); back = await read() }
+    assert.equal(back.status, before.status)
+    assert.equal(back.boardColumnKey, before.boardColumnKey)
+    await page.close()
+    return { tasks: ids.length }
+  })
   await step('a message with an @-mention reaches the person, the author is not told', async () => {
     const res = await api('marketer', `/api/v1/tasks/${f.tasks.zeytunOne.id}/comments`, { method: 'POST', body: { content: `bax @${f.users.manager.name}`, mentions: [f.users.manager.id] } })
     assert.ok([200, 201].includes(res.status), JSON.stringify(res.json))
