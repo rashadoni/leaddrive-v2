@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { Hint } from "@/components/hint"
+import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { aiFeatureLabel } from "@/lib/ai/gateway/features"
 import type { SpendGranularity, SpendRange, SpendReport, SpendRow } from "@/lib/ai/gateway/spend-report"
@@ -542,12 +543,12 @@ function KeysCard({ keys, onChange, t, nf }: { keys: KeysState | null; onChange:
                   />
                   {error && <p className="text-xs text-red-600 dark:text-red-400" role="alert">{error}</p>}
                   <div className="flex gap-2">
-                    <button type="button" onClick={save} disabled={saving || value.trim().length === 0} className="h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60">
+                    <Button type="button" onClick={save} disabled={saving || value.trim().length === 0}>
                       {saving ? t("keySaving") : t("keySave")}
-                    </button>
-                    <button type="button" onClick={() => { setEditing(false); setValue(""); setError("") }} className="h-9 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted">
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => { setEditing(false); setValue(""); setError("") }}>
                       {t("cancel")}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
