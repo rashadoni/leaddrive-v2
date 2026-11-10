@@ -17,7 +17,8 @@
  */
 import { prisma } from "@/lib/prisma"
 import { journalAiCallOnCurrentKey } from "@/lib/ai/gateway/access"
-import { perMinuteCostUsd, UNIT_PRICING } from "@/lib/ai/gateway/pricing"
+import { LIVE_AUDIO_IN_MINUTE_USD, liveUsageCostUsd, perMinuteCostUsd, UNIT_PRICING } from "@/lib/ai/gateway/pricing"
+import type { LiveUsageTotals } from "./live-usage"
 import { yearMonthKey } from "./config"
 import { monthlyBudgetSeconds } from "./monthly-budget"
 
@@ -82,6 +83,8 @@ export async function settleVoiceSeconds(
   reservedSeconds: number,
   billedSeconds: number,
   now: Date,
+  /** What Google counted for the conversation, as the console added it up; absent — priced by length. */
+  liveUsage?: LiveUsageTotals | null,
 ): Promise<void> {
   const refund = Math.max(0, reservedSeconds - Math.max(0, billedSeconds))
   const yearMonth = yearMonthKey(now)
@@ -95,25 +98,22 @@ export async function settleVoiceSeconds(
     },
   })
   // The organization's AI journal (src/lib/ai/gateway): what the conversation
-  // cost, by its billed length. The browser talks to Gemini directly, so the
-  // server never sees token counts; the minute price is an estimate from above.
+  // cost. With the console's token totals — Google's own count, every turn
+  // billing the whole context again; the incoming audio of the billed seconds
+  // is the floor, so a console that reports less than that cannot make a
+  // conversation cheaper than its sound. Without them (a closed tab, the
+  // reaper) — the per-minute estimate.
   if (billedSeconds > 0) {
+    const byTokens = liveUsage
+      ? Math.max(liveUsageCostUsd(liveUsage), perMinuteCostUsd(LIVE_AUDIO_IN_MINUTE_USD, billedSeconds))
+      : null
     await journalAiCallOnCurrentKey(organizationId, "gemini", "voice-assistant", {
       model: "gemini-live",
-      costUsd: perMinuteCostUsd(UNIT_PRICING.geminiLiveMinute, billedSeconds),
+      ...(liveUsage ? {
+        inputTokens: liveUsage.textIn + liveUsage.audioIn,
+        outputTokens: liveUsage.textOut + liveUsage.audioOut,
+      } : {}),
+      costUsd: byTokens ?? perMinuteCostUsd(UNIT_PRICING.geminiLiveMinute, billedSeconds),
     })
   }
-}
-
-/** Remaining budget for display, without claiming anything. */
-export async function readRemainingSeconds(
-  organizationId: string,
-  userId: string,
-  now: Date,
-): Promise<number> {
-  const row = await prisma.voiceMonthlyUsage.findFirst({
-    where: { organizationId, userId, yearMonth: yearMonthKey(now) },
-    select: { reservedSeconds: true },
-  })
-  return Math.max(0, await monthlyBudgetSeconds(organizationId) - (row?.reservedSeconds ?? 0))
 }
