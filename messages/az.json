@@ -33132,6 +33132,26 @@
     "retry": "Yenidən cəhd et",
     "changeFailed": "Dəyişiklik saxlanmadı",
     "tooMany": "İlk {count} tapşırıq göstərilir",
+    "views": {
+      "list": "Siyahı",
+      "calendar": "Təqvim"
+    },
+    "calendar": {
+      "today": "Bu gün",
+      "todayMark": "bu gün",
+      "pickDate": "Tarix seç",
+      "prevDay": "Əvvəlki gün",
+      "nextDay": "Növbəti gün",
+      "waiting": "Gözləmə siyahısı",
+      "waitingEmpty": "Bütün tapşırıqlar günlərə paylanıb",
+      "tasksCount": "{count} tapşırıq",
+      "dueToday": "son gün bu gün",
+      "dueTomorrow": "sabah son gün",
+      "late": "{days} gün gecikib",
+      "noDate": "tarixsiz",
+      "dropHere": "Bura buraxın",
+      "showMore": "Daha {count}"
+    },
     "groups": {
       "overdue": "Gecikmiş",
       "today": "Bu gün",

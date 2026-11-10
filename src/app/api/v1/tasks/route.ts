@@ -49,7 +49,7 @@ export const GET = withRls(async (req, { orgId, session }) => {
           division: { select: { id: true, name: true, key: true, color: true } },
           checklist: { select: { completed: true } }, // for the board card progress bar (Q-tasks)
           collaborators: { select: { user: { select: { id: true, name: true, avatar: true } } } },
-          _count: { select: { checklist: true, comments: true } },
+          _count: { select: { checklist: true, comments: true, attachments: true } }, // attachments: the «Təqvim» card's paperclip
         },
       }),
       prisma.task.count({ where }),

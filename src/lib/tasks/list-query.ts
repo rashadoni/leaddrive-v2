@@ -39,6 +39,8 @@ export interface TaskListFilters {
   mine?: boolean
   /** Only unfinished tasks (status not done/completed/cancelled). */
   open?: boolean
+  /** Planned day («Başlama tarixi») within this range — the «Təqvim» of Mənim işlərim. */
+  startRange?: { gte?: Date; lte?: Date } | null
 }
 
 // ISO-8601 range; a malformed bound is ignored (not an error) — filter bars may
@@ -70,6 +72,7 @@ export function parseTaskListFilters(sp: URLSearchParams): TaskListFilters {
     completedRange: dateRange(sp.get("completedAfter"), sp.get("completedBefore")),
     mine: sp.get("mine") === "1",
     open: sp.get("open") === "1",
+    startRange: dateRange(sp.get("startAfter"), sp.get("startBefore")),
   }
 }
 
@@ -99,6 +102,7 @@ export async function buildTaskListWhere(
     ...(f.projectId === "__none__" ? { projectId: null } : f.projectId ? { projectId: f.projectId } : {}),
     ...(f.createdRange ? { createdAt: f.createdRange } : {}),
     ...(f.completedRange ? { completedAt: f.completedRange } : {}),
+    ...(f.startRange ? { startDate: f.startRange } : {}),
     // Custom-field equality (Brand etc.) — Postgres JSON path filter on the
     // Task.customFields blob, keyed by CustomField.fieldName.
     ...(f.cfKey && f.cfValue ? { customFields: { path: [f.cfKey], equals: f.cfValue } } : {}),

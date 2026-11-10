@@ -33136,6 +33136,26 @@
     "retry": "Повторить",
     "changeFailed": "Изменение не сохранилось",
     "tooMany": "Показаны первые {count} задач",
+    "views": {
+      "list": "Список",
+      "calendar": "Календарь"
+    },
+    "calendar": {
+      "today": "Сегодня",
+      "todayMark": "сегодня",
+      "pickDate": "Выбрать дату",
+      "prevDay": "Предыдущий день",
+      "nextDay": "Следующий день",
+      "waiting": "Лист ожидания",
+      "waitingEmpty": "Все задачи распределены по дням",
+      "tasksCount": "{count, plural, one {# задача} few {# задачи} many {# задач} other {# задачи}}",
+      "dueToday": "срок сегодня",
+      "dueTomorrow": "срок завтра",
+      "late": "{days, plural, one {просрочено на # день} few {просрочено на # дня} many {просрочено на # дней} other {просрочено на # дня}}",
+      "noDate": "без срока",
+      "dropHere": "Отпустите здесь",
+      "showMore": "Ещё {count}"
+    },
     "groups": {
       "overdue": "Просрочено",
       "today": "Сегодня",
