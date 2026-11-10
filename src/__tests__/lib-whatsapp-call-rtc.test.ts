@@ -171,11 +171,12 @@ describe("the SDP Meta sends reaches the browser whole", () => {
   })
 
   it("an outbound call hands Meta's answer to the browser with its last line end", async () => {
-    const pc = makePc() as StubPc & RTCPeerConnection & { createOffer: () => Promise<RTCSessionDescriptionInit> }
-    pc.createOffer = async () => ({ type: "offer", sdp: "v=local-offer" })
+    const pc = Object.assign(makePc() as StubPc, {
+      createOffer: async (): Promise<RTCSessionDescriptionInit> => ({ type: "offer", sdp: "v=local-offer" }),
+    })
     const session = await createWhatsAppCallOffer({
       getUserMedia: async () => makeStream(),
-      peerConnectionFactory: () => pc,
+      peerConnectionFactory: () => pc as unknown as RTCPeerConnection,
     })
     await session.applyAnswer(META_ANSWER)
     expect(pc.remoteDescription).toEqual({ type: "answer", sdp: META_ANSWER })
