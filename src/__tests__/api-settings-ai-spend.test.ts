@@ -59,6 +59,10 @@ vi.mock("@/lib/ai/gateway", async () => {
   }
 })
 
+vi.mock("@/lib/ai/gateway/provider-uses", () => ({
+  providerUses: vi.fn(async () => [{ provider: "anthropic", uses: ["davinci"], costUsd: 0.24, calls: 29 }]),
+}))
+
 import * as keys from "@/app/api/v1/settings/ai-keys/route"
 import * as spend from "@/app/api/v1/settings/ai-spend/route"
 import * as exportRoute from "@/app/api/v1/settings/ai-spend/export/route"
@@ -134,7 +138,10 @@ describe("AI spend report and provider keys", () => {
     expect(res.status).toBe(200)
     expect(state.verify).toHaveBeenCalledWith("anthropic", KEY)
     expect(state.save).toHaveBeenCalledWith({ orgId: "org1", provider: "anthropic", secret: KEY, userId: "u1", status: "ok" })
-    const text = JSON.stringify(await res.json())
+    const json = await res.json()
+    // Which modules call each provider and its 30-day spend come with the keys.
+    expect(json.data.providers).toEqual([{ provider: "anthropic", uses: ["davinci"], costUsd: 0.24, calls: 29 }])
+    const text = JSON.stringify(json)
     expect(text).not.toContain(KEY)
     expect(text).toContain("…ABCD")
     expect(JSON.stringify(state.audit.mock.calls)).not.toContain(KEY)
