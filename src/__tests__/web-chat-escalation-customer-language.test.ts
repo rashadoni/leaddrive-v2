@@ -152,7 +152,7 @@ describe("what the visitor reads in the widget once the ticket exists", () => {
   })
 
   it("states the ticket and promises no one's call or reply, in any language", async () => {
-    const before = guardOmnichannelCommitments("Your chat has been escalated to ticket TKT-0042. An agent will contact you shortly.", { customerText: "help", locale: "en" })
+    const before = guardOmnichannelCommitments("Your chat has been escalated to ticket TKT-0042. An agent will contact you shortly.", { customerText: "help", locale: "en", facts: "" })
     expect(before.violations).toContain("unconfirmed_time")
 
     for (const contactLanguage of ["az", "ru", "en"] as const) {
@@ -163,7 +163,7 @@ describe("what the visitor reads in the widget once the ticket exists", () => {
       // The guard of the chat's AI replies would not let a reply say "soon", "shortly" or name
       // who will answer. (It does flag "registered": that claim is the action's own result
       // here — this line is written only after the ticket exists.)
-      expect(guardOmnichannelCommitments(notice, { customerText: "Salam", locale: contactLanguage }).violations).not.toContain("unconfirmed_time")
+      expect(guardOmnichannelCommitments(notice, { customerText: "Salam", locale: contactLanguage, facts: "" }).violations).not.toContain("unconfirmed_time")
       expect(notice).not.toMatch(/shortly|soon|tezliklə|скоро|в ближайшее|agent will|менеджер|menecer|оператор|operator/i)
     }
   })

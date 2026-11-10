@@ -5,7 +5,7 @@ const tz = process.env.TZ
 process.env.TZ = "Asia/Baku"
 afterAll(() => { if (tz === undefined) delete process.env.TZ; else process.env.TZ = tz })
 
-const { dayKeys, dueNote, firstDayFor, planForDay, planTasks, plannedDay, rankBefore, rankBetween, shiftDayKey, visibleDayCount } =
+const { dayKeys, dueNote, firstDayFor, keepOwnDays, planForDay, planTasks, plannedDay, rankBefore, rankBetween, shiftDayKey, visibleDayCount } =
   await import("@/lib/tasks/my-work-calendar")
 
 describe("days in the «Təqvim» of Mənim işlərim", () => {
@@ -55,6 +55,36 @@ describe("which task goes where", () => {
     expect(byDay.get("2026-11-10")!.map((x) => x.id)).toEqual(["tue-crit", "done-tue", "tue-low"])
     expect(byDay.get("2026-11-09")).toEqual([])
     expect([...byDay.values()].flat().some((x) => x.id === "far")).toBe(false)
+  })
+})
+
+describe("a read of the list that was already under way", () => {
+  const task = (id: string, day: string | null) => ({ id, title: id, status: "todo", dueDate: null, plans: day ? [planForDay(day)] : [] })
+
+  it("keeps the day of a card moved while it was under way, and drops the day it carries for it", () => {
+    const atStart = [task("moved", null), task("still", null)]
+    const current = [task("moved", "2026-11-12"), task("still", null)]
+    // The answer was read before the card was moved: for it the card has no day.
+    const kept = keepOwnDays([task("moved", null), task("still", null)], current, atStart)
+    expect(kept.map((t) => plannedDay(t))).toEqual(["2026-11-12", null])
+  })
+
+  it("keeps a card taken off its day since it began", () => {
+    const atStart = [task("off", "2026-11-12")]
+    const kept = keepOwnDays([task("off", "2026-11-12")], [task("off", null)], atStart)
+    expect(plannedDay(kept[0])).toBeNull()
+  })
+
+  it("takes its own day for a task nobody touched since — a day given in another tab arrives", () => {
+    const atStart = [task("quiet", null)]
+    const kept = keepOwnDays([task("quiet", "2026-11-13")], [task("quiet", null)], atStart)
+    expect(plannedDay(kept[0])).toBe("2026-11-13")
+  })
+
+  it("passes a task it brings for the first time through as it is", () => {
+    const kept = keepOwnDays([task("fresh", "2026-11-13")], [], [])
+    expect(plannedDay(kept[0])).toBe("2026-11-13")
+    expect(kept).toHaveLength(1)
   })
 })
 

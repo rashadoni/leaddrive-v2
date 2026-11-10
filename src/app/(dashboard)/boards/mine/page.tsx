@@ -8,7 +8,7 @@
  * made on the boards, not here — this is a list of one's own work.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertCircle, Check, Loader2, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -22,6 +22,7 @@ import { dueNote } from "@/lib/tasks/my-work-calendar"
 import { rememberBoardNames } from "@/lib/tasks/board-names-cache"
 import { BOARD_TASKS_PAGE } from "@/lib/tasks/fetch-board-tasks"
 import { MyWorkCalendar, type CalendarTask } from "@/components/boards/my-work-calendar"
+import { keepOwnDays } from "@/lib/tasks/my-work-calendar"
 
 interface Board {
   id: string
@@ -61,6 +62,13 @@ export default function MyWorkPage() {
   const locale = useLocale()
   const [boards, setBoards] = useState<Board[]>([])
   const [tasks, setTasks] = useState<MyTask[] | null>(null)
+  // Beside the state, for the same reason as the ticks below: a read that
+  // began earlier has to see what the list holds now, not one render ago.
+  const tasksRef = useRef<MyTask[] | null>(null)
+  const changeTasks = useCallback<Dispatch<SetStateAction<MyTask[] | null>>>((next) => {
+    tasksRef.current = typeof next === "function" ? next(tasksRef.current) : next
+    setTasks(tasksRef.current)
+  }, [])
   // «Siyahı» or «Təqvim» (Bordio's My work → Tasks / Calendar), kept in the URL.
   const [view, setViewState] = useState<View>("list")
   useEffect(() => { setViewState(readView()) }, [])
@@ -103,7 +111,8 @@ export default function MyWorkPage() {
    * panel reads the list again. So the answer that comes back last is not
    * always the newest word, and two rules keep it from undoing the person:
    *  · only the newest read is applied — an older answer cannot overwrite it;
-   *  · a read forgets only the ticks that were already there when it began.
+   *  · a read forgets only the ticks that were already there when it began;
+   *  · the own day of a card moved since it began stays (`keepOwnDays`).
    * A row ticked while a read was under way used to come back open on screen
    * although the server had the task finished, and nothing ticks it again — it
    * stayed wrong until the page was read anew. The boards browser run failed
@@ -113,6 +122,7 @@ export default function MyWorkPage() {
   const load = useCallback(async () => {
     const seq = (reads.current += 1)
     const knownTicks = [...tickedRef.current.keys()]
+    const tasksAtStart = tasksRef.current ?? []
     setFailed(false)
     try {
       const [divisionsRes, open] = await Promise.all([
@@ -123,7 +133,7 @@ export default function MyWorkPage() {
       const list: Board[] = divisionsRes?.data?.divisions ?? []
       rememberBoardNames(list)
       setBoards(list)
-      setTasks(open.tasks)
+      changeTasks((current) => keepOwnDays(open.tasks, current ?? [], tasksAtStart))
       setTotal(open.total)
       changeTicked((current) => {
         const next = new Map(current)
@@ -133,7 +143,7 @@ export default function MyWorkPage() {
     } catch {
       if (seq === reads.current) setFailed(true)
     }
-  }, [changeTicked])
+  }, [changeTasks, changeTicked])
   useEffect(() => { load() }, [load])
 
   const loadDone = useCallback(async () => {
@@ -353,7 +363,7 @@ export default function MyWorkPage() {
       )}
 
       {tasks && view === "calendar" && (
-        <MyWorkCalendar openTasks={tasks} setOpenTasks={setTasks} boards={boards} onOpenTask={setOpenTaskId} flash={flash} />
+        <MyWorkCalendar openTasks={tasks} setOpenTasks={changeTasks} boards={boards} onOpenTask={setOpenTaskId} flash={flash} />
       )}
 
       {tasks && total > tasks.length && <p className="text-xs text-muted-foreground">{t("tooMany", { count: tasks.length })}</p>}

@@ -9,6 +9,7 @@ describe("guardOmnichannelCommitments", () => {
     const original = "Наш менеджер перезвонит вам сегодня в 15:00."
     const result = guardOmnichannelCommitments(original, {
       customerText: "Когда вы мне позвоните?",
+      facts: "",
     })
 
     expect(result).toEqual({
@@ -64,7 +65,7 @@ describe("guardOmnichannelCommitments", () => {
     "Менеджер выйдет на связь завтра.",
     "Menecer sizə sabah geri dönəcək.",
   ])("blocks callback-time promises that avoid the original future verbs: %s", (text) => {
-    const result = guardOmnichannelCommitments(text, { locale: "ru" })
+    const result = guardOmnichannelCommitments(text, { locale: "ru", facts: "" })
     expect(result.forceHandoff).toBe(true)
     expect(result.violations).toContain("unconfirmed_time")
     expect(result.text).not.toContain("10:00")
@@ -136,7 +137,7 @@ describe("guardOmnichannelCommitments", () => {
     "Мы рассматриваем ваш запрос.",
     "Sorğunuz nəzərdən keçirilir.",
   ])("blocks unsupported completed-action wording: %s", (text) => {
-    const result = guardOmnichannelCommitments(text, { locale: "ru" })
+    const result = guardOmnichannelCommitments(text, { locale: "ru", facts: "" })
     expect(result.forceHandoff).toBe(true)
     expect(result.violations).toContain("unsupported_completion")
   })
@@ -203,7 +204,7 @@ describe("guardOmnichannelCommitments", () => {
     "You’ll be hearing from our team.",
     "Staff will call you.",
   ])("blocks definite company-side contact promises without a time: %s", (text) => {
-    const result = guardOmnichannelCommitments(text, { locale: "en" })
+    const result = guardOmnichannelCommitments(text, { locale: "en", facts: "" })
     expect(result.forceHandoff).toBe(true)
     expect(result.violations).toContain("unsupported_completion")
   })
@@ -211,7 +212,7 @@ describe("guardOmnichannelCommitments", () => {
   it("blocks an Azerbaijani relative-time promise with an Azerbaijani fallback", () => {
     const result = guardOmnichannelCommitments(
       "Menecer sizinlə 20 dəqiqə sonra əlaqə saxlayacaq.",
-      { customerText: "Mənimlə nə vaxt əlaqə saxlayacaqsınız?" },
+      { customerText: "Mənimlə nə vaxt əlaqə saxlayacaqsınız?", facts: "" },
     )
 
     expect(result.forceHandoff).toBe(true)
@@ -225,7 +226,7 @@ describe("guardOmnichannelCommitments", () => {
   it("blocks an unsupported English completion claim", () => {
     const result = guardOmnichannelCommitments(
       "I have created your ticket and forwarded it to our manager.",
-      { customerText: "Please help with my request." },
+      { customerText: "Please help with my request.", facts: "" },
     )
 
     expect(result).toEqual({
@@ -240,6 +241,7 @@ describe("guardOmnichannelCommitments", () => {
   it("blocks an unsupported handoff claim even without a time or marker", () => {
     const result = guardOmnichannelCommitments("Передаю ваш вопрос менеджеру.", {
       locale: "ru",
+      facts: "",
     })
 
     expect(result.forceHandoff).toBe(true)
@@ -249,7 +251,7 @@ describe("guardOmnichannelCommitments", () => {
 
   it("does not block an explicit uncertainty statement that mentions a date", () => {
     const text = "Я не могу подтвердить, что менеджер позвонит завтра в 10:00."
-    expect(guardOmnichannelCommitments(text, { locale: "ru" })).toEqual({
+    expect(guardOmnichannelCommitments(text, { locale: "ru", facts: "" })).toEqual({
       text,
       violations: [],
       forceHandoff: false,
@@ -271,7 +273,7 @@ describe("guardOmnichannelCommitments", () => {
       "The time is not confirmed (we will call tomorrow).",
       "Vaxt təsdiqlənməyib - menecer sabah zəng edəcək.",
     ]) {
-      const result = guardOmnichannelCommitments(text, { locale: "ru" })
+      const result = guardOmnichannelCommitments(text, { locale: "ru", facts: "" })
       expect(result.forceHandoff, text).toBe(true)
       expect(result.violations, text).toContain("unconfirmed_time")
     }
@@ -279,7 +281,7 @@ describe("guardOmnichannelCommitments", () => {
 
   it("keeps a subordinate uncertainty clause safe even with a comma", () => {
     const text = "Я не могу подтвердить, что менеджер позвонит завтра в 10:00."
-    expect(guardOmnichannelCommitments(text, { locale: "ru" })).toEqual({
+    expect(guardOmnichannelCommitments(text, { locale: "ru", facts: "" })).toEqual({
       text,
       violations: [],
       forceHandoff: false,
@@ -290,7 +292,7 @@ describe("guardOmnichannelCommitments", () => {
     "I cannot confirm whether the manager will call tomorrow and whether the delivery will arrive Friday.",
     "Не могу подтвердить дату и позвонит ли менеджер завтра.",
   ])("keeps coordinated uncertainty safe: %s", (text) => {
-    expect(guardOmnichannelCommitments(text, { locale: "en" })).toEqual({
+    expect(guardOmnichannelCommitments(text, { locale: "en", facts: "" })).toEqual({
       text,
       violations: [],
       forceHandoff: false,
@@ -302,7 +304,7 @@ describe("guardOmnichannelCommitments", () => {
     "The Callback API release is August 14.",
     "Рабочие часы 14 августа: 09:00-18:00.",
   ])("does not treat informational schedules as a customer promise: %s", (text) => {
-    expect(guardOmnichannelCommitments(text, { locale: "en" })).toEqual({
+    expect(guardOmnichannelCommitments(text, { locale: "en", facts: "" })).toEqual({
       text,
       violations: [],
       forceHandoff: false,
@@ -345,7 +347,9 @@ describe("guardOmnichannelCommitments", () => {
     "The requestAwaitingReview field is returned by the API.",
     "Поле «запрос рассматривается» описано в API.",
   ])("does not block benign product numbers or business hours: %s", (text) => {
-    expect(guardOmnichannelCommitments(text, { locale: "en" })).toEqual({
+    // Цена в этих строках — из фактов компании (offer-grounding): тест про
+    // сроки и действия, а не про выдуманную цену.
+    expect(guardOmnichannelCommitments(text, { locale: "en", facts: text })).toEqual({
       text,
       violations: [],
       forceHandoff: false,
@@ -359,6 +363,9 @@ describe("guardOmnichannelCommitments", () => {
   })
 })
 
+// Прайс компании: цена блока в ответе проходит, потому что она здесь есть.
+const BLOCK_PRICE_LIST = "Qiymətlər: 60x25x20 blok — 3.10 AZN"
+
 describe("the guard keeps the answer and removes only the promise", () => {
   // Before this, any offending clause replaced the ENTIRE reply with a
   // one-line fallback. Once a customer had given their phone number, the agent
@@ -371,7 +378,7 @@ describe("the guard keeps the answer and removes only the promise", () => {
       "Sorğunuz menecerə yönləndirilib.",
       "Dəqiq hesablama üçün kalkulyatordan istifadə edə bilərsiniz.",
     ].join(" ")
-    const result = guardOmnichannelCommitments(reply, { locale: "az" })
+    const result = guardOmnichannelCommitments(reply, { locale: "az", facts: BLOCK_PRICE_LIST })
     expect(result.violations).toContain("unsupported_completion")
     // The price and the calculator survive.
     expect(result.text).toContain("3.10 AZN")
@@ -386,13 +393,13 @@ describe("the guard keeps the answer and removes only the promise", () => {
   })
 
   it("falls back to the bare sentence when the reply WAS the promise", () => {
-    const result = guardOmnichannelCommitments("Sorğunuz menecerə yönləndirilib.", { locale: "az" })
+    const result = guardOmnichannelCommitments("Sorğunuz menecerə yönləndirilib.", { locale: "az", facts: "" })
     expect(result.text).toBe("Bu əməliyyatın tamamlandığını təsdiqləyə bilmirəm. Yoxlama üçün menecerin cavabı lazımdır.")
   })
 
   it("leaves a clean reply exactly as written", () => {
     const clean = "60x25x20 blokun qiyməti 3.10 AZN-dir. Ölçüləri dəqiqləşdirə bilərsinizmi?"
-    const result = guardOmnichannelCommitments(clean, { locale: "az" })
+    const result = guardOmnichannelCommitments(clean, { locale: "az", facts: BLOCK_PRICE_LIST })
     expect(result.text).toBe(clean)
     expect(result.violations).toEqual([])
     expect(result.forceHandoff).toBe(false)
@@ -417,11 +424,11 @@ describe("our own rules must not ask for a sentence this guard rejects", () => {
   ]
 
   it.each(REJECTED_BY_DESIGN)("still rejects %s", (text) => {
-    expect(guardOmnichannelCommitments(text, { locale: "az" }).violations).toContain("unsupported_completion")
+    expect(guardOmnichannelCommitments(text, { locale: "az", facts: "" }).violations).toContain("unsupported_completion")
   })
 
   it.each(MUST_PASS)("leaves %s alone", (text) => {
-    const r = guardOmnichannelCommitments(text, { locale: "az" })
+    const r = guardOmnichannelCommitments(text, { locale: "az", facts: BLOCK_PRICE_LIST })
     expect(r.violations).toEqual([])
     expect(r.text).toBe(text)
   })
@@ -442,17 +449,17 @@ describe("the fallback speaks the language of the conversation", () => {
   // language and the detector's last resort is English, so an assistant talking
   // Azerbaijani all conversation answered a bare number in English.
   it("uses the discarded reply when the customer sent only digits", () => {
-    const result = guardOmnichannelCommitments("Sorğunuz menecerə ötürülüb.", { customerText: "0773201000" })
+    const result = guardOmnichannelCommitments("Sorğunuz menecerə ötürülüb.", { customerText: "0773201000", facts: "" })
     expect(result.text).toBe("Bu əməliyyatın tamamlandığını təsdiqləyə bilmirəm. Yoxlama üçün menecerin cavabı lazımdır.")
   })
 
   it("still follows the customer when they actually wrote something", () => {
-    const result = guardOmnichannelCommitments("Sorğunuz menecerə ötürülüb.", { customerText: "Здравствуйте, какая цена?" })
+    const result = guardOmnichannelCommitments("Sorğunuz menecerə ötürülüb.", { customerText: "Здравствуйте, какая цена?", facts: "" })
     expect(result.text).toBe("Я не могу подтвердить, что это действие уже выполнено. Для проверки нужен менеджер.")
   })
 
   it("an emoji is not a language either", () => {
-    const result = guardOmnichannelCommitments("Sorğunuz menecerə ötürülüb.", { customerText: "👍" })
+    const result = guardOmnichannelCommitments("Sorğunuz menecerə ötürülüb.", { customerText: "👍", facts: "" })
     expect(result.text).toContain("təsdiqləyə bilmirəm")
   })
 })

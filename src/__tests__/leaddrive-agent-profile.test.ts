@@ -47,7 +47,7 @@ describe("LeadDrive's own agent profile", () => {
 
   it("lets every line the agent says to a prospect through the product's commitment guard unchanged", () => {
     for (const line of [P.greeting, ...P.sampleReplies.map((reply) => reply.agent)]) {
-      expect(guardOmnichannelCommitments(line, { locale: "az" }).violations, line).toEqual([])
+      expect(guardOmnichannelCommitments(line, { locale: "az", facts: "" }).violations, line).toEqual([])
     }
   })
 

@@ -321,10 +321,13 @@ async function generateAiReply(
     const client = await anthropicFor(orgId, "web-chat")
     const model = "claude-haiku-4-5-20251001"
     const startTime = Date.now()
+    // Чату сайта модель не получает ни базы знаний, ни прайса: любая цена или
+    // скидка в его ответе — выдумка, и правило цены (offer-grounding) уберёт её.
+    const systemPrompt = (SYSTEM_PROMPTS[lang] || SYSTEM_PROMPTS.en) + OMNICHANNEL_COMMITMENT_RULES
     const res = await client.messages.create({
       model,
       max_tokens: Math.min(400, maxOutputTokens),
-      system: (SYSTEM_PROMPTS[lang] || SYSTEM_PROMPTS.en) + OMNICHANNEL_COMMITMENT_RULES,
+      system: systemPrompt,
       messages: maskedMessages,
     })
     const generatedText = res.content
@@ -335,6 +338,7 @@ async function generateAiReply(
     const commitmentGuard = guardOmnichannelCommitments(generatedText, {
       customerText: userText,
       locale: detectOmnichannelReplyLocale(userText, lang),
+      facts: systemPrompt,
     })
     const text = commitmentGuard.text
     // A1 — judge the reply before the visitor sees it; fail-soft (failure shape is persisted too).

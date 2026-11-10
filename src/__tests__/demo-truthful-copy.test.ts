@@ -52,7 +52,7 @@ describe("the demo's AI agent obeys the product's commitment rules", () => {
   ]
 
   it.each(aiLines)("$where passes the guard untouched", ({ text }) => {
-    const guarded = guardOmnichannelCommitments(text, { locale: "az" })
+    const guarded = guardOmnichannelCommitments(text, { locale: "az", facts: "" })
     expect(guarded.violations).toEqual([])
     expect(guarded.text).toBe(text)
   })

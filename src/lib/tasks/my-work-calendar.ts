@@ -130,6 +130,32 @@ export function planTasks<T extends PlannedTask>(
   return { waiting, byDay }
 }
 
+/**
+ * The answer of a read of the list, with the person's own days kept where they
+ * changed while that read was under way.
+ *
+ * A read answers for the moment it BEGAN: it carries the day a task had then.
+ * Applying it as it is puts a card the person has just moved back where it
+ * lay — while the server already holds the new day, and nothing moves it
+ * again until the next read. Same rule as the tick on «Mənim işlərim»: a read
+ * never undoes what was done after it began. `atStart` is the list as it stood
+ * then; a task whose day nobody touched since takes the answer's day, so a day
+ * given in another tab still arrives.
+ */
+export function keepOwnDays<T extends PlannedTask>(
+  answer: readonly T[],
+  current: readonly T[],
+  atStart: readonly T[],
+): T[] {
+  const then = new Map(atStart.map((task) => [task.id, plannedDay(task)]))
+  const mine = new Map(current.map((task) => [task.id, task]))
+  return answer.map((task) => {
+    const here = mine.get(task.id)
+    if (!here || !then.has(task.id) || plannedDay(here) === then.get(task.id)) return task
+    return { ...task, plans: here.plans ?? [] }
+  })
+}
+
 export type DueNote =
   | { kind: "none" }
   | { kind: "late"; days: number }

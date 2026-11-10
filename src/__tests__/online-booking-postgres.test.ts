@@ -59,7 +59,10 @@ const outlook = vi.hoisted(() => ({
 }))
 const whatsapp = vi.hoisted(() => ({
   buttons: [] as { body: string; footer?: string | null; buttons: { id: string; title: string }[]; conversationId?: string | null }[],
+  lists: [] as { body: string; footer?: string | null; buttonLabel: string; sectionTitle?: string | null; rows: { id: string; title: string; description?: string | null }[]; conversationId?: string | null }[],
   texts: [] as { message: string; conversationId?: string | null }[],
+  /** Set for one send to play a provider that refuses interactive lists. */
+  listFails: false,
 }))
 
 vi.mock("@/lib/auth", () => ({ auth: async () => session.current }))
@@ -91,6 +94,14 @@ vi.mock("@/lib/whatsapp", async (original) => ({
   sendWhatsAppButtons: vi.fn(async (input: { body: string; footer?: string | null; buttons: { id: string; title: string }[]; conversationId?: string | null }) => {
     whatsapp.buttons.push({ body: input.body, footer: input.footer, buttons: input.buttons, conversationId: input.conversationId })
     return { success: true, messageId: `wamid.${whatsapp.buttons.length}` }
+  }),
+  sendWhatsAppList: vi.fn(async (input: { body: string; footer?: string | null; buttonLabel: string; sectionTitle?: string | null; rows: { id: string; title: string; description?: string | null }[]; conversationId?: string | null }) => {
+    if (whatsapp.listFails) {
+      whatsapp.listFails = false
+      return { success: false, error: "interactive lists are not supported here" }
+    }
+    whatsapp.lists.push({ body: input.body, footer: input.footer, buttonLabel: input.buttonLabel, sectionTitle: input.sectionTitle, rows: input.rows, conversationId: input.conversationId })
+    return { success: true, messageId: `wamid.list.${whatsapp.lists.length}` }
   }),
   sendWhatsAppMessage: vi.fn(async (input: { message: string; conversationId?: string | null }) => {
     whatsapp.texts.push({ message: input.message, conversationId: input.conversationId })
@@ -167,6 +178,7 @@ pgDescribe("online booking on a real Postgres", () => {
   let drain!: typeof import("@/lib/booking/effect-worker").drainBookingEffects
   let bookingTurn!: typeof import("@/lib/booking/whatsapp-agent").handleWhatsAppBookingTurn
   let reviewOffer!: typeof import("@/lib/booking/whatsapp-agent").reviewPendingOffer
+  let OFFERS_PER_LIST!: number
   let remindersPost!: typeof import("@/app/api/cron/booking-reminders/route").POST
   let requestsGet!: typeof import("@/app/api/v1/bookings/requests/route").GET
   let requestsPost!: typeof import("@/app/api/v1/bookings/requests/route").POST
@@ -276,6 +288,7 @@ pgDescribe("online booking on a real Postgres", () => {
     drain = (await import("@/lib/booking/effect-worker")).drainBookingEffects
     bookingTurn = (await import("@/lib/booking/whatsapp-agent")).handleWhatsAppBookingTurn
     reviewOffer = (await import("@/lib/booking/whatsapp-agent")).reviewPendingOffer
+    OFFERS_PER_LIST = (await import("@/lib/booking/whatsapp-agent")).OFFERS_PER_LIST
     remindersPost = (await import("@/app/api/cron/booking-reminders/route")).POST
     requestsGet = (await import("@/app/api/v1/bookings/requests/route")).GET
     requestsPost = (await import("@/app/api/v1/bookings/requests/route")).POST
@@ -288,9 +301,15 @@ pgDescribe("online booking on a real Postgres", () => {
     if (scratch) prismaCli(["db", "execute", "--url", adminUrl!, "--stdin"], process.env, `DROP DATABASE IF EXISTS "${scratch.name}" WITH (FORCE);`)
   }, 60_000)
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mail.sent = []
     whatsapp.buttons = []
+    whatsapp.lists = []
+    whatsapp.listFails = false
+    // Offers hold a master's hours until they expire, and one menu holds eight
+    // of them. Left standing, they are the previous test's holds eating this
+    // test's day — every case here starts from a free board.
+    await bypass(() => prisma.bookingOffer.updateMany({ where: { organizationId: ORG, status: "offered" }, data: { status: "superseded" } }))
     whatsapp.texts = []
     signIn("admin")
   })
@@ -1200,7 +1219,7 @@ pgDescribe("online booking on a real Postgres", () => {
     expect(whatsapp.buttons).toHaveLength(0)
   })
 
-  it("WhatsApp: the client's words become three held times, and one tap books exactly one of them", async () => {
+  it("WhatsApp: the client's words become a menu of held times, and one tap books exactly one of them", async () => {
     // The salon works in manats, so the service is created inside the block
     // that sets the currency — the page stamps it when it is saved.
     await withWhatsAppBooking(async () => {
@@ -1210,20 +1229,25 @@ pgDescribe("online booking on a real Postgres", () => {
       const conversation = `conv-${randomUUID()}`
       expect(await turnIn(conversation, { client: decides({ action: "offer", language: "az", serviceId: page.id }) })).toEqual({ handled: true })
 
-      // Three buttons, each one a held time of this conversation.
-      const message = whatsapp.buttons.at(-1)!
+      // A menu of held times, one row each: the time on the first line, the
+      // master on the second — the row the three-button message could not hold.
+      const message = whatsapp.lists.at(-1)!
       expect(message.conversationId).toBe(conversation)
       // The price too: a Decimal handed straight to the label reads as nothing.
       expect(message.body).toMatch(/Saç kəsimi, 45 dəq, 25 ₼/)
       expect(message.footer).toBe("Vaxt 15 dəqiqə sizin üçün saxlanılır")
-      expect(message.buttons).toHaveLength(3)
-      for (const button of message.buttons) {
-        expect(button.id).toMatch(/^bk:/)
-        expect(button.title.length).toBeLessThanOrEqual(20)
-        expect(button.title).toMatch(/Leyla$/)
+      expect(message.buttonLabel).toBe("Vaxt seçin")
+      expect(message.rows.length).toBeGreaterThan(3)
+      expect(message.rows.length).toBeLessThanOrEqual(OFFERS_PER_LIST)
+      for (const row of message.rows) {
+        expect(row.id).toMatch(/^bk:/)
+        expect(row.title.length).toBeLessThanOrEqual(24)
+        // The name lives on the second line now, not inside the time.
+        expect(row.description, "the row names the master").toBeTruthy()
+        expect(row.title).not.toContain(row.description)
       }
       const offers = await offersOf(conversation)
-      expect(offers.map((offer) => `bk:${offer.id}`).sort()).toEqual(message.buttons.map((button) => button.id).sort())
+      expect(offers.map((offer) => `bk:${offer.id}`).sort()).toEqual(message.rows.map((row) => row.id).sort())
       expect(new Set(offers.map((offer) => offer.status))).toEqual(new Set(["offered"]))
       // Every time offered is one the page itself offered a moment ago:
       // the agent has no other source of time.
@@ -1236,7 +1260,7 @@ pgDescribe("online booking on a real Postgres", () => {
 
       // The client taps the second time — twice, as people do.
       const tapped = offers[1]
-      const tap = () => turnIn(conversation, { replyId: `bk:${tapped.id}`, text: message.buttons[1].title })
+      const tap = () => turnIn(conversation, { replyId: `bk:${tapped.id}`, text: message.rows[1].title })
       expect(await tap()).toEqual({ handled: true })
       expect(await tap()).toEqual({ handled: true })
 
@@ -1250,10 +1274,13 @@ pgDescribe("online booking on a real Postgres", () => {
       expect(whatsapp.texts[0].message).toMatch(/Leyla/)
       expect(whatsapp.texts[0].message).toMatch(/https:\/\/app\.example\.test\/book\/cancel\/[\w-]{20,}/)
 
-      // The two times not chosen are free again the moment the client chose.
+      // Every time not chosen is free again the moment the client chose — all of
+      // them, not the two a three-button message used to hold.
       const after = await offersOf(conversation)
       expect(after.find((offer) => offer.id === tapped.id)).toMatchObject({ status: "booked", bookingId: meetings[0].id })
-      expect(after.filter((offer) => offer.id !== tapped.id).map((offer) => offer.status)).toEqual(["superseded", "superseded"])
+      const others = after.filter((offer) => offer.id !== tapped.id)
+      expect(others.length).toBe(message.rows.length - 1)
+      expect(others.map((offer) => offer.status)).toEqual(others.map(() => "superseded"))
       const released = await offeredTimes(slug)
       for (const offer of after.filter((item) => item.id !== tapped.id)) expect(released).toContain(offer.startsAt.toISOString())
       expect(released).not.toContain(tapped.startsAt.toISOString())
@@ -1270,6 +1297,29 @@ pgDescribe("online booking on a real Postgres", () => {
     }, { invoice: { defaultCurrency: "AZN" } })
   })
 
+  it("WhatsApp: a number whose provider refuses the menu still gets three times as buttons", async () => {
+    // Interactive lists are a Cloud API feature; a channel that cannot render
+    // one must not leave the client with no way to answer at all. The fallback
+    // is the message that worked before the menu: the three nearest times.
+    const slug = await newPage({ title: "Saç yuma", durationMinutes: 30 })
+    const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
+    await withWhatsAppBooking(async () => {
+      const conversation = `conv-${randomUUID()}`
+      whatsapp.listFails = true
+      expect(await turnIn(conversation, { client: decides({ action: "offer", language: "az", serviceId: page.id }) })).toEqual({ handled: true })
+
+      expect(whatsapp.lists).toHaveLength(0)
+      const message = whatsapp.buttons.at(-1)!
+      expect(message.buttons).toHaveLength(3)
+      for (const button of message.buttons) expect(button.title.length).toBeLessThanOrEqual(20)
+      // The times held are still the whole menu — the buttons show the first
+      // three of them, and a tap on any one books.
+      const offers = await offersOf(conversation)
+      expect(offers.length).toBeGreaterThan(3)
+      expect(offers.map((offer) => `bk:${offer.id}`)).toEqual(expect.arrayContaining(message.buttons.map((button) => button.id)))
+    })
+  })
+
   it("WhatsApp: a held time is never offered to a second conversation, and is free again once the hold runs out", async () => {
     const slug = await newPage({ title: "Manikür", durationMinutes: 40, maxDaysAhead: 2 })
     const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
@@ -1279,11 +1329,11 @@ pgDescribe("online booking on a real Postgres", () => {
       const ask = (conversationId: string) => turnIn(conversationId, { text: "Завтра маникюр можно?", client: decides({ action: "offer", language: "ru", serviceId: page.id }) })
       await ask(first)
       await ask(second)
-      expect(whatsapp.buttons.at(-1)!.body).toMatch(/Manikür, 40 мин/)
+      expect(whatsapp.lists.at(-1)!.body).toMatch(/Manikür, 40 мин/)
       const firstOffers = await offersOf(first)
       const secondOffers = await offersOf(second)
-      expect(firstOffers).toHaveLength(3)
-      expect(secondOffers).toHaveLength(3)
+      expect(firstOffers.length).toBeGreaterThan(3)
+      expect(secondOffers).toHaveLength(firstOffers.length)
       const sameChair = (left: { hostUserId: string; startsAt: Date }, right: { hostUserId: string; startsAt: Date }) =>
         left.hostUserId === right.hostUserId && left.startsAt.getTime() === right.startsAt.getTime()
       for (const offer of secondOffers) expect(firstOffers.some((held) => sameChair(held, offer))).toBe(false)
@@ -1293,10 +1343,10 @@ pgDescribe("online booking on a real Postgres", () => {
       await bypass(() => prisma.bookingOffer.updateMany({ where: { conversationId: first }, data: { expiresAt: new Date(Date.now() - 1000) } }))
       await ask(second)
       const again = await offersOf(second, "offered")
-      expect(again).toHaveLength(3)
+      expect(again).toHaveLength(secondOffers.length)
       expect(again.some((offer) => firstOffers.some((held) => sameChair(held, offer)))).toBe(true)
       // And asking again released the second client's own earlier times.
-      expect((await offersOf(second, "superseded")).length).toBe(3)
+      expect((await offersOf(second, "superseded")).length).toBe(secondOffers.length)
     })
   })
 
@@ -1312,12 +1362,12 @@ pgDescribe("online booking on a real Postgres", () => {
       expect((await book(slug, first.startsAt.toISOString(), "Veb müştəri")).status).toBe(201)
 
       expect(await turnIn(conversation, { replyId: `bk:${first.id}`, text: "10:00 · Leyla" })).toEqual({ handled: true })
-      const retry = whatsapp.buttons.at(-1)!
+      const retry = whatsapp.lists.at(-1)!
       expect(retry.body).toMatch(/^Bu vaxtı indicə tutdular\./)
-      expect(retry.buttons.length).toBeGreaterThan(0)
+      expect(retry.rows.length).toBeGreaterThan(0)
       expect(await bypass(() => prisma.bookingOffer.findUniqueOrThrow({ where: { id: first.id } }))).toMatchObject({ status: "taken", bookingId: null })
       const fresh = await offersOf(conversation, "offered")
-      expect(fresh.length).toBe(retry.buttons.length)
+      expect(fresh.length).toBe(retry.rows.length)
       for (const offer of fresh) expect(offer.startsAt.getTime()).not.toBe(first.startsAt.getTime())
       expect(whatsapp.texts).toHaveLength(0)
       const meetings = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: page.id, status: "confirmed" } }))
@@ -1333,6 +1383,7 @@ pgDescribe("online booking on a real Postgres", () => {
       // A decision naming a service that does not exist is no decision.
       expect(await turnIn(`conv-${randomUUID()}`, { client: decides({ action: "offer", language: "az", serviceId: "invented-service" }) })).toEqual({ handled: false })
       expect(whatsapp.buttons).toHaveLength(0)
+      expect(whatsapp.lists).toHaveLength(0)
 
       const owner = `conv-${randomUUID()}`
       await turnIn(owner, { client: decides({ action: "offer", language: "az", serviceId: page.id }) })
@@ -1427,7 +1478,11 @@ pgDescribe("online booking on a real Postgres", () => {
       const conversation = await conversationWith(phoneDigitsOf(booking.phone), "Günel", "Sabah manikür?")
 
       expect((await remindersPost(cronJson())).status).toBe(200)
-      const reminder = whatsapp.buttons.at(-1)!
+      // This meeting's reminder, not whichever one the cron sent last: the run
+      // reminds every meeting that is due, and another test's chair can be due
+      // in the same minute.
+      const reminder = whatsapp.buttons.find((message) => message.buttons.some((button) => button.id === `rm:confirm:${booking.id}`))!
+      expect(reminder, "a reminder for this meeting").toBeTruthy()
       expect(reminder.body).toMatch(/Manikür/)
       expect(reminder.buttons.map((button) => button.id)).toEqual([
         `rm:confirm:${booking.id}`, `rm:move:${booking.id}`, `rm:cancel:${booking.id}`,
