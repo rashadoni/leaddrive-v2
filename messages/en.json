@@ -29243,6 +29243,12 @@
   },
   "aiVoiceActions": {
     "fields": {
+      "orderId": "Order",
+      "lineId": "Line",
+      "quantity": "Quantity",
+      "productName": "Product",
+      "unitPrice": "Price",
+      "unit": "Unit",
       "industry": "Industry",
       "website": "Website",
       "address": "Address",
@@ -29386,6 +29392,11 @@
         "executing": "Being executed"
       },
       "action": {
+        "update_phone_order_line": "Change a line in the phone order",
+        "add_phone_order_line": "Add a line to the phone order",
+        "remove_phone_order_line": "Remove a line from the phone order",
+        "confirm_phone_order": "Confirm the phone order",
+        "reject_phone_order": "Reject the phone order",
         "create_task": "Create task",
         "create_lead": "Create lead",
         "update_lead": "Update lead",
@@ -29416,6 +29427,11 @@
         "update_ticket": "Edit ticket"
       },
       "confirm": {
+        "update_phone_order_line": "Save the line",
+        "add_phone_order_line": "Add the line",
+        "remove_phone_order_line": "Remove the line",
+        "confirm_phone_order": "Confirm and send to 1C",
+        "reject_phone_order": "Reject the order",
         "create_task": "Create task",
         "create_lead": "Create lead",
         "update_lead": "Save changes",
@@ -29451,6 +29467,11 @@
         "DEAL_STAGE_LOST": "This marks the deal lost and takes its contact out of running cadences."
       },
       "result": {
+        "erp": {
+          "created": "Done. 1C wrote the order, and the pharmacy is being told on WhatsApp.",
+          "refused": "1C refused the order and wrote nothing. The reason is on each line in the order.",
+          "unknown": "1C gave no clear answer — the order is not confirmed yet. Open it and press Confirm again in a minute: the CRM will first ask 1C."
+        },
         "done": "Done. The record has been saved.",
         "alreadyDone": "Already done — this action had been saved before.",
         "failed": "The CRM refused this action. Correct it and dictate it again.",

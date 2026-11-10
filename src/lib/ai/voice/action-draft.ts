@@ -9,7 +9,10 @@ import { applyRecordFilter } from "@/lib/sharing-rules"
 import { openTaskFor } from "@/lib/tasks/task-access"
 import { companyDuplicateNeedle } from "@/lib/crm-commands/company/create-company"
 import { checkPermission } from "@/lib/permissions"
-import { hasModule } from "@/lib/modules"
+import { featureFlagsToArray, hasModule } from "@/lib/modules"
+import { runWithRlsBypass } from "@/lib/rls-context"
+import { phoneOrderLabel } from "@/lib/voice-agent/pharmacy/phone-orders"
+import { readableProductName } from "@/lib/pharmacy-orders/product-label"
 import { azerbaijaniLocalPart } from "@/lib/inbox/customer-phone"
 import {
   aiActionIntentExpiresAt,
@@ -17,6 +20,7 @@ import {
   hashAiActionIntentPayload,
 } from "./action-intent"
 import {
+  AI_VOICE_RECEIPT_EDIT_CLOSED,
   getAiVoiceActionDefinition,
   isAiVoiceActionType,
   parseAiVoiceActionPayload,
@@ -542,6 +546,19 @@ async function tenantCapabilityOpen(
   return !auth.hiddenModules?.includes(hideableIdForFieldCapability(capability))
 }
 
+/** Флаг организации (Organization.features); не прочитался — отказ. */
+async function tenantFeatureOpen(auth: AuthResult, feature: "pharmacy_phone_orders"): Promise<boolean> {
+  try {
+    const org = await runWithRlsBypass(() => prisma.organization.findUnique({
+      where: { id: auth.orgId },
+      select: { features: true },
+    }))
+    return featureFlagsToArray(org?.features).includes(feature)
+  } catch {
+    return false
+  }
+}
+
 async function assertActionAccess(
   auth: AuthResult,
   actionType: AiVoiceActionType,
@@ -554,6 +571,7 @@ async function assertActionAccess(
       !checkPermission(auth.role, permission.module, permission.action)
       || (permission.tenantModule !== undefined && !hasModule(org, permission.tenantModule))
       || (permission.tenantCapability !== undefined && !await tenantCapabilityOpen(auth, permission.tenantCapability))
+      || (permission.tenantFeature !== undefined && !await tenantFeatureOpen(auth, permission.tenantFeature))
     ) {
       throw new AiVoiceActionDraftError(
         "ACTION_FORBIDDEN",
@@ -881,7 +899,8 @@ async function resolveTicketTarget(auth: AuthResult, targetEntityId: string): Pr
 /** Preview fields whose value is an id of another record, and where to name it. */
 const REFERENCE_FIELDS: Readonly<Record<
   string,
-  "user" | "company" | "contact" | "checklistItem" | "mtmAgent" | "attendanceRequest" | "mtmRoute" | "mtmContact"
+  | "user" | "company" | "contact" | "checklistItem" | "mtmAgent" | "attendanceRequest" | "mtmRoute" | "mtmContact"
+  | "phoneOrder" | "phoneOrderLine"
 >> = {
   assignedTo: "user",
   companyId: "company",
@@ -894,6 +913,9 @@ const REFERENCE_FIELDS: Readonly<Record<
   // Этап 2б: маршрут дня — «сотрудник · название · день», клиент поля — имя.
   routeId: "mtmRoute",
   fieldContactId: "mtmContact",
+  // Этап 5: заказ — «номер · аптека · сумма», строка — «№ · товар · количество».
+  orderId: "phoneOrder",
+  lineId: "phoneOrderLine",
 }
 
 /**
@@ -917,6 +939,8 @@ async function labelPreviewReferences(
     attendanceRequest: new Set<string>(),
     mtmRoute: new Set<string>(),
     mtmContact: new Set<string>(),
+    phoneOrder: new Set<string>(),
+    phoneOrderLine: new Set<string>(),
   }
   for (const field of preview.fields) {
     const kind = REFERENCE_FIELDS[field.key]
@@ -927,7 +951,7 @@ async function labelPreviewReferences(
   }
   if (Object.values(wanted).every((ids) => ids.size === 0)) return preview
 
-  const [users, companies, contacts, checklistItems, mtmAgents, attendanceRequests, mtmRoutes, mtmContacts] = await Promise.all([
+  const [users, companies, contacts, checklistItems, mtmAgents, attendanceRequests, mtmRoutes, mtmContacts, phoneOrders, phoneOrderLines] = await Promise.all([
     wanted.user.size
       ? prisma.user.findMany({
         where: { organizationId: auth.orgId, id: { in: [...wanted.user] } },
@@ -977,6 +1001,21 @@ async function labelPreviewReferences(
       ? prisma.mtmContact.findMany({
         where: { organizationId: auth.orgId, id: { in: [...wanted.mtmContact] } },
         select: { id: true, displayName: true, firstName: true, lastName: true },
+      })
+      : [],
+    wanted.phoneOrder.size
+      ? prisma.pharmacyPhoneOrder.findMany({
+        where: { organizationId: auth.orgId, id: { in: [...wanted.phoneOrder] } },
+        select: {
+          id: true, number: true, pharmacyName: true, totalAmount: true, currency: true,
+          company: { select: { name: true } },
+        },
+      })
+      : [],
+    wanted.phoneOrderLine.size
+      ? prisma.pharmacyPhoneOrderLine.findMany({
+        where: { organizationId: auth.orgId, id: { in: [...wanted.phoneOrderLine] } },
+        select: { id: true, position: true, productName: true, spokenText: true, quantity: true, unit: true },
       })
       : [],
   ])
@@ -1030,6 +1069,35 @@ async function labelPreviewReferences(
     mtmContact: new Map<string, string>(
       (mtmContacts as Array<{ id: string; displayName: string; firstName: string; lastName: string }>)
         .map((row) => [row.id, row.displayName?.trim() || `${row.lastName} ${row.firstName}`.trim()]),
+    ),
+    // По этому менеджер узнаёт заказ: номер, аптека, сумма.
+    phoneOrder: new Map<string, string>(
+      (phoneOrders as Array<{
+        id: string
+        number: number
+        pharmacyName: string | null
+        totalAmount: { toFixed(digits: number): string } | null
+        currency: string | null
+        company: { name: string } | null
+      }>).map((row) => [row.id, [
+        phoneOrderLabel(row.number),
+        row.company?.name ?? row.pharmacyName,
+        row.totalAmount ? `${row.totalAmount.toFixed(2)} ${row.currency ?? ""}`.trim() : null,
+      ].filter(Boolean).join(" · ")]),
+    ),
+    phoneOrderLine: new Map<string, string>(
+      (phoneOrderLines as Array<{
+        id: string
+        position: number
+        productName: string | null
+        spokenText: string
+        quantity: number
+        unit: string
+      }>).map((row) => [row.id, [
+        `#${row.position}`,
+        row.productName ? readableProductName(row.productName) : row.spokenText,
+        `${row.quantity} ${row.unit}`,
+      ].join(" · ")]),
     ),
   }
   return {
@@ -1677,6 +1745,14 @@ export async function updateAiVoiceActionDraft(
     throw new AiVoiceActionDraftError(
       "INTENT_NOT_EDITABLE",
       "Only an unconfirmed action draft can be edited",
+      409,
+      { state: existing.state },
+    )
+  }
+  if (AI_VOICE_RECEIPT_EDIT_CLOSED.has(existing.actionType)) {
+    throw new AiVoiceActionDraftError(
+      "INTENT_NOT_EDITABLE",
+      "This draft can only be dictated again",
       409,
       { state: existing.state },
     )

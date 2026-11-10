@@ -115,6 +115,16 @@ function safeLocalStorage(): Storage | null {
   }
 }
 
+/**
+ * Открытый телефонный заказ: «поменяй количество во второй строке» — о нём.
+ * Карточка заказа не читается голосом (record-types.ts), поэтому не через
+ * recordFromPath; сервер всё равно перечитывает заказ под организацией.
+ */
+function phoneOrderOnScreen(pathname: string): string | null {
+  const match = /^\/pharmacy-orders\/([A-Za-z0-9_-]{6,64})$/.exec(pathname)
+  return match ? match[1] : null
+}
+
 /** IANA-пояс браузера; пусто, если браузер его не называет. */
 function browserTimeZone(): string | undefined {
   try {
@@ -132,7 +142,7 @@ function browserTimeZone(): string | undefined {
  * клиента. Поэтому на каждый известный код — готовая инструкция человеческим
  * языком, а не имя константы.
  */
-function proposeRefusalMessage(code: unknown, status: number): string {
+function proposeRefusalMessage(code: unknown, status: number, reason?: unknown): string {
   if (code === "ACTIVE_EXECUTION_IN_PROGRESS") {
     return "BUSY: предыдущее действие сейчас сохраняется в CRM. Скажи пользователю коротко: «секунду, сохраняю предыдущее» — и повтори подготовку после того, как он снова заговорит. Не придумывай других причин."
   }
@@ -145,7 +155,10 @@ function proposeRefusalMessage(code: unknown, status: number): string {
   if (code === "TARGET_NOT_FOUND") {
     return "NOT_FOUND: записи, которую нужно изменить, не видно. Переспроси, какую именно запись менять, и не придумывай другую."
   }
-  return `REJECTED (${code ?? status}): подготовить не удалось, в CRM ничего не сохранено. Скажи пользователю своими словами, ЧТО именно не получилось подготовить, и попроси повторить или уточнить. Не называй коды ошибок и не говори про «процессы».`
+  // Причину отказа пишет сервер своими словами (propose-resolve.ts), не
+  // текстом записи: без неё модель гадала, почему «не вышло».
+  const why = code === "INVALID_PROPOSAL" && typeof reason === "string" && reason ? ` Причина: ${reason.slice(0, 300)}.` : ""
+  return `REJECTED (${code ?? status}): подготовить не удалось, в CRM ничего не сохранено.${why} Скажи пользователю своими словами, ЧТО именно не получилось подготовить, и попроси повторить или уточнить. Не называй коды ошибок и не говори про «процессы».`
 }
 
 const UNAVAILABLE =
@@ -560,7 +573,11 @@ function ConsoleInner({
           tool,
           args: (args ?? {}) as Record<string, unknown>,
           ...(toolCallId ? { providerToolCallId: toolCallId } : {}),
-          ...(record ? { screen: { recordType: record.type, recordId: record.id } } : {}),
+          ...(record
+            ? { screen: { recordType: record.type, recordId: record.id } }
+            : phoneOrderOnScreen(pathname || "/")
+              ? { screen: { recordType: "phone_order", recordId: phoneOrderOnScreen(pathname || "/") } }
+              : {}),
           // Часы человека: «встреча в 15:00» — по ним, если пояс не задан в CRM.
           ...(browserTimeZone() ? { timeZone: browserTimeZone() } : {}),
         }),
@@ -572,6 +589,7 @@ function ConsoleInner({
           field?: string
           candidates?: string[]
           code?: string
+          issues?: Array<{ message?: unknown }>
           data?: { unchangedFields?: string[] }
         }
         | null
@@ -583,7 +601,7 @@ function ConsoleInner({
       }
       if (!response.ok || body?.success !== true) {
         trace("propose", { tool, code: body?.code }, "rejected")
-        return proposeRefusalMessage(body?.code, response.status)
+        return proposeRefusalMessage(body?.code, response.status, body?.issues?.[0]?.message)
       }
 
       trace("propose", { tool }, "ok")
@@ -1574,7 +1592,7 @@ function ConsoleInner({
     showResultRef.current = (detail) => {
       const { entityType, entityId } = detail
       if (detail.kind !== "succeeded" || !entityId) return
-      if (entityType !== "task" && entityType !== "lead" && entityType !== "deal") return
+      if (entityType !== "task" && entityType !== "lead" && entityType !== "deal" && entityType !== "phone_order") return
       const href = voiceResultHref(entityType, entityId)
       if (pathname === href) {
         window.dispatchEvent(new CustomEvent<VoiceRecordChangedDetail>(VOICE_RECORD_CHANGED_EVENT, {

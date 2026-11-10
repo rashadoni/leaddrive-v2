@@ -28,6 +28,11 @@ const deps = vi.hoisted(() => ({
   recover: vi.fn(),
   fail: vi.fn(),
   execute: vi.fn(),
+  finishPhoneOrder: vi.fn(),
+}))
+
+vi.mock("@/lib/crm-commands/phone-order/phone-order-voice", () => ({
+  finishVoicePhoneOrderConfirm: deps.finishPhoneOrder,
 }))
 
 vi.mock("@/lib/with-rls", () => ({
@@ -167,6 +172,23 @@ describe("AI voice action commit route", () => {
     expect(body).toEqual({ success: true, data: result })
     expect(JSON.stringify(body)).not.toContain(confirmationToken)
     expect(JSON.stringify(body)).not.toContain(activeClaim.executionLeaseToken)
+  })
+
+  // Этап 5: заказ занимается под 1С вместе с квитанцией, а отправляется
+  // после коммита — и ответ 1С уходит в квитанцию. Повтор ничего не шлёт.
+  it("sends a confirmed phone order to 1C after the commit, once, and returns 1C's answer", async () => {
+    const confirmed = { ...result, actionType: "confirm_phone_order", result: { entityType: "phone_order", entityId: "order-1" } }
+    deps.execute.mockResolvedValueOnce(confirmed)
+    deps.finishPhoneOrder.mockResolvedValueOnce({ erp: "created", document: { number: "ЗК-1" } })
+    const response = await POST(commitRequest(commitBody()), routeContext)
+    expect(await response.json()).toEqual({ success: true, data: { ...confirmed, phoneOrder: { erp: "created", document: { number: "ЗК-1" } } } })
+    expect(deps.finishPhoneOrder).toHaveBeenCalledWith("org-1", "user-1", "order-1")
+
+    deps.execute.mockResolvedValueOnce({ ...confirmed, replayed: true })
+    await POST(commitRequest(commitBody()), routeContext)
+    deps.execute.mockResolvedValueOnce(result)
+    await POST(commitRequest(commitBody()), routeContext)
+    expect(deps.finishPhoneOrder).toHaveBeenCalledTimes(1)
   })
 
   it("rejects bearer, cross-origin and non-strict requests before claiming", async () => {

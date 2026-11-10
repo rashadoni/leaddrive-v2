@@ -19,6 +19,7 @@ import { createCompanyCommandSchema } from "@/lib/crm-commands/schemas/company"
 import { createContactCommandSchema, updateContactCommandSchema } from "@/lib/crm-commands/schemas/contact"
 import { voiceActivityCommandSchema } from "@/lib/crm-commands/schemas/activity"
 import { voiceTicketSchemas } from "@/lib/crm-commands/schemas/ticket"
+import { voicePhoneOrderSchemas } from "@/lib/crm-commands/schemas/phone-order"
 import {
   assignFieldContactCommandSchema,
   decideAttendanceRequestCommandSchema,
@@ -27,6 +28,7 @@ import {
   sendFieldMessageCommandSchema,
 } from "@/lib/crm-commands/schemas/mtm"
 import { DEFAULT_AI_ACTION_INTENT_TTL_MS } from "./action-intent"
+export { AI_VOICE_RECEIPT_EDIT_CLOSED } from "./receipt-edit-closed"
 
 export const AI_VOICE_ACTION_TYPES = [
   "create_task",
@@ -63,6 +65,12 @@ export const AI_VOICE_ACTION_TYPES = [
   "add_ticket_note",
   "reply_to_ticket",
   "update_ticket",
+  // Этап 5: телефонные заказы аптек.
+  "update_phone_order_line",
+  "add_phone_order_line",
+  "remove_phone_order_line",
+  "confirm_phone_order",
+  "reject_phone_order",
 ] as const
 
 export type AiVoiceActionType = (typeof AI_VOICE_ACTION_TYPES)[number]
@@ -92,6 +100,7 @@ export type AiVoiceActionCommand =
   | "createTicketCommand"
   | "addTicketCommentCommand"
   | "updateTicketCommand"
+  | "phoneOrderCommand"
 export type AiVoiceActionDedupePolicy =
   | "idempotency_key"
   | "lead_contact_coordinates"
@@ -109,6 +118,11 @@ export type AiVoiceActionPermission = Readonly<{
    * (with-mtm-rls-auth.ts). Скрытая от человека возможность — тоже отказ.
    */
   tenantCapability?: "route-field" | "personnel"
+  /**
+   * Флаг организации (Organization.features), без которого раздела нет:
+   * телефонные заказы открывает `pharmacy_phone_orders`, как экран.
+   */
+  tenantFeature?: "pharmacy_phone_orders"
 }>
 
 /**
@@ -127,6 +141,8 @@ export type AiVoiceActionEntityType =
   | "contact"
   // Этап 4: тикет поддержки.
   | "ticket"
+  // Этап 5: телефонный заказ аптеки.
+  | "phone_order"
 
 /** Все виды результата — для проверки сохранённого результата при повторе. */
 export const AI_VOICE_ACTION_ENTITY_TYPES: readonly AiVoiceActionEntityType[] = [
@@ -135,6 +151,7 @@ export const AI_VOICE_ACTION_ENTITY_TYPES: readonly AiVoiceActionEntityType[] = 
   "mtm_route", "mtm_contact",
   "contact",
   "ticket",
+  "phone_order",
 ]
 
 /** The kinds of record a voice update may target. */
@@ -368,7 +385,18 @@ const CREATE_TICKET_FIELDS = ["subject", "description", "priority", "contactId",
 const TICKET_COMMENT_FIELDS = ["comment"] as const
 const UPDATE_TICKET_FIELDS = ["status", "priority", "assignedTo", "expectedUpdatedAt"] as const
 /** Служебные поля квитанции: сервер их ставит, человек их не правит. */
-const SERVER_SIDE_FIELDS: ReadonlySet<string> = new Set(["expectedUpdatedAt", "expectedVersion", "previewToken"])
+const PHONE_ORDER_PRODUCT_FIELDS = ["externalId", "itemCode", "productName", "sourceName", "unitPrice"] as const
+const UPDATE_PHONE_ORDER_LINE_FIELDS = ["orderId", "revision", "lineId", "quantity", ...PHONE_ORDER_PRODUCT_FIELDS] as const
+const ADD_PHONE_ORDER_LINE_FIELDS = ["orderId", "revision", ...PHONE_ORDER_PRODUCT_FIELDS, "quantity", "unit"] as const
+const REMOVE_PHONE_ORDER_LINE_FIELDS = ["orderId", "revision", "lineId"] as const
+const CONFIRM_PHONE_ORDER_FIELDS = ["orderId", "revision"] as const
+const REJECT_PHONE_ORDER_FIELDS = ["orderId", "revision", "reason"] as const
+
+const SERVER_SIDE_FIELDS: ReadonlySet<string> = new Set([
+  "expectedUpdatedAt", "expectedVersion", "previewToken",
+  // Заказ: версия и данные каталога за названием товара — служебные.
+  "revision", "externalId", "itemCode", "sourceName",
+])
 
 const CONVERT_LEAD_FIELDS = [
   "dealTitle",
@@ -507,6 +535,11 @@ const TICKET_PARENT_TARGET: AiVoiceActionTarget = {
   requestField: "targetEntityId",
   bindExpectedUpdatedAt: false,
 }
+
+// Телефонные заказы — права экрана заказа (deals:write) и флаг организации.
+const WRITE_PHONE_ORDERS: readonly AiVoiceActionPermission[] = [
+  { module: "deals", action: "write", tenantModule: "sales", tenantFeature: "pharmacy_phone_orders" },
+]
 
 const WRITE_ROUTE_FIELD: readonly AiVoiceActionPermission[] = [
   { module: "mtm", action: "write", tenantCapability: "route-field" },
@@ -660,6 +693,29 @@ function managerEntry(input: {
       previewFields,
     }),
   }
+}
+
+/**
+ * Правка телефонного заказа: без цели-записи CRM (заказ, строку и товар
+ * сервер кладёт в нагрузку сам, с версией заказа). Результат — заказ.
+ * Подтверждение и отказ доходят до аптеки (WhatsApp) и до 1С: короткий срок
+ * квитанции, и голосом их не подтвердить (voiceMayConfirm).
+ */
+function phoneOrderEntry(input: {
+  actionType: AiVoiceActionType
+  commandSchema: z.ZodType
+  fields: readonly string[]
+  risk: AiVoiceActionRisk
+}): AiVoiceActionRegistryEntry {
+  return managerEntry({
+    actionType: input.actionType,
+    command: "phoneOrderCommand",
+    commandSchema: input.commandSchema,
+    fields: input.fields,
+    permissions: WRITE_PHONE_ORDERS,
+    resultEntityType: "phone_order",
+    risk: input.risk,
+  })
 }
 
 export const AI_VOICE_ACTION_REGISTRY: Readonly<Record<AiVoiceActionType, AiVoiceActionRegistryEntry>> = Object.freeze({
@@ -1031,6 +1087,36 @@ export const AI_VOICE_ACTION_REGISTRY: Readonly<Record<AiVoiceActionType, AiVoic
       previewFields: UPDATE_TICKET_FIELDS.filter((field) => field !== "expectedUpdatedAt"),
     }),
   },
+  update_phone_order_line: phoneOrderEntry({
+    actionType: "update_phone_order_line",
+    commandSchema: voicePhoneOrderSchemas.updateLine,
+    fields: UPDATE_PHONE_ORDER_LINE_FIELDS,
+    risk: "standard",
+  }),
+  add_phone_order_line: phoneOrderEntry({
+    actionType: "add_phone_order_line",
+    commandSchema: voicePhoneOrderSchemas.addLine,
+    fields: ADD_PHONE_ORDER_LINE_FIELDS,
+    risk: "standard",
+  }),
+  remove_phone_order_line: phoneOrderEntry({
+    actionType: "remove_phone_order_line",
+    commandSchema: voicePhoneOrderSchemas.removeLine,
+    fields: REMOVE_PHONE_ORDER_LINE_FIELDS,
+    risk: "standard",
+  }),
+  confirm_phone_order: phoneOrderEntry({
+    actionType: "confirm_phone_order",
+    commandSchema: voicePhoneOrderSchemas.confirm,
+    fields: CONFIRM_PHONE_ORDER_FIELDS,
+    risk: "sensitive",
+  }),
+  reject_phone_order: phoneOrderEntry({
+    actionType: "reject_phone_order",
+    commandSchema: voicePhoneOrderSchemas.reject,
+    fields: REJECT_PHONE_ORDER_FIELDS,
+    risk: "sensitive",
+  }),
 })
 
 const ACTION_TYPE_SET = new Set<string>(AI_VOICE_ACTION_TYPES)

@@ -175,6 +175,7 @@ export function buildEditedReceiptPayload(
 const REFERENCE_FIELD_KEYS = new Set([
   "assignedTo", "companyId", "contactId", "relatedId", "pipelineId", "checklistItemId",
   "agentId", "attendanceRequestId", "routeId", "fieldContactId",
+  "orderId", "lineId",
 ])
 
 /** The value a text input should start from. */

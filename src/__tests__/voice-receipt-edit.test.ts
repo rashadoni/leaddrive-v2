@@ -5,6 +5,7 @@ import {
   editableFieldValue,
 } from "@/components/ai/voice-receipt-fields"
 import { AI_VOICE_ACTION_REGISTRY, AI_VOICE_ACTION_TYPES } from "@/lib/ai/voice/action-registry"
+import { AI_VOICE_RECEIPT_EDIT_CLOSED } from "@/lib/ai/voice/receipt-edit-closed"
 import type { VoiceReceiptField } from "@/lib/ai/voice/receipt-store"
 
 /**
@@ -27,6 +28,9 @@ const SERVER_DERIVED = new Set(["expectedUpdatedAt", "expectedVersion", "preview
 describe("rebuilding a payload is lossless", () => {
   it("previews every field a voice caller may send, bar the server-derived one", () => {
     for (const actionType of AI_VOICE_ACTION_TYPES) {
+      // Квитанцию телефонного заказа на экране не правят (receipt-edit-closed.ts):
+      // её версия заказа и товар каталога остаются у сервера.
+      if (AI_VOICE_RECEIPT_EDIT_CLOSED.has(actionType)) continue
       const entry = AI_VOICE_ACTION_REGISTRY[actionType]
       const previewed = new Set<string>(entry.previewFields)
       const missing = entry.allowedFields.filter(

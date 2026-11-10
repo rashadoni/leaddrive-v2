@@ -13,6 +13,7 @@ import { createPortal } from "react-dom"
 import { AlertTriangle, ArrowUpRight, Check, Loader2, X } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
 import { VOICE_STATUS_LAYER_ID } from "@/components/ai/voice-inline-status"
+import { AI_VOICE_RECEIPT_EDIT_CLOSED } from "@/lib/ai/voice/receipt-edit-closed"
 import {
   buildEditedReceiptPayload,
   VoiceReceiptFieldForm,
@@ -245,6 +246,9 @@ function announceOutcome(detail: VoiceReceiptOutcomeDetail) {
 
 function outcomeTone(outcome: VoiceCommitOutcome | null): string {
   if (!outcome) return ""
+  // Квитанция исполнена, но 1С заказ не взяла: это не «готово».
+  if (outcome.kind === "succeeded" && outcome.erp === "refused") return "text-destructive"
+  if (outcome.kind === "succeeded" && outcome.erp === "unknown") return "text-amber-700 dark:text-amber-300"
   if (outcome.kind === "succeeded") return "text-emerald-700 dark:text-emerald-300"
   if (outcome.kind === "rate_limited" || outcome.kind === "retriable") {
     return "text-amber-700 dark:text-amber-300"
@@ -295,6 +299,7 @@ export function VoiceReceiptSurface({
       kind: result.kind,
       entityType: result.kind === "succeeded" ? result.entityType : undefined,
       entityId: result.kind === "succeeded" ? result.entityId : undefined,
+      ...(result.kind === "succeeded" && result.erp ? { erp: result.erp } : {}),
       via,
     })
     const controller = new AbortController()
@@ -543,9 +548,13 @@ export function VoiceReceiptSurface({
             role={succeeded ? undefined : "alert"}
             className={`mt-3 flex items-start gap-1.5 ${outcomeTone(outcome)}`}
           >
-            {succeeded && <Check aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
+            {succeeded && (outcome.kind !== "succeeded" || !outcome.erp || outcome.erp === "created" || outcome.erp === "none") && (
+              <Check aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            )}
             <span>
-              {outcome.kind === "succeeded"
+              {outcome.kind === "succeeded" && outcome.erp && outcome.erp !== "none"
+                ? t(`receipt.result.erp.${outcome.erp}`)
+                : outcome.kind === "succeeded"
                 ? t(outcome.replayed ? "receipt.result.alreadyDone" : "receipt.result.done")
                 : outcome.kind === "rate_limited"
                   ? t("receipt.result.rateLimited", { seconds: outcome.retryAfterSeconds })
@@ -590,7 +599,8 @@ export function VoiceReceiptSurface({
             </button>
           )}
 
-        {!succeeded && !editing && preview && preview.fields.length > 0 && (
+        {!succeeded && !editing && preview && preview.fields.length > 0
+          && !AI_VOICE_RECEIPT_EDIT_CLOSED.has(receipt.actionType) && (
           <button
             type="button"
             onClick={() => setEditing(true)}

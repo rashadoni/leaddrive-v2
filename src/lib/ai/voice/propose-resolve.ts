@@ -15,6 +15,12 @@ import {
 } from "./propose-tools"
 import type { AiVoiceActionType } from "./action-registry"
 import { matchDealStage, type PipelineStageOption } from "./deal-stage-match"
+import {
+  PHONE_ORDER_TOOLS,
+  resolvePhoneOrderProposal,
+  type PhoneOrderClarifyCode,
+  type PhoneOrderProposeTool,
+} from "./propose-phone-order"
 
 /**
  * Turn what the model said into what the CRM can be asked to do
@@ -85,9 +91,11 @@ export type VoiceProposeResolution =
       | "TICKET_NOT_FOUND"
       | "TICKET_AMBIGUOUS"
       | "TICKET_TARGET_REQUIRED"
+      | PhoneOrderClarifyCode
     field:
       | "assigneeName" | "leadName" | "companyName" | "contactName" | "taskTitle" | "dealName" | "status" | "stage"
       | "itemTitle" | "agentName" | "kind" | "day" | "clientName" | "recordName" | "ticket"
+      | "order" | "line" | "product"
     candidates: readonly Readonly<{ id: string; label: string }>[]
   }>
   | Readonly<{ kind: "invalid"; issues: readonly Readonly<{ path: string; message: string }>[] }>
@@ -604,6 +612,10 @@ export async function resolveVoiceProposal(
   }
 
   const args = parsed.data as Record<string, unknown>
+  // Телефонный заказ: своя развязка слов — заказ, строка, товар каталога.
+  if (PHONE_ORDER_TOOLS.has(tool)) {
+    return resolvePhoneOrderProposal(auth, tool as PhoneOrderProposeTool, args, screen)
+  }
   const actionType = VOICE_PROPOSE_ACTION_TYPES[tool]
   const payload: Record<string, unknown> = {}
   let targetEntityId: string | undefined
