@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest"
 import {
+  browserReadySdp,
   createWhatsAppCallAnswer,
+  createWhatsAppCallOffer,
   waitForIceGatheringComplete,
 } from "@/lib/whatsapp-call-rtc"
 
@@ -85,7 +87,7 @@ describe("createWhatsAppCallAnswer", () => {
     })
 
     expect(getUserMedia).toHaveBeenCalledWith({ audio: true, video: false })
-    expect(pc.remoteDescription).toEqual({ type: "offer", sdp: "v=remote-offer" })
+    expect(pc.remoteDescription).toEqual({ type: "offer", sdp: "v=remote-offer\r\n" })
     expect(pc.localDescription).toEqual({ type: "answer", sdp: "v=local-answer" })
     expect(pc.addedTracks).toEqual([track])
     expect(session.sdp).toBe("v=local-answer")
@@ -138,5 +140,55 @@ describe("waitForIceGatheringComplete", () => {
     pc.completeIce()
     await promise
     expect(pc.listeners.size).toBe(0)
+  })
+})
+
+// Meta's answer to the first live outbound call (2026-11-10) ended in this
+// line; Chrome refused it once the trailing line end was cut off.
+const META_ANSWER = [
+  "v=0",
+  "o=- 1762764163 2 IN IP4 127.0.0.1",
+  "s=-",
+  "t=0 0",
+  "m=audio 3480 UDP/TLS/RTP/SAVPF 111",
+  "a=rtpmap:111 opus/48000/2",
+  "a=ssrc:3328139132 cname:WhatsAppAudioStream1",
+].join("\r\n") + "\r\n"
+
+describe("the SDP Meta sends reaches the browser whole", () => {
+  it("keeps the line end after the last line", () => {
+    expect(browserReadySdp(META_ANSWER)).toBe(META_ANSWER)
+    expect(browserReadySdp(`  ${META_ANSWER}\r\n\r\n`)).toBe(META_ANSWER)
+  })
+
+  it("restores the last line end and CRLF when they arrive cut or as LF", () => {
+    expect(browserReadySdp(META_ANSWER.trim())).toBe(META_ANSWER)
+    expect(browserReadySdp(META_ANSWER.replace(/\r\n/g, "\n"))).toBe(META_ANSWER)
+  })
+
+  it("is empty for an empty description", () => {
+    expect(browserReadySdp(" \r\n ")).toBe("")
+  })
+
+  it("an outbound call hands Meta's answer to the browser with its last line end", async () => {
+    const pc = Object.assign(makePc() as StubPc, {
+      createOffer: async (): Promise<RTCSessionDescriptionInit> => ({ type: "offer", sdp: "v=local-offer" }),
+    })
+    const session = await createWhatsAppCallOffer({
+      getUserMedia: async () => makeStream(),
+      peerConnectionFactory: () => pc as unknown as RTCPeerConnection,
+    })
+    await session.applyAnswer(META_ANSWER)
+    expect(pc.remoteDescription).toEqual({ type: "answer", sdp: META_ANSWER })
+  })
+
+  it("an incoming call hands Meta's offer to the browser with its last line end", async () => {
+    const pc = makePc()
+    await createWhatsAppCallAnswer({
+      offerSdp: META_ANSWER,
+      getUserMedia: async () => makeStream(),
+      peerConnectionFactory: () => pc,
+    })
+    expect(pc.remoteDescription?.sdp).toBe(META_ANSWER)
   })
 })
