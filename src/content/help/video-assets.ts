@@ -10,7 +10,7 @@ export interface HelpVideoEntry {
 }
 
 const HELP_VIDEO_BASE_PATH = process.env.NEXT_PUBLIC_HELP_VIDEO_BASE_URL ?? "/api/help-videos"
-const HELP_VIDEO_ASSET_VERSION = "20261109-boards-guide-az-full"
+const HELP_VIDEO_ASSET_VERSION = "20261110-meetings-guide-az"
 const HELP_VIDEO_BLOCKED_LOCAL_TTS_SLUGS = new Set<string>()
 
 const HELP_VIDEO_ENTRIES_RAW = [
@@ -29,6 +29,7 @@ const HELP_VIDEO_ENTRIES_RAW = [
   { slug: "lead-rules", routes: ["/settings/lead-rules"], helpSlugs: ["lead-rules"] },
   { slug: "quotes", routes: ["/quotes"] },
   { slug: "sequences", routes: ["/sequences"] },
+  { slug: "meetings", routes: ["/meetings"] },
   { slug: "forecast", routes: ["/forecast"] },
   { slug: "sales-forecast-settings", routes: ["/settings/sales-forecast"], helpSlugs: ["sales-forecast-settings"] },
   { slug: "forecast-snapshots", routes: ["/forecast/snapshots"] },

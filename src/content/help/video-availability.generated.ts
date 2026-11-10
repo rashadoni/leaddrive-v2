@@ -25,6 +25,7 @@ export const HELP_VIDEO_AVAILABILITY: Readonly<Record<string, readonly HelpVideo
   "inbox-automation": ["az", "en", "ru"],
   "lead-rules": ["az", "en", "ru"],
   "leads": ["az", "en", "ru"],
+  "meetings": ["az"],
   "pipelines": ["az", "en", "ru"],
   "quotas": ["az", "en", "ru"],
   "quotes": ["az", "en", "ru"],
