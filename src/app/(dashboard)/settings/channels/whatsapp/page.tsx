@@ -48,6 +48,22 @@ type ChannelMeta = {
   lastTemplateSyncAt: string | null
 }
 
+type ReadinessState = "ok" | "warn" | "blocked"
+type ReadinessItemId = "connection" | "accountReview" | "businessVerification" | "messagingLimit" | "quality" | "displayName" | "templates"
+type ReadinessItem = { id: ReadinessItemId; state: ReadinessState; value: string | null }
+type Readiness = { ready: boolean; items: ReadinessItem[] }
+
+/** Meta's own word for each fact is shown beside our sentence; the sentence is what to do about it. */
+const READINESS_COPY: Record<ReadinessItemId, { label: string; hint: string }> = {
+  connection: { label: "readinessConnection", hint: "readinessConnectionHint" },
+  accountReview: { label: "readinessAccountReview", hint: "readinessAccountReviewHint" },
+  businessVerification: { label: "readinessBusinessVerification", hint: "readinessBusinessVerificationHint" },
+  messagingLimit: { label: "readinessMessagingLimit", hint: "readinessMessagingLimitHint" },
+  quality: { label: "readinessQuality", hint: "readinessQualityHint" },
+  displayName: { label: "readinessDisplayName", hint: "readinessDisplayNameHint" },
+  templates: { label: "readinessTemplates", hint: "readinessTemplatesHint" },
+}
+
 type Feedback = { kind: "success" | "error"; message: string; detail?: string; permissionDenied?: boolean }
 
 type ValidateResult = {
@@ -138,6 +154,7 @@ export default function WhatsAppSettingsPage() {
   const activeChannelId = useRef("")
   const templateRequest = useRef(0)
   const settingsRequest = useRef(0)
+  const readinessRequest = useRef(0)
   const [pendingChannelId, setPendingChannelId] = useState<string | null>(null)
   const [templateDirty, setTemplateDirty] = useState(false)
   const [legacyFallbackEnabled, setLegacyFallbackEnabled] = useState(false)
@@ -148,6 +165,9 @@ export default function WhatsAppSettingsPage() {
   const [syncing, setSyncing] = useState(false)
   const [validating, setValidating] = useState(false)
   const [validateResult, setValidateResult] = useState<ValidateResult | null>(null)
+  const [readiness, setReadiness] = useState<Readiness | null>(null)
+  const [readinessLoading, setReadinessLoading] = useState(false)
+  const [readinessError, setReadinessError] = useState(false)
   const [syncMessage, setSyncMessage] = useState<Feedback | null>(null)
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -179,6 +199,7 @@ export default function WhatsAppSettingsPage() {
     activeChannelId.current = id
     templateRequest.current += 1
     settingsRequest.current += 1
+    readinessRequest.current += 1
     setSelectedChannelId(id)
     setPendingChannelId(null)
     setTemplates([])
@@ -186,6 +207,9 @@ export default function WhatsAppSettingsPage() {
     setLoading(Boolean(id))
     setLoadError(null)
     setValidateResult(null)
+    setReadiness(null)
+    setReadinessLoading(Boolean(id))
+    setReadinessError(false)
     setSyncMessage(null)
     setExpanded(null)
     setCreateTemplateMsg(null)
@@ -313,12 +337,34 @@ export default function WhatsAppSettingsPage() {
     }
   }, [orgId, selectedChannelId])
 
+  const fetchReadiness = useCallback(async () => {
+    if (!selectedChannelId) return
+    const requestId = ++readinessRequest.current
+    const isCurrent = () => activeChannelId.current === selectedChannelId && requestId === readinessRequest.current
+    setReadinessLoading(true)
+    setReadinessError(false)
+    try {
+      const res = await fetch(`/api/v1/whatsapp/readiness?channelConfigId=${encodeURIComponent(selectedChannelId)}`, {
+        headers: orgId ? { "x-organization-id": String(orgId) } : {},
+      })
+      const json = await res.json()
+      if (!isCurrent()) return
+      if (json.success && json.data) setReadiness({ ready: Boolean(json.data.ready), items: json.data.items || [] })
+      else setReadinessError(true)
+    } catch {
+      if (isCurrent()) setReadinessError(true)
+    } finally {
+      if (isCurrent()) setReadinessLoading(false)
+    }
+  }, [orgId, selectedChannelId])
+
   useEffect(() => {
     if (orgId && selectedChannelId) {
       void fetchTemplates()
       void fetchNotificationSettings()
+      void fetchReadiness()
     }
-  }, [orgId, selectedChannelId, fetchTemplates, fetchNotificationSettings])
+  }, [orgId, selectedChannelId, fetchTemplates, fetchNotificationSettings, fetchReadiness])
 
   async function saveNotificationSettings() {
     if (!selectedChannelId || !settingsLoaded) return
@@ -633,6 +679,55 @@ export default function WhatsAppSettingsPage() {
             feedback({ kind: "error", message: tw("numberCheckFailed"), detail: validateResult.error })
           )
         )}
+
+        {/* What Meta lets this number do today. Connecting ends when the row is saved; the ceilings
+            below are set by Meta afterwards and only the number's owner can lift them. */}
+        <div className="space-y-3 rounded-lg border p-3" data-testid="whatsapp-readiness">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <h3 className="font-medium">{tw("readinessTitle")}</h3>
+              <p className="text-sm text-muted-foreground max-w-prose">{tw("readinessDesc")}</p>
+            </div>
+            <Button variant="outline" onClick={() => void fetchReadiness()} disabled={readinessLoading || !selectedChannelId}>
+              <RefreshCw className={`w-4 h-4 mr-1 ${readinessLoading ? "animate-spin" : ""}`} /> {tw("readinessRefresh")}
+            </Button>
+          </div>
+          {!selectedChannelId && <p className="text-sm text-muted-foreground">{tw("chooseSender")}</p>}
+          {readinessLoading && <p role="status" className="text-sm text-muted-foreground">{tw("readinessLoading")}</p>}
+          {readinessError && !readinessLoading && (
+            <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-red-700 dark:text-red-300">
+              <p>{tw("readinessFailed")}</p>
+              <Button variant="outline" onClick={() => void fetchReadiness()}>{tw("reloadSettings")}</Button>
+            </div>
+          )}
+          {readiness && !readinessLoading && !readinessError && (
+            <>
+              <p className={`text-sm font-medium ${readiness.ready ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
+                {readiness.ready ? tw("readinessReady") : tw("readinessNotReady")}
+              </p>
+              <ul className="space-y-2">
+                {readiness.items.map((item) => {
+                  const copy = READINESS_COPY[item.id]
+                  if (!copy) return null
+                  return (
+                    <li key={item.id} className="flex items-start gap-2 text-sm" data-readiness-item={item.id} data-readiness-state={item.state}>
+                      {item.state === "ok"
+                        ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" aria-hidden />
+                        : <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 ${item.state === "blocked" ? "text-red-600" : "text-amber-600"}`} aria-hidden />}
+                      <div>
+                        <p>
+                          <span className="font-medium">{tw(copy.label)}</span>
+                          {item.value && <span className="text-muted-foreground"> · {item.value}</span>}
+                        </p>
+                        {item.state !== "ok" && <p className="text-muted-foreground">{tw(copy.hint)}</p>}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+        </div>
       </Card>
 
       {/* Templates */}

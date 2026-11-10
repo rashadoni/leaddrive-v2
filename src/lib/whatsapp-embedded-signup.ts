@@ -4,6 +4,7 @@ import { runWithRlsBypass } from "@/lib/rls-context"
 import { encryptToken } from "@/lib/secure-token"
 import { redactOAuthProviderText } from "@/lib/oauth-redaction"
 import { decideNumberOnboarding, type NumberPlatformFacts } from "@/lib/whatsapp-number-onboarding"
+import { syncTemplatesFromMeta } from "@/lib/whatsapp"
 
 /**
  * WhatsApp Embedded Signup — a business connects its own WhatsApp number to LeadDrive through Meta's
@@ -19,7 +20,9 @@ import { decideNumberOnboarding, type NumberPlatformFacts } from "@/lib/whatsapp
  *   3. subscribe LeadDrive's app to the WABA's webhooks (POST /<WABA_ID>/subscribed_apps);
  *   4. register the number for Cloud API messaging (POST /<PHONE_NUMBER_ID>/register) unless Meta
  *      already reports it CONNECTED;
- *   5. save the channel for this workspace.
+ *   5. save the channel for this workspace;
+ *   6. pull the account's approved message templates, so the workspace can write first without
+ *      anyone first finding the "Load templates" button in settings.
  * The remaining step of Meta's list — the customer adds a payment method in WhatsApp Manager — is the
  * customer's and is shown to them, not done here.
  *
@@ -79,6 +82,11 @@ export type EmbeddedSignupResult =
       registration: "registered" | "already_connected"
       /** The number stays usable in the WhatsApp Business app on the customer's phone. */
       coexistence: boolean
+      /**
+       * How many templates were pulled from Meta as part of this connection, or null when the pull
+       * failed. Connecting succeeds either way — this is what the screen reports, not a gate.
+       */
+      templatesSynced: number | null
     }
   | { ok: false; step: "config" | "exchange" | "phone" | "ownership" | "conflict" | "subscribe" | "register" | "platform"; error: string }
 
@@ -312,6 +320,19 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
     channelId = row.id
   }
 
+  // 6. the account's templates. A connected number that cannot write first is half a connection, and
+  //    nothing about "Load templates from Meta" in settings says it is part of connecting. Best
+  //    effort on purpose: the channel is already saved and usable, so a Graph hiccup here must not
+  //    undo it — it is reported instead.
+  let templatesSynced: number | null = null
+  try {
+    const sync = await syncTemplatesFromMeta(input.organizationId, { channelConfigId: channelId })
+    if (sync.success) templatesSynced = sync.synced
+    else console.warn(`[WA Signup] channel ${channelId}: template sync failed — ${redactOAuthProviderText(sync.error || "unknown error")}`)
+  } catch (err) {
+    console.warn(`[WA Signup] channel ${channelId}: template sync threw — ${redactOAuthProviderText(String((err as Error)?.message || err))}`)
+  }
+
   return {
     ok: true,
     channelId,
@@ -320,5 +341,6 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
     verifiedName,
     registration,
     coexistence: decision.mode === "coexistence",
+    templatesSynced,
   }
 }
