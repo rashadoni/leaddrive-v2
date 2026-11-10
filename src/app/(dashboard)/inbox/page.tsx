@@ -27,6 +27,7 @@ import { isImagePreview } from "@/lib/media-preview"
 import { readJsonSafely } from "@/lib/http/read-json-safely"
 import { applySnippetVariables, type MessageSnippetLike } from "@/lib/inbox/snippet-vars"
 import { whatsappCallAuditLines } from "@/lib/whatsapp-call-audit"
+import { channelAccountLine, sameChannelAddress } from "@/lib/inbox/conversation-channel"
 import { dialFailureDiagnostic, formatDialDiagnostic } from "@/lib/calls/dial-diagnostics"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -58,7 +59,7 @@ import {
   User, Users, UserX, UserPlus, Bot, Ban, Hash, Folder, Check, Clock,
   MoreHorizontal, Paperclip, Smile, Sparkles, Zap, SlidersHorizontal,
   Mail, Phone, Eye, CalendarClock, ChevronDown, X, RotateCcw, CheckCircle2,
-  Trash2, Megaphone,
+  Trash2, Megaphone, AtSign,
 } from "lucide-react"
 import {
   CHANNELS, REPLY_CHANNELS, ChannelIcon, channelColor, channelLabel,
@@ -1030,6 +1031,33 @@ export default function InboxV2Page() {
     if (!selectedConvo || selectedConvo.messages.length === 0) return null
     const times = selectedConvo.messages.map((m) => new Date(m.createdAt).getTime())
     return { first: new Date(Math.min(...times)), last: new Date(Math.max(...times)) }
+  }, [selectedConvo])
+
+  /**
+   * Which of our accounts the open thread reached — «Lead Drive · +994 77 320 10 00» — written the
+   * way «Ayarlar → Kanallar» writes it, down to the «Meta ID» word in front of a row that has only
+   * Meta's id. The server resolves the channel (lib/inbox/conversation-channel); the screen only
+   * puts the pieces in one line.
+   */
+  const accountLine = useMemo(
+    () => channelAccountLine(selectedConvo?.channelAccount, t("channelMetaIdPrefix")),
+    [selectedConvo, t],
+  )
+
+  /**
+   * And the address the customer writes from — shown only when «Təfərrüatlar» a few lines above is
+   * not already showing it. That row prints `conversationPhone`, which itself falls back to the
+   * WhatsApp number in the message metadata, so on most WhatsApp threads the two are the same string
+   * and this line stays away. It appears where they differ — a contact whose saved phone is not the
+   * number this chat comes from — and where the address is of a kind the details never print at all,
+   * such as a Telegram handle.
+   */
+  const customerChannelAddress = useMemo(() => {
+    const address = selectedConvo?.channelAddress
+    if (!address || !selectedConvo) return null
+    if (sameChannelAddress(address, conversationPhone(selectedConvo))) return null
+    if (sameChannelAddress(address, selectedConvo.contactEmail)) return null
+    return address
   }, [selectedConvo])
 
   /* ── Phase 4 — quick replies (a macro's `add_comment` text) + emoji insert ── */
@@ -3163,6 +3191,10 @@ export default function InboxV2Page() {
               {seen && <Detail icon={CalendarClock} label={t("firstSeen")} value={formatDate(seen.first, locale, { day: "numeric", month: "short", year: "numeric" })} />}
             </Section>
 
+            {/* Which of our accounts this thread reached, and which address the customer writes
+                from. A workspace can hold three WhatsApp numbers and several Meta pages at once, and
+                one of them may be a coexistence number the automation deliberately stays off — so
+                «WhatsApp» alone did not say what the operator is looking at (owner, 2026-11-10). */}
             <Section title={t("channels")}>
               <div className="flex flex-wrap gap-1.5">
                 {selectedConvo.channels.map((ch) => (
@@ -3171,6 +3203,8 @@ export default function InboxV2Page() {
                   </span>
                 ))}
               </div>
+              {accountLine && <Detail icon={InboxIcon} label={t("arrivedAt")} value={accountLine} />}
+              {customerChannelAddress && <Detail icon={AtSign} label={t("writesFrom")} value={customerChannelAddress} />}
             </Section>
 
             {/* Which ad brought this chat. Shown only when Meta told us, so a
