@@ -27,7 +27,7 @@ import { PiiMasker } from "@/lib/ai/pii-masker"
 import { sanitizeForPrompt } from "@/lib/sanitize"
 import { hmacToken } from "@/lib/secure-token"
 import { dateInputValueInTimezone, getOffsetMinutes } from "@/lib/timezone"
-import { sendWhatsAppButtons, sendWhatsAppMessage, type WhatsAppReplyButton } from "@/lib/whatsapp"
+import { sendWhatsAppButtons, sendWhatsAppList, sendWhatsAppMessage, type WhatsAppListRow, type WhatsAppReplyButton } from "@/lib/whatsapp"
 import { computeSlots, type Slot } from "./availability"
 import { activeHosts, loadBusyByHost, orgContext } from "./book"
 import { BookingCommandError } from "./command-error"
@@ -44,6 +44,13 @@ import { autonomyVerdict, type AutonomyReason, type AutonomyRules } from "./what
 // ─── Choosing three times out of a day ──────────────────────────────────────
 
 const OFFERS_PER_MESSAGE = 3
+/**
+ * How many times a list message offers. Three was the button limit, not a
+ * judgement: a salon with eight free hours had to pretend it had three. A
+ * WhatsApp list holds ten rows, and the eight nearest read as a day's choice
+ * without becoming a wall (owner, 2026-11-10, by a competitor's reel).
+ */
+export const OFFERS_PER_LIST = 8
 /** Offered times stand at least this far apart: 10:00, 10:15 and 10:30 are one choice, not three. */
 const OFFER_SPREAD_MINUTES = 60
 
@@ -136,7 +143,7 @@ const WORDS = {
     free: { morning: "Səhər boş vaxtlar:", afternoon: "Günorta boş vaxtlar:", evening: "Axşam boş vaxtlar:", any: "Boş vaxtlar:" },
     nearest: "Ən yaxın boş vaxtlar:",
     noneThen: { morning: "səhər boş vaxt yoxdur.", afternoon: "günorta boş vaxt yoxdur.", evening: "axşam boş vaxt yoxdur.", any: "boş vaxt yoxdur." },
-    hold: `Vaxt ${OFFER_HOLD_MINUTES} dəqiqə sizin üçün saxlanılır`,
+    hold: `Vaxt ${OFFER_HOLD_MINUTES} dəqiqə sizin üçün saxlanılır`, pick: "Vaxt seçin",
     booked: "Yazıldınız ✅", address: "Ünvan", cancel: "Ləğv etmək üçün",
     held: "Vaxtı sizin üçün saxladıq ⏳", heldNote: "Administrator təsdiqləyəcək və yazacağıq.",
     confirmed: "Təsdiqləndi ✅", declined: "Təəssüf ki, bu vaxtı təsdiqləyə bilmədik.",
@@ -147,7 +154,7 @@ const WORDS = {
     free: { morning: "Утром свободно:", afternoon: "Днём свободно:", evening: "Вечером свободно:", any: "Свободно:" },
     nearest: "Ближайшее свободное время:",
     noneThen: { morning: "утром свободного времени нет.", afternoon: "днём свободного времени нет.", evening: "вечером свободного времени нет.", any: "свободного времени нет." },
-    hold: `Держим время за вами ${OFFER_HOLD_MINUTES} минут`,
+    hold: `Держим время за вами ${OFFER_HOLD_MINUTES} минут`, pick: "Выбрать время",
     booked: "Вы записаны ✅", address: "Адрес", cancel: "Отменить запись",
     held: "Время придержали за вами ⏳", heldNote: "Администратор подтвердит, и мы напишем.",
     confirmed: "Подтверждено ✅", declined: "К сожалению, это время подтвердить не удалось.",
@@ -158,7 +165,7 @@ const WORDS = {
     free: { morning: "Free in the morning:", afternoon: "Free in the afternoon:", evening: "Free in the evening:", any: "Free times:" },
     nearest: "The nearest free times:",
     noneThen: { morning: "there is nothing free in the morning.", afternoon: "there is nothing free in the afternoon.", evening: "there is nothing free in the evening.", any: "there is nothing free." },
-    hold: `We hold the time for you for ${OFFER_HOLD_MINUTES} minutes`,
+    hold: `We hold the time for you for ${OFFER_HOLD_MINUTES} minutes`, pick: "Pick a time",
     booked: "You're booked ✅", address: "Address", cancel: "To cancel",
     held: "We're holding the time for you ⏳", heldNote: "The salon will confirm and we will write to you.",
     confirmed: "Confirmed ✅", declined: "We could not confirm that time, sorry.",
@@ -171,6 +178,18 @@ const WORDS = {
  * offered times fall on different days. WhatsApp stops at 20 characters, so
  * the master's name gives way first and the time never does.
  */
+/**
+ * What a list row says on its first line: «11:30», or «7.11 11:30» when the
+ * offered times fall on different days. The master's name is not squeezed in
+ * here — a row has a second line of its own for it, and that is the whole
+ * reason the list replaced the buttons. WhatsApp cuts a row title at 24.
+ */
+export function offerRowTitle(choice: OfferChoice, timezone: string, withDay: boolean): string {
+  const [, month, day] = choice.date.split("-").map(Number)
+  const time = clock(choice.startsAt, timezone)
+  return (withDay ? `${day}.${month} ${time}` : time).slice(0, 24)
+}
+
 export function offerButtonTitle(choice: OfferChoice, hostName: string, timezone: string, withDay: boolean): string {
   const [, month, day] = choice.date.split("-").map(Number)
   const time = withDay ? `${day}.${month} ${clock(choice.startsAt, timezone)}` : clock(choice.startsAt, timezone)
@@ -327,6 +346,15 @@ async function sendText(input: BookingTurnInput, body: string): Promise<boolean>
   return result.success
 }
 
+async function sendList(input: BookingTurnInput, body: string, rows: WhatsAppListRow[], buttonLabel: string, sectionTitle: string, footer?: string): Promise<boolean> {
+  const result = await sendWhatsAppList({
+    to: input.waPhone, body, footer, buttonLabel, sectionTitle, rows, organizationId: input.organizationId,
+    channelConfigId: input.channelConfigId, conversationId: input.conversationId, contactId: input.contactId, leadId: input.leadId,
+    extraMetadata: { aiAutoReply: true, bookingAgent: true },
+  })
+  return result.success
+}
+
 async function sendButtons(input: BookingTurnInput, body: string, buttons: WhatsAppReplyButton[], footer?: string): Promise<boolean> {
   const result = await sendWhatsAppButtons({
     to: input.waPhone, body, footer, buttons, organizationId: input.organizationId, channelConfigId: input.channelConfigId,
@@ -387,7 +415,7 @@ async function findChoices(input: BookingTurnInput, service: ServiceContext, req
     ...(narrowed ? [{ slots: later, range: whole }] : []),
   ]
   for (let index = 0; index < stages.length; index += 1) {
-    const choices = pickOfferTimes(stages[index].slots, { timezone, window: stages[index].range, hostId: request.hostId })
+    const choices = pickOfferTimes(stages[index].slots, { timezone, window: stages[index].range, hostId: request.hostId, count: OFFERS_PER_LIST })
     if (choices.length) return { choices, exact: index === 0 }
   }
   return { choices: [], exact: false }
@@ -443,7 +471,20 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
     lines.push(`${day} — ${what}.`, words.nearest)
   }
   const body = `${context.greet ? words.hello : ""}${lines.join("\n")}`
-  const buttons = offers.map((offer, index) => ({ id: `${OFFER_PREFIX}${offer.id}`, title: offerButtonTitle(choices[index], hostName(offer.hostUserId), context.timezone, withDay) }))
+  // A menu, not three buttons: the row carries the master's name on its own
+  // line, so the time keeps the whole first line and eight of them fit.
+  const rows = offers.map((offer, index) => ({
+    id: `${OFFER_PREFIX}${offer.id}`,
+    title: offerRowTitle(choices[index], context.timezone, withDay),
+    description: hostName(offer.hostUserId) || null,
+  }))
+  if (await sendList(input, body, rows, words.pick, words.free[request.partOfDay], words.hold)) return true
+  // A number whose provider refuses interactive lists still gets a choice:
+  // the three nearest times as buttons, the shape that worked before.
+  const buttons = offers.slice(0, OFFERS_PER_MESSAGE).map((offer, index) => ({
+    id: `${OFFER_PREFIX}${offer.id}`,
+    title: offerButtonTitle(choices[index], hostName(offer.hostUserId), context.timezone, withDay),
+  }))
   return sendButtons(input, body, buttons, words.hold)
 }
 

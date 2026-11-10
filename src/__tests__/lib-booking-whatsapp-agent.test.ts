@@ -6,7 +6,7 @@
  * online-booking-postgres.test.ts.
  */
 import { describe, expect, it } from "vitest"
-import { dayLabel, offerButtonTitle, pickOfferTimes, readDecision, PART_OF_DAY } from "@/lib/booking/whatsapp-agent"
+import { dayLabel, offerButtonTitle, offerRowTitle, pickOfferTimes, readDecision, PART_OF_DAY } from "@/lib/booking/whatsapp-agent"
 import { readWhatsAppBookingSetting } from "@/lib/booking/whatsapp-setting"
 import type { Slot } from "@/lib/booking/availability"
 
@@ -17,6 +17,24 @@ const slot = (local: string, minutes: number, hostIds = ["leyla"]): Slot => ({
   startsAt: at(local), endsAt: new Date(Date.parse(at(local)) + minutes * 60_000).toISOString(), hostIds,
 })
 const clock = (iso: string) => new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ }).format(new Date(iso))
+
+describe("what a list row says", () => {
+  // A row has a second line for the master, so the first line is the time and
+  // nothing else — that is the whole reason the menu replaced three buttons.
+  const choice = { date: "2026-11-12", startsAt: "2026-11-12T07:30:00.000Z", endsAt: "2026-11-12T08:15:00.000Z", hostId: "h1" }
+
+  it("is the clock alone while every time is on one day", () => {
+    expect(offerRowTitle(choice as never, "Asia/Baku", false)).toBe("11:30")
+  })
+
+  it("adds the day once the offered times span more than one", () => {
+    expect(offerRowTitle(choice as never, "Asia/Baku", true)).toBe("12.11 11:30")
+  })
+
+  it("never outgrows what WhatsApp shows on a row", () => {
+    expect(offerRowTitle(choice as never, "Asia/Baku", true).length).toBeLessThanOrEqual(24)
+  })
+})
 
 describe("the three times a client is offered", () => {
   // Saturday 7 November 2026: a 45-minute service every 45 minutes from 09:00.

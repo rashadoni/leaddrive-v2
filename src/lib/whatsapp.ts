@@ -956,6 +956,94 @@ export async function sendWhatsAppButtons({
   }
 }
 
+export interface WhatsAppListRow {
+  /** Comes back in `interactive.list_reply.id` when tapped; ≤ 200 characters. */
+  id: string
+  /** The line the customer reads; WhatsApp cuts it at 24 characters. */
+  title: string
+  /** The second, grey line under it; cut at 72 characters. */
+  description?: string | null
+}
+
+/**
+ * A menu instead of buttons: one button opens WhatsApp's own sheet with up to
+ * ten rows, each with a title and a grey second line.
+ *
+ * Why this exists next to `sendWhatsAppButtons`: three buttons hold three
+ * words each, so «11:30» fits but «11:30 · Ana · Saç kəsimi 45 dəq» does not,
+ * and a salon with eight free times had to be offered three. A row carries
+ * both lines and there may be ten of them. The tap comes back as
+ * `interactive.list_reply` with the row's id — the same shape as a button
+ * reply, so a sender that already reads button ids needs no new branch.
+ *
+ * Inside the 24-hour window only, like any free-form reply. Logged with the
+ * rows spelled into the body, so the inbox thread shows what was offered.
+ */
+export async function sendWhatsAppList({
+  to, body, footer, buttonLabel, sectionTitle, rows, organizationId, channelConfigId, conversationId, contactId, leadId, extraMetadata,
+}: {
+  to: string
+  body: string
+  footer?: string | null
+  /** The button that opens the sheet; WhatsApp cuts it at 20 characters. */
+  buttonLabel: string
+  sectionTitle?: string | null
+  rows: WhatsAppListRow[]
+  organizationId: string
+  channelConfigId?: string | null
+  conversationId?: string | null
+  contactId?: string
+  leadId?: string
+  extraMetadata?: Record<string, unknown>
+}): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  if (rows.length < 1 || rows.length > 10) return { success: false, error: "a list message takes 1 to 10 rows" }
+  const config = await resolveSendingConfig(organizationId, channelConfigId)
+  if (!config) return { success: false, error: "WhatsApp not configured for this tenant" }
+  const cleanPhone = to.replace(/[\s\-\(\)]/g, "").replace(/^\+/, "")
+  const shown = rows.map((row) => ({
+    id: row.id.slice(0, 200),
+    title: row.title.slice(0, 24),
+    ...(row.description ? { description: row.description.slice(0, 72) } : {}),
+  }))
+  const logged = `${body}\n\n${shown.map((row) => `• ${row.title}${row.description ? ` — ${row.description}` : ""}`).join("\n")}`
+  const metadata = { interactive: { list: shown }, ...(extraMetadata ?? {}) }
+  try {
+    const res = await fetch(`${GRAPH_API_BASE}/${config.phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${config.accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: cleanPhone,
+        type: "interactive",
+        interactive: {
+          type: "list",
+          body: { text: body.slice(0, 1024) },
+          ...(footer ? { footer: { text: footer.slice(0, 60) } } : {}),
+          action: {
+            button: buttonLabel.slice(0, 20),
+            sections: [{ ...(sectionTitle ? { title: sectionTitle.slice(0, 24) } : {}), rows: shown }],
+          },
+        },
+      }),
+      signal: AbortSignal.timeout(10_000),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      const err = data?.error?.message || `HTTP ${res.status}`
+      await logMessage(organizationId, config, cleanPhone, logged, "failed", contactId, { error: err, ...metadata }, leadId, conversationId)
+      return { success: false, error: err }
+    }
+    const messageId = data?.messages?.[0]?.id
+    await logMessage(organizationId, config, cleanPhone, logged, "sent", contactId, { waMessageId: messageId, ...metadata }, leadId, conversationId)
+    return { success: true, messageId }
+  } catch (err: any) {
+    const message = err?.message || "network error"
+    await logMessage(organizationId, config, cleanPhone, logged, "failed", contactId, { error: message, ...metadata }, leadId, conversationId)
+    return { success: false, error: message }
+  }
+}
+
 /**
  * Send an OUTBOUND media message (media SEND, Slice 3b). Two-step Cloud API flow that keeps our
  * /uploads private: (1) upload the bytes to WhatsApp `POST /{phone-id}/media` → media_id, (2) send
