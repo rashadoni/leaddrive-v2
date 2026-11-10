@@ -6,10 +6,13 @@
  * narrowing a rule never makes the salon slower to answer, only slower to
  * commit. The rules themselves are src/lib/booking/whatsapp-rules.ts.
  */
+import { useState } from "react"
 import { useTranslations } from "next-intl"
+import { ChevronDown, X } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { cn } from "@/lib/utils"
 import { WEEKDAYS, type Weekday, type WeeklyHours } from "@/lib/booking/availability"
 import type { AutonomyRules } from "@/lib/booking/whatsapp-rules"
@@ -39,13 +42,11 @@ function buildHours(days: Weekday[], interval: { start: string; end: string }): 
   return Object.fromEntries(WEEKDAYS.map((day) => [day, days.includes(day) ? [{ ...interval }] : []])) as WeeklyHours
 }
 
-function Chips({ label, count, children }: { label: string; count: string; children: React.ReactNode }) {
-  return <div className="rounded-lg border border-border p-3.5">
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-sm font-semibold">{label}</span>
-      <span className="text-xs font-semibold text-muted-foreground">{count}</span>
-    </div>
-    <div className="mt-2.5 flex flex-wrap gap-1.5">{children}</div>
+/** One rule, read as a sentence: what it limits on the left, the answer on the right. */
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+    <span className="w-full shrink-0 text-sm font-medium sm:w-32">{label}</span>
+    {children}
   </div>
 }
 
@@ -59,11 +60,65 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
   >{children}</button>
 }
 
-export function BookingWhatsAppRules({ rules, services, hosts, disabled, onChange }: {
+/**
+ * «Everything», or the few that were picked — never the whole staff list as
+ * chips. Twenty-seven names in three rows is the wall the day view already
+ * learned not to draw (booking-day-timeline), and it taught nobody which of
+ * them the agent may book: the answer was always «all of them».
+ */
+function Picked({ items, chosen, allLabel, addLabel, searchLabel, emptyLabel, pickLabel, resetLabel, onToggle, onReset }: {
+  items: { id: string; name: string }[]
+  chosen: string[] | null
+  allLabel: string
+  addLabel: string
+  searchLabel: string
+  emptyLabel: string
+  pickLabel: string
+  resetLabel: string
+  onToggle: (id: string) => void
+  onReset: () => void
+}) {
+  const [picking, setPicking] = useState(false)
+  const ids = chosen ?? items.map((item) => item.id)
+  const everything = chosen === null || ids.length === items.length
+  if (everything && !picking) {
+    return <>
+      <span className="inline-flex min-h-8 items-center rounded-full bg-muted px-3 text-xs font-semibold">{allLabel}</span>
+      <button type="button" className="text-xs font-semibold text-primary underline-offset-4 hover:underline" onClick={() => setPicking(true)}>{pickLabel}</button>
+    </>
+  }
+  const rest = items.filter((item) => !ids.includes(item.id))
+  return <>
+    {items.filter((item) => ids.includes(item.id)).map((item) => <button
+      key={item.id}
+      type="button"
+      onClick={() => onToggle(item.id)}
+      className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-primary/10 px-3 text-xs font-semibold text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/15"
+    >{item.name}<X className="h-3 w-3" aria-hidden="true" /></button>)}
+    {rest.length ? <div className="w-56 max-w-full">
+      <SearchableSelect
+        value=""
+        onValueChange={(id) => { if (id) onToggle(id) }}
+        options={rest.map((item) => ({ value: item.id, label: item.name }))}
+        placeholder={addLabel}
+        searchPlaceholder={searchLabel}
+        noResultsLabel={emptyLabel}
+      />
+    </div> : null}
+    <button type="button" className="text-xs font-semibold text-primary underline-offset-4 hover:underline" onClick={() => { setPicking(false); onReset() }}>{resetLabel}</button>
+  </>
+}
+
+export function BookingWhatsAppRules({ rules, services, hosts, disabled, defaultOpen = false, onChange }: {
   rules: AutonomyRules
   services: RuleService[]
   hosts: { id: string; name: string }[]
   disabled: boolean
+  /**
+   * Start expanded. A salon that narrowed something wants to see what it
+   * narrowed; one that left every rule at «everything» gets the single line.
+   */
+  defaultOpen?: boolean
   onChange: (rules: AutonomyRules) => void
 }) {
   const t = useTranslations("booking")
@@ -78,75 +133,122 @@ export function BookingWhatsAppRules({ rules, services, hosts, disabled, onChang
     return next.length === all.length ? null : next
   }
 
-  return <div className="mt-6">
-    <h3 className="text-sm font-bold">{t("waRulesTitle")}</h3>
-    <p className="mt-0.5 text-xs text-muted-foreground">{t("waRulesHint")}</p>
+  const [open, setOpen] = useState(defaultOpen)
+  const serviceIds = services.map((item) => item.id)
+  const hostIds = hosts.map((item) => item.id)
+  const chosenServices = rules.serviceIds ?? serviceIds
+  const chosenHosts = rules.hostIds ?? hostIds
 
-    <div className={cn("mt-4 space-y-3", disabled ? "pointer-events-none opacity-50" : "")}>
-      <Chips label={t("waRulesServices")} count={t("waRulesChosen", { chosen: (rules.serviceIds ?? services.map((item) => item.id)).length, total: services.length })}>
-        {services.map((service) => {
-          const chosen = rules.serviceIds ?? services.map((item) => item.id)
-          return <Chip key={service.id} on={chosen.includes(service.id)} onClick={() => onChange({ ...rules, serviceIds: toggle(rules.serviceIds, service.id, services.map((item) => item.id)) })}>
-            {service.title}
-          </Chip>
-        })}
-      </Chips>
+  // The whole rule set in one line, because that is how often it is read:
+  // open the card, see what the agent may do, close it.
+  const summary = [
+    rules.serviceIds === null || chosenServices.length === services.length
+      ? t("waRulesSumServicesAll")
+      : t("waRulesSumServices", { count: chosenServices.length }),
+    rules.hostIds === null || chosenHosts.length === hosts.length
+      ? t("waRulesSumHostsAll")
+      : t("waRulesSumHosts", { count: chosenHosts.length }),
+    openDays.length ? t("waRulesSumHours", { from: interval.start, to: interval.end }) : t("waRulesSumHoursAll"),
+    rules.maxPrice === null ? null : t("waRulesSumPrice", { amount: String(rules.maxPrice) }),
+    rules.newClients ? t("waRulesSumNewYes") : t("waRulesSumNewNo"),
+  ].filter(Boolean).join(" · ")
 
-      <Chips label={t("waRulesHosts")} count={t("waRulesChosen", { chosen: (rules.hostIds ?? hosts.map((item) => item.id)).length, total: hosts.length })}>
-        {hosts.map((host) => {
-          const chosen = rules.hostIds ?? hosts.map((item) => item.id)
-          return <Chip key={host.id} on={chosen.includes(host.id)} onClick={() => onChange({ ...rules, hostIds: toggle(rules.hostIds, host.id, hosts.map((item) => item.id)) })}>
-            {host.name}
-          </Chip>
-        })}
-      </Chips>
+  return <div className="mt-4 rounded-xl border border-border">
+    <button
+      type="button"
+      aria-expanded={open}
+      onClick={() => setOpen((value) => !value)}
+      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+    >
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold">{t("waRulesTitle")}</span>
+        <span className="mt-0.5 block truncate text-xs text-muted-foreground">{summary}</span>
+      </span>
+      <span className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary">
+        {t("waRulesEdit")}
+        <ChevronDown className={cn("h-4 w-4 transition-transform", open ? "rotate-180" : "")} aria-hidden="true" />
+      </span>
+    </button>
 
-      <div className="rounded-lg border border-border p-3.5">
-        <span className="text-sm font-semibold">{t("waRulesHours")}</span>
-        <p className="mt-1 text-xs text-muted-foreground">{t("waRulesHoursHint")}</p>
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-          {WEEK_ORDER.map((day) => <Chip
-            key={day}
-            on={openDays.includes(day)}
-            onClick={() => onChange({ ...rules, hours: buildHours(openDays.includes(day) ? openDays.filter((item) => item !== day) : [...openDays, day], interval) })}
-          >{t(`weekday_${day}`)}</Chip>)}
+    {open ? <div className={cn("space-y-3.5 border-t border-border px-4 py-4", disabled ? "pointer-events-none opacity-50" : "")}>
+      <Row label={t("waRulesServices")}>
+        <Picked
+          items={services.map((item) => ({ id: item.id, name: item.title }))}
+          chosen={rules.serviceIds}
+          allLabel={t("waRulesAllOf", { count: services.length })}
+          addLabel={t("waRulesAddMore", { count: services.length - chosenServices.length })}
+          searchLabel={t("hostsSearch")}
+          emptyLabel={t("hostsNone")}
+          pickLabel={t("waRulesPick")}
+          resetLabel={t("waRulesReset")}
+          onToggle={(id) => onChange({ ...rules, serviceIds: toggle(rules.serviceIds, id, serviceIds) })}
+          onReset={() => onChange({ ...rules, serviceIds: null })}
+        />
+      </Row>
+
+      <Row label={t("waRulesHosts")}>
+        <Picked
+          items={hosts}
+          chosen={rules.hostIds}
+          allLabel={t("waRulesAllOf", { count: hosts.length })}
+          addLabel={t("waRulesAddMore", { count: hosts.length - chosenHosts.length })}
+          searchLabel={t("hostsSearch")}
+          emptyLabel={t("hostsNone")}
+          pickLabel={t("waRulesPick")}
+          resetLabel={t("waRulesReset")}
+          onToggle={(id) => onChange({ ...rules, hostIds: toggle(rules.hostIds, id, hostIds) })}
+          onReset={() => onChange({ ...rules, hostIds: null })}
+        />
+      </Row>
+
+      <Row label={t("waRulesHours")}>
+        <div className="inline-flex overflow-hidden rounded-md border border-input" role="group" aria-label={t("waRulesHours")}>
+          {WEEK_ORDER.map((day) => {
+            const on = openDays.includes(day)
+            return <button
+              key={day}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onChange({ ...rules, hours: buildHours(on ? openDays.filter((item) => item !== day) : [...openDays, day], interval) })}
+              className={cn("min-h-9 border-l border-input px-2.5 text-xs font-semibold transition-colors first:border-l-0",
+                on ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
+            >{t(`weekdayShort_${day}`)}</button>
+          })}
         </div>
-        {openDays.length ? <div className="mt-3 flex flex-wrap items-center gap-2">
-          {(["start", "end"] as const).map((edge) => <Input
-            key={edge}
-            type="time"
-            className="h-9 w-28"
-            aria-label={t(edge === "start" ? "waRulesFrom" : "waRulesTo")}
-            value={interval[edge]}
-            onChange={(event) => event.target.value && onChange({ ...rules, hours: buildHours(openDays, { ...interval, [edge]: event.target.value }) })}
-          />)}
-        </div> : <p className="mt-2 text-xs font-semibold text-muted-foreground">{t("waRulesAnyHour")}</p>}
-      </div>
+        {openDays.length ? <span className="flex items-center gap-1.5">
+          {(["start", "end"] as const).map((edge) => <span key={edge} className="flex items-center gap-1.5">
+            {edge === "end" ? <span className="text-muted-foreground">—</span> : null}
+            <Input
+              type="time"
+              className="h-9 w-24"
+              aria-label={t(edge === "start" ? "waRulesFrom" : "waRulesTo")}
+              value={interval[edge]}
+              onChange={(event) => event.target.value && onChange({ ...rules, hours: buildHours(openDays, { ...interval, [edge]: event.target.value }) })}
+            />
+          </span>)}
+        </span> : <span className="text-xs font-semibold text-muted-foreground">{t("waRulesAnyHour")}</span>}
+      </Row>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-border p-3.5">
-          <Label htmlFor="wa-rules-price" className="text-sm font-semibold">{t("waRulesMaxPrice")}</Label>
-          <Input
-            id="wa-rules-price"
-            className="mt-2 h-9"
-            inputMode="decimal"
-            placeholder={t("waRulesNoLimit")}
-            value={rules.maxPrice === null ? "" : String(rules.maxPrice)}
-            onChange={(event) => {
-              const text = event.target.value.replace(/[^\d.,]/g, "").slice(0, 12)
-              const amount = text.trim() ? Number(text.replace(",", ".")) : null
-              onChange({ ...rules, maxPrice: amount === null || !Number.isFinite(amount) ? null : amount })
-            }}
-          />
-        </div>
-        <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-3.5">
+      <Row label={t("waRulesMaxPrice")}>
+        <Input
+          id="wa-rules-price"
+          className="h-9 w-40"
+          inputMode="decimal"
+          placeholder={t("waRulesNoLimit")}
+          value={rules.maxPrice === null ? "" : String(rules.maxPrice)}
+          onChange={(event) => {
+            const text = event.target.value.replace(/[^\d.,]/g, "").slice(0, 12)
+            const amount = text.trim() ? Number(text.replace(",", ".")) : null
+            onChange({ ...rules, maxPrice: amount === null || !Number.isFinite(amount) ? null : amount })
+          }}
+        />
+        <Label className="ml-1 flex cursor-pointer items-center gap-2 text-sm font-normal">
           <Checkbox checked={rules.newClients} onCheckedChange={(on) => onChange({ ...rules, newClients: on })} />
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold">{t("waRulesNewClients")}</span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">{t("waRulesNewClientsHint")}</span>
-          </span>
-        </label>
-      </div>
-    </div>
+          {t("waRulesNewClients")}
+        </Label>
+      </Row>
+
+      <p className="text-xs text-muted-foreground">{t("waRulesHint")}</p>
+    </div> : null}
   </div>
 }
