@@ -193,6 +193,7 @@ export default function MyWorkPage() {
             aria-pressed={isTicked}
             aria-label={t(isTicked ? "markOpen" : "markDone", { title: task.title })}
             data-testid="my-work-tick"
+            data-crm-color-role="status"
             className={cn(
               "flex h-4 w-4 items-center justify-center rounded border transition-colors",
               isTicked ? "border-emerald-600 bg-emerald-600 text-white" : "border-muted-foreground/50 hover:border-foreground",
