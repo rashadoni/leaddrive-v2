@@ -11,6 +11,7 @@ import { createMicrosoftEvent, deleteMicrosoftEvent, microsoftAccessToken, micro
 import { sendEmail } from "@/lib/email"
 import { decryptForTenantBound } from "@/lib/crypto/tenant-pii-encryption"
 import { bookingHostWhere } from "./access"
+import { sendChangeNotice } from "./whatsapp-change-notice"
 import { formatInTimezone } from "@/lib/timezone"
 
 type Claimed = EffectOutbox & { leaseToken: string; providerRequestId: string }
@@ -204,6 +205,28 @@ export async function drainBookingEffects(orgId: string, limit = 20, deadline = 
         const host = await prisma.user.findFirst({ where: bookingHostWhere(orgId, [row.hostUserId]), select: { id: true } })
         if (host) await boundedDelivery(deliverNotificationPush({ organizationId: orgId, userId: host.id, title: snapshot(row).title, message: deliveryCopy(row).status, entityType: "booking", entityId: row.id, kind: row.status === "cancelled" ? "booking.cancelled" : "booking.created" }))
         await prisma.$transaction((tx) => finish(tx, effect, "succeeded", { bestEffortPushAttempted: Boolean(host) }))
+      } else if (effect.effectType === "booking.customer-whatsapp") {
+        // Only the two changes the client has to act on, and only while the
+        // hour in question is still ahead: telling somebody at midnight that
+        // yesterday's visit moved is noise, not service.
+        const kind = row.status === "cancelled" ? "cancelled" as const : "rescheduled" as const
+        if (row.status !== "cancelled" && row.startsAt <= new Date()) {
+          await prisma.$transaction((tx) => finish(tx, effect, "succeeded", { noOp: true, reason: "message_expired" })); continue
+        }
+        const outcome = await boundedDelivery(sendChangeNotice({ organizationId: orgId, booking: row, kind }))
+        // «Sent» and «this organization does not write on WhatsApp» are both
+        // settled. The two that are not settle as needing a person: a template
+        // Meta has to approve, or a send the provider did not confirm — and
+        // reconciliation_required is not retried, so it stays on the card
+        // instead of being attempted for ever.
+        if (outcome === "sent" || outcome === "whatsapp_off" || outcome === "no_phone") {
+          await prisma.$transaction((tx) => finish(tx, effect, "succeeded", outcome === "sent" ? { delivered: true } : { noOp: true, reason: outcome }))
+        } else {
+          await prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT id FROM bookings WHERE "organizationId" = ${orgId} AND id = ${row.id} FOR UPDATE`
+            await finish(tx, effect, "reconciliation_required", { reason: outcome })
+          })
+        }
       } else if (effect.effectType === "booking.email" || effect.effectType === "booking.host-email") {
         const hostNotice = effect.effectType === "booking.host-email"
         const host = hostNotice ? await prisma.user.findFirst({ where: bookingHostWhere(orgId, [row.hostUserId]), select: { email: true } }) : null

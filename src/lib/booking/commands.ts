@@ -134,7 +134,21 @@ export async function runBookingCommand(access: BookingAccess, id: string, input
     // effects: the calendar has nothing new to hold, and a confirmation email
     // saying «подтверждено» for the third time is how a salon teaches its
     // clients to ignore its mail. The ledger event above is the record.
-    if (input.operation !== "deposit") await queueBookingEffects(tx, row, event.eventId, { customerNotice: input.notifyCustomer, secretId: row.secretId ?? undefined })
+    // A move starts the reminders over: the marks say «this meeting has been
+    // reminded», not «this hour has», so without clearing them a client who
+    // already had the day-before reminder for Tuesday gets none for Thursday
+    // and turns up on Tuesday. Their «I am coming» was about the old hour too.
+    if (type === "rescheduled") await tx.bookingReminder.deleteMany({ where: { organizationId: access.orgId, bookingId: id } })
+    if (input.operation !== "deposit") await queueBookingEffects(tx, row, event.eventId, {
+      customerNotice: input.notifyCustomer, secretId: row.secretId ?? undefined,
+      // …but never back at the client who did it themselves: a cancellation
+      // from their own link, or from the «Ləğv etmək» button on a reminder,
+      // is already answered in that conversation. Telling them again that
+      // their visit is off reads as a second, different cancellation — and
+      // when the agent moves a visit it cancels the old one, so the client
+      // would hear «booked» and «cancelled» in the same breath.
+      customerChange: input.notifyCustomer && access.userId !== "customer" && (type === "cancelled" || type === "rescheduled"),
+    })
     const result = { id, version: row.version }
     await storeCommandReceipt(tx, { ...identity, responseStatus: 200, responseBody: result, eventIds: [event.eventId] })
     return result

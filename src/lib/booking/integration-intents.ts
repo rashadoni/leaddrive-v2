@@ -4,7 +4,7 @@ import type { Booking, Prisma } from "@prisma/client"
 import { enqueueEffect } from "@/lib/event-platform/effects"
 
 /** Effects contain only scoped record references, never client PII or cancel capabilities. */
-export async function queueBookingEffects(tx: Prisma.TransactionClient, row: Booking, eventId: string, options: { customerNotice?: boolean; secretId?: string } = {}) {
+export async function queueBookingEffects(tx: Prisma.TransactionClient, row: Booking, eventId: string, options: { customerNotice?: boolean; secretId?: string; customerChange?: boolean } = {}) {
   const common = { organizationId: row.organizationId, sourceEventId: eventId, mode: "live" as const }
   const payload = { bookingId: row.id, version: row.version, secretId: options.secretId ?? null }
   await enqueueEffect(tx, { ...common, effectType: "booking.project", effectKey: `${row.id}:${row.version}`, destination: "crm", payload })
@@ -41,6 +41,11 @@ export async function queueBookingEffects(tx: Prisma.TransactionClient, row: Boo
   await enqueueEffect(tx, { ...common, effectType: "booking.push", effectKey: `${row.id}:${row.version}`, destination: row.hostUserId, payload })
   await enqueueEffect(tx, { ...common, effectType: "booking.host-email", effectKey: `${row.id}:${row.version}`, destination: row.hostUserId, payload })
   if (options.customerNotice && row.email) await enqueueEffect(tx, { ...common, effectType: "booking.email", effectKey: `${row.id}:${row.version}`, destination: "customer", payload })
+  // A meeting that moved or is off is told on WhatsApp too, where most clients
+  // of a salon actually are — and where the ones who booked by phone can be
+  // reached at all. Only for those two changes: a confirmation the client
+  // already has, and an outcome recorded after the visit, are not news to them.
+  if (options.customerChange && row.phone) await enqueueEffect(tx, { ...common, effectType: "booking.customer-whatsapp", effectKey: `${row.id}:${row.version}`, destination: "customer", payload })
 }
 
 

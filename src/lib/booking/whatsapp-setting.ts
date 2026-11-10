@@ -21,6 +21,13 @@ export interface WhatsAppBookingSetting {
    * not written for a day. Without it such a reminder cannot be sent at all.
    */
   reminderTemplate: string | null
+  /**
+   * The same, for «your visit has moved» and «your visit is off»
+   * (whatsapp-change-notice.ts). Meta approves one wording per purpose, so a
+   * move and a cancellation are two templates, not one with a variable.
+   */
+  changeTemplate: string | null
+  cancelTemplate: string | null
 }
 
 /**
@@ -41,6 +48,12 @@ export function readWhatsAppBookingSetting(settings: unknown): WhatsAppBookingSe
     // No rules recorded means no narrowing: the agent books whatever it could
     // book before this screen existed.
     rules: "rules" in value ? readAutonomyRules(value.rules) : OPEN_RULES,
-    reminderTemplate: typeof value.reminderTemplate === "string" && value.reminderTemplate.trim() ? value.reminderTemplate.trim() : null,
+    reminderTemplate: template(value.reminderTemplate),
+    changeTemplate: template(value.changeTemplate),
+    cancelTemplate: template(value.cancelTemplate),
   }
+}
+
+function template(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null
 }
