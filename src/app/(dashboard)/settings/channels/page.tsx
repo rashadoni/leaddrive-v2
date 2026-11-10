@@ -267,6 +267,7 @@ const copy = {
     cardVerify: "Verify",
     cardConnectedHint: "Saved in LeadDrive. Edit credentials or send a controlled test before automation.",
     cardVoipSettingsHint: "Managed in VoIP settings. Change the provider, its credentials or the on/off switch there.",
+    cardWaNumberIdPrefix: "Meta ID",
     cardDraftBadge: "Draft",
     cardDraftStatus: "Connection not finished",
     cardDraftHint: "The channel row is saved, but Meta has not returned a Page yet, so no message will arrive. Finish Connect with Meta.",
@@ -479,6 +480,7 @@ const copy = {
     cardVerify: "Проверка",
     cardConnectedHint: "Канал сохранён в LeadDrive. Измените ключи или отправьте контролируемый тест перед автоматизацией.",
     cardVoipSettingsHint: "Управляется в настройках VoIP. Провайдера, его ключи и переключатель звонков меняют там.",
+    cardWaNumberIdPrefix: "ID в Meta",
     cardDraftBadge: "Черновик",
     cardDraftStatus: "Подключение не завершено",
     cardDraftHint: "Запись канала сохранена, но Meta ещё не вернула страницу, поэтому сообщения приходить не будут. Завершите «Подключить через Meta».",
@@ -689,6 +691,7 @@ const copy = {
     cardVerify: "Yoxlama",
     cardConnectedHint: "Kanal LeadDrive-da saxlanılıb. Avtomatizasiyadan əvvəl açarları dəyişin və ya kontrollu test göndərin.",
     cardVoipSettingsHint: "VoIP parametrlərində idarə olunur. Provayderi və onun açarlarını orada dəyişin, zəngləri də orada yandırıb-söndürün.",
+    cardWaNumberIdPrefix: "Meta ID",
     cardDraftBadge: "Qaralama",
     cardDraftStatus: "Qoşulma tamamlanmayıb",
     cardDraftHint: "Kanal qeydi saxlanılıb, amma Meta hələ səhifə qaytarmayıb, ona görə mesaj gəlməyəcək. «Meta ilə qoş» addımını tamamlayın.",
@@ -1653,6 +1656,30 @@ function channelProvider(channel: ChannelConfig): string | undefined {
   return undefined
 }
 
+/**
+ * Which number this row is, in words a person can match against their phone.
+ *
+ * The line printed `channel.phoneNumber`, and on a WhatsApp row that column carries Meta's
+ * `phone_number_id` — fifteen digits that read like a phone number and are not one. On 2026-11-10 one
+ * workspace had three live WhatsApp channels: two showed nothing at all under the name and the third
+ * showed `984538588084578`, so «Ayır» offered three rows that could not be told apart (owner: «не
+ * виден какой номер на каком ватсап канале»). Disconnecting the wrong one is one click.
+ *
+ * Embedded Signup stores the number as Meta displays it (`displayPhoneNumber`), so show that. Where
+ * only the id exists — a row connected by hand, before the signup wrote it — say that it is an id
+ * rather than print it bare.
+ */
+function channelNumberLabel(channel: ChannelConfig, idPrefix: string): string | undefined {
+  const settings = channel.settings || {}
+  const shown = typeof settings.displayPhoneNumber === "string" ? settings.displayPhoneNumber.trim() : ""
+  if (shown) return shown
+  const raw = typeof channel.phoneNumber === "string" ? channel.phoneNumber.trim() : ""
+  if (!raw) return undefined
+  // Anywhere else that column is the number itself, and a number written in full stays as it is.
+  if (channel.channelType !== "whatsapp" || raw.startsWith("+")) return raw
+  return `${idPrefix} ${raw}`
+}
+
 function channelMatchesCard(card: CatalogCard, channel: ChannelConfig) {
   if (!card.channelType || channel.channelType !== card.channelType) return false
   if (!card.provider) return true
@@ -2302,7 +2329,7 @@ function ChannelsPageInner() {
               ) : null}
             </div>
             <div className="text-xs text-muted-foreground">
-              {[card?.title || channel.channelType, channelProvider(channel), channel.phoneNumber].filter(Boolean).join(" · ")}
+              {[card?.title || channel.channelType, channelProvider(channel), channelNumberLabel(channel, c.cardWaNumberIdPrefix)].filter(Boolean).join(" · ")}
             </div>
             {ownScreenHref ? (
               <p className="mt-1 text-xs text-muted-foreground">{c.cardVoipSettingsHint}</p>
