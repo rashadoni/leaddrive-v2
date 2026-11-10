@@ -19,11 +19,13 @@ function parse(text) {
   }))
 }
 
-test('catalog expands to the 89 governed topics with effective safety configs', () => {
+// 92 topics / 1476 partitions since 2026-11-10: the `booking` domain joined the
+// map when meetings became a tenant module of their own.
+test('catalog expands to the 92 governed topics with effective safety configs', () => {
   const topics = expandCatalog(catalog, 'prod')
-  assert.equal(topics.length, 89)
-  assert.equal(new Set(topics.map((t) => t.name)).size, 89)
-  assert.equal(topics.reduce((sum, t) => sum + t.partitions, 0), 1446)
+  assert.equal(topics.length, 92)
+  assert.equal(new Set(topics.map((t) => t.name)).size, 92)
+  assert.equal(topics.reduce((sum, t) => sum + t.partitions, 0), 1476)
   for (const topic of topics) {
     assert.match(topic.name, /^ld\.prod\./)
     assert.equal(topic.replicationFactor, 3)

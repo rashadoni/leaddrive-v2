@@ -40,11 +40,16 @@ function explicitRequireAuthScopes(): Set<string> {
 }
 
 describe("module-catalog totality (blocking invariant)", () => {
-  it("the live gate is the legacy map plus exactly one override: tasks answer to boards", () => {
+  it("the live gate is the legacy map plus the two sections that became modules", () => {
     const overrides = Object.entries(PERMISSION_MODULE_TO_MODULE_ID).filter(([scope, id]) => (LEGACY_MODULE_MAP as Record<string, string>)[scope] !== id)
-    expect(overrides).toEqual([["tasks", "boards"]])
-    // Boards are a group module of their own since 2026-11-08, no longer derived from CRM.
+    // Each override is a section a tenant can now buy on its own, and nothing
+    // else belongs here: an override that is not one of these takes a scope
+    // away from the module it was sold with.
+    expect(overrides.sort()).toEqual([["bookings", "booking"], ["tasks", "boards"]])
+    // Boards are a group module of their own since 2026-11-08, no longer derived from CRM;
+    // meetings and booking since 2026-11-10, no longer derived from sales.
     expect(GROUPS.has("boards")).toBe(true)
+    expect(GROUPS.has("booking")).toBe(true)
   })
 
   it("every scope in the full gate universe is classified", () => {

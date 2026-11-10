@@ -1,5 +1,5 @@
 export const GROUP_MODULE_IDS = [
-  "crm", "boards", "sales", "contracts", "marketing", "loyalty", "omnichannel", "social",
+  "crm", "boards", "booking", "sales", "contracts", "marketing", "loyalty", "omnichannel", "social",
   "voip", "support", "finance",
   "analytics", "mtm", "health", "insurance", "public-sector", "media",
   "energy", "settings",
@@ -48,6 +48,18 @@ export type AddonFlagId = (typeof ADDON_FLAG_IDS)[number]
  */
 export const BOARDS_MODULE_ID = "boards" as const
 
+/**
+ * Meetings and online booking — a module of its own (owner, 2026-11-10:
+ * «давай тогда выделим его как модуль»). A beauty salon buys the bookings
+ * and wants nothing of deals, forecasts or contracts; until now the section
+ * rode on `sales`, so selling it alone meant selling the whole sales group.
+ * A tenant record written before the split says nothing about it and follows
+ * `sales`, exactly as it did then — migration
+ * 20261213090000_booking_tenant_module wrote the tick for every tenant that
+ * has sales today, so nobody gains or loses access on the day of the split.
+ */
+export const BOOKING_MODULE_ID = "booking" as const
+
 export type ModuleId = GroupModuleId | AddonFlagId | "sms-otp"
 
 interface ModuleDefinition {
@@ -64,6 +76,8 @@ export const MODULE_REGISTRY: Record<ModuleId, ModuleDefinition> = {
   crm:              { name: "Основная",            requires: [] },
   // Its own module since 2026-11-08 — a tenant can have the boards without CRM.
   boards:           { name: "Boards",              requires: [] },
+  // Its own module since 2026-11-10 — a salon can have the bookings without sales.
+  booking:          { name: "Booking",             requires: [] },
   sales:            { name: "Sales",               requires: [] },
   contracts:        { name: "Contracts Control",   requires: [] },
   marketing:        { name: "Marketing",           requires: [] },
@@ -415,6 +429,14 @@ export function hasModule(org: OrgModuleContext, moduleId: ModuleId): boolean {
   if (moduleId === BOARDS_MODULE_ID) {
     const explicit = org.modules?.[BOARDS_MODULE_ID]
     return typeof explicit === "boolean" ? explicit : hasModule(org, "crm")
+  }
+
+  // 0b. Meetings and booking, the same way: an explicit boolean decides, and a
+  //     record written before the split follows `sales`, where the section
+  //     lived until 2026-11-10.
+  if (moduleId === BOOKING_MODULE_ID) {
+    const explicit = org.modules?.[BOOKING_MODULE_ID]
+    return typeof explicit === "boolean" ? explicit : hasModule(org, "sales")
   }
 
   // 1. Always-on modules (core CRM, sms-otp) are never gateable.

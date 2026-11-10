@@ -46,6 +46,7 @@
     { "name": "ai", "owner": "automation-platform", "partitions": 12, "eventRetentionMs": 7776000000 },
     { "name": "analytics", "owner": "analytics-platform", "partitions": 24, "eventRetentionMs": 7776000000 },
     { "name": "boards", "owner": "crm-platform", "partitions": 12, "eventRetentionMs": 7776000000 },
+    { "name": "booking", "owner": "crm-platform", "partitions": 12, "eventRetentionMs": 7776000000 },
     { "name": "commerce", "owner": "commerce-platform", "partitions": 24, "eventRetentionMs": 7776000000 },
     { "name": "contracts", "owner": "contracts-platform", "partitions": 12, "eventRetentionMs": 7776000000 },
     { "name": "crm", "owner": "crm-platform", "partitions": 24, "eventRetentionMs": 7776000000 },

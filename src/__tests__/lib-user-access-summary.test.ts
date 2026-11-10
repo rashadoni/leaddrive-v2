@@ -43,7 +43,7 @@ describe("what one person gets — modules", () => {
     expect(sales.outcome).toBe("mixed")
     expect(sales.parts).toEqual([
       { level: "full", scopes: ["deals"] },
-      { level: "edit", scopes: ["leads", "offers", "bookings"] },
+      { level: "edit", scopes: ["leads", "offers"] },
     ])
   })
 
@@ -57,25 +57,20 @@ describe("what one person gets — modules", () => {
   })
 
   // Meetings are the one exception in checkPermission: no role deletes them and
-  // the viewer's read-everything wildcard does not reach them. Since they are
-  // listed under Sales (audit 2026-11-07), the card says so instead of
-  // promising «everything» there.
+  // the viewer's read-everything wildcard does not reach them. Since 2026-11-10
+  // they are their own row rather than a part of Sales, so the card states that
+  // exception on the Meetings row and promises «everything» on Sales again.
   it("a viewer reads every module and changes none — except Meetings, which they do not see", () => {
     const result = outcomes("viewer")
-    expect([...new Set(Object.entries(result).filter(([id]) => id !== "sales").map(([, outcome]) => outcome))]).toEqual(["view"])
-    expect(moduleAccessOutcome("viewer", [], "sales").parts).toEqual([
-      { level: "view", scopes: ["deals", "leads", "offers"] },
-      { level: "none", scopes: ["bookings"] },
-    ])
+    expect([...new Set(Object.entries(result).filter(([id]) => id !== "booking").map(([, outcome]) => outcome))]).toEqual(["view"])
+    expect(moduleAccessOutcome("viewer", [], "booking")).toMatchObject({ outcome: "none", parts: [] })
+    expect(moduleAccessOutcome("viewer", [], "sales")).toMatchObject({ outcome: "view", parts: [] })
   })
 
   it("an admin gets everything whatever ticks are stored on the row — Meetings without delete", () => {
     const result = outcomes("admin", ROUTE_AND_FIELD_ONLY)
-    expect([...new Set(Object.entries(result).filter(([id]) => id !== "sales").map(([, outcome]) => outcome))]).toEqual(["full"])
-    expect(moduleAccessOutcome("admin", [], "sales").parts).toEqual([
-      { level: "full", scopes: ["deals", "leads", "offers"] },
-      { level: "edit", scopes: ["bookings"] },
-    ])
+    expect([...new Set(Object.entries(result).filter(([id]) => id !== "booking").map(([, outcome]) => outcome))]).toEqual(["full"])
+    expect(moduleAccessOutcome("admin", [], "booking")).toMatchObject({ outcome: "edit", parts: [] })
   })
 
   it("a role the engine does not know gets nothing in any visible module", () => {

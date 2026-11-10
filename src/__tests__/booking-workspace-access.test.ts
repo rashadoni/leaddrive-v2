@@ -50,11 +50,22 @@ describe("meeting workspace access", () => {
     expect(access.administrator).toBe(true)
   })
 
-  it("provides a single menu destination to operators and hides it from viewers", () => {
-    for (const role of ["sales", "manager", "admin"] as const) {
-      const items = accessibleNavItems({ plan: "professional", role, modules: { sales: true } })
-      expect(items.filter((item) => item.permissionScope === "bookings").map((item) => item.href)).toEqual(BOOKING_WORKSPACE_ENABLED ? ["/meetings"] : role === "admin" ? ["/settings/booking"] : [])
+  it("offers the day to everyone who works it and the set-up screens only to an administrator", () => {
+    // Four screens, four addresses since 2026-11-10 — and a salon that bought
+    // the booking module without Sales reaches them, which is why the menu asks
+    // for `booking` and not for `sales`. Only `canConfigure` may open the three
+    // that set the section up, so only an administrator is offered them: a menu
+    // entry that refuses the person who clicks it is worse than no entry.
+    for (const role of ["sales", "manager"] as const) {
+      const items = accessibleNavItems({ plan: "professional", role, modules: { booking: true } })
+      expect(items.filter((item) => item.permissionScope === "bookings").map((item) => item.href))
+        .toEqual(BOOKING_WORKSPACE_ENABLED ? ["/meetings"] : [])
     }
-    expect(accessibleNavItems({ plan: "professional", role: "viewer", modules: { sales: true } }).some((item) => item.permissionScope === "bookings")).toBe(false)
+    expect(accessibleNavItems({ plan: "professional", role: "admin", modules: { booking: true } })
+      .filter((item) => item.permissionScope === "bookings").map((item) => item.href))
+      .toEqual(BOOKING_WORKSPACE_ENABLED
+        ? ["/meetings", "/meetings/services", "/meetings/whatsapp", "/meetings/team"]
+        : ["/settings/booking"])
+    expect(accessibleNavItems({ plan: "professional", role: "viewer", modules: { booking: true } }).some((item) => item.permissionScope === "bookings")).toBe(false)
   })
 })

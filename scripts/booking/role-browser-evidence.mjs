@@ -19,7 +19,11 @@ const password = `Sandbox!9-${randomUUID()}`;
 const suffix = randomUUID().slice(0, 8);
 const day = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 const nextDay = new Date(new Date(`${day}T00:00:00Z`).getTime() + 86_400_000).toISOString().slice(0, 10);
-const copy = JSON.parse(await readFile('messages/en.json', 'utf8')).booking;
+const messages = JSON.parse(await readFile('messages/en.json', 'utf8'));
+const copy = messages.booking;
+// The menu entry is the section's first screen, named in `nav` — the section
+// became four addresses in its own menu group on 2026-11-10.
+const nav = messages.nav;
 const receipt = { version: 1, status: 'RUNNING', startedAt: new Date().toISOString(),
   headSha: process.env.BOOKING_ROLE_HEAD_SHA, checkedSha: process.env.GITHUB_SHA,
   environment: 'ephemeral hosted PostgreSQL16 / production Next bundle / real credentials and native Chromium',
@@ -239,9 +243,14 @@ async function scopeCase(fixture, key, expectedKeys) {
   for (const [other, meeting] of Object.entries(fixture.meetings)) {
     assert.equal(await rows(v.page).filter({ hasText: meeting.name }).count(), expectedKeys.includes(other) ? 1 : 0);
   }
-  for (const tab of [copy.workspacePages, copy.workspaceTeam]) assert.equal(await v.page.getByRole('button', { name: tab, exact: true }).count(), 0);
-  for (const tab of ['pages', 'team']) {
-    await v.page.goto(`/meetings?tab=${tab}`);
+  // The other screens are links now, and an employee is offered none of them.
+  for (const tab of [copy.workspacePages, copy.waBookingTitle, copy.workspaceTeam]) {
+    assert.equal(await v.page.getByRole('link', { name: tab, exact: true }).count(), 0);
+  }
+  // Each screen refuses on its own address, and the addresses the tabs used to
+  // have still lead to it.
+  for (const path of ['/meetings/services', '/meetings/whatsapp', '/meetings/team', '/meetings?tab=pages', '/meetings?tab=team']) {
+    await v.page.goto(path);
     await v.page.getByText(copy.workspaceForbidden, { exact: true }).waitFor();
   }
   for (const path of ['/api/v1/booking-pages', '/api/v1/bookings/coordinators']) {
@@ -270,15 +279,15 @@ try {
   pass('manager-role-alone-does-not-grant-team-scope');
   stage = 'positive-menu';
   await employee.page.goto('/dashboard');
-  const menu = employee.page.getByRole('link', { name: copy.workspaceTitle, exact: true });
-  const sales = employee.page.locator('button[data-group="Sales"]');
-  await sales.waitFor();
-  if (await sales.getAttribute('aria-expanded') !== 'true') await sales.click();
+  const menu = employee.page.getByRole('link', { name: nav.bookingWorkspace, exact: true });
+  const group = employee.page.locator('button[data-group="Booking"]');
+  await group.waitFor();
+  if (await group.getAttribute('aria-expanded') !== 'true') await group.click();
   await menu.click();
   await employee.page.waitForURL(url => url.pathname === '/meetings');
   await openListView(employee.page);
   await waitRows(employee.page, 1);
-  pass('sales-menu-opens-meetings');
+  pass('booking-menu-opens-meetings');
   stage = 'populated-parity';
   const params = new URLSearchParams({ from: `${day}T00:00:00Z`, to: `${nextDay}T00:00:00Z`, status: 'all' });
   for (const v of [employee, coordinator]) {

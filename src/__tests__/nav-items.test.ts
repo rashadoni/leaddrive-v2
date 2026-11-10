@@ -406,16 +406,21 @@ describe("nav grouping", () => {
 
   // Boards became a section of their own right under the core one (owner,
   // 2026-11-08: «убери из главного раздела доски и пусть он будет отдельным модулем»).
-  it("Boards, then Sales, then Contracts Control follow CRM in NAV_GROUP_ORDER", () => {
+  it("Boards, Booking, then Sales and Contracts Control follow CRM in NAV_GROUP_ORDER", () => {
     const crmIdx = NAV_GROUP_ORDER.indexOf("CRM")
     const boardsIdx = NAV_GROUP_ORDER.indexOf("Boards")
+    const bookingIdx = NAV_GROUP_ORDER.indexOf("Booking")
     const salesIdx = NAV_GROUP_ORDER.indexOf("Sales")
     const ccIdx = NAV_GROUP_ORDER.indexOf("Contracts Control")
     expect(crmIdx).toBeGreaterThanOrEqual(0)
     expect(boardsIdx).toBe(crmIdx + 1)
     expect(navItems.filter((i) => i.module === "boards").map((i) => [i.href, i.group]))
       .toEqual([["/boards", "Boards"], ["/settings/task-templates", "Boards"]])
-    expect(salesIdx).toBe(boardsIdx + 1)
+    // Booking is its own section since 2026-11-10 and stands above Sales: a
+    // salon lives in it, and reaching it past leads and deals is the wrong way
+    // round for them.
+    expect(bookingIdx).toBe(boardsIdx + 1)
+    expect(salesIdx).toBe(bookingIdx + 1)
     expect(ccIdx).toBe(salesIdx + 1)
   })
 })
@@ -430,7 +435,7 @@ describe("admin sidebar catalog (derived — no drift from navItems)", () => {
     // real IA regression — a group silently added, removed, or reordered —
     // rather than just a bug in the catalog's own .map.
     expect(SIDEBAR_SECTIONS.map((s) => s.group)).toEqual([
-      "CRM", "Boards", "Sales", "Contracts Control", "Marketing", "Loyalty Program", "Communication", "Social Monitoring", "VoIP", "Support", "Finance", "Analytics",
+      "CRM", "Boards", "Booking", "Sales", "Contracts Control", "Marketing", "Loyalty Program", "Communication", "Social Monitoring", "VoIP", "Support", "Finance", "Analytics",
       "Route & Field", "Health Cloud", "Insurance Cloud", "Public Sector",
       "Media Cloud", "Energy & Utilities", "Settings",
     ])
@@ -642,7 +647,11 @@ describe("booking menu discovery across the staged release", () => {
       const visible = accessibleNavItems({ plan: "enterprise", role: "admin" })
       for (const name of [labels.onlineBooking, labels.bookingWorkspace]) {
         const found = visible.filter((item) => navItemMatchesSearch(item, ` ${name} `, (key) => labels[key]))
-        expect(found.filter((item) => item.permissionScope === "bookings").map((item) => item.href)).toEqual([expected])
+        const hrefs = found.filter((item) => item.permissionScope === "bookings").map((item) => item.href)
+        // The section's own name lands on its main screen; since 2026-11-10 the
+        // rest of the section are pages of it, and nothing outside it answers.
+        expect(hrefs[0]).toBe(expected)
+        for (const href of hrefs) expect(href.startsWith(expected), href).toBe(true)
       }
     })
   }
