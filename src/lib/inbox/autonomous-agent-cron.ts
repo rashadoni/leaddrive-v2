@@ -3,6 +3,7 @@ import { getBusinessHoursDecision } from "@/lib/inbox/business-hours"
 import { sendChannelReply } from "@/lib/chatbot-autoreply"
 import { chatwootSourceStillUnanswered } from "@/lib/inbox/chatwoot-source-guard"
 import { maybeAiAutoReply, selectUncoveredAiInboundBatch } from "@/lib/social/ai-autoreply"
+import { holdsAutomaticReply } from "@/lib/inbox/whatsapp-reply-hold"
 
 const AI_FEATURE = "aiAutoReply"
 const PROVIDER_WINDOW_MS = 23 * 60 * 60 * 1000
@@ -155,10 +156,21 @@ export async function runAutonomousInboxAgent(
         settings: true,
       },
     })
-    const aiChannels = channelConfigs.filter((config) => {
+    const aiChannels: typeof channelConfigs = []
+    for (const config of channelConfigs) {
       const platform = effectivePlatform("", config.channelType)
-      return SUPPORTED_CHANNELS.has(platform) && replyMode(config.settings, platform) === "ai"
-    })
+      if (!SUPPORTED_CHANNELS.has(platform) || replyMode(config.settings, platform) !== "ai") continue
+      // A number the team answers from their own phone is not this sweep's to answer. Dropping the
+      // channel here, before any conversation is scanned, is the cheap half of the rule; the half
+      // that cannot be bypassed lives in maybeAiAutoReply (lib/inbox/whatsapp-reply-hold). The
+      // booking agent answers such a number a minute later instead
+      // (lib/booking/whatsapp-deferred-turn).
+      if (holdsAutomaticReply(config.settings)) {
+        increment(result.skipped, "reply-held-channel")
+        continue
+      }
+      aiChannels.push(config)
+    }
     if (aiChannels.length === 0) {
       increment(result.skipped, "no-ai-channels")
       continue

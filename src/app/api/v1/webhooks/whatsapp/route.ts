@@ -1089,8 +1089,10 @@ async function processMessages(
 
   // On a number that also lives in the WhatsApp Business app, the team answers from the phone and we
   // must not answer first — our reply leaves inside this request, theirs takes half a minute. The
-  // message is still stored and still becomes a ticket; the minute-by-minute backlog agent takes the
-  // turn if nobody answered (lib/inbox/whatsapp-reply-hold).
+  // message is still stored and still becomes a ticket; the booking agent's deferred turn takes it a
+  // minute later if nobody answered (lib/inbox/whatsapp-reply-hold,
+  // lib/booking/whatsapp-deferred-turn). The backlog sweep is held on this channel too, so it
+  // cannot answer over that turn.
   const replyHeld = holdsAutomaticReply(channelConfig.settings)
 
   for (const msg of messages) {

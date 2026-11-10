@@ -6,17 +6,24 @@
  * there is no way to win that race by being clever: the only way not to answer twice is not to
  * answer immediately.
  *
- * What takes the turn instead is machinery that already exists and already waits:
- * `runAutonomousInboxAgent` runs every minute, takes only conversations whose latest row is an
- * inbound customer message, and skips any the team has since covered — and a reply typed in the
- * WhatsApp Business app arrives as exactly such a covering row (lib/inbox/whatsapp-app-echo). So on
- * a held channel the webhook writes the message down, files the ticket, and stops; if nobody has
- * answered from the phone a minute later, the backlog agent does.
+ * What takes the turn instead is one worker, on purpose: the booking agent's deferred turn
+ * (lib/booking/whatsapp-deferred-turn). It waits out a minute's grace, stands down the moment any
+ * outbound row appears — our own send, an operator in the inbox, or the case it exists for, a reply
+ * typed in the WhatsApp Business app, which arrives as exactly such a row
+ * (lib/inbox/whatsapp-app-echo) — and otherwise offers the customer times.
  *
- * What this costs, stated plainly: the booking agent has no deferred path of its own yet, so on a
- * held channel it does not offer times at all. That is the honest trade for this step — silence is
- * recoverable, two conflicting answers to one customer are not — and giving the booking agent its
- * turn back on a timer is the next piece of work.
+ * This file first said the minute-by-minute backlog sweep (`runAutonomousInboxAgent`) would take
+ * that turn, before the booking agent had a deferred path of its own. Both then had one, and on
+ * 2026-11-10 they raced on the owner's own coexistence number: the customer asked for an
+ * appointment at 07:55:08, the webhook held, and the sweep answered "share your phone number" at
+ * 07:56:33 — eight seconds before the deferred turn was due. The deferred turn then read that
+ * outbound as "somebody answered" (its rule 2, which cannot tell our robot from their phone) and
+ * stood down for good. So the sweep asks `holdsAutomaticReply` too, at both of its gates, and a
+ * held channel has exactly one automatic answerer.
+ *
+ * What this costs, stated plainly: on a held channel the only automatic reply is the booking
+ * agent's. Everything else — the rule bot, the support AI, the ticket-reopen notice — stays silent
+ * until a person answers. Silence is recoverable, two conflicting answers to one customer are not.
  *
  * The switch is per channel, so the owner can decide differently for a number where the team never
  * touches the phone: `settings.replyHold`

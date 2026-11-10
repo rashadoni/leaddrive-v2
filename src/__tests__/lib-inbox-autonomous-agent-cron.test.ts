@@ -87,6 +87,106 @@ function dbFixture() {
 }
 
 describe("autonomous Inbox backlog sweep", () => {
+  /**
+   * The sweep is an automatic sender, so it obeys the hold the webhook obeys.
+   *
+   * On 2026-11-10 it did not: on the owner's coexistence number the webhook held, and the sweep
+   * answered "share your phone number" eight seconds before the booking agent's deferred turn was
+   * due — which then read our own outbound as "somebody answered" and stood down for good
+   * (lib/inbox/whatsapp-reply-hold).
+   *
+   * Both channels below are WhatsApp and both are in reply mode "ai"; only the settings differ. So
+   * what this measures is the hold, not "WhatsApp is excluded".
+   */
+  function waChannel(id: string, settings: Record<string, unknown>) {
+    return { id, channelType: "whatsapp", pageId: null, settings }
+  }
+
+  function waConversation(id: string, channelConfigId: string) {
+    return {
+      id,
+      channelConfigId,
+      platform: "whatsapp",
+      externalId: "994773201000",
+      contactId: "contact-1",
+      contactName: "R.",
+      tags: [],
+      aiReplyPendingMessageId: null,
+      lastMessageAt: new Date("2026-11-10T07:55:08.000Z"),
+      messages: [{
+        id: `msg-${id}`,
+        direction: "inbound",
+        body: "Salam sabah üçün görüşə yazılmaq istəyirəm",
+        status: "delivered",
+        createdAt: new Date("2026-11-10T07:55:08.000Z"),
+        metadata: {},
+      }],
+    }
+  }
+
+  it("answers the open number and stays silent on the one the team answers from their phone", async () => {
+    const db = dbFixture()
+    db.channelConfig.findMany.mockResolvedValue([
+      waChannel("channel-held", { coexistence: true }),
+      waChannel("channel-open", {}),
+    ])
+    db.socialConversation.findMany.mockResolvedValue([
+      waConversation("conv-held", "channel-held"),
+      waConversation("conv-open", "channel-open"),
+    ])
+    const reply = vi.fn().mockResolvedValue({ replied: true, escalated: false })
+
+    const result = await runAutonomousInboxAgent(db as never, {
+      now: new Date("2026-11-10T07:56:33.000Z"),
+      businessOpen: vi.fn().mockResolvedValue(true),
+      reply,
+    })
+
+    // The customer on the held number is sent nothing at all, by anyone.
+    expect(reply).toHaveBeenCalledTimes(1)
+    expect(reply).toHaveBeenCalledWith(expect.objectContaining({ conversationId: "conv-open" }))
+    expect(sendChannelReply).not.toHaveBeenCalled()
+    expect(result.replied).toBe(1)
+    expect(result.skipped["reply-held-channel"]).toBe(1)
+  })
+
+  it("stays silent on a held number even when it is the organization's only channel", async () => {
+    const db = dbFixture()
+    db.channelConfig.findMany.mockResolvedValue([waChannel("channel-held", { coexistence: true })])
+    db.socialConversation.findMany.mockResolvedValue([waConversation("conv-held", "channel-held")])
+    const reply = vi.fn().mockResolvedValue({ replied: true, escalated: false })
+
+    const result = await runAutonomousInboxAgent(db as never, {
+      now: new Date("2026-11-10T07:56:33.000Z"),
+      businessOpen: vi.fn().mockResolvedValue(true),
+      reply,
+    })
+
+    expect(reply).not.toHaveBeenCalled()
+    expect(sendChannelReply).not.toHaveBeenCalled()
+    expect(result.replied).toBe(0)
+    expect(result.skipped["reply-held-channel"]).toBe(1)
+  })
+
+  it("answers a held channel's sibling number that the owner switched the hold off for", async () => {
+    const db = dbFixture()
+    db.channelConfig.findMany.mockResolvedValue([
+      waChannel("channel-open", { coexistence: true, replyHold: "never" }),
+    ])
+    db.socialConversation.findMany.mockResolvedValue([waConversation("conv-open", "channel-open")])
+    const reply = vi.fn().mockResolvedValue({ replied: true, escalated: false })
+
+    const result = await runAutonomousInboxAgent(db as never, {
+      now: new Date("2026-11-10T07:56:33.000Z"),
+      businessOpen: vi.fn().mockResolvedValue(true),
+      reply,
+    })
+
+    expect(reply).toHaveBeenCalledTimes(1)
+    expect(result.replied).toBe(1)
+    expect(result.skipped["reply-held-channel"]).toBeUndefined()
+  })
+
   it("processes only unanswered inbound conversations and marks the backlog origin", async () => {
     const db = dbFixture()
     const reply = vi.fn().mockResolvedValue({
