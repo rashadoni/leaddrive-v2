@@ -7,6 +7,7 @@ import { createNotification } from "@/lib/notifications"
 import { buildInboxKbContextDetailed } from "@/lib/inbox/kb-context"
 import { scoreAiResponse, qualityMetadata, type AiQualityMetadata } from "@/lib/ai/response-scorer"
 import { readAiReplyPolicy, decideAiReplyAction, isInAiRollout } from "@/lib/inbox/ai-reply-gate"
+import { holdsAutomaticReply } from "@/lib/inbox/whatsapp-reply-hold"
 import { saveConversationAiDraft } from "@/lib/inbox/ai-draft"
 import {
   isAfterSalesOrComplaintMessage,
@@ -1020,9 +1021,30 @@ export async function maybeAiAutoReply(opts: {
     // A2/A3 — channel reply policy, loaded ONCE before generation: the A3 rollout check
     // must exclude a conversation without burning tokens; the same policy then feeds the
     // post-generation send-or-draft gate.
+    let channelUnreadable = false
     const cfg = await prisma.channelConfig
       .findFirst({ where: { id: opts.channelConfigId, organizationId: opts.orgId }, select: { settings: true } })
-      .catch(() => null)
+      .catch(() => {
+        channelUnreadable = true
+        return null
+      })
+    // On a number the team also answers from the WhatsApp Business app, no automatic sender takes
+    // the first word — the same question the webhook asks, asked again here because this path has
+    // no webhook to ask it: the backlog sweep is itself an automatic sender, and it was answering
+    // "hello, share your phone number" over the booking agent's deferred turn
+    // (lib/inbox/whatsapp-reply-hold, lib/booking/whatsapp-deferred-turn). A held channel is not
+    // an error and not a cooldown — it is a channel whose replies belong to a person or to that
+    // deferred turn, so this ends the turn the same way the rollout gate does.
+    //
+    // Settings we could not read count as held. The sweep retries in five minutes, so a skip costs
+    // one late answer; guessing "not held" costs a reply over a human's shoulder on their own phone,
+    // which cannot be taken back.
+    if (channelUnreadable) {
+      return finishTerminal({ replied: false, escalated: false, skipped: "channel_unreadable" })
+    }
+    if (holdsAutomaticReply(cfg?.settings)) {
+      return finishTerminal({ replied: false, escalated: false, skipped: "reply_held" })
+    }
     const policy = readAiReplyPolicy(cfg?.settings)
     if (!isInAiRollout(opts.conversationId, policy.aiRolloutPercent)) {
       // Deterministically outside the audience — straight to a human, no LLM call.

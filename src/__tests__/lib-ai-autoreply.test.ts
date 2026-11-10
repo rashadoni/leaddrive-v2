@@ -1805,3 +1805,92 @@ describe("claimConversationAiReply", () => {
     })
   })
 })
+
+/**
+ * The hold, asked at the sender itself.
+ *
+ * The WhatsApp webhook asks `holdsAutomaticReply` before it lets anything answer, but the backlog
+ * sweep has no webhook to ask it — and it is an automatic sender too. On 2026-11-10 it answered a
+ * booking request on the owner's coexistence number a minute after the webhook had deliberately
+ * held, which cost the booking agent its deferred turn for good
+ * (lib/inbox/whatsapp-reply-hold, lib/booking/whatsapp-deferred-turn).
+ *
+ * Only the channel settings differ between these cases; the message, platform and org are the same.
+ */
+describe("maybeAiAutoReply — a number the team answers from their own phone", () => {
+  const customerAsksForAnAppointment = {
+    orgId: "o1",
+    channelConfigId: "c1",
+    platform: "whatsapp",
+    conversationId: "cv1",
+    pageId: "PAGE",
+    externalId: "994000000000",
+    userMessage: "Salam sabah üçün görüşə yazılmaq istəyirəm",
+    senderName: "Müştəri",
+    inboundMessageId: "m1",
+    origin: "backlog" as const,
+  }
+
+  beforeEach(() => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ features: ["aiAutoReply"] } as never)
+    vi.mocked(prisma.socialConversation.findFirst).mockResolvedValue({ metadata: {}, assignedTo: null, platform: "whatsapp" } as never)
+    anthropicCreate.mockResolvedValue({ content: [{ type: "text", text: "Salam! Xoş gəlmisiniz." }] })
+  })
+
+  it("sends the customer nothing on a coexistence number", async () => {
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ settings: { coexistence: true } } as never)
+    const send = vi.fn().mockResolvedValue(true)
+
+    const r = await maybeAiAutoReply({ ...customerAsksForAnAppointment, send })
+
+    expect(send).not.toHaveBeenCalled()
+    expect(anthropicCreate).not.toHaveBeenCalled()
+    expect(prisma.channelMessage.create).not.toHaveBeenCalled()
+    expect(r).toEqual({ replied: false, escalated: false, skipped: "reply_held" })
+  })
+
+  it("still answers the same message on a number nobody holds a phone for", async () => {
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ settings: {} } as never)
+    const send = vi.fn().mockResolvedValue(true)
+
+    const r = await maybeAiAutoReply({ ...customerAsksForAnAppointment, send })
+
+    expect(send).toHaveBeenCalledWith("Salam! Xoş gəlmisiniz.")
+    expect(r.replied).toBe(true)
+  })
+
+  it("obeys the owner switching the hold off on a coexistence number", async () => {
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ settings: { coexistence: true, replyHold: "never" } } as never)
+    const send = vi.fn().mockResolvedValue(true)
+
+    const r = await maybeAiAutoReply({ ...customerAsksForAnAppointment, send })
+
+    expect(send).toHaveBeenCalledOnce()
+    expect(r.replied).toBe(true)
+  })
+
+  it("obeys the owner holding a number that is not a coexistence one", async () => {
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ settings: { replyHold: "always" } } as never)
+    const send = vi.fn().mockResolvedValue(true)
+
+    const r = await maybeAiAutoReply({ ...customerAsksForAnAppointment, send })
+
+    expect(send).not.toHaveBeenCalled()
+    expect(r.skipped).toBe("reply_held")
+  })
+
+  /**
+   * Fail closed. The sweep comes round again in five minutes, so an unread setting costs one late
+   * answer; reading it as "not held" costs a reply over a human's shoulder, which cannot be undone.
+   */
+  it("sends nothing when the channel's settings cannot be read", async () => {
+    vi.mocked(prisma.channelConfig.findFirst).mockRejectedValue(new Error("channel settings unavailable"))
+    const send = vi.fn().mockResolvedValue(true)
+
+    const r = await maybeAiAutoReply({ ...customerAsksForAnAppointment, send })
+
+    expect(send).not.toHaveBeenCalled()
+    expect(anthropicCreate).not.toHaveBeenCalled()
+    expect(r).toEqual({ replied: false, escalated: false, skipped: "channel_unreadable" })
+  })
+})
