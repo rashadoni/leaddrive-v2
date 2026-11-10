@@ -28,6 +28,7 @@ import { readJsonSafely } from "@/lib/http/read-json-safely"
 import { applySnippetVariables, type MessageSnippetLike } from "@/lib/inbox/snippet-vars"
 import { whatsappCallAuditLines } from "@/lib/whatsapp-call-audit"
 import { channelAccountLine, channelAccountShortLabel, sameChannelAddress } from "@/lib/inbox/conversation-channel"
+import { callStatusWord, callSummaryLine } from "@/lib/inbox/call-summary"
 import { dialFailureDiagnostic, formatDialDiagnostic } from "@/lib/calls/dial-diagnostics"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -283,6 +284,9 @@ const CALL_UI_COPY = {
     transcript: "Transcript",
     insights: "AI insights",
     diagnostics: "WhatsApp diagnostics",
+    technicalDetails: "Technical details",
+    outgoingCall: "Outgoing call",
+    incomingCall: "Incoming call",
   },
   ru: {
     call: "Позвонить",
@@ -302,6 +306,9 @@ const CALL_UI_COPY = {
     transcript: "Транскрипт",
     insights: "AI-инсайты",
     diagnostics: "Диагностика WhatsApp",
+    technicalDetails: "Технические подробности",
+    outgoingCall: "Исходящий звонок",
+    incomingCall: "Входящий звонок",
   },
   az: {
     call: "Zəng et",
@@ -321,6 +328,9 @@ const CALL_UI_COPY = {
     transcript: "Transkript",
     insights: "AI analitika",
     diagnostics: "WhatsApp diaqnostikası",
+    technicalDetails: "Texniki təfərrüat",
+    outgoingCall: "Gedən zəng",
+    incomingCall: "Gələn zəng",
   },
 } as const
 
@@ -408,6 +418,8 @@ export default function InboxV2Page() {
     const diagnostic = dialFailureDiagnostic(call)
     return diagnostic ? [formatDialDiagnostic(diagnostic, tVoip)] : []
   }, [tVoip])
+  // The reader's own clock, 24-hour: the summary line says when the customer picked up.
+  const callTime = useCallback((at: Date) => at.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }), [locale])
   const router = useRouter()
   const n3Text = N3_UI_COPY[localeKey(locale)]
   const callText = CALL_UI_COPY[localeKey(locale)]
@@ -2597,9 +2609,8 @@ export default function InboxV2Page() {
                   if (item.kind === "call") {
                     const call = item.call
                     const out = call.direction !== "inbound"
-                    const seconds = typeof call.duration === "number" && call.duration > 0
-                      ? formatCallCopy(callText.duration, { seconds: String(call.duration) })
-                      : null
+                    // The title already says which way; the line goes on from there.
+                    const summary = callSummaryLine(call, locale, callTime, { withDirection: false })
                     const diagnostics = callDiagnosticLines(call, 3)
                     const diagnosticsTitle = call.provider === "whatsapp"
                       ? callText.diagnostics
@@ -2615,24 +2626,35 @@ export default function InboxV2Page() {
                               <Phone className="h-4 w-4" />
                             </span>
                             <div>
-                              <div>{out ? callText.callContact : callText.calls}</div>
+                              <div>{out ? callText.outgoingCall : callText.incomingCall}</div>
                               <div className="text-xs font-normal text-muted-foreground">
-                                {out ? call.toNumber : call.fromNumber} · {call.status}{seconds ? ` · ${seconds}` : ""}
+                                {out ? call.toNumber : call.fromNumber}
                               </div>
+                              <div className="text-xs font-normal text-muted-foreground" data-testid="call-summary">{summary}</div>
                             </div>
                           </div>
                           <div className="mt-1 text-[10px] text-muted-foreground">
-                            {new Date(call.createdAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-                            {call.provider ? ` · ${call.provider}` : ""}
+                            {callTime(new Date(call.createdAt))}
+                            {call.provider ? ` · ${call.provider === "whatsapp" ? "WhatsApp" : call.provider}` : ""}
                           </div>
-                          {diagnostics.length > 0 && (
+                          {diagnostics.length > 0 && (call.provider === "whatsapp" ? (
+                            // Meta's raw journal is for whoever debugs a call, not the manager reading it: folded.
+                            <details className="mt-2 text-[10px] leading-4 text-muted-foreground">
+                              <summary className="cursor-pointer select-none hover:text-foreground">{callText.technicalDetails}</summary>
+                              <div className="mt-1 rounded-md bg-muted/45 px-2 py-1.5">
+                                {diagnostics.map((line, index) => (
+                                  <div key={`${call.id}-diag-${index}`} className="break-words">{line}</div>
+                                ))}
+                              </div>
+                            </details>
+                          ) : (
                             <div className="mt-2 rounded-md bg-muted/45 px-2 py-1.5 text-[10px] leading-4 text-muted-foreground">
                               <div className="mb-1 font-medium text-foreground/70">{diagnosticsTitle}</div>
                               {diagnostics.map((line, index) => (
                                 <div key={`${call.id}-diag-${index}`} className="break-words">{line}</div>
                               ))}
                             </div>
-                          )}
+                          ))}
                           {(call.hasRecording || call.transcription || call.insightsAt) && (
                             <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
                               {call.recordingPlaybackUrl && (
@@ -3367,21 +3389,29 @@ export default function InboxV2Page() {
                             "rounded-full px-1.5 py-0.5 text-[10px]",
                             callStatusClass(call.status),
                           )}>
-                            {call.status}
+                            {callStatusWord(call.status, locale)}
                           </span>
                         </div>
                         <p className="mt-0.5 text-[10px] text-muted-foreground/60">
                           {formatDate(new Date(call.createdAt), locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                          {typeof call.duration === "number" ? ` · ${call.duration}s` : ""}
-                          {call.provider ? ` · ${call.provider}` : ""}
                         </p>
-                        {diagnostics.length > 0 && (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground" data-testid="call-side-summary">{callSummaryLine(call, locale, callTime)}</p>
+                        {diagnostics.length > 0 && (call.provider === "whatsapp" ? (
+                          <details className="mt-1 text-[10px] leading-4 text-muted-foreground">
+                            <summary className="cursor-pointer select-none hover:text-foreground">{callText.technicalDetails}</summary>
+                            <div className="mt-1 rounded bg-background/65 px-1.5 py-1">
+                              {diagnostics.map((line, index) => (
+                                <div key={`${call.id}-side-diag-${index}`} className="break-words">{line}</div>
+                              ))}
+                            </div>
+                          </details>
+                        ) : (
                           <div className="mt-1 rounded bg-background/65 px-1.5 py-1 text-[10px] leading-4 text-muted-foreground">
                             {diagnostics.map((line, index) => (
                               <div key={`${call.id}-side-diag-${index}`} className="break-words">{line}</div>
                             ))}
                           </div>
-                        )}
+                        ))}
                         {(call.hasRecording || call.transcription || call.insightsAt) && (
                           <div className="mt-1 flex flex-wrap gap-1.5 text-[10px]">
                             {call.recordingPlaybackUrl ? <a href={call.recordingPlaybackUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{callText.recording}</a> : null}
