@@ -201,9 +201,13 @@ export const navItems: NavItem[] = [
   // the help video belongs to the screen a person opened.
   ...(BOOKING_WORKSPACE_ENABLED ? [
     { module: "booking", href: "/meetings", icon: CalendarCheck, tKey: "bookingWorkspace", searchKeys: ["onlineBooking"], group: "Booking", permissionScope: "bookings" },
-    { module: "booking", href: "/meetings/services", icon: Tag, tKey: "bookingServices", group: "Booking", permissionScope: "bookings" },
-    { module: "booking", href: "/meetings/whatsapp", icon: MessageCircle, tKey: "bookingWhatsApp", group: "Booking", permissionScope: "bookings" },
-    { module: "booking", href: "/meetings/team", icon: Users, tKey: "bookingTeam", group: "Booking", permissionScope: "bookings" },
+    // The other three set the section up, and only an administrator may
+    // (`canConfigure`). As tabs they were simply absent for everyone else; as
+    // menu entries they would be three links to a screen that refuses the
+    // person, which the role sandbox caught at once.
+    { module: "booking", href: "/meetings/services", icon: Tag, tKey: "bookingServices", group: "Booking", permissionScope: "bookings", allowedRoles: ADMIN_ROLES },
+    { module: "booking", href: "/meetings/whatsapp", icon: MessageCircle, tKey: "bookingWhatsApp", group: "Booking", permissionScope: "bookings", allowedRoles: ADMIN_ROLES },
+    { module: "booking", href: "/meetings/team", icon: Users, tKey: "bookingTeam", group: "Booking", permissionScope: "bookings", allowedRoles: ADMIN_ROLES },
   ] satisfies NavItem[] : []),
   // ── Sales ────────────────────────────────────────────────────────────────
   // Dedicated Sales group/module (1 группа = 1 модуль): the seller's daily path
