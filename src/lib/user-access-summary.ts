@@ -40,10 +40,12 @@ export function enforcedAccessLevel(roleId: string, scope: string): AccessLevel 
 export const HIDEABLE_MODULE_SCOPES: Record<UserHideableId, readonly string[]> = {
   crm: ["companies", "contacts", "projects"],
   boards: ["tasks"],
-  // Meetings (/meetings) sit in the Sales group and hide with it; their scope is
-  // special-cased in checkPermission (nobody deletes, viewer has none), so the
-  // matrix lists it rather than letting «Satış» imply it.
-  sales: ["deals", "leads", "offers", "bookings"],
+  // Meetings are a module of their own since 2026-11-10 — a salon buys the
+  // booking section without any of Sales — so one tick hides the whole section
+  // and nothing of Sales. The scope stays special-cased in checkPermission
+  // (nobody deletes, a viewer has none).
+  booking: ["bookings"],
+  sales: ["deals", "leads", "offers"],
   contracts: ["contracts"],
   marketing: ["campaigns", "journeys", "segments", "events"],
   loyalty: ["loyalty"],

@@ -298,6 +298,11 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   // BookingAccess own/team grants must be applied before voice aggregates.
   // Navigation and the guide work; the generic tenant-wide reader is not enabled.
   [BOOKING_WORKSPACE_ENABLED ? "meetings" : "settings_booking"]: "pending",
+  // One screen per address since 2026-11-10; the same grant still has to be
+  // applied before any of them can be read aloud as numbers.
+  ...(BOOKING_WORKSPACE_ENABLED
+    ? { meetings_services: "pending", meetings_whatsapp: "pending", meetings_team: "pending" } as const
+    : {}),
   "settings_ad-conversions": "config",
   "settings_intake-forms": "config",
   "settings_approval-rules": "config",
