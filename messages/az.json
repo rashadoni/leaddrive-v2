@@ -801,6 +801,12 @@
     "personnelSettings": "Parametrlər"
   },
   "auth": {
+    "crossTenantTitle": "Başqa təşkilata daxil olmusunuz",
+    "crossTenantBody": "Bu tab {host} ünvanında açıqdır, brauzer isə {session} təşkilatına daxil olub. Bir brauzer eyni vaxtda bir təşkilatla işləyir, ona görə bu səhifədə heç nə yüklənməyəcək.",
+    "crossTenantBodyUnknown": "Bu tab brauzerin daxil olduğundan başqa təşkilatda açıqdır. Bir brauzer eyni vaxtda bir təşkilatla işləyir, ona görə bu səhifədə heç nə yüklənməyəcək.",
+    "crossTenantSignIn": "Burada daxil ol",
+    "crossTenantSignInNamed": "{host} üçün daxil ol",
+    "crossTenantDismiss": "Bağla",
     "tenantNotFoundTitle": "İş sahəsi tapılmadı",
     "tenantNotFoundDesc": "Bu ünvanda heç bir LeadDrive iş sahəsi yoxdur. URL-i yoxlayın və ya düzgün keçid üçün administratorunuzla əlaqə saxlayın.",
     "signIn": "Daxil ol",

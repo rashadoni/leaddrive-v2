@@ -1515,7 +1515,10 @@ describe("middleware", async () => {
     })
     const res = await authMiddleware(req)
     expect(res.status).toBe(401)
-    expect(await res.json()).toMatchObject({ code: "session_expired" })
+    // Its own code, and both slugs: the tab turns this into a sentence naming the organisation the
+    // browser is actually signed into (components/cross-tenant-notice). `session_expired` would be
+    // the wrong sentence — the session is alive, it just belongs elsewhere.
+    expect(await res.json()).toMatchObject({ code: "cross_tenant", sessionSlug: "zeytun", hostSlug: "leaddrive" })
     expect(res.headers.get("set-cookie")).toBeNull()
     expect(forwardedRequestHeader(res, "x-organization-id")).toBeNull()
     expect(warnSpy).toHaveBeenCalledWith(
