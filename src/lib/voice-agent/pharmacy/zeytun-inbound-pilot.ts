@@ -16,7 +16,7 @@ import type { PharmacyAssortment } from "./zeytun-pharmacy-assortment"
 import type { DepartedSearch } from "./zeytun-departed-items"
 import type { ArrivedItem } from "./zeytun-arrived-items"
 import type { ArrivalOffer, WaitlistLine } from "./zeytun-waitlist"
-import { CHIRP_PHRASE_LIMIT, pairHeard, UTTERANCE_MAX_BYTES, UTTERANCE_MIN_BYTES, type ZeytunSecondEar } from "./zeytun-chirp"
+import { CHIRP_PHRASE_LIMIT, pairHeard, UTTERANCE_MAX_BYTES, UTTERANCE_MIN_BYTES, UTTERANCE_SAMPLE_RATE, type ZeytunSecondEar } from "./zeytun-chirp"
 import { namesFormOrStrength } from "./name-search"
 import { CALLBACK_MARKER, callbackMarker, callbackNote, callbackOpening, type CallbackMarker } from "./zeytun-waitlist-callback"
 
@@ -274,6 +274,8 @@ export type InboundPilotDependencies = {
   pharmacyHistory?: (config: LineGrant, call: InboundPilotOrderCall) => Promise<PharmacyHistory>
   /** Google Chirp next to the model (zeytun-chirp.ts); off without its key file. Line calls only. */
   secondEar?: ZeytunSecondEar
+  /** A phrase sent to Chirp, into the order organization's AI journal (src/lib/ai/gateway). Never waits. */
+  journalHearing?: (organizationId: string, seconds: number) => void
   /** What the pharmacy this call is known to be from orders (zeytun-pharmacy-assortment.ts); null when
    * none or not read yet — the first ask starts reading it. Never waits. Line calls only. */
   pharmacyAssortment?: (config: LineGrant, call: InboundPilotOrderCall) => PharmacyAssortment | null
@@ -285,7 +287,7 @@ export type InboundPilotDependencies = {
   markWaitlistArrivals?: (config: InboundPilotConfig) => Promise<number>
   /** Task 1b (2026-11-06): lines the transcript has and an unfinished order of the call does not (zeytun-transcript-recovery.ts). */
   recoverOrderFromTranscript?: (providerCallId: string, transcript: string,
-    read: (transcript: string) => Promise<{ name: string; quantity: number; unit: string }[] | null>) => Promise<{ status: string; added?: number }>
+    read: (transcript: string, orgId: string) => Promise<{ name: string; quantity: number; unit: string }[] | null>) => Promise<{ status: string; added?: number }>
   clock?: () => number
 }
 export function inboundPilotDigest(config: InboundPilotConfig) {
@@ -857,6 +859,8 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         const named = ear.lookedUp(input.callId) ? [] : dependencies.pharmacyHints?.(config) ?? []
         const taken = ear.hear(input.callId, input.seq, pcm!, named.length
           ? [...named, ...hints.filter(name => !named.includes(name))].slice(0, CHIRP_PHRASE_LIMIT) : hints)
+        // Google bills the phrase sent; the line runs on the platform's speech credentials.
+        if (taken) dependencies.journalHearing?.(config.orderOrganizationId, pcm!.length / (UTTERANCE_SAMPLE_RATE * 2))
         return searchResponse({ status: taken ? "accepted" : "busy" }, 202)
       }
       if (input.action === "transfer") {

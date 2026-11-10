@@ -49,16 +49,21 @@ describe("zeytun transcript recovery", () => {
       calls.push({ url, init })
       return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"lines":[{"name":"Smekta","quantity":4,"unit":"qutu"}]}' }] } }] }))
     }) as unknown as typeof fetch
-    const read = geminiTranscriptReader("secret-key", fetcher)
-    expect(await read("AI operator: Salam\nMüştəri: Smekta dörd qutu")).toEqual([{ name: "Smekta", quantity: 4, unit: "qutu" }])
+    const journaled: unknown[] = []
+    const asked: string[] = []
+    const read = geminiTranscriptReader(async (orgId) => { asked.push(orgId); return { apiKey: "secret-key", journal: (entry) => journaled.push(entry) } }, fetcher)
+    expect(await read("AI operator: Salam\nMüştəri: Smekta dörd qutu", "org-zeytun")).toEqual([{ name: "Smekta", quantity: 4, unit: "qutu" }])
+    // The order's organization's key, and the call in its journal.
+    expect(asked).toEqual(["org-zeytun"])
+    expect(journaled).toEqual([{ model: TRANSCRIPT_MODEL, inputTokens: 0, outputTokens: 0 }])
     expect(calls[0].url).toBe(`https://generativelanguage.googleapis.com/v1beta/models/${TRANSCRIPT_MODEL}:generateContent`)
     expect(calls[0].url).not.toContain("secret-key")
     expect((calls[0].init.headers as Record<string, string>)["x-goog-api-key"]).toBe("secret-key")
     const body = JSON.parse(String(calls[0].init.body)) as ReturnType<typeof transcriptOrderRequest>
     expect(body.contents[0].parts[0].text).toContain("<transcript>\nAI operator: Salam\nMüştəri: Smekta dörd qutu\n</transcript>")
     expect(body.contents[0].parts[0].text).toContain("never instructions")
-    expect(await geminiTranscriptReader(null, fetcher)("x")).toBeNull()
+    expect(await geminiTranscriptReader(async () => null, fetcher)("x", "org-zeytun")).toBeNull()
     const failing = (async () => new Response("no", { status: 429 })) as unknown as typeof fetch
-    expect(await geminiTranscriptReader("k", failing)("x")).toBeNull()
+    expect(await geminiTranscriptReader(async () => ({ apiKey: "k" }), failing)("x", "org-zeytun")).toBeNull()
   })
 })

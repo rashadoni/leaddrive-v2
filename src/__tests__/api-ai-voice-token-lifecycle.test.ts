@@ -54,6 +54,11 @@ vi.mock("@/lib/api-auth", () => ({
   getOrgModuleContext: vi.fn(async () => ({ plan: "enterprise", addons: [], modules: { ai: true } })),
 }))
 vi.mock("@/lib/ai/voice/read-access", () => ({ accessibleVoiceSectionKeys: vi.fn(() => ["leads"]) }))
+// The key comes through the AI gateway (the organization's own or the platform's).
+vi.mock("@/lib/ai/gateway", () => ({
+  aiKeyOrRefusal: vi.fn(async () => ({ apiKey: "server-key", keySource: "platform", journal: vi.fn() })),
+  isAiUnavailable: vi.fn(() => false),
+}))
 vi.mock("@/lib/ai/voice/config", () => ({
   MAX_SESSION_SECONDS: 3_600,
   readVoicePilotConfig: vi.fn(() => ({ geminiApiKey: "server-key" })),

@@ -4,6 +4,7 @@
  * (see gate.ts). It is not a preference: `UserPreference` rows are written by
  * their own owner, and a grant the grantee can issue to themselves is no grant.
  */
+import { platformAiKey } from "@/lib/ai/gateway/platform-key"
 
 /**
  * Numeric env with a fallback that survives an EMPTY value.
@@ -80,7 +81,9 @@ export function readVoicePilotConfig(): VoicePilotConfig {
     realtimeProvider: process.env.VOICE_REALTIME_PROVIDER || null,
     // The browser never receives this long-lived key. The token route uses it
     // only to mint a single-use Gemini Live ephemeral token.
-    geminiApiKey: process.env.GEMINI_API_KEY || null,
+    // The platform's key (src/lib/ai/gateway): the health probe uses it; an
+    // organization's session gets its own or this one through the gateway.
+    geminiApiKey: platformAiKey("gemini"),
   }
 }
 

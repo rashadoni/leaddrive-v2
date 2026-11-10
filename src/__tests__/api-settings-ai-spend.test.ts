@@ -151,8 +151,8 @@ describe("AI spend report and provider keys", () => {
     expect(state.save).not.toHaveBeenCalled()
   })
 
-  it("takes no key for a provider that still runs outside the gateway, nor something that is not a key", async () => {
-    for (const provider of ["gemini", "openai", "voyage", "google_vision", "made-up"]) {
+  it("takes no key for Speech-to-Text (the platform's service account) or an unknown provider, nor something that is not a key", async () => {
+    for (const provider of ["google_speech", "made-up"]) {
       const res = await keys.PUT(req("/api/v1/settings/ai-keys", "PUT", { provider, key: KEY }))
       expect(res.status).toBe(400)
       expect((await res.json()).code).toBe("PROVIDER_NOT_OPEN")

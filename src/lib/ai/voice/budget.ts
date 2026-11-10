@@ -16,6 +16,8 @@
  * zero rows and silently look like success.
  */
 import { prisma } from "@/lib/prisma"
+import { journalAiCallOnCurrentKey } from "@/lib/ai/gateway/access"
+import { perMinuteCostUsd, UNIT_PRICING } from "@/lib/ai/gateway/pricing"
 import { yearMonthKey } from "./config"
 import { monthlyBudgetSeconds } from "./monthly-budget"
 
@@ -92,6 +94,15 @@ export async function settleVoiceSeconds(
       settledSeconds: { increment: Math.max(0, billedSeconds) },
     },
   })
+  // The organization's AI journal (src/lib/ai/gateway): what the conversation
+  // cost, by its billed length. The browser talks to Gemini directly, so the
+  // server never sees token counts; the minute price is an estimate from above.
+  if (billedSeconds > 0) {
+    await journalAiCallOnCurrentKey(organizationId, "gemini", "voice-assistant", {
+      model: "gemini-live",
+      costUsd: perMinuteCostUsd(UNIT_PRICING.geminiLiveMinute, billedSeconds),
+    })
+  }
 }
 
 /** Remaining budget for display, without claiming anything. */

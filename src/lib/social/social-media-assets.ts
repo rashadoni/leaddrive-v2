@@ -1,3 +1,4 @@
+import { platformAiKey } from "@/lib/ai/gateway/platform-key"
 import { canonicalizeMediaUrl } from "@/lib/social/media-cascade"
 import { isValidPublicMediaUrl } from "@/lib/vision/types"
 
@@ -44,8 +45,9 @@ export function detectSocialMediaPlatform(value: string): SocialMediaPlatform {
 export function getMediaProviderReadiness() {
   const endpoint = configuredResolverEndpoint()
   return {
-    ocrConfigured: Boolean(process.env.GOOGLE_VISION_API_KEY?.trim()),
-    asrConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+    // The platform's keys; an organization's own key is resolved per call (src/lib/ai/gateway).
+    ocrConfigured: Boolean(platformAiKey("google_vision")),
+    asrConfigured: Boolean(platformAiKey("openai")),
     externalAssetResolverConfigured: Boolean(endpoint),
     metaOembedConfigured: Boolean(process.env.META_OEMBED_ACCESS_TOKEN?.trim()),
     freeOembedPlatforms: ["youtube", "tiktok"],

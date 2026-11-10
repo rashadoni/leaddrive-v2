@@ -1,4 +1,5 @@
 import { anthropicFor } from "./gateway"
+import { voyageEmbedding } from "./voyage-embedding"
 import { PiiMasker } from "./pii-masker"
 import { prisma } from "@/lib/prisma"
 
@@ -20,30 +21,12 @@ function maskEmbeddingText(text: string): string {
  */
 async function generateEmbedding(orgId: string, text: string): Promise<number[]> {
   const safeText = maskEmbeddingText(text)
-  const voyageKey = process.env.VOYAGE_API_KEY
-  if (voyageKey) {
-    // Use Voyage AI for high-quality embeddings
-    const response = await fetch("https://api.voyageai.com/v1/embeddings", {
-      signal: AbortSignal.timeout(30_000),
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${voyageKey}`,
-      },
-      body: JSON.stringify({
-        model: "voyage-3-lite",
-        input: [safeText.slice(0, 8000)], // Max input length
-      }),
-    })
-    const data = await response.json()
-    if (data.data?.[0]?.embedding) {
-      return data.data[0].embedding
-    }
-  }
+  const voyage = await voyageEmbedding(orgId, safeText, "embeddings")
+  if (voyage) return voyage
 
   // Fallback: use Anthropic to create a semantic hash
   // This is a workaround — generates a pseudo-embedding by asking Claude to rate relevance
-  // For production, configure VOYAGE_API_KEY for real embeddings
+  // For production, give the organization Voyage (its own key or the platform's)
   const anthropic = await anthropicFor(orgId, "embeddings")
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",

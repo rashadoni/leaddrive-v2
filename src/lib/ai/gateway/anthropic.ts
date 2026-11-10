@@ -18,31 +18,11 @@
 import type Anthropic from "@anthropic-ai/sdk"
 import type { ClientOptions } from "@anthropic-ai/sdk"
 import { getAnthropicClient } from "@/lib/ai/anthropic-client"
-import { checkAiBudget } from "@/lib/ai/budget"
-import { logOperationalFailure } from "@/lib/telemetry/operational-failure"
-import { runWithTenant } from "@/lib/rls-context"
-import { tenantAiAccess } from "./credentials"
 import type { AiFeature } from "./features"
 import { recordAiUsage, type AiKeySource } from "./usage"
-import { aiRefusalText } from "./refusal-text"
+import { AiUnavailableError, assertAiBudget, isAiUnavailable, resolveAiKey } from "./access"
 
-export class AiUnavailableError extends Error {
-  constructor(readonly reason: "not_connected" | "budget_exceeded") {
-    super(reason === "not_connected"
-      ? "AI is not connected for this organization"
-      : "The organization's daily AI budget is used up")
-    this.name = "AiUnavailableError"
-  }
-}
-
-export function isAiUnavailable(error: unknown): error is AiUnavailableError {
-  return error instanceof AiUnavailableError
-}
-
-/** What the person sees when the gateway refuses, in their language. */
-export function aiUnavailableText(error: AiUnavailableError, locale?: string | null): string {
-  return aiRefusalText(error.reason, locale)
-}
+export { AiUnavailableError, isAiUnavailable, aiUnavailableText } from "./access"
 
 export type AnthropicForOptions = {
   /** The AI agent (ai_agent_configs.id) the call answers for. */
@@ -51,31 +31,6 @@ export type AnthropicForOptions = {
   maxRetries?: ClientOptions["maxRetries"]
   /** Skip the budget check: only for a caller that has just checked it. */
   skipBudget?: boolean
-}
-
-async function anthropicKey(orgId: string): Promise<{ apiKey: string | undefined; keySource: AiKeySource }> {
-  try {
-    const access = await tenantAiAccess(orgId, "anthropic")
-    if (access.secret) return { apiKey: access.secret, keySource: "tenant" }
-    if (!access.platformAllowed) throw new AiUnavailableError("not_connected")
-  } catch (error) {
-    if (isAiUnavailable(error)) throw error
-    logOperationalFailure("ai-gateway-access", "warn")
-  }
-  // An installation without a platform key has nothing to fall back to.
-  if (!process.env.ANTHROPIC_API_KEY) throw new AiUnavailableError("not_connected")
-  return { apiKey: process.env.ANTHROPIC_API_KEY, keySource: "platform" }
-}
-
-async function assertBudget(orgId: string): Promise<void> {
-  let allowed = true
-  try {
-    // In the organization's own scope: a cron or webhook caller may have none.
-    allowed = (await runWithTenant(orgId, () => checkAiBudget(orgId))).allowed
-  } catch {
-    logOperationalFailure("ai-gateway-budget", "warn")
-  }
-  if (!allowed) throw new AiUnavailableError("budget_exceeded")
 }
 
 export async function anthropicFor(orgId: string, feature: AiFeature, options: AnthropicForOptions = {}): Promise<Anthropic> {
@@ -88,7 +43,7 @@ export async function anthropicFor(orgId: string, feature: AiFeature, options: A
  */
 export async function anthropicAvailable(orgId: string): Promise<boolean> {
   try {
-    await anthropicKey(orgId)
+    await resolveAiKey(orgId, "anthropic")
     return true
   } catch (error) {
     if (isAiUnavailable(error)) return false
@@ -123,10 +78,10 @@ export async function anthropicAccess(
   feature: AiFeature,
   options: Omit<AnthropicForOptions, "agentId"> = {},
 ): Promise<(agentId?: string | null) => Anthropic> {
-  const { apiKey, keySource } = await anthropicKey(orgId)
+  const { apiKey, keySource } = await resolveAiKey(orgId, "anthropic")
   // The daily limit is the platform's: on its own key the organization sets
   // its ceiling at the provider.
-  if (!options.skipBudget && keySource === "platform") await assertBudget(orgId)
+  if (!options.skipBudget && keySource === "platform") await assertAiBudget(orgId)
   return (agentId) => metered(getAnthropicClient({
     apiKey,
     ...(options.timeout !== undefined ? { timeout: options.timeout } : {}),

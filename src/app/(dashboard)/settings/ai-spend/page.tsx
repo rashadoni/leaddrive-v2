@@ -32,11 +32,11 @@ type KeyRow = { provider: string; keyHint: string; status: string; lastCheckedAt
 type KeysState = { platformAllowed: boolean; keys: KeyRow[] }
 
 const PROVIDER_ROWS = [
-  { id: "anthropic", name: "Claude", vendor: "Anthropic", uses: "usesAnthropic", selfKey: true },
-  { id: "gemini", name: "Gemini", vendor: "Google", uses: "usesGemini", selfKey: false },
-  { id: "openai", name: "OpenAI", vendor: "", uses: "usesOpenai", selfKey: false },
-  { id: "voyage", name: "Voyage", vendor: "", uses: "usesVoyage", selfKey: false },
-  { id: "google", name: "Google Cloud", vendor: "", uses: "usesGoogle", selfKey: false },
+  { id: "anthropic", name: "Claude", vendor: "Anthropic", uses: "usesAnthropic" },
+  { id: "gemini", name: "Gemini", vendor: "Google", uses: "usesGemini" },
+  { id: "openai", name: "OpenAI", vendor: "", uses: "usesOpenai" },
+  { id: "voyage", name: "Voyage", vendor: "", uses: "usesVoyage" },
+  { id: "google_vision", name: "Google Vision", vendor: "Google Cloud", uses: "usesGoogle" },
 ] as const
 
 function intlLocale(locale: string) {
@@ -460,31 +460,34 @@ function niceStep(peak: number) {
 }
 
 function KeysCard({ keys, onChange, t, nf }: { keys: KeysState | null; onChange: (k: KeysState) => void; t: T; nf: string }) {
-  const [editing, setEditing] = useState(false)
+  // The provider whose key is being typed, or the one asked about removing.
+  const [editing, setEditing] = useState<string | null>(null)
   const [value, setValue] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-  const [confirmRemove, setConfirmRemove] = useState(false)
-  const own = keys?.keys.find((k) => k.provider === "anthropic") ?? null
+  const [removing, setRemoving] = useState<string | null>(null)
   const platformAllowed = keys?.platformAllowed !== false
+  const ownKey = (provider: string) => keys?.keys.find((k) => k.provider === provider) ?? null
+  const nameOf = (provider: string | null) => PROVIDER_ROWS.find((p) => p.id === provider)?.name ?? ""
 
-  async function save() {
+  async function save(provider: string) {
     setSaving(true)
     setError("")
     try {
       const res = await fetch("/api/v1/settings/ai-keys", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: "anthropic", key: value }),
+        body: JSON.stringify({ provider, key: value }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
         const code = json?.code
-        setError(t(code === "KEY_REFUSED" ? "keyRefused" : code === "KEY_MALFORMED" ? "keyMalformed" : code === "PROVIDER_UNREACHABLE" ? "keyUnreachable" : "keySaveFailed"))
+        setError(t(code === "KEY_REFUSED" ? "keyRefused" : code === "KEY_MALFORMED" ? "keyMalformed" : code === "PROVIDER_UNREACHABLE" ? "keyUnreachable" : "keySaveFailed",
+          { provider: nameOf(provider) }))
         return
       }
       onChange(json.data)
-      setEditing(false)
+      setEditing(null)
       setValue("")
     } catch {
       setError(t("keySaveFailed"))
@@ -494,7 +497,8 @@ function KeysCard({ keys, onChange, t, nf }: { keys: KeysState | null; onChange:
   }
 
   async function remove() {
-    const res = await fetch("/api/v1/settings/ai-keys?provider=anthropic", { method: "DELETE" })
+    if (!removing) return
+    const res = await fetch(`/api/v1/settings/ai-keys?provider=${encodeURIComponent(removing)}`, { method: "DELETE" })
     if (!res.ok) throw new Error(t("keySaveFailed"))
     onChange((await res.json()).data)
   }
@@ -507,49 +511,45 @@ function KeysCard({ keys, onChange, t, nf }: { keys: KeysState | null; onChange:
       <p className="mt-1 text-xs text-muted-foreground">{t("keysSubtitle")}</p>
       <div className="mt-4 divide-y divide-border/60">
         {PROVIDER_ROWS.map((p) => {
-          const isOwn = p.selfKey && own
-          const off = p.selfKey && !own && !platformAllowed
+          const own = ownKey(p.id)
+          const off = !own && !platformAllowed
           return (
             <div key={p.id} className="py-3">
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 sm:flex-nowrap">
                 <div className="min-w-0 sm:flex-1">
                   <div className="text-sm font-semibold">{p.name}{p.vendor && <span className="font-normal text-muted-foreground"> · {p.vendor}</span>}</div>
                   <div className="text-xs text-muted-foreground">{t(p.uses)}</div>
+                  <div className="mt-1">
+                    {own ? (
+                      <span className="flex flex-wrap items-center gap-x-1.5 text-xs">
+                        <i className="h-2 w-2 rounded-full bg-sky-500" />{t("statusOwn", { hint: own.keyHint })}
+                        {own.lastCheckedAt && <span className="text-muted-foreground">· {t("checkedAt", { date: date(own.lastCheckedAt) })}</span>}
+                      </span>
+                    ) : off ? (
+                      <Hint text={t("statusOffHint")}>
+                        <span className="inline-flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400" tabIndex={0}><i className="h-2 w-2 rounded-full bg-red-500" />{t("statusOff")}</span>
+                      </Hint>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><i className="h-2 w-2 rounded-full bg-emerald-500" />{t("statusPlatform")}</span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  {isOwn ? (
-                    <span className="flex items-center gap-1.5 whitespace-nowrap text-xs">
-                      <i className="h-2 w-2 rounded-full bg-sky-500" />{t("statusOwn", { hint: own.keyHint })}
-                      {own.lastCheckedAt && <span className="text-muted-foreground">· {t("checkedAt", { date: date(own.lastCheckedAt) })}</span>}
-                    </span>
-                  ) : off ? (
-                    <Hint text={t("statusOffHint")}>
-                      <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-red-600 dark:text-red-400" tabIndex={0}><i className="h-2 w-2 rounded-full bg-red-500" />{t("statusOff")}</span>
-                    </Hint>
-                  ) : (
-                    <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground"><i className="h-2 w-2 rounded-full bg-emerald-500" />{t("statusPlatform")}</span>
-                  )}
-                  {p.selfKey ? (
-                    !editing && (
-                      <>
-                        <button type="button" onClick={() => { setEditing(true); setError("") }} className="h-8 whitespace-nowrap rounded-lg border border-border px-3 text-xs font-medium hover:bg-muted">
-                          {t(own ? "replaceKey" : "enterKey")}
+                <div className="flex shrink-0 items-center gap-2">
+                  {editing !== p.id && (
+                    <>
+                      <button type="button" onClick={() => { setEditing(p.id); setValue(""); setError("") }} className="h-8 whitespace-nowrap rounded-lg border border-border px-3 text-xs font-medium hover:bg-muted">
+                        {t(own ? "replaceKey" : "enterKey")}
+                      </button>
+                      {own && (
+                        <button type="button" onClick={() => setRemoving(p.id)} className="h-8 whitespace-nowrap rounded-lg border border-border px-3 text-xs font-medium text-red-600 hover:bg-muted dark:text-red-400">
+                          {t("removeKey")}
                         </button>
-                        {own && (
-                          <button type="button" onClick={() => setConfirmRemove(true)} className="h-8 whitespace-nowrap rounded-lg border border-border px-3 text-xs font-medium text-red-600 hover:bg-muted dark:text-red-400">
-                            {t("removeKey")}
-                          </button>
-                        )}
-                      </>
-                    )
-                  ) : (
-                    <Hint text={t("keyLaterHint")}>
-                      <span className="whitespace-nowrap text-xs text-muted-foreground underline decoration-dotted underline-offset-4" tabIndex={0}>{t("keyLater")}</span>
-                    </Hint>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
-              {p.selfKey && editing && (
+              {editing === p.id && (
                 <div className="mt-3 space-y-2">
                   <input
                     type="password"
@@ -557,16 +557,16 @@ function KeysCard({ keys, onChange, t, nf }: { keys: KeysState | null; onChange:
                     spellCheck={false}
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    placeholder={t("keyPlaceholder")}
+                    placeholder={t("keyPlaceholder", { provider: p.name })}
                     className="h-9 w-full rounded-lg border border-border bg-background px-3 font-mono text-sm"
-                    aria-label={t("keyPlaceholder")}
+                    aria-label={t("keyPlaceholder", { provider: p.name })}
                   />
                   {error && <p className="text-xs text-red-600 dark:text-red-400" role="alert">{error}</p>}
                   <div className="flex gap-2">
-                    <Button type="button" onClick={save} disabled={saving || value.trim().length === 0}>
+                    <Button type="button" onClick={() => save(p.id)} disabled={saving || value.trim().length === 0}>
                       {saving ? t("keySaving") : t("keySave")}
                     </Button>
-                    <Button type="button" variant="outline" onClick={() => { setEditing(false); setValue(""); setError("") }}>
+                    <Button type="button" variant="outline" onClick={() => { setEditing(null); setValue(""); setError("") }}>
                       {t("cancel")}
                     </Button>
                   </div>
@@ -578,11 +578,11 @@ function KeysCard({ keys, onChange, t, nf }: { keys: KeysState | null; onChange:
       </div>
       <p className="mt-auto pt-3 text-[11px] text-muted-foreground">{t("keysFooter")}</p>
       <ConfirmDialog
-        open={confirmRemove}
-        onOpenChange={setConfirmRemove}
+        open={removing !== null}
+        onOpenChange={(open) => { if (!open) setRemoving(null) }}
         onConfirm={remove}
-        title={t("removeTitle")}
-        description={t(platformAllowed ? "removeDescPlatform" : "removeDescOff")}
+        title={t("removeTitle", { provider: nameOf(removing) })}
+        description={t(platformAllowed ? "removeDescPlatform" : "removeDescOff", { provider: nameOf(removing) })}
         confirmLabel={t("removeKey")}
       />
     </section>
@@ -598,7 +598,7 @@ function LimitCard({ report, keys, money, nf, t }: { report: SpendReport | null;
   const reset = report
     ? new Intl.DateTimeFormat(nf, { hour: "2-digit", minute: "2-digit" }).format(new Date(Date.parse(`${report.lastDay}T00:00:00Z`) + 86_400_000))
     : ""
-  const ownClaude = keys?.keys.some((k) => k.provider === "anthropic")
+  const ownNames = PROVIDER_ROWS.filter((p) => keys?.keys.some((k) => k.provider === p.id)).map((p) => p.name)
   return (
     <section className="flex flex-col rounded-xl border border-border bg-card p-6">
       <h2 className="text-base font-semibold">{t("limitTitle")}</h2>
@@ -619,8 +619,8 @@ function LimitCard({ report, keys, money, nf, t }: { report: SpendReport | null;
         <div className="mt-1 text-xs text-muted-foreground">{t("limitWhenBody")}</div>
       </div>
       <div className="mt-4 rounded-lg border border-border border-l-4 border-l-sky-500 p-4 text-sm">
-        {ownClaude ? (
-          <div className="text-xs">{t("ownKeyActive")}</div>
+        {ownNames.length > 0 ? (
+          <div className="text-xs">{t("ownKeyActive", { providers: ownNames.join(", ") })}</div>
         ) : (
           <>
             <div className="font-semibold">{t("ownKeyTitle")}</div>
