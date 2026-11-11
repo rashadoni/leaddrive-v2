@@ -27,6 +27,7 @@ vi.mock("next/image", () => ({ default: (props: Record<string, unknown>) => crea
 import { TourProvider, useAutoTour, useTour } from "@/components/tour/tour-provider"
 import { LauncherPrefsProvider } from "@/contexts/launcher-prefs-context"
 import { HelpVideoFirstVisitPrompt, firstVisitPromptState } from "@/components/help/help-video-first-visit"
+import { stubFlight } from "./helpers/help-video-flight"
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -100,6 +101,32 @@ describe("the first-visit prompt", () => {
     expect(prompt()).toBeNull()
     expect(puts).toContainEqual({ helpVideoSeen: ["boards"] })
     expect(activeTour).toBe("boardsTour")
+  })
+
+  it("«Sonra» flies the window up into the section's card, holding the tour until it lands", async () => {
+    const card = document.createElement("div")
+    card.setAttribute("data-help-video-widget", "")
+    document.body.appendChild(card)
+    const flight = stubFlight()
+    try {
+      mount([])
+      await wait(900)
+      act(() => (container.querySelector('[data-testid="help-video-first-visit-later"]') as HTMLButtonElement).click())
+
+      // In the air: still on screen, not clickable, aimed at the card, tour held.
+      expect(prompt()?.getAttribute("data-flying")).toBe("true")
+      expect(prompt()?.className).toContain("pointer-events-none")
+      expect(flight.lastTransform()).toBe("translate(-90px, -180px) scale(0.75, 0.2)")
+      expect(puts).toContainEqual({ helpVideoSeen: ["boards"] })
+      expect(activeTour).toBeNull()
+
+      await act(async () => flight.land())
+      expect(prompt()).toBeNull()
+      expect(activeTour).toBe("boardsTour")
+    } finally {
+      flight.restore()
+      card.remove()
+    }
   })
 
   it("«Videoya bax» opens this section's player and marks it offered", async () => {
