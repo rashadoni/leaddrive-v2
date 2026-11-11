@@ -32226,6 +32226,7 @@
     "waBookingSaveError": "Could not save. Try again.",
     "waFlowTitle": "A form inside WhatsApp",
     "waFlowCheck": "Check",
+    "waFlowCreate": "Create the form",
     "waFlowSupported": "This number can show a form — none is created yet",
     "waFlowReady": "Form: {status}",
     "waFlowNo": "Not available on this number: {detail}",

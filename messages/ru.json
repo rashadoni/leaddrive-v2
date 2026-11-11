@@ -32226,6 +32226,7 @@
     "waBookingSaveError": "Не удалось сохранить. Попробуйте ещё раз.",
     "waFlowTitle": "Форма внутри WhatsApp",
     "waFlowCheck": "Проверить",
+    "waFlowCreate": "Создать форму",
     "waFlowSupported": "Номер умеет показывать форму — сама форма ещё не создана",
     "waFlowReady": "Форма есть: {status}",
     "waFlowNo": "На этом номере недоступно: {detail}",
