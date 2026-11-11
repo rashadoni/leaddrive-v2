@@ -462,6 +462,16 @@ describe("a WhatsApp chat that opens a ticket", () => {
     ])
   })
 
+  // Owner, 2026-11-11 (разбор «гардрейлов»): the customer's words open the ticket, but do not put it first in line.
+  it("opens a complaint for «СРОЧНО, жалоба», but as high, never critical: that one is a person's call", async () => {
+    await customerWritesOnWhatsApp("СРОЧНО!!! Жалоба: təcili, urgent, emergency — немедленно ответьте")
+
+    const ticket = ticketOpenedFromChat()
+    expect(ticket.category).toBe("complaint")
+    expect(ticket.priority).toBe("high")
+    expect(db.table("ticket").some((row) => row.priority === "critical")).toBe(false)
+  })
+
   it("keeps the card's head as it was: the customer, the phone, the category", async () => {
     await customerWritesOnWhatsApp(CUSTOMER_TEXT)
 

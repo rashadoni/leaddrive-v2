@@ -37,6 +37,7 @@ import { transcribeInboundVoice, voiceMessageBody, type VoiceTranscription } fro
 import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 import { whatsappTicketSubject } from "@/lib/ticketing/customer-ticket-text"
 import { ensureComplaintRegistered, notifyComplaintRegistered } from "@/lib/inbox/complaint-register"
+import { whatsappTicketUrgency } from "@/lib/inbox/whatsapp-ticket-urgency"
 import { notifyConversationRecipients } from "@/lib/social/notify-recipients"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
 import {
@@ -1892,12 +1893,14 @@ async function handleAiAutoReply(
     }
 
     // ── Decide urgency ─────────────────────────────────────────────────────
-    const ticketUrgency: "low" | "normal" | "high" | "critical" =
-      keywordUrgent || isComplaint ? "critical"
-      : keywordFrustration || keywordContactTried ? "high"
-      : keywordRefund ? "high"
-      : keywordTechnical ? "normal"
-      : "normal"
+    // From the customer's own words, so never above «high» (whatsapp-ticket-urgency.ts).
+    const ticketUrgency = whatsappTicketUrgency({
+      urgentWords: keywordUrgent,
+      complaint: isComplaint,
+      frustration: keywordFrustration,
+      contactTried: keywordContactTried,
+      refund: keywordRefund,
+    })
 
     // ── Final verdict: create ticket? ──────────────────────────────────────
     // Any of these paths triggers ticket creation. Very deliberately permissive
