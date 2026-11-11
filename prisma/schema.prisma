@@ -716,6 +716,11 @@ model User {
   /// connected later is visible until someone unticks it. Ignored for
   /// admin/superadmin. Rules: `src/lib/inbox/channel-access.ts`.
   hiddenChannelConfigIds String[] @default([])
+  /// Sections of Settings an admin handed to this one person without the admin
+  /// role. An ALLOW list — empty = what the role gives (own notifications only
+  /// for every non-admin role). Ignored for admin/superadmin/reviewer. Catalog
+  /// and enforcement: `src/lib/settings-sections.ts`.
+  settingsSections  String[]     @default([])
   avatar            String?
   phone             String?
   department        String?

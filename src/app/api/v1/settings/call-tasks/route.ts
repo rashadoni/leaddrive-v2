@@ -13,6 +13,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withRls, withRlsAuth } from "@/lib/with-rls"
+import { effectiveSettingsSections } from "@/lib/settings-sections"
 import { logAudit } from "@/lib/prisma"
 import { INBOX_QUALIFICATION_BOARD_PREFIX } from "@/lib/chatbot-engine"
 import { replaceOrgValueFlags } from "@/lib/org-features"
@@ -87,8 +88,9 @@ export const GET = withRls(async (_req, { orgId }) => {
 export const PUT = withRlsAuth("settings", "write", async (req, auth) => {
   // Belt and braces, exactly as /api/v1/settings/ai-features does it: the
   // permission matrix already limits `settings` to admins, and this check keeps
-  // holding if that matrix is ever loosened.
-  if (auth.role !== "admin" && auth.role !== "superadmin") {
+  // holding if that matrix is ever loosened. The one other way in is the
+  // section ticked for this person on their user card (lib/settings-sections.ts).
+  if (auth.role !== "admin" && auth.role !== "superadmin" && !effectiveSettingsSections(auth.role, auth.settingsSections).includes("call-tasks")) {
     return NextResponse.json({ error: "Admin role required" }, { status: 403 })
   }
   const orgId = auth.orgId

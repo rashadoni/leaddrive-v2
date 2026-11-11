@@ -590,6 +590,14 @@ jobs:
           TASK_EXTERNAL_IMPORT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           TASK_EXTERNAL_IMPORT_DB_GATE: required
 
+      - name: Settings sections database gate
+        # Same gate as in pr-checks: sections of Settings ticked on a user card
+        # (see the test's header).
+        run: npx vitest run src/__tests__/settings-sections-postgres.test.ts
+        env:
+          SETTINGS_SECTIONS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          SETTINGS_SECTIONS_DB_GATE: required
+
       - name: E-qaimə database gate
         # Same gate as in pr-checks: e-qaimə invoices under row-level security,
         # their totals, their sealed PDFs (see the test's header).

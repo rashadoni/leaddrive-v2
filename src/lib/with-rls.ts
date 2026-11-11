@@ -19,6 +19,7 @@ import {
 import { runWithTenant, runWithRlsBypass } from "./rls-context"
 import { withCustomerPhonePrivacy } from "./customer-phone-privacy"
 import { runWithAuditActor } from "./audit-actor-context"
+import { settingsGrantAllows } from "./settings-sections"
 
 /** What withRls hands the wrapped handler: the resolved tenant + (when present)
  *  the full session. Resolved ONCE under bypass so the handler never re-calls
@@ -106,6 +107,8 @@ function roleDenial(req: NextRequest, session: AuthResult | null): NextResponse 
 
   const action = methodToAction(req.method)
   if (checkPermission(session.role, resolvedModule, action)) return null
+  // A section of Settings an admin ticked for this person (lib/settings-sections.ts).
+  if (settingsGrantAllows(session, pathname, resolvedModule, action)) return null
 
   return NextResponse.json(
     {

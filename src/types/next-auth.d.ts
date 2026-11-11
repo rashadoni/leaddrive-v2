@@ -30,6 +30,8 @@ declare module "next-auth" {
       hiddenModules?: string[]
       /** Inbox numbers and pages an admin hid from this user; empty for admins. */
       hiddenChannelConfigIds?: string[]
+      /** Sections of Settings an admin ticked for this user (lib/settings-sections); empty for admins. */
+      settingsSections?: string[]
       /** End of an outside reviewer's grant (ISO); absent for everyone else. */
       reviewerAccessUntil?: string
     }

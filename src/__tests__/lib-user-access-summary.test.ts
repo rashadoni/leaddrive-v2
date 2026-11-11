@@ -239,7 +239,7 @@ describe("the card's rows cannot drift from enforcement or from the copy", () =>
     const table = readFileSync("src/app/(dashboard)/settings/roles/page.tsx", "utf8")
 
     expect(card).toContain("moduleAccessOutcome(form.role, form.hiddenModules, option.id)")
-    expect(card).toContain("settingsAccessOutcome(form.role, form.hiddenModules)")
+    expect(card).toContain("settingsAccessOutcome(form.role, form.hiddenModules, form.settingsSections)")
     expect(table).toContain("const enforcedLevel = enforcedAccessLevel")
   })
 })
