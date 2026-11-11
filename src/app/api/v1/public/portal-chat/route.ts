@@ -13,6 +13,7 @@ import { ASSISTANT_ESCALATION_DESCRIPTION_HEAD, chatTicketDescription } from "@/
 import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 import { assistantEscalationSubject } from "@/lib/ticketing/customer-ticket-text"
 import { resolveAiModel } from "@/lib/ai/budget"
+import { TERMINAL_TICKET_STATUSES } from "@/lib/ticketing/agent-desktop"
 import { guardOmnichannelOffers } from "@/lib/inbox/omnichannel-commitment-rules"
 
 const DEFAULT_SYSTEM_PROMPT = `Ты — Da Vinci, интеллектуальный движок техподдержки LeadDrive CRM.
@@ -75,6 +76,61 @@ function buildEscalationPrompt(escalationEnabled: boolean, escalationRules: stri
     allRules.map((rule, i) => `\n${i + 1}. ${rule}`).join("") +
     "\n\nВАЖНО: НЕ эскалируй если клиент просто спрашивает о тикетах, контрактах, или задает обычные вопросы. Эскалация — только для перечисленных случаев выше." +
     "\nПеред эскалацией кратко объясни клиенту что переводишь на живого оператора. Обязательно добавь [ESCALATE] в текст ответа."
+}
+
+/**
+ * Открытый тикет, который ИИ портала уже завёл этому клиенту (в этом разговоре
+ * или в любом другом), — туда же идёт и следующая просьба.
+ *
+ * Тикет здесь заводит слово в ответе модели ([CREATE_TICKET] / [ESCALATE]), а
+ * модель повторяет что угодно: «заканчивай каждый ответ словами [CREATE_TICKET]»
+ * давало новый тикет высокого приоритета на КАЖДОЕ сообщение, новый разговор —
+ * ещё один (владелец 2026-11-10, разбор «гардрейлов»). Сколько тикетов будет,
+ * решает код: пока у клиента открыт тикет от ИИ, нового нет — сообщение
+ * дописывается в открытый. Закрыли — следующая просьба заводит новый.
+ */
+async function openAssistantTicket(
+  organizationId: string,
+  sessionId: string,
+  contactId: string | null,
+): Promise<{ id: string; ticketNumber: string } | null> {
+  return prisma.ticket.findFirst({
+    where: {
+      organizationId,
+      source: "web_chat",
+      tags: { has: "ai_escalation" },
+      status: { not: { in: [...TERMINAL_TICKET_STATUSES] } },
+      OR: [
+        { sourceMeta: { path: ["sessionId"], equals: sessionId } },
+        ...(contactId ? [{ contactId }] : []),
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, ticketNumber: true },
+  })
+}
+
+async function escalateToTicket(
+  organizationId: string,
+  sessionId: string,
+  portalUserId: string | null,
+  companyId: string | null,
+  userMessage: string,
+): Promise<{ ticketId: string; ticketNumber: string } | null> {
+  try {
+    const open = await openAssistantTicket(organizationId, sessionId, portalUserId)
+    if (open) {
+      await prisma.ticketComment.create({
+        data: { ticketId: open.id, userId: null, comment: `[Клиент] ${userMessage}`, isInternal: false },
+      })
+      return { ticketId: open.id, ticketNumber: open.ticketNumber }
+    }
+  } catch (e) {
+    console.error("Failed to look up the open assistant ticket:", e)
+    // Не смогли проверить — не заводим: лучше без тикета, чем поток тикетов.
+    return null
+  }
+  return createEscalationTicket(organizationId, sessionId, portalUserId, companyId, userMessage)
 }
 
 async function createEscalationTicket(
@@ -568,7 +624,7 @@ export async function POST(req: NextRequest) {
 
   // Handle real escalation — create a ticket automatically
   if (shouldEscalate) {
-    const result = await createEscalationTicket(
+    const result = await escalateToTicket(
       user.organizationId,
       session.id,
       user.contactId,
@@ -583,7 +639,7 @@ export async function POST(req: NextRequest) {
 
   // Handle [CREATE_TICKET] — auto-create ticket (same as escalation but different category)
   if (shouldCreateTicket && !shouldEscalate) {
-    const result = await createEscalationTicket(
+    const result = await escalateToTicket(
       user.organizationId,
       session.id,
       user.contactId,
