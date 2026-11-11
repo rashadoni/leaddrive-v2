@@ -10,6 +10,7 @@ import { checkPermission, resolveModuleFromPath, methodToAction, PERMISSION_MODU
 import { hasModule, moduleRecordFromOrgFields, type ModuleId, MODULE_REGISTRY } from "./modules"
 import { customerPhonePrivacyEnabled } from "./customer-phone-privacy"
 import { effectiveHiddenChannels, effectiveHiddenModules, hideableIdForGateModule } from "./user-module-access"
+import { effectiveSettingsSections, settingsGrantAllows } from "./settings-sections"
 import { getMobileAuth, resolveMobileAuth } from "./mobile-auth"
 import crypto from "crypto"
 import { recordReviewerRead } from "./audit/reviewer-read-log"
@@ -208,6 +209,11 @@ export interface AuthResult {
    * admin, an API key or anyone nobody has restricted.
    */
   hiddenChannelConfigIds?: string[]
+  /**
+   * Sections of Settings an admin ticked for this person (lib/settings-sections). Same provenance
+   * as `hiddenModules`; absent for an admin, a reviewer, an API key or anyone with no tick.
+   */
+  settingsSections?: string[]
   /** Fresh server-side organization policy. Never copied from JWT/client claims.
    * Absent means the default, unrestricted policy for legacy internal fixtures. */
   hideCustomerPhoneForOperators?: boolean
@@ -216,6 +222,11 @@ export interface AuthResult {
 function sessionHiddenModules(role: Role, stored: unknown): { hiddenModules?: string[] } {
   const hiddenModules = effectiveHiddenModules(role, stored)
   return hiddenModules.length > 0 ? { hiddenModules } : {}
+}
+
+function sessionSettingsSections(role: Role, stored: unknown): { settingsSections?: string[] } {
+  const settingsSections = effectiveSettingsSections(role, stored)
+  return settingsSections.length > 0 ? { settingsSections } : {}
 }
 
 function sessionHiddenChannels(role: Role, stored: unknown): { hiddenChannelConfigIds?: string[] } {
@@ -272,6 +283,7 @@ async function resolveCookieSession(): Promise<CookieSessionResolution> {
       principalType: "session",
       ...sessionHiddenModules(sessionRole, rawSession.user.hiddenModules),
       ...sessionHiddenChannels(sessionRole, rawSession.user.hiddenChannelConfigIds),
+    ...sessionSettingsSections(sessionRole, rawSession.user.settingsSections),
     }
     if (!session.orgId || !session.userId) {
       return { denial: "unauthenticated" }
@@ -470,13 +482,17 @@ export async function getOrgId(req: NextRequest): Promise<string | null> {
  * stream) asks this once per module instead of re-running requireAuth.
  */
 export function moduleAccessDenial(
-  session: Pick<AuthResult, "role" | "hiddenModules">,
+  session: Pick<AuthResult, "role" | "hiddenModules" | "settingsSections">,
   orgContext: { plan: string; addons: string[]; modules: Record<string, boolean> } | null,
   module: Module | string,
   action: Action,
   options?: RequireAuthOptions,
+  pathname?: string,
 ): NextResponse | null {
+  // A section of Settings an admin ticked for this person opens that section's
+  // own routes, and nothing else (lib/settings-sections.ts).
   const allowed = checkPermission(session.role, module, action)
+    || (pathname !== undefined && settingsGrantAllows(session, pathname, module, action))
   if (!allowed) {
     return NextResponse.json(
       {
@@ -604,6 +620,7 @@ export async function requireAuth(
     principalType: "session",
     ...sessionHiddenModules(sessionRole, rawSession.user.hiddenModules),
     ...sessionHiddenChannels(sessionRole, rawSession.user.hiddenChannelConfigIds),
+    ...sessionSettingsSections(sessionRole, rawSession.user.settingsSections),
   }
 
   // SECURITY: Cross-tenant binding check (defense-in-depth; middleware enforces
@@ -650,12 +667,13 @@ export async function requireAuth(
   }
 
   // Resolve module and action from request if not explicitly provided
-  const resolvedModule = module || resolveModuleFromPath(new URL(req.url).pathname)
+  const requestPath = new URL(req.url).pathname
+  const resolvedModule = module || resolveModuleFromPath(requestPath)
   const resolvedAction = action || methodToAction(req.method)
 
   // Check permission if we could resolve a module
   if (resolvedModule) {
-    const denied = moduleAccessDenial(session, orgContext, resolvedModule, resolvedAction, options)
+    const denied = moduleAccessDenial(session, orgContext, resolvedModule, resolvedAction, options, requestPath)
     if (denied) return denied
   }
 

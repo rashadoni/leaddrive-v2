@@ -163,8 +163,41 @@ describe("user card — what this person gets", () => {
       "Продажи": [false, "Скрыт", null],
       "Финансы": [false, "Скрыт", null],
       "Маршруты и поле · Персонал": [true, "Всё, включая удаление", "В поле — Вся организация."],
-      "Настройки": [null, "Только свои уведомления", "У «Настроек» галочки нет: доступ к ним даёт только роль."],
+      "Настройки": [null, "Только свои уведомления", null],
     })
+  })
+
+  // Owner, 2026-11-11: sections of Settings without making the person an admin
+  // (lib/settings-sections.ts). One tick per section, under the Settings row.
+  it("ticks a section of Settings, names it on the Settings row and sends it on save", async () => {
+    await openCard()
+    const sectionsBlock = () => document.querySelector('[data-testid="user-settings-sections"]') as HTMLElement | null
+    const sectionTicks = () => Object.fromEntries([...(sectionsBlock()?.querySelectorAll("label") ?? [])]
+      .map((label) => [label.textContent?.split("—")[0].trim(), label.querySelector("input")!.checked]))
+    expect(sectionTicks()).toEqual({
+      "Уведомления": true,
+      "Автоматизации": false,
+      "Пользовательские поля": false,
+      "Настройки виджетов": false,
+      "Настройки KPI Arena": false,
+      "Задачи из звонков": false,
+    })
+    expect(sectionsBlock()?.textContent).toContain("Только у админа")
+
+    const workflows = [...sectionsBlock()!.querySelectorAll("label")].find((label) => label.textContent?.includes("Автоматизации"))
+    await act(async () => { workflows?.querySelector("input")?.click() })
+    expect(rows()["Настройки"].slice(1)).toEqual(["Свои уведомления, Автоматизации, Шаблоны автоматизаций", null])
+
+    await save()
+    const sent = writes.find((write) => write.method === "PUT" && write.url === "/api/v1/users/u-1")?.body as { settingsSections: string[] }
+    expect(sent.settingsSections).toEqual(["workflows"])
+  })
+
+  it("offers no section ticks to an admin, who has every section already", async () => {
+    await openCard()
+    const role = [...document.querySelectorAll("select")].find((select) => select.value === "manager")
+    await choose(role, "admin")
+    expect(document.querySelector('[data-testid="user-settings-sections"]')).toBeNull()
   })
 
   it("ticking a module back shows at once what the role allows in it", async () => {

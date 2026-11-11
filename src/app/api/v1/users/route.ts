@@ -12,6 +12,7 @@ import { passwordPolicyError } from "@/lib/password-policy"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
 import { USER_ADMIN_SELECT, USER_ROSTER_SELECT } from "@/lib/user-directory-projection"
 import { parseHiddenModulesInput } from "@/lib/user-module-access"
+import { effectiveSettingsSections, normalizeSettingsSections } from "@/lib/settings-sections"
 
 const MAX_CREATE_USER_BODY_SIZE = 32 * 1024
 
@@ -37,6 +38,8 @@ const createUserSchema = z.object({
   // Modules hidden from this person; the ids are validated against the hideable
   // catalog below (see user-module-access.ts).
   hiddenModules: z.array(z.string().max(50)).max(50).optional(),
+  // Sections of Settings handed to this person without the admin role (lib/settings-sections).
+  settingsSections: z.array(z.string().max(50)).max(20).optional(),
 }).strict()
 
 // Reading the team roster is `users:read`, not `settings:read`. The two are
@@ -119,6 +122,7 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
       maxTickets,
       preferredLanguage,
       hiddenModules,
+      settingsSections,
     } = parsed.data
 
     const passwordError = passwordPolicyError(password)
@@ -160,6 +164,12 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
       return NextResponse.json({ error: "Unknown module in hiddenModules" }, { status: 400 })
     }
 
+    const requestedSections = normalizeSettingsSections(settingsSections ?? [])
+    if (new Set(settingsSections ?? []).size !== requestedSections.length) {
+      return NextResponse.json({ error: "Unknown section in settingsSections" }, { status: 400 })
+    }
+    const resolvedSettingsSections = effectiveSettingsSections(resolvedRole, requestedSections)
+
     const passwordHash = await bcrypt.hash(password, 12)
 
     const user = await prisma.user.create({
@@ -176,9 +186,10 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
         maxTickets: maxTickets || 10,
         preferredLanguage: preferredLanguage || null,
         ...(resolvedHiddenModules.length > 0 ? { hiddenModules: resolvedHiddenModules } : {}),
+        ...(resolvedSettingsSections.length > 0 ? { settingsSections: resolvedSettingsSections } : {}),
       },
       select: {
-        id: true, name: true, email: true, role: true, hiddenModules: true,
+        id: true, name: true, email: true, role: true, hiddenModules: true, settingsSections: true,
         phone: true, department: true, isActive: true, createdAt: true,
       },
     })
@@ -191,6 +202,7 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
         role: user.role,
         isActive: user.isActive,
         hiddenModules: user.hiddenModules,
+        settingsSections: user.settingsSections,
       },
     })
 

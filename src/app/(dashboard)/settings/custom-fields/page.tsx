@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useSession } from "next-auth/react"
+import { effectiveSettingsSections } from "@/lib/settings-sections"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -50,7 +51,10 @@ export default function CustomFieldsPage() {
 
   const orgId = session?.user?.organizationId
   const role = (session?.user as { role?: string })?.role || "viewer"
+  // An admin, or a person this section was ticked for on their user card —
+  // the server lets exactly these through (lib/settings-sections.ts).
   const canManage = role === "admin" || role === "superadmin"
+    || effectiveSettingsSections(role, (session?.user as { settingsSections?: string[] })?.settingsSections).includes("custom-fields")
 
   const [fields, setFields] = useState<CustomField[]>([])
   const [loading, setLoading] = useState(true)

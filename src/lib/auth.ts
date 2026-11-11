@@ -20,6 +20,7 @@ import {
 import { requireAuthSecret } from "./auth-secret"
 import { moduleRecordFromOrgFields } from "./modules"
 import { applyUserModuleMask, effectiveHiddenChannels, effectiveHiddenModules } from "./user-module-access"
+import { effectiveSettingsSections } from "./settings-sections"
 import { readTenantLandingPath } from "./tenant-landing"
 import { applyVerifiedTwoFactorSessionUpdate } from "./two-factor-nonce"
 import { requiresTwoFactorSetup, resolveTwoFactorMethod } from "./two-factor-policy"
@@ -391,6 +392,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // this record — agree without knowing the mask exists.
         token.hiddenModules = effectiveHiddenModules(dbUser.role, dbUser.hiddenModules)
         token.hiddenChannelConfigIds = effectiveHiddenChannels(dbUser.role, dbUser.hiddenChannelConfigIds)
+        token.settingsSections = effectiveSettingsSections(dbUser.role, dbUser.settingsSections)
         token.modules = applyUserModuleMask({
           plan: token.plan as string,
           addons: token.addons as string[],
@@ -458,6 +460,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               // their next sign-in.
               hiddenModules: true,
               hiddenChannelConfigIds: true,
+              settingsSections: true,
               organization: {
                 select: { isActive: true, slug: true, plan: true, addons: true, features: true, modules: true, settings: true },
               },
@@ -512,6 +515,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // refresh.
           token.hiddenModules = effectiveHiddenModules(freshUser.role, freshUser.hiddenModules)
           token.hiddenChannelConfigIds = effectiveHiddenChannels(freshUser.role, freshUser.hiddenChannelConfigIds)
+          token.settingsSections = effectiveSettingsSections(freshUser.role, freshUser.settingsSections)
           token.modules = applyUserModuleMask({
             plan: (token.plan as string) || "starter",
             addons: (token.addons as string[]) || [],
@@ -597,6 +601,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           modules: (token.modules as Record<string, boolean>) || undefined,
           hiddenModules: (token.hiddenModules as string[] | undefined) || [],
           hiddenChannelConfigIds: (token.hiddenChannelConfigIds as string[] | undefined) || [],
+          settingsSections: (token.settingsSections as string[] | undefined) || [],
           landingPath: (token.landingPath as string | undefined) || undefined,
           reviewerAccessUntil: (token.reviewerAccessUntil as string | undefined) || undefined,
           needs2fa: token.needs2fa as boolean | undefined,

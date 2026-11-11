@@ -14,6 +14,7 @@ import { type ModuleId, type AddonFlagId, hasModule } from "@/lib/modules"
 import { isTenantCapabilityEnabled, type FieldTenantCapabilityId } from "@/lib/tenant-capabilities"
 import { checkPermission, type Role } from "@/lib/permissions"
 import { REVIEWER_ROLE, reviewerPageClosed } from "@/lib/reviewer-access"
+import { settingsGrantOpensPage } from "@/lib/settings-sections"
 import { isMtmNavigationItemActive } from "@/lib/mtm/navigation"
 import {
   Megaphone,
@@ -158,6 +159,11 @@ export interface OrgNavContext {
    * tenant has no MTM — every switch then counts as ON, the historical menu.
    */
   orgSettings?: Partial<Record<NavOrgSettingKey, boolean>>
+  /**
+   * Sections of Settings an admin ticked for this person (lib/settings-sections),
+   * as the session carries them — already empty for admins and reviewers.
+   */
+  settingsSections?: readonly string[]
 }
 
 /**
@@ -168,6 +174,7 @@ export interface OrgNavContext {
 export function orgFromSession(user: unknown): OrgNavContext {
   const u = user as {
     plan?: string; addons?: string[]; modules?: Record<string, boolean>; role?: string; hiddenModules?: string[]
+    settingsSections?: string[]
   } | undefined
   return {
     plan: u?.plan || "enterprise",
@@ -175,6 +182,7 @@ export function orgFromSession(user: unknown): OrgNavContext {
     modules: u?.modules || undefined,
     role: u?.role || "viewer",
     hiddenModules: u?.hiddenModules || [],
+    settingsSections: u?.settingsSections || [],
   }
 }
 
@@ -635,6 +643,10 @@ export function isNavItemRoleAllowed(org: OrgNavContext, item: NavItem): boolean
   // page by the proxy, so the menu does not offer one: no Settings group, and no
   // section's own /settings/… entry either.
   if (role === REVIEWER_ROLE && (item.group === "Settings" || reviewerPageClosed(navItemPathname(item.href)))) return false
+  // A section of Settings an admin ticked for this person opens its page for
+  // them whatever the role says — the server lets the same section's routes
+  // through (lib/settings-sections.ts).
+  if (item.group === "Settings" && settingsGrantOpensPage({ role, settingsSections: org.settingsSections }, navItemPathname(item.href))) return true
   if (item.permissionScope && !checkPermission(role, item.permissionScope, "read")) return false
   if (item.allowedRoles && !item.allowedRoles.includes(role)) return false
   if (item.orgWide && (org.hiddenModules?.length ?? 0) > 0) return false

@@ -1,6 +1,7 @@
 import { isNavItemRoleAllowed, navItems } from "./nav-items"
 import { checkPermission, type Role } from "./permissions"
 import { effectiveHiddenModules, type UserHideableId } from "./user-module-access"
+import { effectiveSettingsSections } from "./settings-sections"
 
 /**
  * What ONE person ends up with, once their role and their module ticks are put
@@ -109,15 +110,21 @@ export interface SettingsAccessOutcome {
 }
 
 /**
- * Settings has no tick: the module carries currencies, custom fields and
- * workflows that every form reads, so it cannot be hidden. What a person gets
- * there is the role's doing alone — and, for the audit journal, of whether
- * anything was hidden from them.
+ * Settings as a whole cannot be hidden: the module carries currencies, custom
+ * fields and workflows that every form reads. What a person gets there is the
+ * role's doing, plus the sections an admin ticked for them
+ * (lib/settings-sections.ts) — and, for the audit journal, whether anything was
+ * hidden from them.
  */
-export function settingsAccessOutcome(role: string, hiddenModules: readonly string[]): SettingsAccessOutcome {
+export function settingsAccessOutcome(
+  role: string,
+  hiddenModules: readonly string[],
+  settingsSections: readonly string[] = [],
+): SettingsAccessOutcome {
   if (checkPermission(role as Role, "settings", "write")) return { outcome: "full", pages: [] }
   if (checkPermission(role as Role, "settings", "read")) return { outcome: "view", pages: [] }
-  const person = { plan: "", role, hiddenModules: effectiveHiddenModules(role, hiddenModules) }
+  const granted = effectiveSettingsSections(role, settingsSections)
+  const person = { plan: "", role, hiddenModules: effectiveHiddenModules(role, hiddenModules), settingsSections: granted }
   const pages = navItems
     .filter((item) => item.group === "Settings" && (item.permissionScope || item.allowedRoles))
     .filter((item) => isNavItemRoleAllowed(person, item))

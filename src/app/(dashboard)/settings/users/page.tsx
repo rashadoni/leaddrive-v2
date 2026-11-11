@@ -34,13 +34,14 @@ import {
   generateTemporaryPassword,
   passwordIsAcceptable,
 } from "@/components/settings/password-field"
-import { orgFromSession } from "@/lib/nav-items"
+import { accessibleNavItems, orgFromSession } from "@/lib/nav-items"
 import {
   roleIgnoresModuleMask,
   tenantHideableModules,
   USER_HIDEABLE_MODULE_IDS,
 } from "@/lib/user-module-access"
 import { userModuleOptions } from "@/lib/user-module-options"
+import { effectiveSettingsSections, SETTINGS_SECTION_IDS, SETTINGS_SECTIONS } from "@/lib/settings-sections"
 import {
   ASSIGNABLE_FIELD_CARD_ROLES,
   defaultFieldCardRole,
@@ -66,6 +67,7 @@ interface User extends Record<string, unknown> {
   voiceEnabled?: boolean
   hiddenModules?: string[]
   hiddenChannelConfigIds?: string[]
+  settingsSections?: string[]
   smsAuthEnabled: boolean
   verifiedPhone: string | null
   skills: string[]
@@ -120,6 +122,7 @@ interface UserFormData {
   preferredLanguage: string
   hiddenModules: string[]
   hiddenChannelConfigIds: string[]
+  settingsSections: string[]
 }
 
 type UserPayload = {
@@ -133,6 +136,7 @@ type UserPayload = {
   preferredLanguage: string | null
   hiddenModules: string[]
   hiddenChannelConfigIds?: string[]
+  settingsSections: string[]
   password?: string
 }
 
@@ -232,7 +236,7 @@ function UserFormDialog({
   const [form, setForm] = useState<UserFormData>({
     name: "", email: "", password: "", role: "viewer",
     phone: "", department: "", isActive: true,
-    maxTickets: 20, preferredLanguage: "", hiddenModules: [], hiddenChannelConfigIds: [],
+    maxTickets: 20, preferredLanguage: "", hiddenModules: [], hiddenChannelConfigIds: [], settingsSections: [],
   })
   // Modules the tenant has, as the sidebar names them. Read off the admin's own
   // session: admins are never restricted, so theirs is the tenant's full set.
@@ -279,7 +283,12 @@ function UserFormDialog({
     && !form.hiddenModules.includes("mtm") && fieldAccess.kind !== "organization"
   // What the person ends up with — recomputed from the form, so the admin sees
   // the outcome of a role or a tick before saving it.
-  const settingsAccess = settingsAccessOutcome(form.role, form.hiddenModules)
+  const settingsAccess = settingsAccessOutcome(form.role, form.hiddenModules, form.settingsSections)
+  // Sections of Settings this role can be handed by tick (lib/settings-sections),
+  // limited to the ones this tenant has a page for — read off the admin's own menu.
+  const takesSettingsSections = effectiveSettingsSections(form.role, SETTINGS_SECTION_IDS).length > 0
+  const adminSettingsPages = new Set(accessibleNavItems(orgFromSession(sessionUser)).map((item) => item.href))
+  const settingsSectionOptions = SETTINGS_SECTIONS.filter((section) => section.pages.some((page) => adminSettingsPages.has(page)))
   const levelLabel = (level: AccessLevel | "hidden" | "mixed") => tu(`accessLevel_${level}` as never)
   const settingsAccessLabel = settingsAccess.outcome !== "personal"
     ? tu(`accessSettings_${settingsAccess.outcome}` as never)
@@ -314,6 +323,7 @@ function UserFormDialog({
         preferredLanguage: editUser?.preferredLanguage || "",
         hiddenModules: editUser?.hiddenModules || [],
         hiddenChannelConfigIds: editUser?.hiddenChannelConfigIds || [],
+        settingsSections: editUser?.settingsSections || [],
       })
       setError("")
     }
@@ -425,6 +435,7 @@ function UserFormDialog({
         hiddenModules: moduleMaskIgnored ? [] : form.hiddenModules,
         // Sent only when the list was read: a save made before it loaded must not wipe it.
         ...(channelOptions !== null ? { hiddenChannelConfigIds: moduleMaskIgnored ? [] : form.hiddenChannelConfigIds } : {}),
+        settingsSections: effectiveSettingsSections(form.role, form.settingsSections),
       }
       if (!isEdit) {
         payload.password = form.password
@@ -716,11 +727,39 @@ function UserFormDialog({
                         {settingsAccessLabel}
                       </span>
                     </div>
-                    {!moduleMaskIgnored && (
-                      <p className="mt-1 text-xs text-muted-foreground">{tu("accessSettingsNote")}</p>
-                    )}
                   </li>
                 </ul>
+                {/* Sections of Settings handed to this person without the admin
+                    role (owner, 2026-11-11). One tick per section; the server
+                    lets exactly these through (lib/settings-sections.ts). */}
+                {takesSettingsSections && (
+                  <div className="border-t border-border bg-muted/30 px-3 py-2" data-testid="user-settings-sections">
+                    <p className="text-sm font-medium">{tu("settingsSectionsTitle")}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{tu("settingsSectionsHint")}</p>
+                    <label className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                      <input type="checkbox" checked disabled className="h-4 w-4 rounded border-input" />
+                      {tn("notificationSettings" as never)}
+                      <span className="text-xs">— {tu("settingsSectionsPersonal")}</span>
+                    </label>
+                    {settingsSectionOptions.map((section) => (
+                      <label key={section.id} className="mt-1 flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={form.settingsSections.includes(section.id)}
+                          onChange={(e) => setForm((f) => ({
+                            ...f,
+                            settingsSections: e.target.checked
+                              ? [...f.settingsSections.filter((id) => id !== section.id), section.id]
+                              : f.settingsSections.filter((id) => id !== section.id),
+                          }))}
+                          className="h-4 w-4 rounded border-input"
+                        />
+                        {tn(section.tKey as never)}
+                      </label>
+                    ))}
+                    <p className="mt-2 border-t border-border pt-2 text-xs text-muted-foreground">{tu("settingsSectionsAdminOnly")}</p>
+                  </div>
+                )}
               </div>
             </div>
             {/* Briefing language preference */}

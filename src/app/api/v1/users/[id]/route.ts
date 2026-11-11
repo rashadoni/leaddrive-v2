@@ -16,6 +16,7 @@ import { handOverOpenWork } from "@/lib/user-work-handover"
 import { orgStageVocabulary } from "@/lib/deal-stage-vocabulary"
 import { moduleDisabledResponse, orgHasModule } from "@/lib/api-auth"
 import { normalizeHiddenModules, parseHiddenModulesInput, roleIgnoresModuleMask } from "@/lib/user-module-access"
+import { effectiveSettingsSections, normalizeSettingsSections } from "@/lib/settings-sections"
 
 /**
  * The organization's other working administrators. A change that leaves none —
@@ -72,6 +73,8 @@ const updateUserSchema = z.object({
   hiddenModules: z.array(z.string().max(50)).max(50).optional(),
   /** Omni-channel numbers and pages hidden from this person (lib/inbox/channel-access). */
   hiddenChannelConfigIds: z.array(z.string().min(1).max(64)).max(200).optional(),
+  /** Sections of Settings handed to this person without the admin role (lib/settings-sections). */
+  settingsSections: z.array(z.string().max(50)).max(20).optional(),
 })
 
 export const GET = withRlsSessionAuth(async (_req: NextRequest, session, { params }: { params: Promise<{ id: string }> }) => {
@@ -253,6 +256,21 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
       updateData.hiddenChannelConfigIds = []
     }
 
+    // Sections of Settings ticked for this person. Only catalog ids are accepted;
+    // a role a tick means nothing to (admin, reviewer) keeps none, so a later
+    // demotion does not bring an old list back to life.
+    const currentSettingsSections = normalizeSettingsSections(existing.settingsSections)
+    if (parsed.data.settingsSections !== undefined) {
+      const requested = normalizeSettingsSections(parsed.data.settingsSections)
+      if (new Set(parsed.data.settingsSections).size !== requested.length) {
+        return NextResponse.json({ error: "Unknown section in settingsSections" }, { status: 400 })
+      }
+      const next = effectiveSettingsSections(nextRole, requested)
+      if (next.join() !== currentSettingsSections.join()) updateData.settingsSections = next
+    } else if (currentSettingsSections.length > 0 && effectiveSettingsSections(nextRole, currentSettingsSections).length === 0) {
+      updateData.settingsSections = []
+    }
+
     // Voice control. Only ever set here, by a caller holding settings/write —
     // the gate re-checks the org entitlement and the role on every session, so
     // this flag says "switched on", not "allowed".
@@ -263,7 +281,7 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
         where: { id },
         data: updateData,
         select: {
-          id: true, name: true, email: true, role: true, voiceEnabled: true, hiddenModules: true, hiddenChannelConfigIds: true,
+          id: true, name: true, email: true, role: true, voiceEnabled: true, hiddenModules: true, hiddenChannelConfigIds: true, settingsSections: true,
           phone: true, department: true, isActive: true, totpEnabled: true, require2fa: true,
           smsAuthEnabled: true, verifiedPhone: true,
           skills: true, maxTickets: true, isAvailable: true, preferredLanguage: true, createdAt: true,
@@ -297,6 +315,10 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
       if (updateData.hiddenChannelConfigIds !== undefined) {
         oldValue.hiddenChannelConfigIds = before.hiddenChannelConfigIds
         newValue.hiddenChannelConfigIds = user.hiddenChannelConfigIds
+      }
+      if (updateData.settingsSections !== undefined) {
+        oldValue.settingsSections = before.settingsSections
+        newValue.settingsSections = user.settingsSections
       }
       if (securityStateChanged) newValue.sessionsInvalidated = true
 
