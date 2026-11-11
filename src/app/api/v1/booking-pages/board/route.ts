@@ -3,6 +3,7 @@
  *
  *   GET    → { links: [{ id, title, url, hostIds, columns, createdAt }] }
  *   POST   { title, hostIds, columns } → the link, with its address
+ *   PATCH  { id, title, hostIds, columns } → the same screen, changed in place
  *   DELETE { id } → revoked; the address stops working and the row stays
  *
  * Administrator only, like everything that sets the section up. The token is
@@ -76,4 +77,35 @@ export const DELETE = withRlsAuth("bookings", "write", async (req, auth) => {
   })
   if (!done.count) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 })
   return NextResponse.json({ success: true })
+})
+
+/**
+ * Change a screen without changing its address.
+ *
+ * A monitor on a wall has the link typed into it once; making a second link to
+ * add one more master is how a screen ends up showing yesterday's set forever
+ * (owner, 2026-11-11).
+ */
+export const PATCH = withRlsAuth("bookings", "write", async (req, auth) => {
+  const access = await bookingAccess(auth)
+  if (access instanceof NextResponse) return access
+  if (!access.administrator) return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 })
+  const parsed = body.extend({ id: z.string().min(1).max(64) }).safeParse(await req.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ code: "INVALID" }, { status: 400 })
+  const hosts = parsed.data.hostIds.length
+    ? await prisma.user.findMany({ where: { organizationId: auth.orgId, id: { in: parsed.data.hostIds } }, select: { id: true } })
+    : []
+  if (hosts.length !== parsed.data.hostIds.length) return NextResponse.json({ code: "UNKNOWN_HOST" }, { status: 400 })
+  // A revoked screen is not edited back to life: it is gone on purpose.
+  const done = await prisma.bookingBoardLink.updateMany({
+    where: { id: parsed.data.id, organizationId: auth.orgId, isActive: true },
+    data: { title: parsed.data.title, hostIds: parsed.data.hostIds, columns: readBoardColumns(parsed.data.columns) },
+  })
+  if (!done.count) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 })
+  const row = await prisma.bookingBoardLink.findFirstOrThrow({
+    where: { id: parsed.data.id, organizationId: auth.orgId },
+    select: { id: true, title: true, token: true, hostIds: true, columns: true, createdAt: true },
+  })
+  const { token, ...rest } = row
+  return NextResponse.json({ success: true, data: { link: { ...rest, url: bookingBoardUrl(token) } } })
 })
