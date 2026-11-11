@@ -26,6 +26,11 @@ export function BookingWhatsAppCard({ services, hosts }: { services: RuleService
   const [channels, setChannels] = useState<Channel[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  // Whether this number can show a FORM inside WhatsApp. Asked on demand and
+  // only by an administrator: it is a question to Meta about the account, not
+  // a setting of ours, and the answer is not in anybody's documentation
+  // (coexistence numbers — src/lib/booking/whatsapp-flow.ts).
+  const [flows, setFlows] = useState<{ checking: boolean; answer: string | null }>({ checking: false, answer: null })
 
   useEffect(() => {
     let alive = true
@@ -143,6 +148,27 @@ export function BookingWhatsAppCard({ services, hosts }: { services: RuleService
           defaultOpen={setting.rules.serviceIds !== null || setting.rules.hostIds !== null || setting.rules.hours !== null || setting.rules.maxPrice !== null}
           onChange={(rules) => void save({ ...setting, rules })}
         /> : null}
+        {setting.mode === "book" ? <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3 text-sm">
+          <span className="text-muted-foreground">{t("waFlowTitle")}</span>
+          <button
+            type="button"
+            className="min-h-11 rounded-lg border px-3 text-sm"
+            disabled={flows.checking}
+            onClick={() => {
+              setFlows({ checking: true, answer: null })
+              void fetch("/api/v1/booking-pages/whatsapp/flow", { cache: "no-store" })
+                .then((response) => response.ok ? response.json() : null)
+                .then((body) => {
+                  const data = body?.data
+                  setFlows({ checking: false, answer: !data ? t("waFlowFailed")
+                    : data.supported ? (data.booking ? t("waFlowReady", { status: String(data.booking.status) }) : t("waFlowSupported"))
+                    : t("waFlowNo", { detail: String(data.detail ?? "") }) })
+                })
+                .catch(() => setFlows({ checking: false, answer: t("waFlowFailed") }))
+            }}
+          >{flows.checking ? t("saving") : t("waFlowCheck")}</button>
+          {flows.answer ? <span role="status">{flows.answer}</span> : null}
+        </div> : null}
         {error ? <p role="alert" className="mt-2 text-sm text-destructive">{error}</p> : null}
       </CardContent>
     </Card>

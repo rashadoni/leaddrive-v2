@@ -16,6 +16,8 @@ import { isCloudApiPaused } from "@/lib/whatsapp-account-update"
 
 const GRAPH_API_VERSION = "v21.0"
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
+/** The same base, for the modules that ask Meta about this number's products. */
+export const WHATSAPP_GRAPH_API_BASE = GRAPH_API_BASE
 const CALLING_GRAPH_API_VERSION = process.env.WHATSAPP_CALLING_GRAPH_API_VERSION || "v25.0"
 const CALLING_GRAPH_API_BASE = `https://graph.facebook.com/${CALLING_GRAPH_API_VERSION}`
 
