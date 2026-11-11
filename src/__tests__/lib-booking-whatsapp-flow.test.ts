@@ -28,7 +28,7 @@ vi.mock("@/lib/whatsapp", () => ({
   WHATSAPP_GRAPH_API_BASE: "https://graph.facebook.com/v21.0",
 }))
 
-const { flowsCapability, bookingFlowJson, BOOKING_FLOW_NAME } = await import("@/lib/booking/whatsapp-flow")
+const { deleteBookingFlow, flowsCapability, bookingFlowJson, BOOKING_FLOW_NAME } = await import("@/lib/booking/whatsapp-flow")
 
 const CONFIG = { accessToken: "tok", phoneNumberId: "pn", businessAccountId: "waba-1" }
 
@@ -134,5 +134,40 @@ describe("the form a client fills in", () => {
   it("declares a schema version, because a form without one is refused", () => {
     expect(flow.version).toMatch(/^\d+\.\d+$/)
     expect(Number(flow.version)).toBeGreaterThanOrEqual(7.2)
+  })
+})
+
+describe("taking the form back off an account", () => {
+  // It was created on the wrong tenant once (2026-11-11), and the only way out
+  // must not be somebody's Meta console.
+  it("deletes a form that was never published", async () => {
+    const calls: { url: string; method?: string }[] = []
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: { method?: string }) => {
+      calls.push({ url, method: init?.method })
+      return { ok: true, status: 200, json: async () => init?.method === "DELETE"
+        ? { success: true }
+        : { data: [{ id: "77", name: BOOKING_FLOW_NAME, status: "DRAFT", categories: [] }] } }
+    }))
+
+    expect(await deleteBookingFlow("org-1")).toEqual({ ok: true, detail: JSON.stringify({ success: true }) })
+    expect(calls.at(-1)).toMatchObject({ method: "DELETE" })
+    expect(calls.at(-1)!.url).toContain("/77")
+  })
+
+  it("refuses to delete a published one, and says why", async () => {
+    // A published form may be open on a client's phone right now; deleting it
+    // turns that into an error they cannot answer.
+    answers({ data: [{ id: "77", name: BOOKING_FLOW_NAME, status: "PUBLISHED", categories: [] }] })
+
+    const result = await deleteBookingFlow("org-1")
+
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain("published")
+  })
+
+  it("says there is nothing to delete rather than failing", async () => {
+    answers({ data: [] })
+
+    expect(await deleteBookingFlow("org-1")).toEqual({ ok: true, detail: "nothing to delete" })
   })
 })
