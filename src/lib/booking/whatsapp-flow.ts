@@ -203,3 +203,40 @@ export async function ensureBookingFlow(
   steps.push({ step: "status", ok: published?.status === "PUBLISHED", detail: published ? `${published.id} ${published.status}` : "not listed" })
   return { ok: published?.status === "PUBLISHED", flowId, steps }
 }
+
+/**
+ * Remove the booking form from this account.
+ *
+ * Only a form that was never published: a published one may be open on a
+ * client's phone right now, and deleting it turns that into an error they
+ * cannot answer. Published forms are retired through Meta's own deprecation,
+ * not from here.
+ *
+ * Written because a form was created on the wrong tenant (2026-11-11): the
+ * screen that made it must be able to take it back, or the only way out is
+ * somebody's Meta console.
+ */
+export async function deleteBookingFlow(
+  organizationId: string,
+  opts?: { channelConfigId?: string | null },
+): Promise<{ ok: boolean; detail: string }> {
+  const capability = await flowsCapability(organizationId, opts)
+  if (!capability.supported) return { ok: false, detail: capability.detail }
+  if (!capability.booking) return { ok: true, detail: "nothing to delete" }
+  if (capability.booking.status === "PUBLISHED") {
+    return { ok: false, detail: `the form is published (${capability.booking.id}); a published form is not deleted from here` }
+  }
+  const config = await resolveWhatsAppConfig(organizationId, opts?.channelConfigId ? { channelConfigId: opts.channelConfigId } : {})
+  if (!config) return { ok: false, detail: "WhatsApp is not connected for this organisation" }
+  try {
+    const res = await fetch(`${WHATSAPP_GRAPH_API_BASE}/${capability.booking.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${config.accessToken}` },
+      signal: AbortSignal.timeout(20_000),
+    })
+    const body = await res.json().catch(() => null) as Record<string, unknown> | null
+    return { ok: res.ok, detail: body ? JSON.stringify(body) : `HTTP ${res.status}` }
+  } catch (error) {
+    return { ok: false, detail: error instanceof Error ? error.message : "request failed" }
+  }
+}
