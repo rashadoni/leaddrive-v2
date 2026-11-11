@@ -25,6 +25,7 @@ import {
   BookingDayTimeline,
   BookingWeekStrip,
   mergeFreeWindows,
+  minuteAtOffset,
   minutesFrom,
   packSpans,
   railRange,
@@ -455,5 +456,26 @@ describe("meetings day view — translations", () => {
       const missing = [...asked].filter((key) => !(key in messages.booking))
       expect(missing, `${locale}.json`).toEqual([])
     }
+  })
+})
+
+
+describe("tapping an empty spot on the day", () => {
+  // The dashed windows are ONE service's free time; the rest of the day looks
+  // just as empty to a person, and tapping it did nothing at all (owner,
+  // 2026-11-11: «кликаю на часы, не создаётся»).
+  const rail = { from: 9, to: 18 }
+
+  it("turns pixels into the quarter of an hour they landed in", () => {
+    expect(minuteAtOffset(0, rail)).toBe(9 * 60)
+    // An hour is 96 px, so half of it down the rail is 09:30.
+    expect(minuteAtOffset(48, rail)).toBe(9 * 60 + 30)
+    expect(minuteAtOffset(120, rail)).toBe(10 * 60 + 15)
+  })
+
+  it("never books outside the day it drew", () => {
+    expect(minuteAtOffset(-200, rail)).toBe(9 * 60)
+    // The last pixel books the last quarter, not tomorrow.
+    expect(minuteAtOffset(100_000, rail)).toBe(18 * 60 - 15)
   })
 })

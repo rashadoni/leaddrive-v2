@@ -32341,7 +32341,7 @@
     "dayEmptyHint": "Choose another day, or book a client with the button above.",
     "newMeeting": "New meeting",
     "chooseMeeting": "Choose a meeting",
-    "chooseMeetingHint": "Pick a meeting in the day and its client, notifications and actions appear here. Pick a free window to book someone.",
+    "chooseMeetingHint": "Pick a meeting in the day and its client, notifications and actions appear here. To book someone, tap an empty spot in the day.",
     "chooseMeetingHintReadOnly": "Pick a meeting in the day and its client, notifications and actions appear here.",
     "deliverySent": "What has been sent",
     "createdOn": "Created {date} at {time}",
