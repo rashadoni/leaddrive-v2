@@ -980,7 +980,7 @@ export interface WhatsAppListRow {
  * rows spelled into the body, so the inbox thread shows what was offered.
  */
 export async function sendWhatsAppList({
-  to, body, footer, buttonLabel, sectionTitle, rows, organizationId, channelConfigId, conversationId, contactId, leadId, extraMetadata,
+  to, body, footer, buttonLabel, sectionTitle, rows, sections, organizationId, channelConfigId, conversationId, contactId, leadId, extraMetadata,
 }: {
   to: string
   body: string
@@ -989,6 +989,13 @@ export async function sendWhatsAppList({
   buttonLabel: string
   sectionTitle?: string | null
   rows: WhatsAppListRow[]
+  /**
+   * Rows grouped under their own headings — «11 noyabr», «12 noyabr». The
+   * sheet then reads as a picker instead of repeating the date on every row.
+   * `rows` stays the whole set: it is what the 1–10 limit is checked against,
+   * what is logged, and what a provider without sections still receives.
+   */
+  sections?: { title: string; rowIds: string[] }[]
   organizationId: string
   channelConfigId?: string | null
   conversationId?: string | null
@@ -1022,7 +1029,11 @@ export async function sendWhatsAppList({
           ...(footer ? { footer: { text: footer.slice(0, 60) } } : {}),
           action: {
             button: buttonLabel.slice(0, 20),
-            sections: [{ ...(sectionTitle ? { title: sectionTitle.slice(0, 24) } : {}), rows: shown }],
+            sections: sections?.length
+              ? sections
+                .map((section) => ({ title: section.title.slice(0, 24), rows: shown.filter((row) => section.rowIds.includes(row.id)) }))
+                .filter((section) => section.rows.length > 0)
+              : [{ ...(sectionTitle ? { title: sectionTitle.slice(0, 24) } : {}), rows: shown }],
           },
         },
       }),

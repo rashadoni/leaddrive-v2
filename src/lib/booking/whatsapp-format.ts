@@ -18,6 +18,15 @@ export function dayLabel(iso: string, language: ReplyLanguage, timezone: string)
   return language === "en" ? text : `${text.charAt(0).toLocaleUpperCase("ru")}${text.slice(1)}`
 }
 
+/**
+ * «11 noyabr» / «11 ноября» / «November 11» — the day without its weekday, for
+ * places that count characters. A WhatsApp list section heading stops at 24,
+ * and «Çərşənbə axşamı, 11 noyabr» is 26.
+ */
+export function shortDayLabel(iso: string, language: ReplyLanguage, timezone: string): string {
+  return new Intl.DateTimeFormat(language === "az" ? "az" : language, { day: "numeric", month: "long", timeZone: timezone }).format(new Date(iso))
+}
+
 export function clock(iso: string, timezone: string): string {
   return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timezone }).format(new Date(iso))
 }
