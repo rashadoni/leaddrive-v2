@@ -55,6 +55,11 @@ export function bookingPageUrl(slug: string): string {
   return `${appBaseUrl()}/book/${encodeURIComponent(slug)}`
 }
 
+/** The screen on the wall (src/app/board/[token]): same host, same rule. */
+export function bookingBoardUrl(token: string): string {
+  return `${appBaseUrl()}/board/${encodeURIComponent(token)}`
+}
+
 export function bookingCancelUrl(token: string): string {
   return `${appBaseUrl()}/book/cancel/${encodeURIComponent(token)}`
 }
