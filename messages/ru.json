@@ -33245,6 +33245,7 @@
     },
     "messages": "{count, plural, one {# сообщение} few {# сообщения} many {# сообщений} other {# сообщения}}",
     "files": "{count, plural, one {# файл} few {# файла} many {# файлов} other {# файла}}",
+    "lateDays": "{days, plural, one {# день} few {# дня} many {# дней} other {# дня}}",
     "lateBy": "{days, plural, one {просрочено на # день} few {просрочено на # дня} many {просрочено на # дней} other {просрочено на # дня}}",
     "groups": {
       "overdue": "Просрочено",

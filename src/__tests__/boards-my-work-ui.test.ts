@@ -123,6 +123,16 @@ describe("Mənim işlərim", () => {
     expect(cell("t-late", "column")).toBe("İcrada")
   })
 
+  it("says how late a task is in a few words, coloured but not shouted (owner, 2026-11-11: «слишком всё грубовато»)", async () => {
+    await render()
+    const due = container.querySelector('[data-task-id="t-late"] [data-testid="my-work-due"]')!
+    expect(due.textContent).toMatch(/ · \d+ (день|дня|дней)$/u)
+    expect(due.className).not.toMatch(/font-(semibold|bold)/u)
+    const title = open("t-late")
+    expect(title.className).toContain("font-medium")
+    expect(title.className).not.toMatch(/text-\[15px\]|font-semibold/u)
+  })
+
   it("the tick moves the task into its board's «done» column; ticking again puts it back where it stood", async () => {
     await render()
     await tick("t-late")
