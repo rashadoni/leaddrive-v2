@@ -9,6 +9,10 @@
  *     its section; clicking a card opens the full task detail (edit/move there)
  *   • a Reports tab aggregating analytics over the selected sections
  *
+ * It opens as the LIST of every task of its sections, grouped by stage, each row
+ * naming its board (owner, 2026-11-11: «по умолчанию чтоб были показаны не как
+ * канбан а как список»); the combined board is the second tab.
+ *
  * Rendered by /boards/[divisionId] when division.isDepartment. A department holds
  * no tasks of its own and has no custom columns, so the aggregate uses the
  * canonical stages (resolveLaneKey folds each section's custom lanes onto them).
@@ -17,13 +21,15 @@
  * individual section board (open a section to reorder) — see the parent's notes.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Loader2, Columns3 } from "lucide-react"
 import { CANONICAL_STAGES, STAGE_LABELS, resolveLaneKey, type LaneColumn } from "@/lib/tasks/board-columns"
 import { BoardReports } from "@/components/boards/board-reports"
 import { BoardProjectTabs } from "@/components/boards/board-project-tabs"
 import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
+import { InlineTasksTable, type InlineTask, type InlineUser } from "@/components/tasks/inline-tasks-table"
+import { fetchAllFolderTasks } from "@/lib/tasks/fetch-board-tasks"
 
 interface DeptDivision { id: string; key: string; name: string; color: string | null }
 interface SectionLite { id: string; key: string; name: string; color: string | null; parentDivisionId?: string | null; _count?: { tasks: number } }
@@ -34,9 +40,17 @@ interface DeptTask {
   status: string
   boardColumnKey: string | null
   priority?: string | null
+  type?: string | null
+  eventType?: string | null
+  category?: string | null
+  dueDate?: string | null
   division?: { id: string; name: string; key: string; color: string | null } | null
   assignee?: { id: string; name: string; avatar?: string | null } | null
+  collaborators?: { user: { id: string; name: string } }[]
+  _count?: { comments?: number; checklist?: number }
 }
+
+type DeptView = "list" | "board" | "reports"
 
 const PRIORITY_DOT: Record<string, string> = {
   urgent: "#DE350B", high: "#FF8B00", medium: "#0065FF", low: "#6B778C",
@@ -46,13 +60,15 @@ const LANE_COLS: LaneColumn[] = CANONICAL_STAGES.map((s) => ({ key: s, mapsToSta
 
 export function DepartmentBoardView({ division }: { division: DeptDivision }) {
   const t = useTranslations("board")
+  const tc = useTranslations("common")
+  const tTask = useTranslations("tasks")
   const [sections, setSections] = useState<SectionLite[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set()) // empty = all sections
   const [tasks, setTasks] = useState<DeptTask[]>([])
   const [total, setTotal] = useState(0) // server-side total (to detect truncation)
   const [loading, setLoading] = useState(true)
   const [sectionsLoading, setSectionsLoading] = useState(true) // distinct from task loading
-  const [view, setView] = useState<"board" | "reports">("board")
+  const [view, setView] = useState<DeptView>("list")
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
 
   const TASK_CAP = 200 // GET /tasks rejects limit > 200 unless the request names one board
@@ -80,26 +96,113 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
   )
   const sectionsParam = selected.size ? activeSectionIds.join(",") : ""
 
-  const loadTasks = useCallback(async () => {
+  // The combined board draws at most TASK_CAP cards; the list (and the reports'
+  // assignee filter) reads every task of the sections.
+  const capped = view === "board"
+  // Only the newest read is applied: an older answer arriving late must not
+  // undo an edit made after it began (CLAUDE.md, «Чтение списка отвечает за
+  // момент своего НАЧАЛА»).
+  const reads = useRef(0)
+  const loadTasks = useCallback(async (quiet = false) => {
     // Don't fetch/clear until sections have resolved (avoids an empty-state flash).
     if (sectionsLoading) return
-    setLoading(true)
+    const read = ++reads.current
+    if (!quiet) setLoading(true)
     try {
       const ids = activeSectionIds
       if (!ids.length) { setTasks([]); setTotal(0); return }
+      if (!capped) {
+        const all = await fetchAllFolderTasks<DeptTask>(ids)
+        if (read !== reads.current) return
+        setTasks(all)
+        setTotal(all.length)
+        return
+      }
       const res = await fetch(`/api/v1/tasks?divisionIds=${encodeURIComponent(ids.join(","))}&limit=${TASK_CAP}`, { credentials: "include" })
-      if (res.ok) {
+      if (res.ok && read === reads.current) {
         const j = await res.json()
+        if (read !== reads.current) return
         setTasks((j?.data?.tasks ?? []) as DeptTask[])
         setTotal(typeof j?.data?.total === "number" ? j.data.total : (j?.data?.tasks?.length ?? 0))
       }
     } catch {
       /* swallow — empty board renders below */
     } finally {
-      setLoading(false)
+      if (read === reads.current) setLoading(false)
     }
-  }, [activeSectionIds, sectionsLoading])
+  }, [activeSectionIds, sectionsLoading, capped])
   useEffect(() => { loadTasks() }, [loadTasks])
+
+  // ── The list: the same table as a board's «Siyahı», across the sections ──
+  const [listSelected, setListSelected] = useState<Set<string>>(new Set())
+  const [listSort, setListSort] = useState("")
+  const [users, setUsers] = useState<InlineUser[]>([])
+  useEffect(() => {
+    let alive = true
+    fetch("/api/v1/users/assignable", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (alive) setUsers(((j?.data ?? []) as { id: string; name: string }[]).map((u) => ({ id: u.id, name: u.name }))) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [])
+  const statusLabels: Record<string, string> = {
+    backlog: tTask("statusBacklog"), pending: tTask("statusTodo"), todo: tTask("statusTodo"),
+    in_progress: tTask("statusInProgress"), testing: tTask("statusTesting"), review: tTask("statusReview"),
+    done: tTask("statusCompleted"), completed: tTask("statusCompleted"), cancelled: tTask("statusCancelled"),
+  }
+  const priorityLabels: Record<string, string> = {
+    urgent: tTask("priorityUrgent"), high: tTask("priorityHigh"), medium: tTask("priorityMedium"), low: tTask("priorityLow"),
+  }
+  // Each section has its own lanes; the folder folds them onto the canonical
+  // stages, as its combined board does. A stage nobody uses stays hidden.
+  const listGroups = useMemo(() => [
+    ...CANONICAL_STAGES.map((stage) => ({ key: stage as string, label: statusLabels[stage] ?? stage, optional: true })),
+    { key: "__cancelled__", label: statusLabels.cancelled, optional: true },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [tTask])
+  const listGroupKeyOf = useCallback((tk: InlineTask) => {
+    if (tk.status === "cancelled") return "__cancelled__"
+    return resolveLaneKey({ status: tk.status, boardColumnKey: tk.boardColumnKey }, LANE_COLS) ?? "backlog"
+  }, [])
+  const listTasks: InlineTask[] = useMemo(() => tasks.map((x) => ({
+    id: x.id, title: x.title, status: x.status, boardColumnKey: x.boardColumnKey ?? null, priority: x.priority ?? "medium",
+    type: x.type ?? null, eventType: x.eventType ?? null, dueDate: x.dueDate ?? null,
+    assignedTo: x.assignee?.id ?? null, assignee: x.assignee ?? null,
+    collaborators: x.collaborators?.map((c) => c.user),
+    relatedType: x.category ?? null, relatedName: null,
+    _count: x._count,
+    board: x.division ? { key: x.division.key, name: x.division.name, color: x.division.color } : null,
+  })), [tasks])
+  // A status picked in the list moves the card to that stage: the section's
+  // own lane is dropped, so the stage is read from the status.
+  const listUpdate = useCallback(async (taskId: string, patch: Record<string, unknown>) => {
+    if (typeof patch.status === "string") patch = { ...patch, boardColumnKey: null }
+    const local: Partial<DeptTask> = {}
+    for (const key of ["title", "status", "boardColumnKey", "priority", "dueDate"] as const) {
+      if (key in patch) (local as Record<string, unknown>)[key] = patch[key]
+    }
+    reads.current++ // a read under way answers for before this edit
+    setTasks((ts) => ts.map((x) => (x.id === taskId ? { ...x, ...local } : x)))
+    try {
+      await fetch(`/api/v1/tasks/${taskId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify(patch),
+      })
+    } finally {
+      loadTasks(true)
+    }
+  }, [loadTasks])
+  const listDelete = useCallback(async (taskId: string) => {
+    reads.current++
+    setTasks((ts) => ts.filter((x) => x.id !== taskId))
+    try {
+      await fetch(`/api/v1/tasks/${taskId}`, { method: "DELETE", credentials: "include" })
+    } finally {
+      loadTasks(true)
+    }
+  }, [loadTasks])
+  const toggleListSelect = (id: string) => setListSelected((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  const toggleListSelectAll = () => setListSelected((p) => (p.size === listTasks.length ? new Set<string>() : new Set(listTasks.map((x) => x.id))))
 
   const tasksByStage = useMemo(() => {
     const m = new Map<string, DeptTask[]>()
@@ -132,14 +235,13 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
         <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{t("departmentBadge")}</span>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — the list first: it is what the folder opens in. */}
       <div data-crm-tabs="" className="mb-3 inline-flex w-fit overflow-hidden rounded-md border">
-        <button data-crm-tab="" data-state={view === "board" ? "active" : "inactive"} onClick={() => setView("board")} className={`px-4 py-1.5 text-sm font-medium ${view === "board" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}>
-          {t("boardView")}
-        </button>
-        <button data-crm-tab="" data-state={view === "reports" ? "active" : "inactive"} onClick={() => setView("reports")} className={`px-4 py-1.5 text-sm font-medium ${view === "reports" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}>
-          {t("reportsTab")}
-        </button>
+        {(["list", "board", "reports"] as const).map((v) => (
+          <button key={v} type="button" data-crm-tab="" data-state={view === v ? "active" : "inactive"} onClick={() => setView(v)} className={`px-4 py-1.5 text-sm font-medium ${view === v ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}>
+            {v === "list" ? tc("list") : v === "board" ? t("boardView") : t("reportsTab")}
+          </button>
+        ))}
       </div>
 
       {/* Section filter (one / several / all) */}
@@ -166,6 +268,30 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
       {view === "reports" ? (
         <div className="flex-1 overflow-hidden rounded-lg border">
           <BoardReports divisionId={division.id} assignees={assignees} onOpenTask={setOpenTaskId} sectionsParam={sectionsParam} />
+        </div>
+      ) : view === "list" && sections.length > 0 ? (
+        <div className="-mx-1">
+          <InlineTasksTable
+            tasks={listTasks}
+            loading={loading || sectionsLoading}
+            customGroups={listGroups}
+            groupKeyOf={listGroupKeyOf}
+            selectedIds={listSelected}
+            onToggleSelect={toggleListSelect}
+            onToggleSelectAll={toggleListSelectAll}
+            onUpdate={listUpdate}
+            onDelete={listDelete}
+            onEdit={(task) => setOpenTaskId(task.id)}
+            onOpenDetail={(id) => setOpenTaskId(id)}
+            statusOptions={[...CANONICAL_STAGES, "cancelled"]}
+            statusLabels={statusLabels}
+            priorityLabels={priorityLabels}
+            customFieldDefs={[]}
+            users={users}
+            categoryColumnLabel={tc("quarter")}
+            sortBy={listSort}
+            onSortChange={setListSort}
+          />
         </div>
       ) : loading || sectionsLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -233,8 +359,8 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
         <TaskPanel
           taskId={openTaskId}
           canEdit
-          onClose={() => { setOpenTaskId(null); loadTasks() }}
-          onMutated={() => loadTasks()}
+          onClose={() => { setOpenTaskId(null); loadTasks(true) }}
+          onMutated={() => loadTasks(true)}
         />
       )}
     </div>

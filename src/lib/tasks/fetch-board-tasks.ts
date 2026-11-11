@@ -21,8 +21,25 @@ export async function fetchAllBoardTasks<T extends { id: string }>(
   divisionId: string,
   fetchImpl: FetchLike = fetch,
 ): Promise<T[]> {
+  return fetchAllTasks<T>(`divisionId=${encodeURIComponent(divisionId)}`, fetchImpl)
+}
+
+/**
+ * Every task of a folder's boards (`divisionIds=a,b,…`) — the folder opens as
+ * its list, and a list that stops at 200 rows hides the rest (owner,
+ * 2026-11-11: «по умолчанию чтоб были показаны не как канбан а как список»).
+ */
+export async function fetchAllFolderTasks<T extends { id: string }>(
+  sectionIds: readonly string[],
+  fetchImpl: FetchLike = fetch,
+): Promise<T[]> {
+  if (!sectionIds.length) return []
+  return fetchAllTasks<T>(`divisionIds=${encodeURIComponent(sectionIds.join(","))}`, fetchImpl)
+}
+
+async function fetchAllTasks<T extends { id: string }>(scope: string, fetchImpl: FetchLike): Promise<T[]> {
   const page = async (offset: number): Promise<{ tasks: T[]; total: number }> => {
-    const query = `divisionId=${encodeURIComponent(divisionId)}&limit=${BOARD_TASKS_PAGE}&offset=${offset}`
+    const query = `${scope}&limit=${BOARD_TASKS_PAGE}&offset=${offset}`
     const res = await fetchImpl(`/api/v1/tasks?${query}`, { credentials: "include" })
     if (!res.ok) throw new Error(`Failed to load tasks (${res.status})`)
     const body = await res.json()
