@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLocale } from "next-intl"
 import { usePathname } from "next/navigation"
 import { Play, Video, X } from "lucide-react"
@@ -20,6 +20,7 @@ import {
   normalizeHelpVideoLocale,
   type HelpVideoEntry,
 } from "@/content/help/video-assets"
+import { flyToHelpVideoCard } from "@/components/help/fly-to-help-video-card"
 
 type VideoMode = "expanded" | "thumbnail" | "hidden"
 
@@ -132,6 +133,9 @@ export function HelpVideoLauncher() {
   const [sessionMode, setSessionMode] = useState<{ key: string; mode: VideoMode } | null>(null)
   const [posterFailedKey, setPosterFailedKey] = useState<string | null>(null)
   const [videoFailedKey, setVideoFailedKey] = useState<string | null>(null)
+  const [flyingKey, setFlyingKey] = useState<string | null>(null)
+  const playerBackdropRef = useRef<HTMLDivElement>(null)
+  const playerPanelRef = useRef<HTMLDivElement>(null)
 
   const labels = LABELS[locale]
   // Re-check availability instead of trusting `entry`: a manually opened entry
@@ -167,11 +171,22 @@ export function HelpVideoLauncher() {
     return null
   }
 
+  // Closing the player flies it back up into the card it came from (owner,
+  // 2026-11-11: «пусть поднимается на своё место вверх»), then the card is
+  // all that is left.
   function minimize() {
-    if (currentStorageKey) {
-      writeStoredState(currentStorageKey, { expandedSeen: true })
-      setSessionMode({ key: currentStorageKey, mode: "thumbnail" })
+    if (!currentStorageKey || flyingKey === currentStorageKey) return
+    const key: string = currentStorageKey
+    function land() {
+      writeStoredState(key, { expandedSeen: true })
+      setSessionMode((current) => (current?.key === key ? { key, mode: "thumbnail" } : current))
+      setFlyingKey((current) => (current === key ? null : current))
     }
+    playerPanelRef.current?.querySelector("video")?.pause()
+    const flight = flyToHelpVideoCard(playerPanelRef.current, playerBackdropRef.current)
+    if (!flight) return land()
+    setFlyingKey(key)
+    void flight.then(land)
   }
 
   // The card is now in-flow (not a floating overlay), so closing it no longer
@@ -204,11 +219,12 @@ export function HelpVideoLauncher() {
     }
   }
 
-  if (mode === "thumbnail") {
-    // Inline, in-flow card at the top of the section (Vanta-style) — it pushes
-    // the page content down instead of floating over it, so it never covers the
-    // work area. Clicking the poster or "Open video" expands into a modal.
-    return (
+  // Inline, in-flow card at the top of the section (Vanta-style) — it pushes
+  // the page content down instead of floating over it, so it never covers the
+  // work area. Clicking the poster or "Open video" expands into a modal. The
+  // card stays in place under the open player: the page does not jump, and the
+  // closed player has somewhere to fly back to.
+  const card = (
       <aside className="mb-4" data-help-video-widget>
         <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
           <div className="flex items-center gap-3 p-3 sm:gap-4">
@@ -278,20 +294,27 @@ export function HelpVideoLauncher() {
           </div>
         </div>
       </aside>
-    )
-  }
+  )
+
+  if (mode === "thumbnail") return card
 
   // Expanded → a centered modal the user opened on purpose (backdrop click or
   // "minimize" returns to the inline card). It overlays deliberately, never by
   // default, so it doesn't get in the way of the work area.
+  const flying = flyingKey === currentStorageKey
   return (
+    <>
+    {card}
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      ref={playerBackdropRef}
+      className={`fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm${flying ? " pointer-events-none" : ""}`}
       role="dialog"
       aria-modal="true"
       onClick={minimize}
+      data-flying={flying ? "true" : undefined}
     >
       <div
+        ref={playerPanelRef}
         className="w-[min(900px,100%)] overflow-hidden rounded-2xl border border-border/70 bg-background shadow-2xl shadow-black/25"
         onClick={(event) => event.stopPropagation()}
       >
@@ -354,5 +377,6 @@ export function HelpVideoLauncher() {
         )}
       </div>
     </div>
+    </>
   )
 }

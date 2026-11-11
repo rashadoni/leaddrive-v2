@@ -12,13 +12,17 @@
  * «Video tutorial» card opens; that card stays, so the video is still one
  * click away later.
  *
+ * Closed without watching («Sonra», the backdrop, Esc), the window flies up
+ * into that card (owner, 2026-11-11: «пусть поднимается на своё место
+ * вверх») — the person sees where the video lives from now on.
+ *
  * A page's first-visit tour waits while this is undecided or open
  * (TourProvider.holdAutoTours) — a newcomer meets one window, then the other.
  * If the server could not say what was already offered, nothing is shown: a
  * prompt that comes back on every visit is worse than none.
  */
 import Image from "next/image"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { usePathname } from "next/navigation"
 import { Play, Video } from "lucide-react"
@@ -32,6 +36,7 @@ import {
   isHelpVideoAvailable,
   normalizeHelpVideoLocale,
 } from "@/content/help/video-assets"
+import { flyToHelpVideoCard } from "@/components/help/fly-to-help-video-card"
 
 const LABELS = {
   az: {
@@ -85,6 +90,12 @@ export function HelpVideoFirstVisitPrompt() {
   const { holdAutoTours } = useTour()
   const [closedSlug, setClosedSlug] = useState<string | null>(null)
   const [gaveUp, setGaveUp] = useState(false)
+  // The section whose window is on its way up to the card. Marking it offered
+  // already flips `state` to «none»; this keeps the window on screen (and the
+  // tour held) until it has landed.
+  const [flyingSlug, setFlyingSlug] = useState<string | null>(null)
+  const backdropRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   const entry = useMemo(() => {
     if (!pathname || pathname.startsWith("/settings/channels")) return null
@@ -97,6 +108,7 @@ export function HelpVideoFirstVisitPrompt() {
   const section = navItem ? tNav(navItem.tKey) : null
 
   const state = firstVisitPromptState(slug, helpVideoSeen, closedSlug, gaveUp)
+  const flying = flyingSlug !== null && flyingSlug === slug
 
   // The server is slow or down: stop holding the tour and do not prompt.
   useEffect(() => {
@@ -106,41 +118,55 @@ export function HelpVideoFirstVisitPrompt() {
   }, [state])
 
   useEffect(() => {
-    holdAutoTours(state !== "none")
-  }, [state, holdAutoTours])
+    holdAutoTours(state !== "none" || flying)
+  }, [state, flying, holdAutoTours])
   useEffect(() => () => holdAutoTours(false), [holdAutoTours])
 
   // Either answer counts as «offered»: the prompt never comes back here.
+  // «Watch» hands over to the player at once; «later» flies up to the card.
   function close(openVideo: boolean) {
-    if (!slug) return
+    if (!slug || flying) return
     markHelpVideoSeen(slug)
     setClosedSlug(slug)
-    if (openVideo) window.dispatchEvent(new CustomEvent("leaddrive:open-help-video", { detail: { slug } }))
+    if (openVideo) {
+      window.dispatchEvent(new CustomEvent("leaddrive:open-help-video", { detail: { slug } }))
+      return
+    }
+    const landed = slug
+    const flight = flyToHelpVideoCard(panelRef.current, backdropRef.current)
+    if (!flight) return
+    setFlyingSlug(landed)
+    void flight.then(() => setFlyingSlug((current) => (current === landed ? null : current)))
   }
   const later = () => close(false)
   const watch = () => close(true)
+  const laterRef = useRef(later)
+  useEffect(() => {
+    laterRef.current = later
+  })
 
   useEffect(() => {
     if (state !== "show" || !slug) return
     function onKey(event: KeyboardEvent) {
-      if (event.key !== "Escape") return
-      markHelpVideoSeen(slug!)
-      setClosedSlug(slug)
+      if (event.key === "Escape") laterRef.current()
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [state, slug, markHelpVideoSeen])
+  }, [state, slug])
 
-  if (state !== "show" || !slug || !assets) return null
+  if ((state !== "show" && !flying) || !slug || !assets) return null
   const labels = LABELS[locale]
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+      ref={backdropRef}
+      className={`fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4${flying ? " pointer-events-none" : ""}`}
       onClick={later}
       data-testid="help-video-first-visit"
+      data-flying={flying ? "true" : undefined}
     >
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="help-video-first-visit-title"
