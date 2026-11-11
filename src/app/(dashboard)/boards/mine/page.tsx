@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { AlertCircle, Check, Loader2, RotateCcw } from "lucide-react"
+import { AlertCircle, Check, Loader2, MessageSquare, Paperclip, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/format-date"
 import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
@@ -228,9 +228,10 @@ export default function MyWorkPage() {
     }
   }
 
-  // Look (owner, 2026-11-10: «отвратительно ничего не видно… серое на сером»):
-  // white cards, near-black text, readable grey for the details, red only for
-  // what is late or critical, the CRM orange only for the chosen tab.
+  // Look (owner, 2026-11-10: «отвратительно ничего не видно… серое на сером»;
+  // 2026-11-11: «слишком всё грубовато»): white cards, near-black titles in a
+  // medium weight, one compact line per task, small grey details, colour only
+  // for what is late (orange-red text) or critical (a small chip).
   const row = (task: MyTask, finished: boolean) => {
     const board = task.divisionId ? boardById.get(task.divisionId) : undefined
     const isTicked = finished || ticked.has(task.id)
@@ -244,9 +245,9 @@ export default function MyWorkPage() {
     const comments = task._count?.comments ?? 0
     const files = task._count?.attachments ?? 0
     return (
-      <li key={task.id} data-testid="my-work-row" data-task-id={task.id} className="flex items-start gap-3 border-t border-gray-100 px-4 py-3 first:border-t-0 dark:border-gray-800">
+      <li key={task.id} data-testid="my-work-row" data-task-id={task.id} className="flex items-center gap-3 border-t border-gray-100 px-4 py-2 dark:border-gray-800">
         {finished ? (
-          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900" aria-hidden="true"><Check className="h-3 w-3" /></span>
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gray-700 text-white dark:bg-gray-300 dark:text-gray-900" aria-hidden="true"><Check className="h-2.5 w-2.5" /></span>
         ) : (
           <button
             type="button"
@@ -257,40 +258,39 @@ export default function MyWorkPage() {
             data-testid="my-work-tick"
             data-crm-color-role="status"
             className={cn(
-              "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-              isTicked ? "border-gray-900 bg-gray-900 text-white dark:border-gray-100 dark:bg-gray-100 dark:text-gray-900" : "border-gray-400 hover:border-gray-900 dark:border-gray-500 dark:hover:border-gray-100",
+              "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors",
+              isTicked ? "border-gray-700 bg-gray-700 text-white dark:border-gray-300 dark:bg-gray-300 dark:text-gray-900" : "border-gray-300 hover:border-gray-700 dark:border-gray-600 dark:hover:border-gray-300",
             )}
           >
-            {busy.has(task.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : isTicked ? <Check className="h-3 w-3" /> : null}
+            {busy.has(task.id) ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : isTicked ? <Check className="h-2.5 w-2.5" /> : null}
           </button>
         )}
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5 lg:flex-row lg:items-center lg:gap-4">
           <button
             type="button"
             onClick={() => setOpenTaskId(task.id)}
-            className={cn("block max-w-full truncate text-left text-[15px] font-semibold leading-snug text-gray-900 hover:underline dark:text-gray-100", isTicked && "text-gray-500 line-through dark:text-gray-400")}
+            className={cn("block min-w-0 max-w-full truncate text-left text-sm font-medium leading-6 text-gray-900 hover:underline lg:flex-1 dark:text-gray-100", isTicked && "text-gray-400 line-through dark:text-gray-500")}
           >
             {task.title}
           </button>
-          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-gray-600 dark:text-gray-300">
+          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500 dark:text-gray-400">
+            {hot && <span className="rounded bg-red-50 px-1.5 py-px text-[11px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">{tCommon(priorityKey(task.priority!))}</span>}
+            {task.priority === "high" && <span>{tCommon("priorityHigh")}</span>}
             {board && (
-              <span className="inline-flex min-w-0 items-center gap-1.5">
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: board.color || "#94a3b8" }} aria-hidden="true" />
+              <span className="inline-flex min-w-0 max-w-[14rem] items-center gap-1.5">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: board.color || "#94a3b8" }} aria-hidden="true" />
                 <span className="truncate" data-testid="my-work-board">{boardLabel(board, boards)}</span>
               </span>
             )}
             {columnName && <span data-testid="my-work-column">{columnName}</span>}
-            {hot && <span className="font-semibold text-red-600">{tCommon(priorityKey(task.priority!))}</span>}
-            {task.priority === "high" && <span>{tCommon("priorityHigh")}</span>}
             {task.dueDate && (
-              <span className={cn("tabular-nums", late && "font-semibold text-red-600")} data-testid="my-work-due">
+              <span className={cn("tabular-nums", late && "text-[#C2410C] dark:text-orange-400")} data-testid="my-work-due">
                 {formatDate(task.dueDate, locale, { day: "numeric", month: "short" })}
-                {late && note.kind === "late" ? ` · ${t("lateBy", { days: note.days })}` : ""}
+                {late && note.kind === "late" ? ` · ${t("lateDays", { days: note.days })}` : ""}
               </span>
             )}
-            {(comments > 0 || files > 0) && (
-              <span>{[comments > 0 ? t("messages", { count: comments }) : null, files > 0 ? t("files", { count: files }) : null].filter(Boolean).join(" · ")}</span>
-            )}
+            {comments > 0 && <span className="inline-flex items-center gap-0.5" title={t("messages", { count: comments })}><MessageSquare className="h-3 w-3" aria-hidden="true" />{comments}</span>}
+            {files > 0 && <span className="inline-flex items-center gap-0.5" title={t("files", { count: files })}><Paperclip className="h-3 w-3" aria-hidden="true" />{files}</span>}
           </div>
         </div>
       </li>
@@ -300,10 +300,10 @@ export default function MyWorkPage() {
   const shownDone = doneTasks ? visible(doneTasks).filter((x) => !(tasks ?? []).some((open) => open.id === x.id)) : []
 
   return (
-    <div className={cn("mx-auto space-y-4 pb-16", view === "list" && "max-w-5xl")}>
+    <div className={cn("mx-auto space-y-4", view === "list" && "max-w-5xl pb-16")}>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">{t("title")}</h1>
-        <div className="inline-flex rounded-lg border border-gray-300 bg-white p-0.5 dark:border-gray-700 dark:bg-gray-900" role="group" aria-label={t("title")}>
+        <h1 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">{t("title")}</h1>
+        <div className="inline-flex rounded-lg bg-gray-200/70 p-0.5 dark:bg-gray-800" role="group" aria-label={t("title")}>
           {(["list", "calendar"] as const).map((v) => (
             <button
               key={v}
@@ -312,16 +312,16 @@ export default function MyWorkPage() {
               aria-pressed={view === v}
               data-testid={`my-work-view-${v}`}
               data-crm-color-role="toggle"
-              className={cn("h-8 rounded-md px-4 text-sm font-medium transition-colors", view === v ? "bg-[#EA580C] text-white" : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800")}
+              className={cn("h-7 rounded-md px-3 text-[13px] font-medium transition-colors", view === v ? "bg-white text-gray-900 shadow-sm dark:bg-gray-950 dark:text-gray-100" : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100")}
             >
               {t(v === "list" ? "views.list" : "views.calendar")}
             </button>
           ))}
         </div>
         {tasks && (
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300" data-testid="my-work-counts">
+          <span className="text-[13px] text-gray-500 dark:text-gray-400" data-testid="my-work-counts">
             {t("openCount", { count: openCount })}
-            {overdueCount > 0 && <> · <span className="font-semibold text-red-600">{t("overdueCount", { count: overdueCount })}</span></>}
+            {overdueCount > 0 && <> · <span className="text-[#C2410C] dark:text-orange-400">{t("overdueCount", { count: overdueCount })}</span></>}
           </span>
         )}
         {view === "list" && <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -330,7 +330,7 @@ export default function MyWorkPage() {
             onChange={(e) => setBoardFilter(e.target.value)}
             aria-label={t("allBoards")}
             data-testid="my-work-board-filter"
-            className="h-9 max-w-[16rem] truncate rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            className="h-8 max-w-[16rem] truncate rounded-lg border border-gray-200 bg-white px-2.5 text-[13px] text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
           >
             <option value="">{t("allBoards")}</option>
             {filterBoards.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
@@ -340,7 +340,7 @@ export default function MyWorkPage() {
             onClick={() => setShowDone((v) => !v)}
             aria-pressed={showDone}
             data-testid="my-work-show-done"
-            className={cn("h-9 rounded-lg border px-3 text-sm font-medium text-gray-900 dark:text-gray-100", showDone ? "border-gray-900 bg-gray-100 dark:border-gray-100 dark:bg-gray-800" : "border-gray-300 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900")}
+            className={cn("h-8 rounded-lg border px-2.5 text-[13px] text-gray-700 dark:text-gray-200", showDone ? "border-gray-400 bg-gray-100 dark:border-gray-500 dark:bg-gray-800" : "border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900")}
           >
             {t(showDone ? "hideDone" : "showDone")}
           </button>
@@ -376,25 +376,25 @@ export default function MyWorkPage() {
       )}
 
       {tasks && view === "list" && (groups.size > 0 || showDone) && (
-        <div className="space-y-3 rounded-2xl bg-[#F4F5F7] p-3 sm:p-4 dark:bg-gray-900/40">
+        <div className="space-y-3">
           {MY_WORK_GROUPS.map((g) => {
             const list = groups.get(g) ?? []
             if (!list.length) return null
             return (
-              <section key={g} data-testid="my-work-group" data-group={g} className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-                <h2 className="flex items-baseline gap-2 px-4 pb-2 pt-3 text-[15px] font-bold text-gray-900 dark:text-gray-100">
-                  <span className={cn(g === "overdue" && "text-red-600")}>{t(`groups.${g}`)}</span>
-                  <span className="text-sm font-medium text-gray-500">{list.length}</span>
+              <section key={g} data-testid="my-work-group" data-group={g} className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+                <h2 className="flex items-baseline gap-1.5 px-4 py-2 text-[13px] font-medium text-gray-700 dark:text-gray-300">
+                  <span className={cn(g === "overdue" && "text-[#C2410C] dark:text-orange-400")}>{t(`groups.${g}`)}</span>
+                  <span className="text-gray-400">{list.length}</span>
                 </h2>
                 <ul>{list.map((task) => row(task, false))}</ul>
               </section>
             )
           })}
           {showDone && (
-            <section data-testid="my-work-group" data-group="done" className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-              <h2 className="flex items-baseline gap-2 px-4 pb-2 pt-3 text-[15px] font-bold text-gray-900 dark:text-gray-100">
+            <section data-testid="my-work-group" data-group="done" className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+              <h2 className="flex items-baseline gap-1.5 px-4 py-2 text-[13px] font-medium text-gray-700 dark:text-gray-300">
                 {t("groups.done")}
-                {doneTasks ? <span className="text-sm font-medium text-gray-500">{shownDone.length}</span> : <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" aria-hidden="true" />}
+                {doneTasks ? <span className="text-gray-400">{shownDone.length}</span> : <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" aria-hidden="true" />}
               </h2>
               {doneTasks && shownDone.length > 0 && <ul>{shownDone.map((task) => row(task, true))}</ul>}
             </section>

@@ -33250,6 +33250,7 @@
     },
     "messages": "{count} mesaj",
     "files": "{count} fayl",
+    "lateDays": "{days} gün",
     "lateBy": "{days} gün gecikib",
     "groups": {
       "overdue": "Gecikmiş",

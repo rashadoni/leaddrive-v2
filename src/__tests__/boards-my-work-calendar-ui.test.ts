@@ -139,3 +139,38 @@ describe("Mənim işlərim → Təqvim", () => {
     expect(window.location.search).toBe("")
   })
 })
+
+describe("Mənim işlərim → Təqvim, laid out as Bordio's (owner, 2026-11-11: «Как в Bordio»)", () => {
+  it("runs the lanes down to the window's edge and keeps a long waiting list scrolling in its own column", async () => {
+    const many = Array.from({ length: 150 }, (_, i) => ({ id: `w${i}`, title: `Gözləyən ${i}`, status: "todo", priority: "medium", dueDate: dueIn(-i), plans: [], divisionId: "mx" }))
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url === "/api/v1/divisions") return new Response(JSON.stringify({ success: true, data: { divisions: DIVISIONS } }))
+      if (url.includes("open=1")) return new Response(JSON.stringify({ success: true, data: { tasks: many, total: many.length } }))
+      return new Response(JSON.stringify({ success: true, data: { tasks: [], total: 0 } }))
+    }))
+    // The calendar sits 300 px from the top of a 900 px window, in a <main> padded 32 px at the bottom.
+    const main = document.createElement("main")
+    main.style.paddingBottom = "32px"
+    container.replaceWith(main)
+    main.appendChild(container)
+    const innerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 900 })
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ top: 300, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 300, toJSON: () => ({}) })
+    try {
+      await render()
+      const lanes = container.querySelector('[data-testid="my-work-lanes"]') as HTMLElement
+      expect(lanes.style.height).toBe("568px")
+      // All 150 are in the column (no «show more» stretching the page), and the column scrolls itself.
+      expect(container.querySelectorAll('[data-testid="my-work-waiting"] [data-testid="my-work-card"]')).toHaveLength(150)
+      expect(container.querySelector('[data-testid="my-work-waiting-scroll"]')?.className).toContain("overflow-y-auto")
+      // Days are lanes split by a hairline, not boxes; today is marked by its header only.
+      const todayLane = container.querySelector(`[data-day="${today}"]`) as HTMLElement
+      expect(todayLane.className).not.toContain("rounded")
+      expect(todayLane.firstElementChild?.className).toContain("border-b-[#EA580C]")
+    } finally {
+      rect.mockRestore()
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: innerHeight })
+      main.replaceWith(container)
+    }
+  })
+})
