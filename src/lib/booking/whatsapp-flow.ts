@@ -203,3 +203,30 @@ export async function ensureBookingFlow(
   steps.push({ step: "status", ok: published?.status === "PUBLISHED", detail: published ? `${published.id} ${published.status}` : "not listed" })
   return { ok: published?.status === "PUBLISHED", flowId, steps }
 }
+
+/**
+ * What a client sent back from the form.
+ *
+ * Meta puts everything in one string — `interactive.nfm_reply.response_json` —
+ * and the token we issued is inside it, not beside it. A submission that does
+ * not parse, or that names no time, is not a booking: it is read as nothing,
+ * and the message takes the ordinary path.
+ */
+export function readFlowReply(responseJson: unknown): { token: string | null; time: string; client: string } | null {
+  if (typeof responseJson !== "string" || !responseJson.trim()) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(responseJson)
+  } catch {
+    return null
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
+  const value = parsed as Record<string, unknown>
+  const time = typeof value.time === "string" ? value.time.trim() : ""
+  if (!time) return null
+  return {
+    token: typeof value.flow_token === "string" && value.flow_token ? value.flow_token : null,
+    time,
+    client: typeof value.client === "string" ? value.client.trim() : "",
+  }
+}

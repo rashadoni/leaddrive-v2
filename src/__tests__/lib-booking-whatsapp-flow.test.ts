@@ -28,7 +28,7 @@ vi.mock("@/lib/whatsapp", () => ({
   WHATSAPP_GRAPH_API_BASE: "https://graph.facebook.com/v21.0",
 }))
 
-const { flowsCapability, bookingFlowJson, BOOKING_FLOW_NAME } = await import("@/lib/booking/whatsapp-flow")
+const { flowsCapability, bookingFlowJson, readFlowReply, BOOKING_FLOW_NAME } = await import("@/lib/booking/whatsapp-flow")
 
 const CONFIG = { accessToken: "tok", phoneNumberId: "pn", businessAccountId: "waba-1" }
 
@@ -134,5 +134,30 @@ describe("the form a client fills in", () => {
   it("declares a schema version, because a form without one is refused", () => {
     expect(flow.version).toMatch(/^\d+\.\d+$/)
     expect(Number(flow.version)).toBeGreaterThanOrEqual(7.2)
+  })
+})
+
+describe("what comes back from the form", () => {
+  it("reads the chosen time and the name out of Meta's one string", () => {
+    const reply = readFlowReply(JSON.stringify({ flow_token: "tok-1", time: "bk:offer-9", client: "Günel" }))
+
+    expect(reply).toEqual({ token: "tok-1", time: "bk:offer-9", client: "Günel" })
+  })
+
+  it("is nothing when there is no time in it — a submission is not a booking by itself", () => {
+    // The ordinary path then takes the message, instead of the agent acting on
+    // a form that named no chair.
+    expect(readFlowReply(JSON.stringify({ flow_token: "tok-1", client: "Günel" }))).toBeNull()
+    expect(readFlowReply("not json")).toBeNull()
+    expect(readFlowReply("")).toBeNull()
+    expect(readFlowReply(null)).toBeNull()
+    expect(readFlowReply(JSON.stringify(["bk:1"]))).toBeNull()
+  })
+
+  it("survives a form that answered without our token", () => {
+    // Meta documents the token as living inside this JSON; a submission that
+    // arrives without one is still a chosen time, and the conversation it came
+    // from is known from the message itself.
+    expect(readFlowReply(JSON.stringify({ time: "bk:offer-9" }))).toEqual({ token: null, time: "bk:offer-9", client: "" })
   })
 })
