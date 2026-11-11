@@ -1,5 +1,6 @@
 import { isNavItemRoleAllowed, navItems } from "./nav-items"
 import { checkPermission, type Role } from "./permissions"
+import type { RoleAccessMap } from "./role-access"
 import { effectiveHiddenModules, type UserHideableId } from "./user-module-access"
 import { effectiveSettingsSections } from "./settings-sections"
 
@@ -22,8 +23,8 @@ export type AccessLevel = "full" | "edit" | "view" | "none"
  * levels the role table shows. A role the engine does not know (a custom one)
  * is denied everything, which is what "none" in every row says.
  */
-export function enforcedAccessLevel(roleId: string, scope: string): AccessLevel {
-  const can = (action: "read" | "write" | "delete") => checkPermission(roleId as Role, scope, action)
+export function enforcedAccessLevel(roleId: string, scope: string, overrides?: RoleAccessMap | null): AccessLevel {
+  const can = (action: "read" | "write" | "delete") => checkPermission(roleId as Role, scope, action, overrides)
   if (can("delete")) return "full"
   if (can("write")) return "edit"
   if (can("read")) return "view"

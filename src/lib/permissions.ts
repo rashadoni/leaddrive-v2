@@ -1,4 +1,5 @@
 import { LEGACY_MODULE_MAP, type ModuleId } from "./modules"
+import { currentRoleAccess, isEditableCell, levelAllows, type RoleAccessMap } from "./role-access"
 
 export type Role = "superadmin" | "admin" | "manager" | "sales" | "support" | "ticketing" | "viewer" | "reviewer"
 export type Action = "read" | "write" | "delete" | "export" | "admin"
@@ -1002,7 +1003,22 @@ export function methodToAction(method: string): Action {
   }
 }
 
-export function checkPermission(role: Role, module: Module | string, action: Action): boolean {
+/**
+ * May this role do this here? The built-in rights of the role, unless the
+ * organization set another level for it (role-access.ts) — `overrides` names
+ * the organization's map when the caller has it at hand; otherwise the map of
+ * the organization of the request is used. `{}` asks for the built-in rights.
+ */
+export function checkPermission(role: Role, module: Module | string, action: Action, overrides?: RoleAccessMap | null): boolean {
+  const map = overrides === undefined ? currentRoleAccess() : overrides
+  const level = map?.[role]?.[module]
+  if (level && isEditableCell(role, module) && action !== "admin") {
+    return levelAllows(level, action, (other) => builtInPermission(role, module, other))
+  }
+  return builtInPermission(role, module, action)
+}
+
+function builtInPermission(role: Role, module: Module | string, action: Action): boolean {
   const perms = ROLE_PERMISSIONS[role]
   if (!perms) return false
   // A reviewer only reads, and never a closed scope — checked before the

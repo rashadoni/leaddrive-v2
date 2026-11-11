@@ -56,11 +56,21 @@ const roles = [
 ]
 
 let root: Root
+let puts: unknown[] = []
 let container: HTMLDivElement
 
 beforeEach(async () => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
-  vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+  puts = []
+  vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+    if (String(input).includes("/settings/role-access")) {
+      if (init?.method === "PUT") {
+        const sent = JSON.parse(String(init.body)) as { roleAccess: unknown }
+        puts.push(sent)
+        return { ok: true, status: 200, headers: new Headers(), json: async () => ({ data: sent }) }
+      }
+      return { ok: true, status: 200, headers: new Headers(), json: async () => ({ data: { roleAccess: { support: { deals: "none" } } } }) }
+    }
     const body = String(input).includes("/settings/roles")
       ? { success: true, data: { roles, permissions: {} } }
       : { success: true, data: [{ role: "manager" }, { role: "manager" }, { role: "viewer" }] }
@@ -81,7 +91,13 @@ afterEach(async () => {
 const table = () => document.querySelector("table") as HTMLTableElement
 const columns = () => [...table().querySelectorAll("thead th")].map((th) => th.textContent?.trim() ?? "")
 /** scope → the level shown for each role column, in column order. */
-const row = (scope: string) => [...table().querySelectorAll(`tr[data-matrix-scope="${scope}"] td`)].slice(1).map((td) => td.textContent?.trim())
+// An admin edits a cell through a select (the organization's own rights, lib/role-access.ts): read its chosen option.
+const cellText = (td: Element) => {
+  const select = td.querySelector("select")
+  if (!select) return td.textContent?.trim()
+  return [select.selectedOptions[0]?.textContent ?? "", ...[...td.querySelectorAll("span")].map((span) => span.textContent ?? "")].join("").trim()
+}
+const row = (scope: string) => [...table().querySelectorAll(`tr[data-matrix-scope="${scope}"] td`)].slice(1).map(cellText)
 const groupHeads = () => [...table().querySelectorAll("tr[data-matrix-group] td")].map((td) => td.textContent?.trim())
 const firstCells = () => [...table().querySelectorAll("tbody tr[data-matrix-scope] td:first-child > div")].map((cell) => cell.textContent?.trim())
 
@@ -117,5 +133,39 @@ describe("role table", () => {
     expect(head[7]).toContain("Pharmacist")
     expect(head[7]).toContain("нельзя назначить")
     expect(head[2]).toContain("2")
+  })
+
+  // Owner, 2026-11-11: «я как админ почему не могу менять роли» → «Да, делай»; «у админа должны быть доступы».
+  it("an admin changes a role's level for the organization: marked until saved, the admin's column locked", async () => {
+    const cell = (role: string, scope: string) => table().querySelector(`select[data-role="${role}"][data-scope="${scope}"]`) as HTMLSelectElement | null
+    // What the organization saved earlier is shown, with the built-in level beside it.
+    expect(row("deals")[3]).toBe(`${message("settings", "accessNone")}стандарт: ${message("settings", "accessView")}`)
+    // Admin and Settings cannot be changed: no select there.
+    expect(cell("admin", "deals")).toBeNull()
+    expect(table().querySelector('select[data-scope="settings"], select[data-scope="users"]')).toBeNull()
+
+    const sales = cell("sales", "contacts")!
+    expect(sales.value).toBe("edit")
+    await act(async () => {
+      sales.value = "full"
+      sales.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+    expect(container.querySelector('[data-testid="roles-matrix-unsaved"]')?.textContent).toBe("Не сохранено изменений: 1")
+    expect(cell("sales", "contacts")!.className).toContain("ring-[#EA580C]")
+
+    await act(async () => { (container.querySelector('[data-testid="roles-matrix-save"]') as HTMLButtonElement).click() })
+    for (let i = 0; i < 3; i++) await act(async () => { await new Promise((resolve) => setTimeout(resolve, 5)) })
+    expect(puts).toEqual([{ roleAccess: { support: { deals: "none" }, sales: { contacts: "full" } } }])
+    expect(container.querySelector('[data-testid="roles-matrix-unsaved"]')).toBeNull()
+
+    // Choosing the built-in level again removes the difference instead of storing it.
+    await act(async () => {
+      const again = cell("sales", "contacts")!
+      again.value = "edit"
+      again.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+    await act(async () => { (container.querySelector('[data-testid="roles-matrix-save"]') as HTMLButtonElement).click() })
+    for (let i = 0; i < 3; i++) await act(async () => { await new Promise((resolve) => setTimeout(resolve, 5)) })
+    expect(puts.at(-1)).toEqual({ roleAccess: { support: { deals: "none" } } })
   })
 })

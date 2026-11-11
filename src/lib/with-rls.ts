@@ -1,5 +1,6 @@
 import { logOperationalFailure } from "./telemetry/operational-failure"
 import { NextRequest, NextResponse } from "next/server"
+import { orgRoleAccess } from "./role-access-server"
 import {
   getOrgId,
   getSession,
@@ -106,7 +107,7 @@ function roleDenial(req: NextRequest, session: AuthResult | null): NextResponse 
   if (!resolvedModule) return null
 
   const action = methodToAction(req.method)
-  if (checkPermission(session.role, resolvedModule, action)) return null
+  if (checkPermission(session.role, resolvedModule, action, orgRoleAccess(session.orgId))) return null
   // A section of Settings an admin ticked for this person (lib/settings-sections.ts).
   if (settingsGrantAllows(session, pathname, resolvedModule, action)) return null
 

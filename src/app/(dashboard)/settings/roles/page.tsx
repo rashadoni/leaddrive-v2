@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
+import { ACCESS_LEVELS, isEditableCell, setClientRoleAccess, type RoleAccessMap } from "@/lib/role-access"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -51,7 +52,9 @@ const MODULE_HINT_KEYS: Partial<Record<string, string>> = {
 
 // The matrix asks `enforcedAccessLevel` — `checkPermission` underneath, the
 // function every API route is gated by — so this table cannot say something
-// enforcement does not. It used to render `Organization.settings.permissions`,
+// enforcement does not. Since 2026-11-11 an admin changes it here for their
+// organization (lib/role-access.ts): the map the table edits is the one
+// `checkPermission` reads, saved in `Organization.settings.roleAccess`. It used to render `Organization.settings.permissions`,
 // an editable copy that nothing reads at enforcement time: an admin could set
 // Sales → Deals to "None", save, and Sales kept full access. The user card
 // reads the same function for its "what this person gets" rows.
@@ -94,7 +97,7 @@ const ACCESS_STYLES: Record<AccessLevel, { icon: typeof Check; className: string
 }
 
 export default function RolesSettingsPage() {
-  const { data: session } = useSession()
+  const { data: session, update: updateSession } = useSession()
   const t = useTranslations("settings")
   const tc = useTranslations("common")
   const tn = useTranslations("nav")
@@ -124,15 +127,28 @@ export default function RolesSettingsPage() {
   const [deleteRoleId, setDeleteRoleId] = useState<string | null>(null)
   const [deleteRoleName, setDeleteRoleName] = useState("")
   const orgId = session?.user?.organizationId
+  const canEdit = sessionUser?.role === "admin" || isSuperadmin
+  // The organization's rights for its roles: as saved, and as being edited.
+  const [savedAccess, setSavedAccess] = useState<RoleAccessMap>({})
+  const [draftAccess, setDraftAccess] = useState<RoleAccessMap>({})
+  const [saving, setSaving] = useState(false)
+  const [saveNote, setSaveNote] = useState<{ ok: boolean; text: string } | null>(null)
 
   const fetchData = useCallback(async () => {
     if (!orgId) return
     const headers = { "x-organization-id": String(orgId) }
     try {
-      const [usersRes, rolesRes] = await Promise.all([
+      const [usersRes, rolesRes, accessRes] = await Promise.all([
         fetch("/api/v1/users", { headers }),
         fetch("/api/v1/settings/roles", { headers }),
+        canEdit ? fetch("/api/v1/settings/role-access", { headers }) : Promise.resolve(null),
       ])
+      if (accessRes?.ok) {
+        const result = await accessRes.json()
+        const map = (result.data?.roleAccess ?? {}) as RoleAccessMap
+        setSavedAccess(map)
+        setDraftAccess(map)
+      }
 
       if (usersRes.ok) {
         const result = await usersRes.json()
@@ -148,9 +164,55 @@ export default function RolesSettingsPage() {
         if (result.data) setRoles(result.data.roles)
       }
     } catch (err) { console.error(err) } finally { setLoading(false) }
-  }, [orgId])
+  }, [orgId, canEdit])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  const cellOf = (map: RoleAccessMap, role: string, scope: string) => map[role]?.[scope]
+  const changedCount = (() => {
+    let n = 0
+    const roleIds = new Set([...Object.keys(savedAccess), ...Object.keys(draftAccess)])
+    for (const role of roleIds) {
+      const scopes = new Set([...Object.keys(savedAccess[role] ?? {}), ...Object.keys(draftAccess[role] ?? {})])
+      for (const scope of scopes) if (cellOf(savedAccess, role, scope) !== cellOf(draftAccess, role, scope)) n++
+    }
+    return n
+  })()
+  const setCell = (role: string, scope: string, level: AccessLevel) => {
+    setSaveNote(null)
+    setDraftAccess((prev) => {
+      const next: RoleAccessMap = Object.fromEntries(Object.entries(prev).map(([r, m]) => [r, { ...m }]))
+      // Only what differs from the built-in right is kept.
+      if (level === enforcedLevel(role, scope, {})) delete next[role]?.[scope]
+      else (next[role] ??= {})[scope] = level
+      if (next[role] && Object.keys(next[role]).length === 0) delete next[role]
+      return next
+    })
+  }
+  const saveAccess = async () => {
+    setSaving(true)
+    setSaveNote(null)
+    try {
+      const res = await fetch("/api/v1/settings/role-access", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {}) },
+        body: JSON.stringify({ roleAccess: draftAccess }),
+      })
+      if (!res.ok) throw new Error(String(res.status))
+      const result = await res.json()
+      const map = (result.data?.roleAccess ?? {}) as RoleAccessMap
+      setSavedAccess(map)
+      setDraftAccess(map)
+      // This tab's buttons follow at once; the session (and other tabs) on its next read.
+      setClientRoleAccess(map)
+      updateSession?.().catch(() => {})
+      setSaveNote({ ok: true, text: t("rolesMatrixSaved") })
+    } catch {
+      setSaveNote({ ok: false, text: t("rolesMatrixSaveFailed") })
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const handleDeleteRole = async () => {
     if (!deleteRoleId) return
@@ -265,7 +327,12 @@ export default function RolesSettingsPage() {
       <Card data-tour-id="roles-matrix">
         <CardContent className="pt-6 overflow-x-auto">
           <h3 className="font-semibold">{t("rolesMatrixTitle")}</h3>
-          <p className="mt-1 mb-4 text-xs text-muted-foreground">{t("rolesMatrixReadOnlyHint")}</p>
+          <div className="mt-1 mb-4 flex flex-wrap items-start justify-between gap-3">
+            <p className="max-w-3xl text-xs text-muted-foreground">{t(canEdit ? "rolesMatrixEditHint" : "rolesMatrixReadOnlyHint")}</p>
+            {canEdit && changedCount > 0 && (
+              <span className="text-xs font-medium text-[#C2410C]" data-testid="roles-matrix-unsaved">{t("rolesMatrixUnsaved", { count: changedCount })}</span>
+            )}
+          </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
@@ -317,16 +384,40 @@ export default function RolesSettingsPage() {
                         )}
                       </td>
                       {roles.map(role => {
-                        const level = enforcedLevel(role.id, mod)
+                        const level = enforcedLevel(role.id, mod, canEdit ? draftAccess : undefined)
+                        const builtIn = enforcedLevel(role.id, mod, {})
                         const style = ACCESS_STYLES[level]
                         const IconEl = style.icon
+                        const editable = canEdit && role.assignable !== false && isEditableCell(role.id, mod)
+                        const unsaved = editable && cellOf(draftAccess, role.id, mod) !== cellOf(savedAccess, role.id, mod)
+                        const locked = role.id === "admin" || role.id === "superadmin"
                         return (
                           <td key={role.id} className="py-2.5 px-2">
-                            <div className="flex justify-center">
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${style.className}`}>
-                                <IconEl className="h-3 w-3" />
-                                {accessLabel(level)}
-                              </span>
+                            <div className="flex flex-col items-center gap-0.5">
+                              {editable ? (
+                                <select
+                                  value={level}
+                                  onChange={(e) => setCell(role.id, mod, e.target.value as AccessLevel)}
+                                  aria-label={t("rolesMatrixCellLabel", { role: roleLabel(role), module: single ? group.label : scopeLabel(group, mod) })}
+                                  data-testid="roles-matrix-cell"
+                                  data-role={role.id}
+                                  data-scope={mod}
+                                  className={`cursor-pointer appearance-none rounded-md border-0 px-2 py-0.5 text-center text-[11px] font-medium ${style.className} ${unsaved ? "ring-2 ring-[#EA580C] ring-offset-1" : "hover:ring-1 hover:ring-border"}`}
+                                >
+                                  {ACCESS_LEVELS.map((option) => <option key={option} value={option}>{accessLabel(option)}</option>)}
+                                </select>
+                              ) : (
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${style.className}`}
+                                  title={canEdit ? t("rolesMatrixLocked") : undefined}
+                                >
+                                  {canEdit && locked ? <Lock className="h-3 w-3" /> : <IconEl className="h-3 w-3" />}
+                                  {accessLabel(level)}
+                                </span>
+                              )}
+                              {editable && level !== builtIn && (
+                                <span className="text-[10px] text-[#C2410C]">{t("rolesMatrixDefault", { level: accessLabel(builtIn) })}</span>
+                              )}
                             </div>
                           </td>
                         )
@@ -337,6 +428,23 @@ export default function RolesSettingsPage() {
               })}
             </tbody>
           </table>
+          {canEdit && (
+            <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+              {saveNote && <span className={`text-xs ${saveNote.ok ? "text-green-700 dark:text-green-400" : "text-destructive"}`}>{saveNote.text}</span>}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setSaveNote(null); setDraftAccess({}) }}
+                disabled={saving || Object.keys(draftAccess).length === 0}
+                data-testid="roles-matrix-reset"
+              >
+                {t("rolesMatrixReset")}
+              </Button>
+              <Button type="button" onClick={saveAccess} disabled={saving || changedCount === 0} data-testid="roles-matrix-save">
+                {t("rolesMatrixSave")}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

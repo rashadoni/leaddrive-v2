@@ -14,6 +14,7 @@ import { effectiveSettingsSections, settingsGrantAllows } from "./settings-secti
 import { getMobileAuth, resolveMobileAuth } from "./mobile-auth"
 import crypto from "crypto"
 import { recordReviewerRead } from "./audit/reviewer-read-log"
+import { orgRoleAccess, rememberRoleAccess } from "./role-access-server"
 
 /**
  * Enter the tenant context for the rest of this request and load the
@@ -482,7 +483,7 @@ export async function getOrgId(req: NextRequest): Promise<string | null> {
  * stream) asks this once per module instead of re-running requireAuth.
  */
 export function moduleAccessDenial(
-  session: Pick<AuthResult, "role" | "hiddenModules" | "settingsSections">,
+  session: Pick<AuthResult, "role" | "hiddenModules" | "settingsSections"> & { orgId?: string },
   orgContext: { plan: string; addons: string[]; modules: Record<string, boolean> } | null,
   module: Module | string,
   action: Action,
@@ -492,7 +493,8 @@ export function moduleAccessDenial(
   // A section of Settings an admin ticked for this person opens that section's
   // own routes, and nothing else (lib/settings-sections.ts).
   const bySection = pathname !== undefined && settingsGrantAllows(session, pathname, module, action)
-  const allowed = checkPermission(session.role, module, action) || bySection
+  // The organization's own level for this role, if it set one (role-access.ts).
+  const allowed = checkPermission(session.role, module, action, orgRoleAccess(session.orgId)) || bySection
   if (!allowed) {
     return NextResponse.json(
       {
@@ -664,6 +666,8 @@ export async function requireAuth(
         return NextResponse.json({ error: "Organization is deactivated. Contact your administrator." }, { status: 403 })
       }
       if (customerPhonePrivacyEnabled(org?.settings)) session.hideCustomerPhoneForOperators = true
+      // The gate below and the route itself read the organization's role rights as this row has them.
+      rememberRoleAccess(session.orgId, org?.settings)
       orgContext = { plan, addons, modules }
     } catch {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
