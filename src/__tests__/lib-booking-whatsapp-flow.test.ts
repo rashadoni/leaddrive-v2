@@ -34,7 +34,7 @@ vi.mock("@/lib/whatsapp", () => ({
  * it writes, and when, is the difference between a published form and a form
  * clients never see.
  */
-const setting = vi.fn(async () => 1)
+const setting = vi.fn(async (..._args: unknown[]) => 1)
 vi.mock("@/lib/booking/db", () => ({ bookingDb: { $executeRawUnsafe: setting } }))
 /** What the last write recorded in `flowId`, as JSON. */
 const lastWritten = () => setting.mock.calls.at(-1)?.[2]

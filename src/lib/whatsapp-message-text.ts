@@ -31,7 +31,7 @@ export type WaMessageTextPayload = {
     button_reply?: { title?: unknown }
     list_reply?: { title?: unknown }
     /** A form filled inside WhatsApp (Flows); its answers are one JSON string. */
-    nfm_reply?: { response_json?: unknown; name?: unknown }
+    nfm_reply?: { response_json?: unknown; name?: unknown; body?: unknown }
   }
 }
 
