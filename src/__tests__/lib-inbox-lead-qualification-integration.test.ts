@@ -229,6 +229,61 @@ describe("inbox AI lead qualification — persisted ownership and tailored pitch
     }))
   })
 
+  // Owner, 2026-11-11 (разбор «гардрейлов»): a number typed in the chat is a claim, not the customer's identity.
+  it("does not glue the chat to another customer's lead whose number was only typed in the chat", async () => {
+    mocks.prisma.socialConversation.findFirst.mockReset()
+      .mockResolvedValueOnce({
+        id: "conv-1", platform: "tiktok", externalId: "stranger_77", contactId: "contact-1",
+        contactName: "Stranger", assignedTo: "agent-1", metadata: {},
+      })
+      .mockResolvedValueOnce({ metadata: {} })
+    mocks.prisma.contact.findFirst.mockResolvedValue({ fullName: "Stranger", phone: null, phones: [], email: null, company: null })
+    mocks.prisma.channelMessage.findMany.mockReset()
+    mocks.prisma.channelMessage.findMany.mockResolvedValue([
+      { body: "Qiymət nədir? Nömrəm 050 111 22 33", direction: "inbound", createdAt: new Date("2026-07-24T07:59:00.000Z"), metadata: {} },
+    ])
+    // The number belongs to a real customer's lead, owned by seller-9.
+    mocks.prisma.lead.findFirst.mockResolvedValue({
+      id: "lead-real", contactName: "Aysel Məmmədova", assignedTo: "seller-9", interest: null, sourceProfileUrl: null,
+      pipelineId: null, category: null, notes: null, source: null, sourceDetail: null,
+    })
+    mocks.prisma.lead.create.mockResolvedValue({ id: "lead-new" })
+
+    const result = await maybeCreateQualifiedLeadTask({
+      orgId: "org-1", conversationId: "conv-1", contactId: "contact-1", channelType: "tiktok",
+      inboundText: "Qiymət nədir? Nömrəm 050 111 22 33", now: new Date("2026-07-24T08:00:00.000Z"),
+    })
+
+    expect(result).toEqual({ created: true, leadId: "lead-new", taskId: "task-1" })
+    // The real customer's lead is not touched, and the chat is not filed under it.
+    expect(mocks.prisma.lead.update).not.toHaveBeenCalled()
+    expect(mocks.prisma.channelMessage.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { leadId: "lead-new" } }))
+    // A lead of its own, flagged for the salesperson who knows that customer.
+    expect(mocks.prisma.lead.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      phone: "994501112233", assignedTo: "seller-9", notes: expect.stringContaining("«Aysel Məmmədova» lidində var (ID: lead-real)"),
+    }) }))
+    expect(mocks.prisma.task.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      relatedId: "lead-new", assignedTo: "seller-9", description: expect.stringContaining("yazışma həmin lidə bağlanmayıb"),
+    }) }))
+  })
+
+  it("files a WhatsApp chat under the lead of the sender's own number, which Meta vouches for", async () => {
+    mocks.prisma.contact.findFirst.mockResolvedValue({ fullName: "Aysel", phone: null, phones: [], email: null, company: null })
+    mocks.prisma.lead.findFirst.mockResolvedValue({
+      id: "lead-real", contactName: "Aysel", assignedTo: "seller-9", interest: "TV", sourceProfileUrl: "x",
+      pipelineId: "p", category: "SMM", notes: "n", source: "whatsapp", sourceDetail: "d",
+    })
+
+    const result = await maybeCreateQualifiedLeadTask({
+      orgId: "org-1", conversationId: "conv-1", contactId: "contact-1", channelType: "whatsapp",
+      inboundText: "Qiymət və 12 aylıq kredit maraqlıdır. Nömrəm +994 50 111 22 33", now: new Date("2026-07-24T08:00:00.000Z"),
+    })
+
+    expect(result).toEqual({ created: true, leadId: "lead-real", taskId: "task-1" })
+    expect(mocks.prisma.lead.create).not.toHaveBeenCalled()
+    expect(mocks.prisma.channelMessage.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { leadId: "lead-real" } }))
+  })
+
   it("uses the TikTok contact handle when the external id is only a numeric conversation id", async () => {
     mocks.prisma.socialConversation.findFirst.mockReset()
       .mockResolvedValueOnce({

@@ -404,6 +404,17 @@ export async function maybeCreateQualifiedLeadTask(opts: {
       .find((value: string | null): value is string => Boolean(value)) ?? null
   }
   if (!phone) return { created: false, reason: "phone-required" }
+  // Чей это номер, знает только CRM или канал, а не сам чат. Номер из карточки
+  // контакта и номер отправителя в WhatsApp (его подтверждает Meta) — проверены.
+  // Номер, который клиент написал в переписке, — заявление: «мой номер 050…»
+  // с номером настоящего клиента склеивал чужую переписку с его лидом и
+  // дописывал в лид данные из неё (разбор «гардрейлов», владелец 2026-11-11).
+  const verifiedPhones = new Set(
+    [contact?.phone, ...(contact?.phones ?? []), conversation.platform === "whatsapp" ? conversation.externalId : null]
+      .map((value) => (value ? extractPhoneNumber(value) : null))
+      .filter((value): value is string => Boolean(value)),
+  )
+  const phoneVerified = verifiedPhones.has(phone)
 
   const classified = await classifyCommercialMessage(opts.orgId, agent.id ?? null, qualificationText, agent.model || MODEL)
   const decision: QualificationDecision = classified
@@ -487,14 +498,28 @@ export async function maybeCreateQualifiedLeadTask(opts: {
           : {}
         if (typeof metadata.qualificationTaskId === "string") return null
 
-        const existingLead = await tx.lead.findFirst({
+        const sameNumberLead = await tx.lead.findFirst({
           where: {
             organizationId: opts.orgId,
             OR: [{ phone }, { phoneWhatsApp: phone }],
           },
           orderBy: { createdAt: "desc" },
         })
-        let salesAssigneeId = existingLead?.assignedTo ?? null
+        // A typed number that is already some lead's: a new lead beside it,
+        // never this conversation glued to that customer. Its salesperson gets
+        // the task — the one who can tell whether it is the same person.
+        const existingLead = phoneVerified ? sameNumberLead : null
+        const unverifiedMatch = phoneVerified ? null : sameNumberLead
+        const leadDescription = unverifiedMatch
+          ? [
+              description,
+              "",
+              `Diqqət: ${phone} nömrəsi artıq «${unverifiedMatch.contactName}» lidində var (ID: ${unverifiedMatch.id}).`
+                + " Nömrəni müştəri yazışmada özü yazıb və o yoxlanılmayıb, ona görə yazışma həmin lidə bağlanmayıb."
+                + " Eyni müştəri olduğunu zəng edib dəqiqləşdirin.",
+            ].join("\n")
+          : description
+        let salesAssigneeId = existingLead?.assignedTo ?? unverifiedMatch?.assignedTo ?? null
         if (!salesAssigneeId && agent.autoAssignSales) {
           const salesUsers = await tx.user.findMany({
             where: {
@@ -538,7 +563,7 @@ export async function maybeCreateQualifiedLeadTask(opts: {
             priority: decision.confidence >= 0.88 ? "high" : "medium",
             assignedTo: salesAssigneeId,
             pipelineId: smmPipeline?.id ?? null,
-            notes: description,
+            notes: leadDescription,
           },
         })
         if (existingLead && (
@@ -598,7 +623,7 @@ export async function maybeCreateQualifiedLeadTask(opts: {
           data: {
             organizationId: opts.orgId,
             title: `${CATEGORY_LABEL[decision.category]} — ${name}`.slice(0, 200),
-            description,
+            description: leadDescription,
             status: firstColumn?.mapsToStatus ?? "backlog",
             boardColumnKey: firstColumn?.key ?? null,
             boardPosition: (maxPosition._max.boardPosition ?? 0) + 1024,
