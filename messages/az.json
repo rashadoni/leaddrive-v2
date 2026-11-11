@@ -32336,7 +32336,7 @@
     "dayEmptyHint": "Başqa gün seçin və ya yuxarıdaki düymə ilə müştərini yazın.",
     "newMeeting": "Yeni görüş",
     "chooseMeeting": "Görüş seçin",
-    "chooseMeetingHint": "Cədvəldə görüşə toxunun — müştəri, göndərilən bildirişlər və əməliyyatlar burada görünəcək. Müştərini yazmaq üçün boş vaxt aralığına toxunun.",
+    "chooseMeetingHint": "Cədvəldə görüşə toxunun — müştəri, göndərilən bildirişlər və əməliyyatlar burada görünəcək. Müştərini yazmaq üçün cədvəldə boş yerə toxunun.",
     "chooseMeetingHintReadOnly": "Cədvəldə görüşə toxunun — müştəri, göndərilən bildirişlər və əməliyyatlar burada görünəcək.",
     "deliverySent": "Nə göndərilib",
     "createdOn": "{date}, {time} tarixində yaradılıb",

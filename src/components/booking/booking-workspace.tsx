@@ -498,6 +498,7 @@ export function BookingWorkspace({ section = "meetings" }: { section?: BookingSe
                 pendingEnd={pendingSpan?.end ?? null}
                 onSelect={openMeeting}
                 onBook={canBook ? (startsAt) => startBooking(startsAt) : null}
+                onBookAt={canBook ? (minutes) => startBooking(new Date(dayStartMs + minutes * 60_000).toISOString()) : null}
                 time={railTime}
                 statusLabel={state}
                 duration={duration}

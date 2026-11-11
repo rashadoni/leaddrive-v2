@@ -324,7 +324,19 @@ export function BookingHostChips({ hosts, anyMeta, selected, onSelect }: {
   </div>
 }
 
-export function BookingDayTimeline({ meetings, windows, busy, nowMinutes, selectedId, pendingStart, pendingEnd, onSelect, onBook, time, statusLabel, duration }: {
+/**
+ * Where on the day a tap landed: pixels from the top of the rail into a time.
+ *
+ * Rounded to a quarter of an hour — as fine as a finger on a wall of hours
+ * gets — and never outside the day the rail draws, so a tap on the last pixel
+ * books the last quarter rather than tomorrow.
+ */
+export function minuteAtOffset(offsetPx: number, rail: { from: number; to: number }): number {
+  const minutes = rail.from * 60 + (offsetPx / PIXELS_PER_HOUR) * 60
+  return Math.min(Math.max(Math.round(minutes / 15) * 15, rail.from * 60), rail.to * 60 - 15)
+}
+
+export function BookingDayTimeline({ meetings, windows, busy, nowMinutes, selectedId, pendingStart, pendingEnd, onSelect, onBook, onBookAt, time, statusLabel, duration }: {
   meetings: TimelineMeeting[]
   windows: TimelineWindow[]
   /** Already stripped of the spans the meetings above cover. */
@@ -336,6 +348,13 @@ export function BookingDayTimeline({ meetings, windows, busy, nowMinutes, select
   pendingEnd: number | null
   onSelect: (id: string) => void
   onBook: ((startsAt: string) => void) | null
+  /**
+   * A tap anywhere empty on the rail, in minutes from midnight. The dashed
+   * windows are one service's free time; the rest of the day looks just as
+   * empty to a person, and tapping it did nothing at all (owner, 2026-11-11:
+   * «кликаю на часы, не создаётся»).
+   */
+  onBookAt?: ((minutes: number) => void) | null
   time: (minutes: number) => string
   statusLabel: (status: string) => string
   duration: (minutes: number) => string
@@ -352,7 +371,18 @@ export function BookingDayTimeline({ meetings, windows, busy, nowMinutes, select
       <span className="-mt-2 shrink-0 pr-3 text-right text-[11px] tabular-nums text-muted-foreground" style={{ width: RAIL_WIDTH }}>{time(minute)}</span>
       <span aria-hidden="true" className={cn("mt-0 h-px flex-1", minute % 60 === 0 ? "bg-border" : "bg-border/50")} />
     </div>)}
-    <div className="absolute inset-y-0 right-0" style={{ left: RAIL_WIDTH }}>
+    <div
+      className={cn("absolute inset-y-0 right-0", onBookAt ? "cursor-cell" : null)}
+      style={{ left: RAIL_WIDTH }}
+      data-testid="timeline-empty"
+      onClick={(event) => {
+        // Only the empty background: a tap on a meeting, a window or a busy
+        // block is that block's own, and must not also book the hour it sits in.
+        if (!onBookAt || event.target !== event.currentTarget) return
+        const box = event.currentTarget.getBoundingClientRect()
+        onBookAt(minuteAtOffset(event.clientY - box.top, rail))
+      }}
+    >
       {windows.map((window) => {
         // The whole window is the target, not a button inside it: a 30-minute
         // window is 44 px tall, and a button that still met the page’s own
