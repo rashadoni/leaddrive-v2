@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
+import { setClientRoleAccess } from "@/lib/role-access"
 import { usePathname, useRouter } from "next/navigation"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { dashboardFont } from "@/lib/fonts/dashboard-font"
@@ -57,6 +58,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   useEffect(() => { mainRef.current?.scrollTo?.({ top: 0 }) }, [pathname])
   const { heroCommandVisible } = useDashboardHero()
   const user = session?.user
+  // The organization's own rights for its roles reach every checkPermission on
+  // the page before any page renders (lib/role-access.ts): pages wait for the
+  // session below, and the buttons must say what the server will allow.
+  setClientRoleAccess(user?.roleAccess)
   const outboxSession = user as { id?: string; email?: string; organizationId?: string; role?: string } | undefined
   // Who the session belongs to. Stable for as long as the same person is
   // signed in — deliberately without `iat`, see pageIdentityKey below.

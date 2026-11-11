@@ -1,4 +1,6 @@
 import { logOperationalFailure } from "./telemetry/operational-failure"
+import { rememberRoleAccess } from "./role-access-server"
+import type { RoleAccessMap } from "./role-access"
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
@@ -419,6 +421,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Стартовая страница тенанта: корень «/» ведёт сюда (см. proxy.ts).
         // Кладём в токен, чтобы Edge-прокси не ходил в БД ради редиректа.
         token.landingPath = readTenantLandingPath(dbUser.organization?.settings)
+        // The organization's own rights for its roles (role-access.ts), re-read like the role.
+        token.roleAccess = rememberRoleAccess(dbUser.organizationId, dbUser.organization?.settings)
 
         // Enforce the same MFA policy for OAuth users as for credentials
         // users. The provider's own MFA posture is not an assurance claim
@@ -542,6 +546,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }, token.hiddenModules as string[])
           token.sectionTenantModules = sectionTenantModules(token, freshTenantModules)
           token.landingPath = readTenantLandingPath(freshUser.organization?.settings)
+          token.roleAccess = rememberRoleAccess(freshUser.organizationId, freshUser.organization?.settings)
 
           // Re-arm setup (but not a factor challenge) when the fresh user row
           // explicitly requires MFA and has no usable method. This repairs
@@ -621,6 +626,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           settingsSections: (token.settingsSections as string[] | undefined) || [],
           sectionTenantModules: (token.sectionTenantModules as Record<string, boolean> | undefined) || undefined,
           landingPath: (token.landingPath as string | undefined) || undefined,
+          roleAccess: (token.roleAccess as RoleAccessMap | undefined) || {},
           reviewerAccessUntil: (token.reviewerAccessUntil as string | undefined) || undefined,
           needs2fa: token.needs2fa as boolean | undefined,
           twoFactorMethod: token.twoFactorMethod as "totp" | "sms" | undefined,
