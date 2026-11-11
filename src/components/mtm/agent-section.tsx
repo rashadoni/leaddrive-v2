@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Hint } from "@/components/hint"
 import { MtmContactExplorer, type MtmContactExplorerAgentScope } from "@/components/mtm/contact-explorer"
 import { MtmAgentAttachByPlace } from "@/components/mtm/agent-attach-by-place"
+import { MtmAgentOwnByPlace } from "@/components/mtm/agent-own-by-place"
 import { MtmAgentForm, type MtmAgentFormData } from "@/components/mtm/agent-form"
 import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
@@ -57,6 +58,9 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
   const [forbidden, setForbidden] = useState(false)
   // Someone who may only look gets the list: the picker exists to assign.
   const attachBy: "place" | "list" = searchParams.get("find") === "list" || forbidden ? "list" : "place"
+  // His own clients open on the list, as always; «by specialty and place» is
+  // one press away (owner, 2026-11-11: take them off by specialty, city, district).
+  const ownBy: "place" | "list" = searchParams.get("find") === "place" && !forbidden ? "place" : "list"
   const [agent, setAgent] = useState<SectionAgent | null>(null)
   const [editing, setEditing] = useState(false)
   const [reloads, setReloads] = useState(0)
@@ -84,10 +88,12 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
     return () => controller.abort()
   }, [agentId, explainError, reloads, t])
 
-  // On the attach tab the employee's own list is not mounted, so nothing
-  // reports its size: ask for the count directly, again after every change.
+  // On the attach tab, and on his own tab by specialty and place, the
+  // employee's own list is not mounted, so nothing reports its size: ask for
+  // the count directly, again after every change.
+  const listMounted = view === "assigned" && ownBy === "list"
   useEffect(() => {
-    if (view !== "candidates") return
+    if (listMounted) return
     const controller = new AbortController()
     const params = new URLSearchParams({ ownerAgentId: agentId, status: "ACTIVE", page: "1", limit: "1" })
     void fetch(`/api/v1/mtm/contacts?${params}`, { headers: { Accept: "application/json" }, signal: controller.signal })
@@ -99,7 +105,7 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
       })
       .catch(() => undefined)
     return () => controller.abort()
-  }, [agentId, changes, view])
+  }, [agentId, changes, listMounted])
 
   const replaceQuery = (params: URLSearchParams) => {
     const query = params.toString()
@@ -123,6 +129,32 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
     else params.delete("find")
     replaceQuery(params)
   }
+  const openOwnBy = (next: "place" | "list") => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (next === "place") params.set("find", "place")
+    else params.delete("find")
+    replaceQuery(params)
+  }
+  const findBy = (current: "place" | "list", open: (next: "place" | "list") => void, testId: string) => forbidden ? null : (
+    <div role="radiogroup" aria-label={t("attachHow")} className="inline-flex flex-wrap gap-1 rounded-full border border-border bg-muted/40 p-1" data-testid={testId}>
+      {([["place", ListFilter, "attachByPlace"], ["list", Search, "attachBySearch"]] as const).map(([key, Icon, label]) => (
+        <Hint key={key} text={t(view === "assigned"
+          ? key === "place" ? "hint.ownByPlace" : "hint.ownBySearch"
+          : key === "place" ? "hint.attachByPlace" : "hint.attachBySearch")}>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={current === key}
+            data-testid={`${testId.replace(/-how$/, "")}-by-${key}`}
+            onClick={() => open(key)}
+            className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors ${current === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Icon className="h-4 w-4" aria-hidden="true" />{t(label)}
+          </button>
+        </Hint>
+      ))}
+    </div>
+  )
 
   const onChanged = useCallback(() => setChanges((count) => count + 1), [])
   const scope = useMemo<MtmContactExplorerAgentScope | null>(() => agent ? {
@@ -234,31 +266,19 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
         </div>
       ) : view === "candidates" ? (
         <div className="space-y-3">
-          {forbidden ? null : (
-            <div role="radiogroup" aria-label={t("attachHow")} className="inline-flex flex-wrap gap-1 rounded-full border border-border bg-muted/40 p-1" data-testid="mtm-agent-attach-how">
-              {([["place", ListFilter, "attachByPlace"], ["list", Search, "attachBySearch"]] as const).map(([key, Icon, label]) => (
-                <Hint key={key} text={t(key === "place" ? "hint.attachByPlace" : "hint.attachBySearch")}>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={attachBy === key}
-                    data-testid={`mtm-agent-attach-by-${key}`}
-                    onClick={() => openAttachBy(key)}
-                    className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors ${attachBy === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                  >
-                    <Icon className="h-4 w-4" aria-hidden="true" />{t(label)}
-                  </button>
-                </Hint>
-              ))}
-            </div>
-          )}
+          {findBy(attachBy, openAttachBy, "mtm-agent-attach-how")}
           {attachBy === "place"
             ? <MtmAgentAttachByPlace agentId={agent.id} agentName={agent.name} onAttached={onChanged} onForbidden={() => setForbidden(true)} />
             : <MtmContactExplorer key={`${agent.id}-${view}`} agentScope={scope} />}
         </div>
       ) : (
-        // The list says itself whose clients it shows and how to change that.
-        <MtmContactExplorer key={`${agent.id}-${view}`} agentScope={scope} />
+        <div className="space-y-3">
+          {findBy(ownBy, openOwnBy, "mtm-agent-own-how")}
+          {ownBy === "place"
+            ? <MtmAgentOwnByPlace agentId={agent.id} agentName={agent.name} onChanged={onChanged} onForbidden={() => setForbidden(true)} />
+            // The list says itself whose clients it shows and how to change that.
+            : <MtmContactExplorer key={`${agent.id}-${view}`} agentScope={scope} />}
+        </div>
       )}
 
       <MtmAgentForm

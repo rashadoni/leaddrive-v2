@@ -7,7 +7,7 @@ import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import { activeFieldAssignmentWindow, canManageFieldMasterData, contactDisplayName, contactScopeForActor } from "@/lib/mtm/field-scope"
-import { buildAgentClientPicker, type PickerContactRow, type PickerInstitution } from "@/lib/mtm/agent-client-picker"
+import { agentOwnRows, buildAgentClientPicker, type PickerContactRow, type PickerInstitution } from "@/lib/mtm/agent-client-picker"
 import { coerceMtmContactClasses } from "@/lib/mtm/contact-classes"
 
 /** What the query below selects. */
@@ -32,14 +32,15 @@ function values(params: URLSearchParams, name: string): string[] {
 }
 
 /**
- * GET /api/v1/mtm/contacts/agent-picker?agentId=&specialty=…&city=…&district=…&class=…
+ * GET /api/v1/mtm/contacts/agent-picker?agentId=&own=1&specialty=…&city=…&district=…&class=…
  *
  * The «Клиенты агента» tab of an agent's card (src/lib/mtm/agent-client-picker.ts):
  * the specialties, the cities of those, the districts of those — each with
  * counts — and the active doctors that match, each with his class and his
  * institution, those of one institution next to each other. Only
  * doctors the caller may see, and only for someone who may assign them; with
- * `agentId`, the doctors already that agent's are marked.
+ * `agentId`, the doctors already that agent's are marked; with `own=1` as
+ * well, only those are listed.
  */
 export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const [actor, settings] = await Promise.all([
@@ -100,7 +101,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     institution: contact.workplaces[0]?.customer ?? null,
     agents: contact.agentAssignments.map(assignment => ({ agentId: assignment.agentId, role: assignment.role, name: assignment.agent.name })),
   }))
-  const picker = buildAgentClientPicker(rows, {
+  // `own=1`: the agent's own doctors only, every count his alone (his page's «Əməkdaşın müştəriləri»).
+  const own = agentId !== null && params.get("own") === "1"
+  const picker = buildAgentClientPicker(own ? agentOwnRows(rows, agentId) : rows, {
     specialties: values(params, "specialty"),
     cities: values(params, "city"),
     districts: values(params, "district"),

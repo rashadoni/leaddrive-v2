@@ -12074,7 +12074,12 @@
       "attachChosen": "Assign the ticked doctors to this agent from today. Whoever already has an agent keeps them.",
       "attachNothingChosen": "Choose a specialty first — the doctors found are ticked for you.",
       "attachNoneTicked": "A tick on a new doctor assigns them to the agent. Unticking a doctor the agent already has takes them off.",
-      "attachRemove": "Take the unticked doctors off this agent and assign the ticked new ones. You will be asked once more before anything is taken off."
+      "attachRemove": "Take the unticked doctors off this agent and assign the ticked new ones. You will be asked once more before anything is taken off.",
+      "ownNoneTicked": "Choose a specialty first — the agent's clients found are ticked for you. An unticked client stays with the agent.",
+      "ownMove": "Take the ticked clients off this agent and assign them to another. You will be asked to whom first.",
+      "ownRemove": "Take the ticked clients off this agent from today. You will be asked once more first.",
+      "ownByPlace": "The agent's clients step by step: specialty → city → district. Everyone found is ticked — take them off or hand them on with one press.",
+      "ownBySearch": "The agent's whole client list with search and filters."
     },
     "back": "All field agents",
     "notFound": "This employee was not found or is outside your access.",
@@ -12093,6 +12098,20 @@
     "attachChosen": "Assign ticked ({count})",
     "attachReason": "Chosen on the agent's page",
     "attachFailed": "Could not save. Check the connection and press again — whatever was already applied stays.",
+    "ownRemove": "Take off ticked ({count})",
+    "ownMove": "Hand to another ({count})",
+    "ownRemoveReason": "Taken off on the agent's page by specialty and place",
+    "ownMoveReason": "Handed from {from} to {to} on the agent's page",
+    "ownMoved": "{count} clients handed to {name}",
+    "ownMovedPartly": "{moved} handed, {left} stayed: they have an open visit or a planned route. {name} got them as well.",
+    "ownMoveTitle": "Hand to another employee",
+    "ownMoveBody": "{count} clients are taken off {name} and assigned to whoever you choose. Cards, visits and history stay; the other employees of these clients stay too.",
+    "ownMoveTarget": "Hand to",
+    "ownMoveChoose": "Choose an employee",
+    "ownMoveLoading": "Loading employees…",
+    "ownMoveAgentsFailed": "Could not load the employees — close the window and try again.",
+    "ownMoveCancel": "Cancel",
+    "ownMoveConfirm": "Hand over {count}",
     "attachNoneTicked": "No changes — tick new doctors, or untick one to take them off",
     "attachWillRemove": "To take off: {count}",
     "attachRemove": "Take off the agent ({count})",
@@ -16081,7 +16100,10 @@
     "clientsPartlyChanged": "{added} assigned, {removed} taken off, {left} unchanged: they have an open visit or a planned route. See Clients for details.",
     "clientsRemoveConfirmTitle": "Take doctors off the agent?",
     "clientsRemoveConfirmBody": "Doctors to take off {name}: {count}. Their cards, visits and history stay; whoever has another agent keeps them. Tick them again to bring them back.",
-    "clientsRemoveConfirm": "Take off {count}"
+    "clientsRemoveConfirm": "Take off {count}",
+    "clientsOwnChecked": "{count} ticked",
+    "clientsOwnAlsoWith": "also with: {name}{more, plural, =0 {} other { +#}}",
+    "clientsOwnAlsoWithHint": "The doctor has other agents too: {names}. He stays with them."
   },
   "admin": {
     "demoCenter": {

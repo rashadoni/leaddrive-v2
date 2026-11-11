@@ -12070,7 +12070,12 @@
       "attachChosen": "Seçilmiş həkimləri bu gündən bu agentə təyin etmək. Kimin artıq agenti varsa, o qalır.",
       "attachNothingChosen": "Əvvəlcə ixtisası seçin — tapılan həkimlər özü işarələnəcək.",
       "attachNoneTicked": "Yeni həkimdə işarə — agentə təyin etmək. Artıq agentdə olan həkimdə götürülmüş işarə — ondan ayırmaq.",
-      "attachRemove": "İşarəsiz həkimləri bu agentdən ayırmaq və işarələnmiş yeniləri təyin etmək. Ayırmadan əvvəl bir daha soruşacağıq."
+      "attachRemove": "İşarəsiz həkimləri bu agentdən ayırmaq və işarələnmiş yeniləri təyin etmək. Ayırmadan əvvəl bir daha soruşacağıq.",
+      "ownNoneTicked": "Əvvəlcə ixtisası seçin — agentin tapılan müştəriləri özü işarələnəcək. İşarəsi götürülən müştəri agentdə qalır.",
+      "ownMove": "İşarələnmiş müştəriləri bu agentdən götürüb başqasına vermək. Əvvəlcə kimə olduğunu soruşacağıq.",
+      "ownRemove": "İşarələnmiş müştəriləri bu gündən bu agentdən ayırmaq. Ayırmadan əvvəl bir daha soruşacağıq.",
+      "ownByPlace": "Agentin müştəriləri addım-addım: ixtisas → şəhər → rayon. Tapılanların hamısı işarələnib — bir düymə ilə ayırın və ya ötürün.",
+      "ownBySearch": "Agentin bütün müştəri siyahısı, axtarış və filtrlərlə."
     },
     "back": "Bütün sahə agentləri",
     "notFound": "Əməkdaş tapılmadı və ya sizə əlçatan deyil.",
@@ -12089,6 +12094,20 @@
     "attachChosen": "Seçilənləri təyin et ({count})",
     "attachReason": "Agentin səhifəsində seçilib",
     "attachFailed": "Saxlamaq alınmadı. Bağlantını yoxlayın və yenidən basın — artıq tətbiq olunanlar qalacaq.",
+    "ownRemove": "Seçilənləri ayır ({count})",
+    "ownMove": "Başqasına ötür ({count})",
+    "ownRemoveReason": "Agentin səhifəsində ixtisas və yerə görə ayrıldı",
+    "ownMoveReason": "Agentin səhifəsində {from} adlı əməkdaşdan {to} adlı əməkdaşa ötürüldü",
+    "ownMoved": "{count} müştəri ötürüldü: {name}",
+    "ownMovedPartly": "{moved} ötürüldü, {left} qaldı: onlarda açıq vizit və ya marşrut planı var. {name} onları da aldı.",
+    "ownMoveTitle": "Başqa əməkdaşa ötür",
+    "ownMoveBody": "{count} müştəri {name} adlı əməkdaşdan götürülüb seçdiyiniz əməkdaşa veriləcək. Kartlar, vizitlər və tarixçə qalır; bu müştərilərin digər əməkdaşları da qalır.",
+    "ownMoveTarget": "Kimə ötürmək",
+    "ownMoveChoose": "Əməkdaşı seçin",
+    "ownMoveLoading": "Əməkdaşlar yüklənir…",
+    "ownMoveAgentsFailed": "Əməkdaşlar yüklənmədi — pəncərəni bağlayıb yenidən cəhd edin.",
+    "ownMoveCancel": "Ləğv et",
+    "ownMoveConfirm": "{count} müştərini ötür",
     "attachNoneTicked": "Dəyişiklik yoxdur — yeni həkimləri işarələyin və ya çıxarmaq üçün işarəni götürün",
     "attachWillRemove": "Çıxarılacaq: {count}",
     "attachRemove": "Agentdən çıxar ({count})",
@@ -16077,7 +16096,10 @@
     "clientsPartlyChanged": "{added} təyin olundu, {removed} çıxarıldı, {left} dəyişmədi: açıq vizit və ya planlaşdırılmış marşrut var. Ətraflı — «Müştərilər»də.",
     "clientsRemoveConfirmTitle": "Həkimlər agentdən çıxarılsın?",
     "clientsRemoveConfirmBody": "{name} adlı agentdən çıxarılacaq həkim: {count}. Kartlar, vizitlər və tarixçə qalır; kimin başqa agenti varsa — onda qalacaq. Yenidən işarələyib qaytarmaq olar.",
-    "clientsRemoveConfirm": "{count} çıxar"
+    "clientsRemoveConfirm": "{count} çıxar",
+    "clientsOwnChecked": "seçilib {count}",
+    "clientsOwnAlsoWith": "həmçinin: {name}{more, plural, =0 {} other { +#}}",
+    "clientsOwnAlsoWithHint": "Həkimin başqa agentləri də var: {names}. Onlarda qalacaq."
   },
   "admin": {
     "demoCenter": {

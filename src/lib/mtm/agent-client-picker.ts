@@ -132,6 +132,16 @@ function classFacet(values: Array<string | null>, enabled: readonly string[]): P
   return keys.map(key => ({ value: key, label: key === PICKER_NONE ? null : key, count: counts.get(key) ?? 0 }))
 }
 
+/**
+ * Only the agent's own doctors (owner, 2026-11-11: «чтоб мог не только поимённо
+ * убирать клиентов от агента, но и по специальностям… город, район»): his
+ * page's «Əməkdaşın müştəriləri» lists them by the same steps, every count
+ * counting his doctors alone, to take them off or hand them to another.
+ */
+export function agentOwnRows(rows: readonly PickerContactRow[], agentId: string): PickerContactRow[] {
+  return rows.filter(row => row.agents.some(agent => agent.agentId === agentId))
+}
+
 export function buildAgentClientPicker(rows: readonly PickerContactRow[], selection: PickerSelection, agentId: string | null, enabledClasses: readonly string[] = []): AgentClientPicker {
   const select = {
     specialties: selection.specialties.map(value => value === PICKER_NONE ? value : keyOf(clean(value))),
