@@ -45,6 +45,7 @@ const cardFirst: CollisionDetection = (args) => {
 }
 const priorityKey = (p: string) => `priority${p[0].toUpperCase()}${p.slice(1)}`
 const HOT = new Set(["critical", "urgent"])
+const CALENDAR_MIN_PX = 240
 
 export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks, boards, onOpenTask, flash }: {
   openTasks: T[]
@@ -62,8 +63,10 @@ export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks
   const box = useRef<HTMLDivElement | null>(null)
   const [count, setCount] = useState(3)
   // The lanes run to the bottom of the window (Bordio): the height left under
-  // the calendar's top, less the page's own bottom padding. Never below a
-  // usable minimum — on a short window the page scrolls as a whole instead.
+  // the calendar's top, less the page's own bottom padding. The floor is low:
+  // a 420 px floor pushed the calendar 33 px past a 700 px window with the
+  // video-lesson card above it (owner, 2026-11-11: «подгони»); only a window
+  // too short for any lane at all lets the page scroll instead.
   const lanes = useRef<HTMLDivElement | null>(null)
   const [height, setHeight] = useState<number | null>(null)
   useEffect(() => {
@@ -76,7 +79,7 @@ export function MyWorkCalendar<T extends CalendarTask>({ openTasks, setOpenTasks
       const scroller = target.closest("main")
       const top = target.getBoundingClientRect().top + (scroller?.scrollTop ?? 0)
       const bottom = scroller ? parseFloat(getComputedStyle(scroller).paddingBottom) || 0 : 0
-      setHeight(Math.max(420, Math.floor(window.innerHeight - top - bottom)))
+      setHeight(Math.max(CALENDAR_MIN_PX, Math.floor(window.innerHeight - top - bottom)))
     }
     measure()
     window.addEventListener("resize", measure)
