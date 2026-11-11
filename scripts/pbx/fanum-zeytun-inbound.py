@@ -535,6 +535,22 @@ ZEYTUN_WAIT_FILLER = "Hmm... bir saniyə."
 ZEYTUN_RESTORE_TURNS = 60
 
 
+# WhatsApp calls come through LeadDrive's relay (wa-sip.leaddrivecrm.org): the dialplan's
+# AI leg marks each one here before the AudioSocket connects (fanum-inbound-browser.conf).
+ZEYTUN_WHATSAPP_MARKS = "/run/fanum-whatsapp-calls"
+_CALL_ID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+
+def zeytun_whatsapp_call(call_id, marks=ZEYTUN_WHATSAPP_MARKS):
+    """True when the dialplan marked this call as a WhatsApp call; any doubt reads as a phone call."""
+    if not isinstance(call_id, str) or not _CALL_ID.match(call_id):
+        return False
+    try:
+        return os.path.isfile(os.path.join(marks, call_id))
+    except (OSError, ValueError):
+        return False
+
+
 def zeytun_caller_owed(bridge):
     """True unless the line's relay knows the caller has said nothing since the agent's last audio."""
     relay = getattr(bridge, "relay", None)
