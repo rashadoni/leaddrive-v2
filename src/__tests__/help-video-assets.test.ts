@@ -62,9 +62,21 @@ describe("help video availability", () => {
     // three of them unrecorded, and every one of them opened the four-minute
     // tour of /meetings — with a first-visit prompt inviting the person to
     // watch it. Splitting the section was precisely about not doing that.
-    for (const path of ["/meetings/services", "/meetings/whatsapp", "/meetings/team"]) {
+    //
+    // Since then the three screens got films of their own, so "silent" is no
+    // longer the right expectation — but the rule this test exists for is
+    // unchanged, and is what is asserted now: what a screen offers is its OWN
+    // film or nothing at all. The parent's tour leaking back in is still a
+    // failure, and so is a screen answering with another screen's film.
+    const own = {
+      "/meetings/services": "meetings-services",
+      "/meetings/whatsapp": "meetings-whatsapp",
+      "/meetings/team": "meetings-team",
+    } as const
+    for (const [path, slug] of Object.entries(own)) {
       expect(resolveHelpVideoRouteEntry(path)?.routes).toContain(path) // registered…
-      for (const locale of LOCALES) expect(getHelpVideoForPath(path, locale)).toBeNull() // …and silent
+      // …and answering with its own film, or with nothing where that locale was never recorded.
+      for (const locale of LOCALES) expect([null, slug]).toContain(getHelpVideoForPath(path, locale)?.slug ?? null)
     }
     // The day screen keeps its own film, which is what /meetings is for.
     expect(getHelpVideoForPath("/meetings", "az")?.slug).toBe("meetings")
