@@ -1319,7 +1319,8 @@ pgDescribe("online booking on a real Postgres", () => {
       const after = await offersOf(conversation)
       expect(after.find((offer) => offer.id === tapped.id)).toMatchObject({ status: "booked", bookingId: meetings[0].id })
       const others = after.filter((offer) => offer.id !== tapped.id)
-      expect(others.length).toBe(message.rows.length - 1)
+      // Rows are the times plus «another day»; held chairs are the times alone.
+      expect(others.length).toBe(message.rows.length - 2)
       expect(others.map((offer) => offer.status)).toEqual(others.map(() => "superseded"))
       const released = await offeredTimes(slug)
       for (const offer of after.filter((item) => item.id !== tapped.id)) expect(released).toContain(offer.startsAt.toISOString())
@@ -1407,7 +1408,7 @@ pgDescribe("online booking on a real Postgres", () => {
       expect(retry.rows.length).toBeGreaterThan(0)
       expect(await bypass(() => prisma.bookingOffer.findUniqueOrThrow({ where: { id: first.id } }))).toMatchObject({ status: "taken", bookingId: null })
       const fresh = await offersOf(conversation, "offered")
-      expect(fresh.length).toBe(retry.rows.length)
+      expect(fresh.length).toBe(retry.rows.length - 1)
       for (const offer of fresh) expect(offer.startsAt.getTime()).not.toBe(first.startsAt.getTime())
       expect(whatsapp.texts).toHaveLength(0)
       const meetings = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: page.id, status: "confirmed" } }))
