@@ -154,6 +154,7 @@ const WORDS = {
     noneThen: { morning: "səhər boş vaxt yoxdur.", afternoon: "günorta boş vaxt yoxdur.", evening: "axşam boş vaxt yoxdur.", any: "boş vaxt yoxdur." },
     hold: `Vaxt ${OFFER_HOLD_MINUTES} dəqiqə sizin üçün saxlanılır`, pick: "Vaxt seçin",
     which: "Hansı sizə uyğundur?", or: "və ya",
+    otherDay: "Başqa gün", pickDay: "Hansı gün sizə uyğundur?", dayFree: (count: number) => `${count} boş vaxt`, noDays: "Yaxın günlərdə boş vaxt yoxdur.",
     booked: "Yazıldınız ✅", address: "Ünvan", cancel: "Ləğv etmək üçün",
     held: "Vaxtı sizin üçün saxladıq ⏳", heldNote: "Administrator təsdiqləyəcək və yazacağıq.",
     confirmed: "Təsdiqləndi ✅", declined: "Təəssüf ki, bu vaxtı təsdiqləyə bilmədik.",
@@ -166,6 +167,7 @@ const WORDS = {
     noneThen: { morning: "утром свободного времени нет.", afternoon: "днём свободного времени нет.", evening: "вечером свободного времени нет.", any: "свободного времени нет." },
     hold: `Держим время за вами ${OFFER_HOLD_MINUTES} минут`, pick: "Выбрать время",
     which: "Какое вам удобно?", or: "или",
+    otherDay: "Другой день", pickDay: "Какой день вам удобен?", dayFree: (count: number) => `свободно: ${count}`, noDays: "В ближайшие дни свободного времени нет.",
     booked: "Вы записаны ✅", address: "Адрес", cancel: "Отменить запись",
     held: "Время придержали за вами ⏳", heldNote: "Администратор подтвердит, и мы напишем.",
     confirmed: "Подтверждено ✅", declined: "К сожалению, это время подтвердить не удалось.",
@@ -178,6 +180,7 @@ const WORDS = {
     noneThen: { morning: "there is nothing free in the morning.", afternoon: "there is nothing free in the afternoon.", evening: "there is nothing free in the evening.", any: "there is nothing free." },
     hold: `We hold the time for you for ${OFFER_HOLD_MINUTES} minutes`, pick: "Pick a time",
     which: "Which one works for you?", or: "or",
+    otherDay: "Another day", pickDay: "Which day suits you?", dayFree: (count: number) => `${count} free`, noDays: "Nothing is free in the days ahead.",
     booked: "You're booked ✅", address: "Address", cancel: "To cancel",
     held: "We're holding the time for you ⏳", heldNote: "The salon will confirm and we will write to you.",
     confirmed: "Confirmed ✅", declined: "We could not confirm that time, sorry.",
@@ -339,6 +342,17 @@ export function readDecision(input: unknown, context: DecisionContext): BookingD
 
 /** A button the agent sent: a time (`bk:`) or an answer to its question (`bq:`). */
 const OFFER_PREFIX = "bk:"
+/**
+ * «Another day», and a day chosen from the menu it opens.
+ *
+ * The agent has always understood a day a client NAMES — «cümə», «12-si» —
+ * but it offered none, so the only people who booked next week were those who
+ * knew to type it (owner, 2026-11-11: «предлагает только часы, а не дни»).
+ * Both ids carry the service, because the menu outlives the message that
+ * offered it and nothing else in a tap says which service it is about.
+ */
+const DAYS_PREFIX = "bkd:"
+const DAY_PREFIX = "bkday:"
 const ANSWER_PREFIX = "bq:"
 
 export interface BookingTurnInput {
@@ -519,6 +533,11 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
     title: shortDayLabel(choices.find((choice) => choice.date === date)!.startsAt, request.language, context.timezone),
     rowIds: rows.filter((row, index) => choices[index].date === date).map((row) => row.id),
   }))
+  // The last row costs the usual client nothing — they take one of the times
+  // above it — and it is the only place the rest of the calendar is visible.
+  const otherDay = { id: `${DAYS_PREFIX}${service.id}`, title: words.otherDay, description: null }
+  rows.push(otherDay)
+  sections.push({ title: "", rowIds: [otherDay.id] })
   if (await sendList(input, body, rows, words.pick, words.free[request.partOfDay], words.hold, sections)) return true
   // A number whose provider refuses interactive lists still gets a choice:
   // the three nearest times as buttons, the shape that worked before.
@@ -527,6 +546,70 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
     title: offerButtonTitle(choices[index], hostName(offer.hostUserId), context.timezone, withDay),
   }))
   return sendButtons(input, body, buttons, words.hold)
+}
+
+/**
+ * Which language this conversation has been answered in.
+ *
+ * A tap carries no words, so the language comes from the last offer this
+ * conversation was sent — the same place `bookOffer` reads it from, and the
+ * only record of what the client was actually spoken to in.
+ */
+async function conversationLanguage(input: BookingTurnInput): Promise<ReplyLanguage> {
+  const last = await prisma.bookingOffer.findFirst({
+    where: { organizationId: input.organizationId, conversationId: input.conversationId },
+    orderBy: { createdAt: "desc" },
+    select: { request: true },
+  })
+  return readRequest(last?.request)?.language ?? "az"
+}
+
+/**
+ * «Another day»: the days ahead that still have free time, as a menu.
+ *
+ * Counted from the same slots the offer menu picks its times out of, so a day
+ * that shows «4 free» has four tappable times behind it. The service is the
+ * one the row carried: a menu read tomorrow must not book against whatever
+ * service the conversation has drifted to.
+ */
+async function sendDayMenu(input: BookingTurnInput, serviceId: string, now: Date): Promise<boolean> {
+  const context = await loadContext(input, now)
+  const service = context?.services.find((item) => item.id === serviceId)
+  if (!context || !service) return false
+  const language = await conversationLanguage(input)
+  const words = WORDS[language]
+  const hosts = await activeHosts(input.organizationId, service.hostIds)
+  if (!hosts.length) return false
+  const horizon = new Date(now.getTime() + (service.maxDaysAhead + 2) * 86400_000)
+  const busy = await loadBusyByHost(input.organizationId, hosts.map((host) => host.id), now, horizon, context.timezone, { holds: { exceptConversationId: input.conversationId } })
+  const days = computeSlots({ rules: bookingRules(service, context.timezone, context.closedDates), hostIds: hosts.map((host) => host.id), busyByHost: busy, now })
+    .map((day) => ({ date: day.date, count: pickOfferTimes(day.slots, { timezone: context.timezone, window: [0, 24 * 60], hostId: null, count: OFFERS_PER_LIST }).length }))
+    .filter((day) => day.count > 0)
+    .slice(0, 9)
+  if (!days.length) {
+    await sendText(input, words.noDays)
+    return true
+  }
+  const rows = days.map((day) => ({
+    id: `${DAY_PREFIX}${service.id}:${day.date}`,
+    title: shortDayLabel(`${day.date}T12:00:00Z`, language, "UTC"),
+    description: words.dayFree(day.count),
+  }))
+  const body = `${service.title}, ${service.durationMinutes} ${words.minutes}.\n${words.pickDay}`
+  if (await sendList(input, body, rows, words.pick, "", undefined)) return true
+  return sendButtons(input, body, rows.slice(0, OFFERS_PER_MESSAGE).map((row) => ({ id: row.id, title: row.title.slice(0, 20) })))
+}
+
+/** A day tapped in that menu: the same offer message, for that date. */
+async function sendOffersForDay(input: BookingTurnInput, serviceId: string, date: string, now: Date): Promise<boolean> {
+  const context = await loadContext(input, now)
+  const service = context?.services.find((item) => item.id === serviceId)
+  if (!context || !service) return false
+  const language = await conversationLanguage(input)
+  const request: OfferRequest = {
+    text: "", serviceId: service.id, date, partOfDay: "any", notBefore: null, notAfter: null, hostId: null, language,
+  }
+  return sendOffers(input, service, request, { ...context, greet: false }, now)
 }
 
 async function loadContext(input: BookingTurnInput, now: Date): Promise<(DecisionContext & { orgName: string }) | null> {
@@ -894,6 +977,13 @@ export async function handleWhatsAppBookingTurn(input: BookingTurnInput): Promis
   if (setting.channelConfigId && setting.channelConfigId !== input.channelConfigId) return { handled: false }
   if (input.replyId?.startsWith(OFFER_PREFIX)) {
     return { handled: await bookOffer(input, input.replyId.slice(OFFER_PREFIX.length), setting.rules, now) }
+  }
+  if (input.replyId?.startsWith(DAY_PREFIX)) {
+    const [serviceId, date] = input.replyId.slice(DAY_PREFIX.length).split(":")
+    return { handled: Boolean(serviceId && date) && await sendOffersForDay(input, serviceId, date, now) }
+  }
+  if (input.replyId?.startsWith(DAYS_PREFIX)) {
+    return { handled: await sendDayMenu(input, input.replyId.slice(DAYS_PREFIX.length), now) }
   }
   const context = await loadContext(input, now)
   if (!context) return { handled: false }

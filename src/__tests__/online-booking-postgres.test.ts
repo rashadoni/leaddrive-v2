@@ -1250,17 +1250,26 @@ pgDescribe("online booking on a real Postgres", () => {
       expect(message.footer).toBe("Vaxt 15 dəqiqə sizin üçün saxlanılır")
       expect(message.buttonLabel).toBe("Vaxt seçin")
       expect(message.rows.length).toBeGreaterThan(3)
-      expect(message.rows.length).toBeLessThanOrEqual(OFFERS_PER_LIST)
+      // Eight times at most, plus «another day» — WhatsApp stops a list at ten.
+      expect(message.rows.length).toBeLessThanOrEqual(OFFERS_PER_LIST + 1)
+      expect(message.rows.length).toBeLessThanOrEqual(10)
       // The sheet is grouped by day, so the row is the clock alone even when the
       // times run into tomorrow, and the date is the heading above them.
       expect(message.sections!.length).toBeGreaterThan(0)
       expect(message.sections!.flatMap((section) => section.rowIds).sort())
         .toEqual(message.rows.map((row) => row.id).sort())
+      // The last row is the rest of the calendar: a client who wants next week
+      // could only get there by typing a date, which nobody told them about
+      // (owner, 2026-11-11). It sits under no day, so its section has no title.
+      const other = message.rows.at(-1)!
+      expect(other.title).toBe("Başqa gün")
+      expect(message.sections!.at(-1)).toMatchObject({ title: "", rowIds: [other.id] })
+      expect(other.id.startsWith("bk:")).toBe(false)
       for (const section of message.sections!) {
         expect(section.title.length).toBeLessThanOrEqual(24)
         expect(section.title).not.toMatch(/\d{1,2}:\d{2}/)
       }
-      for (const row of message.rows) {
+      for (const row of message.rows.slice(0, -1)) {
         expect(row.id).toMatch(/^bk:/)
         expect(row.title).toMatch(/^\d{1,2}:\d{2}$/)
         expect(row.title.length).toBeLessThanOrEqual(24)
@@ -1269,7 +1278,9 @@ pgDescribe("online booking on a real Postgres", () => {
         expect(row.title).not.toContain(row.description)
       }
       const offers = await offersOf(conversation)
-      expect(offers.map((offer) => `bk:${offer.id}`).sort()).toEqual(message.rows.map((row) => row.id).sort())
+      // Every held time is a row, and every row but the last is a held time.
+      expect(offers.map((offer) => `bk:${offer.id}`).sort())
+        .toEqual(message.rows.slice(0, -1).map((row) => row.id).sort())
       expect(new Set(offers.map((offer) => offer.status))).toEqual(new Set(["offered"]))
       // Every time offered is one the page itself offered a moment ago:
       // the agent has no other source of time.

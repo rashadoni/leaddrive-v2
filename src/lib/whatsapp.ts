@@ -1033,7 +1033,9 @@ export async function sendWhatsAppList({
             button: buttonLabel.slice(0, 20),
             sections: sections?.length
               ? sections
-                .map((section) => ({ title: section.title.slice(0, 24), rows: shown.filter((row) => section.rowIds.includes(row.id)) }))
+                // A section may carry no heading: the last one holds «another
+                // day», which belongs under none of them.
+                .map((section) => ({ ...(section.title ? { title: section.title.slice(0, 24) } : {}), rows: shown.filter((row) => section.rowIds.includes(row.id)) }))
                 .filter((section) => section.rows.length > 0)
               : [{ ...(sectionTitle ? { title: sectionTitle.slice(0, 24) } : {}), rows: shown }],
           },
