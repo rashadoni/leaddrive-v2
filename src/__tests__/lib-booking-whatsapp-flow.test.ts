@@ -45,6 +45,23 @@ const answers = (body: unknown, ok = true) =>
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok, status: ok ? 200 : 400, json: async () => body })))
 
 describe("whether this number can show a form", () => {
+  it("carries what Meta refuses to publish, in its own words", async () => {
+    // Publishing answers only «make sure a valid Flow JSON is used»; what is
+    // actually wrong lives on the flow, and without asking for it the next
+    // step is guesswork (2026-11-11).
+    answers({ data: [{
+      id: "9", name: BOOKING_FLOW_NAME, status: "DRAFT", categories: [],
+      validation_errors: [{ error_type: "INVALID_PROPERTY", message: "unknown property", pointers: [{ path: "screens[0]" }], line_start: 3, column_start: 5 }],
+    }] })
+
+    const capability = await flowsCapability("org-1")
+
+    if (!capability.supported) throw new Error("unreachable")
+    expect(capability.booking!.errors).toHaveLength(1)
+    expect(capability.booking!.errors[0]).toContain("unknown property")
+    expect(capability.booking!.errors[0]).toContain("INVALID_PROPERTY")
+  })
+
   it("reads a list of Flows as yes, and finds the booking one by name", async () => {
     answers({ data: [
       { id: "1", name: "other", status: "PUBLISHED", categories: ["OTHER"] },
@@ -56,6 +73,7 @@ describe("whether this number can show a form", () => {
     expect(capability).toMatchObject({ supported: true })
     if (!capability.supported) throw new Error("unreachable")
     expect(capability.flows.map((flow) => flow.id)).toEqual(["1", "2"])
+    expect(capability.flows.every((flow) => Array.isArray(flow.errors))).toBe(true)
     expect(capability.booking).toMatchObject({ id: "2", status: "DRAFT" })
   })
 
