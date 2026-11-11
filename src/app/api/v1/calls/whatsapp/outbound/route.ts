@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { conversationAccessDenial } from "@/lib/inbox/channel-access"
 import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import { startWhatsAppOutboundCall } from "@/lib/whatsapp"
@@ -52,6 +53,8 @@ export const POST = withRlsAuth("inbox", "write", async (req, auth) => {
   if (!sdp) return NextResponse.json({ error: "sdp offer is required" }, { status: 400 })
   if (sdp.length > 200_000) return NextResponse.json({ error: "sdp is too large" }, { status: 413 })
 
+  const channelDenied = await conversationAccessDenial(auth, conversationId)
+  if (channelDenied) return channelDenied
   const resolved = await resolveWhatsAppCallTarget(auth.orgId, conversationId)
   if (!resolved.target) {
     return NextResponse.json({ error: resolved.error || "WhatsApp call target not found" }, { status: resolved.status || 400 })

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { withConversationChannelAccess } from "@/lib/inbox/channel-access"
 import { prisma } from "@/lib/prisma"
 import { withInboxSessionWrite } from "@/lib/inbox/route-auth"
 
@@ -7,7 +8,7 @@ import { withInboxSessionWrite } from "@/lib/inbox/route-auth"
  * must belong to the caller's org, and the delete is filtered by organizationId too).
  */
 export const DELETE = withInboxSessionWrite(
-  async (_req, { orgId }, { params }: { params: Promise<{ id: string; userId: string }> }) => {
+  withConversationChannelAccess(async (_req, { orgId }, { params }: { params: Promise<{ id: string; userId: string }> }) => {
     const { id, userId } = await params
 
     const conv = await prisma.socialConversation.findFirst({
@@ -21,5 +22,5 @@ export const DELETE = withInboxSessionWrite(
     })
 
     return NextResponse.json({ success: true, data: { deleted: deleted.count } })
-  },
+  }),
 )

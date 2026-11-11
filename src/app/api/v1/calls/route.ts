@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto"
+import { hiddenChannelIdsFor, visibleChannelWhere } from "@/lib/inbox/channel-access"
 
 import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
@@ -734,9 +735,11 @@ export const GET = withRls(async (req, { orgId, session }) => {
     ? new Date(generatedAt.getTime() - 30 * 24 * 60 * 60 * 1000)
     : null
 
+  // Calls on a number or page hidden from this person do not reach them (lib/inbox/channel-access).
+  const visibleChannels = session ? visibleChannelWhere(await hiddenChannelIdsFor(session)) : undefined
   const where: CallLogWhereWithConversation = {
     organizationId: orgId,
-    AND: [accessibleCallWhere(session?.role || "viewer", session?.userId)],
+    AND: [accessibleCallWhere(session?.role || "viewer", session?.userId), ...(visibleChannels ? [visibleChannels] : [])],
   }
   if (contactId) where.contactId = contactId
   if (conversationId) where.conversationId = conversationId

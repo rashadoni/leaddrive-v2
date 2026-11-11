@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { withConversationChannelAccess } from "@/lib/inbox/channel-access"
 import { prisma } from "@/lib/prisma"
 import { ensureConversation } from "@/lib/inbox-ensure-conversation"
 import type { ConversationParticipant } from "@prisma/client"
@@ -18,7 +19,7 @@ import { withInboxSessionWrite } from "@/lib/inbox/route-auth"
  */
 
 // GET — list participants of a conversation, decorated with the user objects.
-export const GET = withRlsAuth("inbox", "read", async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
+export const GET = withRlsAuth("inbox", "read", withConversationChannelAccess(async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
 
   const conv = await prisma.socialConversation.findFirst({
@@ -44,10 +45,10 @@ export const GET = withRlsAuth("inbox", "read", async (_req, { orgId }, { params
     success: true,
     data: participants.map((p) => ({ ...p, user: byId.get(p.userId) ?? null })),
   })
-})
+}))
 
 // POST — add a participant. Body: { userId }. Idempotent (upsert), no limit.
-export const POST = withInboxSessionWrite(async (req, session, { params }: { params: Promise<{ id: string }> }) => {
+export const POST = withInboxSessionWrite(withConversationChannelAccess(async (req, session, { params }: { params: Promise<{ id: string }> }) => {
   const orgId = session.orgId
   const { id } = await params
   const body = await req.json().catch(() => ({}))
@@ -104,4 +105,4 @@ export const POST = withInboxSessionWrite(async (req, session, { params }: { par
   })
 
   return NextResponse.json({ success: true, data: participant, socialConversationId: convId })
-})
+}))

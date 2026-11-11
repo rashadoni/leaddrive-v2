@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
+import { withConversationChannelAccess } from "@/lib/inbox/channel-access"
 import { prisma } from "@/lib/prisma"
 import { withInboxSessionWrite } from "@/lib/inbox/route-auth"
 
-export const POST = withInboxSessionWrite(async (req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
+export const POST = withInboxSessionWrite(withConversationChannelAccess(async (req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
   const { text, deliveryIdempotencyKey } = await req.json()
 
@@ -91,4 +92,4 @@ export const POST = withInboxSessionWrite(async (req, { orgId }, { params }: { p
   })
 
   return NextResponse.json({ success: true, data: msg })
-})
+}))

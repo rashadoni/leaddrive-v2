@@ -9,7 +9,7 @@ import { isMtmWebOnlyPath } from "./mtm-web-only"
 import { checkPermission, resolveModuleFromPath, methodToAction, PERMISSION_MODULE_TO_MODULE_ID, type Role, type Module, type Action } from "./permissions"
 import { hasModule, moduleRecordFromOrgFields, type ModuleId, MODULE_REGISTRY } from "./modules"
 import { customerPhonePrivacyEnabled } from "./customer-phone-privacy"
-import { effectiveHiddenModules, hideableIdForGateModule } from "./user-module-access"
+import { effectiveHiddenChannels, effectiveHiddenModules, hideableIdForGateModule } from "./user-module-access"
 import { getMobileAuth, resolveMobileAuth } from "./mobile-auth"
 import crypto from "crypto"
 import { recordReviewerRead } from "./audit/reviewer-read-log"
@@ -202,6 +202,12 @@ export interface AuthResult {
    * is exactly what it was before this field existed.
    */
   hiddenModules?: string[]
+  /**
+   * Inbox numbers and pages an admin hid from this person (lib/inbox/channel-access). Same
+   * provenance as `hiddenModules`: the user row re-read by auth() on every request; absent for an
+   * admin, an API key or anyone nobody has restricted.
+   */
+  hiddenChannelConfigIds?: string[]
   /** Fresh server-side organization policy. Never copied from JWT/client claims.
    * Absent means the default, unrestricted policy for legacy internal fixtures. */
   hideCustomerPhoneForOperators?: boolean
@@ -210,6 +216,11 @@ export interface AuthResult {
 function sessionHiddenModules(role: Role, stored: unknown): { hiddenModules?: string[] } {
   const hiddenModules = effectiveHiddenModules(role, stored)
   return hiddenModules.length > 0 ? { hiddenModules } : {}
+}
+
+function sessionHiddenChannels(role: Role, stored: unknown): { hiddenChannelConfigIds?: string[] } {
+  const hiddenChannelConfigIds = effectiveHiddenChannels(role, stored)
+  return hiddenChannelConfigIds.length > 0 ? { hiddenChannelConfigIds } : {}
 }
 
 /**
@@ -260,6 +271,7 @@ async function resolveCookieSession(): Promise<CookieSessionResolution> {
       name: rawSession.user.name || "",
       principalType: "session",
       ...sessionHiddenModules(sessionRole, rawSession.user.hiddenModules),
+      ...sessionHiddenChannels(sessionRole, rawSession.user.hiddenChannelConfigIds),
     }
     if (!session.orgId || !session.userId) {
       return { denial: "unauthenticated" }
@@ -591,6 +603,7 @@ export async function requireAuth(
     name: rawSession.user.name || "",
     principalType: "session",
     ...sessionHiddenModules(sessionRole, rawSession.user.hiddenModules),
+    ...sessionHiddenChannels(sessionRole, rawSession.user.hiddenChannelConfigIds),
   }
 
   // SECURITY: Cross-tenant binding check (defense-in-depth; middleware enforces

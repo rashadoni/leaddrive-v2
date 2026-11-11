@@ -1,4 +1,5 @@
 import { reconcileNativeMessaging } from "@/lib/tiktok-messaging/reconcile"
+import { withConversationChannelAccess } from "@/lib/inbox/channel-access"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
@@ -27,7 +28,7 @@ function metadataRecord(value: unknown): Record<string, unknown> {
  * and confirm the outcome. The attempt id is server-issued, tenant/conversation
  * scoped, and reconciled under the same lock as new delivery claims.
  */
-export const POST = withInboxSessionWrite(async (req, auth, { params }: {
+export const POST = withInboxSessionWrite(withConversationChannelAccess(async (req, auth, { params }: {
   params: Promise<{ id: string }>
 }) => {
   const requestBody = await readJsonRequestWithinLimit(req, MAX_RECONCILIATION_BODY_SIZE)
@@ -153,4 +154,4 @@ export const POST = withInboxSessionWrite(async (req, auth, { params }: {
       replayed: result.kind === "replayed",
     },
   })
-})
+}))

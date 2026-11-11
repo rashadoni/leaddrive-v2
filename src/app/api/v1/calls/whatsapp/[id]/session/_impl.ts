@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { channelVisible, hiddenChannelIdsFor } from "@/lib/inbox/channel-access"
 import type { AuthResult } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import {
@@ -27,9 +28,15 @@ export async function getWhatsAppCallSessionRoute(
       id: true,
       callSid: true,
       provider: true,
+      channelConfigId: true,
+      conversation: { select: { channelConfigId: true } },
     },
   })
   if (!call) return NextResponse.json({ error: "Call not found" }, { status: 404 })
+  // A call on a number hidden from this person is, to them, not there (lib/inbox/channel-access).
+  if (!channelVisible(await hiddenChannelIdsFor(auth), call.channelConfigId ?? call.conversation?.channelConfigId)) {
+    return NextResponse.json({ error: "Call not found" }, { status: 404 })
+  }
   if (call.provider !== "whatsapp" || !call.callSid) {
     return NextResponse.json({ error: "This session is only available for WhatsApp calls" }, { status: 409 })
   }

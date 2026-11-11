@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { conversationAccessDenial } from "@/lib/inbox/channel-access"
 import { withRlsAuth } from "@/lib/with-rls"
 import { prisma } from "@/lib/prisma"
 import { sendWhatsAppCallPermissionRequest } from "@/lib/whatsapp"
@@ -46,6 +47,8 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
   const conversationId = req.nextUrl.searchParams.get("conversationId")
   if (!conversationId) return NextResponse.json({ error: "conversationId is required" }, { status: 400 })
 
+  const channelDenied = await conversationAccessDenial(auth, conversationId)
+  if (channelDenied) return channelDenied
   const resolved = await resolveWhatsAppCallTarget(auth.orgId, conversationId)
   if (!resolved.target) {
     return NextResponse.json({ error: resolved.error || "WhatsApp call target not found" }, { status: resolved.status || 400 })
@@ -99,6 +102,8 @@ export const POST = withRlsAuth("inbox", "write", async (req, auth) => {
   const conversationId = typeof body.conversationId === "string" ? body.conversationId : ""
   if (!conversationId) return NextResponse.json({ error: "conversationId is required" }, { status: 400 })
 
+  const channelDenied = await conversationAccessDenial(auth, conversationId)
+  if (channelDenied) return channelDenied
   const resolved = await resolveWhatsAppCallTarget(auth.orgId, conversationId)
   if (!resolved.target) {
     return NextResponse.json({ error: resolved.error || "WhatsApp call target not found" }, { status: resolved.status || 400 })

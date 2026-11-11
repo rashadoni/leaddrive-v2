@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client"
+import { withConversationChannelAccess } from "@/lib/inbox/channel-access"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { nonNegativeFinancialAmountSchema } from "@/lib/validation/numeric"
@@ -160,7 +161,7 @@ function profileMatchesSource(value: string | null | undefined, source: string):
   }
 }
 
-export const GET = withRlsAuth("inbox", "read", async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
+export const GET = withRlsAuth("inbox", "read", withConversationChannelAccess(async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
   const conversation = await prisma.socialConversation.findFirst({
     where: { id, organizationId: orgId },
@@ -256,9 +257,9 @@ export const GET = withRlsAuth("inbox", "read", async (_req, { orgId }, { params
       },
     },
   })
-})
+}))
 
-export const POST = withInboxSessionWrite(async (req, { orgId, userId }, { params }: { params: Promise<{ id: string }> }) => {
+export const POST = withInboxSessionWrite(withConversationChannelAccess(async (req, { orgId, userId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
   const parsed = convertSchema.safeParse(await req.json())
   if (!parsed.success) {
@@ -417,4 +418,4 @@ export const POST = withInboxSessionWrite(async (req, { orgId, userId }, { param
     console.error("[inbox/convert-to-lead]", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
-})
+}))
