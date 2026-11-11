@@ -22,6 +22,13 @@ export type WhatsAppFlow = {
   name: string
   status: string
   categories: string[]
+  /**
+   * What Meta refuses to publish and why, in its own words. Publishing answers
+   * only «make sure a valid Flow JSON is used»; the list of what is actually
+   * wrong lives on the flow itself, and without asking for it the next step is
+   * guesswork (2026-11-11).
+   */
+  errors: string[]
 }
 
 export type FlowsCapability =
@@ -47,7 +54,7 @@ export async function flowsCapability(
   if (!config.businessAccountId) {
     return { supported: false, reason: "no-business-account", detail: "the channel has no businessAccountId; set it in /settings/channels/whatsapp" }
   }
-  const url = `${WHATSAPP_GRAPH_API_BASE}/${config.businessAccountId}/flows?fields=id,name,status,categories&limit=50`
+  const url = `${WHATSAPP_GRAPH_API_BASE}/${config.businessAccountId}/flows?fields=id,name,status,categories,validation_errors&limit=50`
   try {
     const res = await fetch(url, { headers: { Authorization: `Bearer ${config.accessToken}` }, signal: AbortSignal.timeout(15_000) })
     const data = await res.json().catch(() => null) as { data?: unknown[]; error?: { message?: string; code?: number } } | null
@@ -61,6 +68,14 @@ export async function flowsCapability(
         name: String(item.name ?? ""),
         status: String(item.status ?? ""),
         categories: Array.isArray(item.categories) ? item.categories.map((value) => String(value)) : [],
+        errors: Array.isArray(item.validation_errors)
+          ? item.validation_errors.map((value) => {
+            const row = (value ?? {}) as Record<string, unknown>
+            const where = [row.line_start, row.column_start].filter((part) => part !== undefined).join(":")
+            return [row.error_type, row.message, row.pointers ? JSON.stringify(row.pointers) : "", where]
+              .filter(Boolean).map((part) => String(part)).join(" · ")
+          })
+          : [],
       }
     }).filter((flow) => flow.id)
     return { supported: true, flows, booking: flows.find((flow) => flow.name === BOOKING_FLOW_NAME) ?? null }
@@ -173,6 +188,13 @@ export async function ensureBookingFlow(
     } else {
       const said = await say(once)
       flowId = typeof said.body?.id === "string" ? said.body.id : null
+      if (!flowId) {
+        // «Flow was created, but publishing failed» — the form exists under the
+        // name we asked for, and the upload and publish below are what tell us
+        // WHY it was refused.
+        const after = await flowsCapability(organizationId, opts)
+        flowId = (after.supported ? after.booking?.id : null) ?? null
+      }
       steps.push({ step: "create", ok: once.ok && Boolean(flowId), detail: said.text })
     }
   } else {
@@ -200,7 +222,13 @@ export async function ensureBookingFlow(
 
   const after = await flowsCapability(organizationId, opts)
   const published = after.supported ? after.booking : null
-  steps.push({ step: "status", ok: published?.status === "PUBLISHED", detail: published ? `${published.id} ${published.status}` : "not listed" })
+  steps.push({
+    step: "status",
+    ok: published?.status === "PUBLISHED",
+    detail: published
+      ? [`${published.id} ${published.status}`, ...published.errors].join(" | ")
+      : "not listed",
+  })
   return { ok: published?.status === "PUBLISHED", flowId, steps }
 }
 
