@@ -6,6 +6,7 @@ import { featureFlagsToArray } from "@/lib/modules"
 import { isToggleableFeatureFlag } from "@/lib/ai-feature-flags"
 import { SUPPORT_AI_DISABLED_FEATURE } from "@/lib/ai/feature-keys"
 import { hasSupportAiSettingsEntitlement } from "@/lib/ai/support-settings-access"
+import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
 
 /**
  * GET /api/v1/settings/ai-features — list current features
@@ -35,7 +36,7 @@ export const GET = withRlsAuth("ai", "read", async (_req, { orgId }) => {
  * ever grants settings:write more broadly.
  */
 export const PATCH = withRlsAuth("settings", "write", async (req, auth) => {
-  if (auth.role !== "admin" && auth.role !== "superadmin") {
+  if (!holdsSettingsSectionForRequest(auth, req)) {
     return NextResponse.json({ error: "Admin role required" }, { status: 403 })
   }
   const orgId = auth.orgId

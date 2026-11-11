@@ -174,14 +174,13 @@ describe("user card — what this person gets", () => {
     const sectionsBlock = () => document.querySelector('[data-testid="user-settings-sections"]') as HTMLElement | null
     const sectionTicks = () => Object.fromEntries([...(sectionsBlock()?.querySelectorAll("label") ?? [])]
       .map((label) => [label.textContent?.split("—")[0].trim(), label.querySelector("input")!.checked]))
-    expect(sectionTicks()).toEqual({
-      "Уведомления": true,
-      "Автоматизации": false,
-      "Пользовательские поля": false,
-      "Настройки виджетов": false,
-      "Настройки KPI Arena": false,
-      "Задачи из звонков": false,
-    })
+    // Every section this organization has a page for, in the menu's order; VoIP
+    // and AI automation are add-ons this test organization does not have.
+    expect(Object.keys(sectionTicks())).toEqual([
+      "Уведомления", "Организация", "Автоматизации", "Пользовательские поля", "Настройки виджетов", "Каналы", "SMTP",
+      "Интеграции", "Пользовательские домены", "Настройки KPI Arena", "Задачи из звонков", "ИИ и расходы",
+    ])
+    expect(Object.values(sectionTicks())).toEqual([true, false, false, false, false, false, false, false, false, false, false, false])
     expect(sectionsBlock()?.textContent).toContain("Только у админа")
 
     const workflows = [...sectionsBlock()!.querySelectorAll("label")].find((label) => label.textContent?.includes("Автоматизации"))

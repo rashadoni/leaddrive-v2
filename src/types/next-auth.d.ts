@@ -32,6 +32,8 @@ declare module "next-auth" {
       hiddenChannelConfigIds?: string[]
       /** Sections of Settings an admin ticked for this user (lib/settings-sections); empty for admins. */
       settingsSections?: string[]
+      /** The organization's unmasked modules, only for a person with ticked sections and hidden modules (lib/auth.ts). */
+      sectionTenantModules?: Record<string, boolean>
       /** End of an outside reviewer's grant (ISO); absent for everyone else. */
       reviewerAccessUntil?: string
     }

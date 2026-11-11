@@ -26649,7 +26649,7 @@
     "settingsSectionsTitle": "Settings sections",
     "settingsSectionsHint": "A ticked section appears in this person’s menu and they can change it. Every other section stays closed to them — in the menu and on the server.",
     "settingsSectionsPersonal": "personal, everyone has it",
-    "settingsSectionsAdminOnly": "Admin only, not given by tick: Users, Roles, Security, Billing, API keys, Organization, Channels, SMTP, Integrations, Domains, Field permissions, AI automation, AI & spend — they hold passwords, keys, money or the handing out of rights.",
+    "settingsSectionsAdminOnly": "Admin only, not given by tick: Users, Roles, Security, Billing, API keys, Field permissions — through them rights are handed out, so a tick there would make the person an admin. The customer-phone privacy switch in Channels also stays with the admin.",
     "fieldCardLabel": "Employee card",
     "fieldCardNone": "No card",
     "fieldCardNew": "Create a new card",

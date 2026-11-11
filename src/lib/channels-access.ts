@@ -4,10 +4,12 @@ import {
   requireSessionAuth,
 } from "@/lib/api-auth"
 import type { Role } from "@/lib/permissions"
+import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
 
 export type ChannelsAccess = {
   orgId: string
-  role: Extract<Role, "admin" | "superadmin">
+  /** An admin, or a person holding the section of Settings this route belongs to (lib/settings-sections). */
+  role: Role
   /**
    * Who is acting. Channel config holds third-party credentials, so every change to it is written
    * to the audit log — and an audit entry without an actor answers none of the questions an audit
@@ -37,7 +39,9 @@ export async function gateChannelsAccess(
   // mutate it, even if they otherwise hold an inbox scope.
   const session = await requireSessionAuth(req)
   if (isAuthError(session)) return session
-  if (session.role !== "admin" && session.role !== "superadmin") {
+  // An admin — or a person an admin ticked this route's section of Settings for
+  // (Channels, or VoIP for the 3CX routes; lib/settings-sections.ts).
+  if (!holdsSettingsSectionForRequest(session, req)) {
     return NextResponse.json(
       { error: "Forbidden", message: "Only admins can manage channel configuration" },
       { status: 403 },

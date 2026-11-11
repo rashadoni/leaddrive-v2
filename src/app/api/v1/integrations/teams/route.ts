@@ -16,6 +16,7 @@ import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { sendTeamsNotification } from "@/lib/integrations/teams"
 import { assertSafeWebhookUrl } from "@/lib/integrations/webhook-url-guard"
+import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
 
 // ─── Schema for strict PUT (only mutable fields; no organizationId / channelType) ─
 const teamsPutSchema = z.object({
@@ -45,8 +46,10 @@ const teamsConfigSchema = z.object({
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Admin-gate: integration config is an admin concern. */
-function requireAdminRole(role: string): NextResponse | null {
-  if (role === "admin" || role === "superadmin" || role === "manager") return null
+function requireAdminRole(session: { role: string; settingsSections?: string[] }, req: { url: string }): NextResponse | null {
+  const role = session.role
+  // Or a person an admin ticked «Integrations» for (lib/settings-sections).
+  if (role === "admin" || role === "superadmin" || role === "manager" || holdsSettingsSectionForRequest(session, req)) return null
   return NextResponse.json(
     { error: "Forbidden", message: "Integration configuration requires admin or manager role" },
     { status: 403 },
@@ -55,10 +58,10 @@ function requireAdminRole(role: string): NextResponse | null {
 
 // ─── GET — list ───────────────────────────────────────────────────────────────
 
-export const GET = withRlsAuth("contracts", "read", async (_req, session) => {
+export const GET = withRlsAuth("contracts", "read", async (req, session) => {
   // Webhook URLs are bearer secrets (a holder can post to the org's channel), so
   // listing them is admin-only — same gate as create/update/delete (P1 fix 2026-06-08).
-  const adminCheck = requireAdminRole(session.role)
+  const adminCheck = requireAdminRole(session, req)
   if (adminCheck) return adminCheck
 
   const { orgId } = session
@@ -74,8 +77,8 @@ export const GET = withRlsAuth("contracts", "read", async (_req, session) => {
 // ─── POST — create or test ────────────────────────────────────────────────────
 
 export const POST = withRlsAuth("contracts", "write", async (req, session) => {
-  const { orgId, role } = session
-  const adminCheck = requireAdminRole(role)
+  const { orgId } = session
+  const adminCheck = requireAdminRole(session, req)
   if (adminCheck) return adminCheck
 
   const body = await req.json()
@@ -131,8 +134,8 @@ export const POST = withRlsAuth("contracts", "write", async (req, session) => {
 // ─── PUT — update ─────────────────────────────────────────────────────────────
 
 export const PUT = withRlsAuth("contracts", "write", async (req, session) => {
-  const { orgId, role } = session
-  const adminCheck = requireAdminRole(role)
+  const { orgId } = session
+  const adminCheck = requireAdminRole(session, req)
   if (adminCheck) return adminCheck
 
   const body = await req.json()
@@ -179,8 +182,8 @@ export const PUT = withRlsAuth("contracts", "write", async (req, session) => {
 // ─── DELETE ───────────────────────────────────────────────────────────────────
 
 export const DELETE = withRlsAuth("contracts", "write", async (req, session) => {
-  const { orgId, role } = session
-  const adminCheck = requireAdminRole(role)
+  const { orgId } = session
+  const adminCheck = requireAdminRole(session, req)
   if (adminCheck) return adminCheck
 
   const { searchParams } = new URL(req.url)

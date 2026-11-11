@@ -11,6 +11,7 @@ import { listAdvisorPlaybookCandidates, listAdvisorPlaybooksWithGovernance, prom
 import { parseAdvisorTenantAutonomySettings, type AdvisorAutonomyLevel } from "@/lib/ai/advisor/autonomy"
 import { getAdvisorPayload } from "@/lib/ai/advisor/service"
 import type { AdvisorPayload } from "@/lib/ai/advisor/types"
+import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
 
 const LOOKBACK_DAYS = 90
 const AUTONOMY_LEVELS = new Set(["L0", "L1", "L2", "L3", "L4"])
@@ -32,8 +33,9 @@ function normalizePositiveInt(value: unknown, fallback: number, max: number) {
   return Math.max(1, Math.min(max, Math.floor(value)))
 }
 
-function assertAdvisorAdmin(role: string) {
-  return role === "admin" || role === "superadmin"
+/** An admin, or a person an admin ticked «AI automation» for (lib/settings-sections). */
+function assertAdvisorAdmin(auth: { role: string; settingsSections?: string[] }, req: { url: string }) {
+  return holdsSettingsSectionForRequest(auth, req)
 }
 
 function buildAdvisorReadinessSummary(payload: AdvisorPayload) {
@@ -192,7 +194,7 @@ export const GET = withRlsAuth("settings", "read", async (_req, auth) => {
 })
 
 export const PATCH = withRlsAuth("settings", "write", async (req, auth) => {
-  if (!assertAdvisorAdmin(auth.role)) {
+  if (!assertAdvisorAdmin(auth, req)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
@@ -252,7 +254,7 @@ export const PATCH = withRlsAuth("settings", "write", async (req, auth) => {
 })
 
 export const POST = withRlsAuth("settings", "write", async (req, auth) => {
-  if (!assertAdvisorAdmin(auth.role)) {
+  if (!assertAdvisorAdmin(auth, req)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

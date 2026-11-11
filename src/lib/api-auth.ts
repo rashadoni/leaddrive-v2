@@ -491,8 +491,8 @@ export function moduleAccessDenial(
 ): NextResponse | null {
   // A section of Settings an admin ticked for this person opens that section's
   // own routes, and nothing else (lib/settings-sections.ts).
-  const allowed = checkPermission(session.role, module, action)
-    || (pathname !== undefined && settingsGrantAllows(session, pathname, module, action))
+  const bySection = pathname !== undefined && settingsGrantAllows(session, pathname, module, action)
+  const allowed = checkPermission(session.role, module, action) || bySection
   if (!allowed) {
     return NextResponse.json(
       {
@@ -529,7 +529,11 @@ export function moduleAccessDenial(
   // `mtm` scope is a container for two capabilities, and only the wrapper
   // that asked for the deferral knows which one this route belongs to. It
   // makes the per-user check itself, off `session.hiddenModules`.
-  if (!deferLegacyMtmGate && session.hiddenModules?.includes(hideableIdForGateModule(gateModule))) {
+  //
+  // Not for a route of a section of Settings ticked for this person: an admin
+  // there is never narrowed, and a tick gives the section as an admin has it
+  // (e.g. the WhatsApp part of Channels answers to the inbox's scope).
+  if (!deferLegacyMtmGate && !bySection && session.hiddenModules?.includes(hideableIdForGateModule(gateModule))) {
     return userModuleHiddenResponse(gateModule)
   }
   return null

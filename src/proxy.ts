@@ -18,6 +18,7 @@ import { isWithdrawnCrmPath } from "@/lib/crm-product-availability"
 import { redactOpaquePathSegments } from "@/lib/opaque-path-redaction"
 import { demoAssistantVoiceEnabled } from "@/lib/demo-center/assistant-voice-switch"
 import { REVIEWER_ROLE, reviewerRequestDenial, reviewerUploadScope } from "@/lib/reviewer-access"
+import { heldSectionsForPath } from "@/lib/settings-sections"
 
 type SessionModuleGateUser = {
   role?: string
@@ -1129,11 +1130,20 @@ const authMiddleware = auth(async (req) => {
   // handles them); public/webhook/auth paths already returned earlier; paths
   // whose module can't be resolved or isn't a real ModuleId (the bridge handles
   // renamed ones).
+  //
+  // A route of a section of Settings ticked for this person answers as it does
+  // for an admin, whom no mask narrows: the gate reads the organization's own
+  // modules, and the per-user check below is skipped (lib/settings-sections.ts;
+  // Channels' WhatsApp part answers to the inbox, which may be hidden from them).
+  const tickedSectionPath = pathname.startsWith("/api/") && heldSectionsForPath(session?.user ?? {}, pathname).length > 0
+  const moduleGateUser = tickedSectionPath && session?.user?.sectionTenantModules
+    ? { ...session.user, modules: session.user.sectionTenantModules }
+    : session?.user
   if (MODULE_GATED_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
     const resolved = resolveModuleFromPath(pathname)
     if (resolved) {
       const moduleId = (PERMISSION_MODULE_TO_MODULE_ID[resolved] ?? resolved) as ModuleId
-      if (moduleId in MODULE_REGISTRY && sessionModuleBlocked(session?.user, moduleId)) {
+      if (moduleId in MODULE_REGISTRY && sessionModuleBlocked(moduleGateUser, moduleId)) {
         return withCspHeaders(
           NextResponse.json(
             { error: "Forbidden", message: `Module "${moduleId}" is not enabled for your organization.` },
@@ -1152,6 +1162,7 @@ const authMiddleware = auth(async (req) => {
   const userHiddenId = hideableIdForUngatedApiPath(pathname)
   if (
     userHiddenId
+    && !tickedSectionPath
     && effectiveHiddenModules(session?.user?.role, session?.user?.hiddenModules).includes(userHiddenId)
   ) {
     return withCspHeaders(

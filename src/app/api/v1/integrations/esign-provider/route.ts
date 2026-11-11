@@ -18,6 +18,7 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { encryptForTenant } from "@/lib/crypto/tenant-pii-encryption"
+import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
 
 // ─── Allowed providers (whitelist) ────────────────────────────────────────────
 
@@ -30,8 +31,10 @@ function isAllowedProvider(p: unknown): p is AllowedProvider {
 
 // ─── Admin role gate ──────────────────────────────────────────────────────────
 
-function requireAdminRole(role: string): NextResponse | null {
-  if (role === "admin" || role === "superadmin") return null
+function requireAdminRole(session: { role: string; settingsSections?: string[] }, req: { url: string }): NextResponse | null {
+  const role = session.role
+  // Or a person an admin ticked «Integrations» for (lib/settings-sections).
+  if (role === "admin" || role === "superadmin" || holdsSettingsSectionForRequest(session, req)) return null
   return NextResponse.json(
     {
       error: "Forbidden",
@@ -63,9 +66,9 @@ const createConfigSchema = z.object({
 
 // ─── GET — list configs (creds masked) ───────────────────────────────────────
 
-export const GET = withRlsAuth("contracts", "read", async (_req, session) => {
-  const { orgId, role } = session
-  const adminCheck = requireAdminRole(role)
+export const GET = withRlsAuth("contracts", "read", async (req, session) => {
+  const { orgId } = session
+  const adminCheck = requireAdminRole(session, req)
   if (adminCheck) return adminCheck
 
   const configs = await prisma.esignProviderConfig.findMany({
@@ -93,8 +96,8 @@ export const GET = withRlsAuth("contracts", "read", async (_req, session) => {
 // ─── POST — create or replace a provider config ──────────────────────────────
 
 export const POST = withRlsAuth("contracts", "write", async (req, session) => {
-  const { orgId, role, userId } = session
-  const adminCheck = requireAdminRole(role)
+  const { orgId, userId } = session
+  const adminCheck = requireAdminRole(session, req)
   if (adminCheck) return adminCheck
 
   const body = await req.json()
@@ -176,8 +179,8 @@ export const POST = withRlsAuth("contracts", "write", async (req, session) => {
 // ─── DELETE — remove a config ─────────────────────────────────────────────────
 
 export const DELETE = withRlsAuth("contracts", "write", async (req, session) => {
-  const { orgId, role } = session
-  const adminCheck = requireAdminRole(role)
+  const { orgId } = session
+  const adminCheck = requireAdminRole(session, req)
   if (adminCheck) return adminCheck
 
   const { searchParams } = new URL(req.url)

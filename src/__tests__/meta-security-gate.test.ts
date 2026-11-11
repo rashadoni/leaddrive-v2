@@ -263,10 +263,13 @@ describe("cross-tenant isolation", () => {
     expect(src).toContain("doesn't match its ChannelConfig. Ignoring.")
   })
 
-  it("channel configuration is admin-only and closed to API keys", () => {
+  // An admin — or, since 2026-11-11, a person an admin ticked «Channels» for on
+  // their user card (lib/settings-sections.ts; the behaviour itself is proved on
+  // a real Postgres in settings-sections-postgres.test.ts). Never an API key.
+  it("channel configuration is admin-or-ticked and closed to API keys", () => {
     const src = readFileSync("src/lib/channels-access.ts", "utf8")
     expect(src).toContain("requireSessionAuth")
-    expect(src).toContain('session.role !== "admin" && session.role !== "superadmin"')
+    expect(src).toContain("!holdsSettingsSectionForRequest(session, req)")
   })
 
   it("every channel mutation is scoped by organizationId", () => {
