@@ -3,6 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { nextPharmacyListAt } from "@/lib/voice-agent/pharmacy/zeytun-1c-schedule"
 import { ZeytunClientsCache } from "@/lib/voice-agent/pharmacy/zeytun-clients-cache"
 import { zeytunClientsScopeKey } from "@/lib/voice-agent/pharmacy/zeytun-clients-client"
 import { ZeytunSnapshotStore } from "@/lib/voice-agent/pharmacy/zeytun-snapshot-store"
@@ -95,5 +96,13 @@ describe("durable ListClients background cache", () => {
       now += 7 * hour
     }
     expect(() => new ZeytunClientsCache({ ...config, organizationId: "other" }, store)).toThrow("tenant_mismatch")
+  })
+  it("asks 1C again when its schedule says, not an hour later (2026-11-11: twice a day)", async () => {
+    const worker = new ZeytunClientsCache(config, store, upstream, () => now, nextPharmacyListAt)
+    expect((await worker.refresh()).outcome).toBe("updated")
+    expect(worker.status().nextAttemptAt).toBe(nextPharmacyListAt(now))
+    now += 2 * hour
+    expect((await worker.refresh()).outcome).toBe("throttled")
+    expect(upstream).toHaveBeenCalledTimes(1)
   })
 })

@@ -27,6 +27,8 @@ export class ZeytunBalanceCache {
     private readonly clock: () => number = Date.now,
     private readonly refreshIntervalMs = 15 * 60_000,
     private readonly staleAfterMs = 30 * 60_000,
+    /** When the next download is due after a good one (zeytun-1c-schedule.ts); a fixed interval without it. */
+    private readonly nextRefreshAt?: (now: number) => number,
   ) {
     this.config = parseZeytunBalanceConfig(input)
     this.scopeKey = zeytunBalanceScopeKey(this.config)
@@ -119,7 +121,7 @@ export class ZeytunBalanceCache {
           } })
           this.feed = downloaded.feed
           this.summary = summary
-          this.attempt = { scopeKey: this.scopeKey, attemptedAt: now, nextAttemptAt: this.clock() + this.refreshIntervalMs, failures: 0, lastError: null }
+          this.attempt = { scopeKey: this.scopeKey, attemptedAt: now, nextAttemptAt: this.nextRefreshAt?.(this.clock()) ?? this.clock() + this.refreshIntervalMs, failures: 0, lastError: null }
           await this.store.saveAttempt(this.attempt)
           this.storageError = false
           return this.result("updated")

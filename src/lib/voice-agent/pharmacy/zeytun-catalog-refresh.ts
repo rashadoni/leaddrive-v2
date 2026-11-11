@@ -1,5 +1,6 @@
 import { dirname, join } from "node:path"
 
+import { nextPharmacyListAt, nextStockAt } from "./zeytun-1c-schedule"
 import { ZeytunBalanceCache } from "./zeytun-balance-cache"
 import { parseZeytunBalanceConfig, zeytunBalanceScopeKey } from "./zeytun-balance-client"
 import { ZeytunClientsCache } from "./zeytun-clients-cache"
@@ -24,8 +25,8 @@ async function readConnectionFile(env: Env, file: string): Promise<unknown | nul
  * One refresh tick of the line's catalog. The line serves only a live snapshot
  * younger than a day, so without this tick it stops finding products a day
  * after the last manual refresh. The cache's own lock and persisted deadline
- * make overlapping or frequent ticks harmless: one download per hour at most,
- * with backoff after a failure. Nothing here is printed or returned except
+ * make overlapping or frequent ticks harmless: hourly by day, every three hours
+ * at night (zeytun-1c-schedule.ts), with backoff after a failure. Nothing here is printed or returned except
  * the cache status (no endpoint, account or password).
  */
 export async function refreshZeytunLineCatalog(env: Env = {
@@ -40,7 +41,8 @@ export async function refreshZeytunLineCatalog(env: Env = {
   // answers the line's calls too, just to learn it is throttled.
   const attempt = await store.readAttempt()
   if (attempt && Date.now() < attempt.nextAttemptAt) return { outcome: "throttled" as const, nextAttemptAt: attempt.nextAttemptAt }
-  const cache = new ZeytunBalanceCache(config, store, undefined, undefined, 60 * 60_000, 2 * 60 * 60_000)
+  // Hourly by day, every three hours at night (zeytun-1c-schedule.ts); stale for the status after four.
+  const cache = new ZeytunBalanceCache(config, store, undefined, undefined, 60 * 60_000, 4 * 60 * 60_000, nextStockAt)
   await cache.restore()
   return cache.refresh()
 }
@@ -48,8 +50,8 @@ export async function refreshZeytunLineCatalog(env: Env = {
 /**
  * One refresh tick of the pharmacy directory (1C ListClients), so a call can
  * be greeted by the pharmacy its number belongs to. The read takes ~95 s and
- * the directory changes rarely: the cache downloads at most hourly, with
- * backoff, under the same on-host lock as the catalog.
+ * the directory changes once or twice a day: the cache downloads at 07:00 and
+ * 19:00 Baku, with backoff, under the same on-host lock as the catalog.
  */
 export async function refreshZeytunPharmacies(env: Env = {
   grantFile: process.env.ZEYTUN_INBOUND_PILOT_FILE, cacheDir: process.env.ZEYTUN_CACHE_DIR,
@@ -60,7 +62,8 @@ export async function refreshZeytunPharmacies(env: Env = {
   const store = new ZeytunSnapshotStore(env.cacheDir!, config.organizationId, zeytunClientsScopeKey(config))
   const attempt = await store.readAttempt()
   if (attempt && Date.now() < attempt.nextAttemptAt) return { outcome: "throttled" as const, nextAttemptAt: attempt.nextAttemptAt }
-  const cache = new ZeytunClientsCache(config, store)
+  // At 07:00 and 19:00 Baku: the list changes once or twice a day (Zeytun's programmer, 2026-11-11).
+  const cache = new ZeytunClientsCache(config, store, undefined, undefined, nextPharmacyListAt)
   await cache.restore()
   const result = await cache.refresh()
   // The directory status names no pharmacy: counts, version and deadlines only.
