@@ -161,7 +161,8 @@ export const POST = withRlsAuth("contracts", "write", async (req: NextRequest, a
   // FIX 2: Preflight cost estimate — estimate input tokens + cost before the paid call
   const estInputTokens = Math.ceil(maskedBody.length / 4) + SYSTEM_PROMPT_TOKEN_OVERHEAD
   const estCost = calculateAiCost(MODEL, estInputTokens, MAX_OUTPUT_TOKENS)
-  if (estCost > budget.remaining) {
+  // No limit set (owner, 2026-11-11): nothing to run out of.
+  if (budget.remaining !== null && estCost > budget.remaining) {
     return NextResponse.json(
       {
         error: `This extraction would exceed the remaining AI budget ($${budget.remaining.toFixed(3)} remaining, estimated $${estCost.toFixed(3)}).`,

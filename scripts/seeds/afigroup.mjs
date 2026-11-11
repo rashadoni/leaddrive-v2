@@ -177,7 +177,6 @@ async function main() {
       },
       settings: {
         ...(typeof org.settings === "object" && org.settings !== null ? org.settings : {}),
-        aiDailyBudgetUsd: 10,
         language: "en",
       },
     },

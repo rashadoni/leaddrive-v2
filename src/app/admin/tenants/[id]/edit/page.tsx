@@ -130,7 +130,6 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
     capabilities: { "route-field": false, personnel: false } as TenantEditorCapabilities,
     addons: [] as string[],
     orgLanguage: "",
-    aiDailyBudgetUsd: "",
     landingPath: "",
   })
 
@@ -165,7 +164,6 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
             addons: Array.isArray(t.addons) ? t.addons : [],
             orgLanguage: settings.language || settings.locale || "",
             landingPath: typeof settings.landingPath === "string" ? settings.landingPath : "",
-            aiDailyBudgetUsd: settings.aiDailyBudgetUsd != null ? String(settings.aiDailyBudgetUsd) : "",
           })
         }
       })
@@ -239,13 +237,8 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
       const settingsPatch: Record<string, any> = {}
       if (form.orgLanguage) settingsPatch.language = form.orgLanguage
       else settingsPatch.language = null
-      const budgetNum = form.aiDailyBudgetUsd.trim() === "" ? null : Number(form.aiDailyBudgetUsd)
-      if (budgetNum !== null && (!isFinite(budgetNum) || budgetNum < 0)) {
-        setError("Invalid AI daily budget")
-        setSaving(false)
-        return
-      }
-      settingsPatch.aiDailyBudgetUsd = budgetNum
+      // The daily AI limit is the organization's own (owner, 2026-11-11), set by
+      // its admin in «ИИ и расходы»; this card does not touch it (settings merge).
       // Стартовая страница тенанта: пусто = автоподбор (первый доступный пункт
       // меню). Значение читает JWT и редирект с «/» (см. lib/tenant-landing).
       settingsPatch.landingPath = form.landingPath || null
@@ -819,17 +812,6 @@ function TenantEditState({ tenantId }: { tenantId: string }) {
                 <span className="block text-xs text-muted-foreground">{t("tenants.aiPlatformKeyHint")}</span>
               </span>
             </label>
-            <div className="mt-4 grid grid-cols-[10rem_1fr] items-center gap-x-4 gap-y-1 border-t border-zinc-200/60 pt-4 dark:border-zinc-700/60">
-              <Label htmlFor="ai-daily-limit">{t("tenants.aiDailyLimit")}</Label>
-              <p className="row-span-2 text-xs text-muted-foreground">{t("tenants.aiDailyLimitHint")}</p>
-              <Input
-                id="ai-daily-limit"
-                type="number" step="0.5" min="0"
-                value={form.aiDailyBudgetUsd}
-                placeholder="5.00"
-                onChange={(e) => setForm({ ...form, aiDailyBudgetUsd: e.target.value })}
-              />
-            </div>
           </Card>
 
           <VoiceNumbersPanel tenantId={tenantId} />

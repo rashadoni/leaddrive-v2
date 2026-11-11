@@ -238,7 +238,7 @@ export default function AiAutomationPage() {
   useAutoTour("aiAutomation")
   const orgId = (session?.user as { organizationId?: string } | undefined)?.organizationId
   const [features, setFeatures] = useState<AiFeature[]>([])
-  const [budget, setBudget] = useState<{ spent: number; limit: number; remaining: number } | null>(null)
+  const [budget, setBudget] = useState<{ spent: number; limit: number | null; remaining: number | null } | null>(null)
   // A6 — granular AI limits (per-conversation, per-contact/day, output tokens).
   const [aiLimits, setAiLimits] = useState<{ maxRepliesPerConversation: string; maxRepliesPerContactPerDay: string; maxOutputTokens: string }>({ maxRepliesPerConversation: "", maxRepliesPerContactPerDay: "", maxOutputTokens: "" })
   const [savingLimits, setSavingLimits] = useState(false)
@@ -615,25 +615,28 @@ export default function AiAutomationPage() {
                   </PopoverContent>
                 </Popover>
               </h3>
-              <Badge variant={budget.spent >= budget.limit ? "destructive" : budget.spent >= budget.limit * 0.8 ? "secondary" : "outline"} className="text-xs">
-                ${budget.spent.toFixed(3)} / ${budget.limit.toFixed(2)}
+              <Badge variant={budget.limit !== null && budget.spent >= budget.limit ? "destructive" : budget.limit !== null && budget.spent >= budget.limit * 0.8 ? "secondary" : "outline"} className="text-xs">
+                ${budget.spent.toFixed(3)}{budget.limit !== null ? ` / $${budget.limit.toFixed(2)}` : ""}
               </Badge>
             </div>
-            {/* Progress bar */}
-            <div className="h-2 bg-muted rounded-full overflow-hidden mb-3">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  budget.spent >= budget.limit ? "bg-red-500" : budget.spent >= budget.limit * 0.8 ? "bg-amber-500" : "bg-emerald-500"
-                }`}
-                style={{ width: `${Math.min(100, (budget.spent / budget.limit) * 100)}%` }}
-              />
-            </div>
+            {/* Progress bar: only against a limit the organization set. */}
+            {budget.limit !== null && (
+              <div className="h-2 bg-muted rounded-full overflow-hidden mb-3">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    budget.spent >= budget.limit ? "bg-red-500" : budget.spent >= budget.limit * 0.8 ? "bg-amber-500" : "bg-emerald-500"
+                  }`}
+                  style={{ width: `${Math.min(100, (budget.spent / budget.limit) * 100)}%` }}
+                />
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2">
-              {/* The limit guards the platform's key, so the platform sets it; the
-                  organization sees it, and its spend, in «ИИ и расходы». */}
-              <span className="text-xs text-muted-foreground">{t("dailyLimit")}: ${budget.limit.toFixed(2)}</span>
+              {/* The organization's own limit (owner, 2026-11-11), set in «ИИ и расходы». */}
+              <span className="text-xs text-muted-foreground">{t("dailyLimit")}: {budget.limit !== null ? `$${budget.limit.toFixed(2)}` : t("noDailyLimit")}</span>
               <Link href="/settings/ai-spend" className="text-xs font-medium text-primary hover:underline">{t("spendLink")}</Link>
-              <span className="text-[10px] text-muted-foreground sm:ml-auto">{t("budgetRemaining")}: ${budget.remaining.toFixed(3)}</span>
+              {budget.remaining !== null && (
+                <span className="text-[10px] text-muted-foreground sm:ml-auto">{t("budgetRemaining")}: ${budget.remaining.toFixed(3)}</span>
+              )}
             </div>
             {/* A6 — granular limits: one level below the daily USD cap. */}
             <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-border/60 pt-3">

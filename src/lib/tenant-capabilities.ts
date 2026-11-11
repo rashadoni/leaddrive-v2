@@ -15,8 +15,9 @@ export const ADVISOR_SUITE_MODULE_IDS: ModuleId[] = [
 
 export const ADVISOR_SUITE_ADDONS = ["ai", "finance", "mtm"] as const
 
+// No daily AI limit here: it is the organization's own, none unless its admin
+// sets one in «ИИ и расходы» (owner, 2026-11-11).
 export const ADVISOR_SUITE_SETTINGS_DEFAULTS = {
-  aiDailyBudgetUsd: 10,
   aiAdvisorDailyRequestLimit: 300,
   aiAdvisorExecutionEnabled: true,
   aiAdvisorExecutionDisabled: false,
@@ -320,10 +321,6 @@ export function applyAdvisorSuiteActivation(fields: {
     if (!addons.includes(addon)) addons.push(addon)
   }
 
-  settings.aiDailyBudgetUsd = positiveNumberOrDefault(
-    settings.aiDailyBudgetUsd,
-    ADVISOR_SUITE_SETTINGS_DEFAULTS.aiDailyBudgetUsd,
-  )
   settings.aiAdvisorDailyRequestLimit = positiveNumberOrDefault(
     settings.aiAdvisorDailyRequestLimit,
     ADVISOR_SUITE_SETTINGS_DEFAULTS.aiAdvisorDailyRequestLimit,

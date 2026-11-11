@@ -336,7 +336,6 @@ describe("PATCH /api/v1/admin/tenants/[id]/capabilities", () => {
               "lead-scoring-template": true,
             },
           },
-          aiDailyBudgetUsd: 10,
           aiAdvisorDailyRequestLimit: 300,
           aiAdvisorExecutionEnabled: true,
           aiAdvisorExecutionDisabled: false,
@@ -386,8 +385,9 @@ describe("PATCH /api/v1/admin/tenants/[id]/capabilities", () => {
     expect(res.status).toBe(200)
     const updateCall = vi.mocked(prisma.organization.update).mock.calls[0]?.[0] as any
     expect(updateCall.data.addons).toEqual(["ai", "finance", "mtm"])
+    // The daily AI limit is the organization's own (owner, 2026-11-11): the suite leaves it alone.
+    expect(updateCall.data.settings.aiDailyBudgetUsd).toBe(0)
     expect(updateCall.data.settings).toEqual(expect.objectContaining({
-      aiDailyBudgetUsd: 10,
       aiAdvisorDailyRequestLimit: 300,
       aiAdvisorExecutionEnabled: true,
       aiAdvisorExecutionDisabled: false,

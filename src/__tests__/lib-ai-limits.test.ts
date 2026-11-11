@@ -16,6 +16,7 @@ vi.mock("@/lib/prisma", () => ({
 
 import {
   checkAiBudget,
+  readDailyAiLimit,
   getAiLimits,
   checkConversationAiLimits,
   DEFAULT_AI_LIMITS,
@@ -61,12 +62,38 @@ describe("checkAiBudget", () => {
       },
     }] as never)
 
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings: { aiDailyBudgetUsd: 5 } } as never)
     expect(await checkAiBudget("o1")).toEqual({
       allowed: true,
       spent: 3.75,
       limit: 5,
       remaining: 1.25,
     })
+  })
+
+  // Owner, 2026-11-11: «зачем ты ставишь лимит?… если клиент захочет, то пусть ставит лимит».
+  it("imposes no limit on an organization that set none, however much it spent", async () => {
+    vi.mocked(prisma.aiUsage.aggregate).mockResolvedValue({ _sum: { costUsd: 250 } } as never)
+    for (const settings of [{}, { aiDailyBudgetUsd: null }, { aiDailyBudgetUsd: 0 }, { aiDailyBudgetUsd: "10" }]) {
+      vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings } as never)
+      expect(await checkAiBudget("o1")).toEqual({ allowed: true, spent: 250, limit: null, remaining: null })
+    }
+  })
+
+  it("stops at the limit the organization set", async () => {
+    vi.mocked(prisma.aiUsage.aggregate).mockResolvedValue({ _sum: { costUsd: 12 } } as never)
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ settings: { aiDailyBudgetUsd: 12 } } as never)
+    expect(await checkAiBudget("o1")).toEqual({ allowed: false, spent: 12, limit: 12, remaining: 0 })
+  })
+})
+
+describe("readDailyAiLimit", () => {
+  it("is a positive finite number of dollars, or none", () => {
+    expect(readDailyAiLimit({ aiDailyBudgetUsd: 7.5 })).toBe(7.5)
+    for (const settings of [null, undefined, {}, { aiDailyBudgetUsd: 0 }, { aiDailyBudgetUsd: -1 },
+      { aiDailyBudgetUsd: Infinity }, { aiDailyBudgetUsd: "5" }, "x"]) {
+      expect(readDailyAiLimit(settings)).toBeNull()
+    }
   })
 })
 

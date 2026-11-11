@@ -3,7 +3,9 @@
 /**
  * «Настройки → ИИ и расходы» (owner, 2026-11-10, by the approved mockup):
  * what each service and each AI agent cost by day, week or month; whose key
- * each provider runs on; today's spend against the daily limit.
+ * each provider runs on; today's spend, and the organization's own daily
+ * limit, which its admin sets or clears here (owner, 2026-11-11: none unless
+ * the client wants one).
  *
  * Reads /api/v1/settings/ai-spend (the gateway's journal `ai_usage`) and
  * /api/v1/settings/ai-keys. Admins only — the server refuses everyone else.
@@ -205,7 +207,14 @@ export default function AiSpendPage() {
       </section>
 
       <KeysCard keys={keys} onChange={setKeys} t={t} nf={nf} money={money} count={count} />
-      <LimitCard report={report} keys={keys} money={money} nf={nf} t={t} />
+      <LimitCard
+        report={report}
+        keys={keys}
+        money={money}
+        nf={nf}
+        t={t}
+        onLimit={(today) => setReport((current) => current && { ...current, today })}
+      />
     </div>
   )
 }
@@ -223,7 +232,8 @@ function Kpis({ report, money, count, nf, t, locale }: { report: SpendReport; mo
   const firstDay = report.firstCallAt && report.firstCallAt.slice(0, 10) > report.firstDay ? report.firstCallAt.slice(0, 10) : report.firstDay
   const days = report.firstCallAt ? Math.max(1, Math.round((Date.parse(report.lastDay) - Date.parse(firstDay)) / 86_400_000) + 1) : 0
   const average = days ? report.totals.costUsd / days : 0
-  const todayShare = report.today.limit > 0 ? Math.min(100, (report.today.spent / report.today.limit) * 100) : 0
+  const todayLimit = report.today.limit
+  const todayShare = todayLimit ? Math.min(100, (report.today.spent / todayLimit) * 100) : 0
   const tile = "rounded-xl border border-border bg-card p-4"
   return (
     <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
@@ -235,11 +245,16 @@ function Kpis({ report, money, count, nf, t, locale }: { report: SpendReport; mo
       <div className={tile}>
         <div className="text-xs font-medium text-muted-foreground">{t("kpiToday")}</div>
         <div className="mt-2 text-2xl font-bold tabular-nums">
-          {money(report.today.spent)} <span className="text-sm font-medium text-muted-foreground">{t("kpiTodayOf", { limit: money(report.today.limit) })}</span>
+          {money(report.today.spent)}{" "}
+          <span className="text-sm font-medium text-muted-foreground">
+            {todayLimit ? t("kpiTodayOf", { limit: money(todayLimit) }) : t("kpiTodayNoLimit")}
+          </span>
         </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-          <div className={`h-full rounded-full ${todayShare >= 100 ? "bg-red-500" : todayShare >= 80 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.max(todayShare, report.today.spent > 0 ? 2 : 0)}%` }} />
-        </div>
+        {todayLimit ? (
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+            <div className={`h-full rounded-full ${todayShare >= 100 ? "bg-red-500" : todayShare >= 80 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.max(todayShare, report.today.spent > 0 ? 2 : 0)}%` }} />
+          </div>
+        ) : null}
       </div>
       <div className={tile}>
         <div className="text-xs font-medium text-muted-foreground">{t("kpiTop")}</div>
@@ -644,38 +659,95 @@ function KeysCard({ keys, onChange, t, nf, money, count }: {
   )
 }
 
-function LimitCard({ report, keys, money, nf, t }: { report: SpendReport | null; keys: KeysState | null; money: (v: number) => string; nf: string; t: T }) {
+function LimitCard({ report, keys, money, nf, t, onLimit }: {
+  report: SpendReport | null
+  keys: KeysState | null
+  money: (v: number) => string
+  nf: string
+  t: T
+  onLimit: (today: SpendReport["today"]) => void
+}) {
   const today = report?.today
-  const share = today && today.limit > 0 ? Math.min(100, (today.spent / today.limit) * 100) : 0
-  const over = Boolean(today && today.spent >= today.limit)
+  const limit = today?.limit ?? null
+  const share = today && limit ? Math.min(100, (today.spent / limit) * 100) : 0
+  const over = Boolean(today && limit !== null && today.spent >= limit)
+  const [draft, setDraft] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => { setDraft(limit !== null ? String(limit) : "") }, [limit])
   // The day is counted in UTC; say when it turns over on the viewer's clock
   // (the UTC midnight after the report's last local day).
   const reset = report
     ? new Intl.DateTimeFormat(nf, { hour: "2-digit", minute: "2-digit" }).format(new Date(Date.parse(`${report.lastDay}T00:00:00Z`) + 86_400_000))
     : ""
   const ownNames = PROVIDER_ROWS.filter((p) => keys?.keys.some((k) => k.provider === p.id)).map((p) => p.name)
+  const value = Number(draft.replace(",", "."))
+  const valid = draft.trim() !== "" && Number.isFinite(value) && value >= 0.5 && value <= 10_000
+  const save = async (next: number | null) => {
+    setSaving(true)
+    setFailed(false)
+    try {
+      const res = await fetch("/api/v1/settings/ai-budget", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: next }),
+      })
+      if (!res.ok) throw new Error(String(res.status))
+      const { data } = await res.json()
+      onLimit({ spent: data.spent, limit: data.limit, remaining: data.remaining })
+    } catch {
+      setFailed(true)
+    } finally {
+      setSaving(false)
+    }
+  }
   return (
     <section className="rounded-xl border border-border bg-card p-6">
       <h2 className="text-base font-semibold">{t("limitTitle")}</h2>
       <p className="mt-1 text-xs text-muted-foreground">{t("limitSubtitle")}</p>
-      {/* One full-width card: today against the limit, what happens at the limit, what an own key changes. */}
+      {/* One full-width card: today and the organization's own limit, what the limit does, what an own key changes. */}
       <div className="mt-4 grid items-stretch gap-6 md:grid-cols-3">
       <div>
       <div className="flex items-end justify-between">
         <div><div className="text-xs text-muted-foreground">{t("limitSpent")}</div><div className="text-3xl font-bold tabular-nums">{today ? money(today.spent) : "—"}</div></div>
-        <div className="text-right"><div className="text-xs text-muted-foreground">{t("limitPerDay")}</div><div className="text-3xl font-bold tabular-nums">{today ? money(today.limit) : "—"}</div></div>
+        <div className="text-right"><div className="text-xs text-muted-foreground">{t("limitPerDay")}</div><div className="text-3xl font-bold tabular-nums">{!today ? "—" : limit !== null ? money(limit) : t("limitNone")}</div></div>
       </div>
-      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted">
-        <div className={`h-full rounded-full ${over ? "bg-red-500" : share >= 80 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.max(share, today && today.spent > 0 ? 1.5 : 0)}%` }} />
+      {limit !== null && (
+        <>
+          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted">
+            <div className={`h-full rounded-full ${over ? "bg-red-500" : share >= 80 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.max(share, today && today.spent > 0 ? 1.5 : 0)}%` }} />
+          </div>
+          <div className="mt-2 flex justify-between gap-3 text-xs text-muted-foreground">
+            <span>{t("limitShare", { share: new Intl.NumberFormat(nf, { maximumFractionDigits: 0 }).format(share) })}</span>
+            <span>{t("limitReset", { time: reset })}</span>
+          </div>
+        </>
+      )}
+      <form
+        className="mt-4 flex flex-wrap items-end gap-2"
+        onSubmit={(event) => { event.preventDefault(); if (valid) void save(Math.round(value * 100) / 100) }}
+      >
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {t("limitInputLabel")}
+          <input
+            type="text"
+            inputMode="decimal"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder={t("limitInputPlaceholder")}
+            className="h-9 w-32 rounded-lg border border-input bg-background px-3 text-sm tabular-nums text-foreground"
+          />
+        </label>
+        <Button type="submit" size="sm" disabled={!valid || saving || (limit !== null && value === limit)}>{t("limitSave")}</Button>
+        {limit !== null && (
+          <Button type="button" size="sm" variant="outline" disabled={saving} onClick={() => void save(null)}>{t("limitClear")}</Button>
+        )}
+        <span className="basis-full text-[11px] text-muted-foreground">{failed ? t("limitSaveFailed") : t("limitRange")}</span>
+      </form>
       </div>
-      <div className="mt-2 flex justify-between gap-3 text-xs text-muted-foreground">
-        <span>{t("limitShare", { share: new Intl.NumberFormat(nf, { maximumFractionDigits: 0 }).format(share) })}</span>
-        <span>{t("limitReset", { time: reset })}</span>
-      </div>
-      </div>
-      <div className={`rounded-lg border border-border border-l-4 p-4 text-sm ${over ? "border-l-red-500" : "border-l-amber-500"}`}>
-        <div className="font-semibold">{t(over ? "limitOverTitle" : "limitWhenTitle")}</div>
-        <div className="mt-1 text-xs text-muted-foreground">{t("limitWhenBody")}</div>
+      <div className={`rounded-lg border border-border border-l-4 p-4 text-sm ${over ? "border-l-red-500" : limit !== null ? "border-l-amber-500" : "border-l-emerald-500"}`}>
+        <div className="font-semibold">{t(limit === null ? "limitNoneTitle" : over ? "limitOverTitle" : "limitWhenTitle")}</div>
+        <div className="mt-1 text-xs text-muted-foreground">{t(limit === null ? "limitNoneBody" : "limitWhenBody")}</div>
       </div>
       <div className="rounded-lg border border-border border-l-4 border-l-sky-500 p-4 text-sm">
         {ownNames.length > 0 ? (

@@ -87,7 +87,8 @@ export type SpendReport = {
   /** First journaled call in the window (UTC ISO), or null when there is none. */
   firstCallAt: string | null
   /** Today's spend on the platform key against the daily limit (UTC day). */
-  today: { spent: number; limit: number; remaining: number }
+  /** limit and remaining are null when the organization set no limit. */
+  today: { spent: number; limit: number | null; remaining: number | null }
 }
 
 const money = (value: number) => Math.round(value * 1e6) / 1e6

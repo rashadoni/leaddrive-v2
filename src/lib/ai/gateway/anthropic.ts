@@ -5,7 +5,7 @@
  *     the platform superadmin allows this organization to use it
  *     (`organizations.aiPlatformKey`); else `AiUnavailableError("not_connected")`.
  *  2. Budget: on the platform's key, the organization's daily AI budget
- *     (`checkAiBudget`, set by the platform superadmin) is checked before the
+ *     (`checkAiBudget`, the organization's own, none unless its admin set one) is checked before the
  *     call; over it — `AiUnavailableError("budget_exceeded")`. On its own key
  *     the organization sets its ceiling at the provider.
  *  3. Journal: every finished `messages.create` / `messages.stream` writes its

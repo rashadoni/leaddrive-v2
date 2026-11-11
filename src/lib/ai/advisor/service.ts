@@ -246,7 +246,7 @@ export async function checkAdvisorQueryGovernance(organizationId: string): Promi
     return {
       allowed: false,
       reason: `Daily AI budget exceeded: $${budget.spent}/$${budget.limit}`,
-      limit: budget.limit,
+      limit: budget.limit ?? undefined,
       used: budget.spent,
     }
   }

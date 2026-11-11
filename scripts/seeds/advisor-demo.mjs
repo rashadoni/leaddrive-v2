@@ -183,7 +183,6 @@ async function ensureAdvisorModules(org) {
       addons,
       settings: {
         ...settings,
-        aiDailyBudgetUsd: Math.max(Number(settings.aiDailyBudgetUsd || 0), 10),
         aiAdvisorDailyRequestLimit: Math.max(Number(settings.aiAdvisorDailyRequestLimit || 0), 300),
       },
     },
