@@ -59,7 +59,7 @@ const outlook = vi.hoisted(() => ({
 }))
 const whatsapp = vi.hoisted(() => ({
   buttons: [] as { body: string; footer?: string | null; buttons: { id: string; title: string }[]; conversationId?: string | null }[],
-  lists: [] as { body: string; footer?: string | null; buttonLabel: string; sectionTitle?: string | null; rows: { id: string; title: string; description?: string | null }[]; conversationId?: string | null }[],
+  lists: [] as { body: string; footer?: string | null; buttonLabel: string; sectionTitle?: string | null; rows: { id: string; title: string; description?: string | null }[]; sections?: { title: string; rowIds: string[] }[]; conversationId?: string | null }[],
   texts: [] as { message: string; conversationId?: string | null }[],
   /** Set for one send to play a provider that refuses interactive lists. */
   listFails: false,
@@ -95,12 +95,12 @@ vi.mock("@/lib/whatsapp", async (original) => ({
     whatsapp.buttons.push({ body: input.body, footer: input.footer, buttons: input.buttons, conversationId: input.conversationId })
     return { success: true, messageId: `wamid.${whatsapp.buttons.length}` }
   }),
-  sendWhatsAppList: vi.fn(async (input: { body: string; footer?: string | null; buttonLabel: string; sectionTitle?: string | null; rows: { id: string; title: string; description?: string | null }[]; conversationId?: string | null }) => {
+  sendWhatsAppList: vi.fn(async (input: { body: string; footer?: string | null; buttonLabel: string; sectionTitle?: string | null; rows: { id: string; title: string; description?: string | null }[]; sections?: { title: string; rowIds: string[] }[]; conversationId?: string | null }) => {
     if (whatsapp.listFails) {
       whatsapp.listFails = false
       return { success: false, error: "interactive lists are not supported here" }
     }
-    whatsapp.lists.push({ body: input.body, footer: input.footer, buttonLabel: input.buttonLabel, sectionTitle: input.sectionTitle, rows: input.rows, conversationId: input.conversationId })
+    whatsapp.lists.push({ body: input.body, footer: input.footer, buttonLabel: input.buttonLabel, sectionTitle: input.sectionTitle, rows: input.rows, sections: input.sections, conversationId: input.conversationId })
     return { success: true, messageId: `wamid.list.${whatsapp.lists.length}` }
   }),
   sendWhatsAppMessage: vi.fn(async (input: { message: string; conversationId?: string | null }) => {
@@ -1251,8 +1251,18 @@ pgDescribe("online booking on a real Postgres", () => {
       expect(message.buttonLabel).toBe("Vaxt seçin")
       expect(message.rows.length).toBeGreaterThan(3)
       expect(message.rows.length).toBeLessThanOrEqual(OFFERS_PER_LIST)
+      // The sheet is grouped by day, so the row is the clock alone even when the
+      // times run into tomorrow, and the date is the heading above them.
+      expect(message.sections!.length).toBeGreaterThan(0)
+      expect(message.sections!.flatMap((section) => section.rowIds).sort())
+        .toEqual(message.rows.map((row) => row.id).sort())
+      for (const section of message.sections!) {
+        expect(section.title.length).toBeLessThanOrEqual(24)
+        expect(section.title).not.toMatch(/\d{1,2}:\d{2}/)
+      }
       for (const row of message.rows) {
         expect(row.id).toMatch(/^bk:/)
+        expect(row.title).toMatch(/^\d{1,2}:\d{2}$/)
         expect(row.title.length).toBeLessThanOrEqual(24)
         // The name lives on the second line now, not inside the time.
         expect(row.description, "the row names the master").toBeTruthy()
@@ -1280,11 +1290,18 @@ pgDescribe("online booking on a real Postgres", () => {
       expect(meetings).toHaveLength(1)
       expect(meetings[0]).toMatchObject({ hostUserId: tapped.hostUserId, source: "whatsapp", name: "Nigar", phone: "+994551234567" })
       expect(meetings[0].startsAt.toISOString()).toBe(tapped.startsAt.toISOString())
-      // One confirmation, with the link that cancels it.
-      expect(whatsapp.texts).toHaveLength(1)
-      expect(whatsapp.texts[0].message).toMatch(/^Yazıldınız ✅/)
-      expect(whatsapp.texts[0].message).toMatch(/Leyla/)
-      expect(whatsapp.texts[0].message).toMatch(/https:\/\/app\.example\.test\/book\/cancel\/[\w-]{20,}/)
+      // One confirmation, carrying both the link that cancels it and the two
+      // taps a client actually makes next. The buttons are the reminder's own,
+      // so one handler answers them whether they came from here or from the
+      // reminder a day later.
+      expect(whatsapp.texts).toHaveLength(0)
+      const confirmation = whatsapp.buttons.at(-1)!
+      expect(confirmation.body).toMatch(/^Yazıldınız ✅/)
+      expect(confirmation.body).toMatch(/Leyla/)
+      expect(confirmation.body).toMatch(/https:\/\/app\.example\.test\/book\/cancel\/[\w-]{20,}/)
+      expect(confirmation.buttons.map((button) => button.id)).toEqual([
+        `rm:move:${meetings[0].id}`, `rm:cancel:${meetings[0].id}`,
+      ])
 
       // Every time not chosen is free again the moment the client chose — all of
       // them, not the two a three-button message used to hold.

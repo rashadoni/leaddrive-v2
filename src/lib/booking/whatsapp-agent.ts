@@ -35,9 +35,9 @@ import { BookingCommandError } from "./command-error"
 import { bookingRules } from "./commands"
 import { createStoredBooking } from "./create"
 import { cancelStoredBooking } from "./commands"
-import { phoneDigits, readReminderButton, reminderReply, type ReminderAction } from "./whatsapp-reminders"
+import { phoneDigits, readReminderButton, reminderButtonId, reminderReply, REMINDER_WORDS, type ReminderAction } from "./whatsapp-reminders"
 import { servicePriceLabel } from "./service"
-import { clock, dayLabel, type ReplyLanguage } from "./whatsapp-format"
+import { clock, dayLabel, shortDayLabel, type ReplyLanguage } from "./whatsapp-format"
 export { clock, dayLabel, type ReplyLanguage } from "./whatsapp-format"
 import { OFFER_HOLD_MINUTES, readWhatsAppBookingSetting } from "./whatsapp-setting"
 import { autonomyVerdict, type AutonomyReason, type AutonomyRules } from "./whatsapp-rules"
@@ -367,9 +367,9 @@ async function sendText(input: BookingTurnInput, body: string): Promise<boolean>
   return result.success
 }
 
-async function sendList(input: BookingTurnInput, body: string, rows: WhatsAppListRow[], buttonLabel: string, sectionTitle: string, footer?: string): Promise<boolean> {
+async function sendList(input: BookingTurnInput, body: string, rows: WhatsAppListRow[], buttonLabel: string, sectionTitle: string, footer?: string, sections?: { title: string; rowIds: string[] }[]): Promise<boolean> {
   const result = await sendWhatsAppList({
-    to: input.waPhone, body, footer, buttonLabel, sectionTitle, rows, organizationId: input.organizationId,
+    to: input.waPhone, body, footer, buttonLabel, sectionTitle, rows, sections, organizationId: input.organizationId,
     channelConfigId: input.channelConfigId, conversationId: input.conversationId, contactId: input.contactId, leadId: input.leadId,
     extraMetadata: { aiAutoReply: true, bookingAgent: true },
   })
@@ -506,12 +506,20 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
   const body = `${context.greet ? words.hello : ""}${lines.join("\n")}`
   // A menu, not three buttons: the row carries the master's name on its own
   // line, so the time keeps the whole first line and eight of them fit.
+  // The sheet is grouped by day, so the row is the clock alone even when the
+  // times run into tomorrow — the date is the heading above them, written once
+  // (owner, 2026-11-11: «ещё интерактивнее»). A provider that ignores sections
+  // still gets every row, in order.
   const rows = offers.map((offer, index) => ({
     id: `${OFFER_PREFIX}${offer.id}`,
-    title: offerRowTitle(choices[index], context.timezone, withDay),
+    title: offerRowTitle(choices[index], context.timezone, false),
     description: hostName(offer.hostUserId) || null,
   }))
-  if (await sendList(input, body, rows, words.pick, words.free[request.partOfDay], words.hold)) return true
+  const sections = [...new Set(choices.map((choice) => choice.date))].map((date) => ({
+    title: shortDayLabel(choices.find((choice) => choice.date === date)!.startsAt, request.language, context.timezone),
+    rowIds: rows.filter((row, index) => choices[index].date === date).map((row) => row.id),
+  }))
+  if (await sendList(input, body, rows, words.pick, words.free[request.partOfDay], words.hold, sections)) return true
   // A number whose provider refuses interactive lists still gets a choice:
   // the three nearest times as buttons, the shape that worked before.
   const buttons = offers.slice(0, OFFERS_PER_MESSAGE).map((offer, index) => ({
@@ -676,7 +684,18 @@ async function bookOffer(input: BookingTurnInput, offerId: string, rules: Autono
     data: { status: "superseded" },
   })
   if (claimed.count !== 1) return true
-  await sendText(input, await confirmationText(input.organizationId, offer.bookingPageId, result.booking, language, timezone, words.booked))
+  // Two taps instead of a sentence: changing the time and cancelling are the
+  // only two things a client does next, and they are the same two buttons the
+  // reminder carries — one handler answers both (owner, 2026-11-11: «ещё
+  // интерактивнее»). The cancel link stays in the text: buttons live inside
+  // WhatsApp's 24-hour window, the link outside it.
+  const body = await confirmationText(input.organizationId, offer.bookingPageId, result.booking, language, timezone, words.booked)
+  const actions = REMINDER_WORDS[language]
+  const sent = await sendButtons(input, body, [
+    { id: reminderButtonId("move", result.booking.id), title: actions.move },
+    { id: reminderButtonId("cancel", result.booking.id), title: actions.cancel },
+  ])
+  if (!sent) await sendText(input, body)
   return true
 }
 
