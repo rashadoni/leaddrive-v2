@@ -8,12 +8,12 @@
  */
 import { useState } from "react"
 import { useTranslations } from "next-intl"
-import { ChevronDown, X } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { SearchableSelect } from "@/components/ui/searchable-select"
 import { cn } from "@/lib/utils"
+import { Picked } from "./booking-picked"
 import { WEEKDAYS, type Weekday, type WeeklyHours } from "@/lib/booking/availability"
 import type { AutonomyRules } from "@/lib/booking/whatsapp-rules"
 
@@ -58,55 +58,6 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
     className={cn("min-h-8 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       on ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "bg-muted text-muted-foreground hover:text-foreground")}
   >{children}</button>
-}
-
-/**
- * «Everything», or the few that were picked — never the whole staff list as
- * chips. Twenty-seven names in three rows is the wall the day view already
- * learned not to draw (booking-day-timeline), and it taught nobody which of
- * them the agent may book: the answer was always «all of them».
- */
-function Picked({ items, chosen, allLabel, addLabel, searchLabel, emptyLabel, pickLabel, resetLabel, onToggle, onReset }: {
-  items: { id: string; name: string }[]
-  chosen: string[] | null
-  allLabel: string
-  addLabel: string
-  searchLabel: string
-  emptyLabel: string
-  pickLabel: string
-  resetLabel: string
-  onToggle: (id: string) => void
-  onReset: () => void
-}) {
-  const [picking, setPicking] = useState(false)
-  const ids = chosen ?? items.map((item) => item.id)
-  const everything = chosen === null || ids.length === items.length
-  if (everything && !picking) {
-    return <>
-      <span className="inline-flex min-h-8 items-center rounded-full bg-muted px-3 text-xs font-semibold">{allLabel}</span>
-      <button type="button" className="text-xs font-semibold text-primary underline-offset-4 hover:underline" onClick={() => setPicking(true)}>{pickLabel}</button>
-    </>
-  }
-  const rest = items.filter((item) => !ids.includes(item.id))
-  return <>
-    {items.filter((item) => ids.includes(item.id)).map((item) => <button
-      key={item.id}
-      type="button"
-      onClick={() => onToggle(item.id)}
-      className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-primary/10 px-3 text-xs font-semibold text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/15"
-    >{item.name}<X className="h-3 w-3" aria-hidden="true" /></button>)}
-    {rest.length ? <div className="w-56 max-w-full">
-      <SearchableSelect
-        value=""
-        onValueChange={(id) => { if (id) onToggle(id) }}
-        options={rest.map((item) => ({ value: item.id, label: item.name }))}
-        placeholder={addLabel}
-        searchPlaceholder={searchLabel}
-        noResultsLabel={emptyLabel}
-      />
-    </div> : null}
-    <button type="button" className="text-xs font-semibold text-primary underline-offset-4 hover:underline" onClick={() => { setPicking(false); onReset() }}>{resetLabel}</button>
-  </>
 }
 
 export function BookingWhatsAppRules({ rules, services, hosts, disabled, defaultOpen = false, onChange }: {
