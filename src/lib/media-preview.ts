@@ -101,3 +101,19 @@ export function isAudioPreview(
   if (messageType && messageType !== "text" && messageType !== "document") return false
   return AUDIO_EXT_RE.test(mediaUrl)
 }
+
+/**
+ * A post or reel the customer shared (`instagram.com/p/…`, `/reel/…`) is a page, not a file: it is
+ * named for what it is instead of «Attachment».
+ */
+export function sharedPostLabel(mediaUrl: string | null | undefined): string | null {
+  if (!mediaUrl) return null
+  try {
+    const { hostname, pathname } = new URL(mediaUrl)
+    if (/(^|\.)instagram\.com$/i.test(hostname)) return /^\/reels?\//.test(pathname) ? "Instagram reel" : "Instagram post"
+    if (/(^|\.)facebook\.com$/i.test(hostname)) return "Facebook post"
+  } catch {
+    return null
+  }
+  return null
+}

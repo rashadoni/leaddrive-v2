@@ -160,6 +160,10 @@ function filenameFromUrl(url: string, contentType = ""): string {
     "audio/aac": "aac",
     "audio/amr": "amr",
     "audio/mp4": "m4a",
+    "audio/x-m4a": "m4a",
+    // Instagram serves a voice note as video/mp4 ("audioclip-….mp4"); Whisper reads mp4 as such.
+    "video/mp4": "mp4",
+    "audio/webm": "webm",
     "audio/mpeg": "mp3",
     "audio/ogg": "ogg",
     "audio/opus": "opus",

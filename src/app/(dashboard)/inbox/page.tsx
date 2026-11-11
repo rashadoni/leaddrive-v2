@@ -23,7 +23,7 @@ import { formatDate } from "@/lib/format-date"
 import { cn } from "@/lib/utils"
 import { normalizeInboxFolderName } from "@/lib/inbox-folder-name"
 import { toast } from "sonner"
-import { isAudioPreview, isImagePreview } from "@/lib/media-preview"
+import { isAudioPreview, isImagePreview, isTikTokPlayerUrl, isVideoPreview, sharedPostLabel } from "@/lib/media-preview"
 import { readJsonSafely } from "@/lib/http/read-json-safely"
 import { applySnippetVariables, type MessageSnippetLike } from "@/lib/inbox/snippet-vars"
 import { whatsappCallAuditLines } from "@/lib/whatsapp-call-audit"
@@ -2702,9 +2702,11 @@ export default function InboxV2Page() {
                           ) : isAudioPreview(m.messageType, m.mediaUrl) ? (
                             // A voice note plays here; its words are the body under it.
                             <audio controls preload="none" src={m.mediaUrl} className="mb-1 h-9 w-64 max-w-full" data-testid="inbox-voice-player" />
+                          ) : isVideoPreview(m.messageType, m.mediaUrl) && !isTikTokPlayerUrl(m.mediaUrl) ? (
+                            <video controls preload="metadata" src={m.mediaUrl} className="mb-1 max-h-60 max-w-full rounded-lg" data-testid="inbox-video-player" />
                           ) : (
                             <a href={m.mediaUrl} target="_blank" rel="noopener noreferrer" className="mb-1 flex items-center gap-1.5 text-xs underline">
-                              <Paperclip className="h-3.5 w-3.5" /> Attachment
+                              <Paperclip className="h-3.5 w-3.5" /> {sharedPostLabel(m.mediaUrl) ?? "Attachment"}
                             </a>
                           )
                         )}

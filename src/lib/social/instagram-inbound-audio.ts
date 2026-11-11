@@ -49,6 +49,8 @@ type InboundAudioInput = {
   organizationId: string
   messageId: string
   audioUrl: string
+  /** The file itself when we already keep it (lib/inbox/meta-media); then the URL is not fetched. */
+  audio?: { bytes: Uint8Array; contentType?: string; filename?: string }
   metadata: Prisma.InputJsonObject
   onTranscript: (transcript: string) => Promise<void>
   sendFallback: (text: string) => Promise<unknown>
@@ -60,11 +62,9 @@ async function handleInboundAudio(
 ): Promise<"transcribed" | "fallback"> {
   // One transcription for every messenger (lib/inbox/inbound-voice-transcript); this path adds
   // only what an AI-answered channel needs on top — the reply, or a request to type it instead.
-  const transcription = await transcribeInboundVoice({
-    organizationId: input.organizationId,
-    source,
-    audioUrl: input.audioUrl,
-  })
+  const transcription = await transcribeInboundVoice(input.audio
+    ? { organizationId: input.organizationId, source, audio: input.audio }
+    : { organizationId: input.organizationId, source, audioUrl: input.audioUrl })
   if (!transcription) {
     await input.sendFallback(INSTAGRAM_AUDIO_TEXT_FALLBACK)
     return "fallback"
