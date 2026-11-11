@@ -144,6 +144,54 @@ describe("facebook/start with ?app=", () => {
     expect((await fbStart(fbReq("?app=cfg_staged"))).status).toBe(400)
   })
 
+  it("asks for the reading permissions when the staged flow is evidence for monitoring", async () => {
+    // The fourth submission moves social monitoring onto the approved app, and its screencast has to
+    // show THAT app's consent screen listing THESE permissions. `business_management` is deliberately
+    // absent: nothing here calls the Business Manager API, and a permission with no demonstrable use
+    // is a rejection waiting to happen.
+    findFirst.mockResolvedValue(STAGED)
+    const res = await fbStart(fbReq("?app=cfg_staged&stage=monitoring"))
+    const params = new URL(res.headers.get("location")!).searchParams
+    expect(params.get("client_id")).toBe("2414060595720618")
+    expect((params.get("scope") || "").split(",")).toEqual([
+      "public_profile",
+      "pages_show_list",
+      "pages_read_engagement",
+      "pages_read_user_content",
+      "instagram_basic",
+      "instagram_manage_comments",
+    ])
+  })
+
+  it("ignores a Messenger login configuration on a monitoring flow", async () => {
+    // A Facebook Login for Business configuration carries its own fixed permission list — the
+    // Messenger one. Honouring it here would film the wrong consent screen, which is precisely what
+    // the first two submissions were rejected over.
+    findFirst.mockResolvedValue({ ...STAGED, settings: { appReviewOnly: true, loginConfigId: "1122334455" } })
+    const res = await fbStart(fbReq("?app=cfg_staged&stage=monitoring"))
+    const params = new URL(res.headers.get("location")!).searchParams
+    expect(params.get("config_id")).toBeNull()
+    expect(params.get("scope")).toContain("pages_read_user_content")
+  })
+
+  it("leaves the messaging staging exactly as it was", async () => {
+    findFirst.mockResolvedValue(STAGED)
+    const withStage = await fbStart(fbReq("?app=cfg_staged&stage=messaging"))
+    const without = await fbStart(fbReq("?app=cfg_staged"))
+    const scope = (res: Response) => new URL(res.headers.get("location")!).searchParams.get("scope")
+    expect(scope(withStage)).toBe(scope(without))
+    expect(scope(without)).toContain("pages_messaging")
+  })
+
+  it("FAILS CLOSED on a stage it does not know, and on monitoring without a pinned app", async () => {
+    // Both would otherwise open a dialog that is not the one the caller asked for: an unknown stage
+    // silently falling back to messaging, and `stage` alone running on the shared production app.
+    expect((await fbStart(fbReq("?app=cfg_staged&stage=ads"))).status).toBe(400)
+    const unpinned = await fbStart(fbReq("?stage=monitoring"))
+    expect(unpinned.status).toBe(400)
+    expect(unpinned.headers.get("location")).toBeNull()
+  })
+
   it("without ?app the flow is byte-for-byte the historical one", async () => {
     const res = await fbStart(fbReq(""))
     expect(findFirst).not.toHaveBeenCalled()

@@ -39,6 +39,19 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   // path). It is the isolated route: the named row's creds are the only ones acceptable, and there is
   // NO env fallback — see getPinnedMetaApp. Without it, nothing below changes for any existing caller.
   const pinnedConfigId = new URL(req.url).searchParams.get("app")?.trim() || null
+  // Which surface a STAGED flow is evidence for. Messaging is the historical and default one; the
+  // monitoring submission needs a consent screen listing the reading permissions instead, and those
+  // two sets cannot be merged — Facebook refuses a dialog containing a permission the app has not
+  // enabled, so each submission's screencast asks for exactly its own set.
+  const stagedSurface = new URL(req.url).searchParams.get("stage")?.trim() || "messaging"
+  if (stagedSurface !== "messaging" && stagedSurface !== "monitoring") {
+    return NextResponse.json({ error: "Unknown staged surface. Use stage=messaging or stage=monitoring." }, { status: 400 })
+  }
+  if (stagedSurface === "monitoring" && !pinnedConfigId) {
+    // Fail closed rather than quietly change what an ordinary connect asks for: without `app` this
+    // flow runs on the shared production app, and a caller who passed `stage` believes otherwise.
+    return NextResponse.json({ error: "stage=monitoring is only meaningful together with app=<channelConfigId>." }, { status: 400 })
+  }
   const pinnedApp = pinnedConfigId ? await getPinnedMetaApp(orgId, pinnedConfigId, "facebook") : null
   if (pinnedConfigId && !pinnedApp) {
     // Fail closed and say why. Silently continuing on the shared production app would hand the caller
@@ -139,8 +152,21 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
     "pages_messaging",
     "pages_manage_metadata",
   ]
+  // The reading set, for the submission that moves social monitoring onto the approved app. It is the
+  // production `monitoringScopes` minus `business_management`: nothing in this codebase calls the
+  // Business Manager API — lib/social/meta-granted-assets says so in as many words — and a permission
+  // we cannot demonstrate is a rejection waiting to happen. Production keeps requesting it, where it
+  // only ever served to surface Pages owned by a business portfolio.
+  const stagedMonitoringScopes = [
+    "public_profile",
+    "pages_show_list",
+    "pages_read_engagement",
+    "pages_read_user_content",
+    "instagram_basic",
+    "instagram_manage_comments",
+  ]
   const scopes = pinnedApp
-    ? stagedMessengerScopes.join(",")
+    ? (stagedSurface === "monitoring" ? stagedMonitoringScopes : stagedMessengerScopes).join(",")
     : [...monitoringScopes, ...(usesSocialInbox ? inboxScopes : [])].join(",")
 
   const url = new URL("https://www.facebook.com/v21.0/dialog/oauth")
@@ -157,7 +183,13 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   //
   // So when the tenant has entered a configuration id we send THAT and omit `scope` entirely. When
   // they have not, we keep the historical scope request, which is what every existing tenant uses.
-  const loginConfigId = pinnedApp?.loginConfigId || messenger?.loginConfigId
+  // A Facebook Login for Business configuration carries its own fixed permission list, which is the
+  // Messenger one. Honouring it on a monitoring flow would open a dialog for the wrong permissions —
+  // and a screencast of the wrong consent screen is exactly what the first two submissions were
+  // rejected over. The scope request below is what the monitoring evidence needs.
+  const loginConfigId = stagedSurface === "monitoring"
+    ? null
+    : pinnedApp?.loginConfigId || messenger?.loginConfigId
   if (loginConfigId) {
     url.searchParams.set("config_id", loginConfigId)
   } else {
