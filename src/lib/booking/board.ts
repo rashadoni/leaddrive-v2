@@ -19,45 +19,11 @@
  *      a user: the caller proves nothing and asks for one board by token.
  */
 import { bookingDb as prisma } from "./db"
+import { readBoardColumns, type Board } from "./board-view"
+export { BOARD_COLUMNS, readBoardColumns, type Board, type BoardColumn, type BoardColumns, type BoardMeeting } from "./board-view"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { organizationTimezone } from "@/lib/ticketing/customer-locale"
 import { isValidTimezone } from "@/lib/timezone"
-
-/** 1, 2 or 4 — what fits on a screen without the columns becoming stripes. */
-export const BOARD_COLUMNS = [1, 2, 4] as const
-export type BoardColumns = (typeof BOARD_COLUMNS)[number]
-
-export function readBoardColumns(value: unknown): BoardColumns {
-  const count = Number(value)
-  return (BOARD_COLUMNS as readonly number[]).includes(count) ? count as BoardColumns : 2
-}
-
-export interface BoardMeeting {
-  id: string
-  hostId: string
-  /** Minutes from midnight in the organisation's own timezone. */
-  start: number
-  end: number
-  name: string
-  service: string
-}
-
-export interface BoardColumn {
-  hostId: string
-  hostName: string
-  meetings: BoardMeeting[]
-}
-
-export interface Board {
-  title: string
-  day: string
-  timezone: string
-  columns: BoardColumns
-  /** The hours the screen draws, in minutes from midnight: [from, to). */
-  from: number
-  to: number
-  hosts: BoardColumn[]
-}
 
 /** The widest the grid ever is, so a single late meeting does not squash the day. */
 const DAY_START = 8 * 60

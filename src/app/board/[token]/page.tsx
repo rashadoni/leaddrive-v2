@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useState } from "react"
 import { useParams } from "next/navigation"
-import type { Board } from "@/lib/booking/board"
+import type { Board } from "@/lib/booking/board-view"
 
 const REFRESH_MS = 30_000
 const ROTATE_MS = 12_000
