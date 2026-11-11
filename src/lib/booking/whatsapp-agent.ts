@@ -54,11 +54,12 @@ const OFFERS_PER_MESSAGE = 3
 export const OFFERS_PER_LIST = 8
 
 /**
- * How many of those times the message itself names. Six is the most that still
- * reads as a sentence on a phone; the rest are counted, not listed, so the
- * body never becomes the wall the menu was meant to replace.
+ * How many of those times the message itself names. Three, because the message
+ * is a sentence — «12:30, 13:30 or 14:30, which suits you?» — and six made it
+ * a four-line wall on a phone (owner, 2026-11-11, with the screenshot). The
+ * rest are in the menu, which is what the menu is for.
  */
-export const TIMES_IN_BODY = 6
+export const TIMES_IN_BODY = 3
 /** Offered times stand at least this far apart: 10:00, 10:15 and 10:30 are one choice, not three. */
 const OFFER_SPREAD_MINUTES = 60
 
@@ -152,7 +153,7 @@ const WORDS = {
     nearest: "Ən yaxın boş vaxtlar:",
     noneThen: { morning: "səhər boş vaxt yoxdur.", afternoon: "günorta boş vaxt yoxdur.", evening: "axşam boş vaxt yoxdur.", any: "boş vaxt yoxdur." },
     hold: `Vaxt ${OFFER_HOLD_MINUTES} dəqiqə sizin üçün saxlanılır`, pick: "Vaxt seçin",
-    which: "Hansı sizə uyğundur?", andMore: (count: number) => `və daha ${count}`,
+    which: "Hansı sizə uyğundur?", or: "və ya",
     booked: "Yazıldınız ✅", address: "Ünvan", cancel: "Ləğv etmək üçün",
     held: "Vaxtı sizin üçün saxladıq ⏳", heldNote: "Administrator təsdiqləyəcək və yazacağıq.",
     confirmed: "Təsdiqləndi ✅", declined: "Təəssüf ki, bu vaxtı təsdiqləyə bilmədik.",
@@ -164,7 +165,7 @@ const WORDS = {
     nearest: "Ближайшее свободное время:",
     noneThen: { morning: "утром свободного времени нет.", afternoon: "днём свободного времени нет.", evening: "вечером свободного времени нет.", any: "свободного времени нет." },
     hold: `Держим время за вами ${OFFER_HOLD_MINUTES} минут`, pick: "Выбрать время",
-    which: "Какое вам удобно?", andMore: (count: number) => `и ещё ${count}`,
+    which: "Какое вам удобно?", or: "или",
     booked: "Вы записаны ✅", address: "Адрес", cancel: "Отменить запись",
     held: "Время придержали за вами ⏳", heldNote: "Администратор подтвердит, и мы напишем.",
     confirmed: "Подтверждено ✅", declined: "К сожалению, это время подтвердить не удалось.",
@@ -176,7 +177,7 @@ const WORDS = {
     nearest: "The nearest free times:",
     noneThen: { morning: "there is nothing free in the morning.", afternoon: "there is nothing free in the afternoon.", evening: "there is nothing free in the evening.", any: "there is nothing free." },
     hold: `We hold the time for you for ${OFFER_HOLD_MINUTES} minutes`, pick: "Pick a time",
-    which: "Which one works for you?", andMore: (count: number) => `and ${count} more`,
+    which: "Which one works for you?", or: "or",
     booked: "You're booked ✅", address: "Address", cancel: "To cancel",
     held: "We're holding the time for you ⏳", heldNote: "The salon will confirm and we will write to you.",
     confirmed: "Confirmed ✅", declined: "We could not confirm that time, sorry.",
@@ -478,31 +479,29 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
   const price = servicePriceLabel(service, request.language)
   const what = `${service.title}, ${service.durationMinutes} ${words.minutes}${price ? `, ${price}` : ""}`
   const day = dayLabel(choices[0].startsAt, request.language, context.timezone)
-  // The times belong in the message, not only behind the menu button. A client
-  // who opens WhatsApp sees «10:00, 11:30, 14:00 — which works for you?» and
-  // answers; the menu is how they tap, not how they find out (owner,
-  // 2026-11-11, by the same competitor's reel the menu itself came from: the
-  // body used to end on «Boş vaxtlar:» with nothing after it).
-  const shown = choices.slice(0, TIMES_IN_BODY).map((choice) => offerRowTitle(choice, context.timezone, withDay))
-  const rest = choices.length - shown.length
-  // When every free time belongs to one master, the message says whose they
-  // are — «Leyla — 10:00, 11:30» reads as an answer, not as a timetable. With
-  // several masters the name stays on each row, where it belongs.
-  const alone = new Set(choices.map((choice) => choice.hostId)).size === 1
-    ? (hostName(choices[0].hostId).trim().split(/\s+/)[0] ?? "") : ""
-  const times = `${alone ? `${alone} — ` : ""}${shown.join(", ")}${rest > 0 ? ` (${words.andMore(rest)})` : ""}`
+  // The times belong in the message, not only behind the menu button: a client
+  // who opens WhatsApp reads «12:30, 13:30 or 14:30 — which suits you?» and
+  // answers (owner, 2026-11-11, by a competitor's reel). Two rules keep that a
+  // sentence instead of a timetable, both learned from the first attempt:
+  // only the nearest day's times, and the date written once, in the line above
+  // them — «11.11 12:30, 11.11 13:30, 11.11 14:30…» was four lines on a phone.
+  // The rest of the times, other days included, are in the menu.
+  const clocks = choices
+    .filter((choice) => choice.date === choices[0].date)
+    .slice(0, TIMES_IN_BODY)
+    .map((choice) => clock(choice.startsAt, context.timezone))
+  const times = clocks.length > 1
+    ? `${clocks.slice(0, -1).join(", ")} ${words.or} ${clocks[clocks.length - 1]}`
+    : clocks[0]
   const lines: string[] = []
   if (context.prefix) lines.push(context.prefix)
-  if (withDay) {
-    lines.push(`${what}.`, `${words.nearest} ${times}`)
-  } else if (exact) {
-    lines.push(`${day} — ${what}.`, `${words.free[request.partOfDay]} ${times}`)
-  } else if (request.date) {
+  // The day is always named here, because the times below it never repeat it.
+  if (request.date && !exact && !withDay) {
     // A date with no clock to it reads the same in every timezone.
-    lines.push(`${dayLabel(`${request.date}T12:00:00Z`, request.language, "UTC")} ${words.noneThen[request.partOfDay]}`, `${day} — ${what}.`, `${words.nearest} ${times}`)
-  } else {
-    lines.push(`${day} — ${what}.`, `${words.nearest} ${times}`)
+    lines.push(`${dayLabel(`${request.date}T12:00:00Z`, request.language, "UTC")} ${words.noneThen[request.partOfDay]}`)
   }
+  lines.push(`${day} — ${what}.`)
+  lines.push(`${exact && !withDay ? words.free[request.partOfDay] : words.nearest} ${times}`)
   lines.push(words.which)
   const body = `${context.greet ? words.hello : ""}${lines.join("\n")}`
   // A menu, not three buttons: the row carries the master's name on its own
