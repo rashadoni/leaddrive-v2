@@ -34,7 +34,12 @@ import { STATUS_TO_STAGE } from "@/lib/tasks/board-columns"
  *  - `detailsOnly` adds details (followers, history, time) to tasks already
  *    brought over and leaves the tasks themselves alone, wherever they are:
  *    an export a few days old would otherwise put back what people have changed
- *    in the CRM since (Bordio's time records, owner 2026-11-08).
+ *    in the CRM since (Bordio's time records, owner 2026-11-08);
+ *  - `appendComments` adds to a task already brought over the messages it does
+ *    not have yet — a message is the same one when it was written at the same
+ *    moment, so a re-run adds nothing twice. The day before the move people
+ *    were still writing in Bordio (owner, 2026-11-11: «за сегодня всё что было
+ *    изменено то их перенеси»).
  */
 
 export const EXTERNAL_IMPORT_MAX_TASKS = 200
@@ -116,6 +121,9 @@ export const externalImportSchema = z.strictObject({
   // Only add details to tasks already brought over (see the module comment).
   // A task not brought over yet is refused, not created.
   detailsOnly: z.boolean().default(false),
+  // On tasks already brought over: add the messages they do not have yet
+  // (matched by the moment they were written).
+  appendComments: z.boolean().default(false),
   tasks: z.array(externalTaskSchema).min(1).max(EXTERNAL_IMPORT_MAX_TASKS),
 })
 
@@ -137,6 +145,8 @@ export interface ExternalImportResult {
   /** Task types / brands that do not exist yet (created by a real run). */
   newTaskTypes: string[]
   newBrands: string[]
+  /** Messages added to tasks already brought over (`appendComments`, real run only). */
+  commentsAdded?: number
 }
 
 export class ExternalImportError extends Error {
@@ -249,6 +259,7 @@ export async function importExternalTasks(
     newBrands: input.detailsOnly ? [] : newBrands,
   }
   if (input.dryRun) return base
+  if (input.appendComments) base.commentsAdded = 0
   if (Object.keys(unmatchedEmails).length > 0 && !input.allowUnmatched) {
     throw new ExternalImportError("Some e-mails match nobody in this organization", 422, { unmatchedEmails })
   }
@@ -336,6 +347,17 @@ export async function importExternalTasks(
         completedAt: item.completed ? new Date(item.completedAt ?? task.completedAt ?? task.createdAt ?? now) : null,
       })),
     })
+    const commentRow = (taskId: string, comment: ExternalTask["comments"][number]) => {
+      const author = userId(comment.authorEmail)
+      const name = comment.authorName || comment.authorEmail
+      return {
+        organizationId,
+        taskId,
+        userId: author,
+        content: author || !name ? comment.text : `${name}: ${comment.text}`,
+        createdAt: new Date(comment.createdAt),
+      }
+    }
     const writeDetails = async (taskId: string, isNew: boolean) => {
       const followers = [...new Set((task.followerEmails ?? []).map(userId).filter((id): id is string => Boolean(id)))]
       if (followers.length > 0) {
@@ -344,6 +366,15 @@ export async function importExternalTasks(
       if (!isNew && input.refreshDetails) {
         await tx.taskChecklist.deleteMany({ where: { organizationId, taskId } })
         if (task.checklist.length > 0) await writeChecklist(taskId)
+      }
+      if (!isNew && input.appendComments && task.comments.length > 0) {
+        const held = await tx.taskComment.findMany({ where: { organizationId, taskId }, select: { createdAt: true } })
+        const seen = new Set(held.map((row) => row.createdAt.getTime()))
+        const fresh = task.comments.filter((comment) => !seen.has(new Date(comment.createdAt).getTime()))
+        if (fresh.length > 0) {
+          await tx.taskComment.createMany({ data: fresh.map((comment) => commentRow(taskId, comment)) })
+          base.commentsAdded = (base.commentsAdded ?? 0) + fresh.length
+        }
       }
       if (task.events?.length) {
         const written = isNew ? [] : await tx.taskActivity.findMany({
@@ -459,19 +490,7 @@ export async function importExternalTasks(
     if (task.checklist.length > 0) await writeChecklist(created.id)
     await writeDetails(created.id, true)
     if (task.comments.length > 0) {
-      await tx.taskComment.createMany({
-        data: task.comments.map((comment) => {
-          const author = userId(comment.authorEmail)
-          const name = comment.authorName || comment.authorEmail
-          return {
-            organizationId,
-            taskId: created.id,
-            userId: author,
-            content: author || !name ? comment.text : `${name}: ${comment.text}`,
-            createdAt: new Date(comment.createdAt),
-          }
-        }),
-      })
+      await tx.taskComment.createMany({ data: task.comments.map((comment) => commentRow(created.id, comment)) })
     }
     // History the board reports read (cycle time, flow): when it was made and,
     // for a finished task, when it was finished — at the other tool's dates.

@@ -276,6 +276,26 @@ pgDescribe("tasks brought over from another tool, on a real Postgres", () => {
     expect(brand?.options).toEqual(["Zeytun", "Pharmastore", "Noreva - Buccotherm"])
   })
 
+  // Owner, 2026-11-11: the day before the move people still wrote in Bordio.
+  it("adds the messages written since to a task already brought over — each once, however often it runs", async () => {
+    const later = { authorEmail: "aytan.mushkurova@zeytunpharma.az", authorName: "Aytan", createdAt: "2026-11-11T08:30:00.123Z", text: "Yeni versiya hazırdır" }
+    const withNew = { ...OPEN, comments: [...OPEN.comments, later] }
+    const first = await send({ source: "bordio", allowUnmatched: true, appendComments: true, tasks: [withNew] })
+    const again = await send({ source: "bordio", allowUnmatched: true, appendComments: true, tasks: [withNew] })
+    // Without the flag a re-run still leaves messages alone.
+    const plain = await send({ source: "bordio", allowUnmatched: true, tasks: [{ ...withNew, comments: [...withNew.comments, { ...later, createdAt: "2026-11-11T09:00:00.000Z" }] }] })
+
+    expect([first.status, first.body.data.commentsAdded, again.body.data.commentsAdded, plain.body.data.commentsAdded]).toEqual([200, 1, 0, undefined])
+    const [open] = await boardTasks()
+    expect(open.comments.map((c) => [c.userId, c.content, c.createdAt.toISOString()])).toEqual([
+      ["nazrin", "Diabet loqosu ilə", "2026-10-31T10:00:00.000Z"],
+      ["aytan", "Yeni versiya hazırdır", "2026-11-11T08:30:00.123Z"],
+    ])
+    expect(mail.sent).toEqual([])
+    // The tests below start from the first run's one message.
+    await bypass(() => prisma.taskComment.deleteMany({ where: { taskId: open.id, createdAt: new Date(later.createdAt) } }))
+  })
+
   // Owner, 2026-11-06: Bordio's projects became boards of their own after the
   // first run had put every task on one board.
   it("moves a task to another board only when asked, with its history and a key of the new board", async () => {
