@@ -16,7 +16,9 @@ export class ZeytunClientsCache {
   private inFlight: Promise<ReturnType<ZeytunClientsCache["result"]>> | null = null
 
   constructor(input: unknown, private readonly store: ZeytunSnapshotStore,
-    private readonly fetchDirectory = fetchZeytunClientsSoap, private readonly clock: () => number = Date.now) {
+    private readonly fetchDirectory = fetchZeytunClientsSoap, private readonly clock: () => number = Date.now,
+    /** When the next download is due after a good one (zeytun-1c-schedule.ts); hourly without it. */
+    private readonly nextRefreshAt?: (now: number) => number) {
     this.config = parseZeytunClientsConfig(input)
     this.scopeKey = zeytunClientsScopeKey(this.config)
     if (store.organizationId !== this.config.organizationId || store.scopeKey !== this.scopeKey) throw new ZeytunClientsDirectoryError("tenant_mismatch")
@@ -75,7 +77,7 @@ export class ZeytunClientsCache {
           const next = new ZeytunClientsDirectory(read.payload, read.context)
           const summary = next.summary(this.config.organizationId)
           await this.store.save({ payload: read.payload, version: summary.version, context: read.context })
-          const attempt = { scopeKey: this.scopeKey, attemptedAt: now, nextAttemptAt: this.clock() + INTERVAL, failures: 0, lastError: null }
+          const attempt = { scopeKey: this.scopeKey, attemptedAt: now, nextAttemptAt: this.nextRefreshAt?.(this.clock()) ?? this.clock() + INTERVAL, failures: 0, lastError: null }
           await this.store.saveAttempt(attempt)
           this.directory = next; this.attempt = attempt; this.storageError = false
           return this.result("updated")
