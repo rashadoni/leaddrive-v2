@@ -125,7 +125,7 @@ describe("the form a client fills in", () => {
     screens: { id: string; terminal?: boolean; data: Record<string, unknown>; layout: { children: Record<string, unknown>[] } }[]
   }
   const screen = flow.screens[0]
-  const form = screen.layout.children.find((child) => child.type === "Form") as { children: Record<string, unknown>[] }
+  const form = screen.layout.children.find((child) => child.type === "Form") as { children: Record<string, unknown>[] } & Record<string, unknown>
 
   it("asks one question on one screen, and that screen ends the form", () => {
     // A salon's client answers «which time». Every extra screen is a tap
@@ -141,6 +141,15 @@ describe("the form a client fills in", () => {
     const times = form.children.find((child) => child.name === "time")
     expect(times).toMatchObject({ type: "RadioButtonsGroup", required: true, "data-source": "${data.times}" })
     expect(screen.data).toHaveProperty("times")
+  })
+
+  it("pre-fills the name on the form, never on the field", () => {
+    // Meta refuses `init-value` inside a TextInput outright, and that single
+    // line was the whole reason the form would not publish (2026-11-11):
+    // «Property 'init-value' is not allowed in 'TextInput' component».
+    const field = form.children.find((child) => child.name === "client") as Record<string, unknown>
+    expect(field).not.toHaveProperty("init-value")
+    expect(form).toMatchObject({ "init-values": { client: "${data.client}" } })
   })
 
   it("sends back what was chosen, under names the agent reads", () => {
