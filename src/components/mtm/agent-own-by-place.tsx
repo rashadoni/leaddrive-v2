@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { AlertCircle, ArrowRightLeft, Loader2, UserMinus } from "lucide-react"
 import { toast } from "sonner"
@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/select"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { MtmAgentClientPicker, announceDoctorChanges, type AgentClientChoice } from "@/components/mtm/agent-client-picker"
+import { MtmAgentPanelHead } from "@/components/mtm/agent-panel-head"
 import { changeAgentDoctors, moveAgentDoctors } from "@/lib/mtm/assign-agent-doctors"
 
 type OtherAgent = { id: string; name: string }
@@ -23,9 +24,11 @@ type OtherAgent = { id: string; name: string }
  * The buttons stand in the line with the counts: no bar floats over the list
  * («полоска внизу… глаза режет»). Batches of 500, so 229 at once is one press.
  */
-export function MtmAgentOwnByPlace({ agentId, agentName, onChanged, onForbidden }: {
+export function MtmAgentOwnByPlace({ agentId, agentName, onChanged, onForbidden, switcher }: {
   agentId: string
   agentName: string
+  /** «By specialty / whole list», in the corner of the card. */
+  switcher?: ReactNode
   onChanged: () => void
   onForbidden: () => void
 }) {
@@ -86,7 +89,8 @@ export function MtmAgentOwnByPlace({ agentId, agentName, onChanged, onForbidden 
   )
 
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-card p-4" data-testid="mtm-agent-own-by-place">
+    <div className="space-y-5 rounded-2xl border border-border bg-card p-5" data-testid="mtm-agent-own-panel">
+      <MtmAgentPanelHead title={t("ownPanelTitle")} body={t("ownPanelBody", { name: agentName })} switcher={switcher} />
       <MtmAgentClientPicker agentId={agentId} own onChange={setChoice} refresh={refresh} onForbidden={onForbidden} actions={actions} />
       {error ? (
         <p role="alert" className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">

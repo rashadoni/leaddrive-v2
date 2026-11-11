@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
-import { Check, ChevronDown, ChevronRight, Info, Loader2 } from "lucide-react"
+import { Check, ChevronDown, Info, Loader2, Minus } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Hint } from "@/components/hint"
@@ -10,7 +10,7 @@ import { MtmContactClassTag } from "@/components/mtm/contact-class-tag"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import type { AgentDoctorResult } from "@/lib/mtm/assign-agent-doctors"
-import type { AgentClientPicker, PickerOption } from "@/lib/mtm/agent-client-picker"
+import type { AgentClientPicker, PickerContact, PickerOption } from "@/lib/mtm/agent-client-picker"
 
 /**
  * «Клиенты» tab of an agent's card (owner, 2026-10-16): specialty → city →
@@ -43,8 +43,6 @@ type PickerData = AgentClientPicker & { asOf: string }
  */
 export type AgentClientChoice = { contactIds: string[]; removeIds?: string[]; asOf: string | null; listed?: boolean }
 
-/** One grid for the head and the rows: tick, doctor, class, workplace, agents. */
-const ROW_GRID = "grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3 gap-y-1 px-3 sm:grid-cols-[1.25rem_minmax(0,1.2fr)_5.5rem_minmax(0,1.8fr)_minmax(0,1fr)]"
 
 /** Rows drawn at once; the rest one press away. All of them are ticked either way. */
 const DOCTORS_PAGE = 100
@@ -70,22 +68,23 @@ export function doctorChangesLabel(t: FormWords, add: number, remove: number, pr
   return add === 0 ? t("saveAndRemove", { count: remove }) : t("saveAssignAndRemove", { add, remove })
 }
 
-function TickBox({ state }: { state: "on" | "off" }) {
+function TickBox({ state }: { state: "on" | "off" | "some" }) {
   return (
     <span
       aria-hidden="true"
       className={cn(
         "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2",
-        state === "on" ? "border-primary bg-primary text-primary-foreground" : "border-zinc-300 bg-background dark:border-zinc-600",
+        state === "off" ? "border-zinc-300 bg-background dark:border-zinc-600" : "border-primary bg-primary text-primary-foreground",
       )}
     >
-      {state === "on" ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
+      {state === "on" ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : state === "some" ? <Minus className="h-3.5 w-3.5" strokeWidth={3} /> : null}
     </span>
   )
 }
 
 function StepSelect({ step, label, options, selected, disabled, disabledHint, onChange, testId, emptyLabel, every }: {
-  step: number
+  /** Numbered once, on the agent card; the tiles above say what comes first. */
+  step?: number
   label: string
   options: PickerOption[]
   selected: string[]
@@ -109,7 +108,7 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
   const toggle = (value: string) => onChange(selected.includes(value) ? selected.filter(item => item !== value) : [...selected, value])
   return (
     <div className="min-w-0 flex-1">
-      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{step}. {label}</div>
+      <div className="mb-1.5 text-xs font-semibold text-muted-foreground">{step ? `${step}. ${label}` : label}</div>
       <Popover>
         {/* The hint sits on a full-width block: a disabled button gets no
             pointer, and Hint's own inline wrapper shrank the field. */}
@@ -152,7 +151,72 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
   )
 }
 
-export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, onForbidden, own = false, actions }: {
+
+/**
+ * The specialties as tiles with their counts (owner, 2026-11-11, the picture
+ * approved with «Давай»: «пусть будет готовый фильтр уже из каких
+ * специальностей врачи назначены»): one press picks a specialty, the doctors
+ * appear below. Under the number: how many are this agent's already, when
+ * the tiles count the whole company.
+ */
+function SpecialtyTiles({ options, chosen, every, onChoose, onChooseEvery, hereNote }: {
+  options: PickerOption[]
+  chosen: string | null
+  every: boolean
+  onChoose: (value: string) => void
+  onChooseEvery: () => void
+  /** «N already with the agent» under each count; the plain unit without it. */
+  hereNote: ((here: number) => string) | null
+}) {
+  const t = useTranslations("mtmForms")
+  const total = options.reduce((sum, option) => sum + option.count, 0)
+  const totalHere = options.reduce((sum, option) => sum + (option.here ?? 0), 0)
+  const tiles = [
+    { key: "every", label: t("clientsAll"), count: total, here: totalHere, on: every, choose: onChooseEvery },
+    ...options.map(option => ({ key: option.value, label: option.label ?? t("clientsNotStated"), count: option.count, here: option.here ?? 0, on: !every && chosen === option.value, choose: () => onChoose(option.value) })),
+  ]
+  // As wide as the row whatever their number: three tiles never leave a hole on the right.
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:[grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))]" data-testid="agent-clients-tiles">
+      {tiles.map(tile => (
+        <button
+          key={tile.key}
+          type="button"
+          aria-pressed={tile.on}
+          data-crm-color-role="toggle"
+          onClick={tile.choose}
+          className={cn(
+            "rounded-xl border bg-card px-4 py-3 text-left transition-colors hover:border-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            tile.on ? "border-2 border-primary bg-primary/5 px-[15px] py-[11px]" : "border-border",
+          )}
+          data-testid="agent-clients-start-choice"
+        >
+          <span className="block truncate text-sm font-semibold text-muted-foreground">{tile.label}</span>
+          <span className={cn("mt-1 block text-3xl font-extrabold tabular-nums tracking-tight", tile.on && "text-primary")}>{tile.count}</span>
+          <span className="block truncate text-xs text-muted-foreground">{hereNote ? hereNote(tile.here) : t("clientsTileUnit")}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** The other employees of a doctor, as grey chips. */
+function AgentChips({ agents }: { agents: PickerContact["agents"] }) {
+  if (agents.length === 0) return <span className="text-sm text-muted-foreground">—</span>
+  return (
+    <span className="flex flex-wrap gap-1">
+      {agents.slice(0, 2).map(agent => (
+        <span key={agent.id} className="max-w-full truncate rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-foreground">{agent.name}</span>
+      ))}
+      {agents.length > 2 ? <span className="rounded-full bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground">+{agents.length - 2}</span> : null}
+    </span>
+  )
+}
+
+/** One grid for the head and the rows: tick, doctor, class, workplace, agents. */
+const TABLE_GRID = "grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-4 gap-y-1 px-4 sm:grid-cols-[1.25rem_minmax(0,1.2fr)_5.5rem_minmax(0,1.8fr)_minmax(0,1fr)]"
+
+export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, onForbidden, own = false, startUnticked = false, lockOwn = false, actions }: {
   /** The card being edited; null for a new agent. */
   agentId: string | null
   orgId?: string
@@ -163,10 +227,18 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   onForbidden?: () => void
   /**
    * The agent's own doctors only (his page's «Əməkdaşın müştəriləri», owner
-   * 2026-11-11): a tick picks one to take off or hand on, `contactIds` carries
-   * the ticked, and nothing is ever «taken off» by an untick.
+   * 2026-11-11): all ticked, a tick picks one to take off or hand on,
+   * `contactIds` carries the ticked, and nothing is ever «taken off» by an untick.
    */
   own?: boolean
+  /**
+   * Nobody ticked until somebody ticks (his page's «Əlavə müştəri təyin et»,
+   * owner 2026-11-11: after a reload every doctor showed ticked again and read
+   * as «added»). The agent card keeps everyone found ticked.
+   */
+  startUnticked?: boolean
+  /** The agent's own doctors are shown as his and cannot be ticked: taking off lives on his own tab. */
+  lockOwn?: boolean
   /** The buttons that apply the ticks, in the line with the counts above the list — not a bar floating over it (owner, 2026-11-11). */
   actions?: ReactNode
 }) {
@@ -175,8 +247,8 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   const [data, setData] = useState<PickerData | null>(null)
   const [loading, setLoading] = useState(true)
   const [problem, setProblem] = useState<string | null>(null)
-  /** Untick means «leave out» for a new doctor and «take off» for the agent's own. */
-  const [unticked, setUnticked] = useState<Set<string>>(new Set())
+  /** A tick the person set; without one a doctor is ticked or not by the mode. */
+  const [ticks, setTicks] = useState<Map<string, boolean>>(new Map())
   const [shownCount, setShownCount] = useState(DOCTORS_PAGE)
 
   useEffect(() => {
@@ -215,15 +287,14 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   }, [agentId, orgId, selection, refresh, own])
 
   // Nothing is listed, nor ticked, before a specialty is chosen: a card opened
-  // and closed again must not take every doctor of the company along. The
-  // specialties are offered right there as buttons, «Hamısı» among them (owner,
-  // 2026-10-21, in front of a first step that read «Hamısı» over an empty
-  // list: «сейчас вообще ничего не загружается»).
+  // and closed again must not take every doctor of the company along.
   const chosenFirstStep = selection.everySpecialty || selection.specialties.length > 0
   const contacts = useMemo(() => (chosenFirstStep ? data?.contacts ?? [] : []), [chosenFirstStep, data])
-  const listedIds = useMemo(() => contacts.map(contact => contact.id), [contacts])
-  const chosen = useMemo(() => contacts.filter(contact => (own || !contact.assignedHere) && !unticked.has(contact.id)).map(contact => contact.id), [contacts, own, unticked])
-  const takenOff = useMemo(() => (own ? [] : contacts.filter(contact => contact.assignedHere && unticked.has(contact.id)).map(contact => contact.id)), [contacts, own, unticked])
+  const locked = useCallback((contact: PickerContact) => !own && lockOwn && contact.assignedHere, [lockOwn, own])
+  const isOn = useCallback((contact: PickerContact) => ticks.get(contact.id) ?? (own ? true : !startUnticked), [own, startUnticked, ticks])
+  const selectable = useMemo(() => contacts.filter(contact => !locked(contact)), [contacts, locked])
+  const chosen = useMemo(() => selectable.filter(contact => (own || !contact.assignedHere) && isOn(contact)).map(contact => contact.id), [isOn, own, selectable])
+  const takenOff = useMemo(() => (own || lockOwn ? [] : contacts.filter(contact => contact.assignedHere && !isOn(contact)).map(contact => contact.id)), [contacts, isOn, lockOwn, own])
   const chosenKey = chosen.join(",")
   const takenOffKey = takenOff.join(",")
 
@@ -245,164 +316,159 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
     setShownCount(DOCTORS_PAGE)
     setSelection(current => ({ ...current, specialties: [], everySpecialty: true, cities: [], districts: [] }))
   }
-  const toggle = (ids: string[], include: boolean) => setUnticked(current => {
-    const next = new Set(current)
-    for (const id of ids) {
-      if (include) next.delete(id)
-      else next.add(id)
-    }
+  const tick = (ids: string[], on: boolean) => setTicks(current => {
+    const next = new Map(current)
+    for (const id of ids) next.set(id, on)
     return next
   })
+  const selectableIds = selectable.map(contact => contact.id)
+  const onCount = selectable.filter(isOn).length
+  const headState: "on" | "off" | "some" = onCount === 0 ? "off" : onCount === selectable.length ? "on" : "some"
   const shown = contacts.slice(0, shownCount)
   const hidden = contacts.length - shown.length
+  const agentsColumn = own ? t("clientsColOtherAgents") : startUnticked ? t("clientsColNowWith") : t("clientsColAgents")
 
   return (
     <div className="space-y-4" data-testid="agent-client-picker">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-2">
-        <StepSelect step={1} label={t("clientsStepSpecialty")} options={data?.specialties ?? []} selected={selection.specialties}
-          disabled={!data} disabledHint={t("clientsLoading")} onChange={values => setStep("specialties", values)} testId="agent-clients-specialty"
-          emptyLabel={t("clientsChoose")} every={{ chosen: selection.everySpecialty, choose: chooseEverySpecialty }} />
-        <ChevronRight className="hidden h-5 w-5 shrink-0 self-center text-zinc-300 sm:mb-2.5 sm:block sm:self-end" aria-hidden="true" />
-        <StepSelect step={2} label={t("clientsStepCity")} options={chosenFirstStep ? data?.cities ?? [] : []} selected={selection.cities}
-          disabled={!chosenFirstStep} disabledHint={t("clientsPickSpecialtyFirst")} onChange={values => setStep("cities", values)} testId="agent-clients-city" />
-        <ChevronRight className="hidden h-5 w-5 shrink-0 self-center text-zinc-300 sm:mb-2.5 sm:block sm:self-end" aria-hidden="true" />
-        <StepSelect step={3} label={t("clientsStepDistrict")} options={chosenFirstStep ? data?.districts ?? [] : []} selected={selection.districts}
-          disabled={!chosenFirstStep} disabledHint={t("clientsPickSpecialtyFirst")} onChange={values => setStep("districts", values)} testId="agent-clients-district" />
-        <ChevronRight className="hidden h-5 w-5 shrink-0 self-center text-zinc-300 sm:mb-2.5 sm:block sm:self-end" aria-hidden="true" />
-        <StepSelect step={4} label={t("clientsStepClass")} options={chosenFirstStep ? data?.classes ?? [] : []} selected={selection.classes}
-          disabled={!chosenFirstStep} disabledHint={t("clientsPickSpecialtyFirst")} onChange={values => setStep("classes", values)} testId="agent-clients-class" />
-      </div>
+      {data ? (
+        <SpecialtyTiles
+          options={data.specialties}
+          chosen={selection.specialties[0] ?? null}
+          every={selection.everySpecialty}
+          onChoose={value => setStep("specialties", [value])}
+          onChooseEvery={chooseEverySpecialty}
+          hereNote={agentId && !own ? (here => t("clientsTileHere", { count: here })) : null}
+        />
+      ) : null}
 
       {problem ? (
         <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{t(problem)}</p>
       ) : !chosenFirstStep ? (
-        <div className="rounded-xl border border-dashed px-3 py-4" data-testid="agent-clients-start">
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Info className="h-4 w-4 shrink-0" aria-hidden="true" />{t("clientsPickSpecialtyFirst")}
-          </p>
-          {data && data.specialties.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-2" data-testid="agent-clients-start-choices">
-              {[...data.specialties.map(option => ({ key: option.value, label: option.label ?? t("clientsNotStated"), count: option.count, choose: () => setStep("specialties", [option.value]) })),
-                { key: "every", label: t("clientsAll"), count: data.specialties.reduce((sum, option) => sum + option.count, 0), choose: chooseEverySpecialty }]
-                .map(choice => (
-                  <button
-                    key={choice.key}
-                    type="button"
-                    onClick={choice.choose}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-full border border-zinc-300 bg-background px-4 text-sm font-semibold hover:border-foreground hover:bg-muted/40 dark:border-zinc-600"
-                    data-testid="agent-clients-start-choice"
-                  >
-                    {choice.label}
-                    <span className="font-normal text-muted-foreground">{t("clientsDoctorsCount", { count: choice.count })}</span>
-                  </button>
-                ))}
-            </div>
-          ) : null}
-        </div>
-      ) : loading && !data ? (
-        <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />{t("clientsLoading")}</p>
-      ) : contacts.length === 0 ? (
-        <p className="rounded-xl border border-dashed px-3 py-6 text-sm text-muted-foreground" data-testid="agent-clients-empty">{t("clientsEmpty")}</p>
+        <p className="flex items-center gap-2 rounded-xl border border-dashed px-3 py-4 text-sm text-muted-foreground" data-testid="agent-clients-start">
+          {loading && !data ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" /> : <Info className="h-4 w-4 shrink-0" aria-hidden="true" />}
+          {loading && !data ? t("clientsLoading") : t("clientsPickSpecialtyFirst")}
+        </p>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm" data-testid="agent-clients-summary">
-            <span className={cn(loading && "opacity-60")}>
-              <strong>{t("clientsFound", { count: data?.matching ?? 0, groups: data?.institutions ?? 0 })}</strong>
-              {" · "}{t(own ? "clientsOwnChecked" : "clientsChecked", { count: chosen.length })}
-              {takenOff.length > 0 ? <span className="font-semibold text-red-600 dark:text-red-400" data-testid="agent-clients-taken-off">{" · "}{t("clientsWillRemove", { count: takenOff.length })}</span> : null}
-              {!own && (data?.assignedHere ?? 0) > 0 ? <span className="text-muted-foreground">{" · "}{t("clientsAlreadyHereCount", { count: data?.assignedHere ?? 0 })}</span> : null}
-            </span>
-            <span className="flex flex-wrap items-center gap-3">
-              <button type="button" className="font-semibold text-primary hover:underline" onClick={() => toggle(listedIds, true)} data-testid="agent-clients-check-all">{t("clientsCheckAll")}</button>
-              <button type="button" className="font-semibold text-primary hover:underline" onClick={() => toggle(listedIds, false)} data-testid="agent-clients-uncheck-all">{t("clientsUncheckAll")}</button>
-              {actions}
-            </span>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StepSelect label={t("clientsStepCity")} options={data?.cities ?? []} selected={selection.cities}
+              disabled={false} disabledHint="" onChange={values => setStep("cities", values)} testId="agent-clients-city" />
+            <StepSelect label={t("clientsStepDistrict")} options={data?.districts ?? []} selected={selection.districts}
+              disabled={false} disabledHint="" onChange={values => setStep("districts", values)} testId="agent-clients-district" />
+            <StepSelect label={t("clientsStepClass")} options={data?.classes ?? []} selected={selection.classes}
+              disabled={false} disabledHint="" onChange={values => setStep("classes", values)} testId="agent-clients-class" />
           </div>
 
-          {/* Columns, as on «Müştərilər» (owner, 2026-10-21: the class «как
-              дополнительный столбец… в разделе, где добавляем к агентам»):
-              the doctor, his class, where he works, whose he already is. */}
-          <div className="overflow-hidden rounded-xl border" data-testid="agent-clients-list">
-            <div className={cn(ROW_GRID, "hidden bg-muted/60 py-2 text-xs font-medium text-muted-foreground sm:grid")} data-testid="agent-clients-head">
-              <span />
-              <span>{t("clientsColDoctor")}</span>
-              <span>{t("clientsStepClass")}</span>
-              <span>{t("clientsColWorkplace")}</span>
-              <span>{t("clientsColAgents")}</span>
-            </div>
-            <div className="divide-y">
-            {shown.map(contact => {
-              const off = unticked.has(contact.id)
-              const where = [contact.place.district ?? contact.place.city, contact.place.address].filter(Boolean).join(" · ")
-              return (
-                <div key={contact.id} className={cn(ROW_GRID, "items-center py-2.5")} data-testid="agent-clients-doctor">
+          {loading && contacts.length === 0 ? (
+            <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />{t("clientsLoading")}</p>
+          ) : contacts.length === 0 ? (
+            <p className="rounded-xl border border-dashed px-3 py-6 text-sm text-muted-foreground" data-testid="agent-clients-empty">{t("clientsEmpty")}</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm" data-testid="agent-clients-summary">
+                <span className={cn("flex flex-wrap items-center gap-x-3 gap-y-2", loading && "opacity-60")}>
                   <button
                     type="button"
                     role="checkbox"
-                    aria-checked={!off}
-                    aria-label={contact.name}
-                    onClick={() => toggle([contact.id], off)}
-                    className="self-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    data-testid="agent-clients-doctor-tick"
+                    aria-checked={headState === "some" ? "mixed" : headState === "on"}
+                    aria-label={headState === "on" ? t("clientsUncheckAll") : t("clientsCheckAll")}
+                    disabled={selectable.length === 0}
+                    onClick={() => tick(selectableIds, headState !== "on")}
+                    className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+                    data-testid="agent-clients-check-head"
                   >
-                    <TickBox state={off ? "off" : "on"} />
+                    <TickBox state={headState === "on" ? "on" : headState === "some" ? "some" : "off"} />
                   </button>
-                  {/* The words tick too: a bigger target than the box. */}
-                  <div className={cn("min-w-0 cursor-pointer", off && "text-muted-foreground")} onClick={() => toggle([contact.id], off)}>
-                    <span className={cn("block truncate text-sm font-semibold", off && "line-through")}>{contact.name}</span>
-                    {contact.specialty ? <span className="block truncate text-xs text-muted-foreground">{contact.specialty}</span> : null}
-                  </div>
-                  <div className="col-start-2 sm:col-start-auto">
-                    <MtmContactClassTag category={contact.category} testId="agent-clients-doctor-class" />
-                  </div>
-                  <div className="col-start-2 min-w-0 text-xs sm:col-start-auto" data-testid="agent-clients-doctor-place">
-                    <span className="block truncate text-sm font-medium">{contact.place.institution?.name ?? t("clientsNoInstitution")}</span>
-                    {where ? <span className="block truncate text-muted-foreground" title={where}>{where}</span> : null}
-                  </div>
-                  <div className="col-start-2 min-w-0 sm:col-start-auto">
-                  {own ? (
-                    contact.agents.length > 0 ? (
-                      <Hint text={t("clientsOwnAlsoWithHint", { names: contact.agents.map(agent => agent.name).join(", ") })}>
-                        <span tabIndex={0} className="block truncate text-xs font-semibold text-violet-700 dark:text-violet-300">
-                          {t("clientsOwnAlsoWith", { name: contact.agents[0].name, more: contact.agents.length - 1 })}
-                        </span>
-                      </Hint>
-                    ) : null
-                  ) : contact.assignedHere && off ? (
-                    <span className="text-xs font-semibold text-red-700 dark:text-red-300" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
-                  ) : contact.assignedHere ? (
-                    <span className="rounded-full border border-border px-2 py-0.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300">{t("clientsAlreadyHere")}</span>
-                  ) : contact.agents.length > 0 ? (
-                    <Hint text={t("clientsAlsoWithHint", { names: contact.agents.map(agent => agent.name).join(", ") })}>
-                      <span tabIndex={0} className="block truncate text-xs font-semibold text-violet-700 dark:text-violet-300">
-                        {t("clientsAlsoWith", { name: contact.agents[0].name, more: contact.agents.length - 1 })}
-                      </span>
-                    </Hint>
-                  ) : null}
-                  </div>
-                </div>
-              )
-            })}
-            </div>
-          </div>
-          {hidden > 0 ? (
-            <button
-              type="button"
-              className="w-full rounded-xl border px-3 py-2.5 text-sm font-semibold text-primary hover:bg-muted/40"
-              onClick={() => setShownCount(count => count + DOCTORS_PAGE)}
-              data-testid="agent-clients-show-more"
-            >
-              {hidden > DOCTORS_PAGE ? t("clientsShowMore", { count: DOCTORS_PAGE, left: hidden }) : t("clientsShowRest", { count: hidden })}
-            </button>
-          ) : null}
+                  <span>
+                    <strong>{t(own ? "clientsOwnChecked" : "clientsSelectedCount", { count: chosen.length })}</strong>
+                    <span className="text-muted-foreground">{" · "}{t("clientsFound", { count: data?.matching ?? 0, groups: data?.institutions ?? 0 })}</span>
+                    {takenOff.length > 0 ? <span className="font-semibold text-red-600 dark:text-red-400" data-testid="agent-clients-taken-off">{" · "}{t("clientsWillRemove", { count: takenOff.length })}</span> : null}
+                  </span>
+                  <button type="button" className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-muted" onClick={() => tick(selectableIds, true)} data-testid="agent-clients-check-all">{t("clientsCheckAll")}</button>
+                  <button type="button" className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-muted" onClick={() => tick(selectableIds, false)} data-testid="agent-clients-uncheck-all">{t("clientsUncheckAll")}</button>
+                </span>
+                {actions ? <span className="flex flex-wrap items-center gap-2">{actions}</span> : null}
+              </div>
 
-          {own ? null : <p className="flex items-start gap-2 rounded-xl border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 px-3 py-2.5 text-sm" data-testid="agent-clients-note">
-            <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>
-              {t("clientsNote", { count: chosen.length })}
-              {takenOff.length > 0 ? <> {t("clientsNoteRemove", { count: takenOff.length })}</> : null}
-            </span>
-          </p>}
+              {/* Columns, as on «Müştərilər»: the doctor, his class, where he works, whose he already is. */}
+              <div className="overflow-hidden rounded-xl border border-border" data-testid="agent-clients-list">
+                <div className={cn(TABLE_GRID, "hidden border-b border-border bg-muted/40 py-2.5 text-xs font-semibold text-muted-foreground sm:grid")} data-testid="agent-clients-head">
+                  <span />
+                  <span>{t("clientsColDoctor")}</span>
+                  <span>{t("clientsStepClass")}</span>
+                  <span>{t("clientsColWorkplace")}</span>
+                  <span>{agentsColumn}</span>
+                </div>
+                <div className="divide-y divide-border">
+                {shown.map(contact => {
+                  const isLocked = locked(contact)
+                  const on = !isLocked && isOn(contact)
+                  const dim = !isLocked && !on
+                  const where = [contact.place.district ?? contact.place.city, contact.place.address].filter(Boolean).join(" · ")
+                  return (
+                    <div key={contact.id} className={cn(TABLE_GRID, "items-center py-3", isLocked && "bg-muted/30")} data-testid="agent-clients-doctor">
+                      <button
+                        type="button"
+                        role="checkbox"
+                        aria-checked={isLocked ? true : on}
+                        aria-label={contact.name}
+                        disabled={isLocked}
+                        onClick={() => tick([contact.id], !on)}
+                        className="self-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
+                        data-testid="agent-clients-doctor-tick"
+                      >
+                        <TickBox state={isLocked || on ? "on" : "off"} />
+                      </button>
+                      {/* The words tick too: a bigger target than the box. */}
+                      <div className={cn("min-w-0", !isLocked && "cursor-pointer", dim && "text-muted-foreground")} onClick={isLocked ? undefined : () => tick([contact.id], !on)}>
+                        <span className="block truncate text-sm font-semibold">{contact.name}</span>
+                        {contact.specialty ? <span className="block truncate text-xs text-muted-foreground">{contact.specialty}</span> : null}
+                      </div>
+                      <div className="col-start-2 sm:col-start-auto">
+                        <MtmContactClassTag category={contact.category} testId="agent-clients-doctor-class" />
+                      </div>
+                      <div className={cn("col-start-2 min-w-0 text-xs sm:col-start-auto", dim && "opacity-60")} data-testid="agent-clients-doctor-place">
+                        <span className="block truncate text-sm font-medium">{contact.place.institution?.name ?? t("clientsNoInstitution")}</span>
+                        {where ? <span className="block truncate text-muted-foreground" title={where}>{where}</span> : null}
+                      </div>
+                      <div className="col-start-2 min-w-0 sm:col-start-auto">
+                        {contact.assignedHere && !own && !isOn(contact) && !isLocked ? (
+                          <span className="text-xs font-semibold text-red-700 dark:text-red-300" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
+                        ) : contact.assignedHere && !own ? (
+                          <span className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-foreground">{t("clientsAlreadyHere")}</span>
+                        ) : (
+                          <Hint text={contact.agents.length > 0 ? t(own ? "clientsOwnAlsoWithHint" : "clientsAlsoWithHint", { names: contact.agents.map(agent => agent.name).join(", ") }) : null}>
+                            <span tabIndex={contact.agents.length > 0 ? 0 : undefined} className="block min-w-0"><AgentChips agents={contact.agents} /></span>
+                          </Hint>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+                </div>
+              </div>
+              {hidden > 0 ? (
+                <button
+                  type="button"
+                  className="w-full rounded-xl border border-border px-3 py-2.5 text-sm font-semibold hover:bg-muted/40"
+                  onClick={() => setShownCount(count => count + DOCTORS_PAGE)}
+                  data-testid="agent-clients-show-more"
+                >
+                  {hidden > DOCTORS_PAGE ? t("clientsShowMore", { count: DOCTORS_PAGE, left: hidden }) : t("clientsShowRest", { count: hidden })}
+                </button>
+              ) : null}
+
+              {own || startUnticked ? null : (
+                <p className="flex items-start gap-2 rounded-xl border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 px-3 py-2.5 text-sm" data-testid="agent-clients-note">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>
+                    {t("clientsNote", { count: chosen.length })}
+                    {takenOff.length > 0 ? <> {t("clientsNoteRemove", { count: takenOff.length })}</> : null}
+                  </span>
+                </p>
+              )}
+            </>
+          )}
         </>
       )}
     </div>

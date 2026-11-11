@@ -51,7 +51,8 @@ export type PickerContactRow = {
 /** `classes`: the class letters (A, B, VIP) — the fourth step, after the place. */
 export type PickerSelection = { specialties: string[]; cities: string[]; districts: string[]; classes?: string[] }
 
-export type PickerOption = { value: string; label: string | null; count: number }
+/** `here`: of `count`, how many are already the agent's (the specialty tiles say it under the number). */
+export type PickerOption = { value: string; label: string | null; count: number; here?: number }
 
 export type PickerContact = {
   id: string
@@ -108,6 +109,18 @@ function facet(values: Array<string | null>): PickerOption[] {
       count: entry.count,
     }))
     .sort((a, b) => (a.value === PICKER_NONE ? 1 : 0) - (b.value === PICKER_NONE ? 1 : 0) || b.count - a.count || (a.label ?? "").localeCompare(b.label ?? "", "az"))
+}
+
+/** With an agent, each specialty also counts how many of its doctors are already his. */
+function withHere(options: PickerOption[], placed: Array<{ row: PickerContactRow; specialty: string | null }>, agentId: string | null): PickerOption[] {
+  if (!agentId) return options
+  const here = new Map<string, number>()
+  for (const item of placed) {
+    if (!item.row.agents.some(agent => agent.agentId === agentId)) continue
+    const key = keyOf(item.specialty)
+    here.set(key, (here.get(key) ?? 0) + 1)
+  }
+  return options.map(option => ({ ...option, here: here.get(option.value) ?? 0 }))
 }
 
 const chosen = (selected: string[], value: string | null) => selected.length === 0 || selected.includes(keyOf(value))
@@ -175,7 +188,7 @@ export function buildAgentClientPicker(rows: readonly PickerContactRow[], select
       || a.name.localeCompare(b.name, "az"))
 
   return {
-    specialties: facet(placed.map(item => item.specialty)),
+    specialties: withHere(facet(placed.map(item => item.specialty)), placed, agentId),
     cities: facet(bySpecialty.map(item => item.city)),
     districts: facet(byCity.map(item => item.district)),
     classes: classFacet(byDistrict.map(item => clean(item.row.category)), enabledClasses),

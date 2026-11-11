@@ -256,11 +256,17 @@ async function mount(element: ReactNode, locale = "az") {
  * `find: "list"` opens the attach tab on the whole list rather than on the
  * picker; `more` adds clients to the seeded four.
  */
-async function openSection(options: { agentId?: string; tab?: "attach"; find?: "list" | "place"; locale?: string; more?: Client[] } = {}) {
+/**
+ * His own tab opens on the tiles of his specialties since 2026-11-11; the
+ * tests of the list ask for it by the address (`find=list`), as the switch
+ * does. `find: "none"` opens the page as a link without one does.
+ */
+async function openSection(options: { agentId?: string; tab?: "attach"; find?: "list" | "place" | "none"; locale?: string; more?: Client[] } = {}) {
   seed()
   clients.push(...(options.more ?? []))
   stubServer()
-  navigation.search = [options.tab ? `tab=${options.tab}` : "", options.find ? `find=${options.find}` : ""].filter(Boolean).join("&")
+  const find = options.find ?? (options.tab ? undefined : "list")
+  navigation.search = [options.tab ? `tab=${options.tab}` : "", find && find !== "none" ? `find=${find}` : ""].filter(Boolean).join("&")
   return mount(createElement(MtmAgentSection, { agentId: options.agentId ?? ANAR.id }), options.locale)
 }
 
@@ -540,7 +546,7 @@ describe("an employee's own section", () => {
 
     // The employee's own list now holds the client and names both employees.
     stubServer()
-    navigation.search = ""
+    navigation.search = "find=list"
     const own = await mount(createElement(MtmAgentSection, { agentId: ANAR.id }), "ru")
     await until(() => tableRows(own.container).length === 3, "the employee's three clients")
     expect(own.container.querySelector("tbody [data-testid='mtm-contact-owner-c-kamran']")?.textContent).toBe(`${LEYLA.name}${ANAR.name}`)
@@ -627,9 +633,8 @@ describe("the agent's page — the card's picker and its edit button", () => {
   const byTestId = (id: string) => document.body.querySelector<HTMLElement>(`[data-testid='${id}']`)
   const doctorRow = (name: string) => Array.from(document.body.querySelectorAll<HTMLElement>("[data-testid='agent-clients-doctor']")).find((row) => row.textContent?.includes(name))
   async function chooseSpecialty(label: string) {
-    await click(byTestId("agent-clients-specialty"))
-    const option = Array.from(document.body.querySelectorAll<HTMLLabelElement>("[data-testid='agent-clients-specialty-options'] label")).find((item) => item.textContent?.includes(label))
-    await click(option?.querySelector("input"))
+    // The specialties are tiles with their counts (owner, 2026-11-11).
+    await click(Array.from(document.body.querySelectorAll<HTMLElement>("[data-testid='agent-clients-start-choice']")).find((tile) => tile.textContent?.startsWith(label)))
     await until(() => document.body.querySelectorAll("[data-testid='agent-clients-doctor']").length > 0, `the doctors of ${label}`)
   }
 
@@ -652,17 +657,20 @@ describe("the agent's page — the card's picker and its edit button", () => {
     expect(navigation.replace).toHaveBeenCalledWith("/mtm/agents/agent-anar?tab=attach&find=list", { scroll: false })
   })
 
-  it("assigns the doctors left ticked — not the one taken out — and then shows them as this agent's", async () => {
+  it("assigns the doctors ticked — nobody until somebody ticks — and then shows them as this agent's", async () => {
     await openSection({ tab: "attach", locale: "ru", more: TERAPEVTS })
     const section = words<{ attachChosen: string; attachReason: string; tabAssignedCount: string }>("ru", "mtmAgentSection")
-    const forms = words<{ clientsAlreadyHere: string; clientsChecked: string }>("ru", "mtmForms")
+    const forms = words<{ clientsAlreadyHere: string; clientsSelectedCount: string }>("ru", "mtmForms")
     await until(() => Boolean(byTestId("agent-clients-start")), "the picker's first step")
 
     await chooseSpecialty("Terapevt")
+    // Nobody ticked on arrival (owner, 2026-11-11: after a reload everyone read as «added»).
+    expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe(fill(section.attachChosen, { count: 0 }))
     // A colleague's doctor is offered too, and stays the colleague's as well.
     expect(doctorRow("Kamran Hüseynov")?.textContent).toContain(LEYLA.name)
+    await click(byTestId("agent-clients-check-all"))
     await click(doctorRow("Elvin Babayev")?.querySelector("[role='checkbox']"))
-    expect(byTestId("agent-clients-summary")?.textContent).toContain(fill(forms.clientsChecked, { count: 2 }))
+    expect(byTestId("agent-clients-summary")?.textContent).toContain(fill(forms.clientsSelectedCount, { count: 2 }))
     expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe(fill(section.attachChosen, { count: 2 }))
     // In the line with the counts above the list, not in a bar floating over it.
     expect(byTestId("agent-clients-summary")?.contains(byTestId("mtm-agent-attach-submit"))).toBe(true)
@@ -685,30 +693,24 @@ describe("the agent's page — the card's picker and its edit button", () => {
     expect((byTestId("mtm-agent-attach-submit") as HTMLButtonElement).disabled).toBe(true)
   })
 
-  // Owner, 2026-10-16: «нет возможности снимать галочки» — the agent's own
-  // doctors were listed greyed and locked.
-  it("takes an unticked doctor off this agent, after asking with the count", async () => {
+  // Owner, 2026-11-11: taking off lives on his own tab now, by specialty and place;
+  // here his doctors are shown as his and cannot be ticked away.
+  it("shows his own doctors as his, locked, and offers only the others", async () => {
     await openSection({ tab: "attach", locale: "ru" })
-    const section = words<{ attachRemove: string; tabAssignedCount: string; attachReason: string }>("ru", "mtmAgentSection")
-    const forms = words<{ clientsWillBeRemoved: string; clientsWillRemove: string; clientsRemoveConfirm: string; clientsRemoveConfirmTitle: string }>("ru", "mtmForms")
+    const section = words<{ attachChosen: string }>("ru", "mtmAgentSection")
+    const forms = words<{ clientsAlreadyHere: string; clientsTileHere: string }>("ru", "mtmForms")
     await until(() => Boolean(byTestId("agent-clients-start")), "the picker's first step")
+    // Under each count: how many are his already.
+    const kardio = Array.from(document.body.querySelectorAll<HTMLElement>("[data-testid='agent-clients-start-choice']")).find((tile) => tile.textContent?.startsWith("Kardioloq"))
+    expect(kardio?.textContent).toContain(fill(forms.clientsTileHere, { count: 1 }))
 
     await chooseSpecialty("Kardioloq")
-    await click(doctorRow("Aysel Quliyeva")?.querySelector("[role='checkbox']"))
-    expect(doctorRow("Aysel Quliyeva")?.textContent).toContain(forms.clientsWillBeRemoved)
-    expect(byTestId("agent-clients-summary")?.textContent).toContain(fill(forms.clientsWillRemove, { count: 1 }))
-    expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe(fill(section.attachRemove, { count: 1 }))
-
-    await click(byTestId("mtm-agent-attach-submit"))
-    expect(document.body.textContent).toContain(forms.clientsRemoveConfirmTitle)
+    const aysel = doctorRow("Aysel Quliyeva")!
+    expect(aysel.textContent).toContain(forms.clientsAlreadyHere)
+    expect(aysel.querySelector<HTMLButtonElement>("[role='checkbox']")?.disabled).toBe(true)
+    await click(byTestId("agent-clients-check-all"))
+    expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe(fill(section.attachChosen, { count: 0 }))
     expect(posts("/api/v1/mtm/contact-assignments/preview")).toEqual([])
-    await click(Array.from(document.body.querySelectorAll("button")).find((button) => button.textContent === fill(forms.clientsRemoveConfirm, { count: 1 })))
-    await until(() => posts("/api/v1/mtm/contact-assignments").length > 0, "the detachment to be applied")
-
-    expect(posts("/api/v1/mtm/contact-assignments/preview")[0]).toMatchObject({ mode: "UNASSIGN", contactIds: ["c-aysel"], targetAgentId: null, sourceAgentId: ANAR.id, reason: section.attachReason })
-    expect(clients.find((client) => client.id === "c-aysel")?.owners).toEqual([])
-    expect(clients.find((client) => client.id === "c-rauf")?.owners).toEqual([ANAR.id])
-    await until(() => byTestId("mtm-agent-tab-assigned")?.textContent === fill(section.tabAssignedCount, { count: 1 }), "the count after taking off")
   })
 
   it("gives someone who may only look the list, not a picker that would refuse them", async () => {
@@ -780,16 +782,16 @@ describe("the agent's own clients by specialty and place", () => {
     await until(() => doctors().length > 0, "his doctors")
   }
 
-  it("opens on his list as always, and «by specialty and place» offers only his clients, all ticked, the buttons in the line with the counts", async () => {
-    const assigned = await openSection({ locale: "ru" })
-    await until(() => tableRows(assigned.container).length === 2, "his own list")
-    expect(byTestId("mtm-agent-own-by-list")?.getAttribute("aria-checked")).toBe("true")
-    await click(byTestId("mtm-agent-own-by-place"))
-    expect(navigation.replace).toHaveBeenCalledWith("/mtm/agents/agent-anar?find=place", { scroll: false })
+  it("opens on the tiles of his specialties, only his clients, all ticked, the buttons in the line with the counts — the list one press away", async () => {
+    await openSection({ locale: "ru", find: "none" })
+    await until(() => Boolean(byTestId("agent-clients-start")), "the tiles of his specialties")
+    expect(byTestId("mtm-agent-own-by-place")?.getAttribute("aria-checked")).toBe("true")
+    await click(byTestId("mtm-agent-own-by-list"))
+    expect(navigation.replace).toHaveBeenCalledWith("/mtm/agents/agent-anar?find=list", { scroll: false })
     await act(async () => { root?.unmount() })
     document.body.innerHTML = ""
 
-    await openSection({ locale: "ru", find: "place" })
+    await openSection({ locale: "ru", find: "none" })
     await until(() => Boolean(byTestId("agent-clients-start")), "the picker's first step")
     expect(calls.find((call) => call.url.startsWith("/api/v1/mtm/contacts/agent-picker"))?.url).toContain("own=1")
     // His two specialties and «all», nobody else's.

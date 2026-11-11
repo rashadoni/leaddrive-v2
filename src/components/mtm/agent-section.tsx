@@ -58,9 +58,10 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
   const [forbidden, setForbidden] = useState(false)
   // Someone who may only look gets the list: the picker exists to assign.
   const attachBy: "place" | "list" = searchParams.get("find") === "list" || forbidden ? "list" : "place"
-  // His own clients open on the list, as always; «by specialty and place» is
-  // one press away (owner, 2026-11-11: take them off by specialty, city, district).
-  const ownBy: "place" | "list" = searchParams.get("find") === "place" && !forbidden ? "place" : "list"
+  // His own clients open on the tiles of his specialties (owner, 2026-11-11:
+  // «пусть будет готовый фильтр уже из каких специальностей врачи назначены»);
+  // the whole list is one press away, as on «attach».
+  const ownBy: "place" | "list" = searchParams.get("find") === "list" || forbidden ? "list" : "place"
   const [agent, setAgent] = useState<SectionAgent | null>(null)
   const [editing, setEditing] = useState(false)
   const [reloads, setReloads] = useState(0)
@@ -113,14 +114,11 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
   }
   const openView = (next: SectionView | "ratings") => {
     const params = new URLSearchParams(searchParams.toString())
+    // Each tab opens on its own default: «list» chosen on one is not the other's.
+    params.delete("find")
     if (next === "candidates") params.set("tab", "attach")
-    else if (next === "ratings") {
-      params.set("tab", "ratings")
-      params.delete("find")
-    } else {
-      params.delete("tab")
-      params.delete("find")
-    }
+    else if (next === "ratings") params.set("tab", "ratings")
+    else params.delete("tab")
     replaceQuery(params)
   }
   const openAttachBy = (next: "place" | "list") => {
@@ -131,7 +129,7 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
   }
   const openOwnBy = (next: "place" | "list") => {
     const params = new URLSearchParams(searchParams.toString())
-    if (next === "place") params.set("find", "place")
+    if (next === "list") params.set("find", "list")
     else params.delete("find")
     replaceQuery(params)
   }
@@ -266,16 +264,16 @@ export function MtmAgentSection({ agentId }: { agentId: string }) {
         </div>
       ) : view === "candidates" ? (
         <div className="space-y-3">
-          {findBy(attachBy, openAttachBy, "mtm-agent-attach-how")}
+          {attachBy === "place" ? null : findBy(attachBy, openAttachBy, "mtm-agent-attach-how")}
           {attachBy === "place"
-            ? <MtmAgentAttachByPlace agentId={agent.id} agentName={agent.name} onAttached={onChanged} onForbidden={() => setForbidden(true)} />
+            ? <MtmAgentAttachByPlace agentId={agent.id} agentName={agent.name} onAttached={onChanged} onForbidden={() => setForbidden(true)} switcher={findBy(attachBy, openAttachBy, "mtm-agent-attach-how")} />
             : <MtmContactExplorer key={`${agent.id}-${view}`} agentScope={scope} />}
         </div>
       ) : (
         <div className="space-y-3">
-          {findBy(ownBy, openOwnBy, "mtm-agent-own-how")}
+          {ownBy === "place" ? null : findBy(ownBy, openOwnBy, "mtm-agent-own-how")}
           {ownBy === "place"
-            ? <MtmAgentOwnByPlace agentId={agent.id} agentName={agent.name} onChanged={onChanged} onForbidden={() => setForbidden(true)} />
+            ? <MtmAgentOwnByPlace agentId={agent.id} agentName={agent.name} onChanged={onChanged} onForbidden={() => setForbidden(true)} switcher={findBy(ownBy, openOwnBy, "mtm-agent-own-how")} />
             // The list says itself whose clients it shows and how to change that.
             : <MtmContactExplorer key={`${agent.id}-${view}`} agentScope={scope} />}
         </div>

@@ -139,3 +139,12 @@ describe("the agent's own clients, by the same steps", () => {
     expect(agentOwnRows(MINE, "nobody")).toEqual([])
   })
 })
+
+// Owner, 2026-11-11: the specialty tiles say under the number how many are the agent's already.
+describe("the specialty tiles", () => {
+  it("count, per specialty, the doctors already the agent's — and nothing without an agent", () => {
+    const withAgent = buildAgentClientPicker(ROWS, none, "me")
+    expect(withAgent.specialties.map(option => [option.label, option.count, option.here])).toEqual([["Terapevt", 5, 1], ["Qastroenteroloq", 1, 0], [null, 1, 0]])
+    expect(buildAgentClientPicker(ROWS, none, null).specialties.every(option => option.here === undefined)).toBe(true)
+  })
+})
