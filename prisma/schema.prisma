@@ -80,6 +80,7 @@ model Organization {
   bookingSecrets BookingSecret[]
   bookingBindings BookingIntegrationBinding[]
   bookingCoordinatorGrants BookingCoordinatorGrant[]
+  bookingBoardLinks BookingBoardLink[]
   bookingPages          BookingPage[]
   bookingHostSchedules  BookingHostSchedule[]
   bookingOffers         BookingOffer[]
@@ -24205,6 +24206,26 @@ model BookingCoordinatorGrant {
   @@map("booking_coordinator_grants")
 }
 
+
+/// A read-only timetable for a screen on the wall: one link, one day, columns per host.
+model BookingBoardLink {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// What is in the address. Revoking clears nothing and deletes nothing — it flips isActive.
+  token String @unique
+  title String
+  /// Whose columns the screen shows, in this order. Empty means every host that has a meeting that day.
+  hostIds String[] @default([])
+  /// How many columns fit on the screen at once: 1, 2 or 4.
+  columns Int @default(2)
+  isActive Boolean @default(true)
+  createdBy String
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+  @@index([organizationId, isActive], map: "booking_board_links_org_idx")
+  @@map("booking_board_links")
+}
 
 /// Encrypted response and delivery capability. The immutable receipt stores only a reference.
 model BookingSecret {
