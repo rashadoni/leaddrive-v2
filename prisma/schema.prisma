@@ -709,6 +709,12 @@ model User {
   /// admin/superadmin. Semantics and the reason it is not an allow list live in
   /// `src/lib/user-module-access.ts`.
   hiddenModules     String[]     @default([])
+  /// Omni-channel numbers and pages (ChannelConfig ids) an admin hid from this
+  /// one person: their conversations do not reach them anywhere in the inbox.
+  /// A DENY list like hiddenModules — empty = sees every channel, and a channel
+  /// connected later is visible until someone unticks it. Ignored for
+  /// admin/superadmin. Rules: `src/lib/inbox/channel-access.ts`.
+  hiddenChannelConfigIds String[] @default([])
   avatar            String?
   phone             String?
   department        String?

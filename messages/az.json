@@ -26602,6 +26602,8 @@
     "phoneFormatError": "Yanlış format: + ilə başlamalı, sonra 7–15 rəqəm.",
     "supportSettings": "Dəstək parametrləri",
     "moduleAccessTitle": "Modullara giriş",
+    "channelAccessTitle": "Hansı nömrə və səhifələrin yazışmalarını görür",
+    "channelAccessHint": "Yeni qoşulan nömrə və səhifə hamıya açıq olur, işarəni götürənə qədər.",
     "moduleAccessHint": "Modulu bu istifadəçidən gizlətmək üçün işarəni götürün: modul menyudan itəcək, səhifələri və məlumatları açılmayacaq. Növbəti klikdən qüvvəyə minir, yenidən daxil olmaq lazım deyil.",
     "moduleAccessAdminNote": "Administrator təşkilatın bütün modullarını həmişə görür.",
     "accessResultTitle": "Bu şəxs nə əldə edəcək",

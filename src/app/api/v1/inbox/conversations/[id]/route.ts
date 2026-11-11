@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { withConversationChannelAccess } from "@/lib/inbox/channel-access"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { withInboxSessionWrite } from "@/lib/inbox/route-auth"
@@ -11,7 +12,7 @@ import {
   type CustomerStage,
 } from "@/lib/inbox/customer-stage"
 
-export const GET = withRlsAuth("inbox", "read", async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
+export const GET = withRlsAuth("inbox", "read", withConversationChannelAccess(async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
 
   const conv = await prisma.socialConversation.findFirst({
@@ -26,9 +27,9 @@ export const GET = withRlsAuth("inbox", "read", async (_req, { orgId }, { params
   })
 
   return NextResponse.json({ success: true, data: { ...conv, messages } })
-})
+}))
 
-export const PATCH = withInboxSessionWrite(async (req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
+export const PATCH = withInboxSessionWrite(withConversationChannelAccess(async (req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
   const body = await req.json()
 
@@ -134,7 +135,7 @@ export const PATCH = withInboxSessionWrite(async (req, { orgId }, { params }: { 
   }
 
   return NextResponse.json({ success: true, data: { updated: updated.count, customerStage: stage } })
-})
+}))
 
 /**
  * Move a conversation to the trash, or bring it back.
@@ -148,7 +149,7 @@ export const PATCH = withInboxSessionWrite(async (req, { orgId }, { params }: { 
  * Restricted to managers and above: widening this later is one line, while an
  * agent clearing a thread another agent was working is not undoable by them.
  */
-export const DELETE = withInboxSessionWrite(async (_req, auth, { params }: { params: Promise<{ id: string }> }) => {
+export const DELETE = withInboxSessionWrite(withConversationChannelAccess(async (_req, auth, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
   if (!isManagerOrAbove(auth.role)) {
     return NextResponse.json({ error: "Only a manager can delete a conversation" }, { status: 403 })
@@ -195,10 +196,10 @@ export const DELETE = withInboxSessionWrite(async (_req, auth, { params }: { par
     },
   })
   return NextResponse.json({ success: true, data: { id, deleted: true, qualificationReset: true } })
-})
+}))
 
 /** Restore a conversation from the trash. Same permission as deleting it. */
-export const POST = withInboxSessionWrite(async (_req, auth, { params }: { params: Promise<{ id: string }> }) => {
+export const POST = withInboxSessionWrite(withConversationChannelAccess(async (_req, auth, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
   if (!isManagerOrAbove(auth.role)) {
     return NextResponse.json({ error: "Only a manager can restore a conversation" }, { status: 403 })
@@ -209,4 +210,4 @@ export const POST = withInboxSessionWrite(async (_req, auth, { params }: { param
   })
   if (result.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
   return NextResponse.json({ success: true, data: { id, deleted: false } })
-})
+}))

@@ -374,3 +374,40 @@ describe("GET /api/v1/inbox — the workspace's numbers and pages for the rail",
     expect(text).not.toMatch(/EAA-secret|app-secret|verify-secret|page-token/)
   })
 })
+
+describe("GET /api/v1/inbox — numbers and pages hidden from this person (lib/inbox/channel-access)", () => {
+  async function asSupportHiding(hidden: string[]) {
+    // The session carries the list, as api-auth builds it from the user row.
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG_ID, userId: "support-1", role: "support", email: "s@x", name: "S", hiddenChannelConfigIds: hidden } as never)
+    vi.mocked(prisma.channelMessage.findMany).mockResolvedValue([
+      message({ id: "m-fanum", contactId: "c-fanum", channelConfigId: "wa-fanum", body: "Fanum" }),
+      message({ id: "m-coex", contactId: "c-coex", channelConfigId: "wa-coexistence", body: "Coex" }),
+      message({ id: "m-fb", contactId: "c-fb", channelType: "facebook", channelConfigId: "fb-shop", body: "Shop" }),
+    ] as never)
+    const res = await GET_INBOX(makeRequest())
+    expect(res.status).toBe(200)
+    return { data: (await res.json()).data, where: vi.mocked(prisma.channelMessage.findMany).mock.calls.at(-1)?.[0] as { where: Record<string, unknown> } }
+  }
+
+  it("does not read the hidden channels' messages at all", async () => {
+    const { where } = await asSupportHiding(["wa-fanum", "fb-shop"])
+    expect(where.where.AND).toEqual([{ OR: [{ channelConfigId: null }, { channelConfigId: { notIn: ["wa-fanum", "fb-shop"] } }] }])
+  })
+
+  it("and leaves no thread of theirs even if the database returned one", async () => {
+    const { data } = await asSupportHiding(["wa-fanum", "fb-shop"])
+    const ids = (data.conversations as InboxThread[]).map((c) => c.channelAccount?.number ?? c.channelAccount?.name)
+    expect(ids).toEqual(["+994 77 320 10 00"])
+  })
+
+  it("lists only the visible numbers and pages for the rail", async () => {
+    const { data } = await asSupportHiding(["wa-fanum", "fb-shop"])
+    expect((data.channels as Array<{ id: string }>).map((c) => c.id)).toEqual(["wa-coexistence", "wa-legacy"])
+  })
+
+  it("changes nothing for a person with nothing hidden", async () => {
+    const { data, where } = await asSupportHiding([])
+    expect(where.where.AND).toBeUndefined()
+    expect((data.conversations as unknown[]).length).toBe(3)
+  })
+})

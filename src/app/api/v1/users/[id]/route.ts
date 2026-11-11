@@ -70,6 +70,8 @@ const updateUserSchema = z.object({
   // voiceEnabled: a self-service list would let anyone un-hide what an admin
   // hid. The ids are validated against the hideable catalog below.
   hiddenModules: z.array(z.string().max(50)).max(50).optional(),
+  /** Omni-channel numbers and pages hidden from this person (lib/inbox/channel-access). */
+  hiddenChannelConfigIds: z.array(z.string().min(1).max(64)).max(200).optional(),
 })
 
 export const GET = withRlsSessionAuth(async (_req: NextRequest, session, { params }: { params: Promise<{ id: string }> }) => {
@@ -234,6 +236,23 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
       updateData.hiddenModules = []
     }
 
+    // Numbers and pages of the inbox hidden from this person. Only this organization's own channels
+    // are accepted; an admin is never narrowed, so a promotion clears the list like the module mask.
+    if (parsed.data.hiddenChannelConfigIds !== undefined && !roleIgnoresModuleMask(nextRole)) {
+      const requested = Array.from(new Set(parsed.data.hiddenChannelConfigIds)).sort()
+      const known = requested.length
+        ? await prisma.channelConfig.count({ where: { organizationId: orgId, id: { in: requested } } })
+        : 0
+      if (known !== requested.length) {
+        return NextResponse.json({ error: "Unknown channel in hiddenChannelConfigIds" }, { status: 400 })
+      }
+      if (requested.join() !== [...(existing.hiddenChannelConfigIds ?? [])].sort().join()) {
+        updateData.hiddenChannelConfigIds = requested
+      }
+    } else if (roleIgnoresModuleMask(nextRole) && (existing.hiddenChannelConfigIds ?? []).length > 0) {
+      updateData.hiddenChannelConfigIds = []
+    }
+
     // Voice control. Only ever set here, by a caller holding settings/write —
     // the gate re-checks the org entitlement and the role on every session, so
     // this flag says "switched on", not "allowed".
@@ -244,7 +263,7 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
         where: { id },
         data: updateData,
         select: {
-          id: true, name: true, email: true, role: true, voiceEnabled: true, hiddenModules: true,
+          id: true, name: true, email: true, role: true, voiceEnabled: true, hiddenModules: true, hiddenChannelConfigIds: true,
           phone: true, department: true, isActive: true, totpEnabled: true, require2fa: true,
           smsAuthEnabled: true, verifiedPhone: true,
           skills: true, maxTickets: true, isAvailable: true, preferredLanguage: true, createdAt: true,
@@ -274,6 +293,10 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
       if (updateData.hiddenModules !== undefined) {
         oldValue.hiddenModules = before.hiddenModules
         newValue.hiddenModules = user.hiddenModules
+      }
+      if (updateData.hiddenChannelConfigIds !== undefined) {
+        oldValue.hiddenChannelConfigIds = before.hiddenChannelConfigIds
+        newValue.hiddenChannelConfigIds = user.hiddenChannelConfigIds
       }
       if (securityStateChanged) newValue.sessionsInvalidated = true
 

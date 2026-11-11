@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { UserChannelAccess } from "@/components/settings/user-channel-access"
 import Link from "next/link"
 import { signOut, useSession } from "next-auth/react"
 import { Badge } from "@/components/ui/badge"
@@ -64,6 +65,7 @@ interface User extends Record<string, unknown> {
   require2fa: boolean
   voiceEnabled?: boolean
   hiddenModules?: string[]
+  hiddenChannelConfigIds?: string[]
   smsAuthEnabled: boolean
   verifiedPhone: string | null
   skills: string[]
@@ -117,6 +119,7 @@ interface UserFormData {
   maxTickets: number
   preferredLanguage: string
   hiddenModules: string[]
+  hiddenChannelConfigIds: string[]
 }
 
 type UserPayload = {
@@ -129,10 +132,13 @@ type UserPayload = {
   maxTickets: number
   preferredLanguage: string | null
   hiddenModules: string[]
+  hiddenChannelConfigIds?: string[]
   password?: string
 }
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
+
+type ChannelOption = { id: string; channelType: string | null; name: string | null; number: string | null; numberIsMetaId: boolean }
 
 // E.164: "+", a non-zero digit, then 6–14 more. The same pattern the API checks,
 // so the red border while typing and the refusal on save never disagree.
@@ -226,7 +232,7 @@ function UserFormDialog({
   const [form, setForm] = useState<UserFormData>({
     name: "", email: "", password: "", role: "viewer",
     phone: "", department: "", isActive: true,
-    maxTickets: 20, preferredLanguage: "", hiddenModules: [],
+    maxTickets: 20, preferredLanguage: "", hiddenModules: [], hiddenChannelConfigIds: [],
   })
   // Modules the tenant has, as the sidebar names them. Read off the admin's own
   // session: admins are never restricted, so theirs is the tenant's full set.
@@ -307,6 +313,7 @@ function UserFormDialog({
         maxTickets: editUser?.maxTickets || 20,
         preferredLanguage: editUser?.preferredLanguage || "",
         hiddenModules: editUser?.hiddenModules || [],
+        hiddenChannelConfigIds: editUser?.hiddenChannelConfigIds || [],
       })
       setError("")
     }
@@ -338,6 +345,25 @@ function UserFormDialog({
       })
     return () => { cancelled = true }
   }, [open, editUserId, tenantHasField, orgId])
+
+  // The organization's numbers and pages, for «which conversations this person sees» under
+  // Omni-channel (lib/inbox/channel-access). null = not read (yet, or it failed): nothing is sent.
+  const tenantHasOmni = moduleOptions.some((option) => option.id === "omnichannel")
+  const [channelOptions, setChannelOptions] = useState<ChannelOption[] | null>(null)
+  useEffect(() => {
+    if (!open || !tenantHasOmni) return
+    let cancelled = false
+    setChannelOptions(null)
+    fetch("/api/v1/users/channel-options", { headers: orgId ? { "x-organization-id": orgId } : undefined })
+      .then(async (res) => {
+        const json = await res.json().catch(() => null)
+        if (!res.ok || !Array.isArray(json?.data)) throw new Error("channel options")
+        return json.data as ChannelOption[]
+      })
+      .then((options) => { if (!cancelled) setChannelOptions(options) })
+      .catch(() => { if (!cancelled) setChannelOptions(null) })
+    return () => { cancelled = true }
+  }, [open, tenantHasOmni, orgId])
 
   // Links, unlinks or creates the employee card after the user row is saved.
   // The MTM API owns these writes (admin-only, audited); this only calls it.
@@ -397,6 +423,8 @@ function UserFormDialog({
         maxTickets: form.maxTickets,
         preferredLanguage: form.preferredLanguage || null,
         hiddenModules: moduleMaskIgnored ? [] : form.hiddenModules,
+        // Sent only when the list was read: a save made before it loaded must not wipe it.
+        ...(channelOptions !== null ? { hiddenChannelConfigIds: moduleMaskIgnored ? [] : form.hiddenChannelConfigIds } : {}),
       }
       if (!isEdit) {
         payload.password = form.password
@@ -613,6 +641,15 @@ function UserFormDialog({
                         )}
                         {access.outcome === "none" && (
                           <p className="mt-1 text-xs text-muted-foreground">{tu("accessNoneNote")}</p>
+                        )}
+                        {option.id === "omnichannel" && access.outcome !== "hidden" && !moduleMaskIgnored && channelOptions && channelOptions.length > 0 && (
+                          <UserChannelAccess
+                            options={channelOptions}
+                            hidden={form.hiddenChannelConfigIds}
+                            title={tu("channelAccessTitle")}
+                            hint={tu("channelAccessHint")}
+                            onChange={(hiddenChannelConfigIds) => setForm((f) => ({ ...f, hiddenChannelConfigIds }))}
+                          />
                         )}
                         {option.id === "mtm" && access.outcome !== "hidden" && tenantHasField && (
                           fieldAccess.kind === "organization" ? (

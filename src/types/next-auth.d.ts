@@ -28,6 +28,8 @@ declare module "next-auth" {
       plan: string
       /** Group-modules an admin hid from this user; empty for admins. */
       hiddenModules?: string[]
+      /** Inbox numbers and pages an admin hid from this user; empty for admins. */
+      hiddenChannelConfigIds?: string[]
       /** End of an outside reviewer's grant (ISO); absent for everyone else. */
       reviewerAccessUntil?: string
     }

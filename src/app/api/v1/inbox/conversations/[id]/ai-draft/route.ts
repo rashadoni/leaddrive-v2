@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { withConversationChannelAccess } from "@/lib/inbox/channel-access"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
@@ -24,7 +25,7 @@ const schema = z.object({
   text: z.string().trim().min(1).max(8000).optional(),
 })
 
-export const POST = withInboxSessionWrite(async (req, session, { params }: { params: Promise<{ id: string }> }) => {
+export const POST = withInboxSessionWrite(withConversationChannelAccess(async (req, session, { params }: { params: Promise<{ id: string }> }) => {
   const orgId = session.orgId
   const { id } = await params
   const parsed = schema.safeParse(await req.json().catch(() => ({})))
@@ -248,4 +249,4 @@ export const POST = withInboxSessionWrite(async (req, session, { params }: { par
   await releaseClaim()
 
   return NextResponse.json({ success: true, data: { sent: true, edited, messageId: sent.data.id } })
-})
+}))

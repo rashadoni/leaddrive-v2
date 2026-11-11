@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { hiddenChannelIdsFor, visibleChannelWhere } from "@/lib/inbox/channel-access"
 
 import type { Prisma } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
@@ -442,9 +443,11 @@ export const POST = withInboxSessionWrite(async (req: NextRequest, auth) => {
   // Org-scoped snapshot fetch = the per-id tenant gate. Ids missing from the
   // result are cross-tenant or nonexistent → reported, never written.
   const fetchIds = [...ids, ...threadKeyByConvId.keys()]
+  // A conversation on a number hidden from this person is, to them, not there (lib/inbox/channel-access).
+  const visibleChannels = visibleChannelWhere(await hiddenChannelIdsFor(auth))
   const conversationRows = fetchIds.length
     ? await prisma.socialConversation.findMany({
-        where: { id: { in: fetchIds }, organizationId: orgId },
+        where: { id: { in: fetchIds }, organizationId: orgId, ...(visibleChannels ? { AND: [visibleChannels] } : {}) },
         select: {
           id: true, contactId: true, contactName: true, platform: true, externalId: true,
           channelConfigId: true, lastMessage: true, status: true, assignedTo: true,

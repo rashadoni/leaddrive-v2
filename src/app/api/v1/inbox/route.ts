@@ -13,8 +13,10 @@ import { ensureConversation } from "@/lib/inbox-ensure-conversation"
 import { markMarketingContacted } from "@/lib/inbox/customer-stage"
 import { whatsappThreadReplyBinding } from "@/lib/inbox/whatsapp-reply-channel"
 import { attachInboxChannelAccounts, channelAccountOf, INBOX_ACCOUNT_CHANNEL_TYPES, type InboxChannelAccount } from "@/lib/inbox/conversation-channel"
+import { channelVisible, conversationAccessDenial, hiddenChannelIdsFor, visibleChannelWhere } from "@/lib/inbox/channel-access"
 
-export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
+export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
+  const { orgId } = auth
   const { searchParams } = new URL(req.url)
   const channelFilter = searchParams.get("channel") // email, telegram, sms, whatsapp
   // The trash is a view over the same listing, not a separate store.
@@ -22,6 +24,11 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
 
   try {
     const where: any = { organizationId: orgId }
+    // Numbers and pages an admin hid from this person (lib/inbox/channel-access): their messages
+    // are never read, so no thread, preview or counter is built from them.
+    const hiddenChannels = await hiddenChannelIdsFor(auth)
+    const visibleChannels = visibleChannelWhere(hiddenChannels)
+    if (visibleChannels) where.AND = [visibleChannels]
     if (channelFilter && channelFilter !== "all") {
       where.channelType = channelFilter
     }
@@ -615,6 +622,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
         where: {
           organizationId: orgId,
           conversationId: { not: null },
+          ...(visibleChannels ? { conversation: visibleChannels } : {}),
           ...(existingConversationIds.size > 0
             ? { NOT: { conversationId: { in: Array.from(existingConversationIds) } } }
             : {}),
@@ -836,6 +844,13 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
       console.error("[inbox GET channels]", e)
     }
 
+    // A thread whose latest channel is hidden — a call-only row, or one whose number changed — goes too.
+    if (hiddenChannels.size > 0) {
+      conversations = conversations.filter((c: { channelAccount?: { id?: string | null } | null }) =>
+        channelVisible(hiddenChannels, c.channelAccount?.id))
+      channels = channels.filter((channel) => channelVisible(hiddenChannels, channel.id))
+    }
+
     // Stats
     const totalMessages = messages.length
     const inboundCount = messages.filter((m: any) => m.direction === "inbound").length
@@ -911,6 +926,9 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
     return NextResponse.json({ error: "Conversation not found" }, { status: 404 })
   }
   const conversationId = owned.conversationId
+  // A reply into a conversation on a number hidden from this person is refused like a missing one.
+  const channelDenied = await conversationAccessDenial(authSession, conversationId)
+  if (channelDenied) return channelDenied
   if (channel === "whatsapp" && authSession.hideCustomerPhoneForOperators === true
     && isPhoneRestrictedPrincipal(authSession) && !conversationId) {
     return NextResponse.json({ error: "Open a customer conversation before replying" }, { status: 400 })
@@ -1115,11 +1133,13 @@ export const PATCH = withInboxSessionWrite(async (req, authSession) => {
   }
 
   try {
+    const visibleChannels = visibleChannelWhere(await hiddenChannelIdsFor(authSession))
     await prisma.channelMessage.updateMany({
       where: {
         id: { in: messageIds },
         organizationId: orgId,
         direction: "inbound",
+        ...(visibleChannels ? { AND: [visibleChannels] } : {}),
       },
       data: { status: "read" },
     })
@@ -1144,10 +1164,12 @@ export const DELETE = withInboxSessionWrite(async (req, authSession) => {
   }
 
   try {
+    const visibleChannels = visibleChannelWhere(await hiddenChannelIdsFor(authSession))
     await prisma.channelMessage.deleteMany({
       where: {
         id: { in: messageIds },
         organizationId: orgId,
+        ...(visibleChannels ? { AND: [visibleChannels] } : {}),
       },
     })
     return NextResponse.json({ success: true })

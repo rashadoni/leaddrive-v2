@@ -28,6 +28,7 @@ export const USER_ADMIN_SELECT = {
   require2fa: true,
   voiceEnabled: true,
   hiddenModules: true,
+  hiddenChannelConfigIds: true,
   smsAuthEnabled: true,
   verifiedPhone: true,
   lastLogin: true,

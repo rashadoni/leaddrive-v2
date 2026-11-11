@@ -26606,6 +26606,8 @@
     "phoneFormatError": "Invalid format: must start with + followed by 7–15 digits.",
     "supportSettings": "Support settings",
     "moduleAccessTitle": "Module access",
+    "channelAccessTitle": "Conversations of which numbers and pages they see",
+    "channelAccessHint": "A newly connected number or page is visible to everyone until you untick it.",
     "moduleAccessHint": "Untick a module to hide it from this user: it disappears from their menu and its pages and data stop opening. Applies on their next click, no re-login needed.",
     "moduleAccessAdminNote": "Administrators always see every module the organization has.",
     "accessResultTitle": "What this person gets",

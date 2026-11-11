@@ -112,6 +112,15 @@ export function effectiveHiddenModules(role: string | null | undefined, value: u
   return roleIgnoresModuleMask(role) ? [] : normalizeHiddenModules(value)
 }
 
+/**
+ * The inbox numbers and pages hidden from this person (`User.hiddenChannelConfigIds`, enforced by
+ * lib/inbox/channel-access). Same rule as the module mask: never for an admin.
+ */
+export function effectiveHiddenChannels(role: string | null | undefined, value: unknown): string[] {
+  if (roleIgnoresModuleMask(role) || !Array.isArray(value)) return []
+  return value.filter((id): id is string => typeof id === "string" && id.length > 0 && id.length <= 64).slice(0, 200)
+}
+
 /** The hideable entry that owns a field capability. */
 export function hideableIdForFieldCapability(capability: FieldTenantCapabilityId): UserHideableId {
   // Personnel is hidden from a person together with MTM until it has its own

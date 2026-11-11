@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { withConversationChannelAccess } from "@/lib/inbox/channel-access"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { withInboxSessionWrite } from "@/lib/inbox/route-auth"
@@ -13,7 +14,7 @@ import { ensureConversation } from "@/lib/inbox-ensure-conversation"
  * POST /api/v1/inbox/conversations/[id]/notes  → add  { body }
  */
 
-export const GET = withRlsAuth("inbox", "read", async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
+export const GET = withRlsAuth("inbox", "read", withConversationChannelAccess(async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
 
   try {
@@ -27,9 +28,9 @@ export const GET = withRlsAuth("inbox", "read", async (_req, { orgId }, { params
     console.error("[conversation notes GET]", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
-})
+}))
 
-export const POST = withInboxSessionWrite(async (req, session, { params }: { params: Promise<{ id: string }> }) => {
+export const POST = withInboxSessionWrite(withConversationChannelAccess(async (req, session, { params }: { params: Promise<{ id: string }> }) => {
   const orgId = session.orgId
   const { id } = await params
   const body = await req.json()
@@ -106,4 +107,4 @@ export const POST = withInboxSessionWrite(async (req, session, { params }: { par
     console.error("[conversation notes POST]", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
-})
+}))
