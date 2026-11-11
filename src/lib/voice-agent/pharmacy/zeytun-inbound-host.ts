@@ -22,6 +22,7 @@ import { recoveredOrderLines } from "./zeytun-transcript-recovery"
 import { CALLBACK_MARKER, callbackMarker } from "./zeytun-waitlist-callback"
 import { combineAssortment, confirmedOrdersSource, createCallAssortments, type AssortmentSource,
   type LoadedAssortment } from "./zeytun-pharmacy-assortment"
+import { salesHistorySource } from "./zeytun-sales-history"
 import { CHIRP_KEY_FILE, createChirpRecognizer, createZeytunSecondEar, type ZeytunSecondEar } from "./zeytun-chirp"
 import { journalPlatformAiCall } from "@/lib/ai/gateway/access"
 import { perMinuteCostUsd, UNIT_PRICING } from "@/lib/ai/gateway/pricing"
@@ -136,7 +137,9 @@ export function createInboundPilotHost(options: {
   // What the calling pharmacy orders (owner 2026-11-04, «слух по истории аптеки»): read once
   // when the call starts, in the background, and again if the call's order names another pharmacy.
   const assortments = createCallAssortments()
-  const assortmentSources: AssortmentSource[] = options.orders ? [confirmedOrdersSource(options.orders)] : []
+  // The CRM's confirmed phone orders first, then what 1C sold the pharmacy (zeytun-sales-history.ts, read by its own job).
+  const assortmentSources: AssortmentSource[] = options.orders
+    ? [confirmedOrdersSource(options.orders), ...(options.snapshotDirectory ? [salesHistorySource(options.snapshotDirectory)] : [])] : []
   async function loadAssortment(config: InboundPilotConfig, call: InboundPilotOrderCall): Promise<LoadedAssortment> {
     const orgId = config.orderOrganizationId
     if (!options.orders || !isLineGrant(config) || !orgId || !assortmentSources.length || !(await allowedOrganization(config))) {
