@@ -123,9 +123,15 @@ export function bookingFlowJson(): Record<string, unknown> {
             {
               type: "Form",
               name: "booking",
+              // The name the client already told WhatsApp, pre-filled. It lives
+              // on the FORM, not on the field: Meta refused `init-value` inside
+              // TextInput outright — «Property 'init-value' is not allowed in
+              // 'TextInput' component» — and that one line was the whole reason
+              // the form would not publish (2026-11-11).
+              "init-values": { client: "${data.client}" },
               children: [
                 { type: "RadioButtonsGroup", name: "time", label: "Vaxt", required: true, "data-source": "${data.times}" },
-                { type: "TextInput", name: "client", label: "Adınız", "input-type": "text", required: true, "init-value": "${data.client}" },
+                { type: "TextInput", name: "client", label: "Adınız", "input-type": "text", required: true },
                 {
                   type: "Footer",
                   label: "Təsdiqlə",
