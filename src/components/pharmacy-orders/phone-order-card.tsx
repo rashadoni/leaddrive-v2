@@ -15,6 +15,7 @@ import { PHONE_ORDER_CALLER_CANCELLED } from "@/lib/pharmacy-orders/caller-cance
 import { readableProductName } from "@/lib/pharmacy-orders/product-label"
 import { cn } from "@/lib/utils"
 
+import { pharmacyNeedsManagerCheck } from "@/lib/pharmacy-orders/pharmacy-identity-trust"
 import { OrderPharmacy, type OrderPharmacyValue } from "./order-pharmacy"
 import { PhoneOrderStatus, formatMoney, formatOrderDate, type PhoneOrderStatusValue } from "./phone-order-format"
 
@@ -44,10 +45,11 @@ type Erp = {
   differences: Array<{ position: number; sentQuantity: number; quantity: number; sentPrice: string; price: string | null }>
 }
 type ErrorKey = "errorGeneric" | "errorStale" | "errorCatalog" | "errorCallInProgress"
-  | "errorErpPending" | "errorErpUnit" | "errorErpPharmacy" | "errorErpUnavailable"
+  | "errorErpPending" | "errorErpUnit" | "errorErpPharmacy" | "errorErpUnavailable" | "errorPharmacyUnconfirmed"
 const ERROR_KEYS: Record<string, ErrorKey> = {
   stale_revision: "errorStale", not_pending: "errorStale", catalog_unavailable: "errorCatalog", call_in_progress: "errorCallInProgress",
   erp_pending: "errorErpPending", erp_unit: "errorErpUnit", erp_pharmacy: "errorErpPharmacy", erp_unavailable: "errorErpUnavailable",
+  pharmacy_unconfirmed: "errorPharmacyUnconfirmed",
 }
 /** 1C's refusal codes the card names in words (docs/zeytun-1c-create-order-request.md); any other shows as 1C sent it. */
 const ERP_REASONS: Record<string, string> = {
@@ -120,7 +122,10 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
   const unpriced = erpOn ? order.lines.filter(line => line.status === "resolved" && !line.unitPrice).length : 0
   const noPharmacy = erpOn && !order.pharmacy.guid
   const erpWaiting = order.erp.state === "sending" || order.erp.state === "unknown"
-  const confirmBlock = missing ? "confirmBlocked" : unpriced ? "confirmBlockedUnit" : noPharmacy ? "confirmBlockedPharmacy" : null
+  // A pharmacy only named on the call is confirmed by a manager first, with or without 1C (pharmacy-identity-trust.ts).
+  const pharmacyUnchecked = pharmacyNeedsManagerCheck(order.pharmacy.identification)
+  const confirmBlock = missing ? "confirmBlocked" : unpriced ? "confirmBlockedUnit" : noPharmacy ? "confirmBlockedPharmacy"
+    : pharmacyUnchecked ? "confirmBlockedPharmacyCheck" : null
 
   return (
     <div className="flex min-w-0 flex-col gap-4 px-4 py-5 sm:px-7">
