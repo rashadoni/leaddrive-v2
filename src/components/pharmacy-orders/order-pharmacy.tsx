@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { pharmacyNeedsManagerCheck } from "@/lib/pharmacy-orders/pharmacy-identity-trust"
 import { cn } from "@/lib/utils"
 
 type Card = { id: string; name: string; address: string | null; city: string | null }
@@ -27,7 +28,7 @@ export function OrderPharmacy({ orderId, pharmacy, busy, onSet }: {
   const t = useTranslations("pharmacyPhoneOrders")
   const [choosing, setChoosing] = useState(!pharmacy.company && pharmacy.identification !== "test_call")
   const testCall = pharmacy.identification === "test_call"
-  const checkIt = pharmacy.identification === "named_matched"
+  const checkIt = pharmacyNeedsManagerCheck(pharmacy.identification)
 
   if (pharmacy.company && !choosing) {
     return (
@@ -42,7 +43,11 @@ export function OrderPharmacy({ orderId, pharmacy, busy, onSet }: {
             <span className={`h-1.5 w-1.5 rounded-full ${checkIt ? "bg-amber-500" : "bg-emerald-500"}`} />{t(`identification.${pharmacy.identification}`)}
           </span>
         </div>
-        <div><Button size="sm" variant="outline" disabled={busy} onClick={() => setChoosing(true)}>{t("pharmacyChange")}</Button></div>
+        <div className="flex flex-wrap gap-2">
+          {/* Named on the call only: «Подтвердить» stays shut until the manager says this is the pharmacy. */}
+          {checkIt && <Button size="sm" disabled={busy} onClick={() => void onSet(pharmacy.company!.id)}>{t("pharmacyConfirm")}</Button>}
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => setChoosing(true)}>{t("pharmacyChange")}</Button>
+        </div>
       </div>
     )
   }

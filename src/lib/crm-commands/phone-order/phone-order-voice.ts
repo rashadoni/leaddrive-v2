@@ -54,6 +54,7 @@ const PHONE_ORDER_MESSAGES: Record<PhoneOrderError["code"], [CrmCommandError["co
   invalid: ["VALIDATION_FAILED", "Every line needs a catalog product before the order can go", 400],
   erp_unit: ["VALIDATION_FAILED", "A line has no 1C price; pick the product again", 400],
   erp_pharmacy: ["VALIDATION_FAILED", "The order has no pharmacy from 1C; set it on the order card", 400],
+  pharmacy_unconfirmed: ["CONFLICT", "The caller only named the pharmacy on the call; confirm it on the order card first", 409],
   catalog_unavailable: ["CONFLICT", "The catalog is not available right now", 409],
 }
 

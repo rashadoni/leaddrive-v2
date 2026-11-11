@@ -14,6 +14,7 @@ import { runWithRlsBypass } from "@/lib/rls-context"
 import { PHONE_ORDERS_TABLE, PHONE_ORDER_MAX_LINES, phoneOrderLabel } from "@/lib/voice-agent/pharmacy/phone-orders"
 import { ZeytunAvailableBalances } from "@/lib/voice-agent/pharmacy/zeytun-available-balances"
 import { orderPrice } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
+import { pharmacyNeedsManagerCheck } from "./pharmacy-identity-trust"
 import { ZeytunSnapshotStore } from "@/lib/voice-agent/pharmacy/zeytun-snapshot-store"
 
 /** Organization feature flag (Organization.features) that opens phone orders. */
@@ -29,7 +30,9 @@ type OrderDb = Pick<PrismaClient, "pharmacyPhoneOrder">
 export class PhoneOrderError extends Error {
   constructor(readonly code: "not_found" | "stale_revision" | "not_pending" | "invalid" | "catalog_unavailable" | "call_in_progress"
     // 1C: a send is under way or got no clear answer; a line not in 1C's base unit; no 1C pharmacy; no usable connection.
-    | "erp_pending" | "erp_unit" | "erp_pharmacy" | "erp_unavailable", readonly status: number) {
+    | "erp_pending" | "erp_unit" | "erp_pharmacy" | "erp_unavailable"
+    // The pharmacy was only named on the call: a manager confirms it first (pharmacy-identity-trust.ts).
+    | "pharmacy_unconfirmed", readonly status: number) {
     super(code)
   }
 }
@@ -245,6 +248,7 @@ export async function claimPhoneOrderErpSend(db: OrderDb, orgId: string, id: str
   if (order.lines.length === 0 || order.lines.some(line => line.status !== "resolved" || !line.externalId)) throw new PhoneOrderError("invalid", 400)
   if (order.lines.some(line => line.unitPrice === null)) throw new PhoneOrderError("erp_unit", 400)
   if (!order.pharmacyGuid) throw new PhoneOrderError("erp_pharmacy", 400)
+  if (pharmacyNeedsManagerCheck(order.pharmacyIdentification)) throw new PhoneOrderError("pharmacy_unconfirmed", 409)
   const claimed = await db.pharmacyPhoneOrder.updateMany({
     where: { id, organizationId: orgId, revision, status: "pending_review" },
     data: { erpState: "sending", erpAttemptAt: startedAt, revision: { increment: 1 } },
@@ -335,10 +339,13 @@ export async function applyPhoneOrderActionInTx(tx: Prisma.TransactionClient, or
   const edit = (entry: Omit<ManagerEdit, "at" | "by">) => ({ ...entry, at: new Date().toISOString(), by: userId })
   let made: ManagerEdit | null = null
   switch (action.action) {
-    case "confirm":
+    case "confirm": {
       if (lines.length === 0 || lines.some(row => row.status !== "resolved")) throw new PhoneOrderError("invalid", 400)
+      const head = await tx.pharmacyPhoneOrder.findFirst({ where: { id, organizationId: orgId }, select: { pharmacyIdentification: true } })
+      if (pharmacyNeedsManagerCheck(head?.pharmacyIdentification)) throw new PhoneOrderError("pharmacy_unconfirmed", 409)
       await tx.pharmacyPhoneOrder.update({ where: { id }, data: { status: "confirmed", confirmedAt: new Date(), confirmedById: userId } })
       return
+    }
     case "reject":
       await tx.pharmacyPhoneOrder.update({ where: { id }, data: { status: "rejected", rejectedAt: new Date(), rejectedById: userId, rejectReason: action.reason } })
       return

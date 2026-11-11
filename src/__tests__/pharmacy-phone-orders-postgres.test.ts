@@ -1318,6 +1318,53 @@ describe.skipIf(!scratch)("phone orders on a real Postgres under row-level secur
     })
   })
 
+  // Owner, 2026-11-11 (разбор «гардрейлов»): «я из 92 Yasamal» с чужого номера — это слова, а не аптека заказа.
+  it("does not confirm, send to 1C or confirm by voice an order whose pharmacy was only named on the call, until a manager confirms it", async () => {
+    const YASAMAL = "00000096-aaaa-4bbb-8ccc-dddddddddddd"
+    const company = await admin.company.create({ data: { organizationId: ZEYTUN, name: "92 Yasamal", externalSource: "zeytun_1c", externalId: YASAMAL } })
+    const named = (n: number, scopeKey: string) => save(app as unknown as PrismaClient, {
+      organizationId: ZEYTUN, providerCallId: callId(n), callStartedAt: "2026-10-24T06:42:00.000Z", callerPhoneE164: PHONE,
+      identification: "named_matched", pharmacyName: "92 Yasamal", pharmacyGuid: YASAMAL, pharmacyAddress: null,
+      catalog: { ...CATALOG, scopeKey }, lines: [LIST[0]],
+    })
+    // With 1C: «Подтвердить» refuses and 1C hears nothing — by the button and by voice.
+    await withErp(ORDERS, async scopeKey => {
+      await named(66, scopeKey)
+      const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(66) } })
+      const refused = await patch(order.id, { action: "confirm", revision: 1 })
+      expect([refused.status, (await refused.json()).error]).toEqual([409, "pharmacy_unconfirmed"])
+      await expect(byVoice("confirm_phone_order", { orderId: order.id, revision: 1 }))
+        .rejects.toMatchObject({ code: "CONFLICT", safeDetails: { reason: "pharmacy_unconfirmed" } })
+      expect(erp.calls).toHaveLength(0)
+      expect(await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } }))
+        .toMatchObject({ status: "pending_review", erpState: null, revision: 1, confirmedAt: null })
+      // The manager says it is this pharmacy: the same card, now the manager's choice — and the order goes.
+      expect((await patch(order.id, { action: "set_pharmacy", revision: 1, companyId: company.id })).status).toBe(200)
+      expect(await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } }))
+        .toMatchObject({ pharmacyIdentification: "manager_selected", pharmacyGuid: YASAMAL, companyId: company.id })
+      erp.answer = () => ({ status: 200, json: { code: 0, data: { Создан: true,
+        Документ: { Guid: "doc-96", Номер: "ЗК-000196", Дата: "20261111120000", Сумма: 125 },
+        Товары: [{ Номенклатура: NOSPA, Количество: 10, Цена: 12.5, Сумма: 125 }] } } })
+      const confirmed = (await (await patch(order.id, { action: "confirm", revision: 2 })).json()).data
+      expect(confirmed).toMatchObject({ status: "confirmed", erp: { state: "created" } })
+      expect(erp.calls).toHaveLength(1)
+      expect(erp.calls[0].body).toMatchObject({ GUID: YASAMAL })
+    })
+    // Without 1C: the plain confirm refuses the same way, by the button and by voice.
+    await withErp(null, async scopeKey => {
+      await named(67, scopeKey)
+      const order = await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { providerCallId: callId(67) } })
+      const refused = await patch(order.id, { action: "confirm", revision: 1 })
+      expect([refused.status, (await refused.json()).error]).toEqual([409, "pharmacy_unconfirmed"])
+      await expect(byVoice("confirm_phone_order", { orderId: order.id, revision: 1 }))
+        .rejects.toMatchObject({ code: "CONFLICT", safeDetails: { reason: "pharmacy_unconfirmed" } })
+      expect(await admin.pharmacyPhoneOrder.findFirstOrThrow({ where: { id: order.id } }))
+        .toMatchObject({ status: "pending_review", confirmedAt: null })
+      // Rejecting it needs no check: nothing reaches the pharmacy's history.
+      expect((await patch(order.id, { action: "reject", revision: 1, reason: "dublikat" })).status).toBe(200)
+    })
+  })
+
   /* ─── The same work by voice (этап 5, owner 2026-11-10) ───────────── */
 
   /** What the voice receipt does on «Подтвердить»: the command inside its own transaction, effects after commit. */
