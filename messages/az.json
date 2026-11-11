@@ -26645,7 +26645,7 @@
     "settingsSectionsTitle": "Parametr bölmələri",
     "settingsSectionsHint": "İşarələnmiş bölməni bu şəxs menyuda görür və dəyişə bilir. Qalan bölmələr ona bağlıdır — həm menyuda, həm serverdə.",
     "settingsSectionsPersonal": "şəxsi, hamıda var",
-    "settingsSectionsAdminOnly": "Yalnız admində, işarə ilə verilmir: İstifadəçilər, Rollar, Təhlükəsizlik, Hesablaşma, API açarları, Təşkilat, Kanallar, SMTP, İnteqrasiyalar, Domenlər, Sahə icazələri, AI Avtomatlaşdırma, AI və xərclər — orada parollar, açarlar, pul və ya hüquqların verilməsi var.",
+    "settingsSectionsAdminOnly": "Yalnız admində, işarə ilə verilmir: İstifadəçilər, Rollar, Təhlükəsizlik, Hesablaşma, API açarları, Sahə icazələri — onlar vasitəsilə hüquqlar verilir və orada işarə şəxsi admin edərdi. «Kanallar»da müştəri telefonlarının gizlədilməsi də admində qalır.",
     "fieldCardLabel": "Əməkdaş kartı",
     "fieldCardNone": "Kart yoxdur",
     "fieldCardNew": "Yeni kart yarat",

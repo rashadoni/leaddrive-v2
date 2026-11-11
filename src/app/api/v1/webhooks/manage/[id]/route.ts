@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { withRlsSessionAuth } from "@/lib/with-rls"
 import { validateOutboundWebhookUrl } from "@/lib/integrations/webhook-url-guard"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
+import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
 
 const updateWebhookSchema = z.object({
   url: z.string().url().max(2048).optional(),
@@ -18,8 +19,10 @@ function publicWebhook<T extends { secret?: unknown }>(webhook: T): Omit<T, "sec
   return safe
 }
 
-export const GET = withRlsSessionAuth(async (_req, { orgId, role }, { params }: { params: Promise<{ id: string }> }) => {
-  if (role !== "admin" && role !== "superadmin") {
+export const GET = withRlsSessionAuth(async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
+  const { orgId } = auth
+  // An admin, or a person an admin ticked «Integrations» for (lib/settings-sections).
+  if (!holdsSettingsSectionForRequest(auth, req)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
   const { id } = await params
@@ -32,8 +35,10 @@ export const GET = withRlsSessionAuth(async (_req, { orgId, role }, { params }: 
   return NextResponse.json({ success: true, data: publicWebhook(webhook) })
 })
 
-export const PUT = withRlsSessionAuth(async (req, { orgId, role }, { params }: { params: Promise<{ id: string }> }) => {
-  if (role !== "admin" && role !== "superadmin") {
+export const PUT = withRlsSessionAuth(async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
+  const { orgId } = auth
+  // An admin, or a person an admin ticked «Integrations» for (lib/settings-sections).
+  if (!holdsSettingsSectionForRequest(auth, req)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
   const { id } = await params
@@ -88,8 +93,10 @@ export const PUT = withRlsSessionAuth(async (req, { orgId, role }, { params }: {
   return NextResponse.json({ success: true, data: updated ? publicWebhook(updated) : null })
 })
 
-export const DELETE = withRlsSessionAuth(async (_req, { orgId, role }, { params }: { params: Promise<{ id: string }> }) => {
-  if (role !== "admin" && role !== "superadmin") {
+export const DELETE = withRlsSessionAuth(async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
+  const { orgId } = auth
+  // An admin, or a person an admin ticked «Integrations» for (lib/settings-sections).
+  if (!holdsSettingsSectionForRequest(auth, req)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
   const { id } = await params

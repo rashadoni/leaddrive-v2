@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { withRlsAuth } from "@/lib/with-rls"
 import { getSession, orgHasModule, moduleDisabledResponse, type AuthResult } from "@/lib/api-auth"
 import { checkPermission, type Action } from "@/lib/permissions"
+import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
 
 /**
  * Auth wrapper for the social OAuth CONNECT routes — the per-provider `start`
@@ -49,7 +50,9 @@ export function withSocialConnectAuth(
       )
     }
     const rbacScope = action === "read" ? "social" : "settings"
-    if (!checkPermission(auth.role, rbacScope, action)) {
+    // Or a person an admin ticked Channels for: these are its connect routes
+    // (lib/settings-sections.ts names which).
+    if (!checkPermission(auth.role, rbacScope, action) && !holdsSettingsSectionForRequest(auth, req)) {
       return NextResponse.json(
         { error: "Forbidden", message: `Role "${auth.role}" cannot "${action}" on "${rbacScope}"` },
         { status: 403 },

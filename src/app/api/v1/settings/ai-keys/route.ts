@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server"
 import { prisma, logAudit } from "@/lib/prisma"
 import { withRlsSessionAuth } from "@/lib/with-rls"
-import { isAdmin, type Role } from "@/lib/permissions"
 import {
   AI_PROVIDERS, deleteTenantAiCredential, isSelfKeyProvider, listTenantAiCredentials, saveTenantAiCredential,
   verifyProviderKey, type AiProvider,
 } from "@/lib/ai/gateway"
 import { providerUses } from "@/lib/ai/gateway/provider-uses"
+import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
 
 /**
  * The organization's own AI provider keys («Настройки → ИИ и расходы»).
@@ -33,13 +33,13 @@ async function state(orgId: string) {
   return { platformAllowed: org?.aiPlatformKey !== false, keys, providers }
 }
 
-export const GET = withRlsSessionAuth(async (_req, auth) => {
-  if (!isAdmin(auth.role as Role)) return NextResponse.json({ error: "Admin role required" }, { status: 403 })
+export const GET = withRlsSessionAuth(async (req, auth) => {
+  if (!holdsSettingsSectionForRequest(auth, req)) return NextResponse.json({ error: "Admin role required" }, { status: 403 })
   return NextResponse.json({ data: await state(auth.orgId) })
 })
 
 export const PUT = withRlsSessionAuth(async (req, auth) => {
-  if (!isAdmin(auth.role as Role)) return NextResponse.json({ error: "Admin role required" }, { status: 403 })
+  if (!holdsSettingsSectionForRequest(auth, req)) return NextResponse.json({ error: "Admin role required" }, { status: 403 })
   const body = await req.json().catch(() => null) as { provider?: unknown; key?: unknown } | null
   const provider = body?.provider
   const key = typeof body?.key === "string" ? body.key.trim() : ""
@@ -62,7 +62,7 @@ export const PUT = withRlsSessionAuth(async (req, auth) => {
 })
 
 export const DELETE = withRlsSessionAuth(async (req, auth) => {
-  if (!isAdmin(auth.role as Role)) return NextResponse.json({ error: "Admin role required" }, { status: 403 })
+  if (!holdsSettingsSectionForRequest(auth, req)) return NextResponse.json({ error: "Admin role required" }, { status: 403 })
   const provider = new URL(req.url).searchParams.get("provider")
   if (!isProvider(provider)) return NextResponse.json({ error: "Unknown provider" }, { status: 400 })
   await deleteTenantAiCredential(auth.orgId, provider)

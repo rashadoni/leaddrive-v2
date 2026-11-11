@@ -71,6 +71,19 @@ function bypassAdapter<A extends object>(adapter: A): A {
   return wrapped as A
 }
 
+/**
+ * The organization's own module record, for a person who holds a ticked section
+ * of Settings AND has modules hidden from them: the proxy's API gate reads the
+ * masked `modules`, and a section's routes must answer as they do for an admin
+ * (lib/settings-sections.ts — Channels' WhatsApp part answers to the inbox).
+ * Absent for everyone else, so the token does not grow for them.
+ */
+function sectionTenantModules(token: { settingsSections?: unknown; hiddenModules?: unknown }, tenantModules: Record<string, boolean> | undefined): Record<string, boolean> | undefined {
+  const holdsSections = Array.isArray(token.settingsSections) && token.settingsSections.length > 0
+  const hidesModules = Array.isArray(token.hiddenModules) && token.hiddenModules.length > 0
+  return holdsSections && hidesModules ? tenantModules : undefined
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: AUTH_SECRET,
   adapter: bypassAdapter(PrismaAdapter(prisma)),
@@ -393,14 +406,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.hiddenModules = effectiveHiddenModules(dbUser.role, dbUser.hiddenModules)
         token.hiddenChannelConfigIds = effectiveHiddenChannels(dbUser.role, dbUser.hiddenChannelConfigIds)
         token.settingsSections = effectiveSettingsSections(dbUser.role, dbUser.settingsSections)
+        const signInTenantModules = moduleRecordFromOrgFields({
+          features: dbUser.organization?.features,
+          modules: dbUser.organization?.modules,
+        })
         token.modules = applyUserModuleMask({
           plan: token.plan as string,
           addons: token.addons as string[],
-          modules: moduleRecordFromOrgFields({
-            features: dbUser.organization?.features,
-            modules: dbUser.organization?.modules,
-          }),
+          modules: signInTenantModules,
         }, token.hiddenModules as string[])
+        token.sectionTenantModules = sectionTenantModules(token, signInTenantModules)
         // Стартовая страница тенанта: корень «/» ведёт сюда (см. proxy.ts).
         // Кладём в токен, чтобы Edge-прокси не ходил в БД ради редиректа.
         token.landingPath = readTenantLandingPath(dbUser.organization?.settings)
@@ -516,14 +531,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.hiddenModules = effectiveHiddenModules(freshUser.role, freshUser.hiddenModules)
           token.hiddenChannelConfigIds = effectiveHiddenChannels(freshUser.role, freshUser.hiddenChannelConfigIds)
           token.settingsSections = effectiveSettingsSections(freshUser.role, freshUser.settingsSections)
+          const freshTenantModules = moduleRecordFromOrgFields({
+            features: freshUser.organization?.features,
+            modules: freshUser.organization?.modules,
+          })
           token.modules = applyUserModuleMask({
             plan: (token.plan as string) || "starter",
             addons: (token.addons as string[]) || [],
-            modules: moduleRecordFromOrgFields({
-              features: freshUser.organization?.features,
-              modules: freshUser.organization?.modules,
-            }),
+            modules: freshTenantModules,
           }, token.hiddenModules as string[])
+          token.sectionTenantModules = sectionTenantModules(token, freshTenantModules)
           token.landingPath = readTenantLandingPath(freshUser.organization?.settings)
 
           // Re-arm setup (but not a factor challenge) when the fresh user row
@@ -602,6 +619,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           hiddenModules: (token.hiddenModules as string[] | undefined) || [],
           hiddenChannelConfigIds: (token.hiddenChannelConfigIds as string[] | undefined) || [],
           settingsSections: (token.settingsSections as string[] | undefined) || [],
+          sectionTenantModules: (token.sectionTenantModules as Record<string, boolean> | undefined) || undefined,
           landingPath: (token.landingPath as string | undefined) || undefined,
           reviewerAccessUntil: (token.reviewerAccessUntil as string | undefined) || undefined,
           needs2fa: token.needs2fa as boolean | undefined,

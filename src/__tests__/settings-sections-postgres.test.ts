@@ -88,6 +88,13 @@ pgDescribe("sections of Settings ticked on a user card, on a real Postgres", () 
   let callTasks!: typeof import("@/app/api/v1/settings/call-tasks/route")
   let smtp!: typeof import("@/app/api/v1/settings/smtp/route")
   let organization!: typeof import("@/app/api/v1/settings/organization/route")
+  let channels!: typeof import("@/app/api/v1/channels/route")
+  let phonePrivacy!: typeof import("@/app/api/v1/settings/customer-phone-privacy/route")
+  let aiSpend!: typeof import("@/app/api/v1/settings/ai-spend/route")
+  let aiKeys!: typeof import("@/app/api/v1/settings/ai-keys/route")
+  let aiBudget!: typeof import("@/app/api/v1/settings/ai-budget/route")
+  let aiDelivery!: typeof import("@/app/api/v1/settings/ai-delivery/route")
+  let apiKeys!: typeof import("@/app/api/v1/api-keys/route")
 
   /** The session auth() would hand this person: role and ticks from their row, as the JWT callback reads them. */
   const as = async (id: string) => {
@@ -123,9 +130,16 @@ pgDescribe("sections of Settings ticked on a user card, on a real Postgres", () 
     callTasks = await import("@/app/api/v1/settings/call-tasks/route")
     smtp = await import("@/app/api/v1/settings/smtp/route")
     organization = await import("@/app/api/v1/settings/organization/route")
+    channels = await import("@/app/api/v1/channels/route")
+    phonePrivacy = await import("@/app/api/v1/settings/customer-phone-privacy/route")
+    aiSpend = await import("@/app/api/v1/settings/ai-spend/route")
+    aiKeys = await import("@/app/api/v1/settings/ai-keys/route")
+    aiBudget = await import("@/app/api/v1/settings/ai-budget/route")
+    aiDelivery = await import("@/app/api/v1/settings/ai-delivery/route")
+    apiKeys = await import("@/app/api/v1/api-keys/route")
     await bypass(async () => {
       await prisma.organization.create({ data: { id: ORG, name: "Sections", slug: "sections", plan: "enterprise" } })
-      for (const [id, role] of [["boss", "admin"], ["nazrin", "sales"], ["sabina", "sales"]]) {
+      for (const [id, role] of [["boss", "admin"], ["nazrin", "sales"], ["sabina", "sales"], ["gullu", "sales"], ["samir", "sales"]]) {
         await prisma.user.create({ data: { id, organizationId: ORG, email: `${id}@sections.test`, name: id, passwordHash: "-", role, isActive: true } })
       }
     })
@@ -221,5 +235,37 @@ pgDescribe("sections of Settings ticked on a user card, on a real Postgres", () 
     expect(await storedSections("sabina")).toEqual(["workflows"])
     expect((await tick("sabina", { role: "admin" })).status).toBe(200)
     expect(await storedSections("sabina")).toEqual([])
+  })
+
+  // Owner, 2026-11-11, the same day: «хочу кому-то дать доступ, чтоб мог
+  // подключаться к каналам, а кому-то — статистику ИИ по расходам».
+  it("lets a person ticked for Channels connect a channel — and not touch the customer-phone privacy beside it", async () => {
+    await as("boss")
+    expect((await tick("gullu", { settingsSections: ["channels"] })).status).toBe(200)
+    await as("gullu")
+    expect((await call(channels.GET(request("GET", "/api/v1/channels")))).status).toBe(200)
+    const created = await call(channels.POST(request("POST", "/api/v1/channels", { channelType: "telegram", configName: "Zeytun bot", botToken: "123456:test-token" })))
+    expect(created.status, JSON.stringify(created.body)).toBe(201)
+    expect(await bypass(() => prisma.channelConfig.count({ where: { organizationId: ORG, configName: "Zeytun bot" } }))).toBe(1)
+
+    expect((await call(phonePrivacy.PATCH(request("PATCH", "/api/v1/settings/customer-phone-privacy", { enabled: false }), undefined))).status).toBe(403)
+    expect((await call(aiSpend.GET(request("GET", "/api/v1/settings/ai-spend"), undefined))).status).toBe(403)
+    expect((await call(apiKeys.GET(request("GET", "/api/v1/api-keys"), undefined))).status).toBe(403)
+  })
+
+  it("lets a person ticked for AI & spend read the spend and set the limit — and nothing of the other AI page", async () => {
+    await as("boss")
+    expect((await tick("samir", { settingsSections: ["ai-spend"] })).status).toBe(200)
+    await as("samir")
+    expect((await call(aiSpend.GET(request("GET", "/api/v1/settings/ai-spend"), undefined))).status).toBe(200)
+    expect((await call(aiKeys.GET(request("GET", "/api/v1/settings/ai-keys"), undefined))).status).toBe(200)
+    const limit = await call(aiBudget.PATCH(request("PATCH", "/api/v1/settings/ai-budget", { limit: 5 }), undefined))
+    expect(limit.status, JSON.stringify(limit.body)).toBe(200)
+    const settings = (await bypass(() => prisma.organization.findUniqueOrThrow({ where: { id: ORG } }))).settings as Record<string, unknown>
+    expect(settings.aiDailyBudgetUsd).toBe(5)
+
+    expect((await call(aiDelivery.GET(request("GET", "/api/v1/settings/ai-delivery"), undefined))).status).toBe(403)
+    expect((await call(channels.GET(request("GET", "/api/v1/channels")))).status).toBe(403)
+    expect((await call(apiKeys.GET(request("GET", "/api/v1/api-keys"), undefined))).status).toBe(403)
   })
 })

@@ -3,8 +3,8 @@ import { z } from "zod"
 import { logAudit, prisma } from "@/lib/prisma"
 import { withRlsSessionAuth } from "@/lib/with-rls"
 import { assertSafeWebhookUrl } from "@/lib/integrations/webhook-url-guard"
-import { isAdmin } from "@/lib/constants"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
+import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
 
 const MAX_DELIVERY_BODY_BYTES = 16 * 1024
 const SECRET_MASK = "••••••••"
@@ -21,8 +21,9 @@ const patchDeliverySchema = z.object({
   slackWebhookUrl: z.string().trim().max(4_096).optional(),
 }).strict().refine((value) => Object.keys(value).length > 0)
 
-function requireDeliveryAdmin(role: string): Response | null {
-  return isAdmin(role)
+/** An admin, or a person an admin ticked «AI automation» for (lib/settings-sections). */
+function requireDeliveryAdmin(auth: { role: string; settingsSections?: string[] }, req: { url: string }): Response | null {
+  return holdsSettingsSectionForRequest(auth, req)
     ? null
     : NextResponse.json({ error: "Forbidden" }, { status: 403 })
 }
@@ -50,8 +51,8 @@ function exposeDeliverySettings(settings: DeliverySettings) {
  * what customers read and is set in Settings → Organization
  * (/api/v1/settings/organization/language).
  */
-export const GET = withRlsSessionAuth(async (_req, auth) => {
-  const denial = requireDeliveryAdmin(auth.role)
+export const GET = withRlsSessionAuth(async (req, auth) => {
+  const denial = requireDeliveryAdmin(auth, req)
   if (denial) return denial
 
   const org = await prisma.organization.findUnique({
@@ -65,7 +66,7 @@ export const GET = withRlsSessionAuth(async (_req, auth) => {
 })
 
 export const PATCH = withRlsSessionAuth(async (req, auth) => {
-  const denial = requireDeliveryAdmin(auth.role)
+  const denial = requireDeliveryAdmin(auth, req)
   if (denial) return denial
 
   const requestBody = await readJsonRequestWithinLimit(req, MAX_DELIVERY_BODY_BYTES)

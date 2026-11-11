@@ -2,10 +2,10 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { logAudit, prisma } from "@/lib/prisma"
 import { withRlsSessionAuth } from "@/lib/with-rls"
-import { isAdmin } from "@/lib/constants"
 import { locales } from "@/i18n/routing"
 import { organizationLocale } from "@/lib/ticketing/customer-locale"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
+import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
 
 /**
  * The organization's language — what customers are written to in when nothing
@@ -29,15 +29,15 @@ function settingsRecord(settings: unknown): Record<string, unknown> {
   return settings && typeof settings === "object" && !Array.isArray(settings) ? (settings as Record<string, unknown>) : {}
 }
 
-export const GET = withRlsSessionAuth(async (_req, auth) => {
+export const GET = withRlsSessionAuth(async (req, auth) => {
   const org = await prisma.organization.findUnique({ where: { id: auth.orgId }, select: { settings: true } })
   return NextResponse.json({
-    data: { language: organizationLocale(org?.settings), canEdit: isAdmin(auth.role) },
+    data: { language: organizationLocale(org?.settings), canEdit: holdsSettingsSectionForRequest(auth, req) },
   })
 })
 
 export const PATCH = withRlsSessionAuth(async (req, auth) => {
-  if (!isAdmin(auth.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  if (!holdsSettingsSectionForRequest(auth, req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const body = await readJsonRequestWithinLimit(req, MAX_BODY_BYTES)
   if (!body.ok) {

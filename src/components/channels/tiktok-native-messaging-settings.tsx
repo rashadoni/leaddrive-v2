@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { effectiveSettingsSections } from "@/lib/settings-sections"
 import { useLocale } from "next-intl"
 import { ArrowLeft, CheckCircle2, Circle, Loader2, RefreshCw } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -48,7 +49,10 @@ export function TikTokNativeMessagingSettings() {
   const lang: Locale = locale.startsWith("ru") ? "ru" : locale.startsWith("az") ? "az" : "en"
   const c = tiktokNativeCopy[lang]
   const { data: session, status } = useSession()
+  // An admin, or a person an admin ticked «Channels» for — the server lets exactly
+  // these through (lib/settings-sections.ts).
   const canManage = session?.user?.role === "admin" || session?.user?.role === "superadmin"
+    || effectiveSettingsSections(session?.user?.role, session?.user?.settingsSections).includes("channels")
   const orgId = session?.user?.organizationId
 
   return (

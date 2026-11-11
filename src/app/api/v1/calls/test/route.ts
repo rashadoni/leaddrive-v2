@@ -5,7 +5,7 @@ import { getVoipProvider } from "@/lib/voip"
 import { exposeVoipProvider, missingVoipFields, normalizeVoipSettings, type ExposedVoipProvider } from "@/lib/voip/configs"
 import { withRls } from "@/lib/with-rls"
 import { moduleDisabledResponse, orgHasModule } from "@/lib/api-auth"
-import { isAdmin } from "@/lib/permissions"
+import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
 
 type VoipConfigForTest = {
   id: string
@@ -24,7 +24,8 @@ export const POST = withRls(async (req, { orgId, session }) => {
     return NextResponse.json({ error: "Session authentication required" }, { status: 403 })
   }
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  if (!isAdmin(session.role)) {
+  // An admin, or a person an admin ticked «VoIP» for (lib/settings-sections).
+  if (!holdsSettingsSectionForRequest(session, req)) {
     return NextResponse.json({ error: "Admin role required for VoIP connection tests" }, { status: 403 })
   }
   if (session.role !== "superadmin" && !(await orgHasModule(orgId, "voip"))) {

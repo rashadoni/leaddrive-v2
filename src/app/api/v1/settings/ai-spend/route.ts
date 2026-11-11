@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { withRlsSessionAuth } from "@/lib/with-rls"
-import { isAdmin, type Role } from "@/lib/permissions"
 import { aiSpendReport, isSpendGranularity, isSpendRange, RANGES_FOR } from "@/lib/ai/gateway"
+import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
 
 /**
  * GET /api/v1/settings/ai-spend?granularity=day|week|month&range=7d|30d|90d|12m&tz=Asia/Baku
@@ -11,7 +11,7 @@ import { aiSpendReport, isSpendGranularity, isSpendRange, RANGES_FOR } from "@/l
  * money the organization spends.
  */
 export const GET = withRlsSessionAuth(async (req, auth) => {
-  if (!isAdmin(auth.role as Role)) return NextResponse.json({ error: "Admin role required" }, { status: 403 })
+  if (!holdsSettingsSectionForRequest(auth, req)) return NextResponse.json({ error: "Admin role required" }, { status: 403 })
   const params = new URL(req.url).searchParams
   const granularity = params.get("granularity") ?? "week"
   const range = params.get("range") ?? "90d"

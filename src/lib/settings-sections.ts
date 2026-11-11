@@ -3,30 +3,44 @@
  * admin (owner, 2026-11-11: «в разделе пользователи я не могу дать отдельно
  * доступ к параметрам. специально меняю роль на админа… сделать так, чтоб видел
  * конкретные разделы и конкретные разделы параметров»; mock-up approved with
- * «Давай»).
+ * «Давай»; the same day: «параметры ты не все добавил… хочу кому-то дать доступ,
+ * чтоб мог подключаться к каналам, а кому-то — статистику ИИ по расходам»).
  *
  * An ALLOW list on the user row (`User.settingsSections`): empty = what the role
  * gives, which for every non-admin role is their own notifications only. One
  * tick per section; a ticked section is the person's to open and to change
- * (read, write, delete) — nothing finer, by the owner's «одна галочка».
+ * exactly as an admin would — nothing finer, by the owner's «одна галочка».
  *
- * The catalog is the whole rule, and it is deliberately short. A section is on
- * it only when everything its page sends goes to the routes listed here and
- * none of it hands out access, secrets or money: users, roles, security,
- * billing, API keys, channels (provider tokens), SMTP (a password),
- * integrations, domains, field permissions, AI keys and spend, and the
- * organization page (it renames the tenant's address) stay with the admin role.
- * AI automation is NOT here either: the same page sets the AI spend limits.
+ * NOT on the list, ever: Users, Roles, Security, Billing, API keys and Field
+ * permissions. Each of them hands out access itself — a person holding one could
+ * make themselves an admin or read past every other rule — so a tick there would
+ * be the admin role under another name.
  *
- * Enforcement is by request path, at the two places every route's role check
- * runs (`requireAuth` and `withRls`): a `settings`-scoped request is let
- * through for a non-admin only when its path belongs to a section ticked for
- * them. A route under a section path that asks a different scope, or that
- * checks the admin role itself, is untouched by a tick. The page guard and the
- * menu ask the same catalog by page path. Edge-safe: no imports.
+ * The catalog is the whole rule. A section names the API paths its pages call
+ * (and everything under them) and the permission scopes those routes ask; a
+ * request is let through for a non-admin only when its path belongs to a
+ * section ticked for them AND it asks one of that section's scopes. That check
+ * runs where every route's role check runs (`requireAuth`, `withRls`); routes
+ * that check the admin role themselves ask `holdsSettingsSectionForPath`. The
+ * page guard and the menu ask the same catalog by page path. Edge-safe: no
+ * imports.
  */
 
-export const SETTINGS_SECTION_IDS = ["workflows", "custom-fields", "dashboard-widgets", "leaderboard", "call-tasks"] as const
+export const SETTINGS_SECTION_IDS = [
+  "organization",
+  "workflows",
+  "custom-fields",
+  "dashboard-widgets",
+  "channels",
+  "smtp",
+  "integrations",
+  "custom-domains",
+  "voip",
+  "leaderboard",
+  "call-tasks",
+  "ai-automation",
+  "ai-spend",
+] as const
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number]
 
 export interface SettingsSection {
@@ -37,15 +51,83 @@ export interface SettingsSection {
   pages: readonly string[]
   /** API paths (and everything under them) the section's pages call. */
   apis: readonly string[]
+  /** Permission scopes those routes ask; a tick opens these and no other. */
+  scopes: readonly string[]
 }
 
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
+  // The organization's name, logo, address (slug) and the customers' language.
+  { id: "organization", tKey: "organizationSettings", pages: ["/settings/organization"], apis: ["/api/v1/settings/organization"], scopes: ["settings"] },
   // Workflows and their templates (/settings/workflows/templates is under the page path).
-  { id: "workflows", tKey: "workflows", pages: ["/settings/workflows"], apis: ["/api/v1/workflows"] },
-  { id: "custom-fields", tKey: "customFieldsSettings", pages: ["/settings/custom-fields"], apis: ["/api/v1/custom-fields"] },
-  { id: "dashboard-widgets", tKey: "dashboardSettings", pages: ["/settings/dashboard"], apis: ["/api/v1/dashboard/widget-config"] },
-  { id: "leaderboard", tKey: "kpiArenaConfig", pages: ["/settings/leaderboard"], apis: ["/api/v1/leaderboard/config"] },
-  { id: "call-tasks", tKey: "callTaskSettings", pages: ["/settings/call-tasks"], apis: ["/api/v1/settings/call-tasks"] },
+  { id: "workflows", tKey: "workflows", pages: ["/settings/workflows"], apis: ["/api/v1/workflows"], scopes: ["settings"] },
+  { id: "custom-fields", tKey: "customFieldsSettings", pages: ["/settings/custom-fields"], apis: ["/api/v1/custom-fields"], scopes: ["settings"] },
+  { id: "dashboard-widgets", tKey: "dashboardSettings", pages: ["/settings/dashboard"], apis: ["/api/v1/dashboard/widget-config"], scopes: ["settings"] },
+  // Connecting WhatsApp, Telegram, e-mail, Facebook/Instagram, TikTok and SMS.
+  // Not the customer-phone privacy switch on the same page: that one decides
+  // what operators see of customers and stays with the admin.
+  {
+    id: "channels",
+    tKey: "channelsNav",
+    pages: ["/settings/channels"],
+    apis: [
+      "/api/v1/channels",
+      "/api/v1/settings/telegram-bot",
+      "/api/v1/whatsapp/channels",
+      "/api/v1/whatsapp/notification-settings",
+      "/api/v1/whatsapp/readiness",
+      "/api/v1/whatsapp/templates",
+      "/api/v1/whatsapp/validate",
+      "/api/v1/calls/whatsapp/smoke",
+      "/api/v1/social/oauth/facebook/start",
+      "/api/v1/social/oauth/instagram/start",
+      "/api/v1/social/oauth/tiktok/start",
+      "/api/v1/social/oauth/tiktok-business/start",
+      "/api/v1/social/oauth/subscribe",
+      "/api/v1/social/oauth/preflight",
+      "/api/v1/social/oauth/providers",
+    ],
+    scopes: ["settings", "inbox", "voip", "social"],
+  },
+  { id: "smtp", tKey: "smtp", pages: ["/settings/smtp-settings"], apis: ["/api/v1/settings/smtp"], scopes: ["settings"] },
+  {
+    id: "integrations",
+    tKey: "integrations",
+    pages: ["/settings/integrations"],
+    apis: [
+      "/api/v1/integrations/esign-provider",
+      "/api/v1/integrations/slack",
+      "/api/v1/integrations/teams",
+      "/api/v1/integrations/google-calendar",
+      "/api/v1/integrations/outlook-calendar",
+      "/api/v1/webhooks/manage",
+    ],
+    scopes: ["settings", "contracts"],
+  },
+  { id: "custom-domains", tKey: "customDomainsSettings", pages: ["/settings/custom-domains"], apis: ["/api/v1/custom-domains"], scopes: ["settings"] },
+  {
+    id: "voip",
+    tKey: "voip",
+    pages: ["/settings/voip"],
+    apis: ["/api/v1/voip/config", "/api/v1/calls/test", "/api/v1/calls/threecx/setup", "/api/v1/calls/threecx/template"],
+    scopes: ["voip", "settings"],
+  },
+  { id: "leaderboard", tKey: "kpiArenaConfig", pages: ["/settings/leaderboard"], apis: ["/api/v1/leaderboard/config"], scopes: ["settings"] },
+  { id: "call-tasks", tKey: "callTaskSettings", pages: ["/settings/call-tasks"], apis: ["/api/v1/settings/call-tasks"], scopes: ["settings"] },
+  // The AI spend limits live on both AI pages, so /settings/ai-budget belongs to both sections.
+  {
+    id: "ai-automation",
+    tKey: "aiAutomation",
+    pages: ["/settings/ai-automation"],
+    apis: ["/api/v1/settings/ai-advisor", "/api/v1/settings/ai-delivery", "/api/v1/settings/ai-features", "/api/v1/settings/ai-stats", "/api/v1/settings/ai-budget"],
+    scopes: ["settings"],
+  },
+  {
+    id: "ai-spend",
+    tKey: "aiSpend",
+    pages: ["/settings/ai-spend"],
+    apis: ["/api/v1/settings/ai-spend", "/api/v1/settings/ai-keys", "/api/v1/settings/ai-budget"],
+    scopes: ["settings"],
+  },
 ]
 
 const SECTION_IDS: ReadonlySet<string> = new Set(SETTINGS_SECTION_IDS)
@@ -75,37 +157,56 @@ function under(prefix: string, path: string): boolean {
   return path === prefix || path.startsWith(prefix + "/")
 }
 
-export function settingsSectionForApiPath(pathname: string): SettingsSectionId | null {
-  return SETTINGS_SECTIONS.find((section) => section.apis.some((prefix) => under(prefix, pathname)))?.id ?? null
+/** Every section that owns this API path (the AI spend limits belong to two). */
+export function settingsSectionsForApiPath(pathname: string): SettingsSection[] {
+  return SETTINGS_SECTIONS.filter((section) => section.apis.some((prefix) => under(prefix, pathname)))
 }
 
 export function settingsSectionForPagePath(pathname: string): SettingsSectionId | null {
   return SETTINGS_SECTIONS.find((section) => section.pages.some((prefix) => under(prefix, pathname)))?.id ?? null
 }
 
+type Person = { role?: string | null; settingsSections?: readonly string[] | null }
+
+/** The sections ticked for this person that own this API path (none for an admin: they hold no ticks). */
+export function heldSectionsForPath(person: Person, pathname: string): SettingsSection[] {
+  const held = effectiveSettingsSections(person.role, person.settingsSections)
+  if (held.length === 0) return []
+  return settingsSectionsForApiPath(pathname).filter((section) => held.includes(section.id))
+}
+
 /**
  * Whether a tick lets this request through where the role alone would not:
- * a `settings`-scoped read/write/delete on a path of a section the person
- * holds. Never anything else — not another scope, not export, not admin.
+ * a path of a section the person holds, asking one of that section's scopes.
+ * `export` is never opened by a tick.
  */
-export function settingsGrantAllows(
-  person: { role?: string | null; settingsSections?: readonly string[] | null },
-  pathname: string,
-  module: string | null | undefined,
-  action: string,
-): boolean {
-  if (module !== "settings") return false
-  if (action !== "read" && action !== "write" && action !== "delete") return false
-  const section = settingsSectionForApiPath(pathname)
-  if (!section) return false
-  return effectiveSettingsSections(person.role, person.settingsSections).includes(section)
+export function settingsGrantAllows(person: Person, pathname: string, module: string | null | undefined, action: string): boolean {
+  if (!module || action === "export") return false
+  return heldSectionsForPath(person, pathname).some((section) => section.scopes.includes(module))
+}
+
+/**
+ * For routes that check the admin role themselves: an admin, or a person holding
+ * a section this path belongs to. Never true for a reviewer.
+ */
+export function holdsSettingsSectionForPath(person: Person, pathname: string): boolean {
+  if (person.role === "admin" || person.role === "superadmin") return true
+  return heldSectionsForPath(person, pathname).length > 0
+}
+
+/** The same question from a request: its own path decides the section. */
+export function holdsSettingsSectionForRequest(person: Person, req: { url: string }): boolean {
+  let pathname: string
+  try {
+    pathname = new URL(req.url).pathname
+  } catch {
+    return person.role === "admin" || person.role === "superadmin"
+  }
+  return holdsSettingsSectionForPath(person, pathname)
 }
 
 /** Whether a tick opens this Settings page for the person. */
-export function settingsGrantOpensPage(
-  person: { role?: string | null; settingsSections?: readonly string[] | null },
-  pathname: string,
-): boolean {
+export function settingsGrantOpensPage(person: Person, pathname: string): boolean {
   const section = settingsSectionForPagePath(pathname)
   return !!section && effectiveSettingsSections(person.role, person.settingsSections).includes(section)
 }

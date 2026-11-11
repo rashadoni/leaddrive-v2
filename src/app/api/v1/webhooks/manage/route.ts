@@ -5,6 +5,7 @@ import { withRlsSessionAuth } from "@/lib/with-rls"
 import { validateOutboundWebhookUrl } from "@/lib/integrations/webhook-url-guard"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
 import crypto from "crypto"
+import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
 
 const createWebhookSchema = z.object({
   url: z.string().url().max(2048),
@@ -18,8 +19,10 @@ function publicWebhook<T extends { secret?: unknown }>(webhook: T): Omit<T, "sec
   return safe
 }
 
-export const GET = withRlsSessionAuth(async (_req, { orgId, role }) => {
-  if (role !== "admin" && role !== "superadmin") {
+export const GET = withRlsSessionAuth(async (req, auth) => {
+  const { orgId } = auth
+  // An admin, or a person an admin ticked «Integrations» for (lib/settings-sections).
+  if (!holdsSettingsSectionForRequest(auth, req)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
@@ -31,8 +34,10 @@ export const GET = withRlsSessionAuth(async (_req, { orgId, role }) => {
   return NextResponse.json({ success: true, data: webhooks.map(publicWebhook) })
 })
 
-export const POST = withRlsSessionAuth(async (req, { orgId, role }) => {
-  if (role !== "admin" && role !== "superadmin") {
+export const POST = withRlsSessionAuth(async (req, auth) => {
+  const { orgId } = auth
+  // An admin, or a person an admin ticked «Integrations» for (lib/settings-sections).
+  if (!holdsSettingsSectionForRequest(auth, req)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

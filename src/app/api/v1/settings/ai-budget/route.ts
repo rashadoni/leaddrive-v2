@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withRls, withRlsSessionAuth } from "@/lib/with-rls"
-import { isAdmin, type Role } from "@/lib/permissions"
 import { checkAiBudget, getAiLimits, DEFAULT_AI_LIMITS } from "@/lib/ai/budget"
+import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
 
 /** A limit is a sum in dollars a day: a cent is too small to mean anything, ten thousand a typo. */
 const MIN_DAILY_LIMIT_USD = 0.5
@@ -23,7 +23,7 @@ export const GET = withRls(async (_req, { orgId }) => {
 })
 
 export const PATCH = withRlsSessionAuth(async (req, auth) => {
-  if (!isAdmin(auth.role as Role)) return NextResponse.json({ error: "Admin role required" }, { status: 403 })
+  if (!holdsSettingsSectionForRequest(auth, req)) return NextResponse.json({ error: "Admin role required" }, { status: 403 })
   const orgId = auth.orgId
   const body = await req.json()
   const { limit, aiLimits } = body as {
