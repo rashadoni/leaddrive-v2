@@ -109,7 +109,7 @@ describe("agent card — choosing the agent's doctors", () => {
     await type("phone", "+994501112233")
     await click(byTestId("agent-form-tab-clients"))
     // The specialties are tiles with their counts (owner, 2026-11-11).
-    await click(all("agent-clients-start-choice").find(tile => tile.textContent?.startsWith("Terapevt")))
+    await click(all("agent-clients-start-choice").find(tile => tile.textContent?.startsWith("Terapevt")) ?? null)
     expect(calls().some(call => call.url.includes("specialty=terapevt"))).toBe(true)
 
     // Every doctor found is on the screen, ticked, without opening anything.
