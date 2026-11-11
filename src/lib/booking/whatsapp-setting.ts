@@ -28,6 +28,13 @@ export interface WhatsAppBookingSetting {
    */
   changeTemplate: string | null
   cancelTemplate: string | null
+  /**
+   * The published WhatsApp form this number shows instead of a list of times
+   * — Meta's own id, written when the form is published and cleared when it
+   * is not. Empty means the list, which is what every number had before and
+   * what any number falls back to.
+   */
+  flowId: string | null
 }
 
 /**
@@ -51,6 +58,7 @@ export function readWhatsAppBookingSetting(settings: unknown): WhatsAppBookingSe
     reminderTemplate: template(value.reminderTemplate),
     changeTemplate: template(value.changeTemplate),
     cancelTemplate: template(value.cancelTemplate),
+    flowId: template(value.flowId),
   }
 }
 

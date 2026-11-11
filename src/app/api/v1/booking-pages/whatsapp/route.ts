@@ -83,6 +83,9 @@ export const PUT = withRlsAuth("bookings", "write", async (req, auth) => {
     reminderTemplate: keep(parsed.data.reminderTemplate, stored.reminderTemplate),
     changeTemplate: keep(parsed.data.changeTemplate, stored.changeTemplate),
     cancelTemplate: keep(parsed.data.cancelTemplate, stored.cancelTemplate),
+    // Written by the form's own route, never by this screen: carrying it over
+    // is the whole reason this object is built by hand.
+    flowId: stored.flowId,
   }
   // One key, set in place: the rest of settings belongs to other screens and
   // must not be read and written back around it.
