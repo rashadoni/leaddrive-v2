@@ -13,6 +13,7 @@ import { ASSISTANT_ESCALATION_DESCRIPTION_HEAD, chatTicketDescription } from "@/
 import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 import { assistantEscalationSubject } from "@/lib/ticketing/customer-ticket-text"
 import { resolveAiModel } from "@/lib/ai/budget"
+import { recordInboundAttack, screenInboundCustomerTexts } from "@/lib/ai/inbound-screen"
 import { TERMINAL_TICKET_STATUSES } from "@/lib/ticketing/agent-desktop"
 import { guardOmnichannelOffers } from "@/lib/inbox/omnichannel-commitment-rules"
 
@@ -465,6 +466,12 @@ export async function POST(req: NextRequest) {
         kbEnabled ? getKbContext(user.organizationId, message, kbMaxArticles) : Promise.resolve(""),
         sessionId ? getChatHistory(session.id) : Promise.resolve([]),
       ])
+      // An attack in what the model would read: the canned answer instead of the model (inbound-screen.ts).
+      const inboundScreen = screenInboundCustomerTexts([message, ...history.filter((m) => m.role === "user").map((m) => m.content)])
+      if (!inboundScreen.allowed) {
+        recordInboundAttack(user.organizationId, "portal-chat", session.id, inboundScreen)
+        throw new InboundAttackWithheld()
+      }
 
       // Mask one shared context so placeholders are stable across system and message payloads.
       const piiMasker = new PiiMasker()
@@ -549,7 +556,7 @@ export async function POST(req: NextRequest) {
       usage = response.usage
 
     } catch (error) {
-      console.error("Claude API error:", error)
+      if (!(error instanceof InboundAttackWithheld)) console.error("Claude API error:", error)
       assistantContent = getFallbackResponse(message, user.fullName)
       degraded = true
     }
@@ -671,6 +678,9 @@ export async function POST(req: NextRequest) {
   })
   }) // end runWithTenant (tenant-scoped handler body)
 }
+
+/** The message read as an attack: the model is not asked; the canned answer goes instead. */
+class InboundAttackWithheld extends Error {}
 
 function getFallbackResponse(message: string, userName: string): string {
   const lower = message.toLowerCase()

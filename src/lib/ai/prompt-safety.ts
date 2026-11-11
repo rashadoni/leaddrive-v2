@@ -54,21 +54,29 @@ const PATTERNS: Array<{ type: ThreatType; regex: RegExp; weight: number; descrip
   { type: "instruction_override", regex: /\b(ignore|disregard|forget|override)\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|rules?|prompts?|directives?|commands?)\b/i, weight: 0.8, description: "ignore previous instructions" },
   { type: "instruction_override", regex: /(?:^|[\s.,;!?(])(забудь|игнорируй|отбрось|переопредели)\s+(все\s+)?(предыдущие|прежние|прошлые|ранее заданные)\s+(инструкции|правила|команды|указания)/i, weight: 0.8, description: "ignore previous instructions (RU)" },
   { type: "instruction_override", regex: /\bnew\s+(instructions?|directives?|rules?)\s+(follow|override|replace)/i, weight: 0.6, description: "new instructions follow/override" },
+  // Customers write in Russian and Azerbaijani: «забудь свои правила» is the same attack in fewer words.
+  { type: "instruction_override", regex: /(?:^|[\s.,;!?(])(забудь|забудьте|игнорируй|игнорируйте|отбрось|отмени|не\s+соблюдай)\s+(все\s+|всё\s+)?(свои|твои|ваши|эти|системные|данные\s+тебе)\s+(инструкции|правила|команды|указания|ограничения|настройки)/i, weight: 0.8, description: "forget your rules (RU)" },
+  { type: "instruction_override", regex: /(?:^|[\s.,;!?(])(bütün\s+|butun\s+)?(əvvəlki|evvelki|öz|oz|sənin|senin|sistem)\s+(təlimatlar|telimatlar|qaydalar|tapşırıqlar|tapsiriqlar|göstərişlər|gosterisler)\S*\s+(unut|yaddan\s+çıxar|yaddan\s+cixar|nəzərə\s+alma|nezere\s+alma|ləğv\s+et|legv\s+et)/i, weight: 0.8, description: "forget your rules (AZ)" },
+  { type: "instruction_override", regex: /(?:^|[\s.,;!?(])(təlimatlar|telimatlar|qaydalar)\S*\s+(unut|nəzərə\s+alma|nezere\s+alma)/i, weight: 0.8, description: "forget the rules (AZ)" },
 
   // Role hijack
   { type: "role_hijack", regex: /\byou\s+(are\s+now|will\s+(now\s+)?act\s+as|must\s+(now\s+)?(act|behave)\s+(as|like))\s+(?!helpful|the assistant)/i, weight: 0.7, description: "you are now X" },
   // Weight dropped 0.5→0.3: "Imagine you are a sales coach" is legitimate sales-AI coaching use case
   { type: "role_hijack", regex: /\b(pretend|imagine|roleplay|simulate)\s+(you\s+are|to\s+be|that\s+you|that\s+we)\s+/i, weight: 0.3, description: "pretend you are" },
   { type: "role_hijack", regex: /(?:^|[\s.,;!?(])теперь\s+ты\s+(не\s+)?[\wа-яА-Я]+/i, weight: 0.6, description: "now you are X (RU)" },
+  { type: "role_hijack", regex: /(?:^|[\s.,;!?(])(bundan\s+sonra|indi)\s+sən\s+\S+\s*(san|sən|sen)(?=[\s.,;!?]|$)/i, weight: 0.6, description: "now you are X (AZ)" },
 
   // System prompt extraction
   { type: "system_prompt_extraction", regex: /\b(show|reveal|print|repeat|expose|leak|tell|display|output)\s+(me\s+)?(your|the)\s+(system\s+)?(prompt|instructions?|rules?|directive|configuration)/i, weight: 0.9, description: "extract system prompt" },
   // Weight dropped 0.7→0.5: "What are your instructions for closing deals?" — legitimate sales question
   { type: "system_prompt_extraction", regex: /\bwhat\s+(are\s+)?your\s+(system\s+)?(instructions?|rules?|prompt|directives?)\b/i, weight: 0.5, description: "what are your instructions" },
   { type: "system_prompt_extraction", regex: /(?:^|[\s.,;!?(])покажи\s+(мне\s+)?(свой\s+|твой\s+)?(системный\s+)?(промпт|инструкции|правила)/i, weight: 0.8, description: "show system prompt (RU)" },
+  { type: "system_prompt_extraction", regex: /(?:^|[\s.,;!?(])(sistem\s+)?(prompt|təlimat|telimat)\S*\s+(göstər|goster|paylaş|paylas)/i, weight: 0.8, description: "show system prompt (AZ)" },
 
   // Persona override (DAN, developer mode, etc.)
-  { type: "persona_override", regex: /\b(DAN|developer\s+mode|jailbreak|sudo\s+mode|admin\s+mode|god\s+mode|unrestricted\s+mode)\b/i, weight: 0.9, description: "jailbreak persona" },
+  // "DAN" only in capitals: "Dan" is a name, and customers sign with it.
+  { type: "persona_override", regex: /\bDAN\b/, weight: 0.9, description: "jailbreak persona (DAN)" },
+  { type: "persona_override", regex: /\b(developer\s+mode|jailbreak|sudo\s+mode|admin\s+mode|god\s+mode|unrestricted\s+mode)\b/i, weight: 0.9, description: "jailbreak persona" },
   { type: "persona_override", regex: /\bdo\s+anything\s+now\b/i, weight: 0.9, description: "DAN explicit" },
 
   // Delimiter attacks (fake system/user markers) — no \b, brackets aren't word chars
@@ -77,7 +85,8 @@ const PATTERNS: Array<{ type: ThreatType; regex: RegExp; weight: number; descrip
   { type: "delimiter_attack", regex: /```\s*system\b/i, weight: 0.5, description: "system codeblock" },
 
   // Tool abuse / hidden actions
-  { type: "tool_abuse", regex: /\b(without\s+(telling|informing|notifying)\s+(the\s+)?user|silently|behind\s+the\s+user'?s?\s+back|don'?t\s+tell\s+(them|user))\b/i, weight: 0.7, description: "without telling user" },
+  // Not bare "silently": "the device turns off silently" is a customer describing a fault.
+  { type: "tool_abuse", regex: /\b(without\s+(telling|informing|notifying)\s+(the\s+)?user|behind\s+the\s+user'?s?\s+back|don'?t\s+tell\s+(them|user))\b/i, weight: 0.7, description: "without telling user" },
   { type: "tool_abuse", regex: /\b(call|invoke|execute|run)\s+(the\s+)?(tool|function|api)\s+\w+\s+(without|silently)/i, weight: 0.6, description: "silent tool invocation" },
 
   // Data exfiltration
