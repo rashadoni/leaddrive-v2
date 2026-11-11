@@ -59,12 +59,20 @@ describe("help video availability", () => {
 
   it("never offers a parent's film on a screen that has its own address", () => {
     // Shipped and seen on 2026-11-10: the meetings section became four screens,
-    // three of them unrecorded, and every one of them opened the four-minute
-    // tour of /meetings — with a first-visit prompt inviting the person to
-    // watch it. Splitting the section was precisely about not doing that.
+    // three of them unrecorded at the time, and every one of them opened the
+    // four-minute tour of /meetings — with a first-visit prompt inviting the
+    // person to watch it. Splitting the section was precisely about not doing
+    // that.
+    //
+    // The three have their own films since 2026-11-11, so the rule is checked
+    // on the rule and not on today's recordings: with that screen's own entry
+    // ruled out, the answer is silence, never the parent's film.
     for (const path of ["/meetings/services", "/meetings/whatsapp", "/meetings/team"]) {
-      expect(resolveHelpVideoRouteEntry(path)?.routes).toContain(path) // registered…
-      for (const locale of LOCALES) expect(getHelpVideoForPath(path, locale)).toBeNull() // …and silent
+      const own = resolveHelpVideoRouteEntry(path)
+      expect(own?.routes).toContain(path)
+      expect(own?.slug).not.toBe("meetings")
+      expect(resolveHelpVideoRouteEntry(path, (entry) => entry.slug !== own!.slug)).toBeNull()
+      for (const locale of LOCALES) expect(getHelpVideoForPath(path, locale)?.slug ?? own!.slug).toBe(own!.slug)
     }
     // The day screen keeps its own film, which is what /meetings is for.
     expect(getHelpVideoForPath("/meetings", "az")?.slug).toBe("meetings")
