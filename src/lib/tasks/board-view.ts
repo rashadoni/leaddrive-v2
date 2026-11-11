@@ -10,5 +10,8 @@ export type BoardView = "board" | "list" | "calendar" | "notes" | "members" | "r
 
 export const DEFAULT_BOARD_VIEW: BoardView = "list"
 
-/** In tab order (Bordio: Tasks, Calendar, Notes, Members; then the CRM reports). */
-export const BOARD_VIEWS: readonly BoardView[] = ["board", "list", "calendar", "notes", "members", "reports"]
+/**
+ * In tab order (Bordio: Tasks, Calendar, Notes, Members; then the CRM reports).
+ * The list comes first: it is the tab a board opens in (owner, 2026-11-11).
+ */
+export const BOARD_VIEWS: readonly BoardView[] = ["list", "board", "calendar", "notes", "members", "reports"]

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { BOARD_TASKS_PAGE, fetchAllBoardTasks } from "@/lib/tasks/fetch-board-tasks"
+import { BOARD_TASKS_PAGE, fetchAllBoardTasks, fetchAllFolderTasks } from "@/lib/tasks/fetch-board-tasks"
 
 // A board of `total` tasks behind the real paging contract of GET /api/v1/tasks
 // for a board (limit ≤ 1000, offset, data.total). The board used to read one page only.
@@ -53,5 +53,21 @@ describe("fetchAllBoardTasks", () => {
 
     const refused = async () => new Response("{}", { status: 403 })
     await expect(fetchAllBoardTasks("b", refused)).rejects.toThrow("Failed to load tasks (403)")
+  })
+})
+
+describe("fetchAllFolderTasks", () => {
+  it("brings every task of a folder's boards, past the 200 the combined board drew", async () => {
+    const { asked, fetchImpl } = boardOf(2065)
+    const tasks = await fetchAllFolderTasks<{ id: string }>(["s1", "s2"], fetchImpl)
+    expect(tasks).toHaveLength(2065)
+    expect(asked[0]).toBe("/api/v1/tasks?divisionIds=s1%2Cs2&limit=1000&offset=0")
+    expect(asked).toHaveLength(3)
+  })
+
+  it("asks nothing for a folder without boards", async () => {
+    const { asked, fetchImpl } = boardOf(5)
+    expect(await fetchAllFolderTasks([], fetchImpl)).toEqual([])
+    expect(asked).toHaveLength(0)
   })
 })

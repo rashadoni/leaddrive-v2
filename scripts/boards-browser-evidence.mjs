@@ -380,6 +380,18 @@ async function main() {
     await page.close()
     return { title, subtasks: checklist.length }
   })
+  await step('a folder opens as the list of its boards\' tasks, each row naming its board; the kanban is the second tab', async () => {
+    const page = await sessions.clerk.newPage()
+    await page.goto(`/boards/${f.boards.CUSTSERV.id}`, { timeout: 180000 })
+    await page.waitForSelector('[data-testid="task-row-board"]', { timeout: 180000 })
+    const tabs = await page.$$eval('[data-crm-tab]', (els) => els.map((el) => `${el.textContent.trim()}:${el.getAttribute('data-state')}`))
+    assert.deepEqual(tabs, ['Siyahı:active', 'Lövhə:inactive', 'Hesabatlar:inactive'])
+    const text = await page.innerText('body')
+    assert.ok(text.includes(f.tasks.mxOne.title) && text.includes(f.tasks.mxTwo.title), 'a task of the folder is missing from its list')
+    const named = await page.$$eval('[data-testid="task-row-board"]', (els) => els.map((el) => el.textContent.trim()))
+    assert.deepEqual([...new Set(named)], ['11. NOYABR 26 MX'])
+    await page.close()
+  })
   await step('a board link carrying ?q= opens its list already searched, under the board\'s own name', async () => {
     const page = await sessions.boardsOnly.newPage()
     await page.goto(`/boards/${f.boards.DZEYTUN.id}?q=${encodeURIComponent(f.tasks.zeytunOne.title)}`, { timeout: 180000 })

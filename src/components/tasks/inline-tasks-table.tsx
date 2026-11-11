@@ -49,6 +49,8 @@ export interface InlineTask {
   project?: { id: string; name: string; color?: string | null } | null
   customFields?: Record<string, unknown> | null
   checklist?: { completed: boolean }[]
+  /** The board the task lives on — set only by a folder's list, which mixes several boards. */
+  board?: { key: string; name: string; color?: string | null } | null
   _count?: { comments?: number; checklist?: number }
 }
 
@@ -83,7 +85,8 @@ interface Props {
   onToggleSelect: (id: string) => void
   onToggleSelectAll: () => void
   onUpdate: (taskId: string, patch: Record<string, unknown>) => Promise<void>
-  onCreate: (patch: Record<string, unknown>) => Promise<void>
+  /** Absent = no «add task» row (a folder holds no tasks of its own). */
+  onCreate?: (patch: Record<string, unknown>) => Promise<void>
   onDelete: (taskId: string) => void
   onEdit: (task: InlineTask) => void
   onOpenDetail: (taskId: string) => void
@@ -573,7 +576,7 @@ export function InlineTasksTable({
                 </tr>
               ) : groupedByKey && customGroups ? (
                 <>
-                  <AddTaskRow onCreate={onCreate} totalCols={totalCols} />
+                  {onCreate && <AddTaskRow onCreate={onCreate} totalCols={totalCols} />}
                   {customGroups.map((g) => {
                     const rows = groupedByKey.known.get(g.key) ?? []
                     if (g.optional && rows.length === 0) return null
@@ -593,7 +596,7 @@ export function InlineTasksTable({
                 </>
               ) : groupOpenClosed ? (
                 <>
-                  <AddTaskRow onCreate={onCreate} totalCols={totalCols} />
+                  {onCreate && <AddTaskRow onCreate={onCreate} totalCols={totalCols} />}
                   <GroupHeaderRow label={t("openTasks")} count={openTasks.length} collapsed={collapsed.has("open")} onToggle={() => toggleGroup("open")} colSpan={totalCols} />
                   {!collapsed.has("open") && openTasks.map(renderRow)}
                   <GroupHeaderRow label={t("closedTasks")} count={closedTasks.length} collapsed={collapsed.has("closed")} onToggle={() => toggleGroup("closed")} colSpan={totalCols} />
@@ -601,7 +604,7 @@ export function InlineTasksTable({
                 </>
               ) : (
                 <>
-                  <AddTaskRow onCreate={onCreate} totalCols={totalCols} />
+                  {onCreate && <AddTaskRow onCreate={onCreate} totalCols={totalCols} />}
                   {filtered.map(renderRow)}
                 </>
               )}
@@ -737,6 +740,12 @@ function TaskRow({
             onOpen={onOpenDetail}
             className="min-w-0 flex-1 max-w-none"
           />
+          {task.board && (
+            <span data-testid="task-row-board" className="inline-flex max-w-[180px] shrink-0 items-center gap-1 text-[11px] text-muted-foreground" title={task.board.name}>
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: task.board.color || "#6554C0" }} />
+              <span className="truncate">{task.board.name}</span>
+            </span>
+          )}
           {(task._count?.comments ?? 0) > 0 && (
             <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground" title={`${task._count!.comments}`}>
               <MessageSquare className="h-3.5 w-3.5" />
