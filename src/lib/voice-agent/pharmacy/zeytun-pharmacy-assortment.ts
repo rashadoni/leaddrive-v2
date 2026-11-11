@@ -30,11 +30,9 @@ export interface PharmacyAssortment {
 }
 
 /**
- * Where a pharmacy's history comes from. Today: the orders its managers
- * confirmed in the CRM. 1C's `SaleHistory` (ZTNMOBILE) is the source this was
- * built for — it answered empty for three pharmacies on 2026-11-04 and its
- * parameters are not documented (task 5): a source for it goes here once
- * Zeytun's 1C programmer says what `param1` is, never guessed by requests.
+ * Where a pharmacy's history comes from: the orders its managers confirmed
+ * in the CRM, then 1C's own sales (Get_Sales, zeytun-sales-history.ts, read
+ * by a background job into a file per pharmacy; since 2026-11-11).
  */
 export interface AssortmentSource {
   readonly name: string

@@ -59,6 +59,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/voice-session-reaper/ { next }
   /cron-trigger\.sh \/api\/cron\/zeytun-catalog-refresh/ { next }
   /cron-trigger\.sh \/api\/cron\/zeytun-waitlist-callback/ { next }
+  /cron-trigger\.sh \/api\/cron\/zeytun-sales-history/ { next }
   /cron-trigger\.sh \/api\/cron\/voice-call-queues/ { next }
   /cron-trigger\.sh \/api\/cron\/commitment-escalation/ { next }
   /cron-trigger\.sh \/api\/cron\/missed-inbound-reconciliation/ { next }
@@ -125,6 +126,9 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # Owner's queue task 10: the line's AI calls a pharmacy back about products it waited for.
   # A no-op unless the order organization switched it on; one call at most, inside voice hours.
   printf '%s\n' "1-59/5 * * * * $TRIGGER /api/cron/zeytun-waitlist-callback >> $LOG 2>&1"
+  # What 1C sold each pharmacy, for the line's ear (zeytun-sales-history.ts): two minutes of
+  # one-at-a-time Get_Sales requests per tick at most; a no-op without its private connection file.
+  printf '%s\n' "3-59/15 * * * * $TRIGGER /api/cron/zeytun-sales-history >> $LOG 2>&1"
   # Durable AI lead queues advance by at most one state transition per tenant
   # per tick. Dispatch remains a no-op unless both the server execution flag
   # and the tenant's VoIP queue switch are explicitly enabled.
