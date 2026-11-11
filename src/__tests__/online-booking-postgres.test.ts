@@ -1236,13 +1236,17 @@ pgDescribe("online booking on a real Postgres", () => {
       // The price too: a Decimal handed straight to the label reads as nothing.
       expect(message.body).toMatch(/Saç kəsimi, 45 dəq, 25 ₼/)
       // The times are IN the message, not only behind the button: a client who
-      // opens WhatsApp reads «10:00, 11:30 … — which suits you?» and answers.
-      // The body used to end on «Boş vaxtlar:» with nothing after it.
+      // opens WhatsApp reads «12:30, 13:30 or 14:30 — which suits you?» and
+      // answers. The body used to end on «Boş vaxtlar:» with nothing after it.
       expect(message.body).not.toMatch(/(vaxtlar|Boş vaxtlar):\s*$/)
       expect(message.body.trimEnd().endsWith("Hansı sizə uyğundur?"), message.body).toBe(true)
-      for (const row of message.rows.slice(0, 6)) {
-        expect(message.body, "the message names the time the row offers").toContain(row.title)
-      }
+      // Three at most, and a sentence: the clock alone, joined by «və ya», with
+      // the day written once above them. Six times with the date repeated on
+      // each was four lines on a phone (owner, 2026-11-11).
+      const spoken = message.body.split("\n").find((line) => /\d{1,2}:\d{2}/.test(line))!
+      expect(spoken, message.body).toMatch(/^[^0-9]*\d{1,2}:\d{2}(, \d{1,2}:\d{2})*( və ya \d{1,2}:\d{2})?$/)
+      expect(spoken.match(/\d{1,2}:\d{2}/g)!.length).toBeLessThanOrEqual(3)
+      expect(message.body).toContain(message.rows[0].title.replace(/^\d+\.\d+ /, ""))
       expect(message.footer).toBe("Vaxt 15 dəqiqə sizin üçün saxlanılır")
       expect(message.buttonLabel).toBe("Vaxt seçin")
       expect(message.rows.length).toBeGreaterThan(3)
