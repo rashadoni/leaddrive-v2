@@ -50,10 +50,13 @@ async function click(element: Element | null | undefined) {
   await act(async () => { (element as HTMLElement).click() })
   await flush()
 }
+const tile = (label: string) => all("agent-clients-start-choice").find(button => button.textContent?.startsWith(label))
 async function chooseTerapevt() {
-  await click(byTestId("agent-clients-specialty"))
-  const option = [...document.body.querySelectorAll('[data-testid="agent-clients-specialty-options"] label')].find(label => label.textContent?.includes("Terapevt"))
-  await click(option?.querySelector("button,input"))
+  await click(tile("Terapevt"))
+}
+/** On the page's «attach» nobody is ticked until somebody ticks (owner, 2026-11-11). */
+async function tickEveryone() {
+  await click(byTestId("agent-clients-check-all"))
 }
 
 beforeEach(async () => {
@@ -95,29 +98,32 @@ describe("the agent's «attach» list, one row a doctor", () => {
     await render()
     await chooseTerapevt()
 
-    // Column by column: the doctor and his specialty, his class, where he works, whose he is.
+    // Column by column: the doctor and his specialty, his class, where he works, whose he is now.
     const text = all("agent-clients-doctor").map(row => [...row.children].slice(1).map(cell => cell.textContent).join(" | "))
     expect(text).toEqual([
       // «2 saylı» before «19 saylı»; the doctor without an institution last.
-      "Fictional AbbasovaTerapevt | A | 2 saylı Fictional PoliklinikaBakı · Fictional pr. 1 | ",
-      "Fictional ZeynalovaTerapevt | VIP | 19 saylı Fictional PoliklinikaYasamal · Fictional küç. 25 | artıq: Fictional Colleague",
-      "Fictional MəmmədliTerapevt | B | Müəssisəsiz | ",
+      "Fictional AbbasovaTerapevt | A | 2 saylı Fictional PoliklinikaBakı · Fictional pr. 1 | —",
+      "Fictional ZeynalovaTerapevt | VIP | 19 saylı Fictional PoliklinikaYasamal · Fictional küç. 25 | Fictional Colleague",
+      "Fictional MəmmədliTerapevt | B | Müəssisəsiz | —",
     ])
-    expect(byTestId("agent-clients-head")?.textContent).toBe("HəkimKateqoriyaİş yeriAgentlər")
+    expect(byTestId("agent-clients-head")?.textContent).toBe("HəkimKateqoriyaİş yeriHazırda kimdədir")
     expect(byTestId("agent-clients-summary")?.textContent).toContain("3 həkim tapıldı, 2 müəssisədə")
-    // Every doctor is ticked and seen: no institution to open first.
-    expect(all("agent-clients-doctor-tick").every(tick => tick.getAttribute("aria-checked") === "true")).toBe(true)
+    // Nobody is ticked until somebody ticks: a reload must not read as «added».
+    expect(all("agent-clients-doctor-tick").every(tick => tick.getAttribute("aria-checked") === "false")).toBe(true)
+    expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe("Seçilənləri təyin et (0)")
+    expect(byTestId("mtm-agent-attach-submit")?.hasAttribute("disabled")).toBe(true)
+    await tickEveryone()
     expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe("Seçilənləri təyin et (3)")
   })
 
-  it("takes a doctor out by his name as well as by his box", async () => {
+  it("ticks a doctor by his name as well as by his box", async () => {
     rows = [doctor("d1", "Fictional Aliyeva", place("c1", "Fictional Clinic")), doctor("d2", "Fictional Babayev", place("c1", "Fictional Clinic"))]
     await render()
     await chooseTerapevt()
 
     const babayev = all("agent-clients-doctor").find(row => row.textContent?.includes("Fictional Babayev"))!
     await click([...babayev.querySelectorAll("span")].find(span => span.textContent === "Fictional Babayev"))
-    expect(babayev.querySelector('[role="checkbox"]')?.getAttribute("aria-checked")).toBe("false")
+    expect(babayev.querySelector('[role="checkbox"]')?.getAttribute("aria-checked")).toBe("true")
     expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe("Seçilənləri təyin et (1)")
   })
 
@@ -129,7 +135,8 @@ describe("the agent's «attach» list, one row a doctor", () => {
 
     expect(all("agent-clients-doctor")).toHaveLength(100)
     expect(byTestId("agent-clients-show-more")?.textContent).toBe("Daha 100 həkim göstər · 150 qalıb")
-    // The rows not drawn yet are ticked like the rest.
+    // «Hamısını seç» ticks the rows not drawn yet as well.
+    await tickEveryone()
     expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe("Seçilənləri təyin et (250)")
 
     await click(byTestId("agent-clients-show-more"))
@@ -154,12 +161,13 @@ describe("the first step, before anything is chosen", () => {
   ]
   const choices = () => all("agent-clients-start-choice").map(button => button.textContent)
 
-  it("offers every specialty with its count, and «Hamısı», instead of an empty frame", async () => {
+  // Owner, 2026-11-11: the specialties as tiles with their counts, and how many are the agent's already.
+  it("offers every specialty as a tile with its count, and «Hamısı», instead of an empty frame", async () => {
     rows = company()
     await render()
 
-    expect(byTestId("agent-clients-specialty")?.textContent).toBe("Seçin")
-    expect(choices()).toEqual(["Terapevt2 həkim", "Qastroenteroloq1 həkim", "Göstərilməyib1 həkim", "Hamısı4 həkim"])
+    expect(choices()).toEqual(["Hamısı4artıq agentdə: 1", "Terapevt2artıq agentdə: 0", "Qastroenteroloq1artıq agentdə: 0", "Göstərilməyib1artıq agentdə: 1"])
+    expect(all("agent-clients-start-choice").every(button => button.getAttribute("aria-pressed") === "false")).toBe(true)
     // Still nobody listed and nobody ticked: a card opened and closed takes no one along.
     expect(all("agent-clients-doctor")).toHaveLength(0)
     // Nothing to apply yet, so no button: it stands in the line with the counts (owner, 2026-11-11).
@@ -169,33 +177,30 @@ describe("the first step, before anything is chosen", () => {
   it("lists the doctors of a specialty after one press on it", async () => {
     rows = company()
     await render()
-    await click(all("agent-clients-start-choice").find(button => button.textContent?.startsWith("Terapevt")))
+    await click(tile("Terapevt"))
 
-    expect(byTestId("agent-clients-specialty")?.textContent).toBe("Terapevt")
+    expect(tile("Terapevt")?.getAttribute("aria-pressed")).toBe("true")
     expect(all("agent-clients-doctor").map(row => row.querySelector('[role="checkbox"]')?.getAttribute("aria-label"))).toEqual(["Fictional Terapevt One", "Fictional Terapevt Two"])
+    await tickEveryone()
     expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe("Seçilənləri təyin et (2)")
   })
 
-  it("lists everyone on «Hamısı» — the button, and the same word in the step's own list", async () => {
+  it("lists everyone on «Hamısı», the agent's own doctor shown as his and not offered again", async () => {
     rows = company()
     await render()
-    await click(all("agent-clients-start-choice").find(button => button.textContent?.startsWith("Hamısı")))
+    await click(tile("Hamısı"))
 
-    expect(byTestId("agent-clients-specialty")?.textContent).toBe("Hamısı")
+    expect(tile("Hamısı")?.getAttribute("aria-pressed")).toBe("true")
     expect(all("agent-clients-doctor")).toHaveLength(4)
-    // The agent's own doctor is listed ticked and is not sent again.
+    // His own doctor: ticked, locked, marked as his — taking off lives on his own tab.
+    const mine = all("agent-clients-doctor").find(row => row.textContent?.includes("Fictional Nobody Knows"))!
+    expect(mine.querySelector('[role="checkbox"]')?.hasAttribute("disabled")).toBe(true)
+    expect(mine.textContent).toContain("artıq agentdədir")
+    await tickEveryone()
     expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe("Seçilənləri təyin et (3)")
     // Every specialty went to the server as «no filter», never as a list of values.
     const asked = new URL(String(fetchMock.mock.calls.at(-1)?.[0]), "http://x").searchParams
     expect(asked.getAll("specialty")).toEqual([])
-
-    await act(async () => { root.unmount() })
-    root = createRoot(container)
-    await render()
-    await click(byTestId("agent-clients-specialty"))
-    await click([...document.body.querySelectorAll('[data-testid="agent-clients-specialty-options"] button')].find(button => button.textContent?.startsWith("Hamısı")))
-    expect(all("agent-clients-doctor")).toHaveLength(4)
-    expect(byTestId("agent-clients-specialty")?.textContent).toBe("Hamısı")
   })
 })
 
@@ -209,8 +214,8 @@ describe("the fourth step, the class", () => {
       doctor("d3", "Fictional Cavadova", clinic, "B"),
     ]
     await render()
-    // Nothing to choose before the specialty: the step waits like the place.
-    expect(byTestId("agent-clients-class")?.hasAttribute("disabled")).toBe(true)
+    // Nothing to narrow before the specialty: the place and the class come with the doctors.
+    expect(byTestId("agent-clients-class")).toBeNull()
     await chooseTerapevt()
     expect(all("agent-clients-doctor-class").map(cell => cell.textContent)).toEqual(["VIP", "B", "B"])
 
@@ -221,6 +226,7 @@ describe("the fourth step, the class", () => {
     await click(options().find(option => option.textContent?.startsWith("VIP"))?.querySelector("button,input"))
 
     expect(all("agent-clients-doctor").map(row => row.querySelector('[role="checkbox"]')?.getAttribute("aria-label"))).toEqual(["Fictional Aliyeva"])
+    await tickEveryone()
     expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe("Seçilənləri təyin et (1)")
     expect(new URL(String(fetchMock.mock.calls.at(-1)?.[0]), "http://x").searchParams.getAll("class")).toEqual(["VIP"])
   })

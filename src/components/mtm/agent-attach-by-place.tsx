@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { AlertCircle, Loader2, UserMinus, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Hint } from "@/components/hint"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { MtmAgentClientPicker, announceDoctorChanges, type AgentClientChoice } from "@/components/mtm/agent-client-picker"
+import { MtmAgentPanelHead } from "@/components/mtm/agent-panel-head"
 import { changeAgentDoctors } from "@/lib/mtm/assign-agent-doctors"
 
 /**
@@ -17,9 +18,11 @@ import { changeAgentDoctors } from "@/lib/mtm/assign-agent-doctors"
  * the agent, asked once more with the count («нет возможности снимать
  * галочки»). What changed stays in sight: the list is asked again.
  */
-export function MtmAgentAttachByPlace({ agentId, agentName, onAttached, onForbidden }: {
+export function MtmAgentAttachByPlace({ agentId, agentName, onAttached, onForbidden, switcher }: {
   agentId: string
   agentName: string
+  /** «By specialty / whole list», in the corner of the card. */
+  switcher?: ReactNode
   onAttached: () => void
   onForbidden: () => void
 }) {
@@ -76,8 +79,10 @@ export function MtmAgentAttachByPlace({ agentId, agentName, onAttached, onForbid
   )
 
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-card p-4" data-testid="mtm-agent-attach-by-place">
-      <MtmAgentClientPicker agentId={agentId} onChange={setChoice} refresh={refresh} onForbidden={onForbidden} actions={actions} />
+    <div className="space-y-5 rounded-2xl border border-border bg-card p-5" data-testid="mtm-agent-attach-panel">
+      <MtmAgentPanelHead title={t("attachPanelTitle")} body={t("attachPanelBody", { name: agentName })} switcher={switcher} />
+      {/* Nobody ticked until somebody ticks; his own doctors are shown as his — taking off lives on his own tab. */}
+      <MtmAgentClientPicker agentId={agentId} startUnticked lockOwn onChange={setChoice} refresh={refresh} onForbidden={onForbidden} actions={actions} />
       {error ? (
         <p role="alert" className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{error}

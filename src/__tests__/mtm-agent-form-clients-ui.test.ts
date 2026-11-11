@@ -108,16 +108,15 @@ describe("agent card — choosing the agent's doctors", () => {
     await type("name", "Fictional New Agent")
     await type("phone", "+994501112233")
     await click(byTestId("agent-form-tab-clients"))
-    await click(byTestId("agent-clients-specialty"))
-    const terapevt = [...document.body.querySelectorAll<HTMLLabelElement>('[data-testid="agent-clients-specialty-options"] label')].find(label => label.textContent?.includes("Terapevt"))!
-    await click(terapevt.querySelector("input"))
+    // The specialties are tiles with their counts (owner, 2026-11-11).
+    await click(all("agent-clients-start-choice").find(tile => tile.textContent?.startsWith("Terapevt")))
     expect(calls().some(call => call.url.includes("specialty=terapevt"))).toBe(true)
 
     // Every doctor found is on the screen, ticked, without opening anything.
     expect(all("agent-clients-doctor-tick").map(tick => tick.getAttribute("aria-checked"))).toEqual(["true", "true", "true"])
     const babayev = all("agent-clients-doctor").find(row => row.textContent?.includes("Fictional Babayev"))!
-    // The doctor's other agent is named on the row (the stub translator shows the template).
-    expect(babayev.textContent).toContain("уже у:")
+    // The doctor's other agent is named on the row, as a chip.
+    expect(babayev.textContent).toContain("Fictional Other")
     await click(babayev.querySelector('[role="checkbox"]'))
     expect(babayev.querySelector('[role="checkbox"]')?.getAttribute("aria-checked")).toBe("false")
     expect(byTestId("agent-form-submit")?.textContent).toBe(ru.mtmForms.createAndAssign)
@@ -145,8 +144,7 @@ describe("agent card — choosing the agent's doctors", () => {
     })
     await render({ id: "a1", name: "Fictional Agent", phone: "+994501112233", role: "AGENT", status: "ACTIVE" })
     await click(byTestId("agent-form-tab-clients"))
-    await click(byTestId("agent-clients-specialty"))
-    await click([...document.body.querySelectorAll<HTMLLabelElement>('[data-testid="agent-clients-specialty-options"] label')][0].querySelector("input"))
+    await click(all("agent-clients-start-choice")[1])
     const aliyeva = all("agent-clients-doctor").find(row => row.textContent?.includes("Fictional Aliyeva"))!
     expect(aliyeva.textContent).toContain(ru.mtmForms.clientsAlreadyHere)
     expect(aliyeva.querySelector<HTMLButtonElement>('[role="checkbox"]')?.getAttribute("aria-checked")).toBe("true")
@@ -173,8 +171,7 @@ describe("agent card — choosing the agent's doctors", () => {
     })
     await render({ id: "a1", name: "Fictional Agent", phone: "+994501112233", role: "AGENT", status: "ACTIVE" })
     await click(byTestId("agent-form-tab-clients"))
-    await click(byTestId("agent-clients-specialty"))
-    await click([...document.body.querySelectorAll<HTMLLabelElement>('[data-testid="agent-clients-specialty-options"] label')][0].querySelector("input"))
+    await click(all("agent-clients-start-choice")[1])
     expect(byTestId("agent-form-submit")?.textContent).toBe(ru.common.update)
 
     const babayev = all("agent-clients-doctor").find(row => row.textContent?.includes("Fictional Babayev"))!
