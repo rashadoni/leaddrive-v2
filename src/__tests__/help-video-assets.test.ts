@@ -62,9 +62,20 @@ describe("help video availability", () => {
     // three of them unrecorded, and every one of them opened the four-minute
     // tour of /meetings — with a first-visit prompt inviting the person to
     // watch it. Splitting the section was precisely about not doing that.
-    for (const path of ["/meetings/services", "/meetings/whatsapp", "/meetings/team"]) {
+    // Since #1529 (2026-11-11) each of the three has its own short film, in
+    // Azerbaijani: that one is offered, the parent's never — and in a language
+    // the screen's own film was not recorded in, nothing.
+    for (const [path, slug] of [
+      ["/meetings/services", "meetings-services"],
+      ["/meetings/whatsapp", "meetings-whatsapp"],
+      ["/meetings/team", "meetings-team"],
+    ] as const) {
       expect(resolveHelpVideoRouteEntry(path)?.routes).toContain(path) // registered…
-      for (const locale of LOCALES) expect(getHelpVideoForPath(path, locale)).toBeNull() // …and silent
+      expect(getHelpVideoForPath(path, "az")?.slug).toBe(slug) // …with its own film
+      for (const locale of LOCALES) {
+        expect(getHelpVideoForPath(path, locale)?.slug).not.toBe("meetings") // never the parent's
+        if (locale !== "az") expect(getHelpVideoForPath(path, locale)).toBeNull()
+      }
     }
     // The day screen keeps its own film, which is what /meetings is for.
     expect(getHelpVideoForPath("/meetings", "az")?.slug).toBe("meetings")
