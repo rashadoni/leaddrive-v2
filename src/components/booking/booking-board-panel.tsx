@@ -124,20 +124,27 @@ export function BookingBoardPanel({ hosts }: { hosts: { id: string; name: string
       </div>
       <div className="space-y-1">
         <Label>{t("boardColumns")}</Label>
-        <div className="flex overflow-hidden rounded-lg border border-input" role="group" aria-label={t("boardColumns")}>
+        {/* The choice is a layout, so it is shown as one: three tiles of the
+            screen itself rather than the digits 1, 2 and 4. */}
+        <div className="flex gap-2" role="group" aria-label={t("boardColumns")}>
           {BOARD_COLUMNS.map((count) => <button
             key={count}
             type="button"
             aria-pressed={draft.columns === count}
+            aria-label={t("boardColumnsOf", { count })}
             onClick={() => setDraft({ ...draft, columns: count })}
-            className={cn("min-h-11 min-w-11 px-4 text-sm font-medium transition-colors",
-              draft.columns === count ? "bg-primary/10 text-primary" : "hover:bg-muted")}
-          >{count}</button>)}
+            className={cn("flex min-h-11 items-center gap-1 rounded-lg border p-2 transition-colors",
+              draft.columns === count ? "border-primary bg-primary/5" : "border-input hover:bg-muted")}
+          >
+            <span className="flex h-6 gap-0.5" aria-hidden="true">
+              {Array.from({ length: count }, (ignored, index) => <span
+                key={index}
+                className={cn("w-2 rounded-[2px]", draft.columns === count ? "bg-primary/60" : "bg-muted-foreground/35")}
+              />)}
+            </span>
+            <span className="text-sm font-medium tabular-nums">{count}</span>
+          </button>)}
         </div>
-      </div>
-      <div className="ml-auto flex items-center gap-2">
-        <Button disabled={busy || !draft.title.trim()} onClick={() => void save()}>{t("save")}</Button>
-        <Button variant="ghost" disabled={busy} onClick={() => setEditing(null)}>{t("cancel")}</Button>
       </div>
     </div>
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
@@ -160,42 +167,61 @@ export function BookingBoardPanel({ hosts }: { hosts: { id: string; name: string
       />
     </div>
     <p className="text-xs text-muted-foreground">{t("boardWhoHint")}</p>
+    <div className="flex items-center gap-2 border-t pt-3">
+      <Button disabled={busy || !draft.title.trim()} onClick={() => void save()}>{t("save")}</Button>
+      <Button variant="ghost" disabled={busy} onClick={() => setEditing(null)}>{t("cancel")}</Button>
+    </div>
   </div>
 
   return <section className="rounded-xl border border-border bg-card p-5 text-card-foreground">
-    <header className="mb-1 flex items-center gap-2">
-      <Monitor className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-      <h2 className="font-medium">{t("boardTitle")}</h2>
+    <header className="mb-4 flex flex-wrap items-start gap-3">
+      <Monitor className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <div className="min-w-0">
+        <h2 className="font-medium">{t("boardTitle")}</h2>
+        <p className="mt-0.5 max-w-xl text-sm text-muted-foreground">{t("boardHint")}</p>
+      </div>
+      {editing === "new" ? null : <Button className="ml-auto" variant="outline" disabled={busy} onClick={() => open("new")}>{t("boardCreate")}</Button>}
     </header>
-    <p className="mb-4 text-sm text-muted-foreground">{t("boardHint")}</p>
 
     <ul className="space-y-2">
-      {(links ?? []).map((link) => <li key={link.id} className="rounded-lg border border-border px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium">{link.title}</span>
-          <span className="text-xs text-muted-foreground">
-            {t("boardColumnsOf", { count: link.columns })} · {link.hostIds.length ? t("hostsCount", { count: link.hostIds.length }) : t("waRulesSumHostsAll")}
+      {(links ?? []).map((link) => <li key={link.id} className="rounded-xl border border-border p-3">
+        <div className="flex flex-wrap items-start gap-3">
+          {/* The layout, at a glance: this screen is two columns wide. */}
+          <span className="mt-0.5 flex h-8 shrink-0 gap-0.5 rounded-md bg-muted p-1.5" aria-hidden="true">
+            {Array.from({ length: link.columns }, (ignored, index) => <span key={index} className="w-1.5 rounded-[2px] bg-muted-foreground/40" />)}
           </span>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" disabled={busy} onClick={() => open(editing === link.id ? null : link.id, link)}>{t("edit")}</Button>
-            <Button variant="ghost" size="sm" onClick={() => void copy(link.url)}>
-              {copied === link.url ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
-              {copied === link.url ? t("linkCopied") : t("copyLink")}
-            </Button>
-            <Button variant="ghost" size="sm" asChild><a href={link.url} target="_blank" rel="noopener noreferrer">{t("openPage")}</a></Button>
-            <Button variant="ghost" size="sm" disabled={busy} onClick={() => void revoke(link.id)}>{t("boardRevoke")}</Button>
+          <div className="min-w-0">
+            <p className="truncate font-medium">{link.title}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {t("boardColumnsOf", { count: link.columns })} · {link.hostIds.length ? t("hostsCount", { count: link.hostIds.length }) : t("waRulesSumHostsAll")}
+            </p>
+          </div>
+          <div className="ml-auto flex flex-wrap items-center gap-1">
+            <Button variant="outline" size="sm" asChild><a href={link.url} target="_blank" rel="noopener noreferrer">{t("openPage")}</a></Button>
+            <Button variant="ghost" size="sm" disabled={busy} onClick={() => open(editing === link.id ? null : link.id, link)}>{t("edit")}</Button>
+            {/* Putting a screen out is apart from the rest: it is the one
+                action nobody takes back from the monitor's side. */}
+            <span aria-hidden="true" className="mx-1 h-5 w-px bg-border" />
+            <Button variant="ghost" size="sm" disabled={busy} onClick={() => void revoke(link.id)} className="text-muted-foreground hover:text-destructive">{t("boardRevoke")}</Button>
           </div>
         </div>
         {/* The address never changes while the screen is edited — that is the
             whole point of editing it rather than making a second one. */}
-        <p className="mt-1 break-all text-xs text-muted-foreground">{link.url.replace(/^https?:\/\//, "")}</p>
+        <div className="mt-2 flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-1.5">
+          <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">{link.url.replace(/^https?:\/\//, "")}</span>
+          <Button variant="ghost" size="sm" className="shrink-0" onClick={() => void copy(link.url)}>
+            {copied === link.url ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
+            {copied === link.url ? t("linkCopied") : t("copyLink")}
+          </Button>
+        </div>
         {editing === link.id ? form : null}
       </li>)}
     </ul>
 
-    {editing === "new"
-      ? form
-      : <Button className="mt-3" variant="outline" disabled={busy} onClick={() => open("new")}>{t("boardCreate")}</Button>}
+    {editing === "new" ? form : null}
+    {links?.length === 0 && editing !== "new"
+      ? <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">{t("boardEmpty")}</p>
+      : null}
     {error ? <p role="alert" className="mt-2 text-sm text-destructive">{error}</p> : null}
   </section>
 }

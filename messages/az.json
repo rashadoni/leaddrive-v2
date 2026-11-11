@@ -32171,6 +32171,7 @@
     "boardWho": "Kim görünür",
     "boardWhoHint": "Seçilməyibsə — həmin gün görüşü olan hamı. Sütundan çox seçilibsə, növbə ilə göstərilir.",
     "boardCreate": "Yeni ekran",
+    "boardEmpty": "Hələ ekran yoxdur. Yaradın və linki monitorda açın.",
     "boardRevoke": "Söndür",
     "coordinatorTitle": "Görüşləri kim əlaqələndirir",
     "coordinatorHint": "Əməkdaş öz görüşlərini görür. Burada koordinatora seçilmiş həmkarların görüşlərinə giriş verə bilərsiniz.",
