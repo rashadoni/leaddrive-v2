@@ -29,7 +29,7 @@ import { isUngroundedOffer, offerFactsFrom } from "@/lib/ai/offer-grounding"
 import { sanitizeForPrompt } from "@/lib/sanitize"
 import { hmacToken } from "@/lib/secure-token"
 import { dateInputValueInTimezone, getOffsetMinutes } from "@/lib/timezone"
-import { sendWhatsAppButtons, sendWhatsAppList, sendWhatsAppMessage, type WhatsAppListRow, type WhatsAppReplyButton } from "@/lib/whatsapp"
+import { sendWhatsAppButtons, sendWhatsAppFlow, sendWhatsAppList, sendWhatsAppMessage, type WhatsAppListRow, type WhatsAppReplyButton } from "@/lib/whatsapp"
 import { computeSlots, type Slot } from "./availability"
 import { activeHosts, loadBusyByHost, orgContext } from "./book"
 import { BookingCommandError } from "./command-error"
@@ -41,6 +41,7 @@ import { servicePriceLabel } from "./service"
 import { clock, dayLabel, shortDayLabel, type ReplyLanguage } from "./whatsapp-format"
 export { clock, dayLabel, type ReplyLanguage } from "./whatsapp-format"
 import { OFFER_HOLD_MINUTES, readWhatsAppBookingSetting } from "./whatsapp-setting"
+import { BOOKING_FLOW_SCREEN } from "./whatsapp-flow"
 import { autonomyVerdict, type AutonomyReason, type AutonomyRules } from "./whatsapp-rules"
 
 // ─── Choosing three times out of a day ──────────────────────────────────────
@@ -355,6 +356,8 @@ const OFFER_PREFIX = "bk:"
 const DAYS_PREFIX = "bkd:"
 const DAY_PREFIX = "bkday:"
 const ANSWER_PREFIX = "bq:"
+/** Ours, and only ours: Meta returns it inside a submitted form, untouched. */
+const FLOW_TOKEN_PREFIX = "bkflow:"
 
 export interface BookingTurnInput {
   organizationId: string
@@ -539,6 +542,40 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
   const otherDay = { id: `${DAYS_PREFIX}${service.id}`, title: words.otherDay, description: null }
   rows.push(otherDay)
   sections.push({ title: "", rowIds: [otherDay.id] })
+  // Inside WhatsApp, a FORM instead of a menu — when this number has one
+  // published («Форма в WhatsApp» on the settings screen). The times become
+  // radio buttons and the name a field already filled with the one WhatsApp
+  // knows, so a booking is one tap and one «Təsdiqlə» (owner, 2026-11-11:
+  // «telegram намного красивее можно оформлять формы»). The times travel with
+  // the message, so one published form serves every service, master and day.
+  // A number without a form — and any refusal of this one — falls to the list
+  // below, which is what every number had before and still has.
+  const flowId = await publishedFlowId(input.organizationId)
+  if (flowId) {
+    // Every item carries a second line: Meta renders an item without one as a
+    // blank row. The master's name when there is one, the day otherwise —
+    // inside the form there are no headings to group the days under.
+    const times = choices.map((choice, index) => ({
+      id: `${OFFER_PREFIX}${offers[index].id}`,
+      title: offerRowTitle(choice, context.timezone, withDay),
+      description: hostName(offers[index].hostUserId) || shortDayLabel(choice.startsAt, request.language, context.timezone),
+    }))
+    // The rest of the calendar, from inside the form: the id is the one the
+    // menu row carries, so the tap arrives at the same handler.
+    times.push({ id: otherDay.id, title: words.otherDay, description: words.pickDay })
+    const sent = await sendWhatsAppFlow({
+      to: input.waPhone, body, footer: words.hold, flowId, cta: words.pick,
+      // Meta hands this back untouched inside the submission; it is the only
+      // thing in it that says which conversation the form was opened from.
+      flowToken: `${FLOW_TOKEN_PREFIX}${input.conversationId}`,
+      screen: BOOKING_FLOW_SCREEN,
+      data: { service: what, times, client: input.senderName.trim() },
+      organizationId: input.organizationId, channelConfigId: input.channelConfigId, conversationId: input.conversationId,
+      contactId: input.contactId, leadId: input.leadId,
+      extraMetadata: { aiAutoReply: true, bookingAgent: true },
+    })
+    if (sent.success) return true
+  }
   if (await sendList(input, body, rows, words.pick, words.free[request.partOfDay], words.hold, sections)) return true
   // A number whose provider refuses interactive lists still gets a choice:
   // the three nearest times as buttons, the shape that worked before.
@@ -547,6 +584,20 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
     title: offerButtonTitle(choices[index], hostName(offer.hostUserId), context.timezone, withDay),
   }))
   return sendButtons(input, body, buttons, words.hold)
+}
+
+/**
+ * The published form this number may show, if any.
+ *
+ * Read here rather than handed down through the four places that send an
+ * offer: the one that forgot would fall back to the list in silence, and
+ * nothing on any screen would say why the form had stopped appearing. Written
+ * only by the publish step, and only for a form Meta reports as PUBLISHED
+ * (src/lib/booking/whatsapp-flow.ts).
+ */
+async function publishedFlowId(organizationId: string): Promise<string | null> {
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId }, select: { settings: true } })
+  return readWhatsAppBookingSetting(organization?.settings).flowId
 }
 
 /**

@@ -28,7 +28,18 @@ vi.mock("@/lib/whatsapp", () => ({
   WHATSAPP_GRAPH_API_BASE: "https://graph.facebook.com/v21.0",
 }))
 
-const { deleteBookingFlow, flowsCapability, bookingFlowJson, BOOKING_FLOW_NAME } = await import("@/lib/booking/whatsapp-flow")
+/**
+ * Which form the agent may send is one key in the organisation's settings,
+ * written by this module and by nothing else. Here it is only watched: what
+ * it writes, and when, is the difference between a published form and a form
+ * clients never see.
+ */
+const setting = vi.fn(async () => 1)
+vi.mock("@/lib/booking/db", () => ({ bookingDb: { $executeRawUnsafe: setting } }))
+/** What the last write recorded in `flowId`, as JSON. */
+const lastWritten = () => setting.mock.calls.at(-1)?.[2]
+
+const { deleteBookingFlow, ensureBookingFlow, flowTap, flowsCapability, bookingFlowJson, BOOKING_FLOW_NAME } = await import("@/lib/booking/whatsapp-flow")
 
 const CONFIG = { accessToken: "tok", phoneNumberId: "pn", businessAccountId: "waba-1" }
 
@@ -164,6 +175,40 @@ describe("the form a client fills in", () => {
   })
 })
 
+describe("what the agent is allowed to send", () => {
+  /** Meta answers every step «ok» and lists the form with this status. */
+  const setupEnding = (status: string) => vi.stubGlobal("fetch", vi.fn(async (url: string) => ({
+    ok: true, status: 200,
+    json: async () => url.includes("/flows?")
+      ? { data: [{ id: "77", name: BOOKING_FLOW_NAME, status, categories: [] }] }
+      : { success: true },
+  })))
+
+  it("writes down a published form, because that is the one clients can open", async () => {
+    setupEnding("PUBLISHED")
+
+    const result = await ensureBookingFlow("org-1")
+
+    expect(result.ok).toBe(true)
+    expect(result.flowId).toBe("77")
+    expect(lastWritten()).toBe(JSON.stringify("77"))
+    expect(result.steps.find((step) => step.step === "remember")).toMatchObject({ ok: true })
+  })
+
+  it("writes down nothing while Meta still calls it a draft", async () => {
+    // Every call can answer «ok» and the form still not be publishable — that
+    // is exactly what happened on 2026-11-11, when `init-value` inside a
+    // TextInput left it a DRAFT. A form sent in that state opens as an error
+    // on the client's phone, so the agent must go on sending the list.
+    setupEnding("DRAFT")
+
+    const result = await ensureBookingFlow("org-1")
+
+    expect(result.ok).toBe(false)
+    expect(lastWritten()).toBe("null")
+  })
+})
+
 describe("taking the form back off an account", () => {
   // It was created on the wrong tenant once (2026-11-11), and the only way out
   // must not be somebody's Meta console.
@@ -179,6 +224,10 @@ describe("taking the form back off an account", () => {
     expect(await deleteBookingFlow("org-1")).toEqual({ ok: true, detail: JSON.stringify({ success: true }) })
     expect(calls.at(-1)).toMatchObject({ method: "DELETE" })
     expect(calls.at(-1)!.url).toContain("/77")
+    // And the agent stops sending it in the same breath: a form deleted at
+    // Meta but still named in the settings is a message that fails for every
+    // client until somebody notices.
+    expect(lastWritten()).toBe("null")
   })
 
   it("refuses to delete a published one, and says why", async () => {
@@ -196,5 +245,38 @@ describe("taking the form back off an account", () => {
     answers({ data: [] })
 
     expect(await deleteBookingFlow("org-1")).toEqual({ ok: true, detail: "nothing to delete" })
+  })
+})
+
+describe("a form that comes back", () => {
+  /** How Meta delivers a submitted form: one JSON string inside `nfm_reply`. */
+  const submission = (answers: Record<string, unknown>) => ({
+    type: "nfm_reply",
+    nfm_reply: { response_json: JSON.stringify(answers), body: "Sent", name: "flow" },
+  })
+
+  it("is the time the client picked and the name they typed", () => {
+    // The id is the one the menu row carries, so the tap lands in the handler
+    // that already books — the form adds a way in, not a second code path.
+    expect(flowTap(submission({ flow_token: "bkflow:conv-1", time: "bk:offer-9", client: "Günel" })))
+      .toEqual({ replyId: "bk:offer-9", name: "Günel" })
+  })
+
+  it("leaves the name alone when the form came back without one", () => {
+    // Then the client keeps the name WhatsApp knows them by; an empty string
+    // overwriting it is how a meeting ends up booked for nobody.
+    expect(flowTap(submission({ time: "bkd:service-3", client: "   " })))
+      .toEqual({ replyId: "bkd:service-3", name: null })
+  })
+
+  it("is nothing at all for a message that is not a form", () => {
+    // A tapped row, a tapped button, a plain text: all already understood
+    // elsewhere, and none of them must be read as a submission.
+    expect(flowTap({ type: "list_reply", list_reply: { id: "bk:offer-9", title: "12:30" } })).toBeNull()
+    expect(flowTap(undefined)).toBeNull()
+    expect(flowTap({ nfm_reply: { response_json: "{not json" } })).toBeNull()
+    // A form with no time in it books nothing: an answer whose shape we do
+    // not recognise is not an answer.
+    expect(flowTap(submission({ client: "Günel" }))).toBeNull()
   })
 })
