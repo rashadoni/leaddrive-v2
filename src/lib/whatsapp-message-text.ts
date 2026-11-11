@@ -26,6 +26,8 @@ export type WaMessageTextPayload = {
   reaction?: { emoji?: unknown }
   button?: { text?: unknown }
   interactive?: {
+    /** Meta's own name for the kind of reply — carried, like `type` above. */
+    type?: unknown
     button_reply?: { title?: unknown }
     list_reply?: { title?: unknown }
     /** A form filled inside WhatsApp (Flows); its answers are one JSON string. */
