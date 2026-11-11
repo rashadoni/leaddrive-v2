@@ -25,7 +25,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { NextIntlClientProvider, type AbstractIntlMessages } from "next-intl"
 import { MtmAgentSection } from "@/components/mtm/agent-section"
 import { MtmContactExplorer } from "@/components/mtm/contact-explorer"
-import { buildAgentClientPicker } from "@/lib/mtm/agent-client-picker"
+import { agentOwnRows, buildAgentClientPicker } from "@/lib/mtm/agent-client-picker"
 
 const navigation = vi.hoisted(() => ({ search: "", replace: vi.fn(), push: vi.fn() }))
 
@@ -165,7 +165,9 @@ function stubServer() {
     if (path === "/api/v1/mtm/agents") return json({ success: true, data: { agents } })
     if (path === "/api/v1/mtm/contacts/agent-picker") {
       if (!canTransfer) return json({ error: "Forbidden", code: "MTM_CONTACT_ASSIGNMENT_FORBIDDEN" }, 403)
-      const picker = buildAgentClientPicker(clients.map(pickerRow), {
+      const rows = clients.map(pickerRow)
+      const forAgent = params.get("agentId")
+      const picker = buildAgentClientPicker(forAgent && params.get("own") === "1" ? agentOwnRows(rows, forAgent) : rows, {
         specialties: params.getAll("specialty"),
         cities: params.getAll("city"),
         districts: params.getAll("district"),
@@ -254,7 +256,7 @@ async function mount(element: ReactNode, locale = "az") {
  * `find: "list"` opens the attach tab on the whole list rather than on the
  * picker; `more` adds clients to the seeded four.
  */
-async function openSection(options: { agentId?: string; tab?: "attach"; find?: "list"; locale?: string; more?: Client[] } = {}) {
+async function openSection(options: { agentId?: string; tab?: "attach"; find?: "list" | "place"; locale?: string; more?: Client[] } = {}) {
   seed()
   clients.push(...(options.more ?? []))
   stubServer()
@@ -635,14 +637,13 @@ describe("the agent's page — the card's picker and its edit button", () => {
 
   it("opens «attach» on the picker, lists nobody before a specialty, and keeps the whole list one press away", async () => {
     const { container } = await openSection({ tab: "attach", locale: "ru" })
-    const section = words<{ attachChosen: string; attachNothingYet: string }>("ru", "mtmAgentSection")
     await until(() => Boolean(byTestId("agent-clients-start")), "the picker's first step")
 
     expect(byTestId("mtm-agent-attach-by-place")?.getAttribute("aria-checked")).toBe("true")
     expect(document.body.querySelectorAll("[data-testid='agent-clients-doctor']")).toHaveLength(0)
-    expect(byTestId("mtm-agent-attach-bar")?.textContent).toContain(section.attachNothingYet)
-    expect((byTestId("mtm-agent-attach-submit") as HTMLButtonElement).disabled).toBe(true)
-    expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe(fill(section.attachChosen, { count: 0 }))
+    // Nothing to apply before a specialty, so no button — and no bar floating over the list (owner, 2026-11-11).
+    expect(byTestId("mtm-agent-attach-submit")).toBeNull()
+    expect(document.body.querySelector(".sticky")).toBeNull()
     // The picker asked about this agent, and nobody's list was loaded under it.
     expect(calls.find((call) => call.url.startsWith("/api/v1/mtm/contacts/agent-picker"))?.url).toContain(`agentId=${ANAR.id}`)
     expect(container.querySelector("[data-testid='mtm-contact-explorer']")).toBeNull()
@@ -653,16 +654,19 @@ describe("the agent's page — the card's picker and its edit button", () => {
 
   it("assigns the doctors left ticked — not the one taken out — and then shows them as this agent's", async () => {
     await openSection({ tab: "attach", locale: "ru", more: TERAPEVTS })
-    const section = words<{ attachChosen: string; attachChecked: string; attachNoneTicked: string; attachReason: string; tabAssignedCount: string }>("ru", "mtmAgentSection")
-    const forms = words<{ clientsAlreadyHere: string }>("ru", "mtmForms")
+    const section = words<{ attachChosen: string; attachReason: string; tabAssignedCount: string }>("ru", "mtmAgentSection")
+    const forms = words<{ clientsAlreadyHere: string; clientsChecked: string }>("ru", "mtmForms")
     await until(() => Boolean(byTestId("agent-clients-start")), "the picker's first step")
 
     await chooseSpecialty("Terapevt")
     // A colleague's doctor is offered too, and stays the colleague's as well.
     expect(doctorRow("Kamran Hüseynov")?.textContent).toContain(LEYLA.name)
     await click(doctorRow("Elvin Babayev")?.querySelector("[role='checkbox']"))
-    expect(byTestId("mtm-agent-attach-bar")?.textContent).toContain(fill(section.attachChecked, { count: 2 }))
+    expect(byTestId("agent-clients-summary")?.textContent).toContain(fill(forms.clientsChecked, { count: 2 }))
     expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe(fill(section.attachChosen, { count: 2 }))
+    // In the line with the counts above the list, not in a bar floating over it.
+    expect(byTestId("agent-clients-summary")?.contains(byTestId("mtm-agent-attach-submit"))).toBe(true)
+    expect(document.body.querySelector(".sticky")).toBeNull()
 
     await click(byTestId("mtm-agent-attach-submit"))
     await until(() => posts("/api/v1/mtm/contact-assignments").length > 0, "the assignment to be applied")
@@ -679,22 +683,20 @@ describe("the agent's page — the card's picker and its edit button", () => {
     // The one taken out stays out: nothing is left to assign until it is ticked again.
     expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe(fill(section.attachChosen, { count: 0 }))
     expect((byTestId("mtm-agent-attach-submit") as HTMLButtonElement).disabled).toBe(true)
-    // The specialty is chosen and the doctors are listed: the bar no longer asks for one.
-    expect(byTestId("mtm-agent-attach-bar")?.textContent).toContain(section.attachNoneTicked)
   })
 
   // Owner, 2026-10-16: «нет возможности снимать галочки» — the agent's own
   // doctors were listed greyed and locked.
   it("takes an unticked doctor off this agent, after asking with the count", async () => {
     await openSection({ tab: "attach", locale: "ru" })
-    const section = words<{ attachRemove: string; attachWillRemove: string; tabAssignedCount: string; attachReason: string }>("ru", "mtmAgentSection")
-    const forms = words<{ clientsWillBeRemoved: string; clientsRemoveConfirm: string; clientsRemoveConfirmTitle: string }>("ru", "mtmForms")
+    const section = words<{ attachRemove: string; tabAssignedCount: string; attachReason: string }>("ru", "mtmAgentSection")
+    const forms = words<{ clientsWillBeRemoved: string; clientsWillRemove: string; clientsRemoveConfirm: string; clientsRemoveConfirmTitle: string }>("ru", "mtmForms")
     await until(() => Boolean(byTestId("agent-clients-start")), "the picker's first step")
 
     await chooseSpecialty("Kardioloq")
     await click(doctorRow("Aysel Quliyeva")?.querySelector("[role='checkbox']"))
     expect(doctorRow("Aysel Quliyeva")?.textContent).toContain(forms.clientsWillBeRemoved)
-    expect(byTestId("mtm-agent-attach-bar")?.textContent).toContain(fill(section.attachWillRemove, { count: 1 }))
+    expect(byTestId("agent-clients-summary")?.textContent).toContain(fill(forms.clientsWillRemove, { count: 1 }))
     expect(byTestId("mtm-agent-attach-submit")?.textContent).toBe(fill(section.attachRemove, { count: 1 }))
 
     await click(byTestId("mtm-agent-attach-submit"))
@@ -756,5 +758,100 @@ describe("the Clients page after the explorer learned about sections", () => {
     expect(calls.some((call) => call.url.startsWith("/api/v1/mtm/contacts/views"))).toBe(true)
     expect(listCalls()[0].get("ownerAgentId")).toBeNull()
     expect(navigation.replace).toHaveBeenCalled()
+  })
+})
+
+// Owner, 2026-11-11: «не только поимённо убирать клиентов от агента, но и по
+// специальностям… город, район, или каких конкретных из фильтра»; the picture
+// approved with «Давай» — the same steps as «attach», over his own clients.
+describe("the agent's own clients by specialty and place", () => {
+  const byTestId = (id: string) => document.body.querySelector<HTMLElement>(`[data-testid='${id}']`)
+  const doctors = () => Array.from(document.body.querySelectorAll<HTMLElement>("[data-testid='agent-clients-doctor']"))
+  const doctorRow = (name: string) => doctors().find((row) => row.textContent?.includes(name))
+  const startChoice = (label: string) => Array.from(document.body.querySelectorAll<HTMLElement>("[data-testid='agent-clients-start-choice']")).find((button) => button.textContent?.startsWith(label))
+  const forms = () => words<{ clientsAll: string; clientsRemoveConfirm: string; clientsRemoveConfirmTitle: string; clientsOwnChecked: string }>("ru", "mtmForms")
+  const section = () => words<{ ownRemove: string; ownMove: string; ownRemoveReason: string; ownMoveConfirm: string; ownMoveReason: string; tabAssignedCount: string }>("ru", "mtmAgentSection")
+
+  ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} }
+
+  async function chooseEveryone() {
+    await until(() => Boolean(byTestId("agent-clients-start")), "the picker's first step")
+    await click(startChoice(forms().clientsAll))
+    await until(() => doctors().length > 0, "his doctors")
+  }
+
+  it("opens on his list as always, and «by specialty and place» offers only his clients, all ticked, the buttons in the line with the counts", async () => {
+    const assigned = await openSection({ locale: "ru" })
+    await until(() => tableRows(assigned.container).length === 2, "his own list")
+    expect(byTestId("mtm-agent-own-by-list")?.getAttribute("aria-checked")).toBe("true")
+    await click(byTestId("mtm-agent-own-by-place"))
+    expect(navigation.replace).toHaveBeenCalledWith("/mtm/agents/agent-anar?find=place", { scroll: false })
+    await act(async () => { root?.unmount() })
+    document.body.innerHTML = ""
+
+    await openSection({ locale: "ru", find: "place" })
+    await until(() => Boolean(byTestId("agent-clients-start")), "the picker's first step")
+    expect(calls.find((call) => call.url.startsWith("/api/v1/mtm/contacts/agent-picker"))?.url).toContain("own=1")
+    // His two specialties and «all», nobody else's.
+    const offered = Array.from(document.body.querySelectorAll("[data-testid='agent-clients-start-choice']")).map((button) => button.textContent)
+    expect(offered.some((text) => text?.startsWith("Kardioloq"))).toBe(true)
+    expect(offered.some((text) => text?.startsWith("Onkoloq"))).toBe(true)
+    expect(offered).toHaveLength(3)
+
+    await chooseEveryone()
+    expect(doctors().map((row) => row.querySelector("[role='checkbox']")?.getAttribute("aria-checked"))).toEqual(["true", "true"])
+    expect(byTestId("agent-clients-summary")?.textContent).toContain(fill(forms().clientsOwnChecked, { count: 2 }))
+    expect(byTestId("mtm-agent-own-remove")?.textContent).toBe(fill(section().ownRemove, { count: 2 }))
+    expect(byTestId("agent-clients-summary")?.contains(byTestId("mtm-agent-own-remove"))).toBe(true)
+    expect(byTestId("agent-clients-summary")?.contains(byTestId("mtm-agent-own-move"))).toBe(true)
+    expect(document.body.querySelector(".sticky")).toBeNull()
+  })
+
+  it("takes the ticked off him after asking once more — the one left unticked stays his", async () => {
+    await openSection({ locale: "ru", find: "place" })
+    await chooseEveryone()
+    await click(doctorRow("Rauf Əliyev")?.querySelector("[role='checkbox']"))
+    expect(byTestId("mtm-agent-own-remove")?.textContent).toBe(fill(section().ownRemove, { count: 1 }))
+
+    await click(byTestId("mtm-agent-own-remove"))
+    expect(document.body.textContent).toContain(forms().clientsRemoveConfirmTitle)
+    expect(posts("/api/v1/mtm/contact-assignments/preview")).toEqual([])
+    await click(Array.from(document.body.querySelectorAll("button")).find((button) => button.textContent === fill(forms().clientsRemoveConfirm, { count: 1 })))
+    await until(() => posts("/api/v1/mtm/contact-assignments").length > 0, "the detachment to be applied")
+
+    expect(posts("/api/v1/mtm/contact-assignments/preview")[0]).toMatchObject({ mode: "UNASSIGN", contactIds: ["c-aysel"], targetAgentId: null, sourceAgentId: ANAR.id, reason: section().ownRemoveReason })
+    expect(clients.find((client) => client.id === "c-aysel")?.owners).toEqual([])
+    expect(clients.find((client) => client.id === "c-rauf")?.owners).toEqual([ANAR.id])
+    await until(() => byTestId("mtm-agent-tab-assigned")?.textContent === fill(section().tabAssignedCount, { count: 1 }), "the count after taking off")
+    // Asked again: only Rauf is his now.
+    await until(() => doctors().length === 1 && Boolean(doctorRow("Rauf Əliyev")), "his list after taking off")
+  })
+
+  it("hands the ticked to another employee: on to her first, then off him", async () => {
+    await openSection({ locale: "ru", find: "place" })
+    await chooseEveryone()
+    await click(byTestId("mtm-agent-own-move"))
+    const target = await (async () => {
+      await until(() => (byTestId("mtm-agent-own-move-target") as HTMLSelectElement | null)?.options.length === 3, "the employees to hand to")
+      return byTestId("mtm-agent-own-move-target") as HTMLSelectElement
+    })()
+    // Not himself: the other field employees only.
+    expect(Array.from(target.options).map((option) => option.value)).not.toContain(ANAR.id)
+    await act(async () => {
+      target.value = LEYLA.id
+      target.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+    await click(Array.from(document.body.querySelectorAll("button")).find((button) => button.textContent === fill(section().ownMoveConfirm, { count: 2 })))
+    await until(() => posts("/api/v1/mtm/contact-assignments").length === 2, "both steps to be applied")
+
+    const [assign, unassign] = posts("/api/v1/mtm/contact-assignments/preview")
+    const reason = fill(section().ownMoveReason, { from: ANAR.name, to: LEYLA.name })
+    expect(assign).toMatchObject({ mode: "ASSIGN", targetAgentId: LEYLA.id, reason })
+    expect(unassign).toMatchObject({ mode: "UNASSIGN", sourceAgentId: ANAR.id, reason })
+    expect([...(assign.contactIds as string[])].sort()).toEqual(["c-aysel", "c-rauf"])
+    expect([...(unassign.contactIds as string[])].sort()).toEqual(["c-aysel", "c-rauf"])
+    expect(clients.find((client) => client.id === "c-aysel")?.owners).toEqual([LEYLA.id])
+    expect(clients.find((client) => client.id === "c-rauf")?.owners).toEqual([LEYLA.id])
+    await until(() => byTestId("mtm-agent-tab-assigned")?.textContent === fill(section().tabAssignedCount, { count: 0 }), "the count after handing on")
   })
 })

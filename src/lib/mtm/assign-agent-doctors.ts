@@ -46,3 +46,28 @@ export async function changeAgentDoctors(agentId: string, changes: AgentDoctorCh
   }
   return result
 }
+
+export type AgentDoctorMove = { moved: number; left: number }
+
+/**
+ * Hands doctors from one agent to another (owner, 2026-11-11, «Başqasına
+ * ötür» on the agent's page): attached to the new agent first, then taken off
+ * the old one — only those the new agent holds after that, read back from the
+ * server, so a doctor the server kept back (an open visit, a planned route) is
+ * never left with neither. Both steps are the same checked, journalled
+ * preview → apply. Throws when a call fails; what was applied before stays.
+ */
+export async function moveAgentDoctors(fromAgentId: string, toAgentId: string, contactIds: string[], effectiveFrom: string, reason: string, orgId?: string): Promise<AgentDoctorMove> {
+  if (contactIds.length === 0) return { moved: 0, left: 0 }
+  await changeAgentDoctors(toAgentId, { add: contactIds, remove: [] }, effectiveFrom, reason, orgId)
+  const response = await fetch(`/api/v1/mtm/contacts/agent-picker?${new URLSearchParams({ agentId: toAgentId, own: "1" })}`, {
+    cache: "no-store",
+    headers: orgId ? { "x-organization-id": orgId } : {},
+  })
+  const body = await response.json().catch(() => null) as { success?: boolean; data?: { contacts: Array<{ id: string }> } } | null
+  if (!response.ok || !body?.success || !body.data) throw new Error("read")
+  const held = new Set(body.data.contacts.map((contact) => contact.id))
+  const handed = contactIds.filter((id) => held.has(id))
+  const done = await changeAgentDoctors(fromAgentId, { add: [], remove: handed }, effectiveFrom, reason, orgId)
+  return { moved: done.removed, left: contactIds.length - done.removed }
+}

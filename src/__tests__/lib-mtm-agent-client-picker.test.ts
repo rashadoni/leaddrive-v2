@@ -5,7 +5,7 @@
  * institutions only.
  */
 import { describe, expect, it } from "vitest"
-import { PICKER_NONE, buildAgentClientPicker, placeOf, type PickerContactRow, type PickerInstitution } from "@/lib/mtm/agent-client-picker"
+import { PICKER_NONE, agentOwnRows, buildAgentClientPicker, placeOf, type PickerContactRow, type PickerInstitution } from "@/lib/mtm/agent-client-picker"
 
 const place = (id: string, name: string, extra: Partial<PickerInstitution> = {}): PickerInstitution => ({
   id, name, address: null, city: null, locality: null, district: null, administrativeDistrict: null, cityDistrict: null, ...extra,
@@ -115,5 +115,27 @@ describe("the agent's client picker", () => {
     expect(vip.classes.find(option => option.value === "B")?.count).toBe(4)
     // A class a doctor still holds though the tenant no longer offers it comes after the tenant's own.
     expect(buildAgentClientPicker(ROWS, terapevt, null, ["A", "B"]).classes.map(option => option.value)).toEqual(["A", "B", "VIP"])
+  })
+})
+
+// Owner, 2026-11-11: his page takes his clients off by specialty and place.
+describe("the agent's own clients, by the same steps", () => {
+  const MINE: PickerContactRow[] = [
+    ...ROWS,
+    doctor("d8", "Fictional Həsənova", "Qastroenteroloq", CLINIC, [{ agentId: "me", role: "PRIMARY", name: "Fictional Me" }, { agentId: "other", role: "SECONDARY", name: "Fictional Other Agent" }]),
+  ]
+
+  it("keeps only his doctors, and every count counts his alone", () => {
+    const own = agentOwnRows(MINE, "me")
+    expect(own.map(row => row.id)).toEqual(["d3", "d8"])
+    const picker = buildAgentClientPicker(own, none, "me")
+    expect(picker.specialties.map(option => [option.label, option.count])).toEqual([["Qastroenteroloq", 1], ["Terapevt", 1]])
+    expect(picker.assignedHere).toBe(picker.matching)
+    // The other agent of a shared doctor is named, he is not.
+    expect(picker.contacts.find(contact => contact.id === "d8")?.agents.map(agent => agent.id)).toEqual(["other"])
+  })
+
+  it("is nobody for an agent without doctors", () => {
+    expect(agentOwnRows(MINE, "nobody")).toEqual([])
   })
 })

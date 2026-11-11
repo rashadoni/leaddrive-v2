@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { Check, ChevronDown, ChevronRight, Info, Loader2 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -152,7 +152,7 @@ function StepSelect({ step, label, options, selected, disabled, disabledHint, on
   )
 }
 
-export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, onForbidden }: {
+export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, onForbidden, own = false, actions }: {
   /** The card being edited; null for a new agent. */
   agentId: string | null
   orgId?: string
@@ -161,6 +161,14 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   refresh?: number
   /** Someone who may not assign doctors: the page offers its list instead. */
   onForbidden?: () => void
+  /**
+   * The agent's own doctors only (his page's «Əməkdaşın müştəriləri», owner
+   * 2026-11-11): a tick picks one to take off or hand on, `contactIds` carries
+   * the ticked, and nothing is ever «taken off» by an untick.
+   */
+  own?: boolean
+  /** The buttons that apply the ticks, in the line with the counts above the list — not a bar floating over it (owner, 2026-11-11). */
+  actions?: ReactNode
 }) {
   const t = useTranslations("mtmForms")
   const [selection, setSelection] = useState<Selection>({ specialties: [], everySpecialty: false, cities: [], districts: [], classes: [] })
@@ -175,6 +183,7 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
     const controller = new AbortController()
     const params = new URLSearchParams()
     if (agentId) params.set("agentId", agentId)
+    if (own && agentId) params.set("own", "1")
     for (const value of selection.specialties) params.append("specialty", value)
     for (const value of selection.cities) params.append("city", value)
     for (const value of selection.districts) params.append("district", value)
@@ -203,7 +212,7 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
     return () => controller.abort()
     // onForbidden is read when the answer comes, not a reason to ask again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agentId, orgId, selection, refresh])
+  }, [agentId, orgId, selection, refresh, own])
 
   // Nothing is listed, nor ticked, before a specialty is chosen: a card opened
   // and closed again must not take every doctor of the company along. The
@@ -213,8 +222,8 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
   const chosenFirstStep = selection.everySpecialty || selection.specialties.length > 0
   const contacts = useMemo(() => (chosenFirstStep ? data?.contacts ?? [] : []), [chosenFirstStep, data])
   const listedIds = useMemo(() => contacts.map(contact => contact.id), [contacts])
-  const chosen = useMemo(() => contacts.filter(contact => !contact.assignedHere && !unticked.has(contact.id)).map(contact => contact.id), [contacts, unticked])
-  const takenOff = useMemo(() => contacts.filter(contact => contact.assignedHere && unticked.has(contact.id)).map(contact => contact.id), [contacts, unticked])
+  const chosen = useMemo(() => contacts.filter(contact => (own || !contact.assignedHere) && !unticked.has(contact.id)).map(contact => contact.id), [contacts, own, unticked])
+  const takenOff = useMemo(() => (own ? [] : contacts.filter(contact => contact.assignedHere && unticked.has(contact.id)).map(contact => contact.id)), [contacts, own, unticked])
   const chosenKey = chosen.join(",")
   const takenOffKey = takenOff.join(",")
 
@@ -299,13 +308,14 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm" data-testid="agent-clients-summary">
             <span className={cn(loading && "opacity-60")}>
               <strong>{t("clientsFound", { count: data?.matching ?? 0, groups: data?.institutions ?? 0 })}</strong>
-              {" · "}{t("clientsChecked", { count: chosen.length })}
+              {" · "}{t(own ? "clientsOwnChecked" : "clientsChecked", { count: chosen.length })}
               {takenOff.length > 0 ? <span className="font-semibold text-red-600 dark:text-red-400" data-testid="agent-clients-taken-off">{" · "}{t("clientsWillRemove", { count: takenOff.length })}</span> : null}
-              {(data?.assignedHere ?? 0) > 0 ? <span className="text-muted-foreground">{" · "}{t("clientsAlreadyHereCount", { count: data?.assignedHere ?? 0 })}</span> : null}
+              {!own && (data?.assignedHere ?? 0) > 0 ? <span className="text-muted-foreground">{" · "}{t("clientsAlreadyHereCount", { count: data?.assignedHere ?? 0 })}</span> : null}
             </span>
-            <span className="flex gap-3">
+            <span className="flex flex-wrap items-center gap-3">
               <button type="button" className="font-semibold text-primary hover:underline" onClick={() => toggle(listedIds, true)} data-testid="agent-clients-check-all">{t("clientsCheckAll")}</button>
               <button type="button" className="font-semibold text-primary hover:underline" onClick={() => toggle(listedIds, false)} data-testid="agent-clients-uncheck-all">{t("clientsUncheckAll")}</button>
+              {actions}
             </span>
           </div>
 
@@ -350,7 +360,15 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
                     {where ? <span className="block truncate text-muted-foreground" title={where}>{where}</span> : null}
                   </div>
                   <div className="col-start-2 min-w-0 sm:col-start-auto">
-                  {contact.assignedHere && off ? (
+                  {own ? (
+                    contact.agents.length > 0 ? (
+                      <Hint text={t("clientsOwnAlsoWithHint", { names: contact.agents.map(agent => agent.name).join(", ") })}>
+                        <span tabIndex={0} className="block truncate text-xs font-semibold text-violet-700 dark:text-violet-300">
+                          {t("clientsOwnAlsoWith", { name: contact.agents[0].name, more: contact.agents.length - 1 })}
+                        </span>
+                      </Hint>
+                    ) : null
+                  ) : contact.assignedHere && off ? (
                     <span className="text-xs font-semibold text-red-700 dark:text-red-300" data-testid="agent-clients-taken-off-tag">{t("clientsWillBeRemoved")}</span>
                   ) : contact.assignedHere ? (
                     <span className="rounded-full border border-border px-2 py-0.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300">{t("clientsAlreadyHere")}</span>
@@ -378,13 +396,13 @@ export function MtmAgentClientPicker({ agentId, orgId, onChange, refresh = 0, on
             </button>
           ) : null}
 
-          <p className="flex items-start gap-2 rounded-xl border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 px-3 py-2.5 text-sm" data-testid="agent-clients-note">
+          {own ? null : <p className="flex items-start gap-2 rounded-xl border border-l-4 border-border border-l-sky-500 bg-card text-foreground dark:border-l-sky-500 px-3 py-2.5 text-sm" data-testid="agent-clients-note">
             <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>
               {t("clientsNote", { count: chosen.length })}
               {takenOff.length > 0 ? <> {t("clientsNoteRemove", { count: takenOff.length })}</> : null}
             </span>
-          </p>
+          </p>}
         </>
       )}
     </div>

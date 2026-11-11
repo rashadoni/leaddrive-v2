@@ -162,7 +162,8 @@ describe("the first step, before anything is chosen", () => {
     expect(choices()).toEqual(["Terapevt2 həkim", "Qastroenteroloq1 həkim", "Göstərilməyib1 həkim", "Hamısı4 həkim"])
     // Still nobody listed and nobody ticked: a card opened and closed takes no one along.
     expect(all("agent-clients-doctor")).toHaveLength(0)
-    expect(byTestId("mtm-agent-attach-submit")?.hasAttribute("disabled")).toBe(true)
+    // Nothing to apply yet, so no button: it stands in the line with the counts (owner, 2026-11-11).
+    expect(byTestId("mtm-agent-attach-submit")).toBeNull()
   })
 
   it("lists the doctors of a specialty after one press on it", async () => {
