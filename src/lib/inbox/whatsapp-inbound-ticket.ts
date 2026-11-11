@@ -6,6 +6,7 @@ import { sanitizeLog } from "@/lib/sanitize"
 import { INBOUND_MESSAGE_MARKER, WHATSAPP_INBOUND_DESCRIPTION_HEAD } from "@/lib/ticketing/chat-transcript"
 import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 import { whatsappTicketSubject } from "@/lib/ticketing/customer-ticket-text"
+import { attachChannelMediaToTicketComment } from "@/lib/ticketing/ticket-attachment-storage"
 
 export type InboundTicketResult = {
   ticketId: string | null
@@ -132,9 +133,10 @@ async function placeInboundMessage({
   })
 
   if (activeTicket) {
-    await prisma.ticketComment.create({
+    const added = await prisma.ticketComment.create({
       data: { ticketId: activeTicket.id, comment, isInternal: false },
     })
+    if (added?.id) await attachChannelMediaToTicketComment({ organizationId, ticketId: activeTicket.id, commentId: added.id, channelMessageId })
     if (activeTicket.status === "waiting") {
       const answered = await prisma.ticket.updateMany({
         where: { id: activeTicket.id, organizationId, status: "waiting" },
@@ -159,6 +161,9 @@ async function placeInboundMessage({
       fallbackPhone: waPhone,
     })
     if (reopen.reopened && reopen.ticketId) {
+      if (reopen.commentId) {
+        await attachChannelMediaToTicketComment({ organizationId, ticketId: reopen.ticketId, commentId: reopen.commentId, channelMessageId })
+      }
       return { ticketId: reopen.ticketId, ticketNumber: reopen.ticketNumber ?? null, created: false, commentAdded: true, reopened: true }
     }
   }
@@ -188,9 +193,10 @@ async function placeInboundMessage({
     requesterMeta: { source: "whatsapp", channelMessageId, waMessageId: waMessageId || null },
   })
 
-  await prisma.ticketComment.create({
+  const first = await prisma.ticketComment.create({
     data: { ticketId: ticket.id, comment, isInternal: false },
   })
+  if (first?.id) await attachChannelMediaToTicketComment({ organizationId, ticketId: ticket.id, commentId: first.id, channelMessageId })
 
   console.log(`[WA Webhook] Ticket ${ticket.ticketNumber} created from inbound WhatsApp message ${sanitizeLog(waPhone)}`)
   return { ticketId: ticket.id, ticketNumber: ticket.ticketNumber, created: true, commentAdded: true, reopened: false }
@@ -225,7 +231,8 @@ async function placeDemoMessage(
       // Another message reopened it a moment ago: the helper already stored this one.
       if (reopened.commentAdded) return { ...held, reopened: false }
     }
-    await prisma.ticketComment.create({ data: { ticketId: own.id, comment, isInternal: false } })
+    const added = await prisma.ticketComment.create({ data: { ticketId: own.id, comment, isInternal: false } })
+    if (added?.id) await attachChannelMediaToTicketComment({ organizationId, ticketId: own.id, commentId: added.id, channelMessageId })
     if (own.status === "waiting") {
       const answered = await prisma.ticket.updateMany({ where: { id: own.id, organizationId, status: "waiting" }, data: { status: "open" } })
       if (answered.count > 0) {
@@ -264,7 +271,8 @@ async function placeDemoMessage(
     requesterMeta: { source: "whatsapp", channelMessageId, waMessageId: waMessageId || null },
   })
   try {
-    await prisma.ticketComment.create({ data: { ticketId: ticket.id, comment, isInternal: false } })
+    const first = await prisma.ticketComment.create({ data: { ticketId: ticket.id, comment, isInternal: false } })
+    if (first?.id) await attachChannelMediaToTicketComment({ organizationId, ticketId: ticket.id, commentId: first.id, channelMessageId })
   } catch (err) {
     console.error("[WA Webhook] Demo ticket created, its first comment not stored:", err)
     return { ticketId: ticket.id, ticketNumber: ticket.ticketNumber, created: true, commentAdded: false, reopened: false }

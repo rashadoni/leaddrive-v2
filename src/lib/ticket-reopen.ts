@@ -43,6 +43,8 @@ export interface ReopenResult {
   contactId?: string | null
   reason?: ReopenReason
   commentAdded?: boolean
+  /** The comment that carries the customer's message — a file of theirs is attached to it. */
+  commentId?: string
 }
 
 const CHANNEL_LABELS: Record<ReopenChannel, string> = {
@@ -213,7 +215,7 @@ export async function reopenTicketForCustomerReply(input: ReopenInput): Promise<
         .catch(err => console.error("[ticket-reopen] closure request cancel error:", err))
     }
 
-    await prisma.ticketComment.create({
+    const customerComment = await prisma.ticketComment.create({
       data: { ticketId: ticket.id, comment: commentBody, isInternal: false },
     })
 
@@ -253,6 +255,7 @@ export async function reopenTicketForCustomerReply(input: ReopenInput): Promise<
       ticketSubject: ticket.subject,
       contactId: ticket.contactId,
       commentAdded: true,
+      commentId: customerComment?.id,
     }
   } catch (err) {
     console.error("[ticket-reopen] error:", err)

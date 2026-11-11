@@ -1,10 +1,10 @@
 import crypto from "node:crypto"
-import { mkdir, unlink, writeFile } from "node:fs/promises"
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { prisma } from "@/lib/prisma"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
 import { validateUploadBytes } from "@/lib/upload-security"
-import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
+import { openTenantFileBytes, sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 
 export const TICKET_ATTACHMENT_MAX_FILE_SIZE = 10 * 1024 * 1024
 export const TICKET_ATTACHMENT_MAX_FILES = 50
@@ -96,4 +96,83 @@ export function resolveTicketAttachmentPath(fileName: string): string | null {
   const uploadDirectory = path.resolve(runtimePublicUploadDirectory("tickets"))
   const filePath = path.resolve(uploadDirectory, path.basename(fileName))
   return filePath.startsWith(`${uploadDirectory}${path.sep}`) ? filePath : null
+}
+
+/** The messenger folders whose stored media a ticket can take a copy of. */
+const CHANNEL_MEDIA_DIRS = new Set(["whatsapp", "telegram"])
+
+const MIME_BY_EXTENSION: Record<string, string> = {
+  ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".gif": "image/gif",
+  ".pdf": "application/pdf",
+}
+
+/**
+ * The file a channel message points at (`/uploads/whatsapp/<org>/<name>`), when it is this
+ * organization's own and nowhere else.
+ */
+function storedChannelMediaPath(mediaUrl: string | null | undefined, organizationId: string): string | null {
+  const parts = (mediaUrl ?? "").split("/").filter(Boolean)
+  if (parts.length !== 4 || parts[0] !== "uploads" || !CHANNEL_MEDIA_DIRS.has(parts[1])) return null
+  if (parts[2] !== organizationId || parts[3] !== path.basename(parts[3]) || parts[3].startsWith(".")) return null
+  const root = path.resolve(runtimePublicUploadDirectory(parts[1]), organizationId)
+  const filePath = path.resolve(root, parts[3])
+  return filePath.startsWith(`${root}${path.sep}`) ? filePath : null
+}
+
+/**
+ * A customer's photo or document from WhatsApp/Telegram, on the ticket comment that carries its
+ * message (owner, 2026-11-10: «фотографии не загружаются… когда пишут» — the comment said
+ * «[Изображение]» and nothing else). The file is copied into the ticket's own attachments: a ticket
+ * is read by people who may have no access to the inbox, and its files are served by the ticket's
+ * rights. Best-effort — a message without a file, a type tickets do not take, or any failure leaves
+ * the comment as it was.
+ */
+export async function attachChannelMediaToTicketComment(input: {
+  organizationId: string
+  ticketId: string
+  commentId: string
+  channelMessageId: string
+}): Promise<boolean> {
+  try {
+    const message = await prisma.channelMessage.findFirst({
+      where: { id: input.channelMessageId, organizationId: input.organizationId },
+      select: { mediaUrl: true, channelType: true },
+    })
+    const source = storedChannelMediaPath(message?.mediaUrl, input.organizationId)
+    if (!source) return false
+    const extension = path.extname(source).toLowerCase()
+    const mimeType = MIME_BY_EXTENSION[extension]
+    if (!mimeType) return false
+
+    const bytes = await openTenantFileBytes(input.organizationId, await readFile(source))
+    if (bytes.byteLength === 0 || bytes.byteLength > TICKET_ATTACHMENT_MAX_FILE_SIZE) return false
+    if (validateUploadBytes(mimeType, bytes)) return false
+
+    const uploadDirectory = runtimePublicUploadDirectory("tickets")
+    await mkdir(uploadDirectory, { recursive: true })
+    const fileName = `${crypto.randomBytes(16).toString("hex")}${extension}`
+    const writtenPath = path.join(uploadDirectory, fileName)
+    await writeFile(writtenPath, sealTenantFile(input.organizationId, bytes), { flag: "wx" })
+    try {
+      await prisma.ticketAttachment.create({
+        data: {
+          organizationId: input.organizationId,
+          ticketId: input.ticketId,
+          commentId: input.commentId,
+          fileName,
+          originalName: `${message?.channelType || "channel"}-${path.basename(source)}`,
+          fileSize: bytes.byteLength,
+          mimeType,
+          uploadedBy: null,
+        },
+      })
+    } catch (error) {
+      await unlink(writtenPath).catch(() => undefined)
+      throw error
+    }
+    return true
+  } catch (error) {
+    console.error("[ticket attachment] channel media not attached:", error instanceof Error ? error.message : "unknown error")
+    return false
+  }
 }
