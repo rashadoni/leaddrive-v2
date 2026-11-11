@@ -30,7 +30,9 @@ const mocks = vi.hoisted(() => ({
   analyzeVoiceCall: vi.fn(),
   fallbackPostCallAnalysis: vi.fn(),
   recordCallCommitment: vi.fn(async () => ({ created: false, reason: "no-assignee" })),
+  journalLineCallSpend: vi.fn(),
 }))
+vi.mock("@/lib/voice-agent/pharmacy/zeytun-line-spend", () => ({ journalLineCallSpend: mocks.journalLineCallSpend }))
 vi.mock("@/lib/commitments/record-call-commitment", () => ({ recordCallCommitment: mocks.recordCallCommitment }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -1079,6 +1081,74 @@ describe("POST /api/internal/voice-agent/call-result", () => {
       expect(mocks.callEventCreateMany).not.toHaveBeenCalled()
       expect(mocks.recordCallCommitment).not.toHaveBeenCalled()
       expect(mocks.maybePlaceCallback).not.toHaveBeenCalled()
+    })
+
+    const lineCall = { id: "inbound-call-1", transcription: null, conversationOutcome: null,
+      consentAudit: { pharmacyInboundPreview: { version: 1, grantId: "test-grant", providerCallId: callId } } }
+    const usage = {
+      live: { model: "gemini-3.8-live", textIn: 48434, audioIn: 9640, textOut: 1140, audioOut: 863, turns: 4 },
+      tts: { model: "gemini-3.8-flash-tts", requests: 6, chars: 410, audioSeconds: 31.5 },
+    }
+
+    it("journals the line call's AI spend the station counted, once per AI leg", async () => {
+      // Owner, 2026-11-11: «почему расходов 0?» — the line's Live and speech never reached the report.
+      mocks.findCallLog.mockResolvedValue(lineCall)
+      const body = { callId, durationSeconds: 62, usage, turns: [{ role: "customer", text: "Adefa, iki qutu." }] }
+      const response = await POST(request(body))
+      await expect(response.json()).resolves.toEqual({ success: true, analysisStatus: "test_preview" })
+      expect(mocks.journalLineCallSpend).toHaveBeenCalledTimes(1)
+      expect(mocks.journalLineCallSpend).toHaveBeenCalledWith("org-test", { durationSeconds: 62, usage })
+
+      // The station retries a result whose answer it lost: the stored one is not spent again.
+      mocks.journalLineCallSpend.mockClear()
+      mocks.callLogUpdateMany.mockResolvedValueOnce({ count: 0 })
+      mocks.findCallLog
+        .mockResolvedValueOnce(lineCall)
+        .mockResolvedValueOnce({ transcription: "Müştəri: Adefa, iki qutu.", conversationOutcome: "customer_spoke", handoffState: null })
+      const replay = await POST(request(body))
+      expect(replay.status).toBe(200)
+      expect(mocks.journalLineCallSpend).not.toHaveBeenCalled()
+    })
+
+    it("journals the AI's second leg after an unanswered handoff, and not its replay", async () => {
+      const first = "AI operator: Salam!\nMüştəri: Menecerlə danışmaq istəyirəm."
+      const second = { callId, durationSeconds: 30, usage, turns: [{ role: "customer", text: "Onda iki qutu Mukorin yazın." }] }
+      mocks.callLogUpdateMany.mockResolvedValueOnce({ count: 0 }).mockResolvedValueOnce({ count: 1 })
+      mocks.findCallLog
+        .mockResolvedValueOnce({ ...lineCall, transcription: first, conversationOutcome: "customer_spoke" })
+        .mockResolvedValueOnce({ transcription: first, conversationOutcome: "customer_spoke", handoffState: "returned" })
+      expect((await POST(request(second))).status).toBe(200)
+      expect(mocks.journalLineCallSpend).toHaveBeenCalledTimes(1)
+
+      const both = `${first}\n\nMüştəri: Onda iki qutu Mukorin yazın.`
+      mocks.journalLineCallSpend.mockClear()
+      mocks.callLogUpdateMany.mockResolvedValueOnce({ count: 0 })
+      mocks.findCallLog
+        .mockResolvedValueOnce({ ...lineCall, transcription: both, conversationOutcome: "customer_spoke" })
+        .mockResolvedValueOnce({ transcription: both, conversationOutcome: "customer_spoke", handoffState: "returned" })
+      expect((await POST(request(second))).status).toBe(200)
+      expect(mocks.journalLineCallSpend).not.toHaveBeenCalled()
+    })
+
+    it("journals nothing for an inbound AI call that is not the line's", async () => {
+      await POST(request({ callId, durationSeconds: 40, providerOutcome: "connected", usage,
+        turns: [{ role: "customer", text: "Qiyməti öyrənmək istəyirəm." }] }))
+      expect(mocks.journalLineCallSpend).not.toHaveBeenCalled()
+    })
+
+    it("rejects a usage report outside the agreed shape", async () => {
+      mocks.findCallLog.mockResolvedValue(lineCall)
+      for (const bad of [
+        { live: { ...usage.live, extra: 1 } },
+        { live: { ...usage.live, textIn: -1 } },
+        { tts: { ...usage.tts, audioSeconds: "31" } },
+        { live: { ...usage.live, model: "Gemini Live!" } },
+        { other: {} },
+      ]) {
+        const response = await POST(request({ callId, durationSeconds: 62, usage: bad, turns: [{ role: "customer", text: "x" }] }))
+        expect(response.status).toBe(400)
+      }
+      expect(mocks.journalLineCallSpend).not.toHaveBeenCalled()
     })
 
     it("does not analyse a call in which the customer never spoke", async () => {

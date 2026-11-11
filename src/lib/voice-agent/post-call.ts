@@ -18,6 +18,35 @@ export const voiceAgentProviderOutcomeSchema = z.enum([
   "cancelled",
 ])
 
+const stationTokenCount = z.number().int().min(0).max(1_000_000_000)
+const stationModel = z.string().regex(/^[a-z0-9][a-z0-9.-]{0,63}$/)
+
+/**
+ * What the phone line's AI leg spent, as the station counted it (owner,
+ * 2026-11-11: «почему расходов 0?» — the line's Gemini Live and speech ran on
+ * the station's keys and never reached the spend report). Live: the sum of
+ * every `usageMetadata` of the call's sessions, split by modality. Speech: the
+ * synthesis requests the station made and the audio they returned.
+ */
+export const voiceAgentLineUsageSchema = z.object({
+  live: z.object({
+    model: stationModel.optional(),
+    textIn: stationTokenCount,
+    audioIn: stationTokenCount,
+    textOut: stationTokenCount,
+    audioOut: stationTokenCount,
+    turns: z.number().int().min(0).max(100_000),
+  }).strict().optional(),
+  tts: z.object({
+    model: stationModel.optional(),
+    requests: z.number().int().min(0).max(100_000),
+    chars: z.number().int().min(0).max(10_000_000),
+    audioSeconds: z.number().min(0).max(14_400),
+  }).strict().optional(),
+}).strict()
+
+export type VoiceAgentLineUsage = z.infer<typeof voiceAgentLineUsageSchema>
+
 const voiceAgentConversationCallResultSchema = z.object({
   callId: z.string().uuid(),
   durationSeconds: z.number().int().min(0).max(14_400),
@@ -38,6 +67,9 @@ const voiceAgentConversationCallResultSchema = z.object({
   // PBX build sends them.
   dialStatus: z.string().regex(/^[A-Z][A-Z0-9_]{0,31}$/).optional(),
   hangupCause: z.string().regex(/^[0-9]{1,8}$/).optional(),
+  // The phone line's AI spend (sent by the pharmacy bridge's core). Same
+  // deploy-order rule: accepted here before any core sends it.
+  usage: voiceAgentLineUsageSchema.optional(),
   turns: z.array(voiceAgentTurnSchema).max(200).default([]),
 }).strict().superRefine((value, ctx) => {
   // A customer can hang up before either side produces a final transcript.

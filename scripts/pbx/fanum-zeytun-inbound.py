@@ -363,7 +363,12 @@ class ZeytunGeminiTts:
                           + query + urllib.parse.quote(key, safe="")))
         self.url = self.urls[0][1]
         self.path = self.urls[0][0]
+        self.model = model
         self.voice = voice
+        # What this call's synthesis cost (owner, 2026-11-11: «почему расходов 0?»):
+        # every request asked, its text and the audio it returned, for the CRM's spend report.
+        self.billed_lock = threading.Lock()
+        self.billed_counts = {"requests": 0, "chars": 0, "audioBytes": 0}
         self.open = opener or ZEYTUN_HTTP.open
         self.kept = opener is None
         self.clock = clock
@@ -435,6 +440,14 @@ class ZeytunGeminiTts:
                                      "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": self.voice}}}}}
         req = urllib.request.Request(url, data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
                                      headers={"Content-Type": "application/json"}, method="POST")
+        # The audio this request returned, billed whether it ends in a return or a raise.
+        returned = [0]
+        try:
+            return self._stream_counted(req, url, on_pcm, keep_going, fast, returned)
+        finally:
+            self._bill(text, style, returned[0])
+
+    def _stream_counted(self, req, url, on_pcm, keep_going, fast, returned):
         produced = 0
         # fast (eu): the first audio within EU_FIRST_AUDIO_SECONDS of asking,
         # on a kept connection whose read timeout can follow the deadline.
@@ -487,10 +500,24 @@ class ZeytunGeminiTts:
                         if len(pcm) % 2:
                             raise ZeytunPilotUnavailable("tts_audio_format")
                         produced += len(pcm)
+                        returned[0] = produced
                         on_pcm(pcm)
         if not produced and keep_going():
             raise ZeytunPilotUnavailable("tts_no_audio")
         return produced
+
+    def _bill(self, text, style, produced):
+        with self.billed_lock:
+            self.billed_counts["requests"] += 1
+            self.billed_counts["chars"] += len(text) + len(style or "")
+            self.billed_counts["audioBytes"] += produced
+
+    def billed(self):
+        """This call's synthesis so far: requests, characters asked, seconds of audio returned."""
+        with self.billed_lock:
+            counts = dict(self.billed_counts)
+        return {"requests": counts["requests"], "chars": counts["chars"],
+                "audioSeconds": round(counts["audioBytes"] / 48000.0, 2)}
 
 
 # The line's opening, voiced once per process: (voice, model, text) -> PCM
@@ -2359,6 +2386,32 @@ class ZeytunInboundBridge:
         usd = sum(totals[key] * price for key, price in self.LIVE_PRICE.items()) / 1e6
         log("call", usd=round(usd, 4), **totals)
         return True
+
+    USAGE_MODEL = re.compile(r"^[a-z0-9][a-z0-9.-]{0,63}$")
+
+    def call_usage(self):
+        """What this AI leg spent, sent with the call's result (owner, 2026-11-11: «почему
+        расходов 0?» — the line's Live and speech run on the station's keys, and the CRM's
+        spend report saw none of them). None when nothing was counted: the CRM then prices
+        the leg by its length. The CRM's schema (voiceAgentLineUsageSchema) is strict."""
+        with self.lock:
+            totals = dict(self.__dict__.get("usage_totals") or {})
+        usage = {}
+        if totals.get("turns"):
+            live = {key: int(totals.get(key) or 0) for key in ("textIn", "audioIn", "textOut", "audioOut", "turns")}
+            model = globals().get("GEMINI_LIVE_MODEL")
+            if isinstance(model, str) and self.USAGE_MODEL.match(model):
+                live["model"] = model
+            usage["live"] = live
+        engine = getattr(self.relay, "tts", None)
+        billed = getattr(engine, "billed", None)
+        speech = billed() if callable(billed) else None
+        if isinstance(speech, dict) and speech.get("requests"):
+            model = getattr(engine, "model", None)
+            if isinstance(model, str) and self.USAGE_MODEL.match(model):
+                speech["model"] = model
+            usage["tts"] = speech
+        return usage or None
 
     def handle(self, event, send, current):
         """Network work never runs on the audio/event thread. send also fences

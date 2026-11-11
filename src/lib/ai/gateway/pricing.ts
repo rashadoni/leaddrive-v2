@@ -40,6 +40,15 @@ export const UNIT_PRICING = {
   chirpMinute: 0.016,
   /** Gemini Live conversation, per minute of session. */
   geminiLiveMinute: 0.0225,
+  /**
+   * A phone order line call in Gemini Live, per minute, for a call the station
+   * sent no token count for. Far above `geminiLiveMinute`: every turn bills the
+   * line's whole prompt and catalog context again. Four line-stand calls priced
+   * from their own `usageMetadata` (2026-11-06..07, LIVE_TOKEN_PRICING): $0.081
+   * for 62 s, $0.11 for 53 s, $0.153 for 107 s, $0.78 for 198 s — $0.078 to
+   * $0.236 a minute, growing with the call; their mean.
+   */
+  phoneLineLiveMinute: 0.13,
   /** Gemini / Vertex speech synthesis, per minute of speech produced. */
   geminiSpeechMinute: 0.015,
   /** Google Vision TEXT_DETECTION, per image. */

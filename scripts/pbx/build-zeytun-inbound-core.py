@@ -535,6 +535,35 @@ def build(source, bridge):
             '    if os.environ.get("ZEYTUN_INBOUND_PILOT_ENABLED") == "1":\n'
             '        zeytun_order_spool(CRM_RUNTIME_URL, CRM_RUNTIME_TOKEN, latency)\n'
             '    logging.info("Fanum Voice Core listening on %s:%s",HOST,PORT)\n')
+    # Owner, 2026-11-11 («почему расходов 0?»): a pharmacy leg's result carries what the
+    # leg spent on Live and speech (the bridge's call_usage), for the CRM's spend report.
+    # The CRM accepts `usage` since the PR that added this; every other call sends none.
+    replace('    demo_prompt_applied=False,\n):\n',
+            '    demo_prompt_applied=False,\n    usage=None,\n):\n')
+    replace('''    if recovery_attempts is not None:
+        payload["recoveryAttempts"] = max(0, min(100, int(recovery_attempts)))
+''', '''    if recovery_attempts is not None:
+        payload["recoveryAttempts"] = max(0, min(100, int(recovery_attempts)))
+    if isinstance(usage, dict) and usage:
+        payload["usage"] = usage
+''')
+    replace('''                demo_prompt_applied=getattr(session, "is_demo_call", False) is True,
+            )
+''', '''                demo_prompt_applied=getattr(session, "is_demo_call", False) is True,
+                usage=zeytun_leg_usage(session),
+            )
+''')
+    replace("class GeminiLiveSession(RealtimeSession):", '''def zeytun_leg_usage(session):
+    """A pharmacy leg's spend for its result; None for every other call, and never a raise."""
+    if getattr(session, "pharmacy_preview", False) is not True:
+        return None
+    try:
+        return session.pharmacy_bridge.call_usage()
+    except Exception:
+        return None
+
+
+class GeminiLiveSession(RealtimeSession):''')
     ast.parse(text)
     return text.encode("utf-8")
 
