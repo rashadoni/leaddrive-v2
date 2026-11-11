@@ -6,7 +6,19 @@ import {
 import { featureFlagsToArray } from "@/lib/modules"
 import { aiCallCostUsd, MODEL_PRICING } from "@/lib/ai/gateway/pricing"
 
-const DEFAULT_DAILY_LIMIT_USD = 5.0
+/**
+ * The organization's own daily AI limit, in USD, or null when it set none.
+ *
+ * Owner, 2026-11-11: «зачем ты ставишь лимит? лимит в балансе сколько
+ * загрузил… если клиент захочет, то пусть ставит лимит». No limit is imposed:
+ * until 2026-11-11 every organization without one stopped at $5 a day (and
+ * the Advisor suite wrote $10). The organization's admin sets or clears it in
+ * «Настройки → ИИ и расходы»; anything but a positive number is no limit.
+ */
+export function readDailyAiLimit(settings: unknown): number | null {
+  const value = settings && typeof settings === "object" ? (settings as Record<string, unknown>).aiDailyBudgetUsd : undefined
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null
+}
 
 // One price table for every metered AI call: src/lib/ai/gateway/pricing.ts.
 export { MODEL_PRICING, CACHE_READ_PRICE_FACTOR, CACHE_WRITE_5M_PRICE_FACTOR } from "@/lib/ai/gateway/pricing"
@@ -83,13 +95,15 @@ export function calculateAiCost(
  * organization's own key are its own business at its provider. Until 2026-11-09 it
  * summed AiInteractionLog.costUsd, which only the features that remembered to
  * log wrote, and only for Claude.
- * Returns { allowed, spent, limit, remaining }.
+ * Returns { allowed, spent, limit, remaining }; limit and remaining are null
+ * when the organization set no limit (`readDailyAiLimit`), and then it is
+ * always allowed.
  */
 export async function checkAiBudget(orgId: string): Promise<{
   allowed: boolean
   spent: number
-  limit: number
-  remaining: number
+  limit: number | null
+  remaining: number | null
 }> {
   const now = new Date()
   const todayStart = new Date(Date.UTC(
@@ -115,23 +129,17 @@ export async function checkAiBudget(orgId: string): Promise<{
   const spent = (result._sum.costUsd || 0)
     + monitoringResetAiCostCarrySince(resetCarry, todayStart)
 
-  // Get org-level limit from settings, fallback to default
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
     select: { settings: true },
   })
-  const settings = (org?.settings as Record<string, any>) || {}
-  const limit = typeof settings.aiDailyBudgetUsd === "number"
-    ? settings.aiDailyBudgetUsd
-    : DEFAULT_DAILY_LIMIT_USD
-
-  const remaining = Math.max(0, limit - spent)
+  const limit = readDailyAiLimit(org?.settings)
 
   return {
-    allowed: spent < limit,
+    allowed: limit === null || spent < limit,
     spent: Math.round(spent * 1000) / 1000,
     limit,
-    remaining: Math.round(remaining * 1000) / 1000,
+    remaining: limit === null ? null : Math.round(Math.max(0, limit - spent) * 1000) / 1000,
   }
 }
 

@@ -178,17 +178,27 @@ describe("AI spend report and provider keys", () => {
 })
 
 describe("the daily AI limit", () => {
-  it("is changed only by the platform superadmin", async () => {
-    for (const role of ["admin", "manager", "viewer"]) {
+  // Owner, 2026-11-11: «если клиент захочет, то пусть ставит лимит» — the organization's admin owns it.
+  it("is set and cleared by the organization's admin, and no one else", async () => {
+    for (const role of ["manager", "viewer"]) {
       state.role = role
       const res = await budget.PATCH(req("/api/v1/settings/ai-budget", "PATCH", { limit: 100 }))
       expect(res.status).toBe(403)
     }
     expect(state.updateOrg).not.toHaveBeenCalled()
 
-    state.role = "superadmin"
+    state.role = "admin"
     expect((await budget.PATCH(req("/api/v1/settings/ai-budget", "PATCH", { limit: 20 }))).status).toBe(200)
-    expect(state.updateOrg).toHaveBeenCalledWith({ where: { id: "org1" }, data: { settings: { aiDailyBudgetUsd: 20 } } })
+    expect(state.updateOrg).toHaveBeenLastCalledWith({ where: { id: "org1" }, data: { settings: { aiDailyBudgetUsd: 20 } } })
+    expect((await budget.PATCH(req("/api/v1/settings/ai-budget", "PATCH", { limit: null }))).status).toBe(200)
+    expect(state.updateOrg).toHaveBeenLastCalledWith({ where: { id: "org1" }, data: { settings: {} } })
+  })
+
+  it("refuses a limit that is not a sum of dollars a day", async () => {
+    for (const limit of [0, 0.1, -5, 10_001, "20", true]) {
+      expect((await budget.PATCH(req("/api/v1/settings/ai-budget", "PATCH", { limit }))).status).toBe(400)
+    }
+    expect(state.updateOrg).not.toHaveBeenCalled()
   })
 
   it("leaves the reply limits to the organization's admin", async () => {

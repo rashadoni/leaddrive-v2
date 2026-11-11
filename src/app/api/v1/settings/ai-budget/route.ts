@@ -1,17 +1,21 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withRls, withRlsSessionAuth } from "@/lib/with-rls"
-import { isAdmin, isSuperAdmin, type Role } from "@/lib/permissions"
+import { isAdmin, type Role } from "@/lib/permissions"
 import { checkAiBudget, getAiLimits, DEFAULT_AI_LIMITS } from "@/lib/ai/budget"
+
+/** A limit is a sum in dollars a day: a cent is too small to mean anything, ten thousand a typo. */
+const MIN_DAILY_LIMIT_USD = 0.5
+const MAX_DAILY_LIMIT_USD = 10_000
 
 /**
  * GET /api/v1/settings/ai-budget — current budget usage
- * PATCH /api/v1/settings/ai-budget — reply limits (admin); daily limit (platform superadmin)
+ * PATCH /api/v1/settings/ai-budget — reply limits and the daily limit (admin)
  *
- * The daily limit guards the platform's AI key, so the platform sets it
- * (owner, 2026-11-10: one setting, one owner — «Настройки → ИИ и расходы»
- * shows it, the tenant card in /admin/tenants changes it). Until then any
- * member of the organization could raise it to $100 a day on our key.
+ * The daily limit is the organization's own (owner, 2026-11-11: «лимит в
+ * балансе сколько загрузил… если клиент захочет, то пусть ставит лимит»):
+ * none unless its admin sets one in «Настройки → ИИ и расходы»; `limit: null`
+ * clears it. Members who are not admins still cannot change it.
  */
 export const GET = withRls(async (_req, { orgId }) => {
   const [budget, limits] = await Promise.all([checkAiBudget(orgId), getAiLimits(orgId)])
@@ -23,15 +27,13 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
   const orgId = auth.orgId
   const body = await req.json()
   const { limit, aiLimits } = body as {
-    limit?: number
+    limit?: number | null
     aiLimits?: { maxRepliesPerConversation?: number; maxRepliesPerContactPerDay?: number; maxOutputTokens?: number }
   }
 
-  if (limit !== undefined && !isSuperAdmin(auth.role as Role)) {
-    return NextResponse.json({ error: "The daily AI limit is set by the platform", code: "LIMIT_PLATFORM_ONLY" }, { status: 403 })
-  }
-  if (limit !== undefined && (typeof limit !== "number" || limit <= 0 || limit > 100)) {
-    return NextResponse.json({ error: "Limit must be between 0.5 and 100" }, { status: 400 })
+  if (limit !== undefined && limit !== null
+    && (typeof limit !== "number" || !Number.isFinite(limit) || limit < MIN_DAILY_LIMIT_USD || limit > MAX_DAILY_LIMIT_USD)) {
+    return NextResponse.json({ error: `Limit must be between ${MIN_DAILY_LIMIT_USD} and ${MAX_DAILY_LIMIT_USD}, or null for none` }, { status: 400 })
   }
   // A6 — granular limits validation (int ranges; anything else is rejected, not coerced).
   const intOk = (v: unknown, min: number, max: number) =>
@@ -54,7 +56,8 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
   })
 
   const settings = (org?.settings as Record<string, any>) || {}
-  if (limit !== undefined) settings.aiDailyBudgetUsd = limit
+  if (limit === null) delete settings.aiDailyBudgetUsd
+  else if (limit !== undefined) settings.aiDailyBudgetUsd = Math.round(limit * 100) / 100
   if (aiLimits !== undefined) {
     settings.aiLimits = { ...DEFAULT_AI_LIMITS, ...(settings.aiLimits ?? {}), ...aiLimits }
   }

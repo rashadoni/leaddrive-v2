@@ -223,7 +223,8 @@ export const POST = withRlsAuth("contracts", "write", async (req: NextRequest, a
   const contextTokenEst     = contextBody ? Math.ceil(contextBody.length / 4) : 0
   const estInputTokens      = instructionTokenEst + contextTokenEst + SYSTEM_PROMPT_TOKEN_OVERHEAD
   const estCost             = calculateAiCost(MODEL, estInputTokens, MAX_OUTPUT_TOKENS)
-  if (estCost > budget.remaining) {
+  // No limit set (owner, 2026-11-11): nothing to run out of.
+  if (budget.remaining !== null && estCost > budget.remaining) {
     return NextResponse.json(
       {
         error: `This drafting request would exceed the remaining AI budget ($${budget.remaining.toFixed(3)} remaining, estimated $${estCost.toFixed(3)}).`,
