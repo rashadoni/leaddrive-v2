@@ -160,6 +160,12 @@ describe("Mənim işlərim → Təqvim, laid out as Bordio's (owner, 2026-11-11:
       await render()
       const lanes = container.querySelector('[data-testid="my-work-lanes"]') as HTMLElement
       expect(lanes.style.height).toBe("568px")
+      // A short window (Togrul's: 699 px, the video-lesson card above): the lanes end at the
+      // window's edge — 699 − 312 − 32 = 355 — and do not push the page past it.
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: 699 })
+      rect.mockReturnValue({ top: 312, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 312, toJSON: () => ({}) })
+      await act(async () => { window.dispatchEvent(new Event("resize")) })
+      expect(lanes.style.height).toBe("355px")
       // All 150 are in the column (no «show more» stretching the page), and the column scrolls itself.
       expect(container.querySelectorAll('[data-testid="my-work-waiting"] [data-testid="my-work-card"]')).toHaveLength(150)
       expect(container.querySelector('[data-testid="my-work-waiting-scroll"]')?.className).toContain("overflow-y-auto")
