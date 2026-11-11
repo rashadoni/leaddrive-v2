@@ -150,6 +150,12 @@ export function BookingWhatsAppCard({ services, hosts }: { services: RuleService
         /> : null}
         {setting.mode === "book" ? <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3 text-sm">
           <span className="text-muted-foreground">{t("waFlowTitle")}</span>
+          {/* What a client actually sees today, in a sentence — the two
+              buttons beside it talk to Meta, and «Forma var: PUBLISHED» is
+              not the same statement as «this is what the agent sends». */}
+          <span className={setting.flowId ? "font-medium" : "text-muted-foreground"}>
+            {setting.flowId ? t("waFlowOn") : t("waFlowOff")}
+          </span>
           <button
             type="button"
             className="min-h-11 rounded-lg border px-3 text-sm"
@@ -180,12 +186,31 @@ export function BookingWhatsAppCard({ services, hosts }: { services: RuleService
                   // Meta's own words, step by step: a setup that fails
                   // silently is how a form ships against an account that
                   // cannot hold one.
+                  if (data?.ok && typeof data.flowId === "string") setSetting({ ...setting, flowId: data.flowId })
                   setFlows({ checking: false, answer: !data ? t("waFlowFailed")
                     : (data.steps ?? []).map((step: { step: string; ok: boolean; detail: string }) => `${step.ok ? "✓" : "✗"} ${step.step}: ${step.detail}`).join(" · ") })
                 })
                 .catch(() => setFlows({ checking: false, answer: t("waFlowFailed") }))
             }}
           >{t("waFlowCreate")}</button>
+          {/* The way back. A published form cannot be deleted — a client may
+              have it open — so this only stops it being sent, and the times
+              go out as the list again. */}
+          {setting.flowId ? <button
+            type="button"
+            className="min-h-11 rounded-lg border px-3 text-sm"
+            disabled={flows.checking}
+            onClick={() => {
+              setFlows({ checking: true, answer: null })
+              void fetch("/api/v1/booking-pages/whatsapp/flow?forget=1", { method: "DELETE", cache: "no-store" })
+                .then((response) => response.ok ? response.json() : null)
+                .then((body) => {
+                  if (body?.success) setSetting({ ...setting, flowId: null })
+                  setFlows({ checking: false, answer: body?.success ? t("waFlowOff") : t("waFlowFailed") })
+                })
+                .catch(() => setFlows({ checking: false, answer: t("waFlowFailed") }))
+            }}
+          >{t("waFlowForget")}</button> : null}
           {flows.answer ? <span role="status" className="break-all text-xs text-muted-foreground">{flows.answer}</span> : null}
         </div> : null}
         {error ? <p role="alert" className="mt-2 text-sm text-destructive">{error}</p> : null}

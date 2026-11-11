@@ -145,6 +145,11 @@ type WaInboundMessagePayload = WaRecord & {
     type?: unknown
     button_reply?: { id?: unknown; title?: unknown }
     list_reply?: { id?: unknown; title?: unknown }
+    /**
+     * A form filled inside WhatsApp (Flows). Everything the client picked and
+     * typed is one JSON string — src/lib/booking/whatsapp-flow.ts reads it.
+     */
+    nfm_reply?: { response_json?: unknown; name?: unknown; body?: unknown }
     call_permission_reply?: {
       response?: unknown
       is_permanent?: unknown
@@ -1462,7 +1467,24 @@ async function processMessages(
     // `handled: false`, and the message takes the ordinary path below.
     // Only a typed message or a tapped button: other interactive replies (a
     // call permission, say) carry no words to book from.
-    const replyId = asStringOrNull(msg.interactive?.button_reply?.id) ?? asStringOrNull(msg.interactive?.list_reply?.id)
+    let replyId = asStringOrNull(msg.interactive?.button_reply?.id) ?? asStringOrNull(msg.interactive?.list_reply?.id)
+    // A form filled inside WhatsApp arrives as `nfm_reply`, not as a tapped
+    // row: the time the client chose is an id inside its JSON, and the name
+    // they typed is the name the meeting must be booked under — the one thing
+    // in the form that the sender's WhatsApp profile cannot give us.
+    let bookingName = senderName
+    if (!replyId && convId && !replyHeld && !flowTookOwnership && asStringOrNull(msg.interactive?.nfm_reply?.response_json)) {
+      try {
+        const { flowTap } = await import("@/lib/booking/whatsapp-flow")
+        const tapped = flowTap(msg.interactive)
+        if (tapped) {
+          replyId = tapped.replyId
+          if (tapped.name) bookingName = tapped.name
+        }
+      } catch (err) {
+        console.error("[WA Webhook] flow reply unreadable:", err)
+      }
+    }
     if (!replyHeld && !flowTookOwnership && convId && text.trim() && (readsAsText || (msg.type === "interactive" && replyId))) {
       try {
         const { handleWhatsAppBookingTurn } = await import("@/lib/booking/whatsapp-agent")
@@ -1471,7 +1493,7 @@ async function processMessages(
           channelConfigId: channelConfig.id,
           conversationId: convId,
           waPhone: waId,
-          senderName,
+          senderName: bookingName,
           text,
           replyId,
           contactId: contactId ?? undefined,

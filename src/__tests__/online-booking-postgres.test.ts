@@ -61,6 +61,8 @@ const whatsapp = vi.hoisted(() => ({
   buttons: [] as { body: string; footer?: string | null; buttons: { id: string; title: string }[]; conversationId?: string | null }[],
   lists: [] as { body: string; footer?: string | null; buttonLabel: string; sectionTitle?: string | null; rows: { id: string; title: string; description?: string | null }[]; sections?: { title: string; rowIds: string[] }[]; conversationId?: string | null }[],
   texts: [] as { message: string; conversationId?: string | null }[],
+  /** Forms sent inside WhatsApp (Flows): what travelled in `data` is the offer. */
+  flows: [] as { body: string; footer?: string | null; flowId: string; flowToken: string; cta: string; screen: string; data: Record<string, unknown>; conversationId?: string | null }[],
   /** Set for one send to play a provider that refuses interactive lists. */
   listFails: false,
 }))
@@ -102,6 +104,10 @@ vi.mock("@/lib/whatsapp", async (original) => ({
     }
     whatsapp.lists.push({ body: input.body, footer: input.footer, buttonLabel: input.buttonLabel, sectionTitle: input.sectionTitle, rows: input.rows, sections: input.sections, conversationId: input.conversationId })
     return { success: true, messageId: `wamid.list.${whatsapp.lists.length}` }
+  }),
+  sendWhatsAppFlow: vi.fn(async (input: { body: string; footer?: string | null; flowId: string; flowToken: string; cta: string; screen: string; data: Record<string, unknown>; conversationId?: string | null }) => {
+    whatsapp.flows.push({ ...input })
+    return { success: true, messageId: `wamid.flow.${whatsapp.flows.length}` }
   }),
   sendWhatsAppMessage: vi.fn(async (input: { message: string; conversationId?: string | null }) => {
     whatsapp.texts.push({ message: input.message, conversationId: input.conversationId })
@@ -305,6 +311,7 @@ pgDescribe("online booking on a real Postgres", () => {
     mail.sent = []
     whatsapp.buttons = []
     whatsapp.lists = []
+    whatsapp.flows = []
     whatsapp.listFails = false
     // Offers hold a master's hours until they expire, and one menu holds eight
     // of them. Left standing, they are the previous test's holds eating this
@@ -1163,7 +1170,9 @@ pgDescribe("online booking on a real Postgres", () => {
     const booking = bookingWhatsApp === null
       // The salon books cheap services itself and brings the dear ones to a person.
       ? { mode: "book", channelConfigId: null, rules: { maxPrice: 50 } }
-      : { mode: "book", channelConfigId: null }
+      // Anything else given is the rest of the setting — `flowId`, say, which
+      // is what decides whether a client is sent a form or a list.
+      : { mode: "book", channelConfigId: null, ...(bookingWhatsApp && typeof bookingWhatsApp === "object" ? bookingWhatsApp : {}) }
     await bypass(() => prisma.organization.update({ where: { id: ORG }, data: { settings: { ...(before.settings as Record<string, unknown>), ...rest, bookingWhatsApp: booking } } }))
     try {
       await run()
@@ -1358,6 +1367,95 @@ pgDescribe("online booking on a real Postgres", () => {
       const offers = await offersOf(conversation)
       expect(offers.length).toBeGreaterThan(3)
       expect(offers.map((offer) => `bk:${offer.id}`)).toEqual(expect.arrayContaining(message.buttons.map((button) => button.id)))
+    })
+  })
+
+  it("WhatsApp: a number with a published form is sent the form, and the name typed in it is the name on the meeting", async () => {
+    // The owner asked for Telegram's forms inside WhatsApp (2026-11-11:
+    // «telegram намного красивее можно оформлять формы»), and Meta has them —
+    // Flows. What is checked here is the whole round trip, because every part
+    // of it is a place the form could be shown and still book nothing:
+    //
+    //   • the form goes out INSTEAD of the menu, and only for a number whose
+    //     form is published — `flowId` is written by the publish step alone;
+    //   • the times inside it are the held offers, in their order, with «another
+    //     day» last, carrying the id the menu row carries, so a tap on it lands
+    //     in the same handler;
+    //   • the submitted form books, and the name the client typed wins over the
+    //     name WhatsApp knows them by — in a salon the phone belongs to one
+    //     person and the appointment often to another.
+    const slug = await newPage({ title: "Saç kəsimi", durationMinutes: 45 })
+    const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
+    await withWhatsAppBooking(async () => {
+      const conversation = `conv-${randomUUID()}`
+      expect(await turnIn(conversation, { client: decides({ action: "offer", language: "az", serviceId: page.id }) })).toEqual({ handled: true })
+
+      // The form, and not the menu as well: two messages for one answer is
+      // two things to tap and one of them stale.
+      expect(whatsapp.lists).toHaveLength(0)
+      expect(whatsapp.buttons).toHaveLength(0)
+      const form = whatsapp.flows.at(-1)!
+      expect(form.flowId).toBe("flow-published-1")
+      expect(form.conversationId).toBe(conversation)
+      expect(form.screen).toBe("BOOK")
+      // Ours, handed back untouched inside the submission: the only thing in it
+      // that says which conversation the form was opened from.
+      expect(form.flowToken).toBe(`bkflow:${conversation}`)
+      // The times are still in the message itself: the form is one tap away,
+      // and a client reading WhatsApp sees them without taking it.
+      expect(form.body).toMatch(/Saç kəsimi, 45 dəq/)
+      expect(form.data.service).toMatch(/^Saç kəsimi, 45 dəq/)
+      expect(form.data.client).toBe("Nigar")
+
+      const times = form.data.times as { id: string; title: string; description: string }[]
+      const offers = await offersOf(conversation, "offered")
+      expect(offers.length).toBeGreaterThan(3)
+      expect(times.slice(0, offers.length).map((time) => time.id)).toEqual(offers.map((offer) => `bk:${offer.id}`))
+      // Meta draws an item with no second line as a blank row, so every one
+      // has one — the master when there is a name, the day otherwise.
+      for (const time of times) {
+        expect(time.title, JSON.stringify(time)).toBeTruthy()
+        expect(time.description, JSON.stringify(time)).toBeTruthy()
+      }
+      const other = times.at(-1)!
+      expect(other.title).toBe("Başqa gün")
+      expect(other.id).toBe(`bkd:${page.id}`)
+
+      // The client picks the first time, types a name over the one WhatsApp
+      // knows, and confirms. That arrives as `nfm_reply`: one JSON string.
+      const { flowTap } = await import("@/lib/booking/whatsapp-flow")
+      const submitted = flowTap({
+        type: "nfm_reply",
+        nfm_reply: { response_json: JSON.stringify({ flow_token: form.flowToken, time: times[0].id, client: "Günel" }), body: "Sent", name: "flow" },
+      })!
+      expect(submitted.replyId).toBe(times[0].id)
+      expect(await turnIn(conversation, { replyId: submitted.replyId, senderName: submitted.name!, text: "[Форма: Günel]" })).toEqual({ handled: true })
+
+      const meetings = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: page.id, status: "confirmed" } }))
+      expect(meetings).toHaveLength(1)
+      expect(meetings[0]).toMatchObject({ source: "whatsapp", name: "Günel", phone: "+994551234567" })
+      expect(meetings[0].startsAt.toISOString()).toBe(offers[0].startsAt.toISOString())
+      // Confirmed the way every booking is, with the two taps that follow it.
+      expect(whatsapp.buttons.at(-1)!.body).toMatch(/^Yazıldınız ✅/)
+
+      // «Another day» from inside the form reaches the day menu — the form has
+      // no second screen, so this id is the only way out of the day offered.
+      expect(await turnIn(conversation, { replyId: other.id, text: "Başqa gün" })).toEqual({ handled: true })
+      expect(whatsapp.lists.at(-1)!.rows.every((row) => row.id.startsWith(`bkday:${page.id}:`))).toBe(true)
+    }, { bookingWhatsApp: { flowId: "flow-published-1" } })
+  })
+
+  it("WhatsApp: a number without a published form is sent the menu, exactly as before", async () => {
+    // The fallback is not a detail: every number had the menu until today, and
+    // a form belongs only to an account that published one. A number that
+    // forgot its form (the «use the list again» button) must land here too.
+    const slug = await newPage({ title: "Saç yuma", durationMinutes: 30 })
+    const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
+    await withWhatsAppBooking(async () => {
+      const conversation = `conv-${randomUUID()}`
+      expect(await turnIn(conversation, { client: decides({ action: "offer", language: "az", serviceId: page.id }) })).toEqual({ handled: true })
+      expect(whatsapp.flows).toHaveLength(0)
+      expect(whatsapp.lists.at(-1)!.rows.at(-1)!.title).toBe("Başqa gün")
     })
   })
 

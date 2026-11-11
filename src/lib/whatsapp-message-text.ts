@@ -26,8 +26,12 @@ export type WaMessageTextPayload = {
   reaction?: { emoji?: unknown }
   button?: { text?: unknown }
   interactive?: {
+    /** Meta's own name for the kind of reply — carried, like `type` above. */
+    type?: unknown
     button_reply?: { title?: unknown }
     list_reply?: { title?: unknown }
+    /** A form filled inside WhatsApp (Flows); its answers are one JSON string. */
+    nfm_reply?: { response_json?: unknown; name?: unknown; body?: unknown }
   }
 }
 
@@ -71,10 +75,29 @@ export function describeWaMessage(msg: WaMessageTextPayload): { text: string; me
       return { text: str(msg.button?.text) ?? "[Кнопка]", messageType }
     case "interactive":
       return {
-        text: str(msg.interactive?.button_reply?.title) ?? str(msg.interactive?.list_reply?.title) ?? "[Интерактив]",
+        text: str(msg.interactive?.button_reply?.title)
+          ?? str(msg.interactive?.list_reply?.title)
+          // A form carries no title to show: what the client picked is an id
+          // only the booking agent can resolve, and it answers in the next
+          // message of the thread. So the row says a form came back, with the
+          // name typed into it when there is one.
+          ?? (str(msg.interactive?.nfm_reply?.response_json) ? `[Форма${formName(msg.interactive?.nfm_reply?.response_json)}]` : null)
+          ?? "[Интерактив]",
         messageType,
       }
     default:
       return { text: `[${str(msg.type) ?? "unknown"}]`, messageType }
+  }
+}
+
+/** «: Rəşad» when the form carried a name, nothing when it did not. */
+function formName(responseJson: unknown): string {
+  if (typeof responseJson !== "string") return ""
+  try {
+    const parsed = JSON.parse(responseJson) as Record<string, unknown>
+    const name = typeof parsed?.client === "string" ? parsed.client.trim() : ""
+    return name ? `: ${name.slice(0, 60)}` : ""
+  } catch {
+    return ""
   }
 }

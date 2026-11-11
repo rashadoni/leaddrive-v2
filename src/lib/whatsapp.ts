@@ -981,6 +981,88 @@ export interface WhatsAppListRow {
  * Inside the 24-hour window only, like any free-form reply. Logged with the
  * rows spelled into the body, so the inbox thread shows what was offered.
  */
+/**
+ * A FORM inside WhatsApp — Meta's Flows.
+ *
+ * The published form is one screen with no times in it; the times travel with
+ * the message, in `data`, so one form serves every service, master and day
+ * (src/lib/booking/whatsapp-flow.ts). The answer comes back as an ordinary
+ * incoming message of type `interactive` → `nfm_reply`, whose `response_json`
+ * holds what the client picked.
+ *
+ * `flowToken` is ours: Meta hands it back untouched inside that JSON, and it
+ * is the only thing tying a submission to the conversation it belongs to.
+ */
+export async function sendWhatsAppFlow({
+  to, body, footer, flowId, flowToken, cta, screen, data, organizationId, channelConfigId, conversationId, contactId, leadId, extraMetadata,
+}: {
+  to: string
+  body: string
+  footer?: string | null
+  flowId: string
+  flowToken: string
+  /** The button that opens the form; WhatsApp cuts it at 20 characters. */
+  cta: string
+  screen: string
+  data: Record<string, unknown>
+  organizationId: string
+  channelConfigId?: string | null
+  conversationId?: string | null
+  contactId?: string
+  leadId?: string
+  extraMetadata?: Record<string, unknown>
+}): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const config = await resolveSendingConfig(organizationId, channelConfigId)
+  if (!config) return { success: false, error: "WhatsApp not configured for this tenant" }
+  const cleanPhone = to.replace(/[\s\-\(\)]/g, "").replace(/^\+/, "")
+  // The log keeps the words a person would have read; the form itself is not
+  // text, so what it offered goes in the metadata beside it.
+  const logged = body
+  const metadata = { interactive: { flow: { flowId, screen, data } }, ...(extraMetadata ?? {}) }
+  try {
+    const res = await fetch(`${GRAPH_API_BASE}/${config.phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${config.accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: cleanPhone,
+        type: "interactive",
+        interactive: {
+          type: "flow",
+          body: { text: body.slice(0, 1024) },
+          ...(footer ? { footer: { text: footer.slice(0, 60) } } : {}),
+          action: {
+            name: "flow",
+            parameters: {
+              flow_message_version: "3",
+              flow_id: flowId,
+              flow_token: flowToken,
+              flow_cta: cta.slice(0, 20),
+              flow_action: "navigate",
+              flow_action_payload: { screen, data },
+            },
+          },
+        },
+      }),
+      signal: AbortSignal.timeout(10_000),
+    })
+    const payload = await res.json()
+    if (!res.ok) {
+      const err = payload?.error?.message || `HTTP ${res.status}`
+      await logMessage(organizationId, config, cleanPhone, logged, "failed", contactId, { error: err, ...metadata }, leadId, conversationId)
+      return { success: false, error: err }
+    }
+    const messageId = payload?.messages?.[0]?.id
+    await logMessage(organizationId, config, cleanPhone, logged, "sent", contactId, { waMessageId: messageId, ...metadata }, leadId, conversationId)
+    return { success: true, messageId }
+  } catch (err: any) {
+    const error = err?.name === "TimeoutError" ? "timeout" : (err?.message || "request failed")
+    await logMessage(organizationId, config, cleanPhone, logged, "failed", contactId, { error, ...metadata }, leadId, conversationId)
+    return { success: false, error }
+  }
+}
+
 export async function sendWhatsAppList({
   to, body, footer, buttonLabel, sectionTitle, rows, sections, organizationId, channelConfigId, conversationId, contactId, leadId, extraMetadata,
 }: {

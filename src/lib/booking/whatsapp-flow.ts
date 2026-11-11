@@ -14,8 +14,15 @@
  * written. A capability nobody can confirm is a capability you measure.
  */
 import { resolveWhatsAppConfig, WHATSAPP_GRAPH_API_BASE } from "@/lib/whatsapp"
+import { bookingDb as prisma } from "./db"
+import { WHATSAPP_BOOKING_SETTING } from "./whatsapp-setting"
 
 export const BOOKING_FLOW_NAME = "leaddrive-booking-v1"
+/**
+ * The one screen the published form has. The agent names it in every message
+ * it sends, so it lives beside the form rather than being typed twice.
+ */
+export const BOOKING_FLOW_SCREEN = "BOOK"
 
 export type WhatsAppFlow = {
   id: string
@@ -101,7 +108,7 @@ export function bookingFlowJson(): Record<string, unknown> {
     version: "7.2",
     screens: [
       {
-        id: "BOOK",
+        id: BOOKING_FLOW_SCREEN,
         title: "Yazılış",
         terminal: true,
         data: {
@@ -235,6 +242,14 @@ export async function ensureBookingFlow(
       ? [`${published.id} ${published.status}`, ...published.errors].join(" | ")
       : "not listed",
   })
+  // What is published is what the agent may send. Written here and nowhere
+  // else, so a form that failed to publish never becomes the thing clients
+  // see — and reported as a step of its own, because a form Meta published
+  // that we then failed to write down would never appear in a single chat
+  // and nothing on the screen would say why.
+  const remembered = await rememberBookingFlow(organizationId, published?.status === "PUBLISHED" ? published.id : null)
+    .then(() => null, (error: unknown) => error instanceof Error ? error.message : "write failed")
+  steps.push({ step: "remember", ok: !remembered, detail: remembered ?? (published?.status === "PUBLISHED" ? `the agent will send ${published.id}` : "no published form; the agent sends the list") })
   return { ok: published?.status === "PUBLISHED", flowId, steps }
 }
 
@@ -269,8 +284,94 @@ export async function deleteBookingFlow(
       signal: AbortSignal.timeout(20_000),
     })
     const body = await res.json().catch(() => null) as Record<string, unknown> | null
+    if (res.ok) await rememberBookingFlow(organizationId, null)
     return { ok: res.ok, detail: body ? JSON.stringify(body) : `HTTP ${res.status}` }
   } catch (error) {
     return { ok: false, detail: error instanceof Error ? error.message : "request failed" }
   }
+}
+
+/**
+ * What a client sent back from the form.
+ *
+ * Meta puts everything in one string — `interactive.nfm_reply.response_json` —
+ * and the token we issued is inside it, not beside it. A submission that does
+ * not parse, or that names no time, is not a booking: it is read as nothing,
+ * and the message takes the ordinary path.
+ */
+export function readFlowReply(responseJson: unknown): { token: string | null; time: string; client: string } | null {
+  if (typeof responseJson !== "string" || !responseJson.trim()) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(responseJson)
+  } catch {
+    return null
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
+  const value = parsed as Record<string, unknown>
+  const time = typeof value.time === "string" ? value.time.trim() : ""
+  if (!time) return null
+  return {
+    token: typeof value.flow_token === "string" && value.flow_token ? value.flow_token : null,
+    time,
+    client: typeof value.client === "string" ? value.client.trim() : "",
+  }
+}
+
+/**
+ * Remember which form this organisation may send, or forget it.
+ *
+ * One key in the booking setting the agent already reads, set in place: the
+ * rest of that object belongs to the screen that saves the rules, and reading
+ * it and writing it back around them is how template names were lost once
+ * (2026-11-10).
+ */
+/**
+ * Stop sending the form, leaving it on the account.
+ *
+ * The way back for a number whose form misbehaves: Meta will not let a
+ * published form be deleted, so forgetting it is the only thing the screen
+ * can do, and the agent falls back to the list of times it sent before.
+ */
+export async function forgetBookingFlow(organizationId: string): Promise<void> {
+  await rememberBookingFlow(organizationId, null)
+}
+
+async function rememberBookingFlow(organizationId: string, flowId: string | null): Promise<void> {
+  // The inner set makes sure the key exists before the outer one writes into
+  // it: `jsonb_set` on a path whose parent is missing changes nothing at all,
+  // and a number that published a form before its booking card was ever saved
+  // would have kept the form a secret.
+  await prisma.$executeRawUnsafe(
+    `UPDATE organizations SET settings = jsonb_set(
+       jsonb_set(
+         COALESCE(settings::jsonb, '{}'::jsonb),
+         '{${WHATSAPP_BOOKING_SETTING}}',
+         COALESCE(CASE WHEN jsonb_typeof(settings::jsonb -> '${WHATSAPP_BOOKING_SETTING}') = 'object'
+                       THEN settings::jsonb -> '${WHATSAPP_BOOKING_SETTING}' END, '{}'::jsonb),
+         true),
+       '{${WHATSAPP_BOOKING_SETTING},flowId}', $2::jsonb, true)
+     WHERE id = $1`,
+    organizationId, JSON.stringify(flowId),
+  )
+}
+
+/**
+ * A form submitted in WhatsApp, read as the tap it is.
+ *
+ * Meta delivers it as an ordinary incoming message whose `interactive` holds
+ * `nfm_reply` — not `list_reply` — so a webhook that only knows tapped rows
+ * sees a message with no words in it and hands the client to a ticket. What
+ * comes back is the row the client picked (the same id the menu row carries,
+ * so one handler answers both) and the name they typed, which beats the name
+ * WhatsApp knows them by: in a salon the phone belongs to one person and the
+ * appointment often to another.
+ */
+export function flowTap(interactive: unknown): { replyId: string; name: string | null } | null {
+  if (!interactive || typeof interactive !== "object") return null
+  const reply = (interactive as { nfm_reply?: unknown }).nfm_reply
+  if (!reply || typeof reply !== "object") return null
+  const submitted = readFlowReply((reply as { response_json?: unknown }).response_json)
+  if (!submitted) return null
+  return { replyId: submitted.time, name: submitted.client || null }
 }

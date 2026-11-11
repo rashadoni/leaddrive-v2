@@ -49,6 +49,24 @@ describe("describeWaMessage", () => {
     expect(describeWaMessage({})).toEqual({ text: "[unknown]", messageType: "text" })
   })
 
+  it("says a form came back, and who filled it", () => {
+    // A form filled inside WhatsApp (Flows) carries no title to show: what the
+    // client picked is an id only the booking agent can resolve, and it answers
+    // in the very next message of the thread. The name they typed is the one
+    // thing in it a person reading the inbox can use.
+    const form = (answers: Record<string, unknown>) => describeWaMessage({
+      type: "interactive",
+      interactive: { type: "nfm_reply", nfm_reply: { response_json: JSON.stringify(answers), body: "Sent", name: "flow" } },
+    }).text
+
+    expect(form({ flow_token: "bkflow:conv-1", time: "bk:offer-9", client: "Günel" })).toBe("[Форма: Günel]")
+    expect(form({ time: "bk:offer-9" })).toBe("[Форма]")
+    // Never empty: the webhook decides by `text.trim()`, and an empty one here
+    // would be a submitted form the booking agent is never even offered.
+    expect(form({ time: "bk:offer-9" }).trim()).not.toBe("")
+    expect(describeWaMessage({ type: "interactive", interactive: { list_reply: { title: "12:30" } } }).text).toBe("12:30")
+  })
+
   it("reads an echo of a reply typed on the phone exactly as it reads an inbound message", () => {
     // Same payload shape, opposite directions: inbound carries `from`, an echo carries `from` + `to`.
     const inbound = { from: "994501234567", id: "wamid.in", type: "text", text: { body: "Sabah 11:30 olar?" } }
