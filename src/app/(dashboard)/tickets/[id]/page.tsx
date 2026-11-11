@@ -79,6 +79,11 @@ interface CommentData {
   attachments?: TicketAttachmentData[]
 }
 
+/** Photos a browser draws: shown in the comment, not as a paperclip link. */
+function isInlineImage(mimeType: string | null | undefined): boolean {
+  return /^image\/(jpeg|png|webp|gif)$/i.test(mimeType ?? "")
+}
+
 interface TicketAttachmentData {
   id: string
   commentId: string | null
@@ -1476,7 +1481,20 @@ export default function TicketDetailPage() {
                         text={view.text}
                         footer={formatDate(comment.createdAt, locale)}
                       />
-                      {comment.attachments?.map(attachment => (
+                      {comment.attachments?.map(attachment => isInlineImage(attachment.mimeType) ? (
+                        // A customer's photo shows itself, as in the inbox; a click opens it full size.
+                        <a
+                          key={attachment.id}
+                          href={`/uploads/tickets/${encodeURIComponent(attachment.fileName)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ml-11 mt-1 block w-fit max-w-sm overflow-hidden rounded-md border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                          data-testid="ticket-comment-image"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={`/uploads/tickets/${encodeURIComponent(attachment.fileName)}`} alt={attachment.originalName} loading="lazy" decoding="async" className="max-h-60 object-contain" />
+                        </a>
+                      ) : (
                         <a
                           key={attachment.id}
                           href={`/uploads/tickets/${encodeURIComponent(attachment.fileName)}`}
@@ -1515,7 +1533,20 @@ export default function TicketDetailPage() {
                         )}
                       </div>
                       <p className="text-sm mt-1 text-muted-foreground whitespace-pre-wrap">{visibleText}</p>
-                      {comment.attachments?.map(attachment => (
+                      {comment.attachments?.map(attachment => isInlineImage(attachment.mimeType) ? (
+                        // A customer's photo shows itself, as in the inbox; a click opens it full size.
+                        <a
+                          key={attachment.id}
+                          href={`/uploads/tickets/${encodeURIComponent(attachment.fileName)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 mt-1 block w-fit max-w-sm overflow-hidden rounded-md border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                          data-testid="ticket-comment-image"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={`/uploads/tickets/${encodeURIComponent(attachment.fileName)}`} alt={attachment.originalName} loading="lazy" decoding="async" className="max-h-60 object-contain" />
+                        </a>
+                      ) : (
                         <a
                           key={attachment.id}
                           href={`/uploads/tickets/${encodeURIComponent(attachment.fileName)}`}
