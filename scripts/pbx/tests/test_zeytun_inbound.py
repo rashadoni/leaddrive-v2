@@ -325,6 +325,41 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(lines, [("call", {"usd": round((800 * 0.75 + 1200 * 3 + 50 * 4.5 + 200 * 12) / 1e6, 4),
                                            "textIn": 800, "audioIn": 1200, "textOut": 50, "audioOut": 200, "turns": 2})])
 
+    def test_the_leg_reports_what_it_spent_and_nothing_when_it_counted_nothing(self):
+        bridge, _requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
+        self.assertIsNone(bridge.call_usage())
+        bridge.handle({"usageMetadata": {"promptTokenCount": 1000, "responseTokenCount": 200,
+                                         "promptTokensDetails": [{"modality": "TEXT", "tokenCount": 800}],
+                                         "responseTokensDetails": [{"modality": "AUDIO", "tokenCount": 200}]}},
+                      lambda m: None, lambda: True)
+        class Response(list):
+            def __enter__(self): return self
+            def __exit__(self, *exc): return False
+        audio = [b"data: " + json.dumps({"candidates": [{"content": {"parts": [{"inlineData": {
+            "mimeType": "audio/pcm;rate=24000", "data": base64.b64encode(b"\0" * 96000).decode()}}]}}]}).encode() + b"\n"]
+        tts = bridge_module.ZeytunGeminiTts("k" * 39, "gemini-3.8-flash-tts", "Sulafat",
+                                            opener=lambda req, timeout: Response(audio))
+        tts.stream("Salam", lambda pcm: None, lambda: True)
+        bridge.relay = SimpleNamespace(tts=tts)
+        bridge_module.GEMINI_LIVE_MODEL = "gemini-3.8-live"
+        try:
+            usage = bridge.call_usage()
+        finally:
+            del bridge_module.GEMINI_LIVE_MODEL
+        self.assertEqual(usage, {
+            "live": {"textIn": 800, "audioIn": 200, "textOut": 0, "audioOut": 200, "turns": 1, "model": "gemini-3.8-live"},
+            "tts": {"requests": 1, "chars": 5, "audioSeconds": 2.0, "model": "gemini-3.8-flash-tts"},
+        })
+        # Exactly the CRM's strict schema (voiceAgentLineUsageSchema): these keys, nothing else.
+        self.assertEqual(set(usage["live"]), {"textIn", "audioIn", "textOut", "audioOut", "turns", "model"})
+        self.assertEqual(set(usage["tts"]), {"requests", "chars", "audioSeconds", "model"})
+        # A model name the CRM would refuse is left out rather than sent.
+        bridge_module.GEMINI_LIVE_MODEL = "Gemini Live!"
+        try:
+            self.assertNotIn("model", bridge.call_usage()["live"])
+        finally:
+            del bridge_module.GEMINI_LIVE_MODEL
+
     def test_a_cancel_the_crm_took_stops_every_later_save_of_the_call(self):
         bridge, requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
         self.assertEqual(bridge._save_order({"lines": [{"quantity": 1, "unit": "qutu", "spoken": "x"}]})["status"], "saved")
@@ -1478,6 +1513,22 @@ class SpeechRelayTests(unittest.TestCase):
                 self.tts_with_lines(lines, error).stream("Salam", lambda pcm: None, lambda: True)
             self.assertEqual(str(raised.exception), reason)
 
+    def test_tts_counts_every_request_and_the_audio_it_returned(self):
+        # Owner, 2026-11-11 («почему расходов 0?»): the call's speech goes into the CRM's spend report.
+        tts, _asked = self.vertex_tts([429, "ok", "ok"], environ={})
+        self.assertEqual(tts.billed(), {"requests": 0, "chars": 0, "audioSeconds": 0.0})
+        tts.stream("Salam", lambda pcm: None, lambda: True)  # global refused, then the Gemini API answered
+        tts.stream("Bəli", lambda pcm: None, lambda: True)
+        # Each answer is 4 bytes of 24 kHz PCM16; a refused request is a request with no audio.
+        self.assertEqual(tts.billed(), {"requests": 3, "chars": len("Salam") * 2 + len("Bəli"),
+                                        "audioSeconds": round(8 / 48000, 2)})
+        long = [b"data: " + json.dumps({"candidates": [{"content": {"parts": [{"inlineData": {
+            "mimeType": "audio/pcm;rate=24000", "data": base64.b64encode(b"\0" * 48000).decode()}}]}}]}).encode() + b"\n"] * 3
+        tts = self.tts_with_lines(long)
+        tts.stream("Ketonal geli on qutu.", lambda pcm: None, lambda: True)
+        self.assertEqual(tts.billed(), {"requests": 1, "chars": 21, "audioSeconds": 3.0})
+        self.assertEqual(tts.model, "gemini-3.8-flash-tts")
+
     def vertex_tts(self, answers, environ=None, clock=None):
         """A TTS with a Vertex path; answers: per request, an HTTP code, 'ok' or 'hang' (no answer)."""
         ok = [b"data: " + json.dumps({"candidates": [{"content": {"parts": [{"inlineData": {
@@ -2550,8 +2601,38 @@ class ArtifactTests(unittest.TestCase):
         before, after = ast.parse(source), ast.parse(generated)
         originals = {node.name: node for node in before.body if isinstance(node, (ast.FunctionDef, ast.ClassDef))}
         changed = {node.name: node for node in after.body if isinstance(node, (ast.FunctionDef, ast.ClassDef))}
+        text = source.decode("utf-8")
+        # Owner, 2026-11-11 («почему расходов 0?»): the call's result carries the pharmacy
+        # leg's spend, and nothing else changes outside the Gemini session.
+        spend = {
+            "post_call_result": [("    demo_prompt_applied=False,\n):", "    demo_prompt_applied=False,\n    usage=None,\n):"),
+                                 ('        payload["recoveryAttempts"] = max(0, min(100, int(recovery_attempts)))\n',
+                                  '        payload["recoveryAttempts"] = max(0, min(100, int(recovery_attempts)))\n'
+                                  '    if isinstance(usage, dict) and usage:\n        payload["usage"] = usage\n')],
+            "Handler": [('                demo_prompt_applied=getattr(session, "is_demo_call", False) is True,\n',
+                         '                demo_prompt_applied=getattr(session, "is_demo_call", False) is True,\n'
+                         '                usage=zeytun_leg_usage(session),\n')],
+        }
         for name, node in originals.items():
-            if name != "GeminiLiveSession": self.assertEqual(ast.dump(node), ast.dump(changed[name]), name)
+            if name == "GeminiLiveSession":
+                continue
+            expected = ast.get_source_segment(text, node)
+            for old, new in spend.get(name, []):
+                self.assertEqual(expected.count(old), 1, name)
+                expected = expected.replace(old, new)
+            self.assertEqual(ast.dump(ast.parse(expected).body[0]), ast.dump(changed[name]), name)
+        bridge_names = {node.name for node in ast.parse((ROOT / "fanum-zeytun-inbound.py").read_text()).body
+                        if isinstance(node, (ast.FunctionDef, ast.ClassDef))}
+        self.assertEqual(set(changed) - set(originals) - bridge_names, {"zeytun_leg_usage"})
+        leg_usage = {"session": SimpleNamespace(pharmacy_preview=True,
+                     pharmacy_bridge=SimpleNamespace(call_usage=lambda: {"live": {"turns": 1}}))}
+        exec(compile(ast.Module(body=[changed["zeytun_leg_usage"]], type_ignores=[]), "leg-usage", "exec"), leg_usage)
+        self.assertEqual(leg_usage["zeytun_leg_usage"](leg_usage["session"]), {"live": {"turns": 1}})
+        self.assertIsNone(leg_usage["zeytun_leg_usage"](SimpleNamespace()))
+        def broken():
+            raise RuntimeError("bridge gone")
+        self.assertIsNone(leg_usage["zeytun_leg_usage"](SimpleNamespace(pharmacy_preview=True,
+                          pharmacy_bridge=SimpleNamespace(call_usage=broken))))
         old_methods = {node.name: node for node in originals["GeminiLiveSession"].body if isinstance(node, ast.FunctionDef)}
         new_methods = {node.name: node for node in changed["GeminiLiveSession"].body if isinstance(node, ast.FunctionDef)}
         differences = {name for name in old_methods if ast.dump(old_methods[name]) != ast.dump(new_methods[name])}

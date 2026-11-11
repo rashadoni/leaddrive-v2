@@ -14,6 +14,7 @@ import {
   toConversationInsight,
   voiceAgentCallResultSchema,
   type VoiceAgentProviderOutcome,
+  type VoiceAgentLineUsage,
   type VoiceAgentTurn,
 } from "@/lib/voice-agent/post-call"
 import { recordCallCommitment } from "@/lib/commitments/record-call-commitment"
@@ -23,6 +24,7 @@ import { recordDemoPromptApplied } from "@/lib/demo-center/call-prompt-match"
 import { recordUnansweredCallback } from "@/lib/voice-agent/callback-fallback-task"
 import type { ConversationInsight } from "@/lib/conversation-intel/types"
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
+import { journalLineCallSpend } from "@/lib/voice-agent/pharmacy/zeytun-line-spend"
 import { callbackMarker } from "@/lib/voice-agent/pharmacy/zeytun-waitlist-callback"
 import { withStationTiming } from "@/lib/station-timing"
 
@@ -753,6 +755,8 @@ async function recordInboundAiResult(params: {
   organizationId: string
   callId: string
   turns: VoiceAgentTurn[]
+  durationSeconds: number
+  usage?: VoiceAgentLineUsage
   agentMidUtterance?: boolean
   recoveryAttempts?: number
 }): Promise<NextResponse | null> {
@@ -785,6 +789,9 @@ async function recordInboundAiResult(params: {
     where: { ...scope, id: call.id, conversationOutcome: null },
     data,
   }))
+  // Whether this request is the one that stored this AI leg's result: a replay
+  // of a result already stored (the station retries) must not spend twice.
+  let firstDelivery = written.count === 1
   if (written.count === 0) {
     const stored = await runWithTenant(organizationId, () => prisma.callLog.findFirst({
       where: { ...scope, id: call.id },
@@ -793,13 +800,20 @@ async function recordInboundAiResult(params: {
     const repeated = Boolean(stored
       && stored.conversationOutcome === conversationOutcome
       && (stored.transcription ?? null) === transcription)
-    if (!repeated && !(stored?.handoffState === "returned"
+    const returnedLeg = !repeated && stored?.handoffState === "returned"
+    const alreadyAppended = transcription === null || (stored?.transcription ?? "").endsWith(transcription)
+    if (!repeated && !(returnedLeg && stored
       && await appendReturnedTurns(organizationId, { ...scope, id: call.id }, stored, transcription, customerSpoke))) {
       return conflictingTerminalResult()
     }
+    firstDelivery = returnedLeg && !alreadyAppended
   }
 
   if (isPharmacyInboundPreview(call.consentAudit, params.callId)) {
+    // Owner, 2026-11-11: the line's own AI spend, once per AI leg.
+    if (firstDelivery) {
+      journalLineCallSpend(organizationId, { durationSeconds: params.durationSeconds, usage: params.usage })
+    }
     // Owner's queue 2026-11-06, task 1b: an unfinished order of the line gets what its
     // transcript has and it lacks, for a manager. In the background: the station waits for this answer.
     if (transcription !== null && customerSpoke) recoverLineOrder(params.callId, transcription)
@@ -935,6 +949,8 @@ async function handlePost(request: NextRequest) {
         organizationId,
         callId: parsed.data.callId,
         turns: parsed.data.turns,
+        durationSeconds: parsed.data.durationSeconds,
+        usage: parsed.data.usage,
         agentMidUtterance: parsed.data.agentMidUtterance,
         recoveryAttempts: parsed.data.recoveryAttempts,
       })
