@@ -2,6 +2,7 @@ import array
 import ast
 import base64
 import importlib.util
+import tempfile
 import json
 import os
 from pathlib import Path
@@ -856,6 +857,39 @@ class TransportTests(unittest.TestCase):
         for field in ["customerVerified", "canQuote", "canSubmitTo1c", "canResolveIdentity", "requiresOperatorReview"]:
             data = result(); del data[field]
             self.assertEqual(self.bridge.safe_result(data)["candidates"], [])
+
+
+class WhatsAppMarkTests(unittest.TestCase):
+    """Owner's WhatsApp call 2026-11-12: the dialplan marks a WhatsApp call, the core reads only that."""
+
+    def test_marked_call_only(self):
+        with tempfile.TemporaryDirectory() as marks:
+            Path(marks, CALL).write_text("")
+            self.assertTrue(bridge_module.zeytun_whatsapp_call(CALL, marks))
+            self.assertFalse(bridge_module.zeytun_whatsapp_call("bbbbbbbb-1111-4111-8111-111111111111", marks))
+            self.assertFalse(bridge_module.zeytun_whatsapp_call("../" + CALL, marks))
+            self.assertFalse(bridge_module.zeytun_whatsapp_call(None, marks))
+            os.mkdir(Path(marks, "cccccccc-1111-4111-8111-111111111111"))
+            self.assertFalse(bridge_module.zeytun_whatsapp_call("cccccccc-1111-4111-8111-111111111111", marks))
+        self.assertFalse(bridge_module.zeytun_whatsapp_call(CALL, "/nonexistent-dir"))
+
+    def test_whatsapp_route_is_the_line_route_with_the_mark(self):
+        maker = load("wa_dialplan", ROOT / "wa-relay" / "make-wa-dialplan.py")
+        shared = (ROOT / "fanum-inbound-browser.conf").read_text()
+        made = maker.make(shared)
+        # Committed route == the generator's output for today's shared route: a change to the
+        # line's route must be carried to WhatsApp calls (run make-wa-dialplan.py again).
+        self.assertEqual((ROOT / "wa-relay" / "dialplan-wa-relay.conf").read_text(), made)
+        leg = made[made.index("[fanum-wa-ai-leg]"):]
+        self.assertLess(leg.index(bridge_module.ZEYTUN_WHATSAPP_MARKS + "/${FANUM_SAFE_CALL_ID}"), leg.index("AudioSocket("))
+        self.assertIn("Dial(Local/s@fanum-wa-ai-leg/n,,g)", made)
+        self.assertNotIn("Local/s@fanum-inbound-ai-leg", made)
+        self.assertIn("Set(CALLERID(dnid)=994995111103)", made)
+        # Everything but the names and the one mark is the line's route, line for line.
+        browser = made[made.index("[fanum-wa-inbound]"):made.index("[fanum-wa-ai-leg]")].rstrip()
+        original = shared[shared.index("[fanum-inbound-browser]"):shared.index("[fanum-inbound-ai-leg]")].rstrip()
+        self.assertEqual(browser.replace("[fanum-wa-inbound]", "[fanum-inbound-browser]").replace(
+            "fanum-wa-ai-leg", "fanum-inbound-ai-leg"), original)
 
 
 class OrderSpoolTests(unittest.TestCase):
@@ -2656,8 +2690,8 @@ class ArtifactTests(unittest.TestCase):
             "                pharmacy_audible = bool(self.playback_active)\n"
             "            if pharmacy_audible:\n"
             "                self.pharmacy_agent_heard_at = time.monotonic()\n"
-            "        if loud and verdict is False and (not self.pharmacy_preview or pharmacy_audible\n"
-            "                or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.4):\n").replace(
+            "        if loud and verdict is False and (not self.pharmacy_preview or (not self.pharmacy_whatsapp and (pharmacy_audible\n"
+            "                or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.4))):\n").replace(
             # A send that finds the session gone resumes it first (measured 2026-11-04).
             "            if not self._recover_gemini(\n",
             "            if not (self.pharmacy_preview\n"

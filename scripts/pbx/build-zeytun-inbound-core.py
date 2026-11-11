@@ -19,7 +19,8 @@ def build(source, bridge):
             raise ValueError("ambiguous_patch_anchor")
         text = text.replace(old, new, 1)
     replace("class GeminiLiveSession(RealtimeSession):", bridge + "\n\nclass GeminiLiveSession(RealtimeSession):")
-    replace("        self.is_demo_call = False\n", "        self.is_demo_call = False\n        self.pharmacy_preview = False\n        self.pharmacy_bridge = None\n")
+    replace("        self.is_demo_call = False\n", "        self.is_demo_call = False\n        self.pharmacy_preview = False\n        self.pharmacy_bridge = None\n"
+            "        self.pharmacy_whatsapp = False\n")
     start = text.index("        # Started before the prompt fetch so the two CRM round-trips overlap;")
     end = text.index("        ws = None\n", start)
     normal = text[start:end]
@@ -52,6 +53,10 @@ def build(source, bridge):
                                              name="voice-kill-switch", daemon=True)
             early["kill"].start()
             self.pharmacy_preview = True
+            # A WhatsApp call through LeadDrive's relay (marked by the dialplan, 2026-11-12).
+            self.pharmacy_whatsapp = zeytun_whatsapp_call(self.call_id)
+            if self.pharmacy_whatsapp:
+                latency("zeytun_channel", self.call_id, channel="whatsapp")
             self.instruction = demo_instruction("", pilot["prompt"])
             self.crm_opening_text = pilot["opening"]
             self.crm_max_seconds = pilot["maxSeconds"]
@@ -271,14 +276,17 @@ def build(source, bridge):
     # dropped the caller's first second ("…mərkəzi aptekdən") there, the model
     # got a quiet fragment and heard it as the drug "Adenurik". The veto is
     # against echo, so on the pharmacy line it follows what is actually played.
+    # Owner's WhatsApp call 2026-11-12 (3e1cbd45): the gate scored his loud
+    # words 0.02 while the agent talked and dropped 1.3 s of them. The WhatsApp
+    # app cancels its own echo, so a WhatsApp call is never vetoed.
     replace("            if loud and verdict is False:\n",
             "            if self.pharmacy_preview:\n"
             "                with self.state_lock:\n"
             "                    pharmacy_audible = bool(self.playback_active)\n"
             "                if pharmacy_audible:\n"
             "                    self.pharmacy_agent_heard_at = time.monotonic()\n"
-            "            if loud and verdict is False and (not self.pharmacy_preview or pharmacy_audible\n"
-            "                    or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.4):\n")
+            "            if loud and verdict is False and (not self.pharmacy_preview or (not self.pharmacy_whatsapp and (pharmacy_audible\n"
+            "                    or time.monotonic() - getattr(self, 'pharmacy_agent_heard_at', 0.0) < 0.4))):\n")
     # Owner's queue 2026-11-06, task 1 («qeyd etdim» without a save): a fresh
     # session got the last 8 turns, so lines the model had confirmed earlier
     # and not saved were gone, and its next save overwrote the order with the
