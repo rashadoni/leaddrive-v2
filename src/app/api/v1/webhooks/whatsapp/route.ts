@@ -38,6 +38,7 @@ import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
 import { whatsappTicketSubject } from "@/lib/ticketing/customer-ticket-text"
 import { ensureComplaintRegistered, notifyComplaintRegistered } from "@/lib/inbox/complaint-register"
 import { whatsappTicketUrgency } from "@/lib/inbox/whatsapp-ticket-urgency"
+import { recordInboundAttack, screenInboundCustomerTexts } from "@/lib/ai/inbound-screen"
 import { notifyConversationRecipients } from "@/lib/social/notify-recipients"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
 import {
@@ -1758,6 +1759,12 @@ async function handleAiAutoReply(
   systemPrompt += `\nКлиент: ${sanitizeForPrompt(senderName)}\nТелефон: +${sanitizeForPrompt(waPhone, 20)}\nДата: ${new Date().toISOString().split("T")[0]}`
 
   const cleanMessages = whatsappAiHistory(history, userMessage)
+  // An attack in what the model would read: no AI reply, the chat stays a person's — as when the AI limit is hit (inbound-screen.ts).
+  const inboundScreen = screenInboundCustomerTexts(cleanMessages.filter((m) => m.role === "user").map((m) => typeof m.content === "string" ? m.content : ""))
+  if (!inboundScreen.allowed) {
+    recordInboundAttack(organizationId, "whatsapp", opts.conversationId, inboundScreen)
+    return
+  }
 
   try {
     const client = await anthropicFor(organizationId, "whatsapp-reply", { agentId: agentConfig?.id })

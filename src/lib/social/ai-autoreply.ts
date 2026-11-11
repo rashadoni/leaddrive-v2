@@ -3,6 +3,7 @@ import { anthropicAvailable, anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
 import { sanitizeForPrompt } from "@/lib/sanitize"
 import { checkAiBudget, calculateAiCost, getAiLimits, checkConversationAiLimits } from "@/lib/ai/budget"
+import { recordInboundAttack, screenInboundCustomerTexts } from "@/lib/ai/inbound-screen"
 import { createNotification } from "@/lib/notifications"
 import { buildInboxKbContextDetailed } from "@/lib/inbox/kb-context"
 import { scoreAiResponse, qualityMetadata, type AiQualityMetadata } from "@/lib/ai/response-scorer"
@@ -495,6 +496,12 @@ export async function generateChannelAiReply(opts: {
   }
   while (clean[0]?.role === "assistant") clean.shift()
   if (clean.length === 0) clean.push({ role: "user", content: userMessage })
+  // An attack in what the model would read: no AI reply, the conversation stays a person's (inbound-screen.ts).
+  const inboundScreen = screenInboundCustomerTexts([userMessage, ...clean.filter((m) => m.role === "user").map((m) => m.content)])
+  if (!inboundScreen.allowed) {
+    recordInboundAttack(orgId, channel, conversationId ?? sessionKey, inboundScreen)
+    return { reply: null, escalate: false, skipped: "prompt_attack" }
+  }
 
   // Only pass a real name. Facebook Messenger payloads carry no display name (the caller passes the
   // PSID as senderName), so a numeric id / the externalId must NOT be rendered as "Клиент: 7281…" — the

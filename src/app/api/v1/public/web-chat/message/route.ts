@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { recordInboundAttack, screenInboundCustomerTexts } from "@/lib/ai/inbound-screen"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
@@ -310,6 +311,12 @@ async function generateAiReply(
     }))
 
   if (!messages.length) messages.push({ role: "user", content: userText })
+  // An attack in what the model would read: no AI reply, the visitor waits for an operator (inbound-screen.ts).
+  const screen = screenInboundCustomerTexts([userText, ...messages.filter((m) => m.role === "user").map((m) => m.content)])
+  if (!screen.allowed) {
+    recordInboundAttack(orgId, "web-chat", sessionId, screen)
+    return null
+  }
 
   const piiMasker = new PiiMasker()
   const maskedMessages: Anthropic.MessageParam[] = messages.map((m) => ({

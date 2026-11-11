@@ -24,6 +24,7 @@ import { bookingDb as prisma } from "./db"
 import { anthropicFor } from "@/lib/ai/gateway"
 import { calculateAiCost, checkAiBudget, checkConversationAiLimits, resolveAiModel } from "@/lib/ai/budget"
 import { PiiMasker } from "@/lib/ai/pii-masker"
+import { recordInboundAttack, screenInboundCustomerTexts } from "@/lib/ai/inbound-screen"
 import { isUngroundedOffer, offerFactsFrom } from "@/lib/ai/offer-grounding"
 import { sanitizeForPrompt } from "@/lib/sanitize"
 import { hmacToken } from "@/lib/secure-token"
@@ -650,6 +651,12 @@ async function decide(input: BookingTurnInput, context: DecisionContext, history
   if (!budget.allowed) return { action: "not_booking" }
   const limits = await checkConversationAiLimits({ orgId: input.organizationId, conversationId: input.conversationId, contactId: input.contactId ?? null })
   if (!limits.allowed) return { action: "not_booking" }
+  // An attack in what the model would read: no booking decision by the model (inbound-screen.ts).
+  const inboundScreen = screenInboundCustomerTexts([input.text, ...history.filter((m) => m.direction === "inbound").map((m) => m.body)])
+  if (!inboundScreen.allowed) {
+    recordInboundAttack(input.organizationId, "whatsapp-booking", input.conversationId, inboundScreen)
+    return { action: "not_booking" }
+  }
   const masker = new PiiMasker()
   const transcript = history
     .map((message) => `${message.direction === "inbound" ? "Client" : "Salon"}: ${masker.mask(sanitizeForPrompt(message.body ?? "", 600))}`)
