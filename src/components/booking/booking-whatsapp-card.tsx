@@ -167,7 +167,26 @@ export function BookingWhatsAppCard({ services, hosts }: { services: RuleService
                 .catch(() => setFlows({ checking: false, answer: t("waFlowFailed") }))
             }}
           >{flows.checking ? t("saving") : t("waFlowCheck")}</button>
-          {flows.answer ? <span role="status">{flows.answer}</span> : null}
+          <button
+            type="button"
+            className="min-h-11 rounded-lg border px-3 text-sm"
+            disabled={flows.checking}
+            onClick={() => {
+              setFlows({ checking: true, answer: null })
+              void fetch("/api/v1/booking-pages/whatsapp/flow", { method: "POST", cache: "no-store" })
+                .then((response) => response.ok ? response.json() : null)
+                .then((body) => {
+                  const data = body?.data
+                  // Meta's own words, step by step: a setup that fails
+                  // silently is how a form ships against an account that
+                  // cannot hold one.
+                  setFlows({ checking: false, answer: !data ? t("waFlowFailed")
+                    : (data.steps ?? []).map((step: { step: string; ok: boolean; detail: string }) => `${step.ok ? "✓" : "✗"} ${step.step}: ${step.detail}`).join(" · ") })
+                })
+                .catch(() => setFlows({ checking: false, answer: t("waFlowFailed") }))
+            }}
+          >{t("waFlowCreate")}</button>
+          {flows.answer ? <span role="status" className="break-all text-xs text-muted-foreground">{flows.answer}</span> : null}
         </div> : null}
         {error ? <p role="alert" className="mt-2 text-sm text-destructive">{error}</p> : null}
       </CardContent>

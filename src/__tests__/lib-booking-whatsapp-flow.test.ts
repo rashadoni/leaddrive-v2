@@ -28,7 +28,7 @@ vi.mock("@/lib/whatsapp", () => ({
   WHATSAPP_GRAPH_API_BASE: "https://graph.facebook.com/v21.0",
 }))
 
-const { flowsCapability, BOOKING_FLOW_NAME } = await import("@/lib/booking/whatsapp-flow")
+const { flowsCapability, bookingFlowJson, BOOKING_FLOW_NAME } = await import("@/lib/booking/whatsapp-flow")
 
 const CONFIG = { accessToken: "tok", phoneNumberId: "pn", businessAccountId: "waba-1" }
 
@@ -98,5 +98,41 @@ describe("whether this number can show a form", () => {
     await flowsCapability("org-1", { channelConfigId: "chan-7" })
 
     expect(resolveWhatsAppConfig).toHaveBeenCalledWith("org-1", { channelConfigId: "chan-7" })
+  })
+})
+
+describe("the form a client fills in", () => {
+  const flow = bookingFlowJson() as {
+    version: string
+    screens: { id: string; terminal?: boolean; data: Record<string, unknown>; layout: { children: Record<string, unknown>[] } }[]
+  }
+  const screen = flow.screens[0]
+  const form = screen.layout.children.find((child) => child.type === "Form") as { children: Record<string, unknown>[] }
+
+  it("asks one question on one screen, and that screen ends the form", () => {
+    // A salon's client answers «which time». Every extra screen is a tap
+    // between them and a booking.
+    expect(flow.screens).toHaveLength(1)
+    expect(screen.terminal).toBe(true)
+  })
+
+  it("takes its times from the message, not from the published form", () => {
+    // One published form serves every service, master and day: the times are
+    // handed to the screen when the message is sent. Binding them into the
+    // form would mean republishing it for every day of the week.
+    const times = form.children.find((child) => child.name === "time")
+    expect(times).toMatchObject({ type: "RadioButtonsGroup", required: true, "data-source": "${data.times}" })
+    expect(screen.data).toHaveProperty("times")
+  })
+
+  it("sends back what was chosen, under names the agent reads", () => {
+    const footer = form.children.find((child) => child.type === "Footer") as { "on-click-action": { name: string; payload: Record<string, string> } }
+    expect(footer["on-click-action"].name).toBe("complete")
+    expect(footer["on-click-action"].payload).toEqual({ time: "${form.time}", client: "${form.client}" })
+  })
+
+  it("declares a schema version, because a form without one is refused", () => {
+    expect(flow.version).toMatch(/^\d+\.\d+$/)
+    expect(Number(flow.version)).toBeGreaterThanOrEqual(7.2)
   })
 })

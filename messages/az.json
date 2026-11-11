@@ -32222,6 +32222,7 @@
     "waBookingSaveError": "Yadda saxlamaq olmadı. Yenidən cəhd edin.",
     "waFlowTitle": "WhatsApp-ın öz forması",
     "waFlowCheck": "Yoxla",
+    "waFlowCreate": "Forma yarat",
     "waFlowSupported": "Bu nömrə forma göstərə bilir — forma hələ yaradılmayıb",
     "waFlowReady": "Forma var: {status}",
     "waFlowNo": "Bu nömrədə mümkün deyil: {detail}",
