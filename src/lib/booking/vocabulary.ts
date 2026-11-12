@@ -90,12 +90,15 @@ export const BOOKING_VOCABULARY_PRESETS: {
     },
   },
   {
+    // A coworking books a meeting IN a room: the room is what the client
+    // chooses between, so it is the second word, not the first. «Nobody on
+    // the other side» is the checkbox beside the fields, for the rarer case
+    // where there is nothing to choose at all.
     id: "rooms",
-    noHost: true,
     words: {
-      az: { item: "Otaq", host: null },
-      ru: { item: "Комната", host: null },
-      en: { item: "Room", host: null },
+      az: { item: "Toplantı", host: "Otaq" },
+      ru: { item: "Встреча", host: "Комната" },
+      en: { item: "Meeting", host: "Room" },
     },
   },
   {

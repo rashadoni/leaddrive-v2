@@ -225,25 +225,29 @@ export interface BookableChair {
   resource: boolean
 }
 
-/** The masters and the resources a service may be booked on, in its own order. */
+/**
+ * What a service may be booked on: its rooms when it has any, its masters
+ * otherwise.
+ *
+ * Deliberately one or the other. A service listing rooms is booked IN them —
+ * a meeting room for an hour, a bay at a car wash — and the master on it is
+ * the one who owns its bookings in the record, never a chair a client is
+ * offered. Letting both be chairs would put «со мной» beside «Zal A» in a
+ * coworking's own form, and make a room's hour take a person's day as well.
+ */
 export async function bookableChairs(orgId: string, page: { hostIds: string[]; resourceIds?: string[] }): Promise<BookableChair[]> {
-  const [hosts, resources] = await Promise.all([
-    activeHosts(orgId, page.hostIds),
-    page.resourceIds?.length
-      ? prisma.bookingResource.findMany({
-        where: { organizationId: orgId, id: { in: page.resourceIds }, isActive: true },
-        select: { id: true, name: true },
-      })
-      : [],
-  ])
-  return [
-    ...hosts.map((host) => ({ id: host.id, name: host.name, resource: false })),
+  if (page.resourceIds?.length) {
+    const resources = await prisma.bookingResource.findMany({
+      where: { organizationId: orgId, id: { in: page.resourceIds }, isActive: true },
+      select: { id: true, name: true },
+    })
     // The service's own order, so a room list reads the way it was arranged.
-    ...(page.resourceIds ?? []).flatMap((id) => {
+    return page.resourceIds.flatMap((id) => {
       const found = resources.find((resource) => resource.id === id)
       return found ? [{ id: found.id, name: found.name, resource: true }] : []
-    }),
-  ]
+    })
+  }
+  return (await activeHosts(orgId, page.hostIds)).map((host) => ({ id: host.id, name: host.name, resource: false }))
 }
 
 /**

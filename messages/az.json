@@ -32312,7 +32312,7 @@
     "resourceUpcoming": "{count} yaxın görüş",
     "resourcesTooMany": "Çox oldu — əvvəlkilərdən birini söndürün.",
     "fieldResources": "Hansı otaqda keçir",
-    "fieldResourcesHint": "Boş qalsa — yalnız ustalarda yazılır.",
+    "fieldResourcesHint": "Seçilsə — yazılış ustalara yox, bu otaqlara gedir.",
     "dayConfirmed": "{reminded} nəfərdən {confirmed} təsdiqlədi",
     "dayConfirmedHint": "Xatırlatmada «Gəlirəm» düyməsinə toxunanlar.",
     "clientConfirmed": "Müştəri {date} tarixində təsdiqlədi",

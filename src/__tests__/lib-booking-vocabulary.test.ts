@@ -58,14 +58,17 @@ describe("the two nouns an organisation books by", () => {
         expect(Boolean(words.host), `${preset.id}/${locale}`).toBe(!preset.noHost)
       }
     }
-    // Somebody must book rooms with nobody on the other side.
-    expect(BOOKING_VOCABULARY_PRESETS.some((preset) => preset.noHost)).toBe(true)
+    // The rooms a coworking books are the second word, not «nobody»: a room
+    // is what its client chooses between (src/lib/booking/book.ts).
+    const rooms = BOOKING_VOCABULARY_PRESETS.find((preset) => preset.id === "rooms")!
+    expect(rooms.words.ru.host).toBe("Комната")
+    expect(rooms.noHost).toBeFalsy()
   })
 
   it("tells the screen which pair is chosen, and when none is", () => {
-    const rooms = BOOKING_VOCABULARY_PRESETS.find((preset) => preset.noHost)!
+    const rooms = BOOKING_VOCABULARY_PRESETS.find((preset) => preset.id === "rooms")!
     const words = rooms.words.ru
-    expect(matchingPreset({ item: words.item, host: null, noHost: true }, "ru")).toBe(rooms.id)
+    expect(matchingPreset({ item: words.item, host: words.host, noHost: false }, "ru")).toBe(rooms.id)
     expect(matchingPreset({ item: "Станок", host: "Цех", noHost: false }, "ru")).toBeNull()
     expect(matchingPreset({ item: null, host: null, noHost: false }, "ru")).toBeNull()
   })
