@@ -33116,6 +33116,8 @@
     "nobody": "—",
     "remove": "Remove",
     "attach": "File",
+    "removeFile": "Remove file",
+    "confirmRemoveFile": "Remove?",
     "startTimer": "Timer",
     "stopTimer": "Stop",
     "logTime": "Log time",
@@ -33172,6 +33174,7 @@
       "subtaskDone": "{name} completed the subtask: {to}",
       "subtaskReopened": "{name} reopened the subtask: {to}",
       "board": "{name} moved the task: {to}",
+      "fileRemoved": "{name} removed the file {file}",
       "other": "{name}: {action}"
     }
   },

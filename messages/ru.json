@@ -33116,6 +33116,8 @@
     "nobody": "—",
     "remove": "Убрать",
     "attach": "Файл",
+    "removeFile": "Удалить файл",
+    "confirmRemoveFile": "Удалить?",
     "startTimer": "Таймер",
     "stopTimer": "Стоп",
     "logTime": "Записать время",
@@ -33172,6 +33174,7 @@
       "subtaskDone": "{name} закрыл(а) подзадачу: {to}",
       "subtaskReopened": "{name} снова открыл(а) подзадачу: {to}",
       "board": "{name} перенёс(ла) задачу: {to}",
+      "fileRemoved": "{name}: файл удалён — {file}",
       "other": "{name}: {action}"
     }
   },

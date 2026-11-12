@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { AtSign, Bell, BellOff, Loader2, Send } from "lucide-react"
+import { AtSign, Bell, BellOff, Loader2, Paperclip, Send, X } from "lucide-react"
 import { formatDate, formatTime } from "@/lib/format-date"
 import type { FeedItem, FeedPerson } from "@/lib/tasks/task-feed"
 import { describeFeedEvent } from "@/lib/tasks/feed-text"
+import { fileUrl, isImageFile, joinMessageFiles, matchMessageFiles, splitMessageFiles, type MessageFile } from "@/lib/tasks/message-files"
 import { insertMention, mentionCandidates, mentionQueryAt, mentionedIds, type MentionPerson } from "@/lib/tasks/mentions"
 
 interface FeedData { items: FeedItem[]; followers: FeedPerson[]; following: boolean }
@@ -14,13 +15,22 @@ interface FeedData { items: FeedItem[]; followers: FeedPerson[]; following: bool
  * The card's right column — Bordio's chat (owner, 2026-11-07): what happened
  * and what was said, in one time line; follow / unfollow; a message box with
  * @-mentions. Enter sends, Shift+Enter makes a new line.
+ *
+ * Files go with a message, as in Bordio (Zeytun, 2026-11-12: «fayl elave etmek
+ * … mumkun deyil», «sekilleri gore bilmirem»): the paperclip attaches them to
+ * the task and names them in the message; a message shows the files it names,
+ * a picture as a picture (lib/tasks/message-files.ts).
  */
-export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChanged }: {
+export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChanged, files = [], canAttach = false }: {
   taskId: string
   people: readonly MentionPerson[]
   statusLabel: (value: string) => string
   reloadKey: number
   onChanged?: () => void
+  /** The task's attachments — the files a message names are shown from these. */
+  files?: readonly MessageFile[]
+  /** May attach files to the task (and so to a message). */
+  canAttach?: boolean
 }) {
   const t = useTranslations("taskPanel")
   const locale = useLocale()
@@ -31,7 +41,10 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
   const [caret, setCaret] = useState(0)
   const [sending, setSending] = useState(false)
   const [localKey, setLocalKey] = useState(0)
+  const [pending, setPending] = useState<File[]>([])
+  const [sendError, setSendError] = useState<string | null>(null)
   const boxRef = useRef<HTMLTextAreaElement>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -67,9 +80,23 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
   }
 
   async function send() {
-    const content = text.trim()
-    if (!content || sending) return
+    if ((!text.trim() && pending.length === 0) || sending) return
     setSending(true)
+    setSendError(null)
+    // The files first: the message names only what reached the task.
+    const attached: string[] = []
+    for (const file of pending) {
+      const form = new FormData()
+      form.append("file", file)
+      const up = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/files`, { method: "POST", credentials: "include", body: form }).catch(() => null)
+      if (up?.ok) attached.push(file.name)
+      else {
+        const reason = await up?.json().then((j: { error?: string }) => j.error).catch(() => null)
+        setSendError(`${t("uploadFailed")}: ${file.name}${reason ? ` — ${reason}` : ""}`)
+      }
+    }
+    if (pending.length > 0 && attached.length === 0 && !text.trim()) { setSending(false); return }
+    const content = joinMessageFiles(text, attached)
     const res = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -80,9 +107,10 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
     if (res?.ok) {
       setText("")
       setPicked([])
+      setPending([])
       setLocalKey((key) => key + 1)
-      onChanged?.()
     }
+    if (res?.ok || attached.length > 0) onChanged?.()
   }
 
   function pick(person: MentionPerson) {
@@ -140,7 +168,7 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
                 <div className="mb-3">
                   <div className="mb-0.5 text-xs font-medium">{item.user?.name ?? t("someone")}</div>
                   <div className={`whitespace-pre-wrap rounded-xl border bg-background px-3 py-2 text-sm ${item.system ? "text-muted-foreground" : ""}`}>
-                    {item.text}
+                    <MessageBody text={item.text ?? ""} files={files} />
                     <span className="float-right ml-2 mt-1 text-[11px] text-muted-foreground">{formatTime(item.at, locale)}</span>
                   </div>
                 </div>
@@ -164,6 +192,17 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
           </ul>
         )}
         <div className="rounded-xl border bg-background px-3 py-2">
+          {pending.length > 0 && (
+            <ul className="mb-2 flex flex-wrap gap-1.5" data-testid="feed-pending-files">
+              {pending.map((file, index) => (
+                <li key={`${file.name}-${index}`} className="inline-flex items-center gap-1 rounded-md border bg-muted/50 px-2 py-0.5 text-xs">
+                  <Paperclip className="h-3 w-3" />{file.name}
+                  <button type="button" aria-label={t("remove")} onClick={() => setPending((list) => list.filter((_, i) => i !== index))}><X className="h-3 w-3" /></button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {sendError && <p className="mb-1 text-xs text-destructive">{sendError}</p>}
           <textarea
             ref={boxRef}
             value={text}
@@ -173,6 +212,11 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
             onClick={(e) => setCaret((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && !(query && candidates.length > 0)) { e.preventDefault(); void send() }
+            }}
+            onPaste={(e) => {
+              // A screenshot pasted into the box goes with the message, as in Bordio.
+              const pasted = canAttach ? [...e.clipboardData.files] : []
+              if (pasted.length > 0) { e.preventDefault(); setPending((list) => [...list, ...pasted]) }
             }}
             placeholder={t("messagePlaceholder")}
             className="w-full resize-none bg-transparent text-sm outline-none"
@@ -193,11 +237,26 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
             >
               <AtSign className="h-4 w-4" />
             </button>
+            {canAttach && (
+              <>
+                <input
+                  ref={fileInput}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  data-testid="feed-file-input"
+                  onChange={(e) => { const chosen = [...(e.target.files ?? [])]; if (chosen.length) setPending((list) => [...list, ...chosen]); e.target.value = "" }}
+                />
+                <button type="button" aria-label={t("attach")} title={t("attach")} onClick={() => fileInput.current?.click()} className="rounded p-1 hover:bg-muted" data-testid="feed-attach">
+                  <Paperclip className="h-4 w-4" />
+                </button>
+              </>
+            )}
             <button
               type="button"
               data-crm-button="default"
               onClick={() => void send()}
-              disabled={!text.trim() || sending}
+              disabled={(!text.trim() && pending.length === 0) || sending}
               className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
             >
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -209,3 +268,41 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
     </div>
   )
 }
+
+/** A message's text and, below it, the files it names — pictures shown, others as links. */
+function MessageBody({ text, files }: { text: string; files: readonly MessageFile[] }) {
+  const { body, names } = splitMessageFiles(text)
+  if (names.length === 0) return <>{text}</>
+  const matched = matchMessageFiles(names, files)
+  const pictures = matched.filter((m) => m.file && isImageFile(m.file))
+  const others = matched.filter((m) => !m.file || !isImageFile(m.file))
+  return (
+    <>
+      {body}
+      {pictures.length > 0 && (
+        <span className="mt-1.5 flex flex-wrap gap-1.5" data-testid="feed-message-pictures">
+          {pictures.map(({ name, file }) => (
+            <a key={file!.id} href={fileUrl(file!)} target="_blank" rel="noreferrer" title={name} className="block overflow-hidden rounded-md border">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={fileUrl(file!)} alt={name} loading="lazy" className="h-28 w-auto max-w-[14rem] object-cover" />
+            </a>
+          ))}
+        </span>
+      )}
+      {others.length > 0 && (
+        <span className="mt-1 flex flex-col gap-0.5" data-testid="feed-message-files">
+          {others.map(({ name, file }, index) =>
+            file ? (
+              <a key={file.id} href={fileUrl(file)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                <Paperclip className="h-3 w-3" />{name}
+              </a>
+            ) : (
+              <span key={`${name}-${index}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Paperclip className="h-3 w-3" />{name}</span>
+            ),
+          )}
+        </span>
+      )}
+    </>
+  )
+}
+

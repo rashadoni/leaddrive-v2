@@ -168,3 +168,64 @@ describe("task card panel", () => {
     expect(calls).toContain('POST /api/v1/tasks/t1/comments {"content":"bax @Nazrin Shirinova","mentions":["n"]}')
   })
 })
+
+// Zeytun's first day in the CRM (2026-11-12): «Burda elave etdiyim sekilleri gore bilmirem»,
+// «fayl elave etmek … mumkun deyil», «əlavə olunanları da silmək olmur».
+describe("files in the card, as in Bordio", () => {
+  const PICS = [
+    { id: "f1", fileName: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg", originalName: "11.11.26 Stories-1.jpg", mimeType: "image/jpeg" },
+    { id: "f2", fileName: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.pdf", originalName: "plan.pdf", mimeType: "application/pdf" },
+  ]
+  const withFiles = async (items: unknown[]) => {
+    const task = TASK as unknown as { attachments: unknown[] }
+    const feed = FEED as unknown as { items: unknown[] }
+    const was = { attachments: task.attachments, items: feed.items }
+    task.attachments = PICS
+    feed.items = items
+    return () => { task.attachments = was.attachments; feed.items = was.items }
+  }
+
+  it("a message that names files shows them — the picture as a picture — and a name the task has no file for as a name", async () => {
+    const restore = await withFiles([
+      { kind: "message", id: "m9", at: "2026-11-11T08:46:00.000Z", user: { id: "x", name: "Khayala" }, text: "Baxın\n📎 11.11.26 Stories-1.jpg, plan.pdf, köhnə.png", mentions: [], system: false },
+    ])
+    try {
+      await open()
+      const img = container.querySelector('[data-testid="feed-message-pictures"] img') as HTMLImageElement
+      expect(img.getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg")
+      const links = [...container.querySelectorAll('[data-testid="feed-message-files"] a')].map((a) => a.getAttribute("href"))
+      expect(links).toEqual(["/uploads/tasks/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.pdf"])
+      expect(container.querySelector('[data-testid="feed-message-files"]')?.textContent).toContain("köhnə.png")
+      expect(container.textContent).not.toContain("📎")
+    } finally { restore() }
+  })
+
+  it("the paperclip in the message box sends the file to the task, then the message naming it", async () => {
+    const restore = await withFiles([])
+    try {
+      await open()
+      const input = container.querySelector('[data-testid="feed-file-input"]') as HTMLInputElement
+      const file = new File(["x"], "afişa.png", { type: "image/png" })
+      Object.defineProperty(input, "files", { configurable: true, value: [file] })
+      await act(async () => { input.dispatchEvent(new Event("change", { bubbles: true })) })
+      expect(container.querySelector('[data-testid="feed-pending-files"]')?.textContent).toContain("afişa.png")
+      await type(container.querySelector('textarea[placeholder="Сообщение… @ — упомянуть"]') as HTMLTextAreaElement, "Yeni variant")
+      await click(byText("button", "Отправить"))
+      await flush()
+      const posted = calls.filter((c) => c.startsWith("POST /api/v1/tasks/t1/"))
+      expect(posted[0]).toMatch(/^POST \/api\/v1\/tasks\/t1\/files/)
+      expect(posted[1]).toContain('"content":"Yeni variant\\n📎 afişa.png"')
+    } finally { restore() }
+  })
+
+  it("a file is removed in two clicks", async () => {
+    const restore = await withFiles([])
+    try {
+      await open()
+      await click(container.querySelector('[data-testid="task-file-remove"]'))
+      await click(container.querySelector('[data-testid="task-file-remove-confirm"]'))
+      await flush()
+      expect(calls).toContain("DELETE /api/v1/tasks/t1/files?fileId=f1")
+    } finally { restore() }
+  })
+})
