@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Hint } from "@/components/hint"
+import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { BookingPageEditor, type BookingHostOption, type BookingPageDraft } from "@/components/booking/booking-page-editor"
 import { BookingWhatsAppCard } from "@/components/booking/booking-whatsapp-card"
 import { BookingVocabularyCard } from "@/components/booking/booking-vocabulary-card"
@@ -38,6 +39,8 @@ interface PageRow extends Omit<BookingPageDraft, "description" | "locationText" 
   repeatCycleDays: number | null
   url: string
   upcoming: number
+  /** Whether any meeting was ever made here — not only the ones still ahead. */
+  everBooked: boolean
 }
 
 const ERROR_KEYS: Record<string, string> = {
@@ -115,6 +118,9 @@ export function BookingPagesPanel({ show = "all" }: { show?: "all" | "services" 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [copied, setCopied] = useState<string | null>(null)
+  /** The service whose deletion is being confirmed. */
+  const [deleting, setDeleting] = useState<PageRow | null>(null)
+  const [showClosed, setShowClosed] = useState(false)
 
   const load = useCallback(() => {
     void fetchBookingPages().then((data) => {
@@ -266,7 +272,12 @@ export function BookingPagesPanel({ show = "all" }: { show?: "all" | "services" 
   const categories = useMemo(() => [...new Set(pages.map((page) => page.category?.trim()).filter((name): name is string => Boolean(name)))].sort((a, b) => a.localeCompare(b, locale)), [pages, locale])
   // A salon that never filed its services keeps one plain list: a lone
   // «Without a group» heading would be noise.
-  const grouped = useMemo(() => groupByCategory(pages, locale), [pages, locale])
+  // A closed service is kept, not deleted, so the list fills up with the ones
+  // that stopped being offered — test pages, last year's promotion. They are
+  // one line away, and the screen is about what the salon sells today.
+  const closedCount = pages.filter((page) => !page.isActive).length
+  const shownPages = showClosed ? pages : pages.filter((page) => page.isActive)
+  const grouped = useMemo(() => groupByCategory(shownPages, locale), [shownPages, locale])
   const showGroups = grouped.length > 1 || grouped[0]?.category !== null
 
   return (
@@ -367,6 +378,18 @@ export function BookingPagesPanel({ show = "all" }: { show?: "all" | "services" 
                   <Button variant="outline" size="sm" onClick={() => duplicate(page)}>
                     <CopyPlus className="h-4 w-4" aria-hidden="true" />{t("duplicate")}
                   </Button>
+                  {/* A service nothing points at — a test page, a draft nobody
+                      booked — can go entirely. One with meetings cannot: their
+                      name, length and price are what it says they were, so it
+                      is switched off instead, inside «Dəyiş». */}
+                  {page.everBooked ? null : <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => setDeleting(page)}
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />{t("delete")}
+                  </Button>}
                 </div>
               </CardContent>
             </Card>
@@ -376,6 +399,32 @@ export function BookingPagesPanel({ show = "all" }: { show?: "all" | "services" 
           ))}
         </div>
       )}
+
+      {!draft && show !== "whatsapp" && closedCount ? (
+        <button
+          type="button"
+          className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          onClick={() => setShowClosed(!showClosed)}
+        >{showClosed ? t("servicesClosedHide") : t("servicesClosedShow", { count: closedCount })}</button>
+      ) : null}
+
+      {/* Deleting is for a service nothing points at, and the dialog says
+          which one — a test page and a live one differ by a word. */}
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        onOpenChange={(open) => { if (!open) setDeleting(null) }}
+        itemName={deleting?.title}
+        title={t("deleteService")}
+        description={t("deleteServiceHint")}
+        onConfirm={async () => {
+          if (!deleting) return
+          const response = await fetch(`/api/v1/booking-pages/${encodeURIComponent(deleting.id)}`, { method: "DELETE" })
+          const body = await response.json().catch(() => null)
+          if (!response.ok || !body?.success) throw new Error(body?.code === "PAGE_IN_USE" ? t("deleteServiceInUse") : t("errSave"))
+          setPages((current) => current.filter((page) => page.id !== deleting.id))
+          setDeleting(null)
+        }}
+      />
 
       {/* Calendly's date-specific hours, in the half a salon actually says:
           closed. One list for the whole organization — a holiday marked on

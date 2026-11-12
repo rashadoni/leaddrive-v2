@@ -6,6 +6,7 @@ import { organizationTimezone } from "@/lib/ticketing/customer-locale"
 import { isValidTimezone } from "@/lib/timezone"
 import { bookingScope, bookingHostWhere, isBookingOperator, type BookingAccess } from "./access"
 import { bookingPageUrl } from "./book"
+import { crmNamesByPhone, phoneKey } from "./client-name"
 
 export const bookingFilters = z.object({
   from: z.string().datetime({ offset: true }).optional(),
@@ -78,9 +79,14 @@ export async function listBookings(access: BookingAccess, filters: BookingFilter
   const visible = rows.slice(0, filters.limit)
   const hosts = await prisma.user.findMany({ where: { organizationId: access.orgId, id: { in: [...new Set(visible.map((row) => row.hostUserId))] } }, select: { id: true, name: true } })
   const reminders = await remindersOf(access.orgId, visible.map((row) => row.id))
+  // The name this organisation already has for the number. A meeting keeps
+  // what the customer typed; the salon reads the list by the name it wrote on
+  // the contact itself (src/lib/booking/client-name.ts). What they typed is
+  // still on the meeting, under «as they introduced themselves».
+  const crmNames = await crmNamesByPhone(access.orgId, visible.map((row) => row.phone))
   const last = visible.at(-1)
   return {
-    items: visible.map(({ googleEventId, snapshot, ...row }) => ({ ...row, depositAmount: row.depositAmount === null ? null : String(row.depositAmount), bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, hostName: hosts.find((host) => host.id === row.hostUserId)?.name ?? null, calendarLinked: Boolean(googleEventId),
+    items: visible.map(({ googleEventId, snapshot, ...row }) => ({ ...row, name: crmNames.get(phoneKey(row.phone)) ?? row.name, bookedName: row.name, depositAmount: row.depositAmount === null ? null : String(row.depositAmount), bookingPage: snapshotView(snapshot, row.bookingPage), legacyDetails: !snapshot, hostName: hosts.find((host) => host.id === row.hostUserId)?.name ?? null, calendarLinked: Boolean(googleEventId),
       remindedDayAt: reminders.get(row.id)?.remindedDayAt?.toISOString() ?? null,
       remindedHourAt: reminders.get(row.id)?.remindedHourAt?.toISOString() ?? null,
       clientConfirmedAt: reminders.get(row.id)?.clientConfirmedAt?.toISOString() ?? null })),

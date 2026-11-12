@@ -20,7 +20,7 @@ export const GET = withRlsAuth("bookings", "read", async (_req, auth) => {
   if (access instanceof NextResponse) return access
   if (!access.administrator) return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 })
   const orgId = auth.orgId
-  const [pages, users, upcoming, currency, aiModule, organization] = await Promise.all([
+  const [pages, users, upcoming, booked, currency, aiModule, organization] = await Promise.all([
     prisma.bookingPage.findMany({ where: { organizationId: orgId }, orderBy: { createdAt: "asc" } }),
     prisma.user.findMany({ where: bookingHostWhere(orgId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.booking.groupBy({
@@ -28,6 +28,9 @@ export const GET = withRlsAuth("bookings", "read", async (_req, auth) => {
       where: { organizationId: orgId, status: "confirmed", startsAt: { gte: new Date() } },
       _count: { _all: true },
     }),
+    // Every meeting ever made here, cancelled ones included: a service that
+    // some visit still names cannot be deleted, only switched off.
+    prisma.booking.groupBy({ by: ["bookingPageId"], where: { organizationId: orgId }, _count: { _all: true } }),
     // The symbol the price field shows while it is being typed. The saved row
     // carries its own code (`pagePriceData`), but a service that has no price
     // yet has none to read, and the browser must not guess: DEFAULT_CURRENCY
@@ -55,6 +58,7 @@ export const GET = withRlsAuth("bookings", "read", async (_req, auth) => {
         price: page.price === null ? null : String(page.price),
         url: bookingPageUrl(page.slug),
         upcoming: upcoming.find((row: { bookingPageId: string }) => row.bookingPageId === page.id)?._count._all ?? 0,
+        everBooked: booked.some((row: { bookingPageId: string }) => row.bookingPageId === page.id),
       })),
     },
   })

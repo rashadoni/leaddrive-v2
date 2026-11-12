@@ -1,10 +1,40 @@
-/** Update one booking page. Bookings already made keep their time and host. */
+/**
+ * Update one booking page. Bookings already made keep their time and host.
+ *
+ * DELETE removes a service that nothing points at — a test page, a draft
+ * nobody booked. A service with meetings is never deleted: its name, its
+ * length and its price are what those meetings say they were, and a list of
+ * past visits that has forgotten what they were for is worse than a service
+ * left switched off (owner, 2026-11-12: «вот например ты тестовое создал, как
+ * его удалить?»).
+ */
 import type { Prisma } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 import { bookingDb as prisma } from "@/lib/booking/db"
 import { withRlsAuth } from "@/lib/with-rls"
 import { bookingAccess, bookingHostWhere } from "@/lib/booking/access"
 import { bookingPageSchema, pageAddOnsData, pageHostVariantsData, pagePhotoData, pagePriceData, slugTaken } from "@/lib/booking/page-input"
+
+export const DELETE = withRlsAuth("bookings", "write", async (_req: NextRequest, auth, { params }: { params: Promise<{ id: string }> }) => {
+  const access = await bookingAccess(auth)
+  if (access instanceof NextResponse) return access
+  if (!access.administrator) return NextResponse.json({ code: "FORBIDDEN" }, { status: 403 })
+  const { id } = await params
+  const page = await prisma.bookingPage.findFirst({ where: { id, organizationId: auth.orgId }, select: { id: true } })
+  if (!page) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  // Every meeting counts, not only the ones still ahead: a visit last spring
+  // is still a visit, and the service is where its name came from.
+  const meetings = await prisma.booking.count({ where: { organizationId: auth.orgId, bookingPageId: id } })
+  if (meetings > 0) return NextResponse.json({ code: "PAGE_IN_USE", data: { meetings } }, { status: 409 })
+  // Times held for a client are the one thing that may go with it: they are
+  // offers of this service, they expire by themselves, and nothing outside
+  // the conversation that holds them ever reads one again.
+  await prisma.$transaction(async (tx) => {
+    await tx.bookingOffer.deleteMany({ where: { organizationId: auth.orgId, bookingPageId: id } })
+    await tx.bookingPage.delete({ where: { id } })
+  })
+  return NextResponse.json({ success: true, data: { id } })
+})
 
 export const PATCH = withRlsAuth("bookings", "write", async (req: NextRequest, auth, { params }: { params: Promise<{ id: string }> }) => {
   const access = await bookingAccess(auth)
