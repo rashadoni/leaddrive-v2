@@ -14,9 +14,9 @@
  */
 
 import crypto from "node:crypto"
-import { mkdir, writeFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
+import { decodeTenantFileBytes, sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 import {
   downloadOutboundResource,
   type OutboundWebhookResolver,
@@ -25,9 +25,24 @@ import {
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
+import { isIgLogin } from "@/lib/social/tenant-meta-app"
 
 const MAX_BYTES = 25 * 1024 * 1024 // Meta's own attachment cap
 const DOWNLOAD_TIMEOUT_MS = 12_000
+
+/**
+ * Without a User-Agent Meta answers 302 to `www.facebook.com/unsupportedbrowser`, a ~50 KB HTML page
+ * — and the first version (#1567) kept that page in place of every photo (2026-11-12, measured from
+ * prod: same link, no UA → that page; «Mozilla/5.0 …» → the JPEG).
+ */
+const META_DOWNLOAD_HEADERS = { "User-Agent": "Mozilla/5.0 (compatible; LeadDrive/1.0)", Accept: "*/*" }
+
+/** A web page is never the customer's file — whatever redirect or error produced it. */
+function isWebPage(mime: string, bytes: Uint8Array): boolean {
+  if (mime.startsWith("text/") || mime.includes("html")) return true
+  const head = Buffer.from(bytes.subarray(0, 256)).toString("utf8").trimStart().toLowerCase()
+  return head.startsWith("<!doctype") || head.startsWith("<html")
+}
 
 /** Meta's media hosts. A shared post (`instagram.com/p/…`) is a page, not a file, and is left as a link. */
 export function isMetaMediaUrl(url: string | null | undefined): boolean {
@@ -76,11 +91,15 @@ export async function fetchAndStoreMetaMedia(
     const res = await downloadOutboundResource(mediaUrl, {
       timeoutMs: DOWNLOAD_TIMEOUT_MS,
       maxResponseBytes: MAX_BYTES,
+      headers: { ...META_DOWNLOAD_HEADERS },
       transport: seams.transport,
       resolver: seams.resolveHost,
     })
     if (!res.ok || res.bodyBytes.byteLength === 0 || res.bodyBytes.byteLength > MAX_BYTES) return null
+    // Wherever a redirect went, the file must come from Meta's media hosts and not be a page.
+    if (!isMetaMediaUrl(res.url)) return null
     const mime = (res.headers?.["content-type"] || "application/octet-stream").split(";")[0].trim().toLowerCase()
+    if (isWebPage(mime, res.bodyBytes)) return null
     const fileName = headerFileName(res.headers?.["content-disposition"])
     const ext = EXT_BY_MIME[mime] ?? (fileName && /\.[a-z0-9]{2,5}$/i.test(fileName) ? fileName.split(".").pop()!.toLowerCase() : "bin")
     const bytes = Buffer.from(res.bodyBytes)
@@ -148,6 +167,95 @@ export async function backfillMetaMediaMessages(
     } else {
       report.failed += 1
     }
+  }
+  return report
+}
+
+/**
+ * Messages where #1567 kept Facebook's «unsupported browser» page instead of the file (2026-11-12).
+ * Meta's link is gone from the row, so a fresh one is asked from the Graph API by the message id,
+ * with the channel's own token, and the file is kept as above. A stored file that is not that page
+ * is left alone.
+ */
+export type MetaMediaRepairReport = { dryRun: boolean; checked: number; broken: number; repaired: number; failed: number; hasMore: boolean }
+
+const STORED_INBOX_URL = /^\/uploads\/inbox\/([^/]+)\/([0-9a-f]{24}\.bin)$/
+
+/** The file's link in a Graph API message (`attachments.data[0]`): image, video, audio or file. */
+export function graphAttachmentUrl(message: unknown): string | null {
+  const data = (message as { attachments?: { data?: unknown[] } } | null)?.attachments?.data
+  const first = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined
+  if (!first) return null
+  for (const key of ["image_data", "video_data", "audio_data", "file_data", "payload"]) {
+    const url = (first[key] as { url?: unknown } | undefined)?.url
+    if (typeof url === "string" && isMetaMediaUrl(url)) return url
+  }
+  return typeof first.file_url === "string" && isMetaMediaUrl(first.file_url) ? first.file_url : null
+}
+
+type GraphFetch = (url: string) => Promise<unknown>
+const defaultGraphFetch: GraphFetch = async (url) => {
+  const res = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) })
+  return res.ok ? res.json() : null
+}
+
+export async function repairMetaMediaMessages(
+  options: { dryRun: boolean; limit: number },
+  seams: { transport?: OutboundWebhookTransport; resolveHost?: OutboundWebhookResolver; graphFetch?: GraphFetch } = {},
+): Promise<MetaMediaRepairReport> {
+  const rows: Array<{ id: string; organizationId: string; channelConfigId: string | null; channelType: string | null; externalId: string | null; mediaUrl: string | null }> =
+    await runWithRlsBypass(() => prisma.channelMessage.findMany({
+      where: {
+        channelType: { in: ["instagram", "facebook"] },
+        direction: "inbound",
+        messageType: "document",
+        mediaUrl: { startsWith: "/uploads/inbox/", endsWith: ".bin" },
+        externalId: { not: null },
+      },
+      select: { id: true, organizationId: true, channelConfigId: true, channelType: true, externalId: true, mediaUrl: true },
+      orderBy: { createdAt: "asc" },
+      take: options.limit + 1,
+    }))
+  const batch = rows.slice(0, options.limit)
+  const report: MetaMediaRepairReport = { dryRun: options.dryRun, checked: batch.length, broken: 0, repaired: 0, failed: 0, hasMore: rows.length > options.limit }
+  const graphFetch = seams.graphFetch ?? defaultGraphFetch
+  for (const row of batch) {
+    const match = STORED_INBOX_URL.exec(row.mediaUrl ?? "")
+    if (!match || match[1] !== row.organizationId || !row.externalId) continue
+    const outcome = await runWithTenant(row.organizationId, async (): Promise<"fine" | "repaired" | "failed"> => {
+      try {
+        const stored = await readFile(path.join(runtimePublicUploadDirectory("inbox"), row.organizationId, match[2]))
+        if (!isWebPage("application/octet-stream", decodeTenantFileBytes(row.organizationId, stored))) return "fine"
+      } catch {
+        return "fine"
+      }
+      if (options.dryRun) return "failed"
+      const config = row.channelConfigId
+        ? await prisma.channelConfig.findFirst({ where: { id: row.channelConfigId, organizationId: row.organizationId }, select: { apiKey: true, settings: true } })
+        : null
+      if (!config?.apiKey) return "failed"
+      const base = row.channelType === "instagram" && isIgLogin(config.settings)
+        ? "https://graph.instagram.com/v21.0"
+        : "https://graph.facebook.com/v20.0"
+      const query = new URLSearchParams({ fields: "attachments", access_token: config.apiKey })
+      let fresh: string | null = null
+      try {
+        fresh = graphAttachmentUrl(await graphFetch(`${base}/${encodeURIComponent(row.externalId!)}?${query}`))
+      } catch {
+        fresh = null
+      }
+      const kept = fresh ? await fetchAndStoreMetaMedia(fresh, row.organizationId, seams) : null
+      if (!kept) return "failed"
+      const result = await prisma.channelMessage.updateMany({
+        where: { id: row.id, organizationId: row.organizationId, mediaUrl: row.mediaUrl },
+        data: { mediaUrl: kept.url, messageType: kept.kind },
+      })
+      return result.count > 0 ? "repaired" : "failed"
+    })
+    if (outcome === "fine") continue
+    report.broken += 1
+    if (outcome === "repaired") report.repaired += 1
+    else if (!options.dryRun) report.failed += 1
   }
   return report
 }
