@@ -8,6 +8,7 @@
  */
 import { useState } from "react"
 import { useTranslations } from "next-intl"
+import { useBookingWords } from "./booking-words"
 import { ChevronDown } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -72,6 +73,7 @@ export function BookingWhatsAppRules({ rules, services, hosts, disabled, default
   defaultOpen?: boolean
   onChange: (rules: AutonomyRules) => void
 }) {
+  const words = useBookingWords()
   const t = useTranslations("booking")
   const interval = firstInterval(rules.hours)
   const openDays = WEEK_ORDER.filter((day) => (rules.hours?.[day]?.length ?? 0) > 0)
@@ -122,7 +124,7 @@ export function BookingWhatsAppRules({ rules, services, hosts, disabled, default
     </button>
 
     {open ? <div className={cn("space-y-3.5 border-t border-border px-4 py-4", disabled ? "pointer-events-none opacity-50" : "")}>
-      <Row label={t("waRulesServices")}>
+      <Row label={words.vocabulary.item ?? t("waRulesServices")}>
         <Picked
           items={services.map((item) => ({ id: item.id, name: item.title }))}
           chosen={rules.serviceIds}
@@ -137,7 +139,7 @@ export function BookingWhatsAppRules({ rules, services, hosts, disabled, default
         />
       </Row>
 
-      <Row label={t("waRulesHosts")}>
+      <Row label={words.host ?? t("waRulesHosts")}>
         <Picked
           items={hosts}
           chosen={rules.hostIds}

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import { useBookingWords } from "./booking-words"
 import { useQuery } from "@tanstack/react-query"
 import { CheckCircle2, Clock3, TriangleAlert } from "lucide-react"
 import { CrmSection } from "@/components/ui/crm-section"
@@ -48,6 +49,7 @@ export function BookingCreatePanel({ pages, hosts, timezone, onSaved, initial, o
   onPickAlternative?: (startsAt: string) => void
   checks?: BookingReadiness[]
 }) {
+  const words = useBookingWords()
   const t = useTranslations("booking"), locale = useLocale()
   const presetPage = initial?.pageId
   const [pageId, setPageId] = useState(presetPage && pages.some((page) => page.id === presetPage) ? presetPage : pages[0]?.id ?? "")
@@ -88,7 +90,7 @@ export function BookingCreatePanel({ pages, hosts, timezone, onSaved, initial, o
   return <div className="space-y-4">
     {!pages.length ? <p className="text-sm">{t("noAvailablePages")}</p> : <>
       <div className="space-y-1.5">
-        <Label className={FIELD_LABEL} htmlFor="create-meeting-page">{t("colPage")}</Label>
+        <Label className={FIELD_LABEL} htmlFor="create-meeting-page">{words.vocabulary.item ?? t("colPage")}</Label>
         <select id="create-meeting-page" className={FIELD} value={pageId} onChange={(event) => { setPageId(event.target.value); setHostId(""); onStartChange?.(null) }}>
           {/* A salon with twenty services reads them by group; one that never
               filed them sees the plain list it had before. */}

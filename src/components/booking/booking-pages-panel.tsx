@@ -14,6 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Hint } from "@/components/hint"
 import { BookingPageEditor, type BookingHostOption, type BookingPageDraft } from "@/components/booking/booking-page-editor"
 import { BookingWhatsAppCard } from "@/components/booking/booking-whatsapp-card"
+import { BookingVocabularyCard } from "@/components/booking/booking-vocabulary-card"
+import { useBookingWords } from "@/components/booking/booking-words"
 import { defaultWeeklyHours, parseWeeklyHours } from "@/lib/booking/availability"
 import { parseHostVariants } from "@/lib/booking/host-variants"
 import { parseAddOns } from "@/lib/booking/add-ons"
@@ -88,6 +90,7 @@ async function fetchBookingPages(): Promise<{ pages: PageRow[]; users: BookingHo
 
 export function BookingPagesPanel({ show = "all" }: { show?: "all" | "services" | "whatsapp" } = {}) {
   const t = useTranslations("booking")
+  const words = useBookingWords()
   const locale = useLocale()
   const [pages, setPages] = useState<PageRow[]>([])
   const [users, setUsers] = useState<BookingHostOption[]>([])
@@ -274,12 +277,14 @@ export function BookingPagesPanel({ show = "all" }: { show?: "all" | "services" 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-              <CalendarCheck className="h-6 w-6 text-muted-foreground" aria-hidden="true" />{t("settingsTitle")}
+              {/* The organisation's own word when it has one: a coworking's
+                  screen says «Otaq», not «Xidmətlər» (booking-words.tsx). */}
+              <CalendarCheck className="h-6 w-6 text-muted-foreground" aria-hidden="true" />{words.vocabulary.item ?? t("settingsTitle")}
             </h1>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("settingsDesc")}</p>
           </div>
           <Button onClick={() => openDraft(newDraft(users[0] ? [users[0].id] : []))}>
-            <Plus className="h-4 w-4" aria-hidden="true" />{t("newPage")}
+            <Plus className="h-4 w-4" aria-hidden="true" />{words.vocabulary.item ?? t("newPage")}
           </Button>
         </div>
       )}
@@ -295,6 +300,10 @@ export function BookingPagesPanel({ show = "all" }: { show?: "all" | "services" 
           that decides whether the number answers at all (owner, 2026-11-10 —
           «никто не скролит, всё должно быть под рукой»). It stays one card
           high, so the list it sits above is still the first thing read. */}
+      {/* What this organisation calls what it books. It governs every screen
+          below and the client's own form, so it is read before the list, not
+          found at the bottom of it. */}
+      {!draft && show === "services" ? <BookingVocabularyCard /> : null}
       {!draft && show !== "services" ? <BookingWhatsAppCard services={pages.map(({ id, title, price, priceCurrency }) => ({ id, title, price, priceCurrency }))} hosts={users} /> : null}
 
       {draft ? (

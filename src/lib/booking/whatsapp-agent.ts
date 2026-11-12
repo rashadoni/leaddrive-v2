@@ -42,6 +42,7 @@ import { clock, dayLabel, shortDayLabel, type ReplyLanguage } from "./whatsapp-f
 export { clock, dayLabel, type ReplyLanguage } from "./whatsapp-format"
 import path from "node:path"
 import { OFFER_HOLD_MINUTES, readWhatsAppBookingSetting } from "./whatsapp-setting"
+import { readBookingVocabulary } from "./vocabulary"
 import { BOOKING_PHOTO_DIRECTORY, bookingPhotoPath } from "./service-photo"
 import { ANY_HOST, BOOKING_FLOW_DAY_IDS, BOOKING_FLOW_SCREEN, FLOW_DAY_PREFIX, PLACEHOLDER_PHOTO } from "./whatsapp-flow"
 import { autonomyVerdict, type AutonomyReason, type AutonomyRules } from "./whatsapp-rules"
@@ -567,7 +568,11 @@ async function serviceChoices(organizationId: string, service: ServiceContext, h
     take: 20,
     select: { id: true, title: true },
   })
-  const masters = hosts.filter((host) => service.hostIds.includes(host.id)).slice(0, 19)
+  const vocabulary = readBookingVocabulary((await prisma.organization.findUnique({ where: { id: organizationId }, select: { settings: true } }))?.settings)
+  // «Nobody does it» is the whole row gone: the published form has no master
+  // dropdown at all, so a list of masters in the message would be data no
+  // screen reads.
+  const masters = vocabulary.noHost ? [] : hosts.filter((host) => service.hostIds.includes(host.id)).slice(0, 19)
   return {
     has_services: services.length > 1,
     services: services.length > 1 ? services.map((item) => ({ id: item.id, title: item.title.slice(0, 30) })) : [{ id: service.id, title: service.title.slice(0, 30) }],
