@@ -21,6 +21,7 @@ import { BookingCreatePanel, type BookingAlternative, type BookingReadiness } fr
 import { BookingCoordinatorsPanel } from "./booking-coordinators-panel"
 import { BookingBoardPanel } from "./booking-board-panel"
 import { BookingRequestsPanel } from "./booking-requests-panel"
+import { BookingWordsProvider, useBookingWords } from "./booking-words"
 import { BookingHostSchedulePanel } from "./booking-host-schedule-panel"
 import { BookingStatus } from "./booking-status"
 import type { DaySlots } from "@/lib/booking/availability"
@@ -120,8 +121,18 @@ export const BOOKING_SECTION_PATHS: Record<BookingSection, string> = {
   team: "/meetings/team",
 }
 
-export function BookingWorkspace({ section = "meetings" }: { section?: BookingSection } = {}) {
+/**
+ * Every meetings screen reads the organisation's own two nouns from one place
+ * (booking-words.tsx): a salon's «Usta», a clinic's «Həkim», a coworking's
+ * nothing at all.
+ */
+export function BookingWorkspace(props: { section?: BookingSection } = {}) {
+  return <BookingWordsProvider><BookingWorkspaceScreens {...props} /></BookingWordsProvider>
+}
+
+function BookingWorkspaceScreens({ section = "meetings" }: { section?: BookingSection } = {}) {
   const t = useTranslations("booking")
+  const words = useBookingWords()
   const locale = useLocale()
   const router = useRouter()
   const params = useSearchParams()
@@ -383,7 +394,7 @@ export function BookingWorkspace({ section = "meetings" }: { section?: BookingSe
   </div>
   const searchField = <div className="min-w-44 flex-1 space-y-1"><Label htmlFor="meeting-search">{t("workspaceSearch")}</Label><div className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input id="meeting-search" value={search} onChange={(event) => setSearch(event.target.value)} className="min-h-11 pl-9" placeholder={t("workspaceSearchHint")} /></div></div>
   const statusField = <div className="space-y-1"><Label htmlFor="meeting-state">{t("workspaceStatus")}</Label><select id="meeting-state" className={`${SELECT} block`} value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">{t("allStatuses")}</option>{Object.keys(STATUS_KEYS).map((value) => <option key={value} value={value}>{state(value)}</option>)}</select></div>
-  const pageField = context && context.pages.length > 1 ? <div className="space-y-1"><Label htmlFor="meeting-page">{t("colPage")}</Label><select id="meeting-page" className={`${SELECT} block max-w-60`} value={page} onChange={(event) => setPage(event.target.value)}><option value="">{t("allPages")}</option>{context.pages.map((item) => <option value={item.id} key={item.id}>{item.title}</option>)}</select></div> : null
+  const pageField = context && context.pages.length > 1 ? <div className="space-y-1"><Label htmlFor="meeting-page">{words.vocabulary.item ?? t("colPage")}</Label><select id="meeting-page" className={`${SELECT} block max-w-60`} value={page} onChange={(event) => setPage(event.target.value)}><option value="">{t("allPages")}</option>{context.pages.map((item) => <option value={item.id} key={item.id}>{item.title}</option>)}</select></div> : null
 
   return <main className="space-y-5 [&_button]:min-h-11 [&_button]:min-w-11 [&_select]:min-h-11" data-testid="booking-workspace">
     <header className="flex flex-wrap items-start justify-between gap-3">

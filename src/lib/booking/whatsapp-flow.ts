@@ -16,6 +16,7 @@
 import { resolveWhatsAppConfig, WHATSAPP_GRAPH_API_BASE } from "@/lib/whatsapp"
 import { bookingDb as prisma } from "./db"
 import { WHATSAPP_BOOKING_SETTING } from "./whatsapp-setting"
+import { readBookingVocabulary } from "./vocabulary"
 
 export const BOOKING_FLOW_NAME = "leaddrive-booking-v1"
 /**
@@ -123,7 +124,17 @@ export const BOOKING_FLOW_DAY_IDS = Array.from({ length: BOOKING_FLOW_DAYS }, (i
  * working as the schema moves, which is why the version lives here, next to
  * the screen it describes, and not in a setting somebody forgets.
  */
-export function bookingFlowJson(): Record<string, unknown> {
+export interface BookingFlowWords {
+  /** What is booked — «Xidmət», «Otaq», «Qəbul». */
+  item: string
+  /** Who does it, or null when nobody does: then the row is not drawn. */
+  host: string | null
+}
+
+/** What a salon is called when its organisation has said nothing. */
+export const DEFAULT_FLOW_WORDS: BookingFlowWords = { item: "Xidmət", host: "Usta" }
+
+export function bookingFlowJson(words: BookingFlowWords = DEFAULT_FLOW_WORDS): Record<string, unknown> {
   const times = (example: string) => ({
     type: "array",
     items: { type: "object", properties: { id: { type: "string" }, title: { type: "string" }, description: { type: "string" } } },
@@ -185,14 +196,16 @@ export function bookingFlowJson(): Record<string, unknown> {
               // outright — «Property 'init-value' is not allowed in 'TextInput'
               // component» — and that one line was the whole reason the form
               // would not publish (2026-11-11).
-              "init-values": { client: "${data.client}", day: "${data.day_init}", service: "${data.service_init}", host: "${data.host_init}" },
+              "init-values": { client: "${data.client}", day: "${data.day_init}", service: "${data.service_init}", ...(words.host ? { host: "${data.host_init}" } : {}) },
               children: [
                 // What is being booked, and with whom. Changing either is not
                 // an answer to the times on screen but a new question — the
                 // agent sends the form back with that service's or that
                 // master's own times (src/lib/booking/whatsapp-agent.ts).
-                { type: "Dropdown", name: "service", label: "Xidmət", visible: "${data.has_services}", "data-source": "${data.services}" },
-                { type: "Dropdown", name: "host", label: "Usta", visible: "${data.has_hosts}", "data-source": "${data.hosts}" },
+                { type: "Dropdown", name: "service", label: words.item.slice(0, 20), visible: "${data.has_services}", "data-source": "${data.services}" },
+                // A coworking books a room and nobody does it: then the row is
+                // not hidden by data, it is not in the published form at all.
+                ...(words.host ? [{ type: "Dropdown", name: "host", label: words.host.slice(0, 20), visible: "${data.has_hosts}", "data-source": "${data.hosts}" }] : []),
                 { type: "Dropdown", name: "day", label: "Gün", required: true, "data-source": "${data.days}" },
                 // One block per day slot. Only the chosen day's times are on
                 // screen; the rest are not rendered, so the form stays the
@@ -212,7 +225,7 @@ export function bookingFlowJson(): Record<string, unknown> {
                     name: "complete",
                     payload: {
                       service: "${form.service}",
-                      host: "${form.host}",
+                      ...(words.host ? { host: "${form.host}" } : {}),
                       day: "${form.day}",
                       ...Object.fromEntries(BOOKING_FLOW_DAY_IDS.map((day, index) => [`t${index}`, `\${form.t${index}}`])),
                       client: "${form.client}",
@@ -257,7 +270,10 @@ export async function ensureBookingFlow(
     return { ok: false, flowId: null, steps }
   }
   const auth = { Authorization: `Bearer ${config.accessToken}` }
-  const json = JSON.stringify(bookingFlowJson())
+  // The form is published per organisation, on its own number, so the words
+  // inside it are that organisation's own: «Xidmət · Usta» for a salon,
+  // «Otaq» and no second row for a coworking (src/lib/booking/vocabulary.ts).
+  const json = JSON.stringify(bookingFlowJson(await flowWords(organizationId)))
   const say = async (response: Response) => {
     const body = await response.json().catch(() => null) as Record<string, unknown> | null
     return { body, text: body ? JSON.stringify(body) : `HTTP ${response.status}` }
@@ -488,3 +504,13 @@ export function flowTap(interactive: unknown): { replyId: string; name: string |
  * agent looks it up there (src/lib/booking/whatsapp-agent.ts).
  */
 export const FLOW_DAY_PREFIX = "bkds:"
+
+/** This organisation's own two nouns, as the published form must read them. */
+async function flowWords(organizationId: string): Promise<BookingFlowWords> {
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId }, select: { settings: true } }).catch(() => null)
+  const vocabulary = readBookingVocabulary(organization?.settings)
+  return {
+    item: vocabulary.item ?? DEFAULT_FLOW_WORDS.item,
+    host: vocabulary.noHost ? null : vocabulary.host ?? DEFAULT_FLOW_WORDS.host,
+  }
+}

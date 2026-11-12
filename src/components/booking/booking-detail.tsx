@@ -12,6 +12,7 @@
  */
 import { CalendarDays, CheckCircle2, Clock3, MapPin, MessageCircle, Phone, Send, Tag, TriangleAlert, UserRound, Wallet } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
+import { useBookingWords } from "./booking-words"
 import { Button } from "@/components/ui/button"
 import { CrmSection } from "@/components/ui/crm-section"
 import { formatDate, formatTime } from "@/lib/format-date"
@@ -61,6 +62,7 @@ export function BookingDetail({ booking, context, identity, schedule, onSaved, o
   onClose?: () => void
   onOpenMeeting?: (id: string) => void
 }) {
+  const words = useBookingWords()
   const t = useTranslations("booking")
   const locale = useLocale()
   const timezone = booking.bookingPage.timezone || context.timezone
@@ -72,7 +74,7 @@ export function BookingDetail({ booking, context, identity, schedule, onSaved, o
   const rows: [React.ReactNode, string, string][] = [
     [<UserRound key="h" aria-hidden="true" className="h-4 w-4" />, t("colHosts"), booking.hostName ?? t("hostUnknown")],
     [<MapPin key="l" aria-hidden="true" className="h-4 w-4" />, t("fieldLocation"), booking.bookingPage.locationText || t(`location_${locationType}`)],
-    [<CalendarDays key="p" aria-hidden="true" className="h-4 w-4" />, t("colPage"), booking.bookingPage.title],
+    [<CalendarDays key="p" aria-hidden="true" className="h-4 w-4" />, words.vocabulary.item ?? t("colPage"), booking.bookingPage.title],
     // The price the client was told when they agreed, not today's: the card
     // reads it from the meeting's own snapshot.
     ...(price ? [[<Wallet key="m" aria-hidden="true" className="h-4 w-4" />, t("fieldPrice"), price] as [React.ReactNode, string, string]] : []),

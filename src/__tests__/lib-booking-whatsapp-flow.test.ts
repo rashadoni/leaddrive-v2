@@ -35,7 +35,11 @@ vi.mock("@/lib/whatsapp", () => ({
  * clients never see.
  */
 const setting = vi.fn(async (...args: unknown[]) => args.length)
-vi.mock("@/lib/booking/db", () => ({ bookingDb: { $executeRawUnsafe: setting } }))
+/** The organisation's own two nouns; by default it has set none. */
+const organizationSettings = vi.fn(async () => ({ settings: {} as Record<string, unknown> }))
+vi.mock("@/lib/booking/db", () => ({
+  bookingDb: { $executeRawUnsafe: setting, organization: { findUnique: organizationSettings } },
+}))
 /** What the last write recorded in `flowId`, as JSON. */
 const lastWritten = () => setting.mock.calls.at(-1)?.[2]
 
@@ -362,5 +366,47 @@ describe("a form that comes back", () => {
     // A form with no time in it books nothing: an answer whose shape we do
     // not recognise is not an answer.
     expect(flowTap(submission({ client: "Günel" }))).toBeNull()
+  })
+})
+
+describe("the words inside the published form", () => {
+  it("are the organisation's own, and a form with nobody on the other side has no such row", async () => {
+    // A coworking books a room and nobody does it (owner, 2026-11-12). The
+    // row is not hidden by data: it is not in the published form at all, so
+    // nothing can submit a master for a form that never asked for one.
+    const rooms = bookingFlowJson({ item: "Otaq", host: null }) as {
+      screens: { layout: { children: Record<string, unknown>[] } }[]
+    }
+    const form = rooms.screens[0].layout.children.find((child) => child.type === "Form") as { children: Record<string, unknown>[] }
+    expect(form.children.find((child) => child.name === "service")).toMatchObject({ label: "Otaq" })
+    expect(form.children.find((child) => child.name === "host")).toBeUndefined()
+    const footer = form.children.find((child) => child.type === "Footer") as { "on-click-action": { payload: Record<string, string> } }
+    expect(footer["on-click-action"].payload).not.toHaveProperty("host")
+
+    const clinic = bookingFlowJson({ item: "Qəbul", host: "Həkim" }) as typeof rooms
+    const clinicForm = clinic.screens[0].layout.children.find((child) => child.type === "Form") as { children: Record<string, unknown>[] }
+    expect(clinicForm.children.find((child) => child.name === "host")).toMatchObject({ label: "Həkim" })
+  })
+
+  it("come from the organisation that publishes it", async () => {
+    // The form is published per organisation, on its own number, so there is
+    // nothing to translate at send time — the words are inside the form.
+    organizationSettings.mockResolvedValueOnce({ settings: { bookingVocabulary: { item: "Otaq", host: null, noHost: true } } })
+    const sent: string[] = []
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: { body?: unknown }) => {
+      if (init?.body instanceof FormData) sent.push(String(await (init.body.get("file") as Blob).text()))
+      return {
+        ok: true, status: 200,
+        json: async () => url.includes("/flows?")
+          ? { data: [{ id: "77", name: BOOKING_FLOW_NAME, status: "PUBLISHED", categories: [] }] }
+          : { success: true },
+      }
+    }))
+
+    await ensureBookingFlow("org-1")
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toContain('"label":"Otaq"')
+    expect(sent[0]).not.toContain('"name":"host"')
   })
 })
