@@ -27,8 +27,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { cn } from "@/lib/utils"
 import { BOOKING_VOCABULARY_PRESETS, matchingPreset, type BookingVocabulary } from "@/lib/booking/vocabulary"
+import { BookingChip } from "./booking-chip"
 
 type Locale = "az" | "ru" | "en"
 
@@ -94,16 +94,13 @@ export function BookingVocabularyCard() {
           {BOOKING_VOCABULARY_PRESETS.map((preset) => {
             const words = preset.words[locale] ?? preset.words.az
             const active = chosen === preset.id
-            return <button
+            return <BookingChip
               key={preset.id}
-              type="button"
-              aria-pressed={active}
+              active={active}
               onClick={() => setDraft({ item: words.item, host: words.host, noHost: Boolean(preset.noHost) })}
-              className={cn("min-h-11 rounded-lg border px-3 text-sm transition-colors",
-                active ? "border-primary bg-primary/5 font-medium" : "border-input hover:bg-muted")}
             >
               {words.item}{words.host ? ` · ${words.host}` : ` · ${t("vocabNoHostShort")}`}
-            </button>
+            </BookingChip>
           })}
         </div>
 
