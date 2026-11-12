@@ -140,7 +140,7 @@ describe("task card panel", () => {
     await flush()
     expect(calls).toContain('PATCH /api/v1/tasks/t1 {"title":"Vebsayt reklamları — GA4"}')
 
-    const add = container.querySelector('input[placeholder="+ подзадача (Enter)"]') as HTMLInputElement
+    const add = container.querySelector('[data-testid="task-panel-subtask-input"]') as HTMLInputElement
     await type(add, "ga4 quraşdırılması")
     await press(add, "Enter")
     await flush()
@@ -251,4 +251,30 @@ describe("a picture the file gate refused", () => {
       vi.useRealTimers()
     }
   })
+
+  // Elvira, 2026-11-12: «45 ədəd vinil» comes as a numbered list — one press makes the subtasks.
+  it("turns the numbered list of the description into subtasks, and a pasted list too", async () => {
+    const was = TASK.description
+    TASK.description = "Ölçülər:\n1. 167 (eni) x 88 Ferveks\n2. 122 (eni) x 88 Hedelix\n3. pixel quraşdırılması"
+    try {
+      await open()
+      const split = container.querySelector('[data-testid="task-panel-split-list"]') as HTMLButtonElement
+      // «pixel quraşdırılması» is a subtask already: two lines are offered.
+      expect(split.textContent).toContain("(2)")
+      await click(split)
+      await flush()
+      expect(calls).toContain('POST /api/v1/tasks/t1/checklist {"titles":["167 (eni) x 88 Ferveks","122 (eni) x 88 Hedelix"]}')
+
+      const add = container.querySelector('[data-testid="task-panel-subtask-input"]') as HTMLInputElement
+      const paste = new Event("paste", { bubbles: true, cancelable: true }) as Event & { clipboardData: unknown }
+      paste.clipboardData = { getData: () => "Story 1\nStory 2\n\nStory 3" }
+      await act(async () => { add.dispatchEvent(paste) })
+      await flush()
+      expect(paste.defaultPrevented).toBe(true)
+      expect(calls).toContain('POST /api/v1/tasks/t1/checklist {"titles":["Story 1","Story 2","Story 3"]}')
+    } finally {
+      TASK.description = was
+    }
+  })
 })
+

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { activeMembers, openTaskFor } from "@/lib/tasks/task-access"
 import { refusedTaskIds, NOT_YOUR_TASK } from "@/lib/tasks/task-ownership"
+import { MAX_LIST_LINES, newSubtaskTitles } from "@/lib/tasks/list-lines"
 import { createRestActorContext } from "@/lib/crm-commands/actor-context"
 import {
   addTaskChecklistItemCommand,
@@ -68,14 +69,43 @@ export const GET = withRlsAuth("tasks", "read", async (_req, auth, { params }: C
   return NextResponse.json({ success: true, data: items })
 })
 
-/** A new subtask — the same command the voice assistant uses. */
+const listSchema = z.object({ titles: z.array(z.string().trim().min(1).max(500)).min(1).max(MAX_LIST_LINES) })
+
+/**
+ * A new subtask — the same command the voice assistant uses. With `titles`,
+ * a list at once (Elvira, 2026-11-12: «45 ədəd vinil» — a list in the
+ * description, or pasted): one subtask per line, after the ones already there;
+ * a line that already is a subtask is skipped, so sending it again adds nothing.
+ */
 export const POST = withRlsAuth("tasks", "write", async (req, auth, { params }: Ctx) => {
   const { id: taskId } = await params
   const refused = await refusal(auth, taskId)
   if (refused) return refused
+  const body = await req.json().catch(() => null)
+  if (body && typeof body === "object" && "titles" in body) {
+    const parsed = listSchema.safeParse(body)
+    if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
+    const task = await openTaskFor(prisma, { organizationId: auth.orgId, userId: auth.userId, role: auth.role, taskId })
+    if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 })
+    const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const existing: { title: string; sortOrder: number }[] = await tx.taskChecklist.findMany({ where: { taskId, organizationId: auth.orgId }, select: { title: true, sortOrder: true } })
+      const titles = newSubtaskTitles(parsed.data.titles, existing.map((row) => row.title))
+      if (titles.length === 0) return 0
+      const after = existing.reduce((max, row) => Math.max(max, row.sortOrder), -1) + 1
+      await tx.taskChecklist.createMany({
+        data: titles.map((title, i) => ({ organizationId: auth.orgId, taskId, title, sortOrder: after + i })),
+      })
+      await tx.taskActivity.create({
+        data: { organizationId: auth.orgId, taskId, userId: auth.userId || null, action: "subtasks_added", newValue: String(titles.length) },
+      })
+      return titles.length
+    })
+    const items = await prisma.taskChecklist.findMany({ where: { taskId, organizationId: auth.orgId }, orderBy: { sortOrder: "asc" }, include: itemInclude })
+    return NextResponse.json({ success: true, data: { added: created, items } }, { status: created ? 201 : 200 })
+  }
   const actor = createRestActorContext({ organizationId: auth.orgId, userId: auth.userId, role: auth.role })
   try {
-    const { entity } = await addTaskChecklistItemCommand(actor, taskId, await req.json().catch(() => null))
+    const { entity } = await addTaskChecklistItemCommand(actor, taskId, body)
     return NextResponse.json({ success: true, data: entity }, { status: 201 })
   } catch (error) {
     return crmCommandErrorResponse(error)

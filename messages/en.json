@@ -2518,6 +2518,9 @@
     "loading": "Loading reports…",
     "kpiWip": "In progress",
     "kpiWipSub": "open tasks now",
+    "kpiUnits": "Work done this week",
+    "kpiUnitsSub": "{tasks} tasks + {subtasks} subtasks",
+    "unitsByAssigneeTitle": "Work done by person",
     "kpiClosed": "Closed this week",
     "kpiClosedSub": "by completion date",
     "kpiOverdue": "Overdue",
@@ -33115,6 +33118,10 @@
     "nothingToFill": "Everything is already filled in — nothing was changed."
   },
   "taskPanel": {
+    "splitList": "Split the list into subtasks ({count})",
+    "splitListDone": "Every line of the list is already a subtask",
+    "pasteHint": "Paste a list — each line becomes a subtask",
+    "listAdded": "Subtasks added: {count}",
     "notYoursToDelete": "Only the task's author can delete it.",
     "notYours": "Only the task's author, assignee and co-assignees can change it. You can write in its feed.",
     "task": "Task",
@@ -33201,6 +33208,7 @@
       "start": "{name} set the start to {to}",
       "startCleared": "{name} removed the start",
       "priority": "{name} changed the priority: {to}",
+      "subtasksAdded": "{name} added {count} subtasks from a list",
       "subtaskDone": "{name} completed the subtask: {to}",
       "subtaskReopened": "{name} reopened the subtask: {to}",
       "board": "{name} moved the task: {to}",

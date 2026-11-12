@@ -4,6 +4,7 @@ import { useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { CheckSquare, Square, Trash2 } from "lucide-react"
 import { formatDate } from "@/lib/format-date"
+import { pastedLines } from "@/lib/tasks/list-lines"
 
 export interface Subtask {
   id: string
@@ -112,6 +113,19 @@ export function TaskPanelSubtasks({ taskId, items, people, canEdit, onChanged }:
     )
   }
   const isDraft = (item: Subtask) => item.id.startsWith("draft:")
+  // A list pasted into «add a subtask»: one subtask per line (Elvira, 2026-11-12).
+  const addList = (titles: string[]) => {
+    const drafts: Subtask[] = titles.map((title, i) => {
+      nextDraftId.current += 1
+      return { id: `draft:${nextDraftId.current}`, title, completed: false, sortOrder: rows.length + i, assignedTo: null, assignee: null, dueDate: null }
+    })
+    const ids = new Set(drafts.map((row) => row.id))
+    void send(
+      { method: "POST", body: { titles } },
+      (list) => [...list, ...drafts],
+      (list) => list.filter((row) => !ids.has(row.id)),
+    )
+  }
 
   return (
     <section className="border-t pt-4" data-testid="task-panel-subtasks">
@@ -189,7 +203,15 @@ export function TaskPanelSubtasks({ taskId, items, people, canEdit, onChanged }:
           onKeyDown={(e) => {
             if (e.key === "Enter" && draft.trim()) { add(draft.trim()); setDraft("") }
           }}
-          placeholder={t("addSubtask")}
+          onPaste={(e) => {
+            const lines = pastedLines(e.clipboardData.getData("text"))
+            if (!lines) return
+            e.preventDefault()
+            addList(lines)
+            setDraft("")
+          }}
+          data-testid="task-panel-subtask-input"
+          placeholder={`${t("addSubtask")} — ${t("pasteHint")}`}
           className="mt-2 w-full rounded border border-dashed bg-background px-2 py-1.5 text-sm"
         />
       )}
