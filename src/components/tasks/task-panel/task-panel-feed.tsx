@@ -234,7 +234,7 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
                       />
                       <div className="flex justify-end gap-1.5">
                         <button type="button" onClick={() => setEditing(null)} className="rounded border px-2 py-0.5 text-xs">{t("cancel")}</button>
-                        <button type="button" data-testid="task-feed-message-save" onClick={() => void saveEdit()} className="rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground">{t("save")}</button>
+                        <button type="button" data-crm-button="default" data-testid="task-feed-message-save" onClick={() => void saveEdit()} className="rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground">{t("save")}</button>
                       </div>
                     </div>
                   ) : (
