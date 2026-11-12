@@ -11,8 +11,9 @@
  * their year-long immutable HTTP cache. Offline, a page opened before still opens; any other shows
  * `/offline`.
  */
-export type PrecacheEntry = { url: string; revision: string | null; integrity?: string; size: number }
+import type { ManifestTransform } from "@serwist/build"
 
-export async function precacheOfflineOnly(entries: PrecacheEntry[]): Promise<{ manifest: PrecacheEntry[]; warnings: string[] }> {
-  return { manifest: entries.filter((entry) => entry.url === "/offline"), warnings: [] }
-}
+export const precacheOfflineOnly: ManifestTransform = async (entries) => ({
+  manifest: entries.filter((entry) => entry.url === "/offline"),
+  warnings: [],
+})
