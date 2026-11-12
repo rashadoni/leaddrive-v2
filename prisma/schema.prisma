@@ -2094,6 +2094,8 @@ model TaskComment {
   // Users @-mentioned in the message; each is told and starts following the task.
   mentions       String[]     @default([])
   createdAt      DateTime     @default(now())
+  // Set when its author changes the text (shown «(redaktə edilib)»).
+  editedAt       DateTime?
 
   @@index([taskId])
   @@map("task_comments")

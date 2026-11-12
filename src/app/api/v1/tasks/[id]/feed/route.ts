@@ -14,7 +14,7 @@ export const GET = withRlsAuth("tasks", "read", async (_req, auth, { params }: {
     prisma.taskComment.findMany({
       where: { organizationId: auth.orgId, taskId: id },
       orderBy: { createdAt: "asc" },
-      select: { id: true, createdAt: true, content: true, isSystem: true, mentions: true, user: { select: { id: true, name: true, avatar: true } } },
+      select: { id: true, createdAt: true, content: true, isSystem: true, mentions: true, editedAt: true, user: { select: { id: true, name: true, avatar: true } } },
     }),
     prisma.taskActivity.findMany({
       where: { organizationId: auth.orgId, taskId: id },
@@ -39,6 +39,8 @@ export const GET = withRlsAuth("tasks", "read", async (_req, auth, { params }: {
       items,
       followers: followers.map((f) => f.user),
       following: followers.some((f) => f.user.id === auth.userId),
+      // Whose messages the reader may change: their own, or everyone's for the admin.
+      me: { id: auth.userId || null, admin: auth.role === "admin" || auth.role === "superadmin" },
     },
   })
 })

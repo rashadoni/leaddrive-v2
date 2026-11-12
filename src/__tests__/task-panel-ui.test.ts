@@ -276,5 +276,37 @@ describe("a picture the file gate refused", () => {
       TASK.description = was
     }
   })
+
+  // Xayala, 2026-11-12: «qrup halında silmək imkanı olsun»; Ulviyya: «komentdə yazılan mətn redaktə olmur».
+  it("removes picked files at once, and its author edits a message", async () => {
+    const was = { attachments: TASK.attachments, feed: { ...FEED } }
+    TASK.attachments = [
+      { id: "f1", fileName: "a.jpg", originalName: "Nivea 1.jpg" },
+      { id: "f2", fileName: "b.jpg", originalName: "Nivea 2.jpg" },
+      { id: "f3", fileName: "c.xlsx", originalName: "Korega.xlsx" },
+    ] as never
+    Object.assign(FEED, { me: { id: "s", admin: false } })
+    try {
+      await open()
+      const picks = [...container.querySelectorAll('[data-testid="task-file-pick"]')] as HTMLInputElement[]
+      await click(picks[0])
+      await click(picks[2])
+      await click(container.querySelector('[data-testid="task-files-bulk-remove"]'))
+      await click(container.querySelector('[data-testid="task-files-bulk-yes"]'))
+      await flush()
+      expect(calls).toContain("DELETE /api/v1/tasks/t1/files?fileId=f1&fileId=f3")
+
+      // Sabina's own message («birbaşa reklamları aktivləşdirdim») has «Изменить»; the save sends the new text.
+      await click(container.querySelector('[data-message-id="m1"] [data-testid="task-feed-message-edit"]'))
+      const editor = container.querySelector('[data-testid="task-feed-message-editor"]') as HTMLTextAreaElement
+      await type(editor, "birbaşa reklamları dayandırdım")
+      await click(container.querySelector('[data-testid="task-feed-message-save"]'))
+      await flush()
+      expect(calls).toContain('PATCH /api/v1/tasks/t1/comments/m1 {"content":"birbaşa reklamları dayandırdım"}')
+    } finally {
+      TASK.attachments = was.attachments
+      delete (FEED as { me?: unknown }).me
+    }
+  })
 })
 

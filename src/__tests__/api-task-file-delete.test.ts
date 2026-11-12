@@ -27,11 +27,11 @@ vi.mock("@/lib/prisma", () => ({
         (where.organizationId === "org-z" && where.id.in.includes("t1") ? [state.t1] : [])),
     },
     taskAttachment: {
-      findFirst: vi.fn(async ({ where }: { where: { id: string; taskId: string; organizationId: string } }) =>
-        state.files.find((f) => f.id === where.id && f.taskId === where.taskId && f.organizationId === where.organizationId) ?? null),
-      delete: vi.fn(async ({ where }: { where: { id: string } }) => { state.files = state.files.filter((f) => f.id !== where.id) }),
+      findMany: vi.fn(async ({ where }: { where: { id: { in: string[] }; taskId: string; organizationId: string } }) =>
+        state.files.filter((f) => where.id.in.includes(f.id) && f.taskId === where.taskId && f.organizationId === where.organizationId)),
+      deleteMany: vi.fn(async ({ where }: { where: { id: { in: string[] } } }) => { state.files = state.files.filter((f) => !where.id.in.includes(f.id)) }),
     },
-    taskActivity: { create: vi.fn(async (args: unknown) => { state.activities.push(args) }) },
+    taskActivity: { createMany: vi.fn(async (args: unknown) => { state.activities.push(args) }) },
   },
 }))
 
@@ -84,4 +84,18 @@ describe("DELETE /api/v1/tasks/[id]/files", () => {
     state.t1 = { id: "t1", divisionId: "board-1", createdBy: "u-7", assignedTo: "u-8", collaborators: [{ userId: "u-1" }] }
     expect((await del("t1", "f3")).status).toBe(200)
   })
+
+  // Xayala, 2026-11-12: «qrup halında silmək imkanı olsun».
+  it("removes several files at once — all of them, or none when one is not the task's", async () => {
+    state.files.push({ id: "f4", taskId: "t1", organizationId: "org-z", fileName: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png", originalName: "Nivea 1.jpg" })
+    expect((await del("t1", "f1,f2")).status).toBe(404)
+    expect(state.files).toHaveLength(4)
+    const res = await DELETE(new NextRequest("http://crm.test/api/v1/tasks/t1/files?fileId=f1&fileId=f4", { method: "DELETE" }), { params: Promise.resolve({ id: "t1" }) } as never)
+    expect(res.status).toBe(200)
+    expect((await res.json()).data.removed).toBe(2)
+    expect(state.files.map((f) => f.id)).toEqual(["f2", "f3"])
+    expect(state.unlinked.sort()).toEqual(["/uploads/tasks/0123456789abcdef0123456789abcdef.jpg", "/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png"])
+    expect(JSON.stringify(state.activities)).toContain("Nivea 1.jpg")
+  })
 })
+

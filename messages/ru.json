@@ -2399,6 +2399,7 @@
     "pickerButton": "Из шаблона…"
   },
   "board": {
+    "boardLabel": "Доска",
     "newTask": "Новая задача",
     "assignedToMe": "Назначенные мне",
     "createdByMe": "Созданные мной",
@@ -33118,6 +33119,16 @@
     "nothingToFill": "Всё уже заполнено — ничего не изменено."
   },
   "taskPanel": {
+    "messageEdited": "(изменено)",
+    "editMessage": "Изменить",
+    "removeMessage": "Удалить",
+    "confirmRemoveMessage": "Удалить?",
+    "yes": "Да",
+    "no": "Нет",
+    "selectAllFiles": "Выбрать все",
+    "filesSelected": "Выбрано: {count}",
+    "removeSelectedFiles": "Удалить выбранные ({count})",
+    "confirmRemoveFiles": "Удалить файлов: {count}?",
     "splitList": "Разбить список на подзадачи ({count})",
     "splitListDone": "Все строки списка уже стали подзадачами",
     "pasteHint": "Вставьте список — каждая строка станет подзадачей",
@@ -33321,6 +33332,7 @@
     "openCount": "Открыто: {count}",
     "overdueCount": "просрочено: {count}",
     "allBoards": "Все доски",
+    "newTask": "Новая задача",
     "doneMore": "Показать ещё {count} (осталось {left})",
     "showDone": "Показать завершённые",
     "hideDone": "Скрыть завершённые",

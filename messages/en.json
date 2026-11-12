@@ -2399,6 +2399,7 @@
     "pickerButton": "From template…"
   },
   "board": {
+    "boardLabel": "Board",
     "newTask": "New Task",
     "assignedToMe": "Assigned to me",
     "createdByMe": "Created by me",
@@ -33118,6 +33119,16 @@
     "nothingToFill": "Everything is already filled in — nothing was changed."
   },
   "taskPanel": {
+    "messageEdited": "(edited)",
+    "editMessage": "Edit",
+    "removeMessage": "Delete",
+    "confirmRemoveMessage": "Delete?",
+    "yes": "Yes",
+    "no": "No",
+    "selectAllFiles": "Select all",
+    "filesSelected": "Selected: {count}",
+    "removeSelectedFiles": "Delete selected ({count})",
+    "confirmRemoveFiles": "Delete {count} files?",
     "splitList": "Split the list into subtasks ({count})",
     "splitListDone": "Every line of the list is already a subtask",
     "pasteHint": "Paste a list — each line becomes a subtask",
@@ -33321,6 +33332,7 @@
     "openCount": "{count} open",
     "overdueCount": "{count} overdue",
     "allBoards": "All boards",
+    "newTask": "New task",
     "doneMore": "Show {count} more ({left} left)",
     "showDone": "Show finished",
     "hideDone": "Hide finished",

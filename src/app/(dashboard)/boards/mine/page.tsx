@@ -10,10 +10,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { AlertCircle, Check, Loader2, MessageSquare, Paperclip, RotateCcw } from "lucide-react"
+import { AlertCircle, Check, Loader2, MessageSquare, Paperclip, Plus, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/format-date"
 import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
+import { CreateTaskDialog } from "@/components/boards/create-task-dialog"
+import { useTaskTypes } from "@/components/tasks/use-task-types"
+import { useSession } from "next-auth/react"
 import {
   MY_WORK_GROUPS, boardLabel, columnOfTask, doneColumnOf, myWorkGroup, stockColumnStage,
   type MyWorkColumn, type MyWorkGroup,
@@ -101,6 +104,10 @@ export default function MyWorkPage() {
   }, [])
   const [busy, setBusy] = useState<Set<string>>(new Set())
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
+  // «Yeni tapşırıq» here too (owner, 2026-11-12: «в разделе мои задачи нет кнопки создать задачу»).
+  const [creating, setCreating] = useState(false)
+  const { data: session } = useSession()
+  const myId = (session?.user as { id?: string } | undefined)?.id ?? ""
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -194,6 +201,8 @@ export default function MyWorkPage() {
 
   const boardById = useMemo(() => new Map(boards.map((b) => [b.id, b])), [boards])
   // Only boards the person has a task on are offered in the filter.
+  // The boards a new task can go on: every board (not a folder) the person sees.
+  const createBoards = useMemo(() => boards.filter((b) => !b.isDepartment).map((b) => ({ id: b.id, label: boardLabel(b, boards) })), [boards])
   const filterBoards = useMemo(() => {
     const ids = new Set((tasks ?? []).map((x) => x.divisionId).filter(Boolean) as string[])
     return boards.filter((b) => ids.has(b.id)).map((b) => ({ id: b.id, label: boardLabel(b, boards) }))
@@ -413,6 +422,17 @@ export default function MyWorkPage() {
           >
             {t(showDone ? "hideDone" : "showDone")}
           </button>
+          {createBoards.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              data-testid="my-work-new-task"
+              className="inline-flex h-8 items-center gap-1 rounded-lg px-3 text-[13px] font-medium text-white"
+              style={{ background: "hsl(var(--crm-action))" }}
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" /> {t("newTask")}
+            </button>
+          )}
         </div>}
       </div>
 
@@ -498,6 +518,16 @@ export default function MyWorkPage() {
         <div role="status" className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md bg-foreground px-4 py-2 text-sm text-background shadow-lg">{toast}</div>
       )}
 
+      {creating && (
+        <NewTaskDialog
+          divisionId={boardFilter || undefined}
+          boards={createBoards}
+          defaultAssignee={myId}
+          onClose={() => setCreating(false)}
+          onCreated={() => { setCreating(false); load() }}
+        />
+      )}
+
       {openTaskId && (
         <TaskPanel
           taskId={openTaskId}
@@ -508,6 +538,12 @@ export default function MyWorkPage() {
       )}
     </div>
   )
+}
+
+/** The board's «Yeni tapşırıq» window; the task types are read only once it opens. */
+function NewTaskDialog(props: Omit<Parameters<typeof CreateTaskDialog>[0], "taskTypes">) {
+  const { types } = useTaskTypes(true)
+  return <CreateTaskDialog {...props} taskTypes={types} />
 }
 
 /** The «more» at the end of the finished list also loads on its own when it scrolls into view. */
