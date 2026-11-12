@@ -113,14 +113,18 @@ export async function runBookingCommand(access: BookingAccess, id: string, input
     } else {
       if (row.status !== "confirmed" || row.startsAt <= now || !preflight || !input.startsAt) throw new BookingCommandError("INVALID_STATE")
       const currentPage = await tx.bookingPage.findFirst({ where: { id: page.id, organizationId: access.orgId } })
+      // A meeting on a room moves on that room's own time, not on the time of
+      // the master who owns it in the record (src/lib/booking/book.ts).
+      const chairId = row.resourceId ?? hostId
+      const onResource = Boolean(row.resourceId)
       const currentHost = await tx.user.findFirst({ where: bookingHostWhere(access.orgId, [hostId]), select: { id: true } })
-      const connected = await connectedCalendarsOf(tx, hostId)
-      if (!currentPage || currentPage.version !== page.version || Date.now() - preflight.checkedAt > 15000 || connectedCalendarKey(connected) !== preflight.accountKey) throw new BookingCommandError("AVAILABILITY_CHANGED")
-      if (!currentHost || !currentPage.hostIds.includes(hostId)) throw new BookingCommandError("INVALID_HOST", 400)
+      const connected = onResource ? [] : await connectedCalendarsOf(tx, hostId)
+      if (!currentPage || currentPage.version !== page.version || Date.now() - preflight.checkedAt > 15000 || (!onResource && connectedCalendarKey(connected) !== preflight.accountKey)) throw new BookingCommandError("AVAILABILITY_CHANGED")
+      if (onResource ? !currentPage.resourceIds.includes(chairId) : (!currentHost || !currentPage.hostIds.includes(hostId))) throw new BookingCommandError("INVALID_HOST", 400)
       const rules = bookingRules(currentPage, timezone, closedDates)
-      if (!findSlot(computeSlots({ rules, hostIds: [hostId], busyByHost: new Map([[hostId, preflight.intervals]]), now }), input.startsAt)) throw new BookingCommandError("SLOT_TAKEN")
+      if (!findSlot(computeSlots({ rules, hostIds: [chairId], busyByHost: new Map([[chairId, preflight.intervals]]), now }), input.startsAt)) throw new BookingCommandError("SLOT_TAKEN")
       const startsAt = new Date(input.startsAt), endsAt = new Date(startsAt.getTime() + currentPage.durationMinutes * 60_000)
-      await assertBookingInterval(tx, access.orgId, hostId, startsAt, endsAt, currentPage.bufferMinutes, id)
+      await assertBookingInterval(tx, access.orgId, chairId, startsAt, endsAt, currentPage.bufferMinutes, id, undefined, onResource)
       change = { startsAt, endsAt, hostUser: { connect: { organizationId_id: { organizationId: access.orgId, id: hostId } } }, bufferBefore: currentPage.bufferMinutes, bufferAfter: currentPage.bufferMinutes }
       type = "rescheduled"
     }
@@ -161,9 +165,19 @@ export async function runBookingCommand(access: BookingAccess, id: string, input
  * class, at the very same instant. They are not a clash — they are the class.
  * Everything else this host has that hour still is.
  */
-export async function assertBookingInterval(tx: Prisma.TransactionClient, orgId: string, hostId: string, start: Date, end: Date, buffer: number, exceptId?: string, sameClassPageId?: string) {
+/**
+ * Nobody is in two places at once — and neither is a room.
+ *
+ * `resource` says which column holds the chair: a master's meetings are their
+ * own (`hostUserId`), a room's are the room's (`resourceId`). A room booking
+ * also carries a host for the record, so asking by host alone would find
+ * clashes that are not clashes and miss the ones that are.
+ */
+export async function assertBookingInterval(tx: Prisma.TransactionClient, orgId: string, hostId: string, start: Date, end: Date, buffer: number, exceptId?: string, sameClassPageId?: string, resource = false) {
   const clashes = await tx.$queryRaw<{ id: string }[]>`
-    SELECT id FROM bookings WHERE "organizationId" = ${orgId} AND "hostUserId" = ${hostId} AND status = 'confirmed'
+    SELECT id FROM bookings WHERE "organizationId" = ${orgId}
+    AND (${resource}::boolean AND "resourceId" = ${hostId} OR NOT ${resource}::boolean AND "hostUserId" = ${hostId} AND "resourceId" IS NULL)
+    AND status = 'confirmed'
     AND (${exceptId ?? null}::text IS NULL OR id <> ${exceptId ?? null})
     AND NOT (${sameClassPageId ?? null}::text IS NOT NULL AND "bookingPageId" = ${sameClassPageId ?? null} AND "startsAt" = ${start})
     AND "startsAt" < ${new Date(end.getTime() + 240 * 60_000)} AND "endsAt" > ${new Date(start.getTime() - 240 * 60_000)}

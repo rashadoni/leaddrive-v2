@@ -70,6 +70,9 @@ export const POST = withRlsAuth("bookings", "write", async (req: NextRequest, au
   if (await slugTaken(input.slug)) return NextResponse.json({ error: "Slug taken", code: "SLUG_TAKEN" }, { status: 409 })
   const hostsOk = await prisma.user.count({ where: bookingHostWhere(auth.orgId, input.hostIds) })
   if (hostsOk !== new Set(input.hostIds).size) return NextResponse.json({ error: "Unknown host", code: "HOSTS_REQUIRED" }, { status: 400 })
+  // A room this organisation does not have, or has switched off, is not a
+  // place a client can be sent to.
+  if (!await resourcesExist(auth.orgId, input.resourceIds)) return NextResponse.json({ error: "Unknown resource", code: "RESOURCES_REQUIRED" }, { status: 400 })
   try {
     const page = await prisma.bookingPage.create({
       data: {
@@ -96,3 +99,11 @@ export const POST = withRlsAuth("bookings", "write", async (req: NextRequest, au
   }
 })
 
+
+/** Every id names a room this organisation has, switched on. */
+async function resourcesExist(orgId: string, ids: string[] | undefined): Promise<boolean> {
+  const wanted = new Set(ids ?? [])
+  if (!wanted.size) return true
+  const found = await prisma.bookingResource.count({ where: { organizationId: orgId, id: { in: [...wanted] }, isActive: true } })
+  return found === wanted.size
+}
