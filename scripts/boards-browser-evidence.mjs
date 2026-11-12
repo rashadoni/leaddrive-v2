@@ -110,6 +110,7 @@ async function seed() {
   await board('DZEYTUN', 'Zeytun', 1, 'DIGITAL')
   await board('DPHARMA', 'Pharmastore', 2, 'DIGITAL')
   await board('TZEYTUN', 'Zeytun', 1, 'TRADITIONAL')
+  await board('TARCHIVE', 'Arxiv', 2, 'TRADITIONAL')
   await board('MX2611', '11. NOYABR 26 MX', 11, 'CUSTSERV')
   await board('FOREIGN', 'Foreign board', 1, null, foreign.id)
   await board('SOLO', 'Solo board', 1, null, boardsTenant.id)
@@ -137,6 +138,10 @@ async function seed() {
   await task('zeytunOne', 'DZEYTUN', 'todo')
   await task('zeytunTwo', 'DZEYTUN', 'in_progress')
   await task('tradOne', 'TZEYTUN', 'todo')
+  // 35 tasks finished 40 days ago: the DONE column used to show only the last 14 days.
+  for (let i = 1; i <= 35; i += 1) {
+    await task(`old${i}`, 'TARCHIVE', 'done', { title: `Fixture old-${String(i).padStart(2, '0')}`, completedAt: new Date(Date.now() - (40 + i) * 86_400_000) })
+  }
   await task('mxOne', 'MX2611', 'todo')
   await task('mxTwo', 'MX2611', 'done')
   await task('foreignOne', 'FOREIGN', 'todo')
@@ -395,6 +400,23 @@ async function main() {
     await assigneeOfNewTask('?mine=1', f.users.boardsOnly.id)
     await assigneeOfNewTask(`?assignee=${f.users.marketer.id}`, f.users.marketer.id)
     await assigneeOfNewTask('', '')
+    await page.close()
+  })
+
+  // Owner, 2026-11-12: «завершённые задачи не только за 14 дней… все… как в бордио».
+  await step('the kanban\'s done column shows every finished task, newest first, 30 at a time', async () => {
+    const page = await sessions.admin.newPage()
+    await page.goto(`/boards/${f.boards.TARCHIVE.id}`, { timeout: 180000 })
+    await page.getByRole('button', { name: 'Lövhə', exact: true }).click()
+    const cards = page.locator('[aria-label^="Fixture old-"]')
+    await page.waitForFunction(() => document.querySelectorAll('[aria-label^="Fixture old-"]').length > 0, null, { timeout: 120000 })
+    assert.equal(await cards.count(), 30)
+    assert.equal(await cards.first().getAttribute('aria-label'), 'Fixture old-01')
+    const more = page.locator('[data-testid="board-done-more"]')
+    assert.match(await more.innerText(), /5/u)
+    await more.click()
+    await page.waitForFunction(() => document.querySelectorAll('[aria-label^="Fixture old-"]').length === 35, null, { timeout: 30000 })
+    assert.equal(await more.count(), 0)
     await page.close()
   })
 

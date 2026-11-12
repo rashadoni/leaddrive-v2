@@ -127,8 +127,11 @@ const PRIORITIES = ["critical", "high", "medium", "low"] as const
 // print the raw value capitalised: «High», «Medium» in an Azerbaijani screen).
 const priorityKey = (p: string) => `priority${p[0].toUpperCase()}${p.slice(1)}`
 const CATEGORIES = ["Q1", "Q2", "Q3", "Q4"] as const
-const DONE_MAX = 10
-const DONE_WINDOW_DAYS = 14
+// The DONE column shows every finished task, newest first, 30 at a time — the
+// next 30 come as it is scrolled to its end, as in Bordio (owner, 2026-11-12:
+// «завершённые задачи не только за 14 дней… все… как в бордио»). The board has
+// them all already: only the drawing is in parts.
+const DONE_PAGE = 30
 
 interface Task {
   id: string
@@ -232,7 +235,8 @@ function BoardInner() {
   // «Üzvlər» is for the roles that may manage a board.
   const activeView: BoardView = view === "members" && !canManageBoard ? DEFAULT_BOARD_VIEW : view
   const [reportsReloadKey, setReportsReloadKey] = useState(0)
-  const [showAllDone, setShowAllDone] = useState(false) // DONE column expanded in-place (vs navigating away)
+  const [doneShown, setDoneShown] = useState(DONE_PAGE)
+  useEffect(() => { setDoneShown(DONE_PAGE) }, [divisionId])
 
   // ── filters (initialised from the URL, then mirrored back to it) ──────────
   const [search, setSearch] = useState(sp.get("q") ?? "")
@@ -393,18 +397,14 @@ function BoardInner() {
   // The DONE lane (the column whose mapsToStatus === "done") gets the windowed view.
   const doneColumnKey = useMemo(() => visibleColumns.find((c) => c.mapsToStatus === "done")?.key ?? null, [visibleColumns])
 
-  // DONE column: by default last 14 days, max 10, newest first; "+N more"
-  // expands the column IN PLACE (showAllDone) rather than navigating to /tasks.
+  // DONE column: every finished task, newest first, DONE_PAGE more at a time.
   const doneView = useMemo(() => {
     const doneItems = (doneColumnKey ? byColumn.get(doneColumnKey) : null) ?? []
     const sorted = [...doneItems].sort((a, b) => new Date(b.completedAt ?? 0).getTime() - new Date(a.completedAt ?? 0).getTime())
-    if (showAllDone) return { shown: sorted, overflow: 0 }
-    const cutoff = Date.now() - DONE_WINDOW_DAYS * 86_400_000
-    const shown = sorted
-      .filter((t2) => (t2.completedAt ? new Date(t2.completedAt).getTime() >= cutoff : true))
-      .slice(0, DONE_MAX)
-    return { shown, overflow: Math.max(0, doneItems.length - shown.length) }
-  }, [byColumn, doneColumnKey, showAllDone])
+    const shown = sorted.slice(0, doneShown)
+    return { shown, overflow: sorted.length - shown.length }
+  }, [byColumn, doneColumnKey, doneShown])
+  const showMoreDone = useCallback(() => setDoneShown((n) => n + DONE_PAGE), [])
 
   const flashToast = useCallback((msg: string) => {
     setToast(msg)
@@ -812,15 +812,18 @@ function BoardInner() {
                 {items.map((t2) => (
                   <DraggableCard key={t2.id} task={t2} locale={locale} canMove={mayManage(t2)} onOpen={() => setOpenTaskId(t2.id)} />
                 ))}
-                {isDone && (doneView.overflow > 0 || showAllDone) && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllDone((v) => !v)}
-                    className="rounded-md border border-dashed px-3 py-3 text-center text-xs"
-                    style={{ borderColor: C.border, color: C.sub, background: C.card }}
-                  >
-                    {showAllDone ? t("doneShowLess") : t("doneOverflow", { count: doneView.overflow })}
-                  </button>
+                {isDone && doneView.overflow > 0 && (
+                  <ShowMoreWhenSeen onSeen={showMoreDone}>
+                    <button
+                      type="button"
+                      data-testid="board-done-more"
+                      onClick={showMoreDone}
+                      className="w-full rounded-md border border-dashed px-3 py-3 text-center text-xs"
+                      style={{ borderColor: C.border, color: C.sub, background: C.card }}
+                    >
+                      {t("doneMore", { count: Math.min(DONE_PAGE, doneView.overflow), left: doneView.overflow })}
+                    </button>
+                  </ShowMoreWhenSeen>
                 )}
               </DroppableColumn>
             )
@@ -958,6 +961,23 @@ function DroppableColumn({ col, count, children }: { col: BoardCol; count: numbe
       <div className="flex min-h-[60px] flex-1 flex-col gap-2 px-2 pb-3">{children}</div>
     </div>
   )
+}
+
+/**
+ * The «show more» at the end of the DONE column also fires on its own when it
+ * scrolls into view, so the column reads on as in Bordio; the button stays for
+ * a click (and for a browser without IntersectionObserver).
+ */
+function ShowMoreWhenSeen({ onSeen, children }: { onSeen: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const node = ref.current
+    if (!node || typeof IntersectionObserver === "undefined") return
+    const watch = new IntersectionObserver((entries) => { if (entries.some((e) => e.isIntersecting)) onSeen() }, { rootMargin: "200px" })
+    watch.observe(node)
+    return () => watch.disconnect()
+  }, [onSeen])
+  return <div ref={ref}>{children}</div>
 }
 
 // Draggable wrapper (dnd-kit): holds the interactive role/click/keyboard so a

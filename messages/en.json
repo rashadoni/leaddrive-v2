@@ -2408,6 +2408,7 @@
     "priority": "Priority",
     "assignee": "Assignee",
     "loading": "Loading…",
+    "doneMore": "Show {count} more ({left} left)",
     "doneOverflow": "+{count} more completed — show all ↓",
     "doneShowLess": "Show less ↑",
     "noPermission": "You don't have permission for this status transition",

@@ -2408,6 +2408,7 @@
     "priority": "Приоритет",
     "assignee": "Исполнитель",
     "loading": "Загрузка…",
+    "doneMore": "Показать ещё {count} (осталось {left})",
     "doneOverflow": "+{count} ещё завершённых — показать все ↓",
     "doneShowLess": "Свернуть ↑",
     "noPermission": "У вас нет прав на этот переход статуса",
