@@ -104,8 +104,10 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
   const taskRef = useRef<PanelTask | null>(null)
   useEffect(() => { taskRef.current = task }, [task])
   const [boardInfo, setBoardInfo] = useState<{ columns: PanelColumn[]; path: string } | null>(null)
+  // Moved to another board here (Xayala, 2026-11-12): the board's own columns are read again.
+  const [moved, setMoved] = useState(false)
   const taskBoard = task?.divisionId ?? null
-  const needBoard = !givenColumns?.length && Boolean(taskBoard)
+  const needBoard = (moved || !givenColumns?.length) && Boolean(taskBoard)
   useEffect(() => {
     if (!needBoard || !taskBoard) return
     let alive = true
@@ -125,10 +127,28 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
     return () => { alive = false }
   }, [needBoard, taskBoard])
   const columns: readonly PanelColumn[] = useMemo(
-    () => (givenColumns?.length ? givenColumns : boardInfo?.columns ?? []),
-    [givenColumns, boardInfo],
+    () => (!moved && givenColumns?.length ? givenColumns : boardInfo?.columns ?? []),
+    [givenColumns, boardInfo, moved],
   )
-  const path = givenPath || boardInfo?.path
+  const path = (!moved && givenPath) || boardInfo?.path
+  // The boards a task can move to: every board (not a folder) the reader sees.
+  const [boardChoices, setBoardChoices] = useState<{ id: string; label: string }[]>([])
+  useEffect(() => {
+    if (!canEditBoard || !taskBoard) return
+    let alive = true
+    fetch("/api/v1/divisions", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!alive) return
+        const list = (json?.data?.divisions ?? []) as { id: string; name: string; isDepartment?: boolean; parentDivisionId?: string | null }[]
+        if (!Array.isArray(list)) return
+        setBoardChoices(list.filter((d) => !d.isDepartment).map((d) => ({
+          id: d.id, label: [list.find((p) => p.id === d.parentDivisionId)?.name, d.name].filter(Boolean).join(" · "),
+        })))
+      })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [canEditBoard, taskBoard])
 
   useEffect(() => {
     let alive = true
@@ -330,6 +350,18 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
               {error && <p className="mb-2 text-sm text-destructive">{error}</p>}
 
               <div className="grid grid-cols-[9.5rem_minmax(0,1fr)] items-center gap-x-3">
+                {task.divisionId && boardChoices.length > 1 && field(t("board"), (
+                  <select
+                    disabled={!canEdit}
+                    data-testid="task-panel-board"
+                    value={task.divisionId}
+                    onChange={(e) => { setMoved(true); void patch({ divisionId: e.target.value }) }}
+                    className={selectClass}
+                  >
+                    {boardChoices.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+                    {!boardChoices.some((b) => b.id === task.divisionId) && <option value={task.divisionId}>{path ?? task.divisionId}</option>}
+                  </select>
+                ))}
                 {field(t("status"), (
                   <select disabled={!canEdit} value={statusValue} onChange={(e) => {
                     const column = columns.find((c) => c.key === e.target.value)

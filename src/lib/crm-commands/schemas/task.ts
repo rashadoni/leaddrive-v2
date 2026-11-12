@@ -75,6 +75,9 @@ export const updateTaskCommandSchema = z.object({
   // and a move sends status = the target column's mapsToStatus alongside this.
   boardColumnKey: z.string().max(64).nullable().optional(),
   boardPosition: z.number().finite().min(-1_000_000_000_000).max(1_000_000_000_000).optional(),
+  // Another board for the task (Xayala, 2026-11-12: «bu task dijitala aiddir ama
+  // traditional yazilib… dijitala deyişə bilmirəm»). A board the caller sees.
+  divisionId:   z.string().min(1).optional(),
   // Co-assignees (replace-set; [] clears). Primary stays assignedTo; ids must
   // be org members (validated in the command); the primary is filtered out.
   collaboratorIds: z.array(z.string()).max(20).optional(),
