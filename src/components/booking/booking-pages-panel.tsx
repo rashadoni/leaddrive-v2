@@ -6,11 +6,11 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { CalendarCheck, CalendarOff, Check, Copy, CopyPlus, Pencil, Plus, Trash2 } from "lucide-react"
+import { CalendarCheck, CalendarOff, Check, Copy, CopyPlus, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Hint } from "@/components/hint"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { BookingPageEditor, type BookingHostOption, type BookingPageDraft } from "@/components/booking/booking-page-editor"
@@ -346,36 +346,63 @@ export function BookingPagesPanel({ show = "all" }: { show?: "all" | "services" 
             <div className="grid gap-4 md:grid-cols-2 md:[&>*:last-child:nth-child(odd)]:col-span-2">
           {group.items.map((page) => (
             <Card key={page.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-lg">{page.title}</CardTitle>
-                  <span className={`flex items-center gap-1.5 text-sm font-medium ${page.isActive ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>
+              <CardContent className="space-y-3 p-5">
+                {/* Name, state, and the address under them — the three things
+                    somebody scanning twenty services reads. The actions sit at
+                    the bottom, one row, and only the ones this service has.  */}
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="min-w-0 truncate text-lg font-semibold">{page.title}</h3>
+                  <span className={`flex shrink-0 items-center gap-1.5 text-sm ${page.isActive ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>
                     <span className={`h-2 w-2 rounded-full ${page.isActive ? "bg-emerald-500" : "bg-muted-foreground"}`} aria-hidden="true" />
                     {page.isActive ? t("statusOn") : t("statusOff")}
                   </span>
                 </div>
-                <CardDescription className="break-all">{page.url.replace(/^https?:\/\//, "")}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <dl className="grid grid-cols-3 gap-2 text-sm">
-                  <div><dt className="text-muted-foreground">{t("fieldDuration")}</dt><dd className="font-medium">{t("minutes", { count: page.durationMinutes })}</dd></div>
-                  <div><dt className="text-muted-foreground">{t("fieldPrice")}</dt><dd className="font-medium tabular-nums">{servicePriceLabel(page, locale) ?? "—"}</dd></div>
-                  <div><dt className="text-muted-foreground">{t("colUpcoming")}</dt><dd className="font-medium tabular-nums">{page.upcoming}</dd></div>
-                  <div className="col-span-2"><dt className="text-muted-foreground">{t("colHosts")}</dt><dd className="font-medium">{hostNames(page.hostIds) || "—"}</dd></div>
-                  <div><dt className="text-muted-foreground">{t("fieldCycle")}</dt><dd className="font-medium">{page.repeatCycleDays ? t("cycleEvery", { count: page.repeatCycleDays }) : "—"}</dd></div>
-                </dl>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={() => void copy(page.url)}>
-                    {copied === page.url ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
-                    {copied === page.url ? t("linkCopied") : t("copyLink")}
-                  </Button>
-                  <Hint text={page.url}>
-                    <Button variant="outline" size="sm" asChild><a href={page.url} target="_blank" rel="noreferrer">{t("openPage")} ↗</a></Button>
+
+                {/* The link is a thing you copy and open, not two more buttons
+                    in a row of four: it carries its own two icons. */}
+                <div className="flex items-center gap-1 rounded-lg bg-muted/60 px-3 py-1.5">
+                  <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">{page.url.replace(/^https?:\/\//, "")}</span>
+                  <Hint text={copied === page.url ? t("linkCopied") : t("copyLink")}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={t("copyLink")} onClick={() => void copy(page.url)}>
+                      {copied === page.url ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
+                    </Button>
                   </Hint>
+                  <Hint text={t("openPage")}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={t("openPage")} asChild>
+                      <a href={page.url} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" aria-hidden="true" /></a>
+                    </Button>
+                  </Hint>
+                </div>
+
+                {/* One line of facts, in the order they are asked about. */}
+                <dl className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                  <dt className="sr-only">{t("fieldDuration")}</dt>
+                  <dd className="text-foreground">{t("minutes", { count: page.durationMinutes })}</dd>
+                  {servicePriceLabel(page, locale) ? <>
+                    <span aria-hidden="true">·</span>
+                    <dt className="sr-only">{t("fieldPrice")}</dt>
+                    <dd className="tabular-nums text-foreground">{servicePriceLabel(page, locale)}</dd>
+                  </> : null}
+                  <span aria-hidden="true">·</span>
+                  <dt className="sr-only">{t("colHosts")}</dt>
+                  <dd className="min-w-0 truncate">{hostNames(page.hostIds) || "—"}</dd>
+                  {page.upcoming ? <>
+                    <span aria-hidden="true">·</span>
+                    <dt className="sr-only">{t("colUpcoming")}</dt>
+                    <dd className="text-foreground">{t("upcomingCount", { count: page.upcoming })}</dd>
+                  </> : null}
+                  {page.repeatCycleDays ? <>
+                    <span aria-hidden="true">·</span>
+                    <dt className="sr-only">{t("fieldCycle")}</dt>
+                    <dd>{t("cycleEvery", { count: page.repeatCycleDays })}</dd>
+                  </> : null}
+                </dl>
+
+                <div className="flex flex-wrap items-center gap-1 border-t pt-3">
                   <Button variant="outline" size="sm" onClick={() => openDraft(draftOf(page))}>
                     <Pencil className="h-4 w-4" aria-hidden="true" />{t("edit")}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => duplicate(page)}>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => duplicate(page)}>
                     <CopyPlus className="h-4 w-4" aria-hidden="true" />{t("duplicate")}
                   </Button>
                   {/* A service nothing points at — a test page, a draft nobody
@@ -385,7 +412,7 @@ export function BookingPagesPanel({ show = "all" }: { show?: "all" | "services" 
                   {page.everBooked ? null : <Button
                     variant="ghost"
                     size="sm"
-                    className="text-muted-foreground hover:text-destructive"
+                    className="ml-auto text-muted-foreground hover:text-destructive"
                     onClick={() => setDeleting(page)}
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />{t("delete")}

@@ -32307,6 +32307,7 @@
     "vocabPreviewTime": "Time",
     "vocabPreviewHint": "After changing the words, create the WhatsApp form again.",
     "vocabSaved": "Saved",
+    "upcomingCount": "{count} upcoming",
     "deleteService": "Delete this service?",
     "deleteServiceHint": "No meeting was ever booked here, so it goes without a trace. A service with meetings cannot be deleted — switch it off in «Edit» instead.",
     "deleteServiceInUse": "This service has meetings — switch it off instead of deleting.",
