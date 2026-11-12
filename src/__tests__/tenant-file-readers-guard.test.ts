@@ -29,6 +29,9 @@ const PLAIN_BY_DESIGN = new Map<string, string>([
   ["lib/email.ts", "transient outbound mail attachments"],
   // A cache of images downloaded from public social posts, re-fetchable by URL.
   ["lib/social/media-preview-cache.ts", "cache of already-public social media"],
+  // The same picture the public booking page shows to people who are not
+  // signed in, read to put it inside the WhatsApp form (the writer is below).
+  ["lib/booking/whatsapp-agent.ts", "pictures of services on the public booking page"],
 ])
 
 /** Writers whose files are plain by design. Adding one needs a reason. */
