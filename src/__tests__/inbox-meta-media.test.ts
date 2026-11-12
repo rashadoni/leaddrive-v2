@@ -8,7 +8,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
-import type { OutboundWebhookResolver, OutboundWebhookTransport } from "@/lib/integrations/webhook-url-guard"
+import type { OutboundWebhookResolver, OutboundWebhookTransport, OutboundWebhookTransportResponse } from "@/lib/integrations/webhook-url-guard"
 
 const root = vi.hoisted(() => ({ dir: "" }))
 vi.mock("@/lib/runtime-paths", () => ({ runtimePublicUploadDirectory: (subdir: string) => `${root.dir}/${subdir}` }))
@@ -153,7 +153,7 @@ describe("Meta is asked like a browser, and a page is never kept as the file", (
   })
 
   it("a redirect to facebook.com's page is not kept", async () => {
-    const transport = vi.fn<OutboundWebhookTransport>(async (target) => target.url.hostname === "lookaside.fbsbx.com"
+    const transport = vi.fn<OutboundWebhookTransport>(async (target): Promise<OutboundWebhookTransportResponse> => target.url.hostname === "lookaside.fbsbx.com"
       ? { status: 302, location: "https://www.facebook.com/unsupportedbrowser", headers: {} }
       : { status: 200, headers: { "content-type": "text/html; charset=utf-8" }, bodyBytes: UNSUPPORTED_BROWSER })
     expect(await fetchAndStoreMetaMedia(LOOKASIDE, ORG, { transport, resolveHost })).toBeNull()
