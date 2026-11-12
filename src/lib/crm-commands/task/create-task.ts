@@ -189,11 +189,23 @@ export async function createTaskCommand(
     recurrenceCount: input.recurrenceCount ?? null,
   }
 
+  // A new task on a board goes to the top of it, where it was typed — not under
+  // hundreds of tasks brought over from Bordio (Zeytun, 2026-11-12: «yeni
+  // tasklar ən üstdə olur?», «yoxdur, yenidən yazdım»).
+  let boardPosition: number | undefined
+  if (input.divisionId) {
+    const top = await db.task.aggregate({
+      where: { organizationId: orgId, divisionId: input.divisionId, deletedAt: null },
+      _min: { boardPosition: true },
+    })
+    boardPosition = Math.min(0, top._min.boardPosition ?? 0) - 1024
+  }
+
   let task: Task | null = null
   const maxKeyRetries = 3
   try {
     const createInTransaction = async (tx: Prisma.TransactionClient, taskKey: string | null) => {
-      const created = await tx.task.create({ data: { ...baseData, taskKey } })
+      const created = await tx.task.create({ data: { ...baseData, ...(boardPosition !== undefined ? { boardPosition } : {}), taskKey } })
       if (collaboratorIds.length > 0) {
         await tx.taskCollaborator.createMany({
           data: collaboratorIds.map((collaboratorId) => ({

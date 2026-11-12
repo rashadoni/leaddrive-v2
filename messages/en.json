@@ -33328,6 +33328,7 @@
     "lateDays": "{days, plural, one {# day} other {# days}}",
     "lateBy": "{days, plural, one {# day overdue} other {# days overdue}}",
     "groups": {
+      "doneToday": "Done today",
       "overdue": "Overdue",
       "today": "Today",
       "tomorrow": "Tomorrow",

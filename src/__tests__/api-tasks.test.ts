@@ -11,6 +11,8 @@ vi.mock("@/lib/prisma", () => {
       update: vi.fn(),
       updateMany: vi.fn(),
       deleteMany: vi.fn(),
+      // The board's top card — a new task goes above it.
+      aggregate: vi.fn().mockResolvedValue({ _min: { boardPosition: 2048 } }),
     },
     booking: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]) },
     socialMention: { updateMany: vi.fn() },
@@ -438,6 +440,8 @@ describe("POST /api/v1/tasks", () => {
     expect(createArg.data.taskKey).toBe("KHS-55")
     expect(createArg.data.createdBy).toBe("user-1") // reporter = session user
     expect(createArg.data.divisionId).toBe("div-1")
+    // Zeytun, 2026-11-12: «yeni tasklar ən üstdə olur?» — a new task goes to the top of the board.
+    expect(createArg.data.boardPosition).toBe(-1024)
     expect(prismaMock.taskActivity.create).toHaveBeenCalled()
   })
 

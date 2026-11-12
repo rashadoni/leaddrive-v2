@@ -229,3 +229,26 @@ describe("files in the card, as in Bordio", () => {
     } finally { restore() }
   })
 })
+
+describe("a picture the file gate refused", () => {
+  it("asks again after a pause instead of staying broken", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const task = TASK as unknown as { attachments: unknown[] }
+    const feed = FEED as unknown as { items: unknown[] }
+    const was = { attachments: task.attachments, items: feed.items }
+    task.attachments = [{ id: "f1", fileName: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg", originalName: "a.jpg", mimeType: "image/jpeg" }]
+    feed.items = [{ kind: "message", id: "m1", at: "2026-11-11T08:46:00.000Z", user: { id: "x", name: "X" }, text: "📎 a.jpg", mentions: [], system: false }]
+    try {
+      await open()
+      const img = () => container.querySelector('[data-testid="feed-message-pictures"] img') as HTMLImageElement
+      expect(img().getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg")
+      await act(async () => { img().dispatchEvent(new Event("error")) })
+      await act(async () => { vi.advanceTimersByTime(1500) })
+      expect(img().getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg?try=1")
+    } finally {
+      task.attachments = was.attachments
+      feed.items = was.items
+      vi.useRealTimers()
+    }
+  })
+})

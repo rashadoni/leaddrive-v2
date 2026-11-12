@@ -283,8 +283,7 @@ function MessageBody({ text, files }: { text: string; files: readonly MessageFil
         <span className="mt-1.5 flex flex-wrap gap-1.5" data-testid="feed-message-pictures">
           {pictures.map(({ name, file }) => (
             <a key={file!.id} href={fileUrl(file!)} target="_blank" rel="noreferrer" title={name} className="block overflow-hidden rounded-md border">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={fileUrl(file!)} alt={name} loading="lazy" className="h-28 w-auto max-w-[14rem] object-cover" />
+              <MessagePicture src={fileUrl(file!)} alt={name} />
             </a>
           ))}
         </span>
@@ -303,6 +302,33 @@ function MessageBody({ text, files }: { text: string; files: readonly MessageFil
         </span>
       )}
     </>
+  )
+}
+
+/**
+ * A picture of a message. The file gate lets one person download only a few
+ * files at a time (429 beyond that), and a card of Bordio messages shows dozens
+ * at once — 21 of 38 stayed broken on DPHARMA-52 (2026-11-12). A refused
+ * picture waits and asks again, a little longer each time.
+ */
+function MessagePicture({ src, alt }: { src: string; alt: string }) {
+  const [attempt, setAttempt] = useState(0)
+  const retry = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (retry.current) clearTimeout(retry.current) }, [])
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      key={attempt}
+      src={attempt ? `${src}?try=${attempt}` : src}
+      alt={alt}
+      loading="lazy"
+      data-attempt={attempt}
+      onError={() => {
+        if (attempt >= 6) return
+        retry.current = setTimeout(() => setAttempt((n) => n + 1), 700 * (attempt + 1) + Math.floor(Math.random() * 500))
+      }}
+      className="h-28 w-auto max-w-[14rem] object-cover"
+    />
   )
 }
 

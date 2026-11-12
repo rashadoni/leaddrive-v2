@@ -380,6 +380,24 @@ async function main() {
     await page.close()
     return { title, subtasks: checklist.length }
   })
+  // Xayala, 2026-11-12: «sadece oz tasklarimi gorende bura task elave etmek isdeyirem» —
+  // a new task made while the board shows one person's tasks was nobody's and vanished.
+  await step('a board showing only my tasks gives a new task to me; showing someone else\'s, to them', async () => {
+    const page = await sessions.boardsOnly.newPage()
+    // The select takes its value once the people have loaded: wait for it, do not read it at once.
+    const assigneeOfNewTask = async (query, expected) => {
+      await page.goto(`/boards/${f.boards.DZEYTUN.id}${query}`, { timeout: 180000 })
+      await page.getByRole('button', { name: 'Yeni Tapşırıq' }).click()
+      await page.waitForSelector('[data-testid="board-create-assignee"] option + option', { state: 'attached', timeout: 60000 })
+      await page.waitForFunction((want) => document.querySelector('[data-testid="board-create-assignee"]')?.value === want, expected, { timeout: 30000 })
+        .catch(async () => assert.fail(`new task from ${query || 'the whole board'}: assignee «${await page.inputValue('[data-testid="board-create-assignee"]')}», expected «${expected}»`))
+    }
+    await assigneeOfNewTask('?mine=1', f.users.boardsOnly.id)
+    await assigneeOfNewTask(`?assignee=${f.users.marketer.id}`, f.users.marketer.id)
+    await assigneeOfNewTask('', '')
+    await page.close()
+  })
+
   await step('a folder opens as the list of its boards\' tasks, each row naming its board; the kanban is the second tab', async () => {
     const page = await sessions.clerk.newPage()
     await page.goto(`/boards/${f.boards.CUSTSERV.id}`, { timeout: 180000 })
@@ -399,6 +417,23 @@ async function main() {
     assert.equal(await resultCount(page), 1)
     assert.equal(await page.getByPlaceholder('Tapşırıq axtar...').inputValue(), f.tasks.zeytunOne.title)
     assert.equal((await page.innerText('h1')).trim(), 'Zeytun')
+    await page.close()
+  })
+  await step('the board list shows only my tasks at one click, and opens that way again next time (Zeytun, 2026-11-12: «Pharmastore qarışıqdı»)', async () => {
+    const page = await sessions.marketer.newPage()
+    await page.goto(`/boards/${f.boards.DPHARMA.id}`, { timeout: 180000 })
+    await page.waitForFunction(() => /\d+ nəticə/.test(document.body.innerText), null, { timeout: 180000 })
+    const body = async () => page.innerText('body')
+    assert.ok((await body()).includes(f.tasks.pharmaWork.title), 'everyone\'s tasks before the filter')
+    await page.click('[data-testid="board-list-mine"]')
+    await page.waitForFunction((title) => !document.body.innerText.includes(title), f.tasks.pharmaWork.title, { timeout: 30000 })
+    assert.ok((await body()).includes(f.tasks.pharmaOpen.title), 'her own task is missing')
+    await page.reload({ timeout: 180000 })
+    await page.waitForFunction(() => /\d+ nəticə/.test(document.body.innerText), null, { timeout: 180000 })
+    await page.waitForFunction(() => document.querySelector('[data-testid="board-list-mine"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 30000 })
+    assert.ok(!(await body()).includes(f.tasks.pharmaWork.title), 'the filter was not kept')
+    await page.click('[data-testid="board-list-mine"]')
+    await page.waitForFunction((title) => document.body.innerText.includes(title), f.tasks.pharmaWork.title, { timeout: 30000 })
     await page.close()
   })
   await step('«Mənim işlərim»: the person\'s own open tasks from every board, ticked into the board\'s done column and back', async () => {
