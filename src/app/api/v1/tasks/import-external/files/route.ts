@@ -66,11 +66,14 @@ export const POST = withRlsAuth("tasks", "write", async (req, auth) => {
   }
   const { source, items } = parsed.data
 
-  const tasks = await prisma.task.findMany({
+  type TaskRow = { id: string; externalId: string | null; attachments: { originalName: string }[] }
+  const tasks: TaskRow[] = await prisma.task.findMany({
     where: { organizationId: auth.orgId, externalSource: source, externalId: { in: [...new Set(items.map((i) => i.externalId))] }, deletedAt: null },
     select: { id: true, externalId: true, attachments: { select: { originalName: true } } },
   })
-  const byExternal = new Map(tasks.map((t) => [t.externalId, { id: t.id, names: new Set(t.attachments.map((a) => a.originalName)) }]))
+  const byExternal = new Map<string | null, { id: string; names: Set<string> }>(
+    tasks.map((t) => [t.externalId, { id: t.id, names: new Set(t.attachments.map((a) => a.originalName)) }]),
+  )
 
   const results: { externalId: string; name: string; outcome: Outcome; message?: string }[] = new Array(items.length)
   let next = 0

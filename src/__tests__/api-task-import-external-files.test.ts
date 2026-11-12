@@ -56,7 +56,7 @@ beforeEach(() => {
     state.fetched.push({ url, redirect: init?.redirect })
     const served = state.served[url]
     if (served === "throw" || !served) throw new TypeError("fetch failed")
-    return new Response(served.body, { status: served.status, headers: served.length ? { "content-length": String(served.length) } : {} })
+    return new Response(new Uint8Array(served.body), { status: served.status, headers: served.length ? { "content-length": String(served.length) } : {} })
   }))
 })
 
