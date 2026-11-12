@@ -225,7 +225,7 @@ describe("subtasks show a change before the server answers", () => {
 
   it("shows a new subtask at once and removes it if the server refuses", async () => {
     await open()
-    const add = container.querySelector('input[placeholder="+ подзадача (Enter)"]') as HTMLInputElement
+    const add = container.querySelector('[data-testid="task-panel-subtask-input"]') as HTMLInputElement
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(add, "ga4 quraşdırılması")
       add.dispatchEvent(new Event("input", { bubbles: true }))
