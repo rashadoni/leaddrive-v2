@@ -18,8 +18,17 @@
  */
 
 export type RecordDescriptor = {
-  /** Route prefix; the id is appended. */
+  /** Route prefix; the id is appended, unless `param` says otherwise. */
   route: string
+  /**
+   * The id goes in THIS query parameter instead of a path segment.
+   *
+   * A booking has no page of its own: the salon's day is one screen and the
+   * card opens over it (`/meetings?booking=<id>`). Appending the id as a path
+   * would have produced a dead link, and a dead link read out as "open it" is
+   * worse than no link.
+   */
+  param?: string
   /** Prisma model that holds the row. */
   model: string
   /** Columns matched against what the user said, in order of usefulness. */
@@ -47,6 +56,7 @@ export const RECORD_TYPE_NAMES = [
   "complaint",
   "event",
   "task",
+  "booking",
 ] as const
 
 export type VoiceRecordType = (typeof RECORD_TYPE_NAMES)[number]
@@ -71,6 +81,10 @@ export const RECORD_TYPES = {
   complaint: { route: "/complaints", model: "ticket", searchFields: ["subject"] },
   event: { route: "/events", model: "event", searchFields: ["name"] },
   task: { route: "/tasks", model: "task", searchFields: ["title"] },
+  // Встречи (салон, мастер, клиент). Ищется по имени клиента и по номеру —
+  // по тому, что звонящий называет о себе. Карточка открывается параметром,
+  // а не путём: см. `param`.
+  booking: { route: "/meetings", model: "booking", param: "booking", searchFields: ["name", "phone"] },
 } satisfies Record<VoiceRecordType, RecordDescriptor>
 
 /**
@@ -115,7 +129,10 @@ export const NOT_OPENABLE: Record<string, "internal" | "config" | "nested" | "pe
 
 export function recordRoute(type: string, id: string): string | null {
   const d = RECORD_TYPES[type as VoiceRecordType]
-  return d ? `${d.route}/${id}` : null
+  if (!d) return null
+  return d.param
+    ? `${d.route}?${d.param}=${encodeURIComponent(id)}`
+    : `${d.route}/${id}`
 }
 
 /**
@@ -131,6 +148,11 @@ export function recordFromPath(
   pathname: string,
 ): Readonly<{ type: VoiceRecordType; id: string }> | null {
   for (const type of RECORD_TYPE_NAMES) {
+    // Запись, которую открывают параметром, по одному пути не узнаётся:
+    // консоль передаёт `usePathname()`, где строки запроса нет вовсе. Значит
+    // «та, что открыта на экране» для встреч пока не работает — и это лучше,
+    // чем принять `/meetings` за какую-то одну встречу.
+    if (RECORD_TYPES[type].param) continue
     const prefix = `${RECORD_TYPES[type].route}/`
     if (!pathname.startsWith(prefix)) continue
     const rest = pathname.slice(prefix.length)
@@ -159,5 +181,6 @@ export const VOICE_READABLE_TYPES = [
   "project",
   "contract",
   "product",
+  "booking",
 ] as const
 export type VoiceReadableType = (typeof VOICE_READABLE_TYPES)[number]

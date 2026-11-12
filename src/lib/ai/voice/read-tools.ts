@@ -39,6 +39,7 @@ export const VOICE_SUMMARY_TOOLS = [
   "get_sales_in_period",
   "get_lead_coverage",
   "read_record",
+  "get_bookings_summary",
 ] as const
 
 export type VoiceToolName = (typeof VOICE_LIST_TOOLS)[number] | (typeof VOICE_SUMMARY_TOOLS)[number]
@@ -80,6 +81,9 @@ export const VOICE_TOOL_MODULE: Record<VoiceToolName, ModuleId> = {
   get_field_summary: "mtm",
   get_sales_in_period: "sales",
   get_lead_coverage: "sales",
+  // Модуль «Встречи» покупается отдельно. Кто из мастеров слышен внутри — не
+  // здесь: это решает BookingAccess (booking-read.ts).
+  get_bookings_summary: "booking",
   // Same target-scoped shell as find_record: the route re-checks the selected
   // record type against its real module and RBAC before reading anything.
   read_record: "ai",
@@ -101,6 +105,11 @@ export const VOICE_TOOL_SCHEMAS: Record<VoiceToolName, z.ZodTypeAny> = {
   get_sales_by_manager: z.object({}).strict(),
   get_overdue: z.object({}).strict(),
   get_lead_coverage: z.object({}).strict(),
+  // «Сегодня», «завтра» и «неделя» — то, о чём спрашивают про записи. Месяца
+  // здесь нет намеренно: день салона читают вслух, а месяц — нет.
+  get_bookings_summary: z.object({
+    period: z.enum(["today", "tomorrow", "week"]).optional(),
+  }).strict(),
   find_record: z.object({
     type: z.enum(RECORD_TYPE_NAMES),
     query: z.string().min(2).max(80),

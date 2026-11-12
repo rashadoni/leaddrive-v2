@@ -103,7 +103,7 @@ describe("readVoiceRecord: deal history", () => {
       { type: "meeting", subject: null, createdAt: new Date("2026-05-06T08:00:00Z"), scheduledAt: new Date("2026-05-10T08:00:00Z"), completedAt: null },
     ])
 
-    const card = (await readVoiceRecord(ORG, "deal", "deal-1")) as Record<string, any>
+    const card = (await readVoiceRecord(ORG, "deal", "deal-1", { role: "admin", timezone: "Asia/Baku", booking: null })) as Record<string, any>
 
     expect(card.stageHistory).toEqual([
       { fromStage: "QUALIFIED", toStage: "PROPOSAL", date: "2026-05-02", type: "advance" },
@@ -127,7 +127,7 @@ describe("readVoiceRecord: deal history", () => {
   it("reports an empty history as empty rather than inferring one", async () => {
     mocks.dealFindFirst.mockResolvedValue(dealRow())
 
-    const card = (await readVoiceRecord(ORG, "deal", "deal-1")) as Record<string, any>
+    const card = (await readVoiceRecord(ORG, "deal", "deal-1", { role: "admin", timezone: "Asia/Baku", booking: null })) as Record<string, any>
 
     expect(card.stageHistory).toEqual([])
     expect(card.recentActivity).toEqual([])
@@ -140,7 +140,7 @@ describe("readVoiceRecord: deal", () => {
   it("reads the full card: MEDDPICC, cashback, competitors", async () => {
     mocks.dealFindFirst.mockResolvedValue(dealRow())
 
-    const card = (await readVoiceRecord(ORG, "deal", "deal-1")) as Record<string, any>
+    const card = (await readVoiceRecord(ORG, "deal", "deal-1", { role: "admin", timezone: "Asia/Baku", booking: null })) as Record<string, any>
 
     expect(card.amount).toBe(200000)
     expect(card.meddpicc.scoreOf40).toBe(3)
@@ -159,7 +159,7 @@ describe("readVoiceRecord: deal", () => {
   it("says null for cashback nobody agreed, instead of a guess", async () => {
     mocks.dealFindFirst.mockResolvedValue(dealRow())
 
-    const card = (await readVoiceRecord(ORG, "deal", "deal-1")) as Record<string, any>
+    const card = (await readVoiceRecord(ORG, "deal", "deal-1", { role: "admin", timezone: "Asia/Baku", booking: null })) as Record<string, any>
 
     expect(card.contacts[1].cashback).toBeNull()
   })
@@ -167,7 +167,7 @@ describe("readVoiceRecord: deal", () => {
   it("keeps the facts of a role whose contact vanished", async () => {
     mocks.dealFindFirst.mockResolvedValue(dealRow())
 
-    const card = (await readVoiceRecord(ORG, "deal", "deal-1")) as Record<string, any>
+    const card = (await readVoiceRecord(ORG, "deal", "deal-1", { role: "admin", timezone: "Asia/Baku", booking: null })) as Record<string, any>
 
     expect(card.contacts[1].name).toBe("unknown contact")
     expect(card.contacts[1].role).toBe("contact_person")
@@ -176,7 +176,7 @@ describe("readVoiceRecord: deal", () => {
   it("returns BAD_RECORD for an id that is not there", async () => {
     mocks.dealFindFirst.mockResolvedValue(null)
 
-    await expect(readVoiceRecord(ORG, "deal", "nope")).resolves.toEqual({
+    await expect(readVoiceRecord(ORG, "deal", "nope", { role: "admin", timezone: "Asia/Baku", booking: null })).resolves.toEqual({
       error: "BAD_RECORD",
     })
   })
@@ -184,7 +184,7 @@ describe("readVoiceRecord: deal", () => {
   it("scopes the query to the organisation", async () => {
     mocks.dealFindFirst.mockResolvedValue(null)
 
-    await readVoiceRecord(ORG, "deal", "deal-1")
+    await readVoiceRecord(ORG, "deal", "deal-1", { role: "admin", timezone: "Asia/Baku", booking: null })
 
     expect(mocks.dealFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -196,7 +196,7 @@ describe("readVoiceRecord: deal", () => {
   it("survives garbage stored in meddpicc", async () => {
     mocks.dealFindFirst.mockResolvedValue(dealRow({ meddpicc: "corrupted" }))
 
-    const card = (await readVoiceRecord(ORG, "deal", "deal-1")) as Record<string, any>
+    const card = (await readVoiceRecord(ORG, "deal", "deal-1", { role: "admin", timezone: "Asia/Baku", booking: null })) as Record<string, any>
 
     expect(card.meddpicc.assessedBlocks).toBe(0)
     expect(card.meddpicc.scoreOf40).toBe(0)
@@ -217,7 +217,7 @@ describe("readVoiceRecord: other types", () => {
       contact: null,
     })
 
-    const card = (await readVoiceRecord(ORG, "invoice", "inv-1")) as Record<string, any>
+    const card = (await readVoiceRecord(ORG, "invoice", "inv-1", { role: "admin", timezone: "Asia/Baku", booking: null })) as Record<string, any>
 
     expect(card).toMatchObject({
       number: "INV-42",
@@ -239,7 +239,7 @@ describe("readVoiceRecord: other types", () => {
       isActive: true,
     })
 
-    const card = (await readVoiceRecord(ORG, "product", "p-1")) as Record<string, any>
+    const card = (await readVoiceRecord(ORG, "product", "p-1", { role: "admin", timezone: "Asia/Baku", booking: null })) as Record<string, any>
 
     expect(card).toMatchObject({ name: "Gobustone blok", price: 12, active: true })
   })
@@ -250,8 +250,17 @@ describe("readVoiceRecord: other types", () => {
     // each reader actually runs its query, because a promise without a reader
     // surfaces as BAD_RECORD on a record that exists.
     const { prisma } = await import("@/lib/prisma")
+    const context = { role: "admin" as const, timezone: "Asia/Baku", booking: null }
     for (const type of VOICE_READABLE_TYPES) {
-      const result = await readVoiceRecord(ORG, type, "some-id-123")
+      if (type === "booking") {
+        // У встречи читатель есть, но без пределов доступа он не читает
+        // ничего: «вам её не слышно» — не то же, что «записи нет». Настоящий
+        // прогон её карточки — в ai-voice-assistant-postgres (живая база).
+        await expect(readVoiceRecord(ORG, type, "some-id-123", context))
+          .rejects.toThrow(/booking scope/i)
+        continue
+      }
+      const result = await readVoiceRecord(ORG, type, "some-id-123", context)
       expect(result, type).toEqual({ error: "BAD_RECORD" })
     }
     expect(VOICE_READABLE_TYPES).not.toContain("board")
@@ -267,7 +276,7 @@ describe("readVoiceRecord: other types", () => {
       competitors: [],
     }))
 
-    const card = (await readVoiceRecord(ORG, "deal", "deal-1")) as Record<string, any>
+    const card = (await readVoiceRecord(ORG, "deal", "deal-1", { role: "admin", timezone: "Asia/Baku", booking: null })) as Record<string, any>
 
     // 500 stored as fixed with an unset type must not become "500 percent".
     expect(card.contacts[0].cashback).toEqual({ type: null, value: 500 })
@@ -279,7 +288,7 @@ describe("readVoiceRecord: other types", () => {
       sku: null, price: 12.5, currency: "AZN", isActive: true,
     })
 
-    const card = (await readVoiceRecord(ORG, "product", "p-1")) as Record<string, any>
+    const card = (await readVoiceRecord(ORG, "product", "p-1", { role: "admin", timezone: "Asia/Baku", booking: null })) as Record<string, any>
 
     expect(card.price).toBe(12.5)
   })
@@ -287,7 +296,7 @@ describe("readVoiceRecord: other types", () => {
   it("caps the people and competitor lists a deal can speak", async () => {
     mocks.dealFindFirst.mockResolvedValue(dealRow())
 
-    await readVoiceRecord(ORG, "deal", "deal-1")
+    await readVoiceRecord(ORG, "deal", "deal-1", { role: "admin", timezone: "Asia/Baku", booking: null })
 
     const select = mocks.dealFindFirst.mock.calls[0][0].select
     // A deal with two hundred roles must not flood the model context.
@@ -298,7 +307,7 @@ describe("readVoiceRecord: other types", () => {
   it("trims oversized names before they reach speech", async () => {
     mocks.dealFindFirst.mockResolvedValue(dealRow({ name: "ə".repeat(5000) }))
 
-    const card = (await readVoiceRecord(ORG, "deal", "deal-1")) as Record<string, any>
+    const card = (await readVoiceRecord(ORG, "deal", "deal-1", { role: "admin", timezone: "Asia/Baku", booking: null })) as Record<string, any>
 
     expect((card.name as string).length).toBeLessThanOrEqual(300)
   })

@@ -35,6 +35,10 @@ export const VOICE_RECORD_ACCESS: Record<VoiceRecordType, VoiceDataAccess> = {
   complaint: { module: "support", permission: "tickets", feature: "complaints_register" },
   event: { module: "marketing", permission: "events" },
   task: { module: "crm", permission: "tasks" },
+  // Модуль «Встречи» покупается отдельно (салон берёт записи без воронки).
+  // Права роли — `bookings`; КТО из мастеров слышен, решает не это, а
+  // BookingAccess в booking-read.ts.
+  booking: { module: "booking", permission: "bookings" },
 }
 
 export type VoiceOverduePart = "tasks" | "invoices" | "deals"

@@ -69,7 +69,16 @@ export const POST = withRlsAuth("ai", "read", async (req, auth) => {
   const out = await executeVoiceReadTool({
     toolName,
     filter,
-    auth: { orgId: auth.orgId, userId: auth.userId, role: auth.role, hiddenModules: auth.hiddenModules },
+    auth: {
+      orgId: auth.orgId,
+      userId: auth.userId,
+      role: auth.role,
+      hiddenModules: auth.hiddenModules,
+      // Встречам нужна сама личность: их операторы — только люди, а номер
+      // клиента читается вслух лишь тому, кому он открыт и на экране.
+      principalType: auth.principalType,
+      hideCustomerPhoneForOperators: auth.hideCustomerPhoneForOperators,
+    },
     logTurn: (entry) => {
       void prisma.voiceSessionTurn
         .create({

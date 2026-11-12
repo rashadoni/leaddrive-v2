@@ -1696,6 +1696,7 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
       complaint: "Çatdırılma gecikdi",
       event: "Açıq qapı günü",
       task: "Sifarişi yoxlamaq",
+      booking: "Gülnar Səfərova",
     }
     /**
      * Чем человек ищет эту запись. По умолчанию — тем же названием, которое
@@ -1774,6 +1775,31 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
         ID.task = (await prisma.task.create({
           data: { organizationId: ORG, title: NEEDLE.task },
         })).id
+        // Встреча — это клиент, мастер и час: своей страницы у неё нет, и в
+        // карточке её узнают по имени клиента.
+        const page = await prisma.bookingPage.create({
+          data: {
+            organizationId: ORG,
+            slug: "records-salon",
+            title: "Manikür",
+            weekly: {},
+            durationMinutes: 60,
+          },
+        })
+        const startsAt = new Date(Date.now() + 86_400_000)
+        ID.booking = (await prisma.booking.create({
+          data: {
+            organizationId: ORG,
+            bookingPageId: page.id,
+            hostUserId: USER,
+            startsAt,
+            endsAt: new Date(startsAt.getTime() + 3_600_000),
+            name: NEEDLE.booking,
+            phone: "+994509998877",
+            status: "confirmed",
+            cancelTokenHash: "hash-records",
+          },
+        })).id
       })
     })
 
@@ -1790,7 +1816,7 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
         else if (!JSON.stringify(card).includes(NEEDLE[type])) broken[type] = "карточка без названия записи"
       }
       expect(broken).toEqual({})
-      expect(VOICE_READABLE_TYPES.length).toBe(9)
+      expect(VOICE_READABLE_TYPES.length).toBe(10)
     })
 
     it("каждый тип записи находится по словам человека", async () => {
@@ -1812,7 +1838,7 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
         else if (!found.matches?.some((match) => match.id === ID[type])) broken[type] = "не нашёл"
       }
       expect(broken).toEqual({})
-      expect(types.length).toBe(15)
+      expect(types.length).toBe(16)
     })
 
     it("расслышанный слог не превращается в список всех записей", async () => {
@@ -3298,6 +3324,267 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
         ;(auth as { role: string }).role = "admin"
       }
       expect(await bypass(() => prisma.ticketComment.count({ where: { ticketId: ticket.id } }))).toBe(0)
+    })
+  })
+
+  /**
+   * День салона вслух.
+   *
+   * У встреч своя граница доступа, не похожая ни на одну другую в CRM: мастер
+   * слышит свои записи, координатор — записи тех мастеров, на кого ему выдали
+   * доверенность, админ — все. Именно поэтому раздел «Встречи» до сих пор
+   * помечен в реестре «цифр нет»: общий читатель считает по всей организации и
+   * прочитал бы мастеру чужой день. Здесь проверяется, что отдельный путь эту
+   * границу держит — и что «сегодня» считается по часам компании, а не по UTC
+   * процесса.
+   */
+  describe("сценарий: день салона", () => {
+    /**
+     * Полночь дня в поясе компании — своим счётом, а не функцией из кода:
+     * иначе тест доказывал бы, что код согласен сам с собой.
+     */
+    function bakuDayStart(at: Date, shiftDays = 0): Date {
+      const day = new Intl.DateTimeFormat("en-CA", {
+        timeZone: TZ,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(at.getTime() + shiftDays * 86_400_000))
+      // Баку — UTC+4 круглый год, перехода на летнее время нет с 2016-го.
+      return new Date(`${day}T00:00:00+04:00`)
+    }
+
+    const TZ = "Asia/Baku"
+    const PAGE = "booking-page-salon"
+    let morning!: Date
+    let afterMidnight!: Date
+
+    beforeEach(async () => {
+      if (!(await bypass(() => prisma.bookingPage.findFirst({ where: { id: PAGE } })))) {
+        await bypass(async () => {
+          // Часы компании — Баку: без этого «сегодня» считалось бы в UTC.
+          await prisma.user.update({ where: { id: USER }, data: { timezone: TZ } })
+          await prisma.user.update({ where: { id: "user-colleague" }, data: { timezone: TZ } })
+          await prisma.bookingPage.create({
+            data: {
+              id: PAGE,
+              organizationId: ORG,
+              slug: "salon",
+              title: "Saç kəsimi",
+              weekly: {},
+              durationMinutes: 60,
+            },
+          })
+        })
+      }
+    })
+
+    afterAll(async () => {
+      await bypass(() => prisma.user.updateMany({
+        where: { organizationId: ORG, id: { in: [USER, "user-colleague"] } },
+        data: { timezone: null },
+      }))
+    })
+
+    async function makeBookings() {
+      const now = new Date()
+      morning = new Date(bakuDayStart(now).getTime() + 10 * 3_600_000)
+      // 02:00 следующего дня по Баку — это ещё ВЧЕРАШНИЙ день по UTC:
+      // ровно тот случай, на котором «сегодня» без пояса компании врёт.
+      afterMidnight = new Date(bakuDayStart(now, 1).getTime() + 2 * 3_600_000)
+      await bypass(async () => {
+        await prisma.booking.deleteMany({ where: { organizationId: ORG } })
+        await prisma.booking.createMany({
+          data: [
+            {
+              id: "booking-today-owner",
+              organizationId: ORG,
+              bookingPageId: PAGE,
+              hostUserId: USER,
+              startsAt: morning,
+              endsAt: new Date(morning.getTime() + 3_600_000),
+              name: "Könül Əliyeva",
+              phone: "+994501112233",
+              status: "confirmed",
+              cancelTokenHash: "hash-1",
+            },
+            {
+              id: "booking-today-colleague",
+              organizationId: ORG,
+              bookingPageId: PAGE,
+              hostUserId: "user-colleague",
+              startsAt: new Date(morning.getTime() + 7_200_000),
+              endsAt: new Date(morning.getTime() + 10_800_000),
+              name: "Tural Həsənov",
+              phone: "+994552223344",
+              status: "confirmed",
+              cancelTokenHash: "hash-2",
+            },
+            {
+              id: "booking-today-cancelled",
+              organizationId: ORG,
+              bookingPageId: PAGE,
+              hostUserId: USER,
+              startsAt: new Date(morning.getTime() + 14_400_000),
+              endsAt: new Date(morning.getTime() + 18_000_000),
+              name: "Ləğv edilmiş",
+              phone: "+994553334455",
+              status: "cancelled",
+              cancelTokenHash: "hash-3",
+            },
+            {
+              id: "booking-tomorrow-night",
+              organizationId: ORG,
+              bookingPageId: PAGE,
+              hostUserId: USER,
+              startsAt: afterMidnight,
+              endsAt: new Date(afterMidnight.getTime() + 3_600_000),
+              name: "Gecə yarısı",
+              phone: "+994554445566",
+              status: "confirmed",
+              cancelTokenHash: "hash-4",
+            },
+          ],
+        })
+      })
+    }
+
+    type Summary = {
+      error?: string
+      period: string
+      timezone: string
+      scope: string
+      total: number
+      confirmed: number
+      cancelled: number
+      byHost: { host: string; bookings: number }[]
+      next: { id: string; at: string; client: string; host: string | null }[]
+    }
+    const summary = async (period?: string) =>
+      ((await ask("get_bookings_summary", period ? { period } : {})).body as { data: Summary }).data
+
+    it("сегодня — это день по часам компании, а не по UTC", async () => {
+      await makeBookings()
+      const today = await summary("today")
+      expect(today.timezone).toBe(TZ)
+      // Три записи дня, включая отменённую, и ОТДЕЛЬНО сколько из них живых:
+      // «на сегодня три» при одной отменённой — не ответ на «сколько придёт».
+      expect(today.total).toBe(3)
+      expect(today.confirmed).toBe(2)
+      expect(today.cancelled).toBe(1)
+      // Запись в 02:00 по Баку в сегодняшний день не попала, хотя по UTC она
+      // ещё «вчера вечером».
+      expect(today.next.map((row) => row.id)).not.toContain("booking-tomorrow-night")
+
+      const tomorrow = await summary("tomorrow")
+      expect(tomorrow.total).toBe(1)
+      expect(tomorrow.next[0]).toMatchObject({ id: "booking-tomorrow-night", at: "02:00" })
+
+      // Неделя накрывает оба дня.
+      expect((await summary("week")).total).toBe(4)
+    })
+
+    it("админ слышит всех мастеров, а координатор — только своих", async () => {
+      await makeBookings()
+      const asAdmin = await summary("today")
+      expect(asAdmin.scope).toBe("all_hosts")
+      expect(asAdmin.byHost.map((row) => row.host).sort())
+        .toEqual(["Leyla Mämmädova", "Owner"])
+
+      // Тот же день глазами менеджера без доверенностей: только свои записи.
+      // Разговор у него свой: сессия принадлежит своему человеку, и чужую
+      // маршрут не примет вовсе (409) — как и должно быть.
+      const ownerSession = session
+      auth.role = "manager" as typeof auth.role
+      auth.userId = "user-colleague"
+      session = await startConversation({ userId: "user-colleague" })
+      try {
+        const own = await summary("today")
+        expect(own.scope).toBe("own_and_granted")
+        expect(own.total).toBe(1)
+        expect(own.byHost).toEqual([{ host: "Leyla Mämmädova", bookings: 1 }])
+        // Чужую запись он не найдёт и не прочитает — её для него нет.
+        const foreign = await ask("find_record", { type: "booking", query: "Könül" })
+        expect((foreign.body as { data: { matches: unknown[] } }).data.matches).toEqual([])
+        const card = await ask("read_record", { type: "booking", id: "booking-today-owner" })
+        expect((card.body as { data: { error?: string } }).data.error).toBe("BAD_RECORD")
+
+        // Доверенность на владельца — и день становится слышен целиком.
+        await bypass(() => prisma.bookingCoordinatorGrant.create({
+          data: {
+            organizationId: ORG,
+            coordinatorUserId: "user-colleague",
+            hostUserId: USER,
+            canManage: false,
+            createdBy: USER,
+          },
+        }))
+        const granted = await summary("today")
+        expect(granted.total).toBe(3)
+        expect(granted.scope).toBe("own_and_granted")
+      } finally {
+        auth.role = "admin" as typeof auth.role
+        auth.userId = USER
+        session = ownerSession
+        await bypass(() => prisma.bookingCoordinatorGrant.deleteMany({ where: { organizationId: ORG } }))
+      }
+    })
+
+    it("запись находится по имени и по номеру, и карточка называет день, время и мастера", async () => {
+      await makeBookings()
+      const byName = await ask("find_record", { type: "booking", query: "Könül" })
+      const matches = (byName.body as { data: { matches: { id: string; name: string; hint: string }[] } }).data.matches
+      expect(matches.map((row) => row.id)).toContain("booking-today-owner")
+      // Подсказка отвечает на «какая из них»: один клиент приходит много раз.
+      const hint = matches.find((row) => row.id === "booking-today-owner")!.hint
+      expect(hint).toContain("10:00")
+      expect(hint).toContain("Saç kəsimi")
+      expect(hint).toContain("Owner")
+
+      // По номеру — тот же путь: звонящий называет себя телефоном.
+      const byPhone = await ask("find_record", { type: "booking", query: "5522233" })
+      expect(((byPhone.body as { data: { matches: { id: string }[] } }).data.matches).map((row) => row.id))
+        .toContain("booking-today-colleague")
+
+      const card = ((await ask("read_record", { type: "booking", id: "booking-today-owner" }))
+        .body as { data: Record<string, unknown> }).data
+      expect(card).toMatchObject({
+        client: "Könül Əliyeva",
+        service: "Saç kəsimi",
+        host: "Owner",
+        from: "10:00",
+        to: "11:00",
+        timezone: TZ,
+        status: "confirmed",
+        canManage: true,
+      })
+      // Карточка читает запись, а не меняет её.
+      expect((await bypass(() => prisma.booking.findFirstOrThrow({ where: { id: "booking-today-owner" } }))).status)
+        .toBe("confirmed")
+    })
+
+    it("кто не оператор встреч — слышит отказ, а не пустой день", async () => {
+      await makeBookings()
+      auth.role = "viewer" as typeof auth.role
+      try {
+        // «Записей нет» и «вам их не слышно» — разные ответы; второй честный.
+        expect((await summary("today")).error).toBe("ACCESS_SCOPE_UNAVAILABLE")
+        const found = await ask("find_record", { type: "booking", query: "Könül" })
+        expect((found.body as { data: { error?: string } }).data.error).toBe("ACCESS_SCOPE_UNAVAILABLE")
+      } finally {
+        auth.role = "admin" as typeof auth.role
+      }
+    })
+
+    it("модуль встреч не выкуплен — отказ словами", async () => {
+      modulesOff.add("booking")
+      try {
+        const answer = await ask("get_bookings_summary", { period: "today" })
+        expect(answer.status).toBe(200)
+        expect(answer.body).toEqual({ data: { error: "MODULE_NOT_ENABLED", module: "booking" } })
+      } finally {
+        modulesOff.delete("booking")
+      }
     })
   })
 })
