@@ -47,6 +47,8 @@ interface PanelTask {
   checklist: Subtask[]
   attachments: { id: string; fileName: string; originalName: string; mimeType?: string | null }[]
   createdAt: string
+  /** What the reader may do with it — the server's rule (lib/tasks/task-ownership.ts). */
+  you?: { mayManage: boolean; mayDelete: boolean }
 }
 interface TimeSummary { totalMinutes: number; running: { startedAt: string } | null }
 export interface PanelColumn { key: string; label: string; columnKey?: string }
@@ -61,7 +63,7 @@ const dayInput = (iso: string | null | undefined) => {
 /** «1:30» — hours and minutes, the same in every language. */
 const hoursText = (minutes: number) => `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`
 
-export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canEdit, onClose, onMutated }: {
+export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canEdit: canEditBoard, onClose, onMutated }: {
   taskId: string
   /** The board's stages; without them (department view) the panel reads the task's own board. */
   columns?: readonly PanelColumn[]
@@ -238,6 +240,10 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
       <div className="min-w-0 py-1 text-sm">{control}</div>
     </>
   )
+  // A board task is changed by its own people and deleted by its author (Ulviyya,
+  // 2026-11-12): everyone else reads it and writes in its feed.
+  const canEdit = canEditBoard && (task?.you?.mayManage ?? true)
+  const canDelete = canEditBoard && (task?.you?.mayDelete ?? true)
   const selectClass = "w-full max-w-xs rounded-md border border-transparent bg-transparent px-1.5 py-1 hover:border-border focus:border-border disabled:opacity-70"
 
   return (
@@ -261,8 +267,8 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                   {menuOpen && (
                     <div className="absolute right-0 top-8 z-10 min-w-40 rounded-md border bg-background py-1 shadow-lg">
                       <a href={`/tasks/${task.id}`} className="block px-3 py-1.5 text-sm hover:bg-muted">{t("openFull")}</a>
-                      {canEdit && (
-                        <button type="button" onClick={() => { setMenuOpen(false); setConfirmDelete(true) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-destructive hover:bg-muted">
+                      {canDelete && (
+                        <button type="button" data-testid="task-panel-delete" onClick={() => { setMenuOpen(false); setConfirmDelete(true) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-destructive hover:bg-muted">
                           <Trash2 className="h-4 w-4" /> {t("delete")}
                         </button>
                       )}
@@ -283,6 +289,9 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                 className="mb-3 w-full resize-none rounded-md border border-transparent bg-transparent px-1 text-xl font-semibold leading-snug hover:border-border focus:border-border focus:outline-none"
               />
 
+              {canEditBoard && !canEdit && (
+                <p data-testid="task-panel-not-yours" className="mb-2 rounded-md bg-muted px-2 py-1.5 text-xs text-muted-foreground">{t("notYours")}</p>
+              )}
               {error && <p className="mb-2 text-sm text-destructive">{error}</p>}
 
               <div className="grid grid-cols-[9.5rem_minmax(0,1fr)] items-center gap-x-3">
@@ -453,7 +462,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
             </div>
 
             <div className="min-h-0">
-              <TaskPanelFeed taskId={task.id} people={people4mention} statusLabel={statusLabel} reloadKey={reloadKey} files={task.attachments} canAttach={canEdit} onChanged={() => { reload(); onMutated() }} />
+              <TaskPanelFeed taskId={task.id} people={people4mention} statusLabel={statusLabel} reloadKey={reloadKey} files={task.attachments} canAttach={canEditBoard} onChanged={() => { reload(); onMutated() }} />
             </div>
           </div>
         )}

@@ -34,6 +34,7 @@ vi.mock("@/lib/prisma", () => {
       findFirst: vi.fn().mockImplementation(async ({ where }: any) => ({ id: where.id })),
     },
     taskCollaborator: {
+      findFirst: vi.fn().mockResolvedValue(null),
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
@@ -845,7 +846,8 @@ describe("PATCH /api/v1/tasks/:id", () => {
   const boardSession = { ...SESSION, role: "sales", userId: "user-1" }
   const boardExisting = (o: any = {}) => ({
     id: "t1", title: "Task", status: "todo", organizationId: "org-1",
-    divisionId: "div-1", assignedTo: null, ...o,
+    // The member moves their own task: a board task is changed by its people only (task-ownership.ts).
+    divisionId: "div-1", assignedTo: "user-1", createdBy: "user-9", ...o,
   })
   const grant = (o: any = {}) => ({
     canView: true, canEdit: false, canMoveToTodo: false, canMoveToInProgress: false,
@@ -1043,11 +1045,86 @@ describe("PATCH /api/v1/tasks/:id", () => {
     expect(prisma.task.update).not.toHaveBeenCalled()
   })
 
+  // Ulviyya, 2026-11-12: «özümüzdən başqa bizim taskları heç kim idarə edə bilməsin»; the owner:
+  // delete — the author and the admin; «И закрыть тоже» — closing (and changing) too.
+  describe("a board task is its own people's (task-ownership.ts)", () => {
+    const fullGrant = () => grant({ canEdit: true, canMoveToTodo: true, canMoveToInProgress: true, canMoveToTesting: true, canMoveToReview: true, canMoveBack: true, canMoveToDone: true })
+    const asUser = (userId: string, role = "sales") => {
+      const session = { ...SESSION, role, userId }
+      vi.mocked(requireAuth).mockResolvedValue(session as any)
+      vi.mocked(getSession).mockResolvedValue(session as any)
+    }
+    const theirs = (o: any = {}) => boardExisting({ assignedTo: "ulviyya", createdBy: "ulviyya", ...o })
+    const patch = (body: unknown) => PATCH(makeRequest("http://localhost/api/v1/tasks/t1", { method: "PATCH", body: JSON.stringify(body) }), makeParams("t1"))
+
+    it("a colleague with every right on the board neither closes nor changes it", async () => {
+      asUser("madina")
+      vi.mocked(prisma.task.findFirst).mockResolvedValue(theirs() as any)
+      vi.mocked(prismaMock.boardPermission.findUnique).mockResolvedValue(fullGrant() as any)
+      for (const body of [{ status: "done" }, { title: "Başqa ad" }, { collaboratorIds: ["madina"] }, { boardPosition: -5000 }]) {
+        const res = await patch(body)
+        expect(res.status, JSON.stringify(body)).toBe(403)
+      }
+      expect(prisma.task.update).not.toHaveBeenCalled()
+    })
+
+    it("its author, its assignee and a co-assignee close it", async () => {
+      vi.mocked(prismaMock.boardPermission.findUnique).mockResolvedValue(fullGrant() as any)
+      vi.mocked(prisma.task.update).mockResolvedValue(theirs({ status: "done" }) as any)
+      asUser("author")
+      vi.mocked(prisma.task.findFirst).mockResolvedValue(theirs({ createdBy: "author" }) as any)
+      expect((await patch({ status: "done" })).status).toBe(200)
+      asUser("ulviyya")
+      vi.mocked(prisma.task.findFirst).mockResolvedValue(theirs() as any)
+      expect((await patch({ status: "done" })).status).toBe(200)
+      asUser("co")
+      vi.mocked(prisma.task.findFirst).mockResolvedValue(theirs() as any)
+      vi.mocked(prismaMock.taskCollaborator.findFirst).mockResolvedValueOnce({ id: "c1" } as any)
+      expect((await patch({ status: "done" })).status).toBe(200)
+      expect(prismaMock.taskCollaborator.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { organizationId: "org-1", taskId: "t1", userId: "co" } }))
+    })
+
+    it("the admin manages any of them; a manager does not", async () => {
+      vi.mocked(prisma.task.update).mockResolvedValue(theirs({ status: "done" }) as any)
+      asUser("boss", "admin")
+      vi.mocked(prisma.task.findFirst).mockResolvedValue(theirs() as any)
+      expect((await patch({ status: "done" })).status).toBe(200)
+      asUser("nazrin", "manager")
+      vi.mocked(prisma.task.findFirst).mockResolvedValue(theirs() as any)
+      vi.mocked(prismaMock.boardPermission.findUnique).mockResolvedValue(fullGrant() as any)
+      expect((await patch({ status: "done" })).status).toBe(403)
+    })
+
+    it("only its author (or the admin) deletes it — not even its assignee", async () => {
+      vi.mocked(prisma.task.updateMany).mockResolvedValue({ count: 1 } as any)
+      const del = () => DELETE(makeRequest("http://localhost/api/v1/tasks/t1", { method: "DELETE" }), makeParams("t1"))
+      vi.mocked(prisma.task.findFirst).mockResolvedValue(theirs({ createdBy: "ulviyya", assignedTo: "xayala" }) as any)
+      asUser("madina")
+      expect((await del()).status).toBe(403)
+      asUser("xayala")
+      expect((await del()).status).toBe(403)
+      expect(prisma.task.updateMany).not.toHaveBeenCalled()
+      asUser("ulviyya")
+      expect((await del()).status).toBe(200)
+      asUser("boss", "admin")
+      expect((await del()).status).toBe(200)
+    })
+
+    it("the card is told what its reader may do", async () => {
+      asUser("xayala")
+      vi.mocked(prismaMock.division.findMany).mockResolvedValue([{ id: "div-1" }] as any)
+      vi.mocked(prisma.task.findFirst).mockResolvedValue({ ...theirs({ assignedTo: "xayala" }), collaborators: [] } as any)
+      const res = await GET_BY_ID(makeRequest("http://localhost/api/v1/tasks/t1"), makeParams("t1"))
+      expect(res.status).toBe(200)
+      expect((await res.json()).data.you).toEqual({ mayManage: true, mayDelete: false })
+    })
+  })
+
   it("board move: done→other clears completedAt (head moving back)", async () => {
     const headSession = { ...SESSION, role: "sales", userId: "head-1" }
     vi.mocked(requireAuth).mockResolvedValue(headSession as any)
     vi.mocked(getSession).mockResolvedValue(headSession as any)
-    vi.mocked(prisma.task.findFirst).mockResolvedValue(boardExisting({ status: "done", completedAt: new Date() }) as any)
+    vi.mocked(prisma.task.findFirst).mockResolvedValue(boardExisting({ status: "done", completedAt: new Date(), assignedTo: "head-1" }) as any)
     vi.mocked(prismaMock.division.findFirst).mockResolvedValue({ headUserId: "head-1" } as any) // caller is the head
     vi.mocked(prismaMock.boardPermission.findUnique).mockResolvedValue(grant({ canMoveBack: true, canEdit: true }) as any)
     vi.mocked(prisma.task.update).mockResolvedValue(boardExisting({ status: "in_progress" }) as any)

@@ -13,6 +13,7 @@ import { parseRecurrenceRule } from "@/lib/recurrence/parse"
 import { canEditTasks, canMoveToStatus, type KanbanStatus, type BoardPermissionFlags } from "@/lib/tasks/board-permission"
 import { resolveEffectiveBoardPermission } from "@/lib/tasks/board-hierarchy"
 import { isValidTaskType, isValidEventType } from "@/lib/tasks/task-types"
+import { mayManageRow, NOT_YOUR_TASK } from "@/lib/tasks/task-ownership"
 import type { Role } from "@/lib/permissions"
 import type { CrmCommandActorContext } from "../actor-context"
 import {
@@ -103,6 +104,8 @@ export async function updateTaskCommand(
     : { id: taskId, organizationId: orgId }
   const existing = await db.task.findFirst({ where })
   if (!existing) throw notFoundError("Not found")
+  // A board task is changed and closed by its own people only (task-ownership.ts).
+  if (!(await mayManageRow(db, orgId, role, userId, existing))) throw forbiddenError(NOT_YOUR_TASK)
 
   const expectedDate = expectedUpdatedAt ? new Date(expectedUpdatedAt) : null
   if (expectedDate && existing.updatedAt.getTime() !== expectedDate.getTime()) {

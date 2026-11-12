@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { activeMembers, openTaskFor } from "@/lib/tasks/task-access"
+import { refusedTaskIds, NOT_YOUR_TASK } from "@/lib/tasks/task-ownership"
 import { createRestActorContext } from "@/lib/crm-commands/actor-context"
 import {
   addTaskChecklistItemCommand,
@@ -34,6 +35,19 @@ const reorderSchema = z.array(z.object({
 }))
 
 type Ctx = { params: Promise<{ id: string }> }
+
+/**
+ * A board task's subtasks are the task's own (task-ownership.ts): its people
+ * add, change and remove them. A subtask's own assignee may also tick it.
+ */
+async function refusal(auth: { orgId: string; userId: string | null; role: string }, taskId: string, tickOf?: string): Promise<NextResponse | null> {
+  if ((await refusedTaskIds(prisma, auth.orgId, auth.role, auth.userId, [taskId], "manage")).length === 0) return null
+  if (tickOf && auth.userId) {
+    const item = await prisma.taskChecklist.findFirst({ where: { id: tickOf, taskId, organizationId: auth.orgId }, select: { assignedTo: true } })
+    if (item?.assignedTo === auth.userId) return null
+  }
+  return NextResponse.json({ error: "Forbidden", message: NOT_YOUR_TASK }, { status: 403 })
+}
 const itemInclude = { assignee: { select: { id: true, name: true, avatar: true } } } satisfies Prisma.TaskChecklistInclude
 
 async function checkAssignee(orgId: string, assignedTo: string | null | undefined): Promise<string | null> {
@@ -57,6 +71,8 @@ export const GET = withRlsAuth("tasks", "read", async (_req, auth, { params }: C
 /** A new subtask — the same command the voice assistant uses. */
 export const POST = withRlsAuth("tasks", "write", async (req, auth, { params }: Ctx) => {
   const { id: taskId } = await params
+  const refused = await refusal(auth, taskId)
+  if (refused) return refused
   const actor = createRestActorContext({ organizationId: auth.orgId, userId: auth.userId, role: auth.role })
   try {
     const { entity } = await addTaskChecklistItemCommand(actor, taskId, await req.json().catch(() => null))
@@ -75,6 +91,8 @@ export const PATCH = withRlsAuth("tasks", "write", async (req, auth, { params }:
 
   // Reorder mode: array of { id, sortOrder }
   if (Array.isArray(body)) {
+    const refused = await refusal(auth, taskId)
+    if (refused) return refused
     const parsed = reorderSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: "Invalid reorder data" }, { status: 400 })
     await prisma.$transaction(
@@ -90,12 +108,15 @@ export const PATCH = withRlsAuth("tasks", "write", async (req, auth, { params }:
 
   const parsed = updateItemSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
+  const plainTick = Object.keys(parsed.data).every((key) => key === "id" || key === "completed") && parsed.data.completed !== undefined
+  const refused = await refusal(auth, taskId, plainTick ? parsed.data.id : undefined)
+  if (refused) return refused
   const assigneeError = await checkAssignee(auth.orgId, parsed.data.assignedTo)
   if (assigneeError) return NextResponse.json({ error: assigneeError }, { status: 400 })
 
   // A plain tick — the one gesture voice also makes — runs the shared command,
   // so the «closed the subtask» line in the time line has one author.
-  if (Object.keys(parsed.data).every((key) => key === "id" || key === "completed") && parsed.data.completed !== undefined) {
+  if (plainTick) {
     const actor = createRestActorContext({ organizationId: auth.orgId, userId: auth.userId, role: auth.role })
     try {
       const { entity } = await setTaskChecklistItemDoneCommand(actor, taskId, {
@@ -144,6 +165,8 @@ export const DELETE = withRlsAuth("tasks", "write", async (req, auth, { params }
 
   const itemId = new URL(req.url).searchParams.get("itemId")
   if (!itemId) return NextResponse.json({ error: "itemId required" }, { status: 400 })
+  const refused = await refusal(auth, taskId)
+  if (refused) return refused
   await prisma.taskChecklist.deleteMany({ where: { id: itemId, taskId, organizationId: auth.orgId } })
   return NextResponse.json({ success: true })
 })

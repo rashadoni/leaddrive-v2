@@ -114,6 +114,32 @@ describe("POST /api/v1/tasks/bulk → status_changed activity (flow history)", (
   })
 })
 
+// Ulviyya, 2026-11-12: a selection of board tasks is changed only if every one is the caller's (task-ownership.ts).
+describe("POST /api/v1/tasks/bulk → someone else's board task in the selection", () => {
+  it("refuses the whole batch, naming the task, and changes nothing", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "madina", role: "sales" } as any)
+    vi.mocked(isAuthError).mockReturnValue(false)
+    vi.mocked(prismaMock.task.findMany).mockResolvedValueOnce([
+      { id: "mine", divisionId: "d1", createdBy: "madina", assignedTo: null, collaborators: [] },
+      { id: "hers", divisionId: "d1", createdBy: "ulviyya", assignedTo: "ulviyya", collaborators: [] },
+    ] as any)
+    const res = await POST(makeRequest({ ids: ["mine", "hers"], action: "complete" }))
+    expect(res.status).toBe(403)
+    expect((await res.json()).refused).toEqual(["hers"])
+    expect(prisma.task.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("lets a co-assignee complete and the admin do anything without asking", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "madina", role: "sales" } as any)
+    vi.mocked(isAuthError).mockReturnValue(false)
+    vi.mocked(prismaMock.task.findMany).mockResolvedValueOnce([
+      { id: "hers", divisionId: "d1", createdBy: "ulviyya", assignedTo: "ulviyya", collaborators: [{ userId: "madina" }] },
+    ] as any)
+    expect((await POST(makeRequest({ ids: ["hers"], action: "complete" }))).status).toBe(200)
+    expect(prismaMock.task.findMany.mock.calls[0][0]).toMatchObject({ select: { collaborators: { where: { userId: "madina" } } } })
+  })
+})
+
 // ─── action: delete — separate permission re-check ──────────────────────
 describe("POST /api/v1/tasks/bulk → action: delete", () => {
   it("re-checks tasks:delete permission separately and returns auth error if denied", async () => {

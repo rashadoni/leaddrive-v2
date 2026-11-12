@@ -5,6 +5,7 @@ import { prisma, logAudit } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { checkPermission } from "@/lib/permissions"
 import { recalcProjectCompletion } from "@/lib/project-rollup"
+import { refusedTaskIds, NOT_YOUR_TASK, NOT_YOUR_TASK_TO_DELETE } from "@/lib/tasks/task-ownership"
 
 // §5.7 flow-history fix: bulk status moves must emit status_changed activity —
 // without it, cycle time / CFD / aging go blind on every bulk-moved task. Only
@@ -52,6 +53,17 @@ export const POST = withRlsAuth("tasks", "write", async (req: NextRequest, authR
 
   try {
     const where = { id: { in: ids }, organizationId: orgId }
+
+    // Board tasks are changed by their own people and deleted by their author
+    // (task-ownership.ts). One task not the caller's refuses the whole batch —
+    // a half-applied selection is worse than none.
+    const refused = await refusedTaskIds(prisma, orgId, authResult.role, authResult.userId, ids, action === "delete" ? "delete" : "manage")
+    if (refused.length > 0) {
+      return NextResponse.json(
+        { error: "Forbidden", message: action === "delete" ? NOT_YOUR_TASK_TO_DELETE : NOT_YOUR_TASK, refused },
+        { status: 403 },
+      )
+    }
 
     // Snapshot the projectIds of affected tasks BEFORE the bulk write so
     // we know which Project rollups to recalc afterwards. Status changes,

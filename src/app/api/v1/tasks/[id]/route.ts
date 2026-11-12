@@ -11,6 +11,7 @@ import { clearDeletedMentionRefs } from "@/lib/social/mention-refs"
 import { resolveRelated } from "@/lib/resolve-related"
 import { recalcProjectCompletion } from "@/lib/project-rollup"
 import { bookingTaskConflict } from "@/lib/booking/task-reference"
+import { mayDeleteTask, mayManageTask, NOT_YOUR_TASK_TO_DELETE } from "@/lib/tasks/task-ownership"
 
 export const GET = withRls(async (_req, { orgId, session }, { params }: { params: Promise<{ id: string }> }) => {
   const role = session?.role || "admin"
@@ -73,7 +74,13 @@ export const GET = withRls(async (_req, { orgId, session }, { params }: { params
 
   const fieldPerms = await getFieldPermissions(orgId, role, "task")
   const filteredTask = filterEntityFields({ ...task, relatedName }, fieldPerms, role)
-  return NextResponse.json({ success: true, data: filteredTask })
+  // What this person may do with it (task-ownership.ts): the card hides what the server would refuse.
+  const people = {
+    divisionId: task.divisionId, createdBy: task.createdBy, assignedTo: task.assignedTo,
+    collaboratorIds: (task.collaborators ?? []).map((c) => c.user.id),
+  }
+  const you = { mayManage: mayManageTask(role, session?.userId, people), mayDelete: mayDeleteTask(role, session?.userId, people) }
+  return NextResponse.json({ success: true, data: { ...filteredTask, you } })
 })
 
 export const PATCH = withRlsAuth("tasks", "write", async (req: NextRequest, authResult, { params }: { params: Promise<{ id: string }> }) => {
@@ -121,9 +128,13 @@ export const DELETE = withRlsAuth("tasks", "delete", async (_req, authResult, { 
   try {
     const existing = await prisma.task.findFirst({
       where: { id, organizationId: orgId },
-      select: { title: true, projectId: true },
+      select: { title: true, projectId: true, divisionId: true, createdBy: true, assignedTo: true },
     })
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    // A board task is deleted by who made it, or the admin (task-ownership.ts).
+    if (!mayDeleteTask(authResult.role, authResult.userId, { divisionId: existing.divisionId ?? null, createdBy: existing.createdBy ?? null, assignedTo: existing.assignedTo ?? null, collaboratorIds: [] })) {
+      return NextResponse.json({ error: "Forbidden", message: NOT_YOUR_TASK_TO_DELETE }, { status: 403 })
+    }
     const conflict = await bookingTaskConflict(orgId, id)
     if (conflict) return conflict
     // Soft delete (spec): set deletedAt — the prisma client extension then hides
