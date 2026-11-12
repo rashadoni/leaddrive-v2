@@ -33322,6 +33322,7 @@
     "lateDays": "{days} gün",
     "lateBy": "{days} gün gecikib",
     "groups": {
+      "doneToday": "Bu gün bitənlər",
       "overdue": "Gecikmiş",
       "today": "Bu gün",
       "tomorrow": "Sabah",
