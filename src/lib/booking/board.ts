@@ -19,6 +19,7 @@
  *      a user: the caller proves nothing and asks for one board by token.
  */
 import { bookingDb as prisma } from "./db"
+import { crmNamesByPhone, phoneKey } from "./client-name"
 import { readBoardColumns, type Board } from "./board-view"
 export { BOARD_COLUMNS, readBoardColumns, type Board, type BoardColumn, type BoardColumns, type BoardMeeting } from "./board-view"
 import { runWithRlsBypass } from "@/lib/rls-context"
@@ -68,7 +69,7 @@ export async function boardByToken(token: string, now: Date = new Date()): Promi
         startsAt: { gte: windowStart, lt: windowEnd },
         ...(link.hostIds.length ? { hostUserId: { in: link.hostIds } } : {}),
       },
-      select: { id: true, hostUserId: true, startsAt: true, endsAt: true, name: true, bookingPage: { select: { title: true } } },
+      select: { id: true, hostUserId: true, startsAt: true, endsAt: true, name: true, phone: true, bookingPage: { select: { title: true } } },
       orderBy: { startsAt: "asc" },
     })
     const today = rows.filter((row) => dayInZone(row.startsAt, timezone) === day)
@@ -76,12 +77,16 @@ export async function boardByToken(token: string, now: Date = new Date()): Promi
     const people = hostIds.length
       ? await prisma.user.findMany({ where: { organizationId: link.organizationId, id: { in: hostIds } }, select: { id: true, name: true } })
       : []
+    // The name the salon itself wrote on this number beats the one the client
+    // typed into the form or carries on their WhatsApp profile: on the wall it
+    // is the staff who read it, and they know the person by the CRM's name.
+    const crmNames = await crmNamesByPhone(link.organizationId, today.map((row) => row.phone))
     const meetings = today.map((row) => ({
       id: row.id,
       hostId: row.hostUserId,
       start: minutesInZone(row.startsAt, timezone),
       end: minutesInZone(row.endsAt, timezone),
-      name: row.name,
+      name: crmNames.get(phoneKey(row.phone)) ?? row.name,
       service: row.bookingPage?.title ?? "",
     }))
     // The grid covers the working day and stretches only for what is on it.

@@ -51,16 +51,6 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   </div>
 }
 
-function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
-  return <button
-    type="button"
-    aria-pressed={on}
-    onClick={onClick}
-    className={cn("min-h-8 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-      on ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "bg-muted text-muted-foreground hover:text-foreground")}
-  >{children}</button>
-}
-
 export function BookingWhatsAppRules({ rules, services, hosts, disabled, defaultOpen = false, onChange }: {
   rules: AutonomyRules
   services: RuleService[]

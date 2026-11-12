@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { BOARD_COLUMNS } from "@/lib/booking/board-view"
 import { Picked } from "./booking-picked"
+import { BookingChip } from "./booking-chip"
 
 interface BoardLink {
   id: string
@@ -127,23 +128,20 @@ export function BookingBoardPanel({ hosts }: { hosts: { id: string; name: string
         {/* The choice is a layout, so it is shown as one: three tiles of the
             screen itself rather than the digits 1, 2 and 4. */}
         <div className="flex gap-2" role="group" aria-label={t("boardColumns")}>
-          {BOARD_COLUMNS.map((count) => <button
+          {BOARD_COLUMNS.map((count) => <BookingChip
             key={count}
-            type="button"
-            aria-pressed={draft.columns === count}
-            aria-label={t("boardColumnsOf", { count })}
+            active={draft.columns === count}
+            label={t("boardColumnsOf", { count })}
             onClick={() => setDraft({ ...draft, columns: count })}
-            className={cn("flex min-h-11 items-center gap-1 rounded-lg border p-2 transition-colors",
-              draft.columns === count ? "border-primary bg-primary/5" : "border-input hover:bg-muted")}
           >
             <span className="flex h-6 gap-0.5" aria-hidden="true">
               {Array.from({ length: count }, (ignored, index) => <span
                 key={index}
-                className={cn("w-2 rounded-[2px]", draft.columns === count ? "bg-primary/60" : "bg-muted-foreground/35")}
+                className={cn("w-2 rounded-[2px]", draft.columns === count ? "bg-primary/70" : "bg-muted-foreground/40")}
               />)}
             </span>
-            <span className="text-sm font-medium tabular-nums">{count}</span>
-          </button>)}
+            <span className="tabular-nums">{count}</span>
+          </BookingChip>)}
         </div>
       </div>
     </div>

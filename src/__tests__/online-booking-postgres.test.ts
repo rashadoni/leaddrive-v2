@@ -175,6 +175,7 @@ pgDescribe("online booking on a real Postgres", () => {
   let cancelPost!: typeof import("@/app/api/v1/public/booking/cancel/[token]/route").POST
   let settingsGet!: typeof import("@/app/api/v1/booking-pages/route").GET
   let settingsPost!: typeof import("@/app/api/v1/booking-pages/route").POST
+  let pageDelete!: typeof import("@/app/api/v1/booking-pages/[id]/route").DELETE
   let settingsPatch!: typeof import("@/app/api/v1/booking-pages/[id]/route").PATCH
   let meetingsGet!: typeof import("@/app/api/v1/bookings/route").GET
   let meetingGet!: typeof import("@/app/api/v1/bookings/[id]/route").GET
@@ -286,6 +287,7 @@ pgDescribe("online booking on a real Postgres", () => {
     settingsGet = settings.GET
     settingsPost = settings.POST
     settingsPatch = (await import("@/app/api/v1/booking-pages/[id]/route")).PATCH
+    pageDelete = (await import("@/app/api/v1/booking-pages/[id]/route")).DELETE
     meetingsGet = (await import("@/app/api/v1/bookings/route")).GET
     meetingGet = (await import("@/app/api/v1/bookings/[id]/route")).GET
     taskLinkGet = (await import("@/app/api/v1/bookings/task-link/route")).GET
@@ -1162,6 +1164,59 @@ pgDescribe("online booking on a real Postgres", () => {
       expect(calendar.remove).toHaveBeenCalledTimes(1)
       expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))).status).toBe("cancelled")
     } finally { await bypass(() => prisma.account.delete({ where: { id: account.id } })) }
+  })
+
+  it("deletes a service nothing points at, and refuses one that has meetings", async () => {
+    // The owner, looking at a test page left by a role test: «вот например ты
+    // тестовое создал, как его удалить?» (2026-11-12). Deleting is for a
+    // service nothing points at; one with meetings is switched off instead,
+    // because its name, its length and its price are what those meetings say
+    // they were.
+    // A host's busy time is shared by all their pages, so this takes the one
+    // the room tests leave alone, in a window of its own.
+    const spare = await newPage({ title: "Silinəcək", hostIds: [HOST_B] })
+    const spareRow = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug: spare } }))
+    const used = await newPage({ title: "Silinməyəcək", hostIds: [HOST_B] })
+    const usedRow = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug: used } }))
+    expect((await book(used, await slotWithin(used, 26 * 3600_000, 30 * 3600_000))).status).toBe(201)
+
+    const remove = (id: string) => pageDelete(json("DELETE", `/api/v1/booking-pages/${id}`), { params: Promise.resolve({ id }) })
+    expect((await remove(spareRow.id)).status).toBe(200)
+    expect(await bypass(() => prisma.bookingPage.count({ where: { id: spareRow.id } }))).toBe(0)
+
+    const refused = await remove(usedRow.id)
+    expect(refused.status).toBe(409)
+    expect((await refused.json()).code).toBe("PAGE_IN_USE")
+    expect(await bypass(() => prisma.bookingPage.count({ where: { id: usedRow.id } }))).toBe(1)
+
+    // And the list says which is which, so the screen can offer the button
+    // only where it works.
+    const listed = (await (await settingsGet(json("GET", "/api/v1/booking-pages"))).json()).data.pages as { id: string; everBooked: boolean }[]
+    expect(listed.find((page) => page.id === usedRow.id)?.everBooked).toBe(true)
+  })
+
+  it("shows the name the CRM has for that number, and keeps the one the client gave", async () => {
+    // A meeting keeps the name the customer typed — or the one their WhatsApp
+    // profile carries, set years ago. When the CRM already knows the number,
+    // the salon reads its own name for them (owner, 2026-11-12: «если в CRM
+    // имя контакта добавлено, то пусть отображает имя»). Matched on digits:
+    // «+994 50 123 45 67» and «0501234567» are one person.
+    const slug = await newPage({ title: "Tanışlıq", hostIds: [HOST_B] })
+    const at = await slotWithin(slug, 30 * 3600_000, 34 * 3600_000)
+    expect((await book(slug, at, "Nigar")).status).toBe(201)
+    await bypass(() => prisma.contact.create({ data: {
+      organizationId: ORG, fullName: "Rəşad Rəhimov", phone: "0501234567",
+    } }))
+
+    const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
+    const list = await meetingsGet(json("GET", `/api/v1/bookings?page=${page.id}&limit=50`))
+    const items = (await list.json()).data.items as { name: string; bookedName: string; phone: string }[]
+    const mine = items.find((item) => item.phone.replace(/\D/g, "").endsWith("501234567"))!
+
+    expect(mine.name).toBe("Rəşad Rəhimov")
+    // And what they called themselves is not lost: the salon can still see
+    // whom the form was filled in by.
+    expect(mine.bookedName).toBe("Nigar")
   })
 
   // ─── Rooms, chairs, machines (src/lib/booking/book.ts, bookableChairs) ────
