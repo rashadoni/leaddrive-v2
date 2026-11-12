@@ -4,7 +4,7 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { getPortalUser } from "@/lib/portal-auth"
-import { portalTicketSubject } from "@/lib/ticketing/portal-ticket-view"
+import { customerDescriptionForStorage, portalTicketSubject } from "@/lib/ticketing/portal-ticket-view"
 import { enrichComplaintInBackground } from "@/lib/complaint-ai"
 import { resolveTicketSla } from "@/lib/sla-resolver"
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
@@ -82,8 +82,10 @@ export async function POST(req: NextRequest) {
 
   const parsed = createPortalTicketSchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
-  const { subject, description, category, clientRequestId, isComplaint } = parsed.data
+  const { subject, category, clientRequestId, isComplaint } = parsed.data
   const meta: PortalComplaintMeta = parsed.data.complaintMeta
+  // Stored so that no reader takes it for a transcript a chat channel wrote (portal-ticket-view.ts).
+  const description = customerDescriptionForStorage(parsed.data.description)
 
   // RLS: org comes from the verified portal JWT — whole handler runs
   // tenant-scoped (the fire-and-forget AI enrichment starts inside the

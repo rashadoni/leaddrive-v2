@@ -31,7 +31,14 @@
 export const CHAT_TRANSCRIPT_MARKER = "--- ИСТОРИЯ ЧАТА ---"
 /** The portal chat widget writes the transcript in the customer's language (messages/*.json `portal.chatHistoryTitle`). */
 const LOCALIZED_TRANSCRIPT_MARKERS = ["--- CHAT HISTORY ---", "--- ÇAT TARİXÇƏSİ ---"]
+const TRANSCRIPT_MARKERS = [CHAT_TRANSCRIPT_MARKER, ...LOCALIZED_TRANSCRIPT_MARKERS]
 export const INBOUND_MESSAGE_MARKER = "--- СООБЩЕНИЕ ---"
+/**
+ * Every marker `parseChatDescription` opens a chat at, wherever in the text it
+ * stands. A description the customer wrote is stored with none of them intact
+ * (`customerDescriptionForStorage`, portal-ticket-view.ts).
+ */
+export const DESCRIPTION_CHAT_MARKERS: readonly string[] = [...TRANSCRIPT_MARKERS, INBOUND_MESSAGE_MARKER]
 
 /** First line of the description of a ticket opened by an inbound WhatsApp text (webhook). */
 export const WHATSAPP_INBOUND_DESCRIPTION_HEAD = "Создан из входящего WhatsApp сообщения."
@@ -112,7 +119,7 @@ export function parseChatDescription(raw?: string | null): ParsedChat | null {
   // must not turn its transcript into another channel's card.
   const webChat = parseWebChatDescription(raw)
   if (webChat) return webChatAsParsedChat(webChat)
-  const transcriptMarker = [CHAT_TRANSCRIPT_MARKER, ...LOCALIZED_TRANSCRIPT_MARKERS].find((marker) => raw.includes(marker))
+  const transcriptMarker = TRANSCRIPT_MARKERS.find((marker) => raw.includes(marker))
   // A ticket opened by one inbound WhatsApp text: the message itself follows the marker, unlabelled.
   const inbound = !transcriptMarker && raw.includes(INBOUND_MESSAGE_MARKER)
   const marker = transcriptMarker ?? (inbound ? INBOUND_MESSAGE_MARKER : null)
