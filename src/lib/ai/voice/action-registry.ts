@@ -27,6 +27,7 @@ import {
   publishFieldRouteCommandSchema,
   sendFieldMessageCommandSchema,
 } from "@/lib/crm-commands/schemas/mtm"
+import { voiceBookingSchemas } from "@/lib/crm-commands/schemas/booking"
 import { DEFAULT_AI_ACTION_INTENT_TTL_MS } from "./action-intent"
 export { AI_VOICE_RECEIPT_EDIT_CLOSED } from "./receipt-edit-closed"
 
@@ -66,6 +67,12 @@ export const AI_VOICE_ACTION_TYPES = [
   "reply_to_ticket",
   "update_ticket",
   // Этап 5: телефонные заказы аптек.
+  // Встречи (владелец 2026-11-12): отменить, отметить итог, отметить депозит.
+  // Переноса и создания здесь нет намеренно — им нужна внешняя проверка
+  // занятости до транзакции, см. booking-write.ts.
+  "cancel_booking",
+  "set_booking_outcome",
+  "set_booking_deposit",
   "update_phone_order_line",
   "add_phone_order_line",
   "remove_phone_order_line",
@@ -101,6 +108,7 @@ export type AiVoiceActionCommand =
   | "addTicketCommentCommand"
   | "updateTicketCommand"
   | "phoneOrderCommand"
+  | "bookingCommand"
 export type AiVoiceActionDedupePolicy =
   | "idempotency_key"
   | "lead_contact_coordinates"
@@ -143,6 +151,8 @@ export type AiVoiceActionEntityType =
   | "ticket"
   // Этап 5: телефонный заказ аптеки.
   | "phone_order"
+  // Встречи: запись клиента к мастеру.
+  | "booking"
 
 /** Все виды результата — для проверки сохранённого результата при повторе. */
 export const AI_VOICE_ACTION_ENTITY_TYPES: readonly AiVoiceActionEntityType[] = [
@@ -152,10 +162,12 @@ export const AI_VOICE_ACTION_ENTITY_TYPES: readonly AiVoiceActionEntityType[] = 
   "contact",
   "ticket",
   "phone_order",
+  "booking",
 ]
 
 /** The kinds of record a voice update may target. */
-export type AiVoiceActionTargetType = "lead" | "task" | "deal" | "contact" | "company" | "ticket"
+export type AiVoiceActionTargetType =
+  | "lead" | "task" | "deal" | "contact" | "company" | "ticket" | "booking"
 
 export type AiVoiceActionTarget = Readonly<{
   entityType: AiVoiceActionTargetType
@@ -227,6 +239,12 @@ export type AiVoiceActionRegistryEntry = Readonly<{
   operation: "create" | "update" | "convert"
   resultEntityType: AiVoiceActionEntityType
   previewFields: readonly string[]
+  /**
+   * Действие, у которого полезная нагрузка может быть пустой: сама просьба и
+   * есть изменение. «Отмени эту запись» не называет ни одного поля — и это не
+   * пустая правка, а отмена. Для сделки или задачи такое по-прежнему отказ.
+   */
+  payloadMayBeEmpty?: true
   renderPreview: (
     payload: JsonObject,
     context?: AiVoiceActionPreviewContext,
@@ -398,6 +416,30 @@ const SERVER_SIDE_FIELDS: ReadonlySet<string> = new Set([
   "revision", "externalId", "itemCode", "sourceName",
 ])
 
+// Встречи. `expectedVersion` кладёт сервер (служебное поле, в квитанции его
+// не видно): команда брони сверяет им чужую правку, как остальные сверяют
+// `expectedUpdatedAt`.
+const CANCEL_BOOKING_FIELDS = [
+  "expectedVersion",
+  "reason",
+  "notifyCustomer",
+  "expectedUpdatedAt",
+] as const
+
+const SET_BOOKING_OUTCOME_FIELDS = [
+  "expectedVersion",
+  "outcome",
+  "note",
+  "reason",
+  "expectedUpdatedAt",
+] as const
+
+const SET_BOOKING_DEPOSIT_FIELDS = [
+  "expectedVersion",
+  "deposit",
+  "expectedUpdatedAt",
+] as const
+
 const CONVERT_LEAD_FIELDS = [
   "dealTitle",
   "dealStage",
@@ -540,6 +582,18 @@ const TICKET_PARENT_TARGET: AiVoiceActionTarget = {
 const WRITE_PHONE_ORDERS: readonly AiVoiceActionPermission[] = [
   { module: "deals", action: "write", tenantModule: "sales", tenantFeature: "pharmacy_phone_orders" },
 ]
+
+// Права экрана встреч: модуль «Встречи» и `bookings:write`. КТО из мастеров
+// доступен — не здесь, это BookingAccess внутри самой команды.
+const WRITE_BOOKINGS: readonly AiVoiceActionPermission[] = [
+  { module: "bookings", action: "write", tenantModule: "booking" },
+]
+
+const BOOKING_TARGET: AiVoiceActionTarget = {
+  entityType: "booking",
+  requestField: "targetEntityId",
+  bindExpectedUpdatedAt: true,
+}
 
 const WRITE_ROUTE_FIELD: readonly AiVoiceActionPermission[] = [
   { module: "mtm", action: "write", tenantCapability: "route-field" },
@@ -716,6 +770,44 @@ function phoneOrderEntry(input: {
     resultEntityType: "phone_order",
     risk: input.risk,
   })
+}
+
+/**
+ * Действие над существующей бронью.
+ *
+ * Цель — сама запись (её видно в квитанции: клиент, день и час), версия
+ * сверяется, настраиваемых полей у встреч нет.
+ */
+function bookingEntry(input: {
+  actionType: AiVoiceActionType
+  commandSchema: z.ZodType
+  fields: readonly string[]
+  risk: AiVoiceActionRisk
+}): AiVoiceActionRegistryEntry {
+  const previewFields = input.fields.filter((field) => !SERVER_SIDE_FIELDS.has(field))
+  return {
+    actionType: input.actionType,
+    command: "bookingCommand",
+    commandSchema: input.commandSchema,
+    allowedFields: input.fields,
+    permissions: WRITE_BOOKINGS,
+    fieldPermissionEntity: "booking",
+    fieldPermissionNames: () => [],
+    risk: input.risk,
+    ttlMs: input.risk === "sensitive" ? SENSITIVE_TTL_MS : STANDARD_TTL_MS,
+    dedupePolicy: "target_revision",
+    target: BOOKING_TARGET,
+    operation: "update",
+    resultEntityType: "booking",
+    previewFields,
+    payloadMayBeEmpty: true,
+    renderPreview: createPreviewRenderer({
+      actionType: input.actionType,
+      operation: "update",
+      entityType: "booking",
+      previewFields,
+    }),
+  }
 }
 
 export const AI_VOICE_ACTION_REGISTRY: Readonly<Record<AiVoiceActionType, AiVoiceActionRegistryEntry>> = Object.freeze({
@@ -1087,6 +1179,27 @@ export const AI_VOICE_ACTION_REGISTRY: Readonly<Record<AiVoiceActionType, AiVoic
       previewFields: UPDATE_TICKET_FIELDS.filter((field) => field !== "expectedUpdatedAt"),
     }),
   },
+  // Отмена — чувствительное действие: освобождает час и сообщает клиенту,
+  // поэтому короткий срок квитанции и подтверждение только кнопкой
+  // (voiceMayConfirm). Итог и депозит наружу ничего не отправляют.
+  cancel_booking: bookingEntry({
+    actionType: "cancel_booking",
+    commandSchema: voiceBookingSchemas.cancel,
+    fields: CANCEL_BOOKING_FIELDS,
+    risk: "sensitive",
+  }),
+  set_booking_outcome: bookingEntry({
+    actionType: "set_booking_outcome",
+    commandSchema: voiceBookingSchemas.outcome,
+    fields: SET_BOOKING_OUTCOME_FIELDS,
+    risk: "standard",
+  }),
+  set_booking_deposit: bookingEntry({
+    actionType: "set_booking_deposit",
+    commandSchema: voiceBookingSchemas.deposit,
+    fields: SET_BOOKING_DEPOSIT_FIELDS,
+    risk: "standard",
+  }),
   update_phone_order_line: phoneOrderEntry({
     actionType: "update_phone_order_line",
     commandSchema: voicePhoneOrderSchemas.updateLine,

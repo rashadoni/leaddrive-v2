@@ -6,6 +6,9 @@ import { hideableIdForFieldCapability, moduleContextForUser } from "@/lib/user-m
 import { getTenantCapabilityAccess } from "@/lib/tenant-capability-access"
 import { prisma, logAudit } from "@/lib/prisma"
 import { applyRecordFilter } from "@/lib/sharing-rules"
+import { bookingScope } from "@/lib/booking/access"
+import { voiceBookingAccess } from "./booking-read"
+import { loadVoiceReportingTimezone } from "./reporting-timezone"
 import { openTaskFor } from "@/lib/tasks/task-access"
 import { companyDuplicateNeedle } from "@/lib/crm-commands/company/create-company"
 import { checkPermission } from "@/lib/permissions"
@@ -685,6 +688,12 @@ type DraftTarget = Readonly<{
   status: string | null
   updatedAt: Date
   before: JsonObject
+  /**
+   * Целое-версия записи, если запись считает правки так (встреча). Команда
+   * брони сверяет чужую правку им, а не временем: `updatedAt` остаётся
+   * проверкой уровня квитанции, а это — проверка самой команды.
+   */
+  version?: number
 }>
 
 async function resolveTaskTarget(auth: AuthResult, targetEntityId: string): Promise<DraftTarget> {
@@ -857,6 +866,69 @@ async function resolveCompanyTarget(auth: AuthResult, targetEntityId: string): P
   }
 }
 
+/**
+ * Встреча как цель квитанции.
+ *
+ * Названа так, как её ищут глазами: клиент, день и час. Пределы доступа —
+ * те же, что у чтения (свои мастера / доверенности / админ), поэтому чужую
+ * запись голос не возьмёт даже по верному идентификатору.
+ */
+async function resolveBookingTarget(auth: AuthResult, targetEntityId: string): Promise<DraftTarget> {
+  const access = await voiceBookingAccess({
+    orgId: auth.orgId,
+    userId: auth.userId,
+    role: auth.role,
+    principalType: auth.principalType,
+    hideCustomerPhoneForOperators: auth.hideCustomerPhoneForOperators,
+  })
+  if (!access) {
+    throw new AiVoiceActionDraftError("TARGET_NOT_FOUND", "The target record was not found", 404)
+  }
+  const booking = await prisma.booking.findFirst({
+    where: { AND: [bookingScope(access, true), { id: targetEntityId }] },
+    select: {
+      id: true,
+      name: true,
+      startsAt: true,
+      status: true,
+      version: true,
+      updatedAt: true,
+      depositStatus: true,
+      hostUserId: true,
+    },
+  }) as {
+    id: string
+    name: string
+    startsAt: Date
+    status: string
+    version: number
+    updatedAt: Date
+    depositStatus: string | null
+    hostUserId: string
+  } | null
+  if (!booking) {
+    throw new AiVoiceActionDraftError("TARGET_NOT_FOUND", "The target record was not found", 404)
+  }
+  const timezone = await loadVoiceReportingTimezone(auth.orgId, auth.userId)
+  const when = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone,
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(booking.startsAt)
+  return {
+    entityType: "booking",
+    id: booking.id,
+    label: `${booking.name} · ${when}`,
+    status: booking.status,
+    updatedAt: booking.updatedAt,
+    version: booking.version,
+    before: { status: booking.status, deposit: booking.depositStatus },
+  }
+}
+
 function resolveDraftTarget(
   auth: AuthResult,
   entityType: AiVoiceActionTargetType,
@@ -867,6 +939,7 @@ function resolveDraftTarget(
   if (entityType === "contact") return resolveContactTarget(auth, targetEntityId)
   if (entityType === "company") return resolveCompanyTarget(auth, targetEntityId)
   if (entityType === "ticket") return resolveTicketTarget(auth, targetEntityId)
+  if (entityType === "booking") return resolveBookingTarget(auth, targetEntityId)
   return resolveLeadDraftTarget(auth, targetEntityId)
 }
 
@@ -1279,6 +1352,8 @@ async function bindTarget(
     normalizedPayload: {
       ...normalizedPayload,
       expectedUpdatedAt: expectedUpdatedAt.toISOString(),
+      // Встреча считает правки целым: команда сверяет чужую правку им.
+      ...(target.version === undefined ? {} : { expectedVersion: target.version }),
     },
     targetEntityType: target.entityType,
     targetEntityId: target.id,
@@ -1557,6 +1632,7 @@ export async function createAiVoiceActionDraft(
   if (!parsed.success) throw firstPayloadIssue(parsed.issues)
   if (
     getAiVoiceActionDefinition(input.actionType).operation === "update"
+    && !getAiVoiceActionDefinition(input.actionType).payloadMayBeEmpty
     && Object.keys(parsed.data).every((field) => field === "expectedUpdatedAt")
   ) {
     throw new AiVoiceActionDraftError(
@@ -1768,6 +1844,7 @@ export async function updateAiVoiceActionDraft(
   if (!parsed.success) throw firstPayloadIssue(parsed.issues)
   if (
     getAiVoiceActionDefinition(existing.actionType).operation === "update"
+    && !getAiVoiceActionDefinition(existing.actionType).payloadMayBeEmpty
     && Object.keys(parsed.data).every((field) => field === "expectedUpdatedAt")
   ) {
     throw new AiVoiceActionDraftError(

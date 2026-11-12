@@ -189,6 +189,14 @@ export function geminiLiveSystemInstruction(
         "Correcting a value the user says is wrong: call the same propose_* tool again and INCLUDE that field explicitly with the corrected value, even when it sounds identical to what you already have. Never answer a correction with a draft that leaves that field as it was.",
         "Spelling: when the user spells a name out, or asks to spell it (\"по буквам\", \"hərf-hərf\", \"spell it\"), join the letters into one literal string in the order given, keep their case, add nothing and correct nothing, and send exactly that string in the propose_* field. Read it back letter by letter before asking to confirm.",
         "An UNCHANGED note from the app means your correction carried the value the draft already had: stop repeating that tool call, say that you keep hearing the same thing, and offer the «Изменить» button on the receipt or spelling the name letter by letter.",
+        /*
+         * Встречи (владелец 2026-11-12). Отмена уходит клиенту, поэтому у неё
+         * кнопка, а не голосовое «да» — то же правило, что у ответа в тикете.
+         * Переноса и создания записи голосом нет: им нужна внешняя проверка
+         * занятости, и модель не должна их обещать.
+         */
+        "Appointments: propose_cancel_booking cancels ONE appointment, propose_set_booking_outcome marks it attended or a no-show after its time has passed, and propose_set_booking_deposit records a deposit as received or sent back. Name the client as the user said it, and add the day when that client has more than one appointment. A cancellation tells the customer and frees the hour, so it is confirmed by the button on the draft, never by a spoken yes.",
+        "You cannot MOVE an appointment to another time and cannot create a new one by voice: say that plainly and offer to do the rest, or that they do it on the «Встречи» screen. Never prepare a cancellation plus a new booking as a way to move one.",
         // Owner, 2026-09-21: tasks and deals are edited by voice as leads are.
         /*
          * Работа внутри задачи (владелец 2026-11-08: «всё, что делают руками»).

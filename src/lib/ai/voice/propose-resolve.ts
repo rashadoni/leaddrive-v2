@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { findVoiceBookings, voiceBookingAccess } from "./booking-read"
+import { loadVoiceReportingTimezone } from "./reporting-timezone"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { dateInputValueInTimezone, isValidTimezone, localDateTimeToUtc } from "@/lib/timezone"
 import { loadVoiceWallClockTimezone } from "./reporting-timezone"
@@ -91,11 +93,14 @@ export type VoiceProposeResolution =
       | "TICKET_NOT_FOUND"
       | "TICKET_AMBIGUOUS"
       | "TICKET_TARGET_REQUIRED"
+      | "BOOKING_NOT_FOUND"
+      | "BOOKING_AMBIGUOUS"
       | PhoneOrderClarifyCode
     field:
       | "assigneeName" | "leadName" | "companyName" | "contactName" | "taskTitle" | "dealName" | "status" | "stage"
       | "itemTitle" | "agentName" | "kind" | "day" | "clientName" | "recordName" | "ticket"
       | "order" | "line" | "product"
+      | "clientName"
     candidates: readonly Readonly<{ id: string; label: string }>[]
   }>
   | Readonly<{ kind: "invalid"; issues: readonly Readonly<{ path: string; message: string }>[] }>
@@ -594,6 +599,62 @@ async function pipelineStagesForDeal(
 /** Record types a voice task may be attached to from the current screen. */
 const RELATABLE_SCREEN_TYPES = new Set(["lead", "deal", "contact", "company", "ticket"])
 
+const BOOKING_TOOLS = new Set([
+  "propose_cancel_booking",
+  "propose_set_booking_outcome",
+  "propose_set_booking_deposit",
+])
+
+function asDay(value: unknown): string | undefined {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined
+}
+
+/**
+ * Какую встречу назвал человек.
+ *
+ * Пределы доступа те же, что у чтения: чужую запись голос не найдёт и,
+ * значит, не предложит отменить. Один клиент приходит много раз, поэтому при
+ * нескольких совпадениях это ВОПРОС со днями и часами, а не выбор первой:
+ * отменённая наугад встреча — это чужой потерянный час.
+ */
+async function resolveBooking(
+  auth: AuthResult,
+  clientName: string,
+  day: string | undefined,
+): Promise<
+  | { ok: true; id: string }
+  | { ok: false; ambiguous: boolean; candidates: Readonly<{ id: string; label: string }>[] }
+> {
+  const spoken = clientName.trim()
+  if (spoken.length < 2) return { ok: false, ambiguous: false, candidates: [] }
+  const access = await voiceBookingAccess({
+    orgId: auth.orgId,
+    userId: auth.userId,
+    role: auth.role,
+    principalType: auth.principalType,
+    hideCustomerPhoneForOperators: auth.hideCustomerPhoneForOperators,
+  })
+  if (!access) return { ok: false, ambiguous: false, candidates: [] }
+  const timezone = await loadVoiceReportingTimezone(auth.orgId, auth.userId)
+  const found = await findVoiceBookings(access, spoken, timezone, MAX_CANDIDATES + 1, true)
+  // День назван — он и отсеивает лишние: подсказка начинается с даты.
+  const matches = day ? found.filter((row) => row.hint.startsWith(day)) : found
+  if (matches.length === 0) {
+    return { ok: false, ambiguous: false, candidates: [] }
+  }
+  if (matches.length > 1) {
+    return {
+      ok: false,
+      ambiguous: true,
+      candidates: matches.slice(0, MAX_CANDIDATES).map((row) => ({
+        id: row.id,
+        label: `${row.name} · ${row.hint}`,
+      })),
+    }
+  }
+  return { ok: true, id: matches[0].id }
+}
+
 export async function resolveVoiceProposal(
   auth: AuthResult,
   tool: VoiceProposeToolName,
@@ -1048,6 +1109,22 @@ export async function resolveVoiceProposal(
       }
       payload.companyId = company.id
     }
+  }
+
+  if (BOOKING_TOOLS.has(tool)) {
+    const booking = await resolveBooking(auth, String(args.clientName ?? ""), asDay(args.day))
+    if (!booking.ok) {
+      return {
+        kind: "clarify",
+        code: booking.ambiguous ? "BOOKING_AMBIGUOUS" : "BOOKING_NOT_FOUND",
+        field: "clientName",
+        candidates: booking.candidates,
+      }
+    }
+    targetEntityId = booking.id
+    // Имя клиента и день — это «какую именно», а не поля команды.
+    delete payload.clientName
+    delete payload.day
   }
 
   if (TICKET_TOOLS.has(tool) && tool !== "propose_create_ticket") {

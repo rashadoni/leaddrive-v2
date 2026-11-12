@@ -345,6 +345,9 @@ export function voiceMayConfirm(actionType: string, fieldKeys: readonly string[]
   // Заказ уходит в 1С и аптеке (WhatsApp) — назад не вернуть.
   if (actionType === "confirm_phone_order" || actionType === "reject_phone_order") return false
   if (actionType === "update_ticket" && fieldKeys.includes("status")) return false
+  // Отмена встречи сообщает клиенту, что его визита не будет, и освобождает
+  // час: услышанное не к месту «да» стоило бы человеку приёма.
+  if (actionType === "cancel_booking") return false
   return true
 }
 
@@ -352,6 +355,7 @@ export function voiceMayConfirm(actionType: string, fieldKeys: readonly string[]
 export function voiceProposalNeedsButton(tool: string, args: unknown): boolean {
   if (tool === "propose_reply_to_ticket") return true
   if (tool === "propose_confirm_phone_order" || tool === "propose_reject_phone_order") return true
+  if (tool === "propose_cancel_booking") return true
   if (tool === "propose_update_ticket") {
     return Boolean(args && typeof args === "object" && "status" in args && (args as { status?: unknown }).status !== undefined)
   }
