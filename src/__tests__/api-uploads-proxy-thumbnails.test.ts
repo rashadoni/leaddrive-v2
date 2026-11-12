@@ -29,6 +29,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     mtmPhoto: { findFirst: vi.fn() },
     contractFile: { findFirst: vi.fn() },
+    taskAttachment: { findFirst: vi.fn() },
     mtmAgent: { findFirst: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn() },
     mtmTeam: { findFirst: vi.fn(), findMany: vi.fn() },
   },
@@ -56,6 +57,7 @@ import {
   releasePublicConcurrencySlot,
 } from "@/lib/public-abuse-guard"
 import {
+  mtmPhotoThumbnailCachePath,
   MtmPhotoThumbnailBusyError,
   objectMtmPhotoThumbnailEtag,
   renderMtmPhotoThumbnail,
@@ -219,5 +221,51 @@ describe("GET /uploads/mtm-photos/<file>?w=", () => {
       expect(res.status).toBe(304)
       expect(readCommittedMtmMediaObject).not.toHaveBeenCalled()
     })
+  })
+})
+
+/**
+ * Pictures in task messages (owner, 2026-11-12: boards «медленно открывается» — a card of Bordio
+ * messages pulled dozens of ~450 KB originals at 1–4 s each). Same contract as field photos.
+ */
+describe("GET /uploads/tasks/<file>?w=", () => {
+  beforeEach(() => {
+    vi.mocked(prisma.taskAttachment.findFirst).mockResolvedValue({ id: "ta1" } as any)
+  })
+
+  it.each(["?w=481", "?w=", "?w=480&w=240"])("rejects width %s before any lookup", async (query) => {
+    expect((await GET(req(query), pp(["tasks", "a.jpg"]))).status).toBe(404)
+    expect(prisma.taskAttachment.findFirst).not.toHaveBeenCalled()
+  })
+
+  it("never resizes another organization's file", async () => {
+    vi.mocked(prisma.taskAttachment.findFirst).mockResolvedValueOnce(null)
+    expect((await GET(req("?w=480"), pp(["tasks", "theirs.jpg"]))).status).toBe(404)
+    expect(resolveDiskMtmPhotoThumbnail).not.toHaveBeenCalled()
+  })
+
+  it("looks the file up in the caller's organization first, then serves a cached WebP from tasks/.thumbs", async () => {
+    const res = await GET(req("?w=480"), pp(["tasks", "owned.jpg"]))
+    expect(res.status).toBe(200)
+    expect((vi.mocked(prisma.taskAttachment.findFirst).mock.calls[0]?.[0] as any).where).toEqual({ fileName: "owned.jpg", organizationId: "org-1" })
+    expect(resolveDiskMtmPhotoThumbnail).toHaveBeenCalledWith(expect.objectContaining({
+      organizationId: "org-1",
+      subdir: "tasks",
+      width: 480,
+      originalPath: expect.stringMatching(/[/\\]tasks[/\\]owned\.jpg$/),
+    }))
+    expect(res.headers.get("content-type")).toBe("image/webp")
+    expect(releasePublicConcurrencySlot).toHaveBeenCalledOnce()
+    expect(mtmPhotoThumbnailCachePath("/u", "owned.jpg", 480, "tasks")).toMatch(/[/\\]u[/\\]tasks[/\\]\.thumbs[/\\]owned\.jpg\.w480\.webp$/)
+  })
+
+  it("the thumbnail cache folder is not a file anyone can open", async () => {
+    vi.mocked(prisma.taskAttachment.findFirst).mockResolvedValueOnce(null)
+    expect((await GET(req(), pp(["tasks", ".thumbs"]))).status).toBe(404)
+  })
+
+  it("without ?w= the original is served as before", async () => {
+    await GET(req(), pp(["tasks", "owned.jpg"]))
+    expect(resolveDiskMtmPhotoThumbnail).not.toHaveBeenCalled()
   })
 })

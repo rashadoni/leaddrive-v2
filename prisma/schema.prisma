@@ -81,6 +81,7 @@ model Organization {
   bookingBindings BookingIntegrationBinding[]
   bookingCoordinatorGrants BookingCoordinatorGrant[]
   bookingBoardLinks BookingBoardLink[]
+  bookingResources BookingResource[]
   bookingPages          BookingPage[]
   bookingHostSchedules  BookingHostSchedule[]
   bookingOffers         BookingOffer[]
@@ -23799,6 +23800,9 @@ model BookingPage {
   repeatCycleDays  Int?
   /// Users who take these meetings; a booking goes to one of them.
   hostIds          String[]
+  /// Rooms, chairs or machines this service may be booked on (booking_resources).
+  /// Empty = booked on its masters alone, which is what every service meant before.
+  resourceIds      String[]     @default([])
   /// A deposit the customer leaves to hold the time: a fixed sum, or a share
   /// of what the visit costs. Both null = no deposit for this service.
   depositAmount    Decimal?     @db.Decimal(14, 2)
@@ -23889,6 +23893,8 @@ model BookingOffer {
   channelConfigId String?
   bookingPageId   String
   hostUserId      String
+  /// The resource this time was held on, when the service is booked on one.
+  resourceId     String?
   startsAt        DateTime
   endsAt          DateTime
   /// The service's buffer when it was offered, so the hold keeps it too.
@@ -23933,6 +23939,10 @@ model Booking {
   bookingPageId   String
   bookingPage     BookingPage @relation(fields: [organizationId, bookingPageId], references: [organizationId, id], onDelete: NoAction)
   hostUserId      String
+  /// The room, chair or machine this meeting took, when it is not a person's own
+  /// time (booking_resources). Null = it belongs to its host alone, as every
+  /// meeting made before this release does.
+  resourceId      String?
   hostUser User @relation("BookingHost", fields: [organizationId, hostUserId], references: [organizationId, id], onDelete: NoAction)
   startsAt        DateTime
   endsAt          DateTime
@@ -24232,6 +24242,23 @@ model BookingBoardLink {
   revokedAt DateTime?
   @@index([organizationId, isActive], map: "booking_board_links_org_idx")
   @@map("booking_board_links")
+}
+
+/// A thing with a schedule that is not a person: a meeting room, a chair, a table,
+/// a machine. Deliberately NOT a user — nothing outside booking has to learn about
+/// it, so no list of people and no login path can start showing rooms by accident.
+model BookingResource {
+  id String @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name String
+  /// When it may be booked at all; null = whenever the service itself is open.
+  weekly Json?
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([organizationId, isActive], map: "booking_resources_org_idx")
+  @@map("booking_resources")
 }
 
 /// Encrypted response and delivery capability. The immutable receipt stores only a reference.

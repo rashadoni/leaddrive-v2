@@ -158,6 +158,9 @@ export async function loadBusyByHost(orgId: string, hostIds: string[], from: Dat
   const bookings = await prisma.booking.findMany({
     where: {
       organizationId: orgId, hostUserId: { in: hostIds }, status: "confirmed",
+      // A meeting that took a ROOM belongs to the room, not to whoever owns
+      // the service: it must not eat its own master's day (resources below).
+      resourceId: null,
       endsAt: { gt: new Date(from.getTime() - 240 * 60_000) }, startsAt: { lt: new Date(to.getTime() + 240 * 60_000) },
       ...(options.exceptBookingPageId ? { bookingPageId: { not: options.exceptBookingPageId } } : {}),
     },
@@ -169,7 +172,7 @@ export async function loadBusyByHost(orgId: string, hostIds: string[], from: Dat
     // one of them, sees those times as free.
     const holds = await prisma.bookingOffer.findMany({
       where: {
-        organizationId: orgId, hostUserId: { in: hostIds },
+        organizationId: orgId, hostUserId: { in: hostIds }, resourceId: null,
         // A time waiting for the salon's confirmation is held just as firmly
         // as one still on the client's buttons — otherwise «we are holding it
         // for you» is a promise the next booking breaks.
@@ -208,6 +211,96 @@ export async function loadBusyByHost(orgId: string, hostIds: string[], from: Dat
   return busy
 }
 
+/**
+ * A thing a meeting can be put on: a master, or a room that is nobody.
+ *
+ * The free-time search does not care which it is — both are an id with hours
+ * and a list of busy intervals — so a resource travels through `computeSlots`
+ * exactly as a host does, and only the two ends know the difference: where
+ * «busy» is read from, and what the booking records when it is taken.
+ */
+export interface BookableChair {
+  id: string
+  name: string
+  resource: boolean
+}
+
+/**
+ * What a service may be booked on: its rooms when it has any, its masters
+ * otherwise.
+ *
+ * Deliberately one or the other. A service listing rooms is booked IN them —
+ * a meeting room for an hour, a bay at a car wash — and the master on it is
+ * the one who owns its bookings in the record, never a chair a client is
+ * offered. Letting both be chairs would put «со мной» beside «Zal A» in a
+ * coworking's own form, and make a room's hour take a person's day as well.
+ */
+export async function bookableChairs(orgId: string, page: { hostIds: string[]; resourceIds?: string[] }): Promise<BookableChair[]> {
+  if (page.resourceIds?.length) {
+    const resources = await prisma.bookingResource.findMany({
+      where: { organizationId: orgId, id: { in: page.resourceIds }, isActive: true },
+      select: { id: true, name: true },
+    })
+    // The service's own order, so a room list reads the way it was arranged.
+    return page.resourceIds.flatMap((id) => {
+      const found = resources.find((resource) => resource.id === id)
+      return found ? [{ id: found.id, name: found.name, resource: true }] : []
+    })
+  }
+  return (await activeHosts(orgId, page.hostIds)).map((host) => ({ id: host.id, name: host.name, resource: false }))
+}
+
+/**
+ * When each room is taken: its own meetings, its own held times, its own
+ * hours. Read exactly like a host's, and merged into the same map, because
+ * the day is computed from one map (src/lib/booking/availability.ts).
+ */
+export async function addResourceBusy(
+  busy: Map<string, BusyInterval[]>,
+  orgId: string,
+  resourceIds: string[],
+  from: Date,
+  to: Date,
+  timezone: string,
+  options: BusyOptions = {},
+): Promise<void> {
+  if (!resourceIds.length) return
+  for (const id of resourceIds) if (!busy.has(id)) busy.set(id, [])
+  const window = { endsAt: { gt: new Date(from.getTime() - 240 * 60_000) }, startsAt: { lt: new Date(to.getTime() + 240 * 60_000) } }
+  const [bookings, resources] = await Promise.all([
+    prisma.booking.findMany({
+      where: {
+        organizationId: orgId, resourceId: { in: resourceIds }, status: "confirmed", ...window,
+        ...(options.exceptBookingPageId ? { bookingPageId: { not: options.exceptBookingPageId } } : {}),
+      },
+      select: { resourceId: true, startsAt: true, endsAt: true, bufferBefore: true, bufferAfter: true },
+    }),
+    prisma.bookingResource.findMany({ where: { organizationId: orgId, id: { in: resourceIds } }, select: { id: true, weekly: true } }),
+  ])
+  for (const booking of bookings) {
+    if (booking.resourceId) busy.get(booking.resourceId)?.push({ start: booking.startsAt, end: booking.endsAt, bufferBeforeMinutes: booking.bufferBefore, bufferAfterMinutes: booking.bufferAfter })
+  }
+  if (options.holds) {
+    const holds = await prisma.bookingOffer.findMany({
+      where: {
+        organizationId: orgId, resourceId: { in: resourceIds },
+        status: { in: ["offered", "pending"] }, expiresAt: { gt: new Date() }, ...window,
+        ...(options.holds.exceptConversationId ? { conversationId: { not: options.holds.exceptConversationId } } : {}),
+      },
+      select: { resourceId: true, startsAt: true, endsAt: true, bufferMinutes: true },
+    })
+    for (const hold of holds) {
+      if (hold.resourceId) busy.get(hold.resourceId)?.push({ start: hold.startsAt, end: hold.endsAt, bufferBeforeMinutes: hold.bufferMinutes, bufferAfterMinutes: hold.bufferMinutes })
+    }
+  }
+  // A room with no hours of its own keeps the service's, exactly as a master
+  // without a schedule does.
+  for (const resource of resources) {
+    const weekly = parseWeeklyHours(resource.weekly)
+    if (weekly) busy.get(resource.id)?.push(...offHoursIntervals(weekly, timezone, from, to))
+  }
+}
+
 function windowOf(rules: BookingRules, now: Date): { from: Date; to: Date } {
   return { from: now, to: new Date(now.getTime() + (rules.maxDaysAhead + 2) * 24 * 3600_000) }
 }
@@ -225,7 +318,9 @@ export async function publicBookingView(orgId: string, pageId: string, now = new
   const page = await prisma.bookingPage.findFirst({ where: { id: pageId, organizationId: orgId, isActive: true } })
   if (!page) return null
   const org = await orgContext(orgId)
-  const hosts = await activeHosts(orgId, page.hostIds)
+  // Masters and rooms alike: what a meeting can be put on (`bookableChairs`).
+  // A coworking's service has no masters at all and books on its rooms.
+  const hosts = await bookableChairs(orgId, page)
   const service = { price: page.price === null ? null : String(page.price), durationMinutes: page.durationMinutes, hostVariants: page.hostVariants }
   const chosen = hostId && hosts.some((host) => host.id === hostId) ? hostId : null
   const offered = chosen ? hosts.filter((host) => host.id === chosen) : hosts
@@ -238,8 +333,9 @@ export async function publicBookingView(orgId: string, pageId: string, now = new
   const rules = { ...rulesOf(page, org.timezone, org.closedDates), durationMinutes: visit.durationMinutes }
   const { from, to } = windowOf(rules, now)
   const group = isGroupService(page)
-  const busy = await loadBusyByHost(orgId, offered.map((host) => host.id), from, to, org.timezone,
-    { holds: {}, ...(group ? { exceptBookingPageId: page.id } : {}) })
+  const options = { holds: {}, ...(group ? { exceptBookingPageId: page.id } : {}) }
+  const busy = await loadBusyByHost(orgId, offered.filter((host) => !host.resource).map((host) => host.id), from, to, org.timezone, options)
+  await addResourceBusy(busy, orgId, offered.filter((host) => host.resource).map((host) => host.id), from, to, org.timezone, options)
   const days: DaySlots[] = computeSlots({ rules, hostIds: offered.map((host) => host.id), busyByHost: busy, now })
   if (!days.length && busy.unavailableHostIds.size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
   // A class is offered until its seats run out; a full one is simply not a

@@ -140,7 +140,7 @@ describe("task card panel", () => {
     await flush()
     expect(calls).toContain('PATCH /api/v1/tasks/t1 {"title":"Vebsayt reklamları — GA4"}')
 
-    const add = container.querySelector('input[placeholder="+ подзадача (Enter)"]') as HTMLInputElement
+    const add = container.querySelector('[data-testid="task-panel-subtask-input"]') as HTMLInputElement
     await type(add, "ga4 quraşdırılması")
     await press(add, "Enter")
     await flush()
@@ -192,7 +192,7 @@ describe("files in the card, as in Bordio", () => {
     try {
       await open()
       const img = container.querySelector('[data-testid="feed-message-pictures"] img') as HTMLImageElement
-      expect(img.getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg")
+      expect(img.getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg?w=480")
       const links = [...container.querySelectorAll('[data-testid="feed-message-files"] a')].map((a) => a.getAttribute("href"))
       expect(links).toEqual(["/uploads/tasks/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.pdf"])
       expect(container.querySelector('[data-testid="feed-message-files"]')?.textContent).toContain("köhnə.png")
@@ -241,14 +241,39 @@ describe("a picture the file gate refused", () => {
     try {
       await open()
       const img = () => container.querySelector('[data-testid="feed-message-pictures"] img') as HTMLImageElement
-      expect(img().getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg")
+      expect(img().getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg?w=480")
       await act(async () => { img().dispatchEvent(new Event("error")) })
       await act(async () => { vi.advanceTimersByTime(1500) })
-      expect(img().getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg?try=1")
+      expect(img().getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg?w=480&try=1")
     } finally {
       task.attachments = was.attachments
       feed.items = was.items
       vi.useRealTimers()
+    }
+  })
+
+  // Elvira, 2026-11-12: «45 ədəd vinil» comes as a numbered list — one press makes the subtasks.
+  it("turns the numbered list of the description into subtasks, and a pasted list too", async () => {
+    const was = TASK.description
+    TASK.description = "Ölçülər:\n1. 167 (eni) x 88 Ferveks\n2. 122 (eni) x 88 Hedelix\n3. pixel quraşdırılması"
+    try {
+      await open()
+      const split = container.querySelector('[data-testid="task-panel-split-list"]') as HTMLButtonElement
+      // «pixel quraşdırılması» is a subtask already: two lines are offered.
+      expect(split.textContent).toContain("(2)")
+      await click(split)
+      await flush()
+      expect(calls).toContain('POST /api/v1/tasks/t1/checklist {"titles":["167 (eni) x 88 Ferveks","122 (eni) x 88 Hedelix"]}')
+
+      const add = container.querySelector('[data-testid="task-panel-subtask-input"]') as HTMLInputElement
+      const paste = new Event("paste", { bubbles: true, cancelable: true }) as Event & { clipboardData: unknown }
+      paste.clipboardData = { getData: () => "Story 1\nStory 2\n\nStory 3" }
+      await act(async () => { add.dispatchEvent(paste) })
+      await flush()
+      expect(paste.defaultPrevented).toBe(true)
+      expect(calls).toContain('POST /api/v1/tasks/t1/checklist {"titles":["Story 1","Story 2","Story 3"]}')
+    } finally {
+      TASK.description = was
     }
   })
 

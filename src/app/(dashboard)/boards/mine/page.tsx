@@ -8,7 +8,7 @@
  * made on the boards, not here — this is a list of one's own work.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertCircle, Check, Loader2, MessageSquare, Paperclip, Plus, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -49,7 +49,9 @@ const readView = (): View => {
 /** A ticked row stays on screen, struck through, until the page is read again — so it can be taken back. */
 interface Ticked { status: string; boardColumnKey: string | null }
 
-const DONE_WINDOW_DAYS = 14
+// Every finished task, newest first, a page at a time (owner, 2026-11-12: «завершённые
+// задачи не только за 14 дней… все можешь подгружать»; Sabina saw 25 of her 467).
+const DONE_PAGE = 50
 const priorityKey = (p: string) => `priority${p[0].toUpperCase()}${p.slice(1)}`
 
 async function readTasks(query: string): Promise<{ tasks: MyTask[]; total: number }> {
@@ -165,17 +167,37 @@ export default function MyWorkPage() {
   }, [])
   useEffect(() => { loadDoneToday() }, [loadDoneToday])
 
-  const loadDone = useCallback(async () => {
-    const since = new Date(Date.now() - DONE_WINDOW_DAYS * 86_400_000).toISOString()
+  const [doneTotal, setDoneTotal] = useState(0)
+  const [doneLoading, setDoneLoading] = useState(false)
+  // One read at a time: the effect below runs again before the first answer lands.
+  const doneReading = useRef(false)
+  const loadDone = useCallback(async (from: number) => {
+    if (doneReading.current) return
+    doneReading.current = true
+    setDoneLoading(true)
     try {
-      const done = await readTasks(`status=done,completed,cancelled&completedAfter=${encodeURIComponent(since)}`)
-      setDoneTasks(done.tasks)
+      const res = await fetch(`/api/v1/tasks?mine=1&status=done,completed,cancelled&sort=completed&limit=${DONE_PAGE}&offset=${from}`, { credentials: "include" })
+      if (!res.ok) throw new Error(String(res.status))
+      const json = await res.json()
+      const page: MyTask[] = json?.data?.tasks ?? []
+      setDoneTotal(json?.data?.total ?? 0)
+      setDoneTasks((current) => {
+        const before = from === 0 ? [] : current ?? []
+        const seen = new Set(before.map((x) => x.id))
+        return [...before, ...page.filter((x) => !seen.has(x.id))]
+      })
     } catch {
-      setDoneTasks([])
+      if (from === 0) setDoneTasks([])
       flash(t("failed"))
+    } finally {
+      doneReading.current = false
+      setDoneLoading(false)
     }
   }, [flash, t])
-  useEffect(() => { if (showDone && doneTasks === null) loadDone() }, [showDone, doneTasks, loadDone])
+  const loadMoreDone = useCallback(() => {
+    if (!doneLoading && doneTasks && doneTasks.length < doneTotal) loadDone(doneTasks.length)
+  }, [doneLoading, doneTasks, doneTotal, loadDone])
+  useEffect(() => { if (showDone && doneTasks === null) loadDone(0) }, [showDone, doneTasks, loadDone])
 
   const boardById = useMemo(() => new Map(boards.map((b) => [b.id, b])), [boards])
   // Only boards the person has a task on are offered in the filter.
@@ -470,9 +492,23 @@ export default function MyWorkPage() {
             <section data-testid="my-work-group" data-group="done" className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
               <h2 className="flex items-baseline gap-1.5 px-4 py-2 text-[13px] font-medium text-gray-700 dark:text-gray-300">
                 {t("groups.done")}
-                {doneTasks ? <span className="text-gray-400">{shownDone.length}</span> : <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" aria-hidden="true" />}
+                {doneTasks ? <span className="text-gray-400">{doneTotal}</span> : <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" aria-hidden="true" />}
               </h2>
               {doneTasks && shownDone.length > 0 && <ul>{shownDone.map((task) => row(task, true))}</ul>}
+              {doneTasks && doneTasks.length < doneTotal && (
+                <LoadMoreWhenSeen onSeen={loadMoreDone}>
+                  <button
+                    type="button"
+                    data-testid="my-work-done-more"
+                    onClick={loadMoreDone}
+                    disabled={doneLoading}
+                    className="flex w-full items-center justify-center gap-1.5 border-t border-gray-100 px-4 py-2.5 text-[13px] text-gray-600 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-900"
+                  >
+                    {doneLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+                    {t("doneMore", { count: Math.min(DONE_PAGE, doneTotal - doneTasks.length), left: doneTotal - doneTasks.length })}
+                  </button>
+                </LoadMoreWhenSeen>
+              )}
             </section>
           )}
         </div>
@@ -510,3 +546,15 @@ function NewTaskDialog(props: Omit<Parameters<typeof CreateTaskDialog>[0], "task
   return <CreateTaskDialog {...props} taskTypes={types} />
 }
 
+/** The «more» at the end of the finished list also loads on its own when it scrolls into view. */
+function LoadMoreWhenSeen({ onSeen, children }: { onSeen: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const node = ref.current
+    if (!node || typeof IntersectionObserver === "undefined") return
+    const watch = new IntersectionObserver((entries) => { if (entries.some((e) => e.isIntersecting)) onSeen() }, { rootMargin: "200px" })
+    watch.observe(node)
+    return () => watch.disconnect()
+  }, [onSeen])
+  return <div ref={ref}>{children}</div>
+}

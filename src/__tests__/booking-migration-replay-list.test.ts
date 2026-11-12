@@ -27,6 +27,10 @@ const MIGRATIONS = path.join(ROOT, "prisma/migrations")
 const BOOKING_TABLES = [
   "bookings", "booking_pages", "booking_secrets", "booking_coordinator_grants",
   "booking_integration_bindings", "booking_change_notes", "booking_offers", "booking_reminders",
+  // Rooms, chairs and machines (2026-11-12): a thing with a schedule that is
+  // not a person. Both stands drop it with the rest, so its migration has to
+  // be replayed with the rest.
+  "booking_resources",
 ]
 
 function touchesBookingTable(sql: string): boolean {
