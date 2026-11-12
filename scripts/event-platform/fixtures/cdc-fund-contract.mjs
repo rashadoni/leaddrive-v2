@@ -128,3 +128,49 @@ export function assertPrivatePostgresTarget({ project, config, container, networ
     || (octets[0] === 192 && octets[1] === 168), 'private Docker IPv4 required')
   return attachment.IPAddress
 }
+
+export const FULL_CDC_LOGIN = 'leaddrive_event_cdc'
+
+/** Owned-cleanup release proof before the slot and scratch database drops.
+ * Kafka Connect DELETE only writes a config tombstone; the task stops later.
+ * The pinned Debezium also frees the slot for a moment while it re-opens its
+ * replication stream (START_REPLICATION ... "is active for PID"), task and JDBC
+ * sessions still alive. One inactive-slot read let cleanup drop the slot under
+ * that live task, and DROP DATABASE then spent its whole 5 s wait on the task's
+ * sessions (runs 39393514528 and 39408291519, 2026-10-20). Released is ALL of:
+ * Connect no longer lists the connector, its status is 404, the exact slot
+ * exists with no walsender, and the CDC login has no session anywhere. It must
+ * then hold past Debezium's 10 s slot.retry.delay.ms and
+ * retriable.restart.connector.wait.ms, so a retrying task shows up first. */
+export const FULL_CDC_RELEASE_SETTLE_MS = 12_000
+export const FULL_CDC_RELEASE_MIN_READS = 3
+
+export function renderFullCdcReleaseQuery(database) {
+  assertScratchDatabase(database)
+  return `SELECT (SELECT count(*) FROM pg_replication_slots WHERE slot_name='${FULL_CDC_SLOT}' AND slot_type='logical'
+      AND plugin='pgoutput' AND database='${database}' AND NOT active AND active_pid IS NULL)::text || ':' ||
+    (SELECT count(*) FROM pg_stat_activity WHERE usename='${FULL_CDC_LOGIN}')::text;`
+}
+
+/** `listing`: GET /connectors body; `statusCode`: HTTP code of the connector
+ * status read ('' when Connect is unreachable); `postgres`: release query row. */
+export function fullCdcConnectorReleased({ listing, statusCode, postgres }) {
+  let names
+  try { names = JSON.parse(listing) } catch { return false }
+  return Array.isArray(names) && names.every(name => typeof name === 'string') && !names.includes(FULL_CDC_CONNECTOR)
+    && statusCode === '404' && postgres === '1:0'
+}
+
+/** Clock-driven settle gate: true only once every read for settleMs, and at
+ * least minReads reads, was released. Any unreleased read starts over. */
+export function createFullCdcReleaseSettle({ settleMs = FULL_CDC_RELEASE_SETTLE_MS, minReads = FULL_CDC_RELEASE_MIN_READS } = {}) {
+  assert.ok(Number.isInteger(settleMs) && settleMs > 0 && Number.isInteger(minReads) && minReads > 1)
+  let since, reads = 0
+  return (released, now) => {
+    assert.ok(Number.isFinite(now))
+    if (released !== true) { since = undefined; reads = 0; return false }
+    since ??= now
+    reads += 1
+    return reads >= minReads && now - since >= settleMs
+  }
+}

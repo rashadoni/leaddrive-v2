@@ -2,8 +2,9 @@ import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { assertFullCdcEnvironment, assertFullCdcHeaders, assertPrivatePostgresTarget, assertScratchDatabase, FULL_CDC_CONNECTOR,
-  FULL_CDC_LOGICAL_NAME, FULL_CDC_SLOT, POSTGRES_IMAGE, renderFullCdcBoundary, renderFullCdcConnector } from './fixtures/cdc-fund-contract.mjs'
+import { assertFullCdcEnvironment, assertFullCdcHeaders, assertPrivatePostgresTarget, assertScratchDatabase, createFullCdcReleaseSettle,
+  FULL_CDC_CONNECTOR, FULL_CDC_LOGICAL_NAME, FULL_CDC_LOGIN, FULL_CDC_RELEASE_SETTLE_MS, FULL_CDC_SLOT, fullCdcConnectorReleased, POSTGRES_IMAGE,
+  renderFullCdcBoundary, renderFullCdcConnector, renderFullCdcReleaseQuery } from './fixtures/cdc-fund-contract.mjs'
 import { renderTestConnector } from './cdc-fixture.mjs'
 
 const env = { GITHUB_ACTIONS: 'true', LD_EVENT_STACK_DISPOSABLE: '1', LD_EVENT_STACK_FULL_CDC_FUND: '1',
@@ -186,4 +187,63 @@ test('recovery injects only an old restricted shadow fault and replays unchanged
   assert.match(recovery, /harness\.fixture\("offset", "finance"\), "12"/)
   assert.match(recovery, /assert\.deepEqual\(await snapshot\(\), before\)/)
   assert.match(recovery, /historical_bug_source=NOT_CLAIMED; corrected_new_build_recovery=PASS/)
+})
+
+test('connector release needs every end-state signal: unlisted, 404 status, exact idle slot and no CDC session', () => {
+  const released = { listing: '[]', statusCode: '404', postgres: '1:0' }
+  assert.equal(fullCdcConnectorReleased(released), true)
+  assert.equal(fullCdcConnectorReleased({ ...released, listing: '["some-other-connector"]' }), true)
+  for (const unreleased of [
+    { listing: `["${FULL_CDC_CONNECTOR}"]` }, // tombstone written, herder has not applied it
+    { listing: undefined }, { listing: 'not json' }, { listing: '{}' }, { listing: `"${FULL_CDC_CONNECTOR}"` }, { listing: '[1]' },
+    { statusCode: '200' }, { statusCode: '' }, { statusCode: '000' }, { statusCode: '409' }, { statusCode: '500' },
+    // Exactly the failing runs: slot idle between Debezium's own reconnects,
+    // but the task's JDBC sessions are still on the scratch database.
+    { postgres: '1:2' }, { postgres: '1:1' },
+    { postgres: '0:0' }, // slot missing/foreign/still active: never "released"
+    { postgres: '2:0' }, { postgres: '' }, { postgres: '1:0\n' },
+  ]) assert.equal(fullCdcConnectorReleased({ ...released, ...unreleased }), false, JSON.stringify(unreleased))
+})
+
+test('release settle outlasts Debezium retry delays and any unreleased read starts it over', () => {
+  assert.ok(FULL_CDC_RELEASE_SETTLE_MS > 10_000, 'must exceed slot.retry.delay.ms and retriable.restart.connector.wait.ms (10 s)')
+  // Replay of runs 39393514528/39408291519: the slot looks idle at once, a
+  // retrying task takes the database again, then the real release holds.
+  const settled = createFullCdcReleaseSettle()
+  const reads = [[0, true], [2_000, true], [4_000, true], [5_000, false], [6_000, true], [10_000, true], [17_999, true], [18_000, true]]
+  assert.deepEqual(reads.map(([now, released]) => settled(released, now)), [false, false, false, false, false, false, false, true])
+  const sparse = createFullCdcReleaseSettle()
+  assert.equal(sparse(true, 0), false)
+  assert.equal(sparse(true, 60_000), false, 'two reads are not a held state, however far apart')
+  assert.equal(sparse(true, 60_001), true)
+  const strict = createFullCdcReleaseSettle()
+  assert.equal(strict('true', 0), false); assert.equal(strict(1, 0), false)
+  assert.throws(() => strict(true, Number.NaN))
+  for (const options of [{ settleMs: 0 }, { minReads: 1 }, { settleMs: 1.5 }]) assert.throws(() => createFullCdcReleaseSettle(options))
+})
+
+test('release query reads the exact slot without a walsender and every CDC-login session', () => {
+  const query = renderFullCdcReleaseQuery(database)
+  for (const fragment of [`slot_name='${FULL_CDC_SLOT}'`, "slot_type='logical'", "plugin='pgoutput'", `database='${database}'`,
+    'NOT active AND active_pid IS NULL', `FROM pg_stat_activity WHERE usename='${FULL_CDC_LOGIN}')`]) assert.ok(query.includes(fragment), fragment)
+  assert.doesNotMatch(query, /datname|pg_terminate_backend|pg_drop/)
+  assert.equal(template.config['database.user'], FULL_CDC_LOGIN)
+  for (const name of ['production', 'event_platform_test', `${database}' OR true --`]) assert.throws(() => renderFullCdcReleaseQuery(name))
+})
+
+test('owned cleanup drops the slot and database only after the held release, and still fails on any leak', () => {
+  const cleanup = source.slice(source.indexOf('  finally {'), source.indexOf('void main()'))
+  const order = ['compose(["start", "connect"])', 'names.includes(FULL_CDC_CONNECTOR)', 'connect(`/connectors/${FULL_CDC_CONNECTOR}`, "DELETE")',
+    'createFullCdcReleaseSettle()', 'fullCdcConnectorReleased({ listing: connectorListing(), statusCode: connectorStatusCode(),',
+    'renderFullCdcReleaseQuery(scratchDatabase)', 'pg_drop_replication_slot(', 'await db.close()', 'await closeProxy(proxy.child)',
+    'assert.equal(cleanupErrors.length, 0, "full CDC owned cleanup failed; outer disposable project teardown remains required")']
+  const positions = order.map(fragment => cleanup.indexOf(fragment))
+  assert.ok(positions.every((position, index) => position > 0 && (index === 0 || position > positions[index - 1])), JSON.stringify(positions))
+  // 404 must be readable as evidence, so the status probe alone omits --fail.
+  assert.match(source, /"--write-out", "%\{http_code\}", `http:\/\/connect:8083\/connectors\/\$\{FULL_CDC_CONNECTOR\}\/status`/)
+  assert.doesNotMatch(source, /"exact inactive slot"|SELECT active::text/)
+  // The fixture alone drops its database, without FORCE; nothing is terminated.
+  assert.doesNotMatch(source, /pg_terminate_backend|pg_cancel_backend|\(FORCE\)|DROP DATABASE\s+["'`$]|IF EXISTS/)
+  assert.match(cleanup, /console\.error\(`full_cdc_fund_cleanup_failed=\$\{failedCleanup\.join\(";"\)\}`\)/)
+  assert.doesNotMatch(cleanup, /console\.(?:log|error)\([^\n]*(?:error\.message|String\(error|JSON\.stringify\(error)/)
 })
