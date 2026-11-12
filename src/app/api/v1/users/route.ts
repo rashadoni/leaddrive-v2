@@ -11,7 +11,7 @@ import { moduleDisabledResponse, orgHasModule } from "@/lib/api-auth"
 import { passwordPolicyError } from "@/lib/password-policy"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
 import { USER_ADMIN_SELECT, USER_ROSTER_SELECT } from "@/lib/user-directory-projection"
-import { parseHiddenModulesInput } from "@/lib/user-module-access"
+import { effectiveHiddenChannels, parseHiddenModulesInput } from "@/lib/user-module-access"
 import { effectiveSettingsSections, normalizeSettingsSections } from "@/lib/settings-sections"
 
 const MAX_CREATE_USER_BODY_SIZE = 32 * 1024
@@ -40,6 +40,10 @@ const createUserSchema = z.object({
   hiddenModules: z.array(z.string().max(50)).max(50).optional(),
   // Sections of Settings handed to this person without the admin role (lib/settings-sections).
   settingsSections: z.array(z.string().max(50)).max(20).optional(),
+  // Inbox numbers and pages hidden from this person (lib/inbox/channel-access) — the same ticks the
+  // edit form sends. Missing here until 2026-11-12, so «İstifadəçi əlavə et» with those ticks failed
+  // with «Unrecognized key: hiddenChannelConfigIds» (Zeytun, Togrul).
+  hiddenChannelConfigIds: z.array(z.string().min(1).max(64)).max(200).optional(),
 }).strict()
 
 // Reading the team roster is `users:read`, not `settings:read`. The two are
@@ -123,6 +127,7 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
       preferredLanguage,
       hiddenModules,
       settingsSections,
+      hiddenChannelConfigIds,
     } = parsed.data
 
     const passwordError = passwordPolicyError(password)
@@ -170,6 +175,16 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
     }
     const resolvedSettingsSections = effectiveSettingsSections(resolvedRole, requestedSections)
 
+    // Only this organization's own channels; an admin is never narrowed (as on edit).
+    const requestedChannels = Array.from(new Set(hiddenChannelConfigIds ?? [])).sort()
+    if (requestedChannels.length > 0) {
+      const known = await prisma.channelConfig.count({ where: { organizationId: orgId, id: { in: requestedChannels } } })
+      if (known !== requestedChannels.length) {
+        return NextResponse.json({ error: "Unknown channel in hiddenChannelConfigIds" }, { status: 400 })
+      }
+    }
+    const resolvedHiddenChannels = effectiveHiddenChannels(resolvedRole, requestedChannels)
+
     const passwordHash = await bcrypt.hash(password, 12)
 
     const user = await prisma.user.create({
@@ -187,9 +202,10 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
         preferredLanguage: preferredLanguage || null,
         ...(resolvedHiddenModules.length > 0 ? { hiddenModules: resolvedHiddenModules } : {}),
         ...(resolvedSettingsSections.length > 0 ? { settingsSections: resolvedSettingsSections } : {}),
+        ...(resolvedHiddenChannels.length > 0 ? { hiddenChannelConfigIds: resolvedHiddenChannels } : {}),
       },
       select: {
-        id: true, name: true, email: true, role: true, hiddenModules: true, settingsSections: true,
+        id: true, name: true, email: true, role: true, hiddenModules: true, hiddenChannelConfigIds: true, settingsSections: true,
         phone: true, department: true, isActive: true, createdAt: true,
       },
     })
@@ -202,6 +218,7 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
         role: user.role,
         isActive: user.isActive,
         hiddenModules: user.hiddenModules,
+        hiddenChannelConfigIds: user.hiddenChannelConfigIds,
         settingsSections: user.settingsSections,
       },
     })
