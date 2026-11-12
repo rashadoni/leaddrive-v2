@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 
-import { RECORD_TYPE_NAMES, RECORD_TYPES, recordFromPath, recordRoute } from "@/lib/ai/voice/record-types"
+import {
+  RECORD_TYPE_NAMES,
+  recordDescriptor,
+  recordFromPath,
+  recordRoute,
+} from "@/lib/ai/voice/record-types"
 import {
   isVoiceProposeToolName,
   VOICE_PROPOSE_TOOL_NAMES,
@@ -18,14 +23,15 @@ describe("which record the screen is showing", () => {
     for (const type of RECORD_TYPE_NAMES) {
       const path = recordRoute(type, "abc123def")
       expect(path, type).not.toBeNull()
-      if (RECORD_TYPES[type].param) {
+      const descriptor = recordDescriptor(type)
+      if (descriptor.param) {
         // Встреча открывается параметром над общим экраном дня
         // (`/meetings?booking=…`), своей страницы у неё нет. Значит и обратно
         // по одному пути она не узнаётся: консоль передаёт `usePathname()`,
         // где строки запроса нет. Принять `/meetings` за какую-то одну встречу
         // было бы хуже — правка ушла бы в чужую запись.
-        expect(path, type).toBe(`${RECORD_TYPES[type].route}?${RECORD_TYPES[type].param}=abc123def`)
-        expect(recordFromPath(RECORD_TYPES[type].route), type).toBeNull()
+        expect(path, type).toBe(`${descriptor.route}?${descriptor.param}=abc123def`)
+        expect(recordFromPath(descriptor.route), type).toBeNull()
         continue
       }
       expect(recordFromPath(path as string), type).toEqual({ type, id: "abc123def" })

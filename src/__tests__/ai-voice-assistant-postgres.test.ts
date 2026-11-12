@@ -49,6 +49,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest } from "next/server"
+import type { Role } from "@/lib/permissions"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 const adminUrl = process.env.AI_VOICE_ASSISTANT_TEST_DATABASE_URL
@@ -77,9 +78,9 @@ const USER = "user-voice-lifecycle"
 const auth = vi.hoisted(() => ({
   orgId: "org-voice-lifecycle",
   userId: "user-voice-lifecycle",
-  // Литерал, а не string: `AuthResult.role` — это Role, и команды исполнения
-  // принимают личность целиком.
-  role: "admin" as const,
+  // Тип Role, а не string и не литерал: команды исполнения принимают личность
+  // целиком, а сценарии доступа переключают роль в пределах того же типа.
+  role: "admin" as Role,
   email: "owner@example.com",
   name: "Owner",
   // Человек за браузером, как его помечает requireSessionAuth: голосовой
@@ -3495,7 +3496,7 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
       // Разговор у него свой: сессия принадлежит своему человеку, и чужую
       // маршрут не примет вовсе (409) — как и должно быть.
       const ownerSession = session
-      auth.role = "manager" as typeof auth.role
+      auth.role = "manager"
       auth.userId = "user-colleague"
       session = await startConversation({ userId: "user-colleague" })
       try {
@@ -3523,7 +3524,7 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
         expect(granted.total).toBe(3)
         expect(granted.scope).toBe("own_and_granted")
       } finally {
-        auth.role = "admin" as typeof auth.role
+        auth.role = "admin"
         auth.userId = USER
         session = ownerSession
         await bypass(() => prisma.bookingCoordinatorGrant.deleteMany({ where: { organizationId: ORG } }))
@@ -3565,14 +3566,14 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
 
     it("кто не оператор встреч — слышит отказ, а не пустой день", async () => {
       await makeBookings()
-      auth.role = "viewer" as typeof auth.role
+      auth.role = "viewer"
       try {
         // «Записей нет» и «вам их не слышно» — разные ответы; второй честный.
         expect((await summary("today")).error).toBe("ACCESS_SCOPE_UNAVAILABLE")
         const found = await ask("find_record", { type: "booking", query: "Könül" })
         expect((found.body as { data: { error?: string } }).data.error).toBe("ACCESS_SCOPE_UNAVAILABLE")
       } finally {
-        auth.role = "admin" as typeof auth.role
+        auth.role = "admin"
       }
     })
 

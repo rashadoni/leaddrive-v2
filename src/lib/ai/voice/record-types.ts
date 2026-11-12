@@ -127,8 +127,19 @@ export const NOT_OPENABLE: Record<string, "internal" | "config" | "nested" | "pe
   "voip/call-queues/[id]": "internal",
 }
 
+/**
+ * Тот же список, но типом `RecordDescriptor`.
+ *
+ * `satisfies` выше оставляет каждой записи её литеральный тип, и у тех, где
+ * `param` не написан, этого свойства в типе нет вовсе — читать его у
+ * объединения нельзя. Через эту функцию оно читается у всех одинаково.
+ */
+export function recordDescriptor(type: VoiceRecordType): RecordDescriptor {
+  return RECORD_TYPES[type]
+}
+
 export function recordRoute(type: string, id: string): string | null {
-  const d = RECORD_TYPES[type as VoiceRecordType]
+  const d = RECORD_TYPES[type as VoiceRecordType] as RecordDescriptor | undefined
   if (!d) return null
   return d.param
     ? `${d.route}?${d.param}=${encodeURIComponent(id)}`
@@ -152,7 +163,7 @@ export function recordFromPath(
     // консоль передаёт `usePathname()`, где строки запроса нет вовсе. Значит
     // «та, что открыта на экране» для встреч пока не работает — и это лучше,
     // чем принять `/meetings` за какую-то одну встречу.
-    if (RECORD_TYPES[type].param) continue
+    if (recordDescriptor(type).param) continue
     const prefix = `${RECORD_TYPES[type].route}/`
     if (!pathname.startsWith(prefix)) continue
     const rest = pathname.slice(prefix.length)
