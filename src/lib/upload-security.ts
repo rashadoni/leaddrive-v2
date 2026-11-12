@@ -63,6 +63,26 @@ export function validateUploadBytes(mimeType: string, bytes: Uint8Array): string
       ? null
       : "File content is not a valid legacy Office document"
   }
+  // Task files since 2026-11-12: the marketing team's videos and design sources.
+  if (normalized === "video/mp4" || normalized === "video/quicktime") {
+    // ISO media: the first box's type sits at bytes 4..8.
+    const box = String.fromCharCode(...bytes.subarray(4, 8))
+    return ["ftyp", "moov", "mdat", "free", "wide", "skip", "pnot"].includes(box) ? null : "File content is not a valid video"
+  }
+  if (normalized === "application/vnd.corel-draw") {
+    // CorelDraw up to X3 is a RIFF «CDR?» file, X4 and later a ZIP package.
+    const riffCdr = startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes.subarray(8), [0x43, 0x44, 0x52])
+    return riffCdr || hasZipSignature(bytes) ? null : "File content is not a valid CorelDraw file"
+  }
+  if (normalized === "image/vnd.adobe.photoshop") {
+    return startsWith(bytes, [0x38, 0x42, 0x50, 0x53]) ? null : "File content is not a valid Photoshop file"
+  }
+  if (normalized === "application/rtf") {
+    return startsWith(bytes, [0x7b, 0x5c, 0x72, 0x74, 0x66]) ? null : "File content is not a valid RTF document"
+  }
+  if (normalized === "message/rfc822") {
+    return looksLikeText(bytes) ? null : "An e-mail file cannot contain binary data"
+  }
   if (normalized === "text/plain" || normalized === "text/csv") {
     return looksLikeText(bytes) ? null : "Text documents cannot contain binary data"
   }

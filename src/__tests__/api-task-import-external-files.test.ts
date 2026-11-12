@@ -87,7 +87,7 @@ describe("POST /api/v1/tasks/import-external/files", () => {
   })
 
   it("refuses what it may not keep, and writes nothing for it", async () => {
-    state.served[link(3)] = { status: 200, body: Buffer.alloc(16), length: 11 * 1024 * 1024 }
+    state.served[link(3)] = { status: 200, body: Buffer.alloc(16), length: 101 * 1024 * 1024 }
     state.served[link(4)] = { status: 200, body: Buffer.from("not a png at all") }
     state.served[link(5)] = { status: 404, body: Buffer.alloc(0) }
     state.served[link(6)] = "throw"
@@ -96,7 +96,7 @@ describe("POST /api/v1/tasks/import-external/files", () => {
       { externalId: "b2", name: "fake.png", url: link(4) },
       { externalId: "b2", name: "gone.png", url: link(5) },
       { externalId: "b2", name: "net.png", url: link(6) },
-      { externalId: "b2", name: "clip.mp4", url: link(3) },
+      { externalId: "b2", name: "clip.webm", url: link(3) },
     ] })
     const outcomes = (await res.json()).data.results.map((r: { outcome: string }) => r.outcome)
     expect(outcomes).toEqual(["too_big", "content", "fetch", "fetch", "type"])
@@ -111,5 +111,27 @@ describe("POST /api/v1/tasks/import-external/files", () => {
     state.role = "manager"
     expect((await post({ source: "bordio", items: [{ externalId: "b2", name: "a.png", url: link(1) }] })).status).toBe(403)
     expect(state.fetched).toEqual([])
+  })
+
+  // Owner, 2026-11-12: «Да, разрешить» — the reels, brand books and CorelDraw sources left behind at 10 MB.
+  it("keeps the marketing team's videos and design sources, up to 100 MB", async () => {
+    const mp4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from("ftypmp42"), Buffer.alloc(12 * 1024 * 1024)])
+    const cdr = Buffer.concat([Buffer.from("RIFF"), Buffer.from([1, 2, 3, 4]), Buffer.from("CDRvvrsn"), Buffer.alloc(8)])
+    const psd = Buffer.concat([Buffer.from("8BPS"), Buffer.alloc(20)])
+    state.served[link(7)] = { status: 200, body: mp4 }
+    state.served[link(8)] = { status: 200, body: cdr }
+    state.served[link(9)] = { status: 200, body: psd }
+    const res = await post({ source: "bordio", items: [
+      { externalId: "b2", name: "Sima Noreva Oktyabr.mp4", url: link(7) },
+      { externalId: "b2", name: "banner.cdr", url: link(8) },
+      { externalId: "b2", name: "afişa.psd", url: link(9) },
+    ] })
+    expect((await res.json()).data.counts).toEqual({ ok: 3 })
+    // Stored in parallel: compare in name order.
+    expect(state.rows.map((r) => [r.originalName, r.mimeType, r.fileSize]).sort()).toEqual([
+      ["Sima Noreva Oktyabr.mp4", "video/mp4", mp4.length],
+      ["afişa.psd", "image/vnd.adobe.photoshop", psd.length],
+      ["banner.cdr", "application/vnd.corel-draw", cdr.length],
+    ].sort())
   })
 })
