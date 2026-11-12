@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { auth } from "@/lib/auth"
+import { proxyDefersSessionRefresh, withSessionRefreshDeferred } from "@/lib/auth-refresh-scope"
 // Plan gating disabled — import kept for reference
 // import { canAccessModule } from "@/lib/plan-config"
 import { checkRateLimit, RATE_LIMIT_CONFIG, hashForRateLimit } from "@/lib/rate-limit"
@@ -1182,9 +1183,17 @@ const authMiddleware = auth(async (req) => {
     false,
     !pathname.startsWith("/api/"),
   )
-}) as unknown as (req: NextRequest) => NextResponse
+}) as unknown as (req: NextRequest, ...rest: unknown[]) => NextResponse
 
-export default authMiddleware
+/**
+ * API calls resolve the session from the cookie here and leave the database refresh to the route,
+ * which runs it anyway (lib/auth-refresh-scope). Pages and auth endpoints keep the full refresh.
+ */
+export default function proxy(req: NextRequest, ...rest: unknown[]) {
+  return proxyDefersSessionRefresh(req.nextUrl.pathname)
+    ? withSessionRefreshDeferred(() => authMiddleware(req, ...rest))
+    : authMiddleware(req, ...rest)
+}
 
 export const config = {
   // Only concrete public asset namespaces and exact root assets bypass the

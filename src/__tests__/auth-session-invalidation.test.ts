@@ -442,3 +442,41 @@ describe("Auth.js password-session invalidation", () => {
     expect(refreshed).toBeNull()
   })
 })
+
+/**
+ * The proxy resolving an API call defers the database refresh to the route, which resolves the
+ * session again (lib/auth-refresh-scope; 2026-11-12, ~80 ms of database work per API request saved).
+ * Outside that scope the refresh — and every refusal — is exactly as before.
+ */
+describe("session refresh deferred to the route for API calls", () => {
+  const existing = () => ({ token: { sub: USER.id, role: USER.role, organizationId: USER.organizationId, sessionFingerprint: authorizedFingerprint() }, user: undefined })
+
+  it("inside the proxy's API scope the cookie's claims pass without a database read", async () => {
+    const { withSessionRefreshDeferred } = await import("@/lib/auth-refresh-scope")
+    const token = await withSessionRefreshDeferred(() => jwtCallback()(existing()))
+    expect(token).toMatchObject({ sub: USER.id, role: USER.role })
+    expect(prismaMock.user.findUnique).not.toHaveBeenCalled()
+    expect(readLegacyCrmCredentialBoundary).not.toHaveBeenCalled()
+  })
+
+  it("the route's own resolution still refuses a deactivated person on the next request", async () => {
+    prismaMock.user.findUnique.mockResolvedValue({ ...USER, isActive: false })
+    expect(await jwtCallback()(existing())).toBeNull()
+    expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1)
+  })
+
+  it("a session update is never deferred", async () => {
+    const { withSessionRefreshDeferred } = await import("@/lib/auth-refresh-scope")
+    await withSessionRefreshDeferred(() => jwtCallback()({ ...existing(), trigger: "update", session: { name: "X" } }))
+    expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1)
+  })
+
+  it("the proxy defers only for API calls, never for pages or the auth endpoints", async () => {
+    const { proxyDefersSessionRefresh } = await import("@/lib/auth-refresh-scope")
+    expect(proxyDefersSessionRefresh("/api/v1/task-types")).toBe(true)
+    expect(proxyDefersSessionRefresh("/api/v1/notifications")).toBe(true)
+    for (const path of ["/dashboard", "/boards/x", "/api/auth/session", "/api/auth/callback/credentials", "/api/v1/auth/2fa/verify", "/api/v1/auth"]) {
+      expect(proxyDefersSessionRefresh(path)).toBe(false)
+    }
+  })
+})
