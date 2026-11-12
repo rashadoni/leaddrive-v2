@@ -45,7 +45,7 @@ interface PanelTask {
   recurrenceRule: string | null
   customFields: Record<string, unknown> | null
   checklist: Subtask[]
-  attachments: { id: string; fileName: string; originalName: string }[]
+  attachments: { id: string; fileName: string; originalName: string; mimeType?: string | null }[]
   createdAt: string
 }
 interface TimeSummary { totalMinutes: number; running: { startedAt: string } | null }
@@ -198,6 +198,14 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
     }).catch(() => null)
     if (res?.ok) setTime((await res.json()).data)
     else setError(t("saveFailed"))
+    reload()
+  }
+
+  const [removing, setRemoving] = useState<string | null>(null)
+  const removeFile = async (fileId: string) => {
+    setRemoving(null)
+    const res = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/files?fileId=${encodeURIComponent(fileId)}`, { method: "DELETE", credentials: "include" }).catch(() => null)
+    if (!res?.ok) setError(t("saveFailed"))
     reload()
   }
 
@@ -423,7 +431,15 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                   <h3 className="mb-2 text-sm font-semibold">{t("files")}</h3>
                   <ul className="flex flex-col gap-1">
                     {task.attachments.map((file) => (
-                      <li key={file.id}><a href={`/uploads/tasks/${file.fileName}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm hover:underline"><Paperclip className="h-3.5 w-3.5" />{file.originalName}</a></li>
+                      <li key={file.id} className="group flex items-center gap-2" data-testid="task-file">
+                        <a href={`/uploads/tasks/${file.fileName}`} target="_blank" rel="noreferrer" className="inline-flex min-w-0 items-center gap-1.5 text-sm hover:underline"><Paperclip className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{file.originalName}</span></a>
+                        {/* Zeytun, 2026-11-12: «əlavə olunanları da silmək olmur» — a file is removed in two clicks. */}
+                        {canEdit && (removing === file.id ? (
+                          <button type="button" data-crm-button="" onClick={() => void removeFile(file.id)} className="shrink-0 rounded-md border border-destructive px-2 py-0.5 text-xs text-destructive" data-testid="task-file-remove-confirm">{t("confirmRemoveFile")}</button>
+                        ) : (
+                          <button type="button" aria-label={`${t("removeFile")}: ${file.originalName}`} title={t("removeFile")} onClick={() => setRemoving(file.id)} className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive" data-testid="task-file-remove"><Trash2 className="h-3.5 w-3.5" /></button>
+                        ))}
+                      </li>
                     ))}
                   </ul>
                 </section>
@@ -437,7 +453,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
             </div>
 
             <div className="min-h-0">
-              <TaskPanelFeed taskId={task.id} people={people4mention} statusLabel={statusLabel} reloadKey={reloadKey} />
+              <TaskPanelFeed taskId={task.id} people={people4mention} statusLabel={statusLabel} reloadKey={reloadKey} files={task.attachments} canAttach={canEdit} onChanged={() => { reload(); onMutated() }} />
             </div>
           </div>
         )}

@@ -33112,6 +33112,8 @@
     "nobody": "—",
     "remove": "Sil",
     "attach": "Fayl",
+    "removeFile": "Faylı sil",
+    "confirmRemoveFile": "Silinsin?",
     "startTimer": "Taymer",
     "stopTimer": "Dayandır",
     "logTime": "Vaxt yaz",
@@ -33168,6 +33170,7 @@
       "subtaskDone": "{name} alt tapşırığı bağladı: {to}",
       "subtaskReopened": "{name} alt tapşırığı yenidən açdı: {to}",
       "board": "{name} tapşırığı köçürdü: {to}",
+      "fileRemoved": "{name} faylı sildi: {file}",
       "other": "{name}: {action}"
     }
   },

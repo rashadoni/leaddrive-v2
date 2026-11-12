@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { withRlsAuth } from "@/lib/with-rls"
-import { writeFile, mkdir } from "fs/promises"
+import { writeFile, mkdir, unlink } from "fs/promises"
 import path from "path"
 import crypto from "crypto"
 import { validateUploadBytes } from "@/lib/upload-security"
@@ -105,3 +105,34 @@ export const POST = withRlsAuth("tasks", "write", async (req, auth, { params }: 
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 })
+
+/**
+ * Remove one file of the task (Zeytun, 2026-11-12: «əlavə olunanları da silmək
+ * olmur»). Whoever may add a file to the task may remove one — the same right
+ * as the upload above. The row goes in any case; the bytes on disk follow, and
+ * a file already missing there is not an error.
+ */
+export const DELETE = withRlsAuth("tasks", "write", async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
+  const { id } = await params
+  const fileId = new URL(req.url).searchParams.get("fileId")
+  if (!fileId) return NextResponse.json({ error: "fileId is required" }, { status: 400 })
+  try {
+    const task = await prisma.task.findFirst({ where: { id, organizationId: auth.orgId, deletedAt: null }, select: { id: true } })
+    if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 })
+    const file = await prisma.taskAttachment.findFirst({ where: { id: fileId, taskId: id, organizationId: auth.orgId } })
+    if (!file) return NextResponse.json({ error: "File not found" }, { status: 404 })
+    await prisma.taskAttachment.delete({ where: { id: file.id } })
+    // The stored name is ours (32 hex + a whitelisted extension), never a path.
+    if (/^[0-9a-f]{32}\.[a-z0-9]{1,5}$/u.test(file.fileName)) {
+      await unlink(path.join(runtimePublicUploadDirectory("tasks"), file.fileName)).catch(() => {})
+    }
+    await prisma.taskActivity.create({
+      data: { organizationId: auth.orgId, taskId: id, userId: auth.userId, action: "file_removed", oldValue: file.originalName },
+    }).catch(() => {})
+    return NextResponse.json({ success: true })
+  } catch (e) {
+    console.error("[task-files DELETE]", e)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+})
+
