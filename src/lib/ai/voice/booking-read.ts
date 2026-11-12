@@ -70,11 +70,18 @@ export type VoiceBookingPrincipal = Readonly<{
  */
 export async function voiceBookingAccess(
   principal: VoiceBookingPrincipal,
+  /**
+   * Читать пределы доступа ТОЙ ЖЕ транзакцией, если вызывающий её открыл:
+   * через глобальный клиент внутри чужой интерактивной транзакции FORCE RLS
+   * молча отдаёт 0 строк, и координатор потерял бы доверенности, которые у
+   * него есть.
+   */
+  db: Pick<typeof prisma, "bookingCoordinatorGrant"> = prisma,
 ): Promise<BookingAccess | null> {
   if (!principal.userId) return null
   if (!isBookingOperator(principal.role, principal.principalType ?? "")) return null
   const administrator = principal.role === "admin" || principal.role === "superadmin"
-  const grants = administrator ? [] : await prisma.bookingCoordinatorGrant.findMany({
+  const grants = administrator ? [] : await db.bookingCoordinatorGrant.findMany({
     where: { organizationId: principal.orgId, coordinatorUserId: principal.userId },
     select: { hostUserId: true, canManage: true },
   }) as { hostUserId: string; canManage: boolean }[]
@@ -136,13 +143,20 @@ export async function findVoiceBookings(
   query: string,
   timezone: string,
   limit = 5,
+  /**
+   * Искать среди записей, которые этот человек может ВЕСТИ, а не только
+   * слышать. Нужно подготовке действия: координатор с доверенностью только на
+   * чтение видит день мастера, но отменять в нём нечего — и сказать об этом
+   * надо вопросом «какую запись?», а не отказом цели после квитанции.
+   */
+  write = false,
 ): Promise<VoiceBookingMatch[]> {
   const q = query.trim().slice(0, 80)
   if (q.length < 2) return []
   const rows = await prisma.booking.findMany({
     where: {
       AND: [
-        bookingScope(access),
+        bookingScope(access, write),
         { OR: [{ name: { contains: q, mode: "insensitive" } }, { phone: { contains: q } }] },
       ],
     },

@@ -22,7 +22,7 @@ describe("AI voice action registry", () => {
   // a decision, so it stays pinned.
   // Thirty-three since 2026-11-10: a pharmacy phone order — a line changed,
   // added or removed, the order confirmed (to 1C) or rejected (owner: этап 5).
-  it("is a closed thirty-three-action allowlist with no executable callback", () => {
+  it("is a closed thirty-six-action allowlist with no executable callback", () => {
     expect(AI_VOICE_ACTION_TYPES).toEqual([
       "create_task",
       "create_lead",
@@ -52,6 +52,9 @@ describe("AI voice action registry", () => {
       "add_ticket_note",
       "reply_to_ticket",
       "update_ticket",
+      "cancel_booking",
+      "set_booking_outcome",
+      "set_booking_deposit",
       "update_phone_order_line",
       "add_phone_order_line",
       "remove_phone_order_line",

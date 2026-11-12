@@ -201,6 +201,7 @@ type Receipt = {
   state: string
   supersededIntentId?: string
   unchangedFields?: string[]
+  target?: { entityType: string; id: string; label?: string }
   warnings?: unknown
   preview: { fields?: { key: string; after: unknown }[] }
 }
@@ -412,6 +413,13 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
       ["db", "push", "--schema", schemaWithoutEmbeddings(), "--skip-generate", "--accept-data-loss"],
       { ...process.env, DATABASE_URL: scratch!.url },
     )
+    // `db push` ставит значения по умолчанию УРОВНЯ PRISMA, а неизменяемый
+    // журнал событий (его пишут действия над встречей) вставляет строку сырым
+    // SQL без `id` — в настоящей базе его подставляет значение по умолчанию из
+    // миграции. Без этой строки первое же действие падает на NOT NULL
+    // (23502). Так же это делают остальные наборы по встречам.
+    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env,
+      `ALTER TABLE "event_aggregate_heads" ALTER COLUMN "id" SET DEFAULT gen_random_uuid();`)
 
     prisma = (await import("@/lib/prisma")).prisma
     const rls = await import("@/lib/rls-context")
@@ -3585,6 +3593,278 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
         expect(answer.body).toEqual({ data: { error: "MODULE_NOT_ENABLED", module: "booking" } })
       } finally {
         modulesOff.delete("booking")
+      }
+    })
+  })
+
+  /**
+   * Три действия над бронью голосом: отменить, отметить итог, отметить депозит.
+   *
+   * Своей логики у голоса здесь нет — всё делает `runBookingCommand`, та же
+   * команда, что за кнопками в панели: версия записи, блокировки, журнал,
+   * задание на письмо клиенту и собственная память о повторе. Проверяется
+   * поэтому не «что мы отправили», а что СТАЛО с записью на живой базе.
+   *
+   * Переноса и создания здесь нет намеренно: им нужна свежая (15 с) проверка
+   * занятости с внешним календарём, то есть сетевой вызов до восьми секунд, а
+   * держать на нём открытую транзакцию голоса с захваченными строками нельзя.
+   */
+  describe("сценарий: запись отменили, отметили и закрыли депозит", () => {
+    const TZ = "Asia/Baku"
+    const PAGE = "booking-page-actions"
+    let soon!: Date
+    let past!: Date
+    let futureId!: string
+    let pastId!: string
+    let seq = 0
+
+    /**
+     * Свежие записи с НОВЫМИ идентификаторами на каждый тест.
+     *
+     * Неизменяемый журнал событий считает версию по идентификатору записи и
+     * переживает её удаление: пересоздай бронь с тем же id — и первая же
+     * команда упрётся в версию прошлого теста. В проде идентификатор записи
+     * не переиспользуется, поэтому так и здесь.
+     */
+    async function salon() {
+      seq += 1
+      futureId = `booking-act-future-${seq}`
+      pastId = `booking-act-past-${seq}`
+      soon = new Date(Date.now() + 3 * 86_400_000)
+      past = new Date(Date.now() - 2 * 86_400_000)
+      await bypass(async () => {
+        await prisma.user.update({ where: { id: USER }, data: { timezone: TZ } })
+        if (!(await prisma.bookingPage.findFirst({ where: { id: PAGE } }))) {
+          await prisma.bookingPage.create({
+            data: {
+              id: PAGE,
+              organizationId: ORG,
+              slug: "actions-salon",
+              title: "Bərpa",
+              weekly: {},
+              durationMinutes: 60,
+              hostIds: [USER],
+            },
+          })
+        }
+        await prisma.booking.deleteMany({ where: { organizationId: ORG, bookingPageId: PAGE } })
+        await prisma.booking.createMany({
+          data: [
+            {
+              id: futureId,
+              organizationId: ORG,
+              bookingPageId: PAGE,
+              hostUserId: USER,
+              startsAt: soon,
+              endsAt: new Date(soon.getTime() + 3_600_000),
+              name: "Nərmin Quliyeva",
+              phone: "+994501230001",
+              status: "confirmed",
+              cancelTokenHash: "hash-act-1",
+              depositAmount: "50",
+              depositStatus: "awaiting",
+            },
+            {
+              id: pastId,
+              organizationId: ORG,
+              bookingPageId: PAGE,
+              hostUserId: USER,
+              startsAt: past,
+              endsAt: new Date(past.getTime() + 3_600_000),
+              name: "Aysel Kərimova",
+              phone: "+994501230002",
+              status: "confirmed",
+              cancelTokenHash: "hash-act-2",
+            },
+          ],
+        })
+      })
+    }
+
+    const booking = async (id: string) =>
+      bypass(() => prisma.booking.findFirstOrThrow({ where: { id } }))
+
+    it("«отмени запись» называет её в квитанции, отменяет и сообщает клиенту", async () => {
+      await salon()
+      const draft = await propose("propose_cancel_booking", {
+        clientName: "Nərmin",
+        reason: "Müştəri xəstələndi",
+      })
+      expect(draft.status).toBe(201)
+      const receipt = draft.body.data!
+      // Человек должен видеть, КАКУЮ запись отменяет: имя клиента и час.
+      expect(receipt.target?.entityType).toBe("booking")
+      expect(receipt.target?.id).toBe(futureId)
+
+      // Отмена уходит клиенту, поэтому голосовое «да» её не подтверждает.
+      const { voiceMayConfirm, voiceProposalNeedsButton } =
+        await import("@/lib/ai/voice/voice-confirmation")
+      expect(voiceMayConfirm("cancel_booking", ["reason"])).toBe(false)
+      expect(voiceProposalNeedsButton("propose_cancel_booking", { clientName: "Nərmin" })).toBe(true)
+
+      expect((await pressCreate(receipt)).status).toBe(200)
+      const after = await booking(futureId)
+      expect(after.status).toBe("cancelled")
+      expect(after.cancellationReason).toBe("Müştəri xəstələndi")
+      expect(after.cancelledAt).not.toBeNull()
+      // Клиенту уходит задание на письмо — его ставит сама команда.
+      expect(await bypass(() => prisma.effectOutbox.count({
+        where: { organizationId: ORG, effectType: { startsWith: "booking." } },
+      }))).toBeGreaterThan(0)
+    })
+
+    it("чужая правка не даёт отменить вслепую, а отменённую — не отменить снова", async () => {
+      await salon()
+      const first = (await propose("propose_cancel_booking", { clientName: "Nərmin" })).body.data!
+      // Пока квитанция висела, запись изменил кто-то другой.
+      await bypass(() => prisma.booking.update({
+        where: { id: futureId },
+        data: { note: "менеджер дописал заметку" },
+      }))
+      const pressed = await pressCreate(first)
+      // Отказ ИМЕННО по изменившейся записи, а не «как-нибудь»: иначе тест
+      // зеленел бы и на отказе по другой причине. Названо на доказательстве —
+      // снятые проверки версии друг друга подменяют (их три: время записи в
+      // квитанции, доступ к цели при повторе и версия в самой команде), и
+      // закреплён здесь ИТОГ: вслепую отмены не происходит.
+      expect(pressed.step).toBe("proof")
+      expect(pressed.status).toBe(409)
+      expect(pressed.body.code).toBe("STALE_TARGET")
+      expect((await booking(futureId)).status).toBe("confirmed")
+
+      // Новая квитанция считается от живой версии и проходит.
+      const again = (await propose("propose_cancel_booking", { clientName: "Nərmin" })).body.data!
+      expect((await pressCreate(again)).status).toBe(200)
+      expect((await booking(futureId)).status).toBe("cancelled")
+
+      // Отменённую отменять нечего: отметка времени отмены не переписывается.
+      const cancelledAt = (await booking(futureId)).cancelledAt?.toISOString()
+      const third = await propose("propose_cancel_booking", { clientName: "Nərmin" })
+      if (third.status === 201) await pressCreate(third.body.data!)
+      const final = await booking(futureId)
+      expect(final.status).toBe("cancelled")
+      expect(final.cancelledAt?.toISOString()).toBe(cancelledAt)
+    })
+
+    it("«пришёл» и «не пришёл» ставятся только на прошедшую запись", async () => {
+      await salon()
+      // Будущую отметить нельзя: команда отказывает, в CRM ничего.
+      const early = await propose("propose_set_booking_outcome", {
+        clientName: "Nərmin",
+        outcome: "completed",
+      })
+      expect(early.status).toBe(201)
+      const refused = await pressCreate(early.body.data!)
+      expect(refused.status).not.toBe(200)
+      expect((await booking(futureId)).status).toBe("confirmed")
+
+      // Прошедшую — можно.
+      const done = await propose("propose_set_booking_outcome", {
+        clientName: "Aysel",
+        outcome: "completed",
+        note: "Hər şey yaxşı keçdi",
+      })
+      expect(done.status).toBe(201)
+      expect((await pressCreate(done.body.data!)).status).toBe(200)
+      const after = await booking(pastId)
+      expect(after.status).toBe("completed")
+      expect(after.outcomeNote).toBe("Hər şey yaxşı keçdi")
+    })
+
+    it("депозит отмечается один раз: «пришли» — да, «пришли» второй раз — нет", async () => {
+      await salon()
+      const paid = await propose("propose_set_booking_deposit", {
+        clientName: "Nərmin",
+        deposit: "paid",
+      })
+      expect(paid.status).toBe(201)
+      expect((await pressCreate(paid.body.data!)).status).toBe(200)
+      const after = await booking(futureId)
+      expect(after.depositStatus).toBe("paid")
+      expect(after.depositPaidAt).not.toBeNull()
+
+      // Второй раз «пришли» — это не перезапись денег, а отказ.
+      const twice = await propose("propose_set_booking_deposit", {
+        clientName: "Nərmin",
+        deposit: "paid",
+      })
+      expect(twice.status).toBe(201)
+      expect((await pressCreate(twice.body.data!)).status).not.toBe(200)
+      expect((await booking(futureId)).depositPaidAt?.toISOString())
+        .toBe(after.depositPaidAt?.toISOString())
+    })
+
+    it("двух записей одного клиента помощник не путает, а спрашивает", async () => {
+      await salon()
+      await bypass(() => prisma.booking.create({
+        data: {
+          id: `booking-act-second-${seq}`,
+          organizationId: ORG,
+          bookingPageId: PAGE,
+          hostUserId: USER,
+          startsAt: new Date(soon.getTime() + 86_400_000),
+          endsAt: new Date(soon.getTime() + 86_400_000 + 3_600_000),
+          name: "Nərmin Quliyeva",
+          phone: "+994501230001",
+          status: "confirmed",
+          cancelTokenHash: "hash-act-3",
+        },
+      }))
+      const asked = await propose("propose_cancel_booking", { clientName: "Nərmin" })
+      expect(asked.status).toBe(200)
+      expect(asked.body.needsClarification).toBe(true)
+      expect(asked.body.code).toBe("BOOKING_AMBIGUOUS")
+      // В вопросе — дни и часы: по ним человек и выбирает.
+      expect(asked.body.candidates?.length).toBe(2)
+      expect(await activeReceipt()).toBeNull()
+
+      // Назван день — и запись одна.
+      const day = new Intl.DateTimeFormat("en-CA", {
+        timeZone: TZ,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(soon)
+      const exact = await propose("propose_cancel_booking", { clientName: "Nərmin", day })
+      expect(exact.status).toBe(201)
+      expect(exact.body.data!.target?.id).toBe(futureId)
+    })
+
+    it("координатор без права вести мастера записи не отменит", async () => {
+      await salon()
+      const ownerSession = session
+      auth.role = "manager"
+      auth.userId = "user-colleague"
+      session = await startConversation({ userId: "user-colleague" })
+      try {
+        // Доверенность на чтение есть, на ведение — нет.
+        await bypass(() => prisma.bookingCoordinatorGrant.create({
+          data: {
+            organizationId: ORG,
+            coordinatorUserId: "user-colleague",
+            hostUserId: USER,
+            canManage: false,
+            createdBy: USER,
+          },
+        }))
+        // Видеть запись он может…
+        const found = await ask("find_record", { type: "booking", query: "Nərmin" })
+        expect(((found.body as { data: { matches: { id: string }[] } }).data.matches).map((row) => row.id))
+          .toContain(futureId)
+        // …а отменить — нет: подготовка ищет среди тех, кого он ВЕДЁТ, и
+        // отвечает вопросом «какую запись?», а не отказом цели после
+        // показанной квитанции.
+        const refused = await propose("propose_cancel_booking", { clientName: "Nərmin" })
+        expect(refused.status).toBe(200)
+        expect(refused.body.needsClarification).toBe(true)
+        expect(refused.body.code).toBe("BOOKING_NOT_FOUND")
+        expect(await activeReceipt()).toBeNull()
+        expect((await booking(futureId)).status).toBe("confirmed")
+      } finally {
+        auth.role = "admin"
+        auth.userId = USER
+        session = ownerSession
+        await bypass(() => prisma.bookingCoordinatorGrant.deleteMany({ where: { organizationId: ORG } }))
       }
     })
   })

@@ -51,6 +51,11 @@ export const VOICE_PROPOSE_TOOL_NAMES = [
   "propose_add_ticket_note",
   "propose_reply_to_ticket",
   "propose_update_ticket",
+  // Встречи (владелец 2026-11-12). Переноса и создания здесь нет: им нужна
+  // внешняя проверка занятости до транзакции — см. booking-write.ts.
+  "propose_cancel_booking",
+  "propose_set_booking_outcome",
+  "propose_set_booking_deposit",
   "propose_change_phone_order_line",
   "propose_add_phone_order_line",
   "propose_remove_phone_order_line",
@@ -89,6 +94,9 @@ export const VOICE_PROPOSE_ACTION_TYPES: Readonly<Record<VoiceProposeToolName, A
     propose_add_ticket_note: "add_ticket_note",
     propose_reply_to_ticket: "reply_to_ticket",
     propose_update_ticket: "update_ticket",
+    propose_cancel_booking: "cancel_booking",
+    propose_set_booking_outcome: "set_booking_outcome",
+    propose_set_booking_deposit: "set_booking_deposit",
     propose_change_phone_order_line: "update_phone_order_line",
     propose_add_phone_order_line: "add_phone_order_line",
     propose_remove_phone_order_line: "remove_phone_order_line",
@@ -432,6 +440,36 @@ export const VOICE_PROPOSE_SCHEMAS = {
     /** The reply the customer will read, in the user's own words. */
     message: z.string().trim().min(1).max(5000),
   }),
+  /**
+   * Какую встречу — словами: имя клиента и, если их несколько, день.
+   *
+   * «Та, что открыта на экране», здесь не работает и не притворяется: карточка
+   * встречи открывается параметром над общим экраном дня, а консоль передаёт
+   * только путь. Поэтому клиента называют всегда.
+   */
+  propose_cancel_booking: z.strictObject({
+    clientName: shortText,
+    /** Абсолютный день записи, YYYY-MM-DD: нужен, когда клиент приходит часто. */
+    day: day.optional(),
+    reason: z.string().trim().max(500).optional(),
+    /** false — отменить молча, не сообщая клиенту. */
+    notifyCustomer: z.boolean().optional(),
+  }),
+  propose_set_booking_outcome: z.strictObject({
+    clientName: shortText,
+    day: day.optional(),
+    /** «пришёл» / «не пришёл». */
+    outcome: z.enum(["completed", "no_show"]),
+    note: z.string().trim().max(2000).optional(),
+    /** Объяснение, если итог уже был отмечен и его исправляют. */
+    reason: z.string().trim().max(500).optional(),
+  }),
+  propose_set_booking_deposit: z.strictObject({
+    clientName: shortText,
+    day: day.optional(),
+    /** «деньги пришли» / «вернули». */
+    deposit: z.enum(["paid", "refunded"]),
+  }),
   propose_update_ticket: z.strictObject({
     ticket: shortText.optional(),
     status: z.enum(["new", "open", "in_progress", "waiting", "resolved", "closed", "escalated"]).optional(),
@@ -530,6 +568,12 @@ const DESCRIPTIONS: Readonly<Record<VoiceProposeToolName, string>> = {
     "Prepare CONFIRMING a pharmacy PHONE ORDER. This does NOT confirm anything. order is the order number or the pharmacy's name; omit it for the order open on screen. Confirming sends the order to 1C and tells the pharmacy on WhatsApp, so it is confirmed ONLY with the button on the draft: tell the user so; a spoken yes does not confirm it.",
   propose_reject_phone_order:
     "Prepare REJECTING a pharmacy PHONE ORDER. This does NOT reject anything. order as above; reason is why, in the user's words — the pharmacy is told on WhatsApp. It goes ONLY with the button on the draft: tell the user so.",
+  propose_cancel_booking:
+    "Prepare the CANCELLATION of one appointment for the user to confirm. This does NOT cancel anything. Name the client as the user said it, and add the day (YYYY-MM-DD) when that client has more than one appointment. The customer is told their visit is off unless the user says not to tell them (notifyCustomer false). A cancellation frees the hour and reaches the customer, so it is confirmed by pressing the button on the draft, never by a spoken yes.",
+  propose_set_booking_outcome:
+    "Prepare marking one appointment as attended (completed) or a no-show for the user to confirm. This does NOT save anything. Name the client, and the day when there is more than one. Only an appointment whose time has already passed can be marked; the user confirms the draft on screen. If it was already marked and the user is correcting it, pass the reason they gave.",
+  propose_set_booking_deposit:
+    "Prepare recording the deposit of one appointment as received (paid) or sent back (refunded) for the user to confirm on screen. This does NOT move money and does NOT save anything by itself. Name the client, and the day when there is more than one.",
   propose_update_ticket:
     "Prepare a change to ONE support ticket — its status, priority or assignee — for the user to confirm. This does NOT save anything. ticket is its number or words of its subject; omit it for the ticket open on screen. status: new, open, in_progress, waiting, resolved, closed or escalated. A status change can message the customer (resolved asks them to confirm closing and sends a survey), so it is confirmed ONLY with the button on the draft: tell the user so.",
   propose_create_deal:

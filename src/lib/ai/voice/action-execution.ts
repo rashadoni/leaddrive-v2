@@ -9,6 +9,7 @@ import { convertLeadToDealCommand } from "@/lib/crm-commands/lead/convert-lead-t
 import { updateTaskCommand } from "@/lib/crm-commands/task/update-task"
 import { updateDealCommand } from "@/lib/crm-commands/deal/update-deal"
 import { createCompanyCommand } from "@/lib/crm-commands/company/create-company"
+import { runVoiceBookingCommand } from "./booking-write"
 import { createContactCommand, updateContactCommand } from "@/lib/crm-commands/contact/contact"
 import { createActivityCommand } from "@/lib/crm-commands/activity/create-activity"
 import { createTicketCommand } from "@/lib/crm-commands/ticket/create-ticket"
@@ -250,6 +251,23 @@ async function runCanonicalCommand(
       throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)
     }
     entityId = (await updateTicketCommand(actor, intent.targetEntityId, payload, execution)).entity.id
+  } else if (
+    intent.actionType === "cancel_booking"
+    || intent.actionType === "set_booking_outcome"
+    || intent.actionType === "set_booking_deposit"
+  ) {
+    if (!intent.targetEntityId) {
+      throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)
+    }
+    // Всё делает команда брони — та же, что за кнопками в панели: версия,
+    // блокировки, событие, письмо клиенту и собственная память о повторе.
+    entityId = (await runVoiceBookingCommand(
+      actor,
+      intent.actionType,
+      intent.targetEntityId,
+      payload,
+      execution,
+    )).bookingId
   } else if (
     intent.actionType === "update_phone_order_line"
     || intent.actionType === "add_phone_order_line"

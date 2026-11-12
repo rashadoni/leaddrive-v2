@@ -16,6 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
  */
 
 const DB_IDS = {
+  booking: "db-booking-0001",
   user: "db-user-0001",
   lead: "db-lead-0001",
   company: "db-company-0001",
@@ -52,6 +53,8 @@ const mocks = vi.hoisted(() => ({
   phoneOrders: vi.fn(),
   phoneOrderLines: vi.fn(),
   catalog: vi.fn(),
+  bookings: vi.fn(),
+  bookingGrants: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -72,7 +75,15 @@ vi.mock("@/lib/prisma", () => ({
     ticket: { findMany: mocks.tickets },
     pharmacyPhoneOrder: { findMany: mocks.phoneOrders, findFirst: vi.fn(async () => null) },
     pharmacyPhoneOrderLine: { findMany: mocks.phoneOrderLines },
+    booking: { findMany: mocks.bookings },
+    bookingCoordinatorGrant: { findMany: mocks.bookingGrants },
+    organization: { findFirst: vi.fn(async () => ({ settings: {} })) },
   },
+}))
+// Пояс отчётности — свой модуль; встречи произносят в нём время.
+vi.mock("@/lib/ai/voice/reporting-timezone", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/ai/voice/reporting-timezone")>(),
+  loadVoiceReportingTimezone: vi.fn(async () => "Asia/Baku"),
 }))
 // Телефонные заказы (этап 5): раздел открыт, звонок окончен, каталог отвечает
 // своим товаром — не тем, что сказала модель.
@@ -105,6 +116,10 @@ const auth = {
   role: "manager",
   email: "me@example.com",
   name: "Me",
+  // Подготовка действия принципиально сессионная (withRlsSessionAuth), и у
+  // встреч операторами могут быть только люди: без этого поля доступ к ним
+  // закрыт — как и должно быть у ключа интеграции.
+  principalType: "session",
 } as unknown as AuthResult
 
 /** Looks exactly like a CRM id. If one of these reaches a reference field, the
@@ -149,6 +164,11 @@ const POISONED_ARGS: Record<VoiceProposeToolName, Record<string, unknown>> = {
   // отраве некуда превратиться в чужую запись. Сайт и почта здесь не отравлены
   // намеренно — их форма проверяется схемой, и строка-идентификатор просто не
   // пройдёт как URL, то есть этот путь закрыт раньше резолвера.
+  // Встречу называют словами клиента: ссылок в полях команды нет вовсе, а
+  // отрава в имени остаётся текстом вопроса «какую именно».
+  propose_cancel_booking: { clientName: POISON, reason: POISON },
+  propose_set_booking_outcome: { clientName: POISON, outcome: "completed", note: POISON },
+  propose_set_booking_deposit: { clientName: POISON, deposit: "paid" },
   propose_create_company: {
     name: POISON, industry: POISON, address: POISON, city: POISON, country: POISON, description: POISON,
   },
@@ -189,6 +209,16 @@ beforeEach(() => {
   mocks.contacts.mockResolvedValue([{ id: DB_IDS.contact, fullName: POISON }])
   mocks.tasks.mockResolvedValue([{ id: DB_IDS.task, title: POISON, divisionId: null }])
   mocks.deals.mockResolvedValue([{ id: DB_IDS.deal, name: POISON }])
+  // Встреча находится по имени клиента — и её идентификатор приходит из базы.
+  mocks.bookings.mockResolvedValue([{
+    id: DB_IDS.booking,
+    name: POISON,
+    startsAt: new Date("2026-11-20T10:00:00Z"),
+    status: "confirmed",
+    hostUserId: DB_IDS.user,
+    bookingPage: { title: "Manikür" },
+  }])
+  mocks.bookingGrants.mockResolvedValue([])
   mocks.checklist.mockResolvedValue([{ id: DB_IDS.checklistItem, title: POISON }])
   mocks.fieldAgents.mockResolvedValue([{ id: DB_IDS.fieldAgent, name: POISON }])
   mocks.fieldRoutes.mockResolvedValue([{

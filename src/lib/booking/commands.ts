@@ -40,10 +40,35 @@ export function bookingRules(page: { durationMinutes: number; bufferMinutes: num
   return { timezone, durationMinutes: page.durationMinutes, bufferMinutes: page.bufferMinutes, minNoticeMinutes: page.minNoticeMinutes, maxDaysAhead: page.maxDaysAhead, weekly: parseWeeklyHours(page.weekly) ?? defaultWeeklyHours(), closedDates }
 }
 
-export async function runBookingCommand(access: BookingAccess, id: string, input: BookingCommandInput) {
-  const initial = await prisma.booking.findFirst({ where: { id, organizationId: access.orgId } })
+/**
+ * Выполнить команду над бронью.
+ *
+ * `tx` передаёт тот, у кого уже открыта своя транзакция, — голосовая
+ * квитанция: её запись в CRM, итог заявки и неизменяемое событие обязаны
+ * лежать в ОДНОЙ транзакции, иначе падение между ними оставило бы
+ * выполненное действие без воспроизводимого результата. Плюс чтение через
+ * глобальный `prisma` внутри чужой интерактивной транзакции под FORCE RLS
+ * молча отдаёт 0 строк (разбор — в заметке о голосовых заказах аптек), и
+ * преамбула просто «не нашла бы» ни брони, ни услуги.
+ *
+ * Перенос так выполнить нельзя и он отказывает: ему нужна свежая (15 с)
+ * проверка занятости с ВНЕШНИМ календарём, то есть сетевой вызов до
+ * восьми секунд. Держать на нём чужую транзакцию с захваченными строками
+ * нельзя — перенос остаётся за своей транзакцией, как в панели.
+ */
+export async function runBookingCommand(
+  access: BookingAccess,
+  id: string,
+  input: BookingCommandInput,
+  tx?: Prisma.TransactionClient,
+) {
+  if (tx && input.operation === "reschedule") {
+    throw new BookingCommandError("RESCHEDULE_NEEDS_OWN_TRANSACTION", 409)
+  }
+  const db = tx ?? prisma
+  const initial = await db.booking.findFirst({ where: { id, organizationId: access.orgId } })
   if (!initial || access.hostIds !== null && !access.hostIds.includes(initial.hostUserId)) throw new BookingCommandError("NOT_FOUND", 404)
-  const page = await prisma.bookingPage.findFirst({ where: { id: initial.bookingPageId, organizationId: access.orgId } })
+  const page = await db.bookingPage.findFirst({ where: { id: initial.bookingPageId, organizationId: access.orgId } })
   if (!page) throw new BookingCommandError("NOT_FOUND", 404)
   const hostId = input.hostUserId ?? initial.hostUserId
   if (access.writableHostIds !== null && (!access.writableHostIds.includes(initial.hostUserId) || input.operation === "reschedule" && !access.writableHostIds.includes(hostId))) throw new BookingCommandError("FORBIDDEN", 403)
@@ -53,20 +78,20 @@ export async function runBookingCommand(access: BookingAccess, id: string, input
     requestHash: hashCanonicalJson(JSON.parse(JSON.stringify(input))),
   }
   // Replay is authorized before it bypasses the external calendar. Fresh grants are checked again in the transaction.
-  const prior = await findCommandReceipt(prisma, identity)
+  const prior = await findCommandReceipt(db, identity)
   if (prior) return prior.responseBody as { id: string; version: number }
-  const org = await prisma.organization.findUnique({ where: { id: access.orgId }, select: { settings: true } })
+  const org = await db.organization.findUnique({ where: { id: access.orgId }, select: { settings: true } })
   const timezone = organizationTimezone(org?.settings) || "Asia/Baku"
   // A day the salon is closed is closed for a move too, not only for a new booking.
   const closedDates = readClosedDates(org?.settings).map((entry) => entry.date)
   let preflight: Awaited<ReturnType<typeof bookingCalendarBusy>> | null = null
   if (input.operation === "reschedule") {
     if (!input.startsAt) throw new BookingCommandError("INVALID_INPUT", 400)
-    if (!page.hostIds.includes(hostId) || !await prisma.user.findFirst({ where: bookingHostWhere(access.orgId, [hostId]), select: { id: true } })) throw new BookingCommandError("INVALID_HOST", 400)
+    if (!page.hostIds.includes(hostId) || !await db.user.findFirst({ where: bookingHostWhere(access.orgId, [hostId]), select: { id: true } })) throw new BookingCommandError("INVALID_HOST", 400)
     const start = new Date(input.startsAt)
     preflight = await bookingCalendarBusy(access.orgId, hostId, new Date(start.getTime() - 4 * 3600_000), new Date(start.getTime() + (page.durationMinutes + 240) * 60_000), id)
   }
-  return prisma.$transaction(async (tx) => {
+  const body = async (tx: Prisma.TransactionClient) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`booking-command:${access.orgId}:${identity.commandType}:${identity.idempotencyKey}`}))`
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`booking-page:${access.orgId}:${page.id}`}))`
     for (const host of [...new Set([initial.hostUserId, hostId])].sort()) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`booking:${access.orgId}:${host}`}))`
@@ -156,7 +181,8 @@ export async function runBookingCommand(access: BookingAccess, id: string, input
     const result = { id, version: row.version }
     await storeCommandReceipt(tx, { ...identity, responseStatus: 200, responseBody: result, eventIds: [event.eventId] })
     return result
-  })
+  }
+  return tx ? body(tx) : prisma.$transaction(body)
 }
 
 /** Both old and new buffers matter; host advisory locks must be held by the caller. */
