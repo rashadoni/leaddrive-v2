@@ -33,3 +33,26 @@ describe("validateUploadBytes", () => {
     expect(validateUploadBytes("application/vnd.openxmlformats-officedocument.wordprocessingml.document", bytes(0x50, 0x4b, 0x03, 0x04))).toBeNull()
   })
 })
+
+// Task files since 2026-11-12 (owner: «Да, разрешить»): videos and design sources, checked by their bytes too.
+describe("validateUploadBytes — task videos and design sources", () => {
+  const b = (...parts: (string | number[])[]) => new Uint8Array(Buffer.concat(parts.map((p) => typeof p === "string" ? Buffer.from(p, "latin1") : Buffer.from(p))))
+  it("accepts the real thing", () => {
+    expect(validateUploadBytes("video/mp4", b([0, 0, 0, 0x20], "ftypisom", [0, 0]))).toBeNull()
+    expect(validateUploadBytes("video/quicktime", b([0, 0, 0, 0x14], "ftypqt  "))).toBeNull()
+    expect(validateUploadBytes("video/quicktime", b([0, 0, 0, 0x08], "wide"))).toBeNull()
+    expect(validateUploadBytes("application/vnd.corel-draw", b("RIFF", [1, 2, 3, 4], "CDRDvrsn"))).toBeNull()
+    expect(validateUploadBytes("application/vnd.corel-draw", b([0x50, 0x4b, 0x03, 0x04], "content"))).toBeNull()
+    expect(validateUploadBytes("image/vnd.adobe.photoshop", b("8BPS", [0, 1]))).toBeNull()
+    expect(validateUploadBytes("application/rtf", b("{\\rtf1\\ansi}"))).toBeNull()
+    expect(validateUploadBytes("message/rfc822", b("From: a@b.az\r\nSubject: Salam\r\n\r\nMətn"))).toBeNull()
+  })
+  it("refuses a file that only wears the name", () => {
+    expect(validateUploadBytes("video/mp4", b("<html><script>"))).not.toBeNull()
+    expect(validateUploadBytes("application/vnd.corel-draw", b("RIFF", [1, 2, 3, 4], "WAVEfmt "))).not.toBeNull()
+    expect(validateUploadBytes("image/vnd.adobe.photoshop", b([0x89, 0x50, 0x4e, 0x47]))).not.toBeNull()
+    expect(validateUploadBytes("application/rtf", b("%PDF-1.4"))).not.toBeNull()
+    expect(validateUploadBytes("message/rfc822", b([0, 1, 2, 3]))).not.toBeNull()
+  })
+})
+

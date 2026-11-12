@@ -112,6 +112,9 @@ const MIME: Record<string, string> = {
   rar:  "application/vnd.rar",
   // Voice notes on tasks (Bordio, 2026-11-07) play in the browser; .msg stays a download.
   ogg:  "audio/ogg",
+  // Task videos (owner, 2026-11-12) play in the browser; design sources stay downloads.
+  mp4:  "video/mp4",
+  mov:  "video/quicktime",
 }
 
 function mimeFor(filename: string): string {

@@ -33,7 +33,7 @@ type Outcome = "ok" | "skip" | "notask" | "too_big" | "type" | "extension" | "co
 const PARALLEL = 4
 
 async function fetchBytes(url: string): Promise<Buffer | "too_big" | null> {
-  const res = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(60_000) }).catch(() => null)
+  const res = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(180_000) }).catch(() => null)
   if (!res || !res.ok || !res.body) return null
   if (Number(res.headers.get("content-length") ?? 0) > MAX_TASK_FILE_SIZE) {
     await res.body.cancel().catch(() => {})

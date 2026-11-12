@@ -9,36 +9,14 @@ import crypto from "crypto"
 import { validateUploadBytes } from "@/lib/upload-security"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
 import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
+import { TASK_FILE_EXTENSIONS, TASK_FILE_TYPES, taskFileTypeOf } from "@/lib/tasks/task-file-store"
 
 // Task file attachments — mirrors the ContractFile route's security model
 // (src/app/api/v1/contracts/[id]/files/route.ts). Stored on disk as
 // public/uploads/tasks/<32-hex>.<ext>; served + org-checked by the F-41 gate.
+// The allowed types are the task's own (lib/tasks/task-file-store.ts); a card
+// upload stays at 10 MB, as its body crosses nginx and the Next proxy first.
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
-const ALLOWED_TYPES = [
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/gif",
-  "text/plain",
-  "text/csv",
-  // Bordio moved over (2026-11-07): presentations, voice notes and Outlook
-  // messages were attached to the tasks in work and were refused here.
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/vnd.ms-powerpoint",
-  "audio/ogg",
-  "application/vnd.ms-outlook",
-]
-// Extension whitelist — defends even if the client-supplied MIME is spoofed.
-const SAFE_EXTENSIONS = new Set([
-  ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-  ".png", ".jpg", ".jpeg", ".gif", ".webp", ".txt", ".csv", ".zip", ".rar",
-  ".ogg", ".msg",
-])
 
 export const GET = withRlsAuth("tasks", "read", async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
@@ -72,11 +50,14 @@ export const POST = withRlsAuth("tasks", "write", async (req, auth, { params }: 
     const file = formData.get("file") as File | null
     if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 })
     if (file.size > MAX_FILE_SIZE) return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 })
-    const mimeType = file.type.toLowerCase().trim()
-    if (!ALLOWED_TYPES.includes(mimeType)) return NextResponse.json({ error: "File type not allowed" }, { status: 400 })
+    // A browser names no type for a CorelDraw file and «octet-stream» for some
+    // photos: then the name's extension says it (the bytes are checked below).
+    const given = file.type.toLowerCase().trim()
+    const mimeType = TASK_FILE_TYPES.includes(given) ? given : taskFileTypeOf(file.name) ?? given
+    if (!TASK_FILE_TYPES.includes(mimeType)) return NextResponse.json({ error: "File type not allowed" }, { status: 400 })
 
     const ext = path.extname(file.name).toLowerCase()
-    if (!ext || !SAFE_EXTENSIONS.has(ext)) {
+    if (!ext || !TASK_FILE_EXTENSIONS.has(ext)) {
       return NextResponse.json({ error: "File extension not allowed" }, { status: 400 })
     }
 
