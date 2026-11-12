@@ -22,6 +22,8 @@ import {
   type OutboundWebhookResolver,
   type OutboundWebhookTransport,
 } from "@/lib/integrations/webhook-url-guard"
+import { prisma } from "@/lib/prisma"
+import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
 
 const MAX_BYTES = 25 * 1024 * 1024 // Meta's own attachment cap
@@ -90,4 +92,62 @@ export async function fetchAndStoreMetaMedia(
   } catch {
     return null
   }
+}
+
+/**
+ * Messages that arrived before the webhook kept files (2026-11-12) still hold Meta's link. This
+ * keeps their files the same way — owner: «Да, докачай». Counts only; a link Meta no longer
+ * serves stays as it was and is counted as `failed`.
+ */
+export type MetaMediaBackfillReport = {
+  dryRun: boolean
+  candidates: number
+  stored: number
+  failed: number
+  hasMore: boolean
+  byKind: Partial<Record<MetaMediaKind, number>>
+}
+
+export async function backfillMetaMediaMessages(
+  options: { dryRun: boolean; limit: number },
+  seams: { transport?: OutboundWebhookTransport; resolveHost?: OutboundWebhookResolver } = {},
+): Promise<MetaMediaBackfillReport> {
+  const rows: Array<{ id: string; organizationId: string; mediaUrl: string | null }> = await runWithRlsBypass(() => prisma.channelMessage.findMany({
+    where: {
+      OR: [
+        { mediaUrl: { startsWith: "https://lookaside.fbsbx.com/" } },
+        { mediaUrl: { contains: ".fbcdn.net/" } },
+        { mediaUrl: { contains: ".cdninstagram.com/" } },
+        { mediaUrl: { contains: ".fbsbx.com/" } },
+      ],
+    },
+    select: { id: true, organizationId: true, mediaUrl: true },
+    orderBy: { createdAt: "asc" },
+    take: options.limit + 1,
+  }))
+  const batch = rows.filter((row) => isMetaMediaUrl(row.mediaUrl)).slice(0, options.limit)
+  const report: MetaMediaBackfillReport = {
+    dryRun: options.dryRun, candidates: batch.length, stored: 0, failed: 0, hasMore: rows.length > options.limit, byKind: {},
+  }
+  if (options.dryRun) return report
+  for (const row of batch) {
+    const original = row.mediaUrl!
+    const updated = await runWithTenant(row.organizationId, async () => {
+      const stored = await fetchAndStoreMetaMedia(original, row.organizationId, seams)
+      if (!stored) return null
+      // Only if nobody changed the message meanwhile.
+      const result = await prisma.channelMessage.updateMany({
+        where: { id: row.id, organizationId: row.organizationId, mediaUrl: original },
+        data: { mediaUrl: stored.url, messageType: stored.kind },
+      })
+      return result.count > 0 ? stored.kind : null
+    })
+    if (updated) {
+      report.stored += 1
+      report.byKind[updated] = (report.byKind[updated] ?? 0) + 1
+    } else {
+      report.failed += 1
+    }
+  }
+  return report
 }
