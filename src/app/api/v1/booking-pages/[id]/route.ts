@@ -19,6 +19,14 @@ export const PATCH = withRlsAuth("bookings", "write", async (req: NextRequest, a
   if (await slugTaken(input.slug, id)) return NextResponse.json({ error: "Slug taken", code: "SLUG_TAKEN" }, { status: 409 })
   const hostsOk = await prisma.user.count({ where: bookingHostWhere(auth.orgId, input.hostIds) })
   if (hostsOk !== new Set(input.hostIds).size) return NextResponse.json({ error: "Unknown host", code: "HOSTS_REQUIRED" }, { status: 400 })
+  // A room this organisation does not have, or has switched off, is not a
+  // place a client can be sent to. A room already on the service stays on it
+  // even once it is switched off — the meetings it holds are real.
+  const wantedResources = new Set(input.resourceIds ?? [])
+  if (wantedResources.size) {
+    const known = await prisma.bookingResource.count({ where: { organizationId: auth.orgId, id: { in: [...wantedResources] }, isActive: true } })
+    if (known !== wantedResources.size) return NextResponse.json({ error: "Unknown resource", code: "RESOURCES_REQUIRED" }, { status: 400 })
+  }
   try {
     await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`booking-page:${auth.orgId}:${id}`}))`

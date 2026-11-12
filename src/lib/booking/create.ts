@@ -16,7 +16,7 @@ import { hostService } from "./host-variants"
 import { isGroupService, serviceCapacity } from "./group-service"
 import { asksDeposit, depositDue, depositPolicy } from "./deposit"
 import { addOnTotals, parseAddOns, selectedAddOns } from "./add-ons"
-import { activeHosts, orgContext, loadBusyByHost, bookingCancelUrl, hashBookingToken, type BookingInput, type CreateBookingResult } from "./book"
+import { addResourceBusy, bookableChairs, orgContext, loadBusyByHost, bookingCancelUrl, hashBookingToken, type BookingInput, type CreateBookingResult } from "./book"
 import { bookingHostWhere, bookingScope } from "./access"
 import type { BookingAccess } from "./access"
 
@@ -73,13 +73,18 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
   const page = await prisma.bookingPage.findFirst({ where: { id: pageId, organizationId: orgId, isActive: true } })
   if (!page) return { ok: false, reason: "not_found" }
   const org = await orgContext(orgId)
-  const hosts = await activeHosts(orgId, page.hostIds)
-  const permitted = hosts.filter((host) => (!input.hostUserId || host.id === input.hostUserId) && (!access || access.writableHostIds === null || access.writableHostIds.includes(host.id)))
+  // Masters and rooms alike: a meeting goes on a chair, and a room is a chair
+  // nobody sits on (src/lib/booking/book.ts, `bookableChairs`). A member of
+  // staff may only write for the masters they are allowed to; a room is the
+  // service's own, so nothing narrows it.
+  const hosts = await bookableChairs(orgId, page)
+  const permitted = hosts.filter((host) => (!input.hostUserId || host.id === input.hostUserId)
+    && (host.resource || !access || access.writableHostIds === null || access.writableHostIds.includes(host.id)))
   if (!permitted.length) return { ok: false, reason: "taken" }
   // A master who takes longer over this service is offered their own times,
   // not the service's. With nobody named, the service's own duration stands —
   // exactly as before this existed.
-  const chosenHostId = input.hostUserId && page.hostIds.includes(input.hostUserId) ? input.hostUserId : null
+  const chosenHostId = input.hostUserId && [...page.hostIds, ...(page.resourceIds ?? [])].includes(input.hostUserId) ? input.hostUserId : null
   // The extras are taken from the service, never from the request: an id the
   // service does not offer adds neither minutes nor money.
   const visitOf = (row: typeof page, hostId: string | null) => {
@@ -97,10 +102,12 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
   // A class does not block itself: its seats share the hour, and whether one
   // is left is counted in the transaction below.
   const group = isGroupService(page)
-  const busy = await loadBusyByHost(orgId, permitted.map((host) => host.id), from, to, org.timezone, {
+  const busyOptions = {
     ...(access ? {} : { holds: { exceptConversationId: input.whatsapp?.conversationId ?? null } }),
     ...(group ? { exceptBookingPageId: pageId } : {}),
-  })
+  }
+  const busy = await loadBusyByHost(orgId, permitted.filter((host) => !host.resource).map((host) => host.id), from, to, org.timezone, busyOptions)
+  await addResourceBusy(busy, orgId, permitted.filter((host) => host.resource).map((host) => host.id), from, to, org.timezone, busyOptions)
   const slot = findSlot(computeSlots({ rules, hostIds: permitted.map((host) => host.id), busyByHost: busy, now }), input.startsAt)
   if (!slot) {
     if (busy.unavailableHostIds.size) throw new BookingCommandError("CALENDAR_UNAVAILABLE", 503)
@@ -109,7 +116,16 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
   const calendarKeys = busy.calendarKeys
   const load = await prisma.booking.groupBy({ by: ["hostUserId"], where: { organizationId: orgId, hostUserId: { in: slot.hostIds }, status: "confirmed", startsAt: { gte: now } }, _count: { _all: true } })
   const count = (id: string) => load.find((row) => row.hostUserId === id)?._count._all ?? 0
-  const candidates = [...slot.hostIds].sort((a, b) => count(a) - count(b) || page.hostIds.indexOf(a) - page.hostIds.indexOf(b))
+  const order = [...page.hostIds, ...(page.resourceIds ?? [])]
+  const candidates = [...slot.hostIds].sort((a, b) => count(a) - count(b) || order.indexOf(a) - order.indexOf(b))
+  /** The chair is a room when the service lists it as one. */
+  const isResource = (id: string) => hosts.some((host) => host.id === id && host.resource)
+  // Every meeting belongs to a master in the record, even one on a room: the
+  // column has pointed at a user since the first release and a room is not
+  // one. The service's own first master owns the room's bookings, and the
+  // free-time search leaves those bookings out of that master's day
+  // (src/lib/booking/book.ts) — the client never sees the name.
+  const ownerOf = (id: string) => isResource(id) ? (page.hostIds[0] ?? null) : id
   const token = randomBytes(24).toString("base64url")
   const startsAt = new Date(slot.startsAt), endsAt = new Date(slot.endsAt)
   for (const hostId of candidates) {
@@ -121,9 +137,18 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`booking-page:${orgId}:${pageId}`}))`
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`booking:${orgId}:${hostId}`}))`
         const currentPage = await tx.bookingPage.findFirst({ where: { id: pageId, organizationId: orgId, isActive: true } })
-        const host = await tx.user.findFirst({ where: bookingHostWhere(orgId, [hostId]) })
-        const connected = await connectedCalendarsOf(tx, hostId)
-        if (!currentPage || currentPage.version !== page.version || !currentPage.hostIds.includes(hostId) || Date.now() - checkedAt > 15000 || connectedCalendarKey(connected) !== (calendarKeys.get(hostId) ?? "")) throw new BookingCommandError("AVAILABILITY_CHANGED")
+        const resource = isResource(hostId)
+        // A room has no calendar of its own and no account to go inactive: the
+        // two things that can change under it are the service it is listed on
+        // and the room itself being switched off.
+        const ownerId = ownerOf(hostId)
+        const host = resource
+          ? (ownerId ? await tx.user.findFirst({ where: { organizationId: orgId, id: ownerId } }) : null)
+          : await tx.user.findFirst({ where: bookingHostWhere(orgId, [hostId]) })
+        const connected = resource ? [] : await connectedCalendarsOf(tx, hostId)
+        const listed = resource ? currentPage?.resourceIds.includes(hostId) : currentPage?.hostIds.includes(hostId)
+        const stillOpen = resource ? Boolean(await tx.bookingResource.findFirst({ where: { organizationId: orgId, id: hostId, isActive: true }, select: { id: true } })) : true
+        if (!currentPage || currentPage.version !== page.version || !listed || !stillOpen || Date.now() - checkedAt > 15000 || (!resource && connectedCalendarKey(connected) !== (calendarKeys.get(hostId) ?? ""))) throw new BookingCommandError("AVAILABILITY_CHANGED")
         if (!host) throw new BookingCommandError("SLOT_TAKEN")
         if (group) {
           // One class, one master: the seats of a class that already started
@@ -136,13 +161,13 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
           if (seats.length > 0 && seats[0].hostUserId !== hostId) throw new BookingCommandError("SLOT_TAKEN")
         }
         if (access && !access.administrator && hostId !== access.userId && !await tx.bookingCoordinatorGrant.findFirst({ where: { organizationId: orgId, coordinatorUserId: access.userId, hostUserId: hostId, canManage: true } })) throw new BookingCommandError("FORBIDDEN", 403)
-        await assertBookingInterval(tx, orgId, hostId, startsAt, endsAt, currentPage.bufferMinutes, undefined, group ? pageId : undefined)
+        await assertBookingInterval(tx, orgId, hostId, startsAt, endsAt, currentPage.bufferMinutes, undefined, group ? pageId : undefined, resource)
         // What this visit must leave, as the customer was shown it: the share
         // is taken of the price with this master's rate and the extras on it.
         const policy = depositPolicy(currentPage)
         const deposit = asksDeposit(policy) ? depositDue(policy, visitOf(currentPage, hostId).price) : null
         let row = await tx.booking.create({ data: {
-          organizationId: orgId, bookingPageId: pageId, hostUserId: hostId, startsAt, endsAt,
+          organizationId: orgId, bookingPageId: pageId, hostUserId: host.id, resourceId: resource ? hostId : null, startsAt, endsAt,
           depositAmount: deposit === null ? null : deposit,
           depositStatus: deposit === null ? null : "awaiting",
           name: input.name, phone: input.phone, email: input.email || null, note: input.note || null,

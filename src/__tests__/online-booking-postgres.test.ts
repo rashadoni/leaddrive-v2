@@ -212,8 +212,8 @@ pgDescribe("online booking on a real Postgres", () => {
     })
     // Only in this newly created scratch DB: replace the empty booking subset
     // with its original schema, then apply both actual forward migrations.
-    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `DROP TABLE IF EXISTS booking_reminders, booking_offers, booking_change_notes, booking_integration_bindings, booking_secrets, booking_coordinator_grants, bookings, booking_pages CASCADE;`)
-    for (const migration of ["20261101090000_online_booking", "20261102090000_booking_workspace", "20261102100000_booking_commands", "20261120090000_booking_page_price_category", "20261121090000_booking_offers", "20261122090000_booking_offer_review", "20261123090000_booking_reminders", "20261129090000_booking_page_host_variants", "20261130090000_booking_page_add_ons", "20261201090000_booking_page_photo", "20261202090000_booking_page_capacity", "20261203090000_booking_deposit", "20261211090000_booking_contact_link"]) {
+    prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `DROP TABLE IF EXISTS booking_resources, booking_reminders, booking_offers, booking_change_notes, booking_integration_bindings, booking_secrets, booking_coordinator_grants, bookings, booking_pages CASCADE;`)
+    for (const migration of ["20261101090000_online_booking", "20261102090000_booking_workspace", "20261102100000_booking_commands", "20261120090000_booking_page_price_category", "20261121090000_booking_offers", "20261122090000_booking_offer_review", "20261123090000_booking_reminders", "20261129090000_booking_page_host_variants", "20261130090000_booking_page_add_ons", "20261201090000_booking_page_photo", "20261202090000_booking_page_capacity", "20261203090000_booking_deposit", "20261211090000_booking_contact_link", "20261215090000_booking_resources", "20261215090100_booking_resource_columns", "20261215090200_booking_chair_uniqueness"]) {
       prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, readFileSync(path.join(ROOT, `prisma/migrations/${migration}/migration.sql`), "utf8"))
       if (migration === "20261101090000_online_booking") {
         prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, `
@@ -342,6 +342,16 @@ pgDescribe("online booking on a real Postgres", () => {
   async function view(slug: string) {
     const res = await pageGet(json("GET", `/api/v1/public/booking/${slug}`), slugParams(slug))
     return { status: res.status, body: await res.json() }
+  }
+
+  /** Book a named chair — a master or a room — the way the public page does. */
+  async function bookOn(slug: string, startsAt: string, hostUserId: string) {
+    const response = await pagePost(json("POST", `/api/v1/public/booking/${slug}`, {
+      idempotencyKey: randomUUID(), recoverySecret: randomUUID(), startsAt, hostUserId,
+      name: "Müştəri", phone: "+994 50 123 45 67", email: "client@example.test", note: "",
+    }), slugParams(slug))
+    if (response.status === 201) await bypass(() => drain(ORG, 50))
+    return response
   }
 
   async function book(slug: string, startsAt: string, name = "Müştəri") {
@@ -1152,6 +1162,85 @@ pgDescribe("online booking on a real Postgres", () => {
       expect(calendar.remove).toHaveBeenCalledTimes(1)
       expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id } }))).status).toBe("cancelled")
     } finally { await bypass(() => prisma.account.delete({ where: { id: account.id } })) }
+  })
+
+  // ─── Rooms, chairs, machines (src/lib/booking/book.ts, bookableChairs) ────
+
+  it("a room is a chair of its own: two rooms do not block each other, and neither blocks their owner", async () => {
+    // The module was built for salons, so everything bookable was a master.
+    // A coworking books rooms and nobody does them (owner, 2026-11-12), and
+    // a room that was a fake employee would take a seat in the plan and could
+    // sign in. What has to be true for a room to be a chair at all:
+    //
+    //   • two rooms on one service are two chairs — booking one leaves the
+    //     other free at the same minute;
+    //   • a room's meeting belongs to the room, so the master who owns it in
+    //     the record is still free then — the whole reason rooms exist;
+    //   • a room switched off stops being offered and keeps its meetings.
+    const rooms = await Promise.all(["Otaq 1", "Otaq 2"].map((name) => bypass(() =>
+      prisma.bookingResource.create({ data: { organizationId: ORG, name }, select: { id: true, name: true } }))))
+    const slug = await newPage({ title: "Toplantı", durationMinutes: 60, hostIds: [HOST_A], resourceIds: rooms.map((room) => room.id) })
+    const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
+    const at = await slotWithin(slug, 36 * 3600_000, 96 * 3600_000)
+
+    // The same minute is free on both rooms and on the master.
+    const first = await bookOn(slug, at, rooms[0].id)
+    expect(first.status, await first.clone().text()).toBe(201)
+    const second = await bookOn(slug, at, rooms[1].id)
+    expect(second.status, await second.clone().text()).toBe(201)
+    // And the master is still free then: the meetings are the rooms'.
+    const onHost = await bookOn(slug, at, HOST_A)
+    expect(onHost.status, await onHost.clone().text()).toBe(201)
+
+    const meetings = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: page.id, status: "confirmed" }, orderBy: { createdAt: "asc" } }))
+    expect(meetings).toHaveLength(3)
+    expect(meetings.map((meeting) => meeting.resourceId)).toEqual([rooms[0].id, rooms[1].id, null])
+    // A meeting on a room still belongs to a master in the record — the column
+    // has pointed at a user since the first release — and that master is the
+    // service's own first one.
+    expect(new Set(meetings.map((meeting) => meeting.hostUserId))).toEqual(new Set([HOST_A]))
+
+    // The same room at the same minute is taken, as a master would be.
+    const again = await bookOn(slug, at, rooms[0].id)
+    expect(again.status).toBe(409)
+
+    // Switched off, it stops being offered — and keeps the meeting it holds.
+    await bypass(() => prisma.bookingResource.update({ where: { id: rooms[1].id }, data: { isActive: false } }))
+    const { body } = await view(slug)
+    expect(JSON.stringify(body.data)).not.toContain(rooms[1].id)
+    expect(await bypass(() => prisma.booking.count({ where: { organizationId: ORG, resourceId: rooms[1].id, status: "confirmed" } }))).toBe(1)
+  })
+
+  it("a room keeps its own hours: it is booked inside them and refused outside", async () => {
+    // A room with no hours of its own is open whenever the service is, exactly
+    // like a master without a schedule. One that has them is the narrower of
+    // the two — a meeting room in a building that closes at six.
+    const room = await bypass(() => prisma.bookingResource.create({
+      data: { organizationId: ORG, name: "Otaq 3", weekly: { "1": [{ start: "10:00", end: "11:00" }], "2": [{ start: "10:00", end: "11:00" }], "3": [{ start: "10:00", end: "11:00" }], "4": [{ start: "10:00", end: "11:00" }], "5": [{ start: "10:00", end: "11:00" }], "6": [{ start: "10:00", end: "11:00" }], "0": [{ start: "10:00", end: "11:00" }] } },
+      select: { id: true },
+    }))
+    const slug = await newPage({ title: "Otaq 3 üçün", durationMinutes: 30, hostIds: [HOST_B], resourceIds: [room.id] })
+    const { body } = await view(slug)
+    const clock = (iso: string) => new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Baku" }).format(new Date(iso))
+    const ahead = (iso: string) => Date.parse(iso) - Date.now() > 36 * 3600_000
+    const times = (body.data.days as { slots: { startsAt: string }[] }[])
+      .flatMap((day) => day.slots.map((slot) => slot.startsAt)).filter(ahead)
+    // The service is offered on the master's whole day AND on the room's one
+    // hour — a chair free is a chair free, whichever it is. What the room's
+    // hours decide is what may be booked ON THE ROOM.
+    const inside = times.find((iso) => clock(iso) === "10:00")!
+    const outside = times.find((iso) => clock(iso) === "15:00")!
+    expect(inside, JSON.stringify(times.slice(0, 8))).toBeTruthy()
+    expect(outside).toBeTruthy()
+
+    expect((await bookOn(slug, inside, room.id)).status).toBe(201)
+    // Outside its hour the room is simply not a free chair; the master still
+    // is, so the same minute books on them.
+    expect((await bookOn(slug, outside, room.id)).status).toBe(409)
+    expect((await bookOn(slug, outside, HOST_B)).status).toBe(201)
+    const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
+    const meetings = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: page.id, status: "confirmed" } }))
+    expect(new Set(meetings.map((meeting) => meeting.resourceId))).toEqual(new Set([null, room.id]))
   })
 
   // ─── WhatsApp booking (src/lib/booking/whatsapp-agent.ts) ─────────────────
