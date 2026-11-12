@@ -401,6 +401,23 @@ async function main() {
     assert.equal((await page.innerText('h1')).trim(), 'Zeytun')
     await page.close()
   })
+  await step('the board list shows only my tasks at one click, and opens that way again next time (Zeytun, 2026-11-12: «Pharmastore qarışıqdı»)', async () => {
+    const page = await sessions.marketer.newPage()
+    await page.goto(`/boards/${f.boards.DPHARMA.id}`, { timeout: 180000 })
+    await page.waitForFunction(() => /\d+ nəticə/.test(document.body.innerText), null, { timeout: 180000 })
+    const body = async () => page.innerText('body')
+    assert.ok((await body()).includes(f.tasks.pharmaWork.title), 'everyone\'s tasks before the filter')
+    await page.click('[data-testid="board-list-mine"]')
+    await page.waitForFunction((title) => !document.body.innerText.includes(title), f.tasks.pharmaWork.title, { timeout: 30000 })
+    assert.ok((await body()).includes(f.tasks.pharmaOpen.title), 'her own task is missing')
+    await page.reload({ timeout: 180000 })
+    await page.waitForFunction(() => /\d+ nəticə/.test(document.body.innerText), null, { timeout: 180000 })
+    await page.waitForFunction(() => document.querySelector('[data-testid="board-list-mine"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 30000 })
+    assert.ok(!(await body()).includes(f.tasks.pharmaWork.title), 'the filter was not kept')
+    await page.click('[data-testid="board-list-mine"]')
+    await page.waitForFunction((title) => document.body.innerText.includes(title), f.tasks.pharmaWork.title, { timeout: 30000 })
+    await page.close()
+  })
   await step('«Mənim işlərim»: the person\'s own open tasks from every board, ticked into the board\'s done column and back', async () => {
     // What the server says is hers — on a real database, so the filter itself is proven, not a mock.
     const mine = await api('marketer', '/api/v1/tasks?mine=1&open=1&limit=1000')
