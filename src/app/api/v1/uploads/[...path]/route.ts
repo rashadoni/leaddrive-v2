@@ -302,13 +302,16 @@ function thumbnailResponse(
  */
 async function serveMtmDiskPhotoThumbnail(input: {
   parts: readonly string[]
+  /** `mtm-photos`, or `tasks` for pictures in task messages. */
+  subdir?: "mtm-photos" | "tasks"
   width: MtmPhotoThumbnailWidth
   principal: string
   organizationId: string
   ifNoneMatch: string | null
 }): Promise<NextResponse> {
   const { parts } = input
-  if (!isSafeUploadPathParts(parts) || parts.length !== 2 || parts[0] !== "mtm-photos") {
+  const subdir = input.subdir ?? "mtm-photos"
+  if (!isSafeUploadPathParts(parts) || parts.length !== 2 || parts[0] !== subdir) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
   const uploadsRoot = runtimePublicUploadsRoot()
@@ -336,6 +339,7 @@ async function serveMtmDiskPhotoThumbnail(input: {
       fileName: parts[1],
       width: input.width,
       ifNoneMatch: input.ifNoneMatch,
+      subdir,
     })
   } finally {
     await releasePublicConcurrencySlot(slot)
@@ -594,12 +598,28 @@ const authenticatedGET = withRlsSessionAuth(async (req, auth, { params }: RouteC
     if (!fileName) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
+    // `?w=` — a picture in a task message asks for a thumbnail, like field photos (a card of
+    // Bordio messages shows dozens; originals average ~450 KB). Same allowlist, checked first.
+    const thumbnailWidth = parseMtmPhotoThumbnailWidth(new URL(req.url).searchParams)
+    if (thumbnailWidth === "invalid" || (thumbnailWidth && parts.length !== 2)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
     const ta = await prisma.taskAttachment.findFirst({
       where: { fileName, organizationId: auth.orgId },
       select: { id: true },
     })
     if (!ta) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
+    if (thumbnailWidth) {
+      return serveMtmDiskPhotoThumbnail({
+        parts,
+        subdir: "tasks",
+        width: thumbnailWidth,
+        principal: `${auth.orgId}:${auth.userId}`,
+        organizationId: auth.orgId,
+        ifNoneMatch: req.headers.get("if-none-match"),
+      })
     }
   } else if (subdir === "tickets") {
     // TicketAttachment owns bare filenames and is always resolved inside the

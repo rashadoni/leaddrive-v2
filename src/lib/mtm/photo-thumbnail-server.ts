@@ -114,12 +114,20 @@ export async function renderMtmPhotoThumbnail(
   return withRenderSlot(() => decodeThumbnail(input, width))
 }
 
+/**
+ * Where photo thumbnails are cached: field photos and, since 2026-11-12, pictures in task messages
+ * (owner: boards «медленно открывается» — a card of Bordio messages pulled dozens of ~450 KB
+ * originals through the proxy at 1–4 s each).
+ */
+export type PhotoThumbnailSubdir = "mtm-photos" | "tasks"
+
 export function mtmPhotoThumbnailCachePath(
   uploadsRoot: string,
   fileName: string,
   width: MtmPhotoThumbnailWidth,
+  subdir: PhotoThumbnailSubdir = "mtm-photos",
 ): string {
-  return path.join(uploadsRoot, "mtm-photos", MTM_PHOTO_THUMBNAIL_DIR, `${fileName}.w${width}.webp`)
+  return path.join(uploadsRoot, subdir, MTM_PHOTO_THUMBNAIL_DIR, `${fileName}.w${width}.webp`)
 }
 
 export function diskMtmPhotoThumbnailEtag(
@@ -166,6 +174,8 @@ export async function resolveDiskMtmPhotoThumbnail(input: {
   fileName: string
   width: MtmPhotoThumbnailWidth
   ifNoneMatch: string | null
+  /** The upload folder of the original; field photos by default. */
+  subdir?: PhotoThumbnailSubdir
 }): Promise<DiskThumbnailResult> {
   let original
   try {
@@ -178,7 +188,7 @@ export async function resolveDiskMtmPhotoThumbnail(input: {
   const etag = diskMtmPhotoThumbnailEtag(original, input.width)
   if (etagMatches(input.ifNoneMatch, etag)) return { kind: "not-modified", etag }
 
-  const cachePath = mtmPhotoThumbnailCachePath(input.uploadsRoot, input.fileName, input.width)
+  const cachePath = mtmPhotoThumbnailCachePath(input.uploadsRoot, input.fileName, input.width, input.subdir)
   try {
     const cached = await stat(cachePath)
     if (cached.isFile() && cached.size > 0 && cached.mtimeMs >= original.mtimeMs) {
