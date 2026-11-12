@@ -1948,7 +1948,19 @@ pgDescribe("online booking on a real Postgres", () => {
 
   it("WhatsApp: «Ləğv etmək» frees the chair at once, and «vaxtı dəyişmək» moves the meeting only when a new time is taken", async () => {
     await withWhatsAppBooking(async () => {
-      const slug = await newPage({ title: "Saç kəsimi", durationMinutes: 30, maxDaysAhead: 2 })
+      // A master of this scenario's own, two hours' notice, and the tap takes
+      // the LAST time offered rather than the first.
+      //
+      // All three are about one thing: the time this test books must not be a
+      // time anything else in the file is arguing over. Shared with the other
+      // scenarios, the master's day fills up as the file runs, the move offers
+      // land on whatever is left — late in the evening in Baku that is the
+      // edge of the notice window — and the same tap sometimes booked and
+      // sometimes did not. The deploy gate for all of main went red on it
+      // twice on 2026-11-12, at 21:11 and 21:46 Baku.
+      const host = `user-move-${randomUUID()}`
+      await bypass(() => prisma.user.create({ data: { id: host, organizationId: ORG, email: `${host}@example.test`, name: "Sevinc", passwordHash: "-", role: "manager" } }))
+      const slug = await newPage({ title: "Saç kəsimi", durationMinutes: 30, maxDaysAhead: 2, minNoticeMinutes: 120, hostIds: [host] })
       const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
       const make = async (index: number) => {
         const startsAt = await someSlot(slug, index)
@@ -1972,11 +1984,12 @@ pgDescribe("online booking on a real Postgres", () => {
       for (const offer of offers) expect(offer.replacesBookingId).toBe(second.id)
       expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: second.id } }))).status).toBe("confirmed")
 
-      await turnIn(conversation, { waPhone: phone, replyId: `bk:${offers[0].id}`, text: "tap" })
+      const taken = offers.at(-1)!
+      await turnIn(conversation, { waPhone: phone, replyId: `bk:${taken.id}`, text: "tap" })
       expect((await bypass(() => prisma.booking.findUniqueOrThrow({ where: { id: second.id } }))).status).toBe("cancelled")
       const moved = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: page.id, status: "confirmed" } }))
       expect(moved).toHaveLength(1)
-      expect(moved[0].startsAt.toISOString()).toBe(offers[0].startsAt.toISOString())
+      expect(moved[0].startsAt.toISOString()).toBe(taken.startsAt.toISOString())
     })
   })
 
