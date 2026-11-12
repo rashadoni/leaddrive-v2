@@ -66,6 +66,10 @@ vi.mock("@/lib/prisma", () => ({
         return { id: "new_1", ...data }
       }),
     },
+    channelConfig: {
+      // This organization owns wa-1 and fb-1.
+      count: vi.fn(async ({ where }: any) => (where.id.in as string[]).filter((id) => ["wa-1", "fb-1"].includes(id)).length),
+    },
   },
 }))
 
@@ -366,5 +370,38 @@ describe("module access (hiddenModules)", () => {
     const res = await POST(postReq({ ...newUser, role: "admin", hiddenModules: ["sales"] }))
     expect(res.status).toBe(201)
     expect(state.lastCreate).not.toHaveProperty("hiddenModules")
+  })
+})
+
+/**
+ * «İstifadəçi əlavə et» with numbers and pages ticked off (Zeytun, 2026-11-12): the create form sends
+ * the same `hiddenChannelConfigIds` as the edit form, and the create route refused it as
+ * «Unrecognized key».
+ */
+describe("POST /api/v1/users — hidden numbers and pages", () => {
+  beforeEach(() => { state.authOk = true; state.user = null; state.lastCreate = null })
+  const base = { name: "Togrul", email: "t@zeytun.az", password: "SecurePass123!", role: "sales" }
+
+  it("creates the person with those channels hidden", async () => {
+    const res = await POST(postReq({ ...base, hiddenChannelConfigIds: ["fb-1", "wa-1", "wa-1"] }))
+    expect(res.status).toBe(201)
+    expect(state.lastCreate.hiddenChannelConfigIds).toEqual(["fb-1", "wa-1"])
+  })
+
+  it("refuses a channel of another organization and creates nobody", async () => {
+    const res = await POST(postReq({ ...base, hiddenChannelConfigIds: ["wa-1", "theirs"] }))
+    expect(res.status).toBe(400)
+    expect(state.lastCreate).toBeNull()
+  })
+
+  it("an admin is never narrowed: the list is dropped", async () => {
+    const res = await POST(postReq({ ...base, role: "admin", hiddenChannelConfigIds: ["wa-1"] }))
+    expect(res.status).toBe(201)
+    expect(state.lastCreate.hiddenChannelConfigIds).toBeUndefined()
+  })
+
+  it("without the field nothing changes", async () => {
+    expect((await POST(postReq(base))).status).toBe(201)
+    expect(state.lastCreate.hiddenChannelConfigIds).toBeUndefined()
   })
 })
