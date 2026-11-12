@@ -58,6 +58,16 @@ export function tenantFileLocations(): TenantFileLocation[] {
       ownersBy<{ fileName: string; organizationId: string }>((row) => row.fileName)(
         await prisma.taskAttachment.findMany({ where: { fileName: { in: names } }, select: { fileName: true, organizationId: true } }),
       )),
+    // `tasks/.thumbs/<file>.w<width>.webp` — thumbnails of pictures in task messages.
+    ownedFileLocation(
+      "task-photo-thumbnails",
+      path.join(runtimePublicUploadDirectory("tasks"), MTM_PHOTO_THUMBNAIL_DIR),
+      async (names) =>
+        ownersBy<{ fileName: string; organizationId: string }>((row) => row.fileName)(
+          await prisma.taskAttachment.findMany({ where: { fileName: { in: names } }, select: { fileName: true, organizationId: true } }),
+        ),
+      (fileName) => /^(.+)\.w\d+\.webp$/.exec(fileName)?.[1] ?? null,
+    ),
     ownedFileLocation("tickets", runtimePublicUploadDirectory("tickets"), async (names) =>
       ownersBy<{ fileName: string; organizationId: string }>((row) => row.fileName)(
         await prisma.ticketAttachment.findMany({ where: { fileName: { in: names } }, select: { fileName: true, organizationId: true } }),

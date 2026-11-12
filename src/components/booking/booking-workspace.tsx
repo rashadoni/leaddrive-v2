@@ -22,6 +22,7 @@ import { BookingCoordinatorsPanel } from "./booking-coordinators-panel"
 import { BookingBoardPanel } from "./booking-board-panel"
 import { BookingRequestsPanel } from "./booking-requests-panel"
 import { BookingWordsProvider, useBookingWords } from "./booking-words"
+import { BookingResourcesPanel } from "./booking-resources-panel"
 import { BookingHostSchedulePanel } from "./booking-host-schedule-panel"
 import { BookingStatus } from "./booking-status"
 import type { DaySlots } from "@/lib/booking/availability"
@@ -447,7 +448,7 @@ function BookingWorkspaceScreens({ section = "meetings" }: { section?: BookingSe
           : <p className="ml-auto text-sm text-muted-foreground">{t("myLinkAsk")}</p>}
       </>}
     </CrmSection> : null}
-    {tab === "pages" || tab === "whatsapp" ? context?.canConfigure ? <BookingPagesPanel show={tab === "whatsapp" ? "whatsapp" : "services"} /> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : tab === "team" ? context?.canConfigure ? <div className="space-y-5"><div className="grid items-start gap-5 lg:grid-cols-2"><BookingHostSchedulePanel /><BookingCoordinatorsPanel /></div><BookingBoardPanel hosts={context.hosts.filter((host) => host.isActive).map(({ id, name }) => ({ id, name }))} /></div> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : <>
+    {tab === "pages" || tab === "whatsapp" ? context?.canConfigure ? <BookingPagesPanel show={tab === "whatsapp" ? "whatsapp" : "services"} /> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : tab === "team" ? context?.canConfigure ? <div className="space-y-5"><div className="grid items-start gap-5 lg:grid-cols-2"><BookingHostSchedulePanel /><BookingCoordinatorsPanel /></div><BookingResourcesPanel /><BookingBoardPanel hosts={context.hosts.filter((host) => host.isActive).map(({ id, name }) => ({ id, name }))} /></div> : <p role="status">{loading ? t("workspaceLoading") : t("workspaceForbidden")}</p> : <>
       <BookingRequestsPanel timezone={timezone} onReviewed={() => { void contextQuery.refetch(); setRevision((value) => value + 1) }} />
       {view === "day" ? null : <section className="flex flex-wrap items-end gap-3" aria-label={t("workspaceFilters")}>
         {searchField}

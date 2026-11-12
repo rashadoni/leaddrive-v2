@@ -49,6 +49,12 @@
       "migration": "20261211090000_booking_contact_link",
       "bookingAdditive": true,
       "note": "The customer a staff booking was made for, when they picked one already in the CRM: one nullable column on bookings. A release that does not know it keeps booking and reading meetings as before."
+    },
+    {
+      "schemaHash": "9203b5a42f0aa7329fa0fc832338375d3d168bc38bd672fec0929e2dbbeea5b7",
+      "migration": "20261215090100_booking_resource_columns",
+      "bookingAdditive": true,
+      "note": "A thing with a schedule that is not a person — a room, a chair, a machine. Its own table carries it (20261215090000_booking_resources, which this contract does not speak for); what the contract sees here are two added columns a previous release never fills: `booking_pages.resourceIds` defaults to empty, which is what every service meant before, and `bookings.resourceId` is null on every meeting ever made, which says the same — it belongs to its host alone. The release also splits the one-chair-one-start unique index in two (20261215090200_booking_chair_uniqueness), because a meeting on a room carries a master for the record and two rooms at ten o'clock are not a double booking: for every row a release without resources can write — `resourceId` null — the first half is the old index, unchanged."
     }
   ]
 }

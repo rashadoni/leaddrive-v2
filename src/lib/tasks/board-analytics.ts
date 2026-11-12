@@ -24,6 +24,8 @@ export interface AnalyticsTask {
   assigneeName: string | null
   estimatedHours: number | null
   estimatedPrice: number | null
+  /** Its subtasks — each closed one is a piece of work (see `units`). */
+  subtasks?: { completedAt: Date | null; assignedTo: string | null; assigneeName: string | null }[]
 }
 
 export interface AnalyticsColumn extends LaneColumn {
@@ -68,6 +70,18 @@ export interface Tier1Analytics {
     completionRate: number
   }[]
   due: { overdue: TaskRef[]; dueSoon: TaskRef[] }
+  /**
+   * Work done counted in pieces (Elvira, 2026-11-12: «45 ədəd vinil» came as
+   * one task with a list; the owner: «Да, делай»). A task with subtasks counts
+   * each subtask closed in the period, for the subtask's assignee (or the
+   * task's); a task without them counts once, when it is closed — as before.
+   */
+  units: {
+    thisWeek: number
+    tasksThisWeek: number
+    subtasksThisWeek: number
+    byAssignee: { userId: string | null; name: string | null; count: number }[]
+  }
   workMix: { type: string; count: number }[]
 }
 
@@ -176,6 +190,14 @@ export function computeTier1Analytics(
   let wip = 0
   let done = 0
   let throughputThisWeek = 0
+  const units = { thisWeek: 0, tasksThisWeek: 0, subtasksThisWeek: 0 }
+  const unitsBy = new Map<string | null, { name: string | null; count: number }>()
+  const inRange = (d: Date | null): d is Date => !!d && d.getTime() >= start.getTime() && d.getTime() <= now.getTime()
+  const creditUnit = (userId: string | null, name: string | null) => {
+    const row = unitsBy.get(userId) ?? { name, count: 0 }
+    row.count += 1
+    unitsBy.set(userId, row)
+  }
 
   for (const t of tasks) {
     const stage = foldStage(t.status)
@@ -236,6 +258,18 @@ export function computeTier1Analytics(
       ar.count += 1
       assigneeResolved.set(t.assignedTo, ar)
     }
+    // pieces of work: closed subtasks, or the task itself when it has none
+    if (t.subtasks && t.subtasks.length > 0) {
+      for (const sub of t.subtasks) {
+        if (!inRange(sub.completedAt)) continue
+        const owner = sub.assignedTo ?? t.assignedTo
+        creditUnit(owner, sub.assignedTo ? sub.assigneeName : t.assigneeName)
+        if (weekStartUTC(sub.completedAt).toISOString() === thisWeekKey) { units.thisWeek += 1; units.subtasksThisWeek += 1 }
+      }
+    } else if (inRange(t.completedAt)) {
+      creditUnit(t.assignedTo, t.assigneeName)
+      if (weekStartUTC(t.completedAt).toISOString() === thisWeekKey) { units.thisWeek += 1; units.tasksThisWeek += 1 }
+    }
     // created in range (report 3)
     if (t.createdAt.getTime() >= start.getTime() && t.createdAt.getTime() <= now.getTime()) {
       const wk = weekStartUTC(t.createdAt).toISOString()
@@ -267,6 +301,10 @@ export function computeTier1Analytics(
     },
     wip: wipReport,
     throughput: weeks.map((w) => ({ weekStart: w.weekStart, count: w.resolved })),
+    units: {
+      ...units,
+      byAssignee: [...unitsBy.entries()].map(([userId, v]) => ({ userId, name: v.name, count: v.count })).sort((a, b) => b.count - a.count),
+    },
     assigneeThroughput: [...assigneeResolved.entries()]
       .map(([userId, v]) => ({ userId, name: v.name, count: v.count }))
       .sort((a, b) => b.count - a.count),

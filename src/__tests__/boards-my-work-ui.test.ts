@@ -236,12 +236,39 @@ describe("Mənim işlərim", () => {
     expect(groups()).toEqual([["overdue", ["t-late"]], ["none", ["t-none"]]])
   })
 
-  it("«Показать завершённые» reads the last 14 days' finished tasks", async () => {
+  // Owner, 2026-11-12: «завершённые задачи не только за 14 дней… все можешь подгружать» —
+  // Sabina saw 25 of her 467 finished tasks.
+  it("«Показать завершённые» reads every finished task, newest first, 50 at a time", async () => {
+    const finished = Array.from({ length: 120 }, (_, i) => ({ ...TASKS[0], id: `f-${i}`, title: `Bitmiş ${i}`, status: "done", completedAt: new Date(Date.UTC(2026, 10, 12) - i * 86_400_000).toISOString() }))
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, method: init?.method ?? "GET", body: undefined })
+      if (url === "/api/v1/divisions") return new Response(JSON.stringify({ success: true, data: { divisions: DIVISIONS, myOpenTasks: 4 } }))
+      if (url.includes("sort=completed")) {
+        const offset = Number(new URL(url, "http://x").searchParams.get("offset"))
+        return new Response(JSON.stringify({ success: true, data: { tasks: finished.slice(offset, offset + 50), total: finished.length } }))
+      }
+      if (url.startsWith("/api/v1/tasks?")) return new Response(JSON.stringify({ success: true, data: { tasks: url.includes("open=1") ? TASKS : [], total: 4 } }))
+      return new Response("{}", { status: 404 })
+    }))
     await render()
     await act(async () => { (container.querySelector('[data-testid="my-work-show-done"]') as HTMLButtonElement).click() })
     await flush()
-    const doneRead = calls.find((c) => c.url.includes("status=done,completed,cancelled"))
-    expect(doneRead?.url).toMatch(/mine=1&status=done,completed,cancelled&completedAfter=/)
+    const reads = () => calls.filter((c) => c.url.includes("sort=completed")).map((c) => c.url)
+    expect(reads()).toEqual(["/api/v1/tasks?mine=1&status=done,completed,cancelled&sort=completed&limit=50&offset=0"])
+    expect(reads()[0]).not.toContain("completedAfter")
+    const doneRows = () => [...container.querySelectorAll('[data-group="done"] [data-testid="my-work-row"]')].map((r) => r.getAttribute("data-task-id"))
+    expect(doneRows()).toHaveLength(50)
+    expect(container.querySelector('[data-group="done"] h2')?.textContent).toContain("120")
+    const more = () => container.querySelector('[data-testid="my-work-done-more"]') as HTMLButtonElement | null
+    expect(more()?.textContent).toContain("70")
+    await act(async () => { more()!.click() })
+    await flush()
+    await act(async () => { more()!.click() })
+    await flush()
+    expect(reads().map((u) => new URL(u, "http://x").searchParams.get("offset"))).toEqual(["0", "50", "100"])
+    expect(doneRows()).toHaveLength(120)
+    expect(doneRows()[0]).toBe("f-0")
+    expect(more()).toBeNull()
   })
 
   it("a row opens the board's task panel", async () => {

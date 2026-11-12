@@ -25,6 +25,12 @@ export const bookingPageSchema = z.object({
   locationText: z.string().trim().max(300).optional().nullable(),
   hostIds: z.array(z.string().min(1).max(64)).min(1, "HOSTS_REQUIRED").max(20),
   /**
+   * Rooms, chairs or machines this service is booked on beside its masters
+   * (src/lib/booking/book.ts, `bookableChairs`). Empty is what every service
+   * meant before they existed: booked on its masters alone.
+   */
+  resourceIds: z.array(z.string().min(1).max(64)).max(50).optional(),
+  /**
    * What single masters charge and how long they take, when they differ from
    * the service. Shape only here: which masters count and what counts as a
    * difference is `normalizeHostVariants`, so the rule lives in one place.

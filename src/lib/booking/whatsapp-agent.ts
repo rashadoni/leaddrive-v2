@@ -31,7 +31,7 @@ import { hmacToken } from "@/lib/secure-token"
 import { dateInputValueInTimezone, getOffsetMinutes } from "@/lib/timezone"
 import { sendWhatsAppButtons, sendWhatsAppFlow, sendWhatsAppList, sendWhatsAppMessage, type WhatsAppListRow, type WhatsAppReplyButton } from "@/lib/whatsapp"
 import { computeSlots, type Slot } from "./availability"
-import { activeHosts, loadBusyByHost, orgContext } from "./book"
+import { activeHosts, addResourceBusy, bookableChairs, loadBusyByHost, orgContext } from "./book"
 import { BookingCommandError } from "./command-error"
 import { bookingRules } from "./commands"
 import { createStoredBooking } from "./create"
@@ -235,6 +235,12 @@ interface ServiceContext {
   maxDaysAhead: number
   weekly: unknown
   hostIds: string[]
+  /**
+   * Rooms, chairs or machines this service is booked on beside its masters
+   * (src/lib/booking/book.ts, `bookableChairs`). A coworking's service has no
+   * masters a client ever hears about and books on these.
+   */
+  resourceIds: string[]
   /** A Decimal would read as NaN, so it is a string by the time it gets here. */
   price: string | null
   priceCurrency: string | null
@@ -462,10 +468,12 @@ function readRequest(value: unknown): OfferRequest | null {
  * answered — the client got what they asked for.
  */
 async function findChoices(input: BookingTurnInput, service: ServiceContext, request: OfferRequest, timezone: string, closedDates: readonly string[], now: Date): Promise<{ choices: OfferChoice[]; exact: boolean; days: { date: string; slots: Slot[] }[] }> {
-  const hosts = await activeHosts(input.organizationId, service.hostIds)
+  const hosts = await serviceChairs(input.organizationId, service)
   if (!hosts.length) return { choices: [], exact: false, days: [] }
   const to = new Date(now.getTime() + (service.maxDaysAhead + 2) * 86400_000)
-  const busy = await loadBusyByHost(input.organizationId, hosts.map((host) => host.id), now, to, timezone, { holds: { exceptConversationId: input.conversationId } })
+  const holds = { holds: { exceptConversationId: input.conversationId } }
+  const busy = await loadBusyByHost(input.organizationId, hosts.filter((host) => !host.resource).map((host) => host.id), now, to, timezone, holds)
+  await addResourceBusy(busy, input.organizationId, hosts.filter((host) => host.resource).map((host) => host.id), now, to, timezone, holds)
   const days = computeSlots({ rules: bookingRules(service, timezone, closedDates), hostIds: hosts.map((host) => host.id), busyByHost: busy, now })
   const part = PART_OF_DAY[request.partOfDay]
   const window: [number, number] = [clockMinutes(request.notBefore) ?? part[0], clockMinutes(request.notAfter) ?? part[1]]
@@ -489,12 +497,23 @@ async function findChoices(input: BookingTurnInput, service: ServiceContext, req
   return { choices: [], exact: false, days }
 }
 
+/**
+ * Everything this service may be booked on: its masters and its rooms.
+ *
+ * The agent speaks in «hosts» throughout — a time belongs to a chair, and a
+ * chair is an id with a name. A room is one of those, so it travels the whole
+ * way without a second code path (src/lib/booking/book.ts).
+ */
+async function serviceChairs(organizationId: string, service: ServiceContext): Promise<{ id: string; name: string; resource: boolean }[]> {
+  return bookableChairs(organizationId, { hostIds: service.hostIds, resourceIds: service.resourceIds })
+}
+
 /** A page row as the agent uses it: the Decimal price spelled out. */
 function asService(page: { price: unknown } & Omit<ServiceContext, "price">): ServiceContext {
   return { ...page, price: page.price === null || page.price === undefined ? null : String(page.price) }
 }
 
-const SERVICE_SELECT = { id: true, title: true, durationMinutes: true, bufferMinutes: true, minNoticeMinutes: true, maxDaysAhead: true, weekly: true, hostIds: true, price: true, priceCurrency: true, category: true, locationText: true } as const
+const SERVICE_SELECT = { id: true, title: true, durationMinutes: true, bufferMinutes: true, minNoticeMinutes: true, maxDaysAhead: true, weekly: true, hostIds: true, resourceIds: true, price: true, priceCurrency: true, category: true, locationText: true } as const
 
 /** A time inside the form: one of the held ones, or a free slot nobody holds. */
 interface FormTime {
@@ -569,10 +588,14 @@ async function serviceChoices(organizationId: string, service: ServiceContext, h
     select: { id: true, title: true },
   })
   const vocabulary = readBookingVocabulary((await prisma.organization.findUnique({ where: { id: organizationId }, select: { settings: true } }))?.settings)
-  // «Nobody does it» is the whole row gone: the published form has no master
-  // dropdown at all, so a list of masters in the message would be data no
-  // screen reads.
-  const masters = vocabulary.noHost ? [] : hosts.filter((host) => service.hostIds.includes(host.id)).slice(0, 19)
+  // «Nobody does it» is the whole row gone: the published form has no second
+  // dropdown at all, so a list in the message would be data no screen reads.
+  // Otherwise it is what this service is booked ON — its rooms when it has
+  // them, its masters otherwise, the same rule the free-time search follows
+  // (src/lib/booking/book.ts, `bookableChairs`). A coworking's client
+  // chooses between rooms and never meets the master who owns them.
+  const chairs = new Set(service.resourceIds.length ? service.resourceIds : service.hostIds)
+  const masters = vocabulary.noHost ? [] : hosts.filter((host) => chairs.has(host.id)).slice(0, 19)
   return {
     has_services: services.length > 1,
     services: services.length > 1 ? services.map((item) => ({ id: item.id, title: item.title.slice(0, 30) })) : [{ id: service.id, title: service.title.slice(0, 30) }],
@@ -633,7 +656,13 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
     return Promise.all(choices.map((choice) => tx.bookingOffer.create({
       data: {
         organizationId: input.organizationId, conversationId: input.conversationId, channelConfigId: input.channelConfigId,
-        bookingPageId: service.id, hostUserId: choice.hostId, startsAt: new Date(choice.startsAt), endsAt: new Date(choice.endsAt),
+        bookingPageId: service.id,
+        // The chair this time is held on. A room is not a user, and the column
+        // that must hold one takes the service's own first master — the same
+        // bookkeeping the booking itself does (src/lib/booking/create.ts).
+        hostUserId: service.resourceIds.includes(choice.hostId) ? service.hostIds[0] : choice.hostId,
+        resourceId: service.resourceIds.includes(choice.hostId) ? choice.hostId : null,
+        startsAt: new Date(choice.startsAt), endsAt: new Date(choice.endsAt),
         bufferMinutes: service.bufferMinutes, expiresAt,
         // The day slots travel with the offer because the form speaks in them
         // («d2»), not in dates: a published form cannot carry a date, and the
@@ -644,9 +673,10 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
         // offered together by it (src/lib/booking/queries.ts).
         createdAt: now,
       },
-      select: { id: true, hostUserId: true },
+      select: { id: true, hostUserId: true, resourceId: true },
     })))
   })
+  // The chair's own name: `context.hosts` holds masters and rooms alike.
   const hostName = (id: string) => context.hosts.find((host) => host.id === id)?.name ?? ""
   const withDay = new Set(choices.map((choice) => choice.date)).size > 1
   const price = servicePriceLabel(service, request.language)
@@ -686,7 +716,7 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
   const rows = offers.map((offer, index) => ({
     id: `${OFFER_PREFIX}${offer.id}`,
     title: offerRowTitle(choices[index], context.timezone, false),
-    description: hostName(offer.hostUserId) || null,
+    description: hostName(offer.resourceId ?? offer.hostUserId) || null,
   }))
   const sections = [...new Set(choices.map((choice) => choice.date))].map((date) => ({
     title: shortDayLabel(choices.find((choice) => choice.date === date)!.startsAt, request.language, context.timezone),
@@ -750,7 +780,7 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
   // the three nearest times as buttons, the shape that worked before.
   const buttons = offers.slice(0, OFFERS_PER_MESSAGE).map((offer, index) => ({
     id: `${OFFER_PREFIX}${offer.id}`,
-    title: offerButtonTitle(choices[index], hostName(offer.hostUserId), context.timezone, withDay),
+    title: offerButtonTitle(choices[index], hostName(offer.resourceId ?? offer.hostUserId), context.timezone, withDay),
   }))
   return sendButtons(input, body, buttons, words.hold)
 }
@@ -799,10 +829,12 @@ async function sendDayMenu(input: BookingTurnInput, serviceId: string, now: Date
   if (!context || !service) return false
   const language = await conversationLanguage(input)
   const words = WORDS[language]
-  const hosts = await activeHosts(input.organizationId, service.hostIds)
+  const hosts = await serviceChairs(input.organizationId, service)
   if (!hosts.length) return false
   const horizon = new Date(now.getTime() + (service.maxDaysAhead + 2) * 86400_000)
-  const busy = await loadBusyByHost(input.organizationId, hosts.map((host) => host.id), now, horizon, context.timezone, { holds: { exceptConversationId: input.conversationId } })
+  const holds = { holds: { exceptConversationId: input.conversationId } }
+  const busy = await loadBusyByHost(input.organizationId, hosts.filter((host) => !host.resource).map((host) => host.id), now, horizon, context.timezone, holds)
+  await addResourceBusy(busy, input.organizationId, hosts.filter((host) => host.resource).map((host) => host.id), now, horizon, context.timezone, holds)
   const days = computeSlots({ rules: bookingRules(service, context.timezone, context.closedDates), hostIds: hosts.map((host) => host.id), busyByHost: busy, now })
     .map((day) => ({ date: day.date, count: pickOfferTimes(day.slots, { timezone: context.timezone, window: [0, 24 * 60], hostId: null, count: OFFERS_PER_LIST }).length }))
     .filter((day) => day.count > 0)
@@ -836,15 +868,23 @@ async function bookFreeSlot(input: BookingTurnInput, raw: string, rules: Autonom
   if (!serviceId || !hostId || !startsAt || Number.isNaN(Date.parse(startsAt))) return false
   const service = await prisma.bookingPage.findFirst({
     where: { organizationId: input.organizationId, id: serviceId, isActive: true },
-    select: { id: true, durationMinutes: true, bufferMinutes: true, hostIds: true },
+    select: { id: true, durationMinutes: true, bufferMinutes: true, hostIds: true, resourceIds: true },
   })
-  // Only a master this service actually works with, whatever the id said.
-  if (!service || !service.hostIds.includes(hostId)) return false
+  // Only a chair this service is actually booked on, whatever the id said —
+  // one of its masters, or one of its rooms.
+  if (!service) return false
+  const resource = service.resourceIds.includes(hostId)
+  if (!resource && !service.hostIds.includes(hostId)) return false
+  // A room's held time belongs to the room; the column that must hold a user
+  // takes the service's own first master, as the booking itself does
+  // (src/lib/booking/create.ts).
+  const owner = resource ? service.hostIds[0] : hostId
+  if (!owner) return false
   const language = await conversationLanguage(input)
   const offer = await prisma.bookingOffer.create({
     data: {
       organizationId: input.organizationId, conversationId: input.conversationId, channelConfigId: input.channelConfigId,
-      bookingPageId: service.id, hostUserId: hostId,
+      bookingPageId: service.id, hostUserId: owner, resourceId: resource ? hostId : null,
       startsAt: new Date(startsAt), endsAt: new Date(Date.parse(startsAt) + service.durationMinutes * 60_000),
       bufferMinutes: service.bufferMinutes,
       expiresAt: new Date(now.getTime() + OFFER_HOLD_MINUTES * 60_000),
@@ -908,7 +948,9 @@ async function narrowFromForm(input: BookingTurnInput, rules: AutonomyRules, now
   const service = context?.services.find((item) => item.id === serviceId)
   if (!context || !service) return null
   // A master this service does not work with is not a choice at all.
-  if (wantedHost && !service.hostIds.includes(wantedHost)) return null
+  // A chair this service is not booked on is not a choice at all — master or
+  // room alike.
+  if (wantedHost && !service.hostIds.includes(wantedHost) && !service.resourceIds.includes(wantedHost)) return null
   const request: OfferRequest = {
     text: "", serviceId: service.id, date: null, partOfDay: "any",
     notBefore: null, notAfter: null, hostId: wantedHost, language: sent.language,
@@ -973,9 +1015,24 @@ async function loadContext(input: BookingTurnInput, now: Date): Promise<(Decisio
       select: SERVICE_SELECT,
     }),
   ])
-  const hosts = await activeHosts(input.organizationId, [...new Set(pages.flatMap((page) => page.hostIds))])
+  // Masters and rooms alike. The rooms are what a coworking's client chooses
+  // between; the masters stay because every booking belongs to one in the
+  // record, even a booking of a room (src/lib/booking/create.ts) — which is
+  // why a service with no active master is still no service at all.
+  const [activeByName, resourceRows] = await Promise.all([
+    activeHosts(input.organizationId, [...new Set(pages.flatMap((page) => page.hostIds))]),
+    prisma.bookingResource.findMany({
+      where: { organizationId: input.organizationId, id: { in: [...new Set(pages.flatMap((page) => page.resourceIds))] }, isActive: true },
+      select: { id: true, name: true },
+    }),
+  ])
+  const hosts = [...activeByName.map(({ id, name }) => ({ id, name })), ...resourceRows]
   const services = pages
-    .map((page) => asService({ ...page, hostIds: page.hostIds.filter((id) => hosts.some((host) => host.id === id)) }))
+    .map((page) => asService({
+      ...page,
+      hostIds: page.hostIds.filter((id) => activeByName.some((host) => host.id === id)),
+      resourceIds: page.resourceIds.filter((id) => resourceRows.some((resource) => resource.id === id)),
+    }))
     .filter((page) => page.hostIds.length > 0)
   if (!services.length) return null
   const today = dateInputValueInTimezone(now, timezone)
@@ -1074,7 +1131,10 @@ async function bookOffer(input: BookingTurnInput, offerId: string, rules: Autono
     })
     if (held.count !== 1) return true
     const page = await prisma.bookingPage.findFirst({ where: { organizationId: input.organizationId, id: offer.bookingPageId }, select: { title: true } })
-    const host = await activeHosts(input.organizationId, [offer.hostUserId])
+    // The chair's own name: a room is not its bookkeeping master.
+    const host = offer.resourceId
+      ? await prisma.bookingResource.findMany({ where: { organizationId: input.organizationId, id: offer.resourceId }, select: { id: true, name: true } })
+      : await activeHosts(input.organizationId, [offer.hostUserId])
     await sendText(input, [
       words.held,
       `${dayLabel(offer.startsAt.toISOString(), language, timezone)}, ${clock(offer.startsAt.toISOString(), timezone)} — ${page?.title ?? ""}${host[0] ? `, ${host[0].name}` : ""}.`,
@@ -1090,7 +1150,9 @@ async function bookOffer(input: BookingTurnInput, offerId: string, rules: Autono
       // second tap replays the first confirmation instead of a new meeting.
       idempotencyKey: `whatsapp-offer:${offer.id}`,
       recoverySecret: hmacToken(`${input.organizationId}:${offer.id}`, "booking-whatsapp-offer"),
-      hostUserId: offer.hostUserId,
+      // The chair, not the bookkeeping master: a time held on a room is
+      // booked on that room (src/lib/booking/create.ts).
+      hostUserId: offer.resourceId ?? offer.hostUserId,
       startsAt: offer.startsAt.toISOString(),
       name: input.senderName.trim() || "WhatsApp",
       phone: `+${input.waPhone.replace(/^\+/, "")}`,
@@ -1106,7 +1168,7 @@ async function bookOffer(input: BookingTurnInput, offerId: string, rules: Autono
     await prisma.bookingOffer.updateMany({ where: { id: offer.id, status: { in: ["offered", "superseded"] } }, data: { status: "taken" } })
     const page = await prisma.bookingPage.findFirst({ where: { organizationId: input.organizationId, id: offer.bookingPageId, isActive: true }, select: SERVICE_SELECT })
     if (!page || !request) return false
-    const hosts = await activeHosts(input.organizationId, page.hostIds)
+    const hosts = await bookableChairs(input.organizationId, page)
     return sendOffers(input, asService({ ...page, hostIds: page.hostIds.filter((id) => hosts.some((host) => host.id === id)) }), request, { timezone, closedDates, hosts, greet: false, prefix: words.taken }, now)
   }
   // Only the tap that moved the offer to «booked» confirms: a racing second
@@ -1170,7 +1232,7 @@ async function isKnownClient(orgId: string, phone: string): Promise<boolean> {
  * this service, this master, this slot, this client — so the reason shown to
  * the administrator is the rule that actually stopped it.
  */
-async function reviewReasonFor(input: BookingTurnInput, rules: AutonomyRules, offer: { bookingPageId: string; hostUserId: string; startsAt: Date }, timezone: string): Promise<AutonomyReason | null> {
+async function reviewReasonFor(input: BookingTurnInput, rules: AutonomyRules, offer: { bookingPageId: string; hostUserId: string; resourceId: string | null; startsAt: Date }, timezone: string): Promise<AutonomyReason | null> {
   const page = await prisma.bookingPage.findFirst({
     where: { organizationId: input.organizationId, id: offer.bookingPageId },
     select: { durationMinutes: true, price: true },
@@ -1179,7 +1241,9 @@ async function reviewReasonFor(input: BookingTurnInput, rules: AutonomyRules, of
   const local = new Date(offer.startsAt.getTime() + getOffsetMinutes(timezone, offer.startsAt) * 60_000)
   const verdict = autonomyVerdict(rules, {
     serviceId: offer.bookingPageId,
-    hostId: offer.hostUserId,
+    // The rule about «these masters» is about chairs: a room narrowed to by
+    // name is the chair the client chose.
+    hostId: offer.resourceId ?? offer.hostUserId,
     weekday: String(local.getUTCDay()) as Parameters<typeof autonomyVerdict>[1]["weekday"],
     minuteOfDay: local.getUTCHours() * 60 + local.getUTCMinutes(),
     durationMinutes: page.durationMinutes,
@@ -1246,7 +1310,9 @@ export async function reviewPendingOffer(input: { organizationId: string; offerI
       locale: language,
       idempotencyKey: `whatsapp-offer:${offer.id}`,
       recoverySecret: hmacToken(`${input.organizationId}:${offer.id}`, "booking-whatsapp-offer"),
-      hostUserId: offer.hostUserId,
+      // The chair, not the bookkeeping master: a time held on a room is
+      // booked on that room (src/lib/booking/create.ts).
+      hostUserId: offer.resourceId ?? offer.hostUserId,
       startsAt: offer.startsAt.toISOString(),
       name: client.name,
       phone: `+${client.waPhone.replace(/^\+/, "")}`,
@@ -1283,7 +1349,7 @@ export async function reviewPendingOffer(input: { organizationId: string; offerI
 async function answerReminder(input: BookingTurnInput, reminder: { action: ReminderAction; bookingId: string }, now: Date): Promise<boolean> {
   const booking = await prisma.booking.findFirst({
     where: { id: reminder.bookingId, organizationId: input.organizationId },
-    select: { id: true, status: true, startsAt: true, phone: true, snapshot: true, bookingPageId: true, hostUserId: true },
+    select: { id: true, status: true, startsAt: true, phone: true, snapshot: true, bookingPageId: true, hostUserId: true, resourceId: true },
   })
   // A button from someone else's phone decides nothing.
   if (!booking || phoneDigits(booking.phone) !== phoneDigits(input.waPhone)) return false
@@ -1311,10 +1377,12 @@ async function answerReminder(input: BookingTurnInput, reminder: { action: Remin
   const page = await prisma.bookingPage.findFirst({ where: { organizationId: input.organizationId, id: booking.bookingPageId, isActive: true }, select: SERVICE_SELECT })
   if (!page) return false
   const { timezone, closedDates } = await orgContext(input.organizationId)
-  const hosts = await activeHosts(input.organizationId, page.hostIds)
+  const hosts = await bookableChairs(input.organizationId, page)
   const request: OfferRequest = {
     text: "", serviceId: page.id, date: null, partOfDay: "any", notBefore: null, notAfter: null,
-    hostId: booking.hostUserId, language,
+    // The chair this meeting is on: the room when it is on one, else its own
+    // master. Moving it keeps the client where they were.
+    hostId: booking.resourceId ?? booking.hostUserId, language,
   }
   return sendOffers(input, asService({ ...page, hostIds: page.hostIds.filter((id) => hosts.some((host) => host.id === id)) }), request,
     { timezone, closedDates, hosts, greet: false, replaces: booking.id }, now)

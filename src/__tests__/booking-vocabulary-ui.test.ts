@@ -71,7 +71,7 @@ describe("naming what you book", () => {
     // A coworking taps «Комната · без мастера» and is done.
     expect(buttonSaying("Услуга · Мастер")).toBeTruthy()
     expect(buttonSaying("Приём · Врач")).toBeTruthy()
-    expect(buttonSaying("Комната · без мастера")).toBeTruthy()
+    expect(buttonSaying("Встреча · Комната")).toBeTruthy()
   })
 
   it("fills both words from a pair, and says which one is chosen", async () => {
@@ -80,20 +80,24 @@ describe("naming what you book", () => {
     expect(field("vocab-item").value).toBe("Приём")
     expect(field("vocab-host").value).toBe("Врач")
     expect(buttonSaying("Приём · Врач")!.getAttribute("aria-pressed")).toBe("true")
-    expect(buttonSaying("Комната · без мастера")!.getAttribute("aria-pressed")).toBe("false")
+    expect(buttonSaying("Встреча · Комната")!.getAttribute("aria-pressed")).toBe("false")
   })
 
   it("empties and closes the second field when nobody is on the other side", async () => {
-    await act(async () => buttonSaying("Комната · без мастера")!.click())
+    // The checkbox, not a pair: a coworking books a meeting IN a room, so the
+    // room is the second word. «Nobody» is for the rarer case where there is
+    // nothing on the other side at all.
+    await act(async () => buttonSaying("Встреча · Комната")!.click())
+    const nobody = [...container.querySelectorAll("label")].find((item) => item.textContent?.includes("Никто"))!
+    await act(async () => nobody.querySelector<HTMLElement>("button, input")!.click())
 
-    expect(field("vocab-item").value).toBe("Комната")
+    expect(field("vocab-item").value).toBe("Встреча")
     expect(field("vocab-host").value).toBe("")
     expect(field("vocab-host").disabled).toBe(true)
     // And the client's preview loses that row with it: a room books itself.
     const preview = container.querySelector(".bg-muted\\/30")?.textContent ?? ""
-    expect(preview).toContain("Комната")
-    expect(preview).not.toContain("Мастер")
-    expect(preview).not.toContain("Кто выполняет")
+    expect(preview).toContain("Встреча")
+    expect(preview).not.toContain("Комната")
   })
 
   it("shows the client's own form in the words just chosen", async () => {
@@ -111,11 +115,11 @@ describe("naming what you book", () => {
     // Nothing chosen yet: there is nothing to save.
     expect(save().disabled).toBe(true)
 
-    await act(async () => buttonSaying("Комната · без мастера")!.click())
+    await act(async () => buttonSaying("Встреча · Комната")!.click())
     expect(save().disabled).toBe(false)
     await act(async () => save().click())
 
-    expect(saved).toEqual({ item: "Комната", host: null, noHost: true })
+    expect(saved).toEqual({ item: "Встреча", host: "Комната", noHost: false })
     expect(save().disabled).toBe(true)
   })
 })

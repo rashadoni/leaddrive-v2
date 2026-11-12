@@ -27,6 +27,7 @@ export function describeFeedEvent(
     case "subtask_completed": return t("events.subtaskDone", { name, to })
     case "subtask_reopened": return t("events.subtaskReopened", { name, to })
     case "board_changed": return t("events.board", { name, to })
+    case "subtasks_added": return t("events.subtasksAdded", { name, count: to })
     case "file_removed": return t("events.fileRemoved", { name, file: item.oldValue ?? "" })
     // Bordio writes its history with the actor already in the sentence and no author on the row.
     case "external_event": return item.user ? `${name} ${item.text ?? ""}`.trim() : item.text ?? ""

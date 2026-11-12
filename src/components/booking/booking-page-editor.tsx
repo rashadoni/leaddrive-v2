@@ -56,6 +56,12 @@ export interface BookingPageDraft {
   /** 0 = the client does not come back on a cycle. */
   repeatCycleDays: number
   hostIds: string[]
+  /**
+   * Rooms, chairs or machines this service is booked on. Absent and empty both
+   * mean the same: booked on its masters alone, as every service was before
+   * resources existed.
+   */
+  resourceIds?: string[]
   /** What single masters charge and how long they take, where they differ. */
   hostVariants: HostVariants
   /** Extras the customer may add when booking this service. */
@@ -372,8 +378,27 @@ export function BookingPageEditor({
     const current = draft.weekly[day][0] ?? DEFAULT_INTERVAL
     set("weekly", { ...draft.weekly, [day]: [{ ...current, [edge]: value }] })
   }
+  const [resources, setResources] = useState<{ id: string; name: string }[]>([])
+  useEffect(() => {
+    const controller = new AbortController()
+    void fetch("/api/v1/booking-pages/resources", { cache: "no-store", signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((body) => {
+        if (!body?.success || controller.signal.aborted) return
+        setResources((body.data.resources as { id: string; name: string; isActive: boolean }[]).filter((item) => item.isActive))
+      })
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [])
+
   function toggleHost(id: string) {
     set("hostIds", draft.hostIds.includes(id) ? draft.hostIds.filter((hostId) => hostId !== id) : [...draft.hostIds, id])
+  }
+
+  /** The rooms this organisation has, read once: a salon has none. */
+  function toggleResource(id: string) {
+    const chosen = draft.resourceIds ?? []
+    set("resourceIds", chosen.includes(id) ? chosen.filter((item) => item !== id) : [...chosen, id])
   }
 
   /**
@@ -886,6 +911,22 @@ export function BookingPageEditor({
               ))}
             </Panel>
             <p className="mt-2 text-xs text-muted-foreground">{t("fieldHostsHint")}</p>
+
+            {/* Rooms, chairs, machines — shown only to an organisation that
+                has any, because a salon has none and an empty block would be
+                one more thing to read past (src/lib/booking/book.ts). */}
+            {resources.length ? <div className="mt-4">
+              <p className="text-sm font-medium">{t("fieldResources")}</p>
+              <Panel className="mt-2 flex flex-wrap gap-2">
+                {resources.map((resource) => (
+                  <Chip key={resource.id} active={(draft.resourceIds ?? []).includes(resource.id)} onClick={() => toggleResource(resource.id)} className="min-h-11 py-1">
+                    <span className="truncate">{resource.name}</span>
+                    {(draft.resourceIds ?? []).includes(resource.id) ? <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" /> : null}
+                  </Chip>
+                ))}
+              </Panel>
+              <p className="mt-2 text-xs text-muted-foreground">{t("fieldResourcesHint")}</p>
+            </div> : null}
 
             {/* Altegio, Square and Dikidi all carry this: the senior master
                 takes an hour and charges forty, the junior forty minutes and

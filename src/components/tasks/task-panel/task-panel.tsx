@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import {
-  Calendar, CalendarClock, ChevronsUp, Clock, Hourglass, Link2, MoreHorizontal, Paperclip, Play, Repeat, Square, Tag, Trash2, X,
+  Calendar, CalendarClock, ChevronsUp, Clock, Hourglass, Link2, ListChecks, MoreHorizontal, Paperclip, Play, Repeat, Square, Tag, Trash2, X,
 } from "lucide-react"
 import { useTaskTypes } from "@/components/tasks/use-task-types"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
@@ -12,6 +12,7 @@ import { TaskPanelFeed } from "@/components/tasks/task-panel/task-panel-feed"
 import { TaskPanelSubtasks, endOfDayIso, type Subtask } from "@/components/tasks/task-panel/task-panel-subtasks"
 import { applyTaskPatch, revertTaskPatch } from "@/lib/client/optimistic-task-patch"
 import { STATUS_TO_STAGE, foldToVisibleStage } from "@/lib/tasks/board-columns"
+import { listLinesOf, newSubtaskTitles } from "@/lib/tasks/list-lines"
 
 /**
  * The task card as a panel on the right of the board — Bordio's card (owner,
@@ -85,6 +86,8 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
+  const [splitting, setSplitting] = useState(false)
+  const [splitNote, setSplitNote] = useState<string | null>(null)
   const [tagDraft, setTagDraft] = useState<string | null>(null)
   const [logDraft, setLogDraft] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -278,6 +281,24 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
   // 2026-11-12): everyone else reads it and writes in its feed.
   const canEdit = canEditBoard && (task?.you?.mayManage ?? true)
   const canDelete = canEditBoard && (task?.you?.mayDelete ?? true)
+  // A list in the description becomes subtasks at one press (Elvira, 2026-11-12:
+  // «45 ədəd vinil» arrives as a numbered list). Lines already subtasks are not offered again.
+  const listToAdd = task ? newSubtaskTitles(listLinesOf(description), task.checklist.map((item) => item.title)) : []
+  const splitList = async () => {
+    if (!task || listToAdd.length === 0) return
+    setSplitting(true)
+    setSplitNote(null)
+    const res = await fetch(`/api/v1/tasks/${encodeURIComponent(task.id)}/checklist`, {
+      method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titles: listToAdd }),
+    }).catch(() => null)
+    const json = res?.ok ? await res.json().catch(() => null) : null
+    setSplitting(false)
+    if (!json) { setSplitNote(t("saveFailed")); return }
+    setSplitNote(t("listAdded", { count: String(json.data?.added ?? 0) }))
+    reload()
+    onMutated()
+  }
   const selectClass = "w-full max-w-xs rounded-md border border-transparent bg-transparent px-1.5 py-1 hover:border-border focus:border-border disabled:opacity-70"
 
   return (
@@ -469,7 +490,21 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
               )}
 
               <section className="border-t pt-4">
-                <h3 className="mb-2 text-sm font-semibold">{t("description")}</h3>
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-semibold">{t("description")}</h3>
+                  {canEdit && listToAdd.length > 0 && (
+                    <button
+                      type="button"
+                      data-testid="task-panel-split-list"
+                      disabled={splitting}
+                      onClick={() => void splitList()}
+                      className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-primary/60 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
+                    >
+                      <ListChecks className="h-3.5 w-3.5" /> {t("splitList", { count: String(listToAdd.length) })}
+                    </button>
+                  )}
+                  {splitNote && <span role="status" className="ml-auto text-xs text-muted-foreground">{splitNote}</span>}
+                </div>
                 <textarea
                   value={description}
                   readOnly={!canEdit}

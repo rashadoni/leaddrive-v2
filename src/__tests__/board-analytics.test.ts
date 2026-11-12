@@ -304,3 +304,41 @@ describe("computeMonteCarlo (Tier-3 #17, throughput forecast)", () => {
     expect(m.forecast.every((f) => f.capped && f.date === "")).toBe(true)
   })
 })
+
+// Elvira, 2026-11-12: «45 ədəd vinil» — one task, a list of 45. Work is counted in pieces.
+describe("computeTier1Analytics — work in pieces (closed subtasks)", () => {
+  const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000)
+  const vinil = task({
+    id: "vinil", status: "in_progress", assignedTo: "elvira", assigneeName: "Elvira",
+    subtasks: [
+      { completedAt: hoursAgo(1), assignedTo: null, assigneeName: null },
+      { completedAt: hoursAgo(2), assignedTo: null, assigneeName: null },
+      { completedAt: hoursAgo(3), assignedTo: "gulu", assigneeName: "Gülü" },
+      { completedAt: null, assignedTo: null, assigneeName: null },
+      { completedAt: new Date(NOW.getTime() - 40 * DAY), assignedTo: null, assigneeName: null },
+    ],
+  })
+  const banner = task({ id: "banner", status: "done", completedAt: hoursAgo(5), assignedTo: "gulu", assigneeName: "Gülü" })
+  // A task with subtasks counts its subtasks, not itself, even once it is closed.
+  const closedList = task({
+    id: "list", status: "done", completedAt: hoursAgo(4), assignedTo: "elvira", assigneeName: "Elvira",
+    subtasks: [{ completedAt: hoursAgo(6), assignedTo: null, assigneeName: null }],
+  })
+  const u = computeTier1Analytics([vinil, banner, closedList], COLS, NOW, 30).units
+
+  it("each closed subtask is one piece, for its own assignee or the task's", () => {
+    expect(u.byAssignee).toEqual([
+      { userId: "elvira", name: "Elvira", count: 3 },
+      { userId: "gulu", name: "Gülü", count: 2 },
+    ])
+  })
+
+  it("this week: the tasks without a list plus the closed subtasks", () => {
+    expect(u).toMatchObject({ thisWeek: 5, tasksThisWeek: 1, subtasksThisWeek: 4 })
+  })
+
+  it("a board without subtasks counts as before", () => {
+    const plain = computeTier1Analytics(TASKS, COLS, NOW, 30)
+    expect(plain.units.byAssignee.map((r) => [r.userId, r.count])).toEqual(plain.assigneeThroughput.map((r) => [r.userId, r.count]))
+  })
+})

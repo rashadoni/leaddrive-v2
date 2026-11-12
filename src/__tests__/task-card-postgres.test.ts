@@ -180,6 +180,21 @@ pgDescribe("Bordio-style task card on a real Postgres", () => {
     expect(events.at(-1)).toMatchObject({ action: "subtask_completed", newValue: "ga4 quraşdırılması", user: { id: "admin" } })
   })
 
+  // Elvira, 2026-11-12: «45 ədəd vinil» — a list of lines becomes subtasks at once.
+  it("a list becomes subtasks in its order, after the ones there; sent again it adds nothing", async () => {
+    await call(checklist.POST(request("POST", "/api/v1/tasks/task-1/checklist", { title: "167 x 88 Ferveks" }), onTask("task-1")))
+    const made = await call(checklist.POST(request("POST", "/api/v1/tasks/task-1/checklist", { titles: ["167 x 88 Ferveks", "122 x 88 Hedelix", "168 x 88 Upsarin"] }), onTask("task-1")))
+    expect(made.status, JSON.stringify(made.body)).toBe(201)
+    expect(made.body.data.added).toBe(2)
+    const rows = await bypass(() => prisma.taskChecklist.findMany({ where: { taskId: "task-1" }, orderBy: { sortOrder: "asc" }, select: { title: true } }))
+    expect(rows.map((r: { title: string }) => r.title).slice(-3)).toEqual(["167 x 88 Ferveks", "122 x 88 Hedelix", "168 x 88 Upsarin"])
+    const again = await call(checklist.POST(request("POST", "/api/v1/tasks/task-1/checklist", { titles: ["122 x 88 Hedelix"] }), onTask("task-1")))
+    expect([again.status, again.body.data.added]).toEqual([200, 0])
+    const events = (await readFeed()).body.data.items.filter((i: { kind: string; action?: string }) => i.kind === "event" && i.action === "subtasks_added")
+    expect(events.map((e: { newValue: string }) => e.newValue)).toEqual(["2"])
+    expect((await call(checklist.POST(request("POST", "/api/v1/tasks/task-1/checklist", { titles: [] }), onTask("task-1")))).status).toBe(400)
+  })
+
   it("start date, reporter, tags, due date and priority land, show in the time line, and the reporter follows", async () => {
     const patch = await call(taskRoute.PATCH(request("PATCH", "/api/v1/tasks/task-1", {
       startDate: "2025-12-02T00:00:00.000Z", reporterId: "nazrin", tags: ["meta", " meta ", "ga4"], dueDate: "2026-12-04T19:59:59.000Z", priority: "critical",
