@@ -1473,6 +1473,7 @@ async function processMessages(
     // they typed is the name the meeting must be booked under — the one thing
     // in the form that the sender's WhatsApp profile cannot give us.
     let bookingName = senderName
+    let bookingNote: string | undefined
     if (!replyId && convId && !replyHeld && !flowTookOwnership && asStringOrNull(msg.interactive?.nfm_reply?.response_json)) {
       try {
         const { flowTap } = await import("@/lib/booking/whatsapp-flow")
@@ -1480,6 +1481,7 @@ async function processMessages(
         if (tapped) {
           replyId = tapped.replyId
           if (tapped.name) bookingName = tapped.name
+          bookingNote = tapped.note ?? undefined
         }
       } catch (err) {
         console.error("[WA Webhook] flow reply unreadable:", err)
@@ -1496,6 +1498,7 @@ async function processMessages(
           senderName: bookingName,
           text,
           replyId,
+          note: bookingNote,
           contactId: contactId ?? undefined,
           leadId: leadId ?? undefined,
         })

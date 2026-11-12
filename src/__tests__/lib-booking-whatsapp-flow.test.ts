@@ -34,12 +34,12 @@ vi.mock("@/lib/whatsapp", () => ({
  * it writes, and when, is the difference between a published form and a form
  * clients never see.
  */
-const setting = vi.fn(async (..._args: unknown[]) => 1)
+const setting = vi.fn(async (...args: unknown[]) => args.length)
 vi.mock("@/lib/booking/db", () => ({ bookingDb: { $executeRawUnsafe: setting } }))
 /** What the last write recorded in `flowId`, as JSON. */
 const lastWritten = () => setting.mock.calls.at(-1)?.[2]
 
-const { deleteBookingFlow, ensureBookingFlow, flowTap, flowsCapability, bookingFlowJson, BOOKING_FLOW_NAME } = await import("@/lib/booking/whatsapp-flow")
+const { deleteBookingFlow, ensureBookingFlow, flowTap, flowsCapability, bookingFlowJson, BOOKING_FLOW_DAY_IDS, BOOKING_FLOW_NAME } = await import("@/lib/booking/whatsapp-flow")
 
 const CONFIG = { accessToken: "tok", phoneNumberId: "pn", businessAccountId: "waba-1" }
 
@@ -145,13 +145,38 @@ describe("the form a client fills in", () => {
     expect(screen.terminal).toBe(true)
   })
 
-  it("takes its times from the message, not from the published form", () => {
-    // One published form serves every service, master and day: the times are
-    // handed to the screen when the message is sent. Binding them into the
-    // form would mean republishing it for every day of the week.
-    const times = form.children.find((child) => child.name === "time")
-    expect(times).toMatchObject({ type: "RadioButtonsGroup", required: true, "data-source": "${data.times}" })
-    expect(screen.data).toHaveProperty("times")
+  it("takes everything it shows from the message, not from the published form", () => {
+    // One published form serves every service, master and day: the service,
+    // its photo, the days and the times are handed to the screen when the
+    // message is sent. Binding any of them into the form would mean
+    // republishing it for every day of the week.
+    for (const key of ["service", "details", "photo", "has_photo", "days", "day_init", "client", ...BOOKING_FLOW_DAY_IDS.map((ignored, index) => `t${index}`)]) {
+      expect(screen.data, key).toHaveProperty(key)
+    }
+    const day = form.children.find((child) => child.name === "day")
+    expect(day).toMatchObject({ type: "Dropdown", required: true, "data-source": "${data.days}" })
+  })
+
+  it("shows the times of the chosen day and no others", () => {
+    // The day is a SLOT, never a date: the conditions that reveal a day's
+    // times are part of the published form, and a date baked into one would
+    // be wrong by tomorrow. What d2 means travels with the message.
+    const blocks = form.children.filter((child) => child.type === "If") as { condition: string; then: Record<string, unknown>[] }[]
+    expect(blocks).toHaveLength(BOOKING_FLOW_DAY_IDS.length)
+    blocks.forEach((block, index) => {
+      expect(block.condition).toBe(`\${form.day} == '${BOOKING_FLOW_DAY_IDS[index]}'`)
+      expect(block.then[0]).toMatchObject({ type: "RadioButtonsGroup", name: `t${index}`, "data-source": `\${data.t${index}}` })
+      // Never required: a hidden day's list must not hold the form shut.
+      expect(block.then[0]).not.toHaveProperty("required")
+    })
+    expect(form.children.some((child) => child.type === "RadioButtonsGroup")).toBe(false)
+  })
+
+  it("shows the service the way a salon would: picture, name, price", () => {
+    const children = screen.layout.children
+    expect(children[0]).toMatchObject({ type: "Image", src: "${data.photo}", visible: "${data.has_photo}" })
+    expect(children[1]).toMatchObject({ type: "TextHeading", text: "${data.service}" })
+    expect(children[2]).toMatchObject({ type: "TextCaption", text: "${data.details}" })
   })
 
   it("pre-fills the name on the form, never on the field", () => {
@@ -166,7 +191,24 @@ describe("the form a client fills in", () => {
   it("sends back what was chosen, under names the agent reads", () => {
     const footer = form.children.find((child) => child.type === "Footer") as { "on-click-action": { name: string; payload: Record<string, string> } }
     expect(footer["on-click-action"].name).toBe("complete")
-    expect(footer["on-click-action"].payload).toEqual({ time: "${form.time}", client: "${form.client}" })
+    expect(footer["on-click-action"].payload).toEqual({
+      day: "${form.day}",
+      ...Object.fromEntries(BOOKING_FLOW_DAY_IDS.map((ignored, index) => [`t${index}`, `\${form.t${index}}`])),
+      client: "${form.client}",
+      note: "${form.note}",
+    })
+  })
+
+  it("stays inside what WhatsApp renders", () => {
+    // Meta's own ceilings, and they are not advisory: a form over them is
+    // refused at publish and the salon is left without one.
+    const children = screen.layout.children
+    const count = (items: Record<string, unknown>[]): number => items.reduce((total, child) => total
+      + 1
+      + count((child.children ?? child.then ?? []) as Record<string, unknown>[]), 0)
+    expect(count(children)).toBeLessThanOrEqual(50)
+    expect(children.filter((child) => child.type === "Image")).toHaveLength(1)
+    expect(form.children.filter((child) => child.type === "Footer")).toHaveLength(1)
   })
 
   it("declares a schema version, because a form without one is refused", () => {
@@ -255,18 +297,30 @@ describe("a form that comes back", () => {
     nfm_reply: { response_json: JSON.stringify(answers), body: "Sent", name: "flow" },
   })
 
-  it("is the time the client picked and the name they typed", () => {
-    // The id is the one the menu row carries, so the tap lands in the handler
+  it("is the time the client picked, the name they typed and their note", () => {
+    // The id is the one a menu row carries, so the tap lands in the handler
     // that already books — the form adds a way in, not a second code path.
-    expect(flowTap(submission({ flow_token: "bkflow:conv-1", time: "bk:offer-9", client: "Günel" })))
-      .toEqual({ replyId: "bk:offer-9", name: "Günel" })
+    // Only the day on screen has an answer in it; the rest are days the
+    // client never saw.
+    expect(flowTap(submission({ flow_token: "bkflow:conv-1", day: "d2", t0: "", t2: "bk:offer-9", client: "Günel", note: "Rəngə də baxaq" })))
+      .toEqual({ replyId: "bk:offer-9", name: "Günel", note: "Rəngə də baxaq" })
   })
 
   it("leaves the name alone when the form came back without one", () => {
     // Then the client keeps the name WhatsApp knows them by; an empty string
     // overwriting it is how a meeting ends up booked for nobody.
-    expect(flowTap(submission({ time: "bkd:service-3", client: "   " })))
-      .toEqual({ replyId: "bkd:service-3", name: null })
+    expect(flowTap(submission({ day: "d1", t1: "bkt:service-3:host-1:2026-11-14T09:00:00.000Z", client: "   " })))
+      .toEqual({ replyId: "bkt:service-3:host-1:2026-11-14T09:00:00.000Z", name: null, note: null })
+  })
+
+  it("reads a day with no time as the day it is", () => {
+    // Closing the form on a day without picking a time still says something:
+    // show me that day. The slot is all the form can give — what d3 meant is
+    // known to the message that offered it.
+    expect(flowTap(submission({ day: "d3", client: "Günel" })))
+      .toEqual({ replyId: "bkds:d3", name: "Günel", note: null })
+    // A slot the published form does not have is not a day at all.
+    expect(flowTap(submission({ day: "d9", client: "Günel" }))).toBeNull()
   })
 
   it("is nothing at all for a message that is not a form", () => {

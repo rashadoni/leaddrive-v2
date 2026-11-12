@@ -40,8 +40,10 @@ import { phoneDigits, readReminderButton, reminderButtonId, reminderReply, REMIN
 import { servicePriceLabel } from "./service"
 import { clock, dayLabel, shortDayLabel, type ReplyLanguage } from "./whatsapp-format"
 export { clock, dayLabel, type ReplyLanguage } from "./whatsapp-format"
+import path from "node:path"
 import { OFFER_HOLD_MINUTES, readWhatsAppBookingSetting } from "./whatsapp-setting"
-import { BOOKING_FLOW_SCREEN } from "./whatsapp-flow"
+import { BOOKING_PHOTO_DIRECTORY, bookingPhotoPath } from "./service-photo"
+import { BOOKING_FLOW_DAY_IDS, BOOKING_FLOW_SCREEN, FLOW_DAY_PREFIX, PLACEHOLDER_PHOTO } from "./whatsapp-flow"
 import { autonomyVerdict, type AutonomyReason, type AutonomyRules } from "./whatsapp-rules"
 
 // ─── Choosing three times out of a day ──────────────────────────────────────
@@ -356,6 +358,13 @@ const OFFER_PREFIX = "bk:"
 const DAYS_PREFIX = "bkd:"
 const DAY_PREFIX = "bkday:"
 const ANSWER_PREFIX = "bq:"
+/**
+ * A free time the form offered that nobody is holding: service, master and
+ * the moment itself. Only the nearest day's times are held (`bk:`); a week of
+ * held chairs would be the whole salon locked because one client opened a
+ * form, so the rest are booked on their own merits when they are chosen.
+ */
+const SLOT_PREFIX = "bkt:"
 /** Ours, and only ours: Meta returns it inside a submitted form, untouched. */
 const FLOW_TOKEN_PREFIX = "bkflow:"
 
@@ -368,6 +377,8 @@ export interface BookingTurnInput {
   text: string
   /** `interactive.button_reply.id` (or `list_reply.id`) when the client tapped. */
   replyId: string | null
+  /** What the client wrote in the form's own note field, if anything. */
+  note?: string
   contactId?: string
   leadId?: string
   now?: Date
@@ -407,6 +418,12 @@ interface OfferRequest {
   text: string
   serviceId: string
   date: string | null
+  /**
+   * What `d0`…`d6` meant in the form this message carried. The published form
+   * speaks in slots, never in dates, so a client who picks a day and closes
+   * the form without a time can only be answered from here.
+   */
+  daySlots?: Record<string, string>
   partOfDay: PartOfDay
   notBefore: string | null
   notAfter: string | null
@@ -421,6 +438,9 @@ function readRequest(value: unknown): OfferRequest | null {
     text: typeof raw.text === "string" ? raw.text : "",
     serviceId: raw.serviceId,
     date: typeof raw.date === "string" ? raw.date : null,
+    daySlots: raw.daySlots && typeof raw.daySlots === "object" && !Array.isArray(raw.daySlots)
+      ? Object.fromEntries(Object.entries(raw.daySlots as Record<string, unknown>).filter(([, date]) => typeof date === "string")) as Record<string, string>
+      : {},
     partOfDay: (["morning", "afternoon", "evening", "any"] as const).find((part) => part === raw.partOfDay) ?? "any",
     notBefore: typeof raw.notBefore === "string" ? raw.notBefore : null,
     notAfter: typeof raw.notAfter === "string" ? raw.notAfter : null,
@@ -435,9 +455,9 @@ function readRequest(value: unknown): OfferRequest | null {
  * window, and the following days at any time. `exact` says the first stage
  * answered — the client got what they asked for.
  */
-async function findChoices(input: BookingTurnInput, service: ServiceContext, request: OfferRequest, timezone: string, closedDates: readonly string[], now: Date): Promise<{ choices: OfferChoice[]; exact: boolean }> {
+async function findChoices(input: BookingTurnInput, service: ServiceContext, request: OfferRequest, timezone: string, closedDates: readonly string[], now: Date): Promise<{ choices: OfferChoice[]; exact: boolean; days: { date: string; slots: Slot[] }[] }> {
   const hosts = await activeHosts(input.organizationId, service.hostIds)
-  if (!hosts.length) return { choices: [], exact: false }
+  if (!hosts.length) return { choices: [], exact: false, days: [] }
   const to = new Date(now.getTime() + (service.maxDaysAhead + 2) * 86400_000)
   const busy = await loadBusyByHost(input.organizationId, hosts.map((host) => host.id), now, to, timezone, { holds: { exceptConversationId: input.conversationId } })
   const days = computeSlots({ rules: bookingRules(service, timezone, closedDates), hostIds: hosts.map((host) => host.id), busyByHost: busy, now })
@@ -455,9 +475,12 @@ async function findChoices(input: BookingTurnInput, service: ServiceContext, req
   ]
   for (let index = 0; index < stages.length; index += 1) {
     const choices = pickOfferTimes(stages[index].slots, { timezone, window: stages[index].range, hostId: request.hostId, count: OFFERS_PER_LIST })
-    if (choices.length) return { choices, exact: index === 0 }
+    // The whole board comes back with the answer: the form shows a week of
+    // days, and computing it twice would mean asking the database twice for
+    // the same busy hours.
+    if (choices.length) return { choices, exact: index === 0, days }
   }
-  return { choices: [], exact: false }
+  return { choices: [], exact: false, days }
 }
 
 /** A page row as the agent uses it: the Decimal price spelled out. */
@@ -467,11 +490,99 @@ function asService(page: { price: unknown } & Omit<ServiceContext, "price">): Se
 
 const SERVICE_SELECT = { id: true, title: true, durationMinutes: true, bufferMinutes: true, minNoticeMinutes: true, maxDaysAhead: true, weekly: true, hostIds: true, price: true, priceCurrency: true, category: true, locationText: true } as const
 
+/** A time inside the form: one of the held ones, or a free slot nobody holds. */
+interface FormTime {
+  startsAt: string
+  hostId: string
+  /** True when a chair is being kept for this one — only the nearest day's. */
+  held: boolean
+  /** Its place in `choices`, and so in the offers created from them. */
+  heldIndex?: number
+}
+
+/** Times per day inside the form. Twenty is Meta's own ceiling for a list. */
+const FORM_TIMES_PER_DAY = 8
+
+/**
+ * The week the form shows: the day the message is about first, then every day
+ * after it that still has free time, up to what the published form can hold.
+ *
+ * Only the first day's times are HELD. A week of held times would keep fifty
+ * chairs from everyone else for a quarter of an hour because one client opened
+ * a form — so the rest are plain free slots, booked on their own merits when
+ * the client picks one, exactly as the public page books them.
+ */
+function weekOfDays(choices: OfferChoice[], days: { date: string; slots: Slot[] }[], request: OfferRequest, timezone: string): { date: string; times: FormTime[] }[] {
+  const week: { date: string; times: FormTime[] }[] = []
+  for (const date of [...new Set(choices.map((choice) => choice.date))]) {
+    week.push({
+      date,
+      times: choices
+        .map((choice, index) => ({ startsAt: choice.startsAt, hostId: choice.hostId, held: true, heldIndex: index, date: choice.date }))
+        .filter((time) => time.date === date),
+    })
+  }
+  const from = week[0]?.date ?? ""
+  for (const day of days) {
+    if (week.length >= BOOKING_FLOW_DAY_IDS.length) break
+    // Days before the one being offered are not «later»: the client asked
+    // about Friday, and Wednesday is not an answer to that.
+    if (day.date < from || week.some((item) => item.date === day.date)) continue
+    const picked = pickOfferTimes(day.slots, { timezone, window: [0, 24 * 60], hostId: request.hostId, count: FORM_TIMES_PER_DAY })
+    if (!picked.length) continue
+    week.push({ date: day.date, times: picked.map((choice) => ({ startsAt: choice.startsAt, hostId: choice.hostId, held: false })) })
+  }
+  return week.sort((left, right) => left.date.localeCompare(right.date))
+}
+
+/**
+ * The service's own picture, as Meta wants it: base64, inside the message.
+ *
+ * It is the one thing that makes the form look like a salon's and not like a
+ * settings screen. Read from the public uploads directory (these pictures are
+ * not sealed — they are shown to people who are not signed in), kept in the
+ * process for ten minutes, and dropped entirely when it is too big or not a
+ * kind WhatsApp renders: a form must open with no photo rather than fail to
+ * open with one.
+ */
+const PHOTO_CACHE = new Map<string, { at: number; photo: string | null }>()
+const PHOTO_CACHE_MS = 10 * 60_000
+/** Meta renders JPEG and PNG, and advises keeping an image under 300 KB. */
+const PHOTO_MAX_BYTES = 280_000
+
+async function servicePhoto(organizationId: string, pageId: string): Promise<{ has_photo: boolean; photo: string }> {
+  const cached = PHOTO_CACHE.get(`${organizationId}:${pageId}`)
+  const photo = cached && Date.now() - cached.at < PHOTO_CACHE_MS ? cached.photo : await readServicePhoto(organizationId, pageId)
+  if (!cached || Date.now() - cached.at >= PHOTO_CACHE_MS) PHOTO_CACHE.set(`${organizationId}:${pageId}`, { at: Date.now(), photo })
+  return { has_photo: Boolean(photo), photo: photo ?? PLACEHOLDER_PHOTO }
+}
+
+async function readServicePhoto(organizationId: string, pageId: string): Promise<string | null> {
+  try {
+    const page = await prisma.bookingPage.findFirst({ where: { organizationId, id: pageId }, select: { photoUrl: true } })
+    const stored = bookingPhotoPath(page?.photoUrl)
+    // webp is a picture to a browser and nothing to WhatsApp.
+    if (!stored || !/\.(png|jpe?g)$/i.test(stored)) return null
+    const { runtimePublicUploadDirectory } = await import("@/lib/runtime-paths")
+    const { readFile } = await import("node:fs/promises")
+    const file = path.join(runtimePublicUploadDirectory(BOOKING_PHOTO_DIRECTORY), path.basename(stored))
+    const bytes = await readFile(file)
+    return bytes.byteLength > PHOTO_MAX_BYTES ? null : bytes.toString("base64")
+  } catch {
+    return null
+  }
+}
+
 async function sendOffers(input: BookingTurnInput, service: ServiceContext, request: OfferRequest, context: { timezone: string; closedDates: readonly string[]; hosts: { id: string; name: string }[]; greet: boolean; prefix?: string; replaces?: string }, now: Date): Promise<boolean> {
-  const { choices, exact } = await findChoices(input, service, request, context.timezone, context.closedDates, now)
+  const { choices, exact, days } = await findChoices(input, service, request, context.timezone, context.closedDates, now)
   // Nothing free at all is a promise only a person can make.
   if (!choices.length) return false
   const words = WORDS[request.language]
+  // Whether this number shows a FORM decides what is offered: a form holds a
+  // week of days, a message holds the nearest ones. Asked before the times
+  // are held, because the held times are the first day OF that week.
+  const flowId = await publishedFlowId(input.organizationId)
+  const week = flowId ? weekOfDays(choices, days, request, context.timezone) : []
   const offers = await prisma.$transaction(async (tx) => {
     // One client holds one set of times: what was offered before is released.
     await tx.bookingOffer.updateMany({
@@ -483,7 +594,11 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
       data: {
         organizationId: input.organizationId, conversationId: input.conversationId, channelConfigId: input.channelConfigId,
         bookingPageId: service.id, hostUserId: choice.hostId, startsAt: new Date(choice.startsAt), endsAt: new Date(choice.endsAt),
-        bufferMinutes: service.bufferMinutes, expiresAt, request: request as unknown as Prisma.InputJsonValue,
+        bufferMinutes: service.bufferMinutes, expiresAt,
+        // The day slots travel with the offer because the form speaks in them
+        // («d2»), not in dates: a published form cannot carry a date, and the
+        // message that offered the week is the only record of what d2 meant.
+        request: { ...request, daySlots: Object.fromEntries(week.map((day, index) => [`d${index}`, day.date])) } as unknown as Prisma.InputJsonValue,
         replacesBookingId: context.replaces ?? null,
         // One moment for the whole message: the meeting card finds the times
         // offered together by it (src/lib/booking/queries.ts).
@@ -543,33 +658,43 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
   rows.push(otherDay)
   sections.push({ title: "", rowIds: [otherDay.id] })
   // Inside WhatsApp, a FORM instead of a menu — when this number has one
-  // published («Форма в WhatsApp» on the settings screen). The times become
-  // radio buttons and the name a field already filled with the one WhatsApp
-  // knows, so a booking is one tap and one «Təsdiqlə» (owner, 2026-11-11:
-  // «telegram намного красивее можно оформлять формы»). The times travel with
-  // the message, so one published form serves every service, master and day.
+  // published («Форма в WhatsApp» on the settings screen). A photo of the
+  // service, its name and price, the DAY as a dropdown and under it that
+  // day's times, a name already filled in and a line for anything the client
+  // wants the salon to know (owner, 2026-11-12: «выжми максимум из формы»).
   // A number without a form — and any refusal of this one — falls to the list
   // below, which is what every number had before and still has.
-  const flowId = await publishedFlowId(input.organizationId)
-  if (flowId) {
-    // Every item carries a second line: Meta renders an item without one as a
-    // blank row. The master's name when there is one, the day otherwise —
-    // inside the form there are no headings to group the days under.
-    const times = choices.map((choice, index) => ({
-      id: `${OFFER_PREFIX}${offers[index].id}`,
-      title: offerRowTitle(choice, context.timezone, withDay),
-      description: hostName(offers[index].hostUserId) || shortDayLabel(choice.startsAt, request.language, context.timezone),
-    }))
-    // The rest of the calendar, from inside the form: the id is the one the
-    // menu row carries, so the tap arrives at the same handler.
-    times.push({ id: otherDay.id, title: words.otherDay, description: words.pickDay })
+  if (flowId && week.length) {
+    const data: Record<string, unknown> = {
+      service: service.title.slice(0, 80),
+      details: [`${service.durationMinutes} ${words.minutes}`, price, service.locationText].filter(Boolean).join(" · ").slice(0, 409),
+      ...(await servicePhoto(input.organizationId, service.id)),
+      days: week.map((day, index) => ({ id: `d${index}`, title: shortDayLabel(`${day.date}T12:00:00Z`, request.language, "UTC") })),
+      day_init: "d0",
+      client: input.senderName.trim(),
+    }
+    // Every slot the published form knows about needs times, even the ones no
+    // day was found for: a data key the screen declares and the message omits
+    // is a form that does not open at all.
+    BOOKING_FLOW_DAY_IDS.forEach((ignored, index) => {
+      const day = week[index]
+      data[`t${index}`] = day
+        ? day.times.map((time) => ({
+          id: time.held ? `${OFFER_PREFIX}${offers[time.heldIndex!].id}` : `${SLOT_PREFIX}${service.id}:${time.hostId}:${time.startsAt}`,
+          title: clock(time.startsAt, context.timezone),
+          // Meta draws an item with no second line as a blank row, so every
+          // one has one: the master when there is a name, the day otherwise.
+          description: hostName(time.hostId) || shortDayLabel(time.startsAt, request.language, context.timezone),
+        }))
+        : [{ id: "-", title: "—", description: "—" }]
+    })
     const sent = await sendWhatsAppFlow({
       to: input.waPhone, body, footer: words.hold, flowId, cta: words.pick,
-      // Meta hands this back untouched inside the submission; it is the only
+      // Ours, handed back untouched inside the submission; it is the only
       // thing in it that says which conversation the form was opened from.
       flowToken: `${FLOW_TOKEN_PREFIX}${input.conversationId}`,
       screen: BOOKING_FLOW_SCREEN,
-      data: { service: what, times, client: input.senderName.trim() },
+      data,
       organizationId: input.organizationId, channelConfigId: input.channelConfigId, conversationId: input.conversationId,
       contactId: input.contactId, leadId: input.leadId,
       extraMetadata: { aiAutoReply: true, bookingAgent: true },
@@ -650,6 +775,67 @@ async function sendDayMenu(input: BookingTurnInput, serviceId: string, now: Date
   const body = `${service.title}, ${service.durationMinutes} ${words.minutes}.\n${words.pickDay}`
   if (await sendList(input, body, rows, words.pick, "", undefined)) return true
   return sendButtons(input, body, rows.slice(0, OFFERS_PER_MESSAGE).map((row) => ({ id: row.id, title: row.title.slice(0, 20) })))
+}
+
+/**
+ * A time the form offered without holding it.
+ *
+ * Everything below this point is the path a held time takes — the salon's own
+ * rules, the hold while a person decides, the confirmation, what the meeting
+ * card shows — so the time becomes an offer first and is then booked like any
+ * other. Taken in the meantime, it answers as a taken time always has: the
+ * next free ones.
+ */
+async function bookFreeSlot(input: BookingTurnInput, raw: string, rules: AutonomyRules, now: Date): Promise<boolean> {
+  const [serviceId, hostId, ...rest] = raw.split(":")
+  const startsAt = rest.join(":")
+  if (!serviceId || !hostId || !startsAt || Number.isNaN(Date.parse(startsAt))) return false
+  const service = await prisma.bookingPage.findFirst({
+    where: { organizationId: input.organizationId, id: serviceId, isActive: true },
+    select: { id: true, durationMinutes: true, bufferMinutes: true, hostIds: true },
+  })
+  // Only a master this service actually works with, whatever the id said.
+  if (!service || !service.hostIds.includes(hostId)) return false
+  const language = await conversationLanguage(input)
+  const offer = await prisma.bookingOffer.create({
+    data: {
+      organizationId: input.organizationId, conversationId: input.conversationId, channelConfigId: input.channelConfigId,
+      bookingPageId: service.id, hostUserId: hostId,
+      startsAt: new Date(startsAt), endsAt: new Date(Date.parse(startsAt) + service.durationMinutes * 60_000),
+      bufferMinutes: service.bufferMinutes,
+      expiresAt: new Date(now.getTime() + OFFER_HOLD_MINUTES * 60_000),
+      request: {
+        text: "", serviceId: service.id, date: startsAt.slice(0, 10), partOfDay: "any",
+        notBefore: null, notAfter: null, hostId, language,
+      } as unknown as Prisma.InputJsonValue,
+      createdAt: now,
+    },
+    select: { id: true },
+  })
+  return bookOffer(input, offer.id, rules, now)
+}
+
+/**
+ * What `d2` stood for in the last form this conversation was sent.
+ *
+ * The LAST offer is not the answer: booking a time makes an offer of its own,
+ * and a client who books and then opens the form again would be met with
+ * «which day?» and no way to answer it. So the newest message that actually
+ * carried a week is the one asked.
+ */
+async function dayOfSlot(input: BookingTurnInput, slot: string): Promise<{ serviceId: string; date: string } | null> {
+  const recent = await prisma.bookingOffer.findMany({
+    where: { organizationId: input.organizationId, conversationId: input.conversationId },
+    orderBy: { createdAt: "desc" },
+    take: 40,
+    select: { request: true },
+  })
+  for (const offer of recent) {
+    const request = readRequest(offer.request)
+    const date = request?.daySlots?.[slot]
+    if (request && date) return { serviceId: request.serviceId, date }
+  }
+  return null
 }
 
 /** A day tapped in that menu: the same offer message, for that date. */
@@ -794,6 +980,8 @@ async function bookOffer(input: BookingTurnInput, offerId: string, rules: Autono
       startsAt: offer.startsAt.toISOString(),
       name: input.senderName.trim() || "WhatsApp",
       phone: `+${input.waPhone.replace(/^\+/, "")}`,
+      // What the client typed into the form for the salon to read.
+      note: input.note?.trim() ? input.note.trim().slice(0, 2000) : undefined,
       whatsapp: { conversationId: input.conversationId },
     }, now)
   } catch (error) {
@@ -1035,6 +1223,17 @@ export async function handleWhatsAppBookingTurn(input: BookingTurnInput): Promis
   if (setting.channelConfigId && setting.channelConfigId !== input.channelConfigId) return { handled: false }
   if (input.replyId?.startsWith(OFFER_PREFIX)) {
     return { handled: await bookOffer(input, input.replyId.slice(OFFER_PREFIX.length), setting.rules, now) }
+  }
+  // A time from the form that nobody was holding: book it on its own merits.
+  if (input.replyId?.startsWith(SLOT_PREFIX)) {
+    return { handled: await bookFreeSlot(input, input.replyId.slice(SLOT_PREFIX.length), setting.rules, now) }
+  }
+  // The form was closed on a day with no time picked. That is still an
+  // answer — it says which day — and only the message that offered the week
+  // knows which date that slot stood for.
+  if (input.replyId?.startsWith(FLOW_DAY_PREFIX)) {
+    const chosen = await dayOfSlot(input, input.replyId.slice(FLOW_DAY_PREFIX.length))
+    return { handled: Boolean(chosen) && await sendOffersForDay(input, chosen!.serviceId, chosen!.date, now) }
   }
   if (input.replyId?.startsWith(DAY_PREFIX)) {
     const [serviceId, date] = input.replyId.slice(DAY_PREFIX.length).split(":")
