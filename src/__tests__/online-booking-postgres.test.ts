@@ -1370,20 +1370,23 @@ pgDescribe("online booking on a real Postgres", () => {
     })
   })
 
-  it("WhatsApp: a number with a published form is sent the form, and the name typed in it is the name on the meeting", async () => {
+  it("WhatsApp: a number with a published form is sent a week of days, and books what comes back", async () => {
     // The owner asked for Telegram's forms inside WhatsApp (2026-11-11:
-    // «telegram намного красивее можно оформлять формы»), and Meta has them —
-    // Flows. What is checked here is the whole round trip, because every part
-    // of it is a place the form could be shown and still book nothing:
+    // «telegram намного красивее можно оформлять формы»), and then for the
+    // most that form can hold (2026-11-12: «выжми максимум»). What is checked
+    // here is the whole round trip, because every part of it is a place the
+    // form could be shown and still book nothing:
     //
     //   • the form goes out INSTEAD of the menu, and only for a number whose
     //     form is published — `flowId` is written by the publish step alone;
-    //   • the times inside it are the held offers, in their order, with «another
-    //     day» last, carrying the id the menu row carries, so a tap on it lands
-    //     in the same handler;
-    //   • the submitted form books, and the name the client typed wins over the
-    //     name WhatsApp knows them by — in a salon the phone belongs to one
-    //     person and the appointment often to another.
+    //   • it carries a WEEK of days, the first being the day the message is
+    //     about, and only that day's times are HELD: a week of held chairs
+    //     would lock the whole salon because one client opened a form;
+    //   • every day slot the published form declares has times in it, because
+    //     a data key the screen declares and the message omits is a form that
+    //     does not open at all;
+    //   • a submitted form books — the time that was held, or one that was
+    //     not — and the name and note the client typed reach the meeting.
     const slug = await newPage({ title: "Saç kəsimi", durationMinutes: 45 })
     const page = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug } }))
     await withWhatsAppBooking(async () => {
@@ -1404,44 +1407,145 @@ pgDescribe("online booking on a real Postgres", () => {
       // The times are still in the message itself: the form is one tap away,
       // and a client reading WhatsApp sees them without taking it.
       expect(form.body).toMatch(/Saç kəsimi, 45 dəq/)
-      expect(form.data.service).toMatch(/^Saç kəsimi, 45 dəq/)
+      expect(form.data.service).toBe("Saç kəsimi")
+      expect(form.data.details).toMatch(/45 dəq/)
       expect(form.data.client).toBe("Nigar")
+      // No picture on this service: the image is hidden, never absent.
+      expect(form.data.has_photo).toBe(false)
+      expect(typeof form.data.photo).toBe("string")
+      expect((form.data.photo as string).length).toBeGreaterThan(0)
 
-      const times = form.data.times as { id: string; title: string; description: string }[]
-      const offers = await offersOf(conversation, "offered")
-      expect(offers.length).toBeGreaterThan(3)
-      expect(times.slice(0, offers.length).map((time) => time.id)).toEqual(offers.map((offer) => `bk:${offer.id}`))
+      const days = form.data.days as { id: string; title: string }[]
+      expect(days.length).toBeGreaterThan(1)
+      expect(days.map((day) => day.id)).toEqual(days.map((ignored, index) => `d${index}`))
+      for (const day of days) expect(day.title, JSON.stringify(day)).toBeTruthy()
+      expect(form.data.day_init).toBe("d0")
+
+      const timesOf = (index: number) => form.data[`t${index}`] as { id: string; title: string; description: string }[]
+      // Every slot the form declares is filled, even past the last day found.
+      for (let index = 0; index < 7; index += 1) expect(timesOf(index).length, `t${index}`).toBeGreaterThan(0)
       // Meta draws an item with no second line as a blank row, so every one
       // has one — the master when there is a name, the day otherwise.
-      for (const time of times) {
-        expect(time.title, JSON.stringify(time)).toBeTruthy()
-        expect(time.description, JSON.stringify(time)).toBeTruthy()
+      for (let index = 0; index < days.length; index += 1) {
+        for (const time of timesOf(index)) {
+          expect(time.title, JSON.stringify(time)).toMatch(/^\d{1,2}:\d{2}$/)
+          expect(time.description, JSON.stringify(time)).toBeTruthy()
+        }
       }
-      const other = times.at(-1)!
-      expect(other.title).toBe("Başqa gün")
-      expect(other.id).toBe(`bkd:${page.id}`)
+
+      // The first day is the held one: its times are this conversation's
+      // offers, and the public page stops offering them.
+      const offers = await offersOf(conversation, "offered")
+      expect(offers.length).toBeGreaterThan(3)
+      // Held times come first and are exactly this conversation's offers —
+      // however many days the offered times themselves ran over.
+      const inDay = days.map((ignored, index) => timesOf(index))
+      const heldDays = inDay.filter((times) => times.every((time) => time.id.startsWith("bk:")))
+      expect(heldDays.length).toBeGreaterThan(0)
+      expect(heldDays.flat().map((time) => time.id).sort()).toEqual(offers.map((offer) => `bk:${offer.id}`).sort())
+      expect(inDay.slice(0, heldDays.length)).toEqual(heldDays)
+      const during = await offeredTimes(slug)
+      for (const offer of offers) expect(during).not.toContain(offer.startsAt.toISOString())
+      // The days after them are free times nobody is holding.
+      const laterIndex = heldDays.length
+      const later = inDay[laterIndex]
+      expect(later.every((time) => time.id.startsWith(`bkt:${page.id}:`)), JSON.stringify(later)).toBe(true)
+      for (const time of later) expect(during).toContain(time.id.split(":").slice(3).join(":"))
 
       // The client picks the first time, types a name over the one WhatsApp
-      // knows, and confirms. That arrives as `nfm_reply`: one JSON string.
+      // knows and leaves a note. That arrives as `nfm_reply`: one JSON string.
       const { flowTap } = await import("@/lib/booking/whatsapp-flow")
-      const submitted = flowTap({
+      const submission = (answers: Record<string, unknown>) => flowTap({
         type: "nfm_reply",
-        nfm_reply: { response_json: JSON.stringify({ flow_token: form.flowToken, time: times[0].id, client: "Günel" }), body: "Sent", name: "flow" },
+        nfm_reply: { response_json: JSON.stringify({ flow_token: form.flowToken, ...answers }), body: "Sent", name: "flow" },
       })!
-      expect(submitted.replyId).toBe(times[0].id)
-      expect(await turnIn(conversation, { replyId: submitted.replyId, senderName: submitted.name!, text: "[Форма: Günel]" })).toEqual({ handled: true })
+      const held = submission({ day: "d0", t0: timesOf(0)[0].id, client: "Günel", note: "Rəngə də baxaq" })
+      expect(held.replyId).toBe(timesOf(0)[0].id)
+      expect(await turnIn(conversation, { replyId: held.replyId, senderName: held.name!, note: held.note!, text: "[Форма: Günel]" })).toEqual({ handled: true })
 
-      const meetings = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: page.id, status: "confirmed" } }))
+      const meetings = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: page.id, status: "confirmed" }, orderBy: { createdAt: "asc" } }))
       expect(meetings).toHaveLength(1)
-      expect(meetings[0]).toMatchObject({ source: "whatsapp", name: "Günel", phone: "+994551234567" })
+      expect(meetings[0]).toMatchObject({ source: "whatsapp", name: "Günel", phone: "+994551234567", note: "Rəngə də baxaq" })
       expect(meetings[0].startsAt.toISOString()).toBe(offers[0].startsAt.toISOString())
       // Confirmed the way every booking is, with the two taps that follow it.
       expect(whatsapp.buttons.at(-1)!.body).toMatch(/^Yazıldınız ✅/)
 
-      // «Another day» from inside the form reaches the day menu — the form has
-      // no second screen, so this id is the only way out of the day offered.
-      expect(await turnIn(conversation, { replyId: other.id, text: "Başqa gün" })).toEqual({ handled: true })
-      expect(whatsapp.lists.at(-1)!.rows.every((row) => row.id.startsWith(`bkday:${page.id}:`))).toBe(true)
+      // A time from another day — one nobody was holding — books just the
+      // same, and leaves the same kind of meeting behind.
+      const free = submission({ day: `d${laterIndex}`, [`t${laterIndex}`]: later[0].id, client: "Günel" })
+      expect(await turnIn(conversation, { replyId: free.replyId, senderName: free.name!, text: "[Форма: Günel]" })).toEqual({ handled: true })
+      const both = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: page.id, status: "confirmed" }, orderBy: { startsAt: "asc" } }))
+      expect(both).toHaveLength(2)
+      expect(both[1].startsAt.toISOString()).toBe(later[0].id.split(":").slice(3).join(":"))
+      expect(await offeredTimes(slug)).not.toContain(both[1].startsAt.toISOString())
+
+      // A form closed on a day without a time is still an answer: that day's
+      // times come back. What «d2» meant is known only to the message that
+      // offered the week, so it is read from the offer it was sent with.
+      const lastDay = `d${days.length - 1}`
+      const dayOnly = submission({ day: lastDay, client: "Günel" })
+      expect(dayOnly.replyId).toBe(`bkds:${lastDay}`)
+      expect(await turnIn(conversation, { replyId: dayOnly.replyId, text: "" })).toEqual({ handled: true })
+      const again = whatsapp.flows.at(-1)!
+      expect((again.data.days as { title: string }[])[0].title).toBe(days[days.length - 1].title)
+    }, { bookingWhatsApp: { flowId: "flow-published-1" } })
+  })
+
+  it("WhatsApp: the form's own dropdowns ask again instead of booking the wrong thing", async () => {
+    // The owner, seeing the first form: «если несколько услуг будет, такую
+    // форму тоже сделай — чтоб выбрал внутри, дальше время и мастера, или же
+    // без мастера» (2026-11-12). Neither dropdown can filter the times on
+    // screen: a published form has no way to ask us for another service's
+    // day. So what they do is ask again — and what matters is that they never
+    // book the thing the client just said they did not want.
+    const cutSlug = await newPage({ title: "Saç kəsimi", durationMinutes: 45, hostIds: [HOST_A, HOST_B] })
+    const colourSlug = await newPage({ title: "Rəng", durationMinutes: 60, hostIds: [HOST_A] })
+    const cut = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug: cutSlug } }))
+    const colour = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug: colourSlug } }))
+    await withWhatsAppBooking(async () => {
+      const conversation = `conv-${randomUUID()}`
+      expect(await turnIn(conversation, { client: decides({ action: "offer", language: "az", serviceId: cut.id }) })).toEqual({ handled: true })
+
+      const form = whatsapp.flows.at(-1)!
+      // Both lists are there, and both say what the form was sent for.
+      expect(form.data.has_services).toBe(true)
+      expect((form.data.services as { id: string }[]).map((item) => item.id)).toEqual(expect.arrayContaining([cut.id, colour.id]))
+      expect(form.data.service_init).toBe(cut.id)
+      expect(form.data.has_hosts).toBe(true)
+      expect((form.data.hosts as { id: string }[])[0].id).toBe("any")
+      expect(form.data.host_init).toBe("any")
+
+      const time = (form.data.t0 as { id: string }[])[0].id
+      const submit = (answers: Record<string, unknown>) => {
+        const reply = { flow_token: form.flowToken, day: "d0", t0: time, client: "Günel", service: cut.id, host: "any", ...answers }
+        return turnIn(conversation, {
+          replyId: (reply.t0 as string) || `bkds:${reply.day}`,
+          senderName: "Günel",
+          text: "[Форма]",
+          form: { serviceId: reply.service as string, hostId: reply.host as string },
+        })
+      }
+
+      // Another service: the times on screen belong to a 45-minute haircut,
+      // and nothing about them is true for an hour of colouring.
+      expect(await submit({ service: colour.id })).toEqual({ handled: true })
+      expect(await bypass(() => prisma.booking.count({ where: { organizationId: ORG, status: "confirmed", bookingPageId: { in: [cut.id, colour.id] } } }))).toBe(0)
+      const again = whatsapp.flows.at(-1)!
+      expect(again.data.service).toBe("Rəng")
+      expect(again.data.service_init).toBe(colour.id)
+      expect(again.data.details).toMatch(/60 dəq/)
+
+      // A master, and the moment the client already picked: that very time
+      // with that master, not a second question.
+      const colourForm = again
+      const colourTime = (colourForm.data.t0 as { id: string }[])[0].id
+      expect(await turnIn(conversation, {
+        replyId: colourTime, senderName: "Günel", text: "[Форма]",
+        form: { serviceId: colour.id, hostId: HOST_A },
+      })).toEqual({ handled: true })
+      const booked = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: colour.id, status: "confirmed" } }))
+      expect(booked).toHaveLength(1)
+      expect(booked[0].hostUserId).toBe(HOST_A)
     }, { bookingWhatsApp: { flowId: "flow-published-1" } })
   })
 

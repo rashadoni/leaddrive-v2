@@ -92,18 +92,43 @@ export async function flowsCapability(
 }
 
 /**
+ * A 1×1 transparent PNG: what `data.photo` carries for a service with no
+ * picture. The image is hidden in that case, but the key must still hold a
+ * string — Meta accepts neither an empty one nor a missing data key.
+ */
+export const PLACEHOLDER_PHOTO = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
+/** How many days the form can show at once; one slot per day, `d0`…`d6`. */
+export const BOOKING_FLOW_DAYS = 7
+/** Day slots, in the order the dropdown lists them. */
+export const BOOKING_FLOW_DAY_IDS = Array.from({ length: BOOKING_FLOW_DAYS }, (ignored, index) => `d${index}`)
+
+/**
  * The form itself, in Meta's own schema.
  *
- * One screen, because a salon's client answers one question: which time. The
- * times are not in this JSON — they are handed to the screen when the message
- * is sent (`data.times`), so one published form serves every service, every
- * master and every day.
+ * One screen, because a salon's client answers one question: which time. But
+ * the one screen is a screen, not a radio list (owner, 2026-11-12, having
+ * opened the first version: «где эти красивые формы… выжми максимум»): a photo
+ * of the service, its name and price, the DAY as a dropdown, and under it the
+ * times of exactly that day.
+ *
+ * Nothing in here is about a particular salon, day or service — a published
+ * form cannot be, since one form serves every message. The day a client picks
+ * is a SLOT (`d0`…`d6`), never a date, because the conditions that reveal its
+ * times are part of this published JSON and a date would be stale by tomorrow.
+ * What each slot means, and which times belong to it, travels with the message
+ * (`data.days`, `data.t0`…`data.t6`).
  *
  * Version 7.2 is the floor Meta's own tooling accepts; a published form keeps
  * working as the schema moves, which is why the version lives here, next to
  * the screen it describes, and not in a setting somebody forgets.
  */
 export function bookingFlowJson(): Record<string, unknown> {
+  const times = (example: string) => ({
+    type: "array",
+    items: { type: "object", properties: { id: { type: "string" }, title: { type: "string" }, description: { type: "string" } } },
+    __example__: [{ id: "bk:1", title: example, description: "Leyla" }],
+  })
   return {
     version: "7.2",
     screens: [
@@ -111,38 +136,89 @@ export function bookingFlowJson(): Record<string, unknown> {
         id: BOOKING_FLOW_SCREEN,
         title: "Yazılış",
         terminal: true,
+        success: true,
         data: {
-          service: { type: "string", __example__: "Saç kəsimi, 45 dəq" },
-          times: {
+          service: { type: "string", __example__: "Saç kəsimi" },
+          details: { type: "string", __example__: "30 dəq · 25 ₼" },
+          // The other services a salon has, and the masters who do the one on
+          // screen. Both are hidden when there is nothing to choose between.
+          has_services: { type: "boolean", __example__: true },
+          services: {
             type: "array",
-            items: {
-              type: "object",
-              properties: { id: { type: "string" }, title: { type: "string" }, description: { type: "string" } },
-            },
-            __example__: [{ id: "1", title: "14:00", description: "Leyla" }],
+            items: { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } },
+            __example__: [{ id: "p1", title: "Saç kəsimi" }, { id: "p2", title: "Rəng" }],
           },
-          client: { type: "string", __example__: "" },
+          service_init: { type: "string", __example__: "p1" },
+          has_hosts: { type: "boolean", __example__: true },
+          hosts: {
+            type: "array",
+            items: { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } },
+            __example__: [{ id: "any", title: "Fərqi yoxdur" }, { id: "h1", title: "Leyla" }],
+          },
+          host_init: { type: "string", __example__: "any" },
+          // A salon without a photo still gets a form: the image is hidden
+          // rather than absent, because an empty `src` is not a string Meta
+          // accepts and a missing data key is a form that will not open.
+          has_photo: { type: "boolean", __example__: false },
+          photo: { type: "string", __example__: PLACEHOLDER_PHOTO },
+          days: {
+            type: "array",
+            items: { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } },
+            __example__: [{ id: "d0", title: "Sabah, 13 noyabr" }],
+          },
+          day_init: { type: "string", __example__: "d0" },
+          ...Object.fromEntries(BOOKING_FLOW_DAY_IDS.map((day, index) => [`t${index}`, times(`${9 + index}:00`)])),
+          client: { type: "string", __example__: "Nigar" },
         },
         layout: {
           type: "SingleColumnLayout",
           children: [
-            { type: "TextBody", text: "${data.service}" },
+            { type: "Image", src: "${data.photo}", visible: "${data.has_photo}", "scale-type": "cover", "aspect-ratio": 1.9, "alt-text": "." },
+            { type: "TextHeading", text: "${data.service}" },
+            { type: "TextCaption", text: "${data.details}" },
             {
               type: "Form",
               name: "booking",
-              // The name the client already told WhatsApp, pre-filled. It lives
-              // on the FORM, not on the field: Meta refused `init-value` inside
-              // TextInput outright — «Property 'init-value' is not allowed in
-              // 'TextInput' component» — and that one line was the whole reason
-              // the form would not publish (2026-11-11).
-              "init-values": { client: "${data.client}" },
+              // The name the client already told WhatsApp, and the day their
+              // message was about, pre-filled. They live on the FORM, not on
+              // the fields: Meta refused `init-value` inside `TextInput`
+              // outright — «Property 'init-value' is not allowed in 'TextInput'
+              // component» — and that one line was the whole reason the form
+              // would not publish (2026-11-11).
+              "init-values": { client: "${data.client}", day: "${data.day_init}", service: "${data.service_init}", host: "${data.host_init}" },
               children: [
-                { type: "RadioButtonsGroup", name: "time", label: "Vaxt", required: true, "data-source": "${data.times}" },
+                // What is being booked, and with whom. Changing either is not
+                // an answer to the times on screen but a new question — the
+                // agent sends the form back with that service's or that
+                // master's own times (src/lib/booking/whatsapp-agent.ts).
+                { type: "Dropdown", name: "service", label: "Xidmət", visible: "${data.has_services}", "data-source": "${data.services}" },
+                { type: "Dropdown", name: "host", label: "Usta", visible: "${data.has_hosts}", "data-source": "${data.hosts}" },
+                { type: "Dropdown", name: "day", label: "Gün", required: true, "data-source": "${data.days}" },
+                // One block per day slot. Only the chosen day's times are on
+                // screen; the rest are not rendered, so the form stays the
+                // length of one day however far ahead the salon is booked.
+                ...BOOKING_FLOW_DAY_IDS.map((day, index) => ({
+                  type: "If",
+                  condition: `\${form.day} == '${day}'`,
+                  then: [{ type: "RadioButtonsGroup", name: `t${index}`, label: "Vaxt", "data-source": `\${data.t${index}}` }],
+                })),
                 { type: "TextInput", name: "client", label: "Adınız", "input-type": "text", required: true },
+                { type: "TextArea", name: "note", label: "Qeyd (istəyə bağlı)", "max-length": 300 },
                 {
                   type: "Footer",
                   label: "Təsdiqlə",
-                  "on-click-action": { name: "complete", payload: { time: "${form.time}", client: "${form.client}" } },
+                  "center-caption": "Vaxt saxlanır",
+                  "on-click-action": {
+                    name: "complete",
+                    payload: {
+                      service: "${form.service}",
+                      host: "${form.host}",
+                      day: "${form.day}",
+                      ...Object.fromEntries(BOOKING_FLOW_DAY_IDS.map((day, index) => [`t${index}`, `\${form.t${index}}`])),
+                      client: "${form.client}",
+                      note: "${form.note}",
+                    },
+                  },
                 },
               ],
             },
@@ -292,14 +368,15 @@ export async function deleteBookingFlow(
 }
 
 /**
- * What a client sent back from the form.
+ * What a submitted form says, in our own words.
  *
  * Meta puts everything in one string — `interactive.nfm_reply.response_json` —
- * and the token we issued is inside it, not beside it. A submission that does
- * not parse, or that names no time, is not a booking: it is read as nothing,
- * and the message takes the ordinary path.
+ * and the form is one screen, so the answer is flat: the day slot the client
+ * chose, the time inside whichever day was on screen (`t0`…`t6` — only the
+ * visible one is filled), the name they typed over the one WhatsApp knows, and
+ * an optional note for the salon.
  */
-export function readFlowReply(responseJson: unknown): { token: string | null; time: string; client: string } | null {
+export function readFlowReply(responseJson: unknown): { token: string | null; time: string; day: string; client: string; note: string; serviceId: string; hostId: string } | null {
   if (typeof responseJson !== "string" || !responseJson.trim()) return null
   let parsed: unknown
   try {
@@ -309,14 +386,32 @@ export function readFlowReply(responseJson: unknown): { token: string | null; ti
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
   const value = parsed as Record<string, unknown>
-  const time = typeof value.time === "string" ? value.time.trim() : ""
-  if (!time) return null
+  const text = (key: string) => typeof value[key] === "string" ? (value[key] as string).trim() : ""
+  // The day the client was looking at decides which field holds their answer;
+  // the others belong to days that were never on screen. Taking the first
+  // filled one rather than the day's own field is deliberate: a form that
+  // submits a time must book it even if the day slot came back empty.
+  const time = BOOKING_FLOW_DAY_IDS.map((ignored, index) => text(`t${index}`)).find(Boolean)
+    // The first form had one list of times under this name; a message sent
+    // before the form was replaced can still come back today.
+    ?? text("time")
+  const day = BOOKING_FLOW_DAY_IDS.includes(text("day")) ? text("day") : ""
+  if (!time && !day) return null
   return {
     token: typeof value.flow_token === "string" && value.flow_token ? value.flow_token : null,
-    time,
-    client: typeof value.client === "string" ? value.client.trim() : "",
+    time: time ?? "",
+    day,
+    client: text("client"),
+    note: text("note"),
+    serviceId: text("service"),
+    // «Fərqi yoxdur» is a choice too: it says the client does not mind, which
+    // is not the same as not having been asked.
+    hostId: value.host === undefined ? "" : (text("host") || ANY_HOST),
   }
 }
+
+/** What the master dropdown says when the client does not mind which one. */
+export const ANY_HOST = "any"
 
 /**
  * Remember which form this organisation may send, or forget it.
@@ -362,16 +457,34 @@ async function rememberBookingFlow(organizationId: string, flowId: string | null
  * Meta delivers it as an ordinary incoming message whose `interactive` holds
  * `nfm_reply` — not `list_reply` — so a webhook that only knows tapped rows
  * sees a message with no words in it and hands the client to a ticket. What
- * comes back is the row the client picked (the same id the menu row carries,
- * so one handler answers both) and the name they typed, which beats the name
- * WhatsApp knows them by: in a salon the phone belongs to one person and the
- * appointment often to another.
+ * comes back is the row the client picked (the same id a menu row carries, so
+ * one handler answers both), the name they typed, which beats the name
+ * WhatsApp knows them by — in a salon the phone belongs to one person and the
+ * appointment often to another — and the note they left for the salon.
+ *
+ * A form closed on a day but no time is still an answer: it says which day the
+ * client wants, and that day's times go back as a fresh message.
  */
-export function flowTap(interactive: unknown): { replyId: string; name: string | null } | null {
+export function flowTap(interactive: unknown): { replyId: string; name: string | null; note: string | null; serviceId: string | null; hostId: string | null } | null {
   if (!interactive || typeof interactive !== "object") return null
   const reply = (interactive as { nfm_reply?: unknown }).nfm_reply
   if (!reply || typeof reply !== "object") return null
   const submitted = readFlowReply((reply as { response_json?: unknown }).response_json)
   if (!submitted) return null
-  return { replyId: submitted.time, name: submitted.client || null }
+  const replyId = submitted.time || (submitted.day ? `${FLOW_DAY_PREFIX}${submitted.day}` : "")
+  if (!replyId) return null
+  return {
+    replyId,
+    name: submitted.client || null,
+    note: submitted.note || null,
+    serviceId: submitted.serviceId || null,
+    hostId: submitted.hostId || null,
+  }
 }
+
+/**
+ * «The client chose a day in the form and no time»: the day SLOT, not a date.
+ * What the slot meant is known only to the message that offered it, so the
+ * agent looks it up there (src/lib/booking/whatsapp-agent.ts).
+ */
+export const FLOW_DAY_PREFIX = "bkds:"
