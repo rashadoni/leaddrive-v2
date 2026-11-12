@@ -6,6 +6,7 @@ import Credentials from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "./prisma"
 import { readLegacyCrmCredentialBoundary } from "./identity/legacy-crm-boundary"
+import { sessionRefreshDeferred } from "./auth-refresh-scope"
 import { authenticateIdentityCrmPassword, resolveIdentityCrmSession, type IdentityCrmClaims } from "./identity/crm-session"
 import { runWithRlsBypass, runWithTenant } from "./rls-context"
 import {
@@ -466,6 +467,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!continueSessionLifetime(token, Math.floor(Date.now() / 1000))) {
           return null
         }
+        // The proxy resolving an API call: the route resolves the session again and runs the full,
+        // fail-closed refresh below — doing it twice cost ~80 ms of database work per request
+        // (lib/auth-refresh-scope). A session update is never deferred.
+        if (sessionRefreshDeferred() && trigger !== "update") return token
         try {
           // F-36: refresh by the JWT subject id, not by email. A missing
           // `token.sub` is rejected instead of falling back to an ambiguous
