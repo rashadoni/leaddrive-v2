@@ -45,6 +45,32 @@ export function matchMessageFiles(names: readonly string[], files: readonly Mess
   })
 }
 
+/**
+ * The files of every message of a task, each file shown in ONE message only
+ * (Xayala, 2026-11-12: «2 fayl yüklədim, 3 fayl görünür» — she removed a
+ * picture and added it again under the same name, and the older message,
+ * whose own file was gone, showed the new one too). The newest message takes
+ * the newest file of a name; an older message naming a file no longer there
+ * shows just its name. `messages` in time order, `files` newest first.
+ */
+export function assignMessageFiles(
+  messages: readonly { id: string; text: string }[],
+  files: readonly MessageFile[],
+): Map<string, Array<{ name: string; file: MessageFile | null }>> {
+  const used = new Set<string>()
+  const out = new Map<string, Array<{ name: string; file: MessageFile | null }>>()
+  for (const message of [...messages].reverse()) {
+    const { names } = splitMessageFiles(message.text)
+    if (names.length === 0) continue
+    out.set(message.id, names.map((name) => {
+      const file = files.find((candidate) => !used.has(candidate.id) && key(candidate.originalName) === key(name)) ?? null
+      if (file) used.add(file.id)
+      return { name, file }
+    }))
+  }
+  return out
+}
+
 export function isImageFile(file: MessageFile): boolean {
   if (file.mimeType) return file.mimeType.startsWith("image/")
   return /\.(png|jpe?g|gif|webp)$/iu.test(file.originalName)

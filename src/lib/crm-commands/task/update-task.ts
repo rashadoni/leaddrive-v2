@@ -13,6 +13,7 @@ import { parseRecurrenceRule } from "@/lib/recurrence/parse"
 import { canEditTasks, canMoveToStatus, type KanbanStatus, type BoardPermissionFlags } from "@/lib/tasks/board-permission"
 import { resolveEffectiveBoardPermission } from "@/lib/tasks/board-hierarchy"
 import { isValidTaskType, isValidEventType } from "@/lib/tasks/task-types"
+import { getAccessibleDivisionIds } from "@/lib/tasks/board-access"
 import { mayManageRow, NOT_YOUR_TASK } from "@/lib/tasks/task-ownership"
 import type { Role } from "@/lib/permissions"
 import type { CrmCommandActorContext } from "../actor-context"
@@ -249,6 +250,33 @@ export async function updateTaskCommand(
     }
   }
 
+  // To another board: a board (not a folder) of this organization the caller
+  // sees; the task stands in the column of the same stage there, on top, and
+  // keeps its key. Its people, files and history go with it.
+  let boardMove: { from: string; to: string } | null = null
+  if (parsed.data.divisionId !== undefined && parsed.data.divisionId !== existing.divisionId) {
+    const target = await db.division.findFirst({
+      where: { id: parsed.data.divisionId, organizationId: orgId },
+      select: { id: true, name: true, isDepartment: true },
+    })
+    if (!target || target.isDepartment) throw validationError("Unknown board")
+    const accessible = await getAccessibleDivisionIds(db as never, orgId, userId, role as Role)
+    if (accessible !== "all" && !accessible.includes(target.id)) throw forbiddenError("No access to that board")
+    const stage = (parsed.data.status ?? existing.status) as string
+    const columns: { key: string; mapsToStatus: string }[] = await db.boardColumn.findMany({
+      where: { organizationId: orgId, divisionId: target.id },
+      orderBy: { sortOrder: "asc" },
+      select: { key: true, mapsToStatus: true },
+    })
+    parsed.data.boardColumnKey = columns.find((column) => column.mapsToStatus === stage)?.key ?? null
+    const top = await db.task.aggregate({ where: { organizationId: orgId, divisionId: target.id }, _min: { boardPosition: true } })
+    parsed.data.boardPosition = Math.min(0, top._min.boardPosition ?? 0) - 1024
+    const from = existing.divisionId
+      ? (await db.division.findFirst({ where: { id: existing.divisionId, organizationId: orgId }, select: { name: true } }))?.name ?? ""
+      : ""
+    boardMove = { from, to: target.name }
+  }
+
   const data: Record<string, unknown> = { ...parsed.data }
   // Co-assignees are a relation, not a column — strip from the update data;
   // replace-set happens inside the transaction below. The FINAL primary
@@ -336,6 +364,7 @@ export async function updateTaskCommand(
     acts.push({ action: "priority_changed", oldValue: existing.priority, newValue: parsed.data.priority })
   if (parsed.data.reporterId !== undefined && parsed.data.reporterId !== existing.reporterId)
     acts.push({ action: "reporter_changed", oldValue: existing.reporterId, newValue: parsed.data.reporterId ?? null })
+  if (boardMove) acts.push({ action: "board_changed", oldValue: boardMove.from, newValue: boardMove.to })
 
   const write = async (tx: Prisma.TransactionClient): Promise<Task> => {
     if (expectedDate) {

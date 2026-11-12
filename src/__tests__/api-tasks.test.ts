@@ -24,7 +24,7 @@ vi.mock("@/lib/prisma", () => {
     project:  { findFirst: vi.fn() },
     boardPermission: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn().mockResolvedValue(null) },
     division: { findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn() },
-    boardColumn: { findFirst: vi.fn() },
+    boardColumn: { findFirst: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
     taskActivity: { create: vi.fn().mockResolvedValue({}), createMany: vi.fn().mockResolvedValue({ count: 1 }) },
     customField: { findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn() },
     // Dynamic task-type validation (isValidTaskType): empty list → falls back to
@@ -1121,6 +1121,44 @@ describe("PATCH /api/v1/tasks/:id", () => {
       const res = await GET_BY_ID(makeRequest("http://localhost/api/v1/tasks/t1"), makeParams("t1"))
       expect(res.status).toBe(200)
       expect((await res.json()).data.you).toEqual({ mayManage: true, mayDelete: false })
+    })
+  })
+
+  // Xayala, 2026-11-12: «bu task dijitala aiddir ama traditional yazilib… dijitala deyişə bilmirəm».
+  describe("a task moves to another board", () => {
+    const BOARDS: Record<string, any> = {
+      "div-1": { id: "div-1", name: "Traditional · Pharmastore", isDepartment: false, headUserId: null, parentDivisionId: null, parent: null },
+      "div-2": { id: "div-2", name: "Pharmastore", isDepartment: false },
+      "folder": { id: "folder", name: "Digital Marketing", isDepartment: true },
+    }
+    const patchBoard = (divisionId: string) => PATCH(makeRequest("http://localhost/api/v1/tasks/t1", { method: "PATCH", body: JSON.stringify({ divisionId }) }), makeParams("t1"))
+    beforeEach(() => {
+      vi.mocked(prismaMock.division.findFirst).mockImplementation(async ({ where }: any) => BOARDS[where.id] ?? null)
+      vi.mocked((prismaMock as any).boardColumn.findMany).mockResolvedValue([
+        { key: "c2_todo", mapsToStatus: "todo" }, { key: "c2_ip", mapsToStatus: "in_progress" }, { key: "c2_done", mapsToStatus: "done" },
+      ])
+      vi.mocked(prisma.task.findFirst).mockResolvedValue(boardExisting({ status: "in_progress", assignedTo: "user-1" }) as any)
+      vi.mocked(prisma.task.update).mockResolvedValue(boardExisting({ divisionId: "div-2" }) as any)
+    })
+
+    it("lands in the column of the same stage, on top, and the time line says where it went", async () => {
+      const session = { ...SESSION, role: "admin", userId: "user-1" }
+      vi.mocked(requireAuth).mockResolvedValue(session as any)
+      const res = await patchBoard("div-2")
+      expect(res.status).toBe(200)
+      const update = vi.mocked(prisma.task.update).mock.calls[0][0] as any
+      expect(update.data).toMatchObject({ divisionId: "div-2", boardColumnKey: "c2_ip", boardPosition: -1024 })
+      const acts = vi.mocked((prisma as any).taskActivity.createMany).mock.calls.flatMap((c: any) => c[0].data)
+      expect(acts).toEqual(expect.arrayContaining([expect.objectContaining({ action: "board_changed", oldValue: "Traditional · Pharmastore", newValue: "Pharmastore" })]))
+    })
+
+    it("not to a folder, and not to a board the person does not see", async () => {
+      vi.mocked(requireAuth).mockResolvedValue({ ...SESSION, role: "admin", userId: "user-1" } as any)
+      expect((await patchBoard("folder")).status).toBe(400)
+      vi.mocked(requireAuth).mockResolvedValue({ ...SESSION, role: "sales", userId: "user-1" } as any)
+      vi.mocked(prismaMock.boardPermission.findUnique).mockResolvedValue(grant({ canEdit: true }) as any)
+      expect((await patchBoard("div-2")).status).toBe(403)
+      expect(prisma.task.update).not.toHaveBeenCalled()
     })
   })
 

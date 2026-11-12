@@ -6,7 +6,7 @@ import { AtSign, Bell, BellOff, Loader2, Paperclip, Pencil, Send, Trash2, X } fr
 import { formatDate, formatTime } from "@/lib/format-date"
 import type { FeedItem, FeedPerson } from "@/lib/tasks/task-feed"
 import { describeFeedEvent } from "@/lib/tasks/feed-text"
-import { fileUrl, isImageFile, joinMessageFiles, matchMessageFiles, splitMessageFiles, type MessageFile } from "@/lib/tasks/message-files"
+import { assignMessageFiles, fileUrl, isImageFile, joinMessageFiles, splitMessageFiles, type MessageFile } from "@/lib/tasks/message-files"
 import { insertMention, mentionCandidates, mentionQueryAt, mentionedIds, type MentionPerson } from "@/lib/tasks/mentions"
 
 interface FeedData { items: FeedItem[]; followers: FeedPerson[]; following: boolean; me?: { id: string | null; admin: boolean } }
@@ -83,6 +83,11 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
 
   useEffect(() => { endRef.current?.scrollIntoView?.({ block: "end" }) }, [data?.items.length])
 
+  // Each file in one message only — the newest naming it.
+  const messageFiles = useMemo(() => assignMessageFiles(
+    (data?.items ?? []).flatMap((item) => (item.kind === "message" ? [{ id: item.id, text: item.text ?? "" }] : [])),
+    files,
+  ), [data, files])
   const query = mentionQueryAt(text, caret)
   const candidates = useMemo(() => (query ? mentionCandidates(people, query.query) : []), [people, query])
 
@@ -234,7 +239,7 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
                     </div>
                   ) : (
                     <div className={`whitespace-pre-wrap rounded-xl border bg-background px-3 py-2 text-sm ${item.system ? "text-muted-foreground" : ""}`}>
-                      <MessageBody text={item.text ?? ""} files={files} />
+                      <MessageBody text={item.text ?? ""} matched={messageFiles.get(item.id) ?? []} />
                       <span className="float-right ml-2 mt-1 text-[11px] text-muted-foreground">{formatTime(item.at, locale)}</span>
                     </div>
                   )}
@@ -337,10 +342,9 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
 }
 
 /** A message's text and, below it, the files it names — pictures shown, others as links. */
-function MessageBody({ text, files }: { text: string; files: readonly MessageFile[] }) {
+function MessageBody({ text, matched }: { text: string; matched: ReadonlyArray<{ name: string; file: MessageFile | null }> }) {
   const { body, names } = splitMessageFiles(text)
   if (names.length === 0) return <>{text}</>
-  const matched = matchMessageFiles(names, files)
   const pictures = matched.filter((m) => m.file && isImageFile(m.file))
   const others = matched.filter((m) => !m.file || !isImageFile(m.file))
   return (
