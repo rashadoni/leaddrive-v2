@@ -187,3 +187,17 @@ test('recovery injects only an old restricted shadow fault and replays unchanged
   assert.match(recovery, /assert\.deepEqual\(await snapshot\(\), before\)/)
   assert.match(recovery, /historical_bug_source=NOT_CLAIMED; corrected_new_build_recovery=PASS/)
 })
+
+test('owned cleanup removes only the exact connector, then waits out the slot and CDC sessions before dropping', () => {
+  const cleanup = source.slice(source.indexOf('if (connectorCreated) {'), source.indexOf('try { await db.close() }'))
+  const order = ['compose(["start", "connect"])', 'if (connectorListed() === false) return true',
+    'connect(`/connectors/${FULL_CDC_CONNECTOR}`, "DELETE", undefined, true, 30)', 'return connectorListed() === false',
+    '"exact connector removal"', `.stdout.trim() === "false", "exact inactive slot"`,
+    "WHERE datname='${db.databaseName}' AND usename='leaddrive_event_cdc'", '"exact CDC sessions closed"',
+    "pg_drop_replication_slot('${FULL_CDC_SLOT}')"].map(fragment => cleanup.indexOf(fragment))
+  assert.ok(order.every((at, index) => at > 0 && (index === 0 || at > order[index - 1])), JSON.stringify(order))
+  assert.match(source, /return names\.includes\(FULL_CDC_CONNECTOR\)/)
+  assert.match(source, /slot_type='logical' AND plugin='pgoutput' AND database='\$\{db\.databaseName\}'/)
+  assert.match(source, /assert\.equal\(cleanupErrors\.length, 0,/)
+  assert.doesNotMatch(source, /pg_terminate_backend|pg_cancel_backend|\(FORCE\)/)
+})
