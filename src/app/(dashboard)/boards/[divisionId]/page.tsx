@@ -232,6 +232,25 @@ function BoardInner() {
   const [eventType, setEventType] = useState(sp.get("eventType") ?? "")
   const [mine, setMine] = useState(sp.get("mine") === "1")
   const [mineCreated, setMineCreated] = useState(sp.get("created") === "1")
+  // «Only mine» is kept per person and board, as Bordio keeps a project's
+  // filter (Zeytun, 2026-11-12: Xayala's Pharmastore in Bordio showed only her
+  // 21 tasks; the CRM showed everyone's — «Pharmastore qarışıqdı»). A link that
+  // says ?mine= wins; otherwise the board opens as the person left it.
+  const mineKey = myId ? `ld-board-mine:${myId}:${divisionId}` : null
+  const mineRestored = useRef<string | null>(null)
+  useEffect(() => {
+    if (!mineKey || mineRestored.current === mineKey) return
+    mineRestored.current = mineKey
+    if (sp.has("mine")) return
+    try { setMine(window.localStorage.getItem(mineKey) === "1") } catch { /* no storage: the default */ }
+  }, [mineKey, sp])
+  const toggleMine = useCallback(() => {
+    setMine((was) => {
+      const next = !was
+      try { if (mineKey) window.localStorage.setItem(mineKey, next ? "1" : "0") } catch { /* no storage: this visit only */ }
+      return next
+    })
+  }, [mineKey])
 
   useEffect(() => {
     // Debounced so typing in the search box writes one history entry, not one
@@ -476,13 +495,20 @@ function BoardInner() {
     }
     await patchTask(taskId, patch)
   }, [patchTask, visibleColumns])
-  const listTasks: InlineTask[] = useMemo(() => tasks.map((x) => ({
+  // The list keeps its own search (the table's box) but takes the board's
+  // «assigned to me» / «created by me» — the filter a person leaves on.
+  const listSource = useMemo(() => tasks.filter((t2) => {
+    if (mine && t2.assignee?.id !== myId && !(t2.collaborators ?? []).some((c) => c.user.id === myId)) return false
+    if (mineCreated && t2.creator?.id !== myId) return false
+    return true
+  }), [tasks, mine, mineCreated, myId])
+  const listTasks: InlineTask[] = useMemo(() => listSource.map((x) => ({
     id: x.id, title: x.title, status: x.status, boardColumnKey: x.boardColumnKey ?? null, priority: x.priority,
     type: x.type, eventType: x.eventType, dueDate: x.dueDate,
     assignedTo: x.assignee?.id ?? null, assignee: x.assignee ?? null,
     collaborators: x.collaborators?.map((c) => c.user),
     relatedType: x.category, relatedName: null,
-  })), [tasks])
+  })), [listSource])
   // List groups = the board's OWN kanban columns (same keys, same labels) so
   // Lövhə and Siyahı never disagree on stages or names. Bucketing reuses
   // resolveLaneKey — the exact lane fold the kanban uses. Cancelled (no lane)
@@ -721,7 +747,7 @@ function BoardInner() {
         className="sticky -top-3 z-20 flex flex-wrap items-center gap-2 px-5 py-2 sm:-top-4 lg:-top-8"
         style={{ background: C.page, borderBottom: `1px solid ${C.border}` }}
       >
-        <button onClick={() => setMine((v) => !v)} className="inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs" style={pill(mine)}>
+        <button onClick={toggleMine} className="inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs" style={pill(mine)}>
           <UserCheck className="h-3.5 w-3.5" /> {t("assignedToMe")}
         </button>
         <button onClick={() => setMineCreated((v) => !v)} className="inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs" style={pill(mineCreated)}>
@@ -798,6 +824,14 @@ function BoardInner() {
 
       {activeView === "list" && (
         <div className="px-5 pb-8 pt-3">
+          <div className="mb-2 flex flex-wrap items-center gap-2" data-testid="board-list-filters">
+            <button type="button" onClick={toggleMine} aria-pressed={mine} data-testid="board-list-mine" className="inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs" style={pill(mine)}>
+              <UserCheck className="h-3.5 w-3.5" /> {t("assignedToMe")}
+            </button>
+            <button type="button" onClick={() => setMineCreated((v) => !v)} aria-pressed={mineCreated} className="inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs" style={pill(mineCreated)}>
+              <PenLine className="h-3.5 w-3.5" /> {t("createdByMe")}
+            </button>
+          </div>
           <InlineTasksTable
             tasks={listTasks}
             loading={loading}
