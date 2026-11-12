@@ -13,6 +13,9 @@
  * per-division resolver on the find path.
  */
 import { prisma } from "@/lib/prisma"
+import type { Role } from "@/lib/permissions"
+import type { BookingAccess } from "@/lib/booking/access"
+import { readVoiceBooking, VoiceBookingScopeUnavailableError } from "./booking-read"
 import { VOICE_READABLE_TYPES, type VoiceReadableType } from "./record-types"
 import { MEDDPICC_BLOCKS, parseMeddpicc } from "@/lib/meddpicc"
 
@@ -431,9 +434,22 @@ async function readProduct(orgId: string, id: string): Promise<VoiceReadResult> 
 export { VOICE_READABLE_TYPES }
 export type { VoiceReadableType }
 
+/**
+ * Что читателю нужно знать помимо «организация и id».
+ *
+ * Появился из-за встреч: их карточку нельзя прочитать «по организации», потому
+ * что мастер слышит только свои записи, а время произносится в поясе компании,
+ * а не в UTC процесса. Остальные читатели этот контекст не трогают.
+ */
+export type VoiceRecordReadContext = Readonly<{
+  role: Role
+  timezone: string
+  booking: BookingAccess | null
+}>
+
 const READERS: Record<
   VoiceReadableType,
-  (orgId: string, id: string) => Promise<VoiceReadResult>
+  (orgId: string, id: string, context: VoiceRecordReadContext) => Promise<VoiceReadResult>
 > = {
   deal: readDeal,
   contact: readContact,
@@ -444,14 +460,21 @@ const READERS: Record<
   project: readProject,
   contract: readContract,
   product: readProduct,
+  booking: async (_orgId, id, context) => {
+    // Без пределов доступа встречу не читают вовсе: это не «нет записи», а
+    // «вам её не слышно», и сказать это должен ответ, а не пустая карточка.
+    if (!context.booking) throw new VoiceBookingScopeUnavailableError()
+    return readVoiceBooking(context.booking, id, context.role, context.timezone)
+  },
 }
 
 export async function readVoiceRecord(
   orgId: string,
   type: VoiceReadableType,
   id: string,
+  context: VoiceRecordReadContext,
 ): Promise<VoiceReadResult> {
   const reader = READERS[type]
   if (!reader) return { error: "BAD_RECORD" }
-  return reader(orgId, id)
+  return reader(orgId, id, context)
 }

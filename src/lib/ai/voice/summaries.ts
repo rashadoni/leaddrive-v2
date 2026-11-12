@@ -9,6 +9,11 @@
  */
 import { prisma } from "@/lib/prisma"
 import { voiceScopedWhere } from "./scoped-where"
+import type { BookingAccess } from "@/lib/booking/access"
+import {
+  findVoiceBookings,
+  VoiceBookingScopeUnavailableError,
+} from "./booking-read"
 import { SPOKEN_ROW_LIMIT } from "./read-tools"
 import { orgStageVocabulary } from "@/lib/deal-stage-vocabulary"
 import type { AdvisorDomainKey } from "@/lib/ai/advisor/types"
@@ -557,7 +562,17 @@ export async function buildOverdueSummary(
 
 export type FoundRecord = { id: string; name: string; hint: string }
 export type RecordSearch = { type: VoiceRecordType; matches: FoundRecord[]; truncated: boolean }
-export type VoiceRecordSearchContext = { userId: string; role: Role }
+export type VoiceRecordSearchContext = {
+  userId: string
+  role: Role
+  /**
+   * Пределы доступа к встречам и пояс компании — только для типа `booking`.
+   * У встреч своя граница (свои записи / по доверенности / админ) и своё
+   * время суток, которого в UTC процесса нет; остальные типы их не читают.
+   */
+  booking?: BookingAccess | null
+  timezone?: string
+}
 
 const RECORD_SEARCH_LIMIT = 6
 
@@ -860,6 +875,11 @@ export async function findVoiceRecords(
         hint: [task.taskKey, task.status, task.priority].filter(Boolean).join(", "),
       }))
     }
+  } else if (type === "booking") {
+    // Своих запросов по встречам здесь нет: границу доступа и пояс знает
+    // booking-read.ts, и расходиться с экраном было бы нечем.
+    if (!context.booking) throw new VoiceBookingScopeUnavailableError()
+    rows = await findVoiceBookings(context.booking, q, context.timezone ?? "UTC", take)
   } else {
     // RECORD_TYPE_NAMES is canonical; a new tuple value must add a searchable
     // branch here before TypeScript accepts the build.

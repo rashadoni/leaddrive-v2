@@ -65,6 +65,11 @@ import {
 } from "@/lib/ai/voice/field-access"
 import { executeVoiceTaskList } from "@/lib/ai/voice/task-list"
 import { isVoiceTaskScopeUnavailable } from "@/lib/ai/voice/task-scope"
+import {
+  buildVoiceBookingsSummary,
+  isVoiceBookingScopeUnavailable,
+  voiceBookingAccess,
+} from "@/lib/ai/voice/booking-read"
 import { buildLeadCoverageSummary } from "@/lib/ai/voice/lead-coverage"
 
 export type VoiceReadOutcome = { status?: number; body: Record<string, unknown> }
@@ -72,7 +77,20 @@ export type VoiceReadOutcome = { status?: number; body: Record<string, unknown> 
 export async function executeVoiceReadTool(params: {
   toolName: VoiceToolName
   filter: unknown
-  auth: { orgId: string; userId: string; role: string; hiddenModules?: string[] }
+  auth: {
+    orgId: string
+    userId: string
+    role: string
+    hiddenModules?: string[]
+    /**
+     * Браузерная сессия, ключ интеграции или бот. Нужен встречам: их
+     * операторами могут быть только люди, и дверь, которая этого не передала,
+     * доступа к встречам не получает (отказ, а не «наверное, человек»).
+     */
+    principalType?: string
+    /** Посчитано аутентификацией по настройкам организации, не браузером. */
+    hideCustomerPhoneForOperators?: boolean
+  }
   logTurn?: (entry: { outcome: string; keys: string[] }) => void
 }): Promise<VoiceReadOutcome> {
   const { toolName, filter, auth, logTurn } = params
@@ -384,6 +402,19 @@ export async function executeVoiceReadTool(params: {
   if (toolName === "get_lead_coverage") {
     return { body: { data: await buildLeadCoverageSummary(auth.orgId, now) } }
   }
+  if (toolName === "get_bookings_summary") {
+    const access = await voiceBookingAccess(auth)
+    // Не оператор встреч — отказ ДАННЫМИ: «вам не слышно», а не «записей нет».
+    if (!access) return { body: { data: { error: "ACCESS_SCOPE_UNAVAILABLE" } } }
+    let timezone: string
+    try {
+      timezone = await loadVoiceReportingTimezone(auth.orgId, auth.userId)
+    } catch {
+      return { body: { data: { error: "REPORTING_TIMEZONE_UNAVAILABLE" } } }
+    }
+    const period = (parsed.data as { period?: "today" | "tomorrow" | "week" }).period ?? "today"
+    return { body: { data: await buildVoiceBookingsSummary(access, period, now, timezone) } }
+  }
   if (toolName === "get_quotes_summary") {
     return { body: { data: await buildQuotesSummary(auth.orgId, now) } }
   }
@@ -394,12 +425,33 @@ export async function executeVoiceReadTool(params: {
     if (!canAccessVoiceRecord(auth.role as Role, orgCtx, f.type)) {
       return { body: { data: { error: "ACCESS_SCOPE_UNAVAILABLE", type: f.type } } }
     }
-    return { body: {
-      data: await findVoiceRecords(auth.orgId, f.type, f.query, {
-        userId: auth.userId,
-        role: auth.role as Role,
-      }),
-    } }
+    let bookingSearch: { booking: Awaited<ReturnType<typeof voiceBookingAccess>>; timezone: string } | null = null
+    if (f.type === "booking") {
+      try {
+        bookingSearch = {
+          booking: await voiceBookingAccess(auth),
+          // Подсказка кандидата — это день и время записи, значит пояс нужен
+          // ещё до поиска.
+          timezone: await loadVoiceReportingTimezone(auth.orgId, auth.userId),
+        }
+      } catch {
+        return { body: { data: { error: "REPORTING_TIMEZONE_UNAVAILABLE" } } }
+      }
+    }
+    try {
+      return { body: {
+        data: await findVoiceRecords(auth.orgId, f.type, f.query, {
+          userId: auth.userId,
+          role: auth.role as Role,
+          ...(bookingSearch ?? {}),
+        }),
+      } }
+    } catch (error) {
+      if (isVoiceBookingScopeUnavailable(error)) {
+        return { body: { data: { error: "ACCESS_SCOPE_UNAVAILABLE", type: f.type } } }
+      }
+      throw error
+    }
   }
 
   if (toolName === "read_record") {
@@ -409,7 +461,28 @@ export async function executeVoiceReadTool(params: {
     if (!canAccessVoiceRecord(auth.role as Role, orgCtx, f.type)) {
       return { body: { data: { error: "ACCESS_SCOPE_UNAVAILABLE", type: f.type } } }
     }
-    return { body: { data: await readVoiceRecord(auth.orgId, f.type, f.id) } }
+    // Пояс нужен только карточке встречи (её время произносят), но читается
+    // он до читателя: отказ настройки — это свой ответ, а не «нет записи».
+    let timezone = "UTC"
+    if (f.type === "booking") {
+      try {
+        timezone = await loadVoiceReportingTimezone(auth.orgId, auth.userId)
+      } catch {
+        return { body: { data: { error: "REPORTING_TIMEZONE_UNAVAILABLE" } } }
+      }
+    }
+    try {
+      return { body: { data: await readVoiceRecord(auth.orgId, f.type, f.id, {
+        role: auth.role as Role,
+        timezone,
+        booking: f.type === "booking" ? await voiceBookingAccess(auth) : null,
+      }) } }
+    } catch (error) {
+      if (isVoiceBookingScopeUnavailable(error)) {
+        return { body: { data: { error: "ACCESS_SCOPE_UNAVAILABLE", type: f.type } } }
+      }
+      throw error
+    }
   }
 
   return { status: 400, body: { error: "Unhandled voice tool" } }

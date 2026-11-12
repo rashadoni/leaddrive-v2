@@ -113,6 +113,7 @@ const TOOL_DESCRIPTIONS: Record<VoiceToolName, string> = {
   get_quotes_summary: "Report the current commercial-quote summary and status counts.",
   get_inbox_summary: "Report the current omnichannel inbox snapshot. This tool does not support a historical period.",
   get_field_summary: "Report the current route-and-field operations snapshot. This tool does not support a historical period.",
+  get_bookings_summary: "Report the salon's bookings for today, tomorrow or the coming week: how many, how many cancelled, how many completed and no-shows, the count per host, and the next few appointments with their times. The result says whose day it covers (all hosts, or only the caller's own and the hosts they were granted) — say that out loud rather than implying it is the whole salon. Times are already in the organisation's timezone; never convert them.",
   get_lead_coverage: "Report how many open leads have been called and how many have not, broken down by salesperson, plus overdue promises made on calls. State the definition of contacted that the result carries and never present it as covering chats or emails.",
   get_sales_in_period: "Report verified sales for exactly one supported relative period or named calendar month. Use period alone, or month with optional year; never combine them. State any wonDealsWithoutHistory coverage caveat and never substitute current pipeline state.",
 }

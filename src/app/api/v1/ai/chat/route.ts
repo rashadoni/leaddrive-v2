@@ -550,7 +550,14 @@ Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown
           const out = await executeVoiceReadTool({
             toolName: toolBlock.name as VoiceToolName,
             filter: toolBlock.input,
-            auth: { orgId, userId, role: session.role, hiddenModules: session.hiddenModules },
+            auth: {
+              orgId,
+              userId,
+              role: session.role,
+              hiddenModules: session.hiddenModules,
+              principalType: session.principalType,
+              hideCustomerPhoneForOperators: session.hideCustomerPhoneForOperators,
+            },
           })
           if (stateForced && toolBlock.name === stateForced.tool) {
             // The read tools report a refused scope inside the payload rather

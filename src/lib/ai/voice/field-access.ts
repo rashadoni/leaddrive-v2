@@ -74,6 +74,11 @@ export function voiceFieldEntitiesForTool(
     case "get_boards_summary": return ["task"]
     case "get_quotes_summary": return ["quote"]
     case "get_field_summary": return ["mtm_visit", "mtm_task"]
+    // У встреч настраиваемых полей нет вовсе (их нет в ENTITY_FIELDS), значит
+    // скрывать нечего и этот гейт к ним не применяется — как к проектам,
+    // товарам и доскам. Границу «чей это день» держит BookingAccess, а не
+    // права на поля. Появятся настраиваемые поля у встреч — завести здесь.
+    case "get_bookings_summary": return []
     case "get_workload_by_person": {
       const focus = typeof filter.focus === "string" ? filter.focus : "all"
       const type = { tasks: "task", leads: "lead", deals: "deal", tickets: "ticket" }[focus]
