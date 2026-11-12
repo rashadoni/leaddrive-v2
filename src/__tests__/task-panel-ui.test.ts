@@ -192,7 +192,7 @@ describe("files in the card, as in Bordio", () => {
     try {
       await open()
       const img = container.querySelector('[data-testid="feed-message-pictures"] img') as HTMLImageElement
-      expect(img.getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg")
+      expect(img.getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg?w=480")
       const links = [...container.querySelectorAll('[data-testid="feed-message-files"] a')].map((a) => a.getAttribute("href"))
       expect(links).toEqual(["/uploads/tasks/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.pdf"])
       expect(container.querySelector('[data-testid="feed-message-files"]')?.textContent).toContain("köhnə.png")
@@ -241,10 +241,10 @@ describe("a picture the file gate refused", () => {
     try {
       await open()
       const img = () => container.querySelector('[data-testid="feed-message-pictures"] img') as HTMLImageElement
-      expect(img().getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg")
+      expect(img().getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg?w=480")
       await act(async () => { img().dispatchEvent(new Event("error")) })
       await act(async () => { vi.advanceTimersByTime(1500) })
-      expect(img().getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg?try=1")
+      expect(img().getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg?w=480&try=1")
     } finally {
       task.attachments = was.attachments
       feed.items = was.items

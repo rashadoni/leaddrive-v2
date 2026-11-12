@@ -311,6 +311,13 @@ function MessageBody({ text, files }: { text: string; files: readonly MessageFil
  * at once — 21 of 38 stayed broken on DPHARMA-52 (2026-11-12). A refused
  * picture waits and asks again, a little longer each time.
  */
+export function messagePictureSrc(src: string, attempt: number): string {
+  // A stored task file is shown from a 480 px thumbnail (upload proxy `?w=480`), not the original:
+  // dozens of ~450 KB originals made the card «медленно открывается» (owner, 2026-11-12).
+  const shown = /^\/uploads\/tasks\/[^/?#\\]+$/.test(src) ? `${src}?w=480` : src
+  return attempt ? `${shown}${shown.includes("?") ? "&" : "?"}try=${attempt}` : shown
+}
+
 function MessagePicture({ src, alt }: { src: string; alt: string }) {
   const [attempt, setAttempt] = useState(0)
   const retry = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -319,7 +326,7 @@ function MessagePicture({ src, alt }: { src: string; alt: string }) {
     // eslint-disable-next-line @next/next/no-img-element
     <img
       key={attempt}
-      src={attempt ? `${src}?try=${attempt}` : src}
+      src={messagePictureSrc(src, attempt)}
       alt={alt}
       loading="lazy"
       data-attempt={attempt}
