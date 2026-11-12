@@ -16,6 +16,12 @@ import {
   pickCandidateByPassword,
 } from "./auth-credentials"
 import {
+  REMEMBERED_SESSION_SECONDS,
+  continueSessionLifetime,
+  rememberMeRequested,
+  startSessionLifetime,
+} from "./auth-session-lifetime"
+import {
   createSessionFingerprint,
   hasCurrentSessionFingerprint,
 } from "./session-invalidation"
@@ -256,6 +262,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             needs2fa: twoFactorMethod ? true : undefined,
             twoFactorMethod: twoFactorMethod || undefined,
             needsSetup2fa: requiresTwoFactorSetup(user) ? true : undefined,
+            // The "Remember me" box (auth-session-lifetime.ts).
+            rememberMe: rememberMeRequested(credentials),
           }
         } catch {
           logOperationalFailure("auth-login")
@@ -270,7 +278,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // that minted an organization and an admin account for any federated
     // identity that appeared. Password login is now the only method.
   ],
-  session: { strategy: "jwt", maxAge: 8 * 60 * 60 }, // 8 hours
+  // The longest a session can live: 30 days, for "Remember me". A session
+  // without it still ends after 8 idle hours — enforced in the jwt callback by
+  // auth-session-lifetime.ts, because Auth.js has one cookie lifetime for all.
+  session: { strategy: "jwt", maxAge: REMEMBERED_SESSION_SECONDS },
   // Every page Auth.js can render is pointed at our own /login. Any entry left
   // undefined here falls back to the framework's stock, unbranded page, which
   // the 2026-08 penetration re-test reported as authentication metadata
@@ -389,6 +400,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.sessionFingerprint = currentSessionFingerprint
         token.name = dbUser.name
         token.role = dbUser.role
+        startSessionLifetime(token, {
+          rememberMe: (user as { rememberMe?: unknown }).rememberMe === true,
+          role: dbUser.role,
+          nowSeconds: Math.floor(Date.now() / 1000),
+        })
         token.organizationId = dbUser.organizationId
         token.organizationSlug = dbUser.organization?.slug || ""
         token.organizationName = dbUser.organization?.name || ""
@@ -446,6 +462,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // takes effect on the next token rotation rather than waiting for the
       // user to sign out + back in.
       if (!user) {
+        // Not remembered and idle for 8 hours → signed out, before any DB read.
+        if (!continueSessionLifetime(token, Math.floor(Date.now() / 1000))) {
+          return null
+        }
         try {
           // F-36: refresh by the JWT subject id, not by email. A missing
           // `token.sub` is rejected instead of falling back to an ambiguous

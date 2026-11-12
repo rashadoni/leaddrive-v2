@@ -55,5 +55,9 @@ declare module "next-auth/jwt" {
     identityCrm?: import("../lib/identity/crm-session").IdentityCrmClaims
     /** End of an outside reviewer's grant (ISO); absent for everyone else. */
     reviewerAccessUntil?: string
+    /** "Remember me" was ticked at sign-in: 30 days instead of 8 idle hours. */
+    rememberMe?: boolean
+    /** Unix seconds of the last session read (auth-session-lifetime.ts). */
+    lastActiveAt?: number
   }
 }

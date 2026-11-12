@@ -7,9 +7,12 @@ import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertTriangle, Eye, EyeOff } from "lucide-react"
 import { normalizeLoginErrorCode } from "@/lib/login-error"
+import { REMEMBER_ME_FIELD } from "@/lib/auth-session-lifetime"
+import { readRememberedEmail, storeRememberedLogin } from "@/lib/client/remembered-login"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -32,6 +35,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [capsLock, setCapsLock] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState(getInitialOAuthError)
   const [loading, setLoading] = useState(false)
   const [tenantBranding, setTenantBranding] = useState<{
@@ -40,6 +44,15 @@ export default function LoginPage() {
     branding?: Record<string, unknown>
     suspended?: boolean
   } | null>(null)
+
+  useEffect(() => {
+    // "Remember me" ticked last time: the e-mail is back and the box ticked.
+    const remembered = readRememberedEmail()
+    if (remembered) {
+      setEmail((current) => current || remembered)
+      setRememberMe(true)
+    }
+  }, [])
 
   useEffect(() => {
     // Tenant branding: detect subdomain from hostname
@@ -87,6 +100,8 @@ export default function LoginPage() {
       email,
       password,
       ...(organizationSlug ? { organizationSlug } : {}),
+      // 30 days instead of 8 idle hours (src/lib/auth-session-lifetime.ts).
+      [REMEMBER_ME_FIELD]: rememberMe ? "1" : "0",
       // Where to land, said outright. Left out, Auth.js takes the address bar
       // and then reads `error` back out of it as this attempt's result — and
       // the address bar of a person sent here from another organisation's
@@ -104,6 +119,7 @@ export default function LoginPage() {
     if (!result?.ok || result.error) {
       setError(t("invalidCredentials"))
     } else {
+      storeRememberedLogin(rememberMe, email)
       router.push("/")
       router.refresh()
     }
@@ -184,6 +200,14 @@ export default function LoginPage() {
               </p>
             )}
           </div>
+          <label htmlFor="remember-me" className="flex cursor-pointer select-none items-center gap-2 text-sm">
+            <Checkbox
+              id="remember-me"
+              checked={rememberMe}
+              onCheckedChange={setRememberMe}
+            />
+            {t("rememberMe")}
+          </label>
         </CardContent>
         <CardFooter className="flex flex-col gap-3">
           <Button type="submit" className="w-full" disabled={loading}>
