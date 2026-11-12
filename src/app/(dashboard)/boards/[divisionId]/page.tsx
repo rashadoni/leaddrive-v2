@@ -863,6 +863,10 @@ function BoardInner() {
         <CreateTaskDialog
           divisionId={divisionId}
           taskTypes={taskTypes}
+          // The board shows one person's tasks (the «Mənə təyin olunanlar» tick
+          // or the assignee filter): the new task is theirs, or it would vanish
+          // from the list the moment it is created (Xayala, 2026-11-12).
+          defaultAssignee={mine ? myId : assignee}
           onClose={() => setShowCreate(false)}
           onCreated={() => { setShowCreate(false); loadTasks().catch(() => {}) }}
         />
@@ -1041,10 +1045,11 @@ function Card({ task, locale, overlay }: { task: Task; locale: string; overlay?:
 }
 
 function CreateTaskDialog({
-  divisionId, taskTypes, onClose, onCreated,
+  divisionId, taskTypes, defaultAssignee = "", onClose, onCreated,
 }: {
   divisionId: string
   taskTypes: TaskTypeDTO[]
+  defaultAssignee?: string
   onClose: () => void
   onCreated: () => void
 }) {
@@ -1064,7 +1069,7 @@ function CreateTaskDialog({
   const [type, setType] = useState<string>(taskTypes[0]?.name ?? "task")
   const [priority, setPriority] = useState<string>("medium")
   const [category, setCategory] = useState<string>("")
-  const [assignedTo, setAssignedTo] = useState<string>("")
+  const [assignedTo, setAssignedTo] = useState<string>(defaultAssignee)
   const [dueDate, setDueDate] = useState<string>("")
   const [description, setDescription] = useState<string>("")
   const [saving, setSaving] = useState(false)
@@ -1210,7 +1215,7 @@ function CreateTaskDialog({
         <div className="mb-3 grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-sm font-medium">{t("assignee")}</label>
-            <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className="w-full rounded-md border px-2 py-2 text-sm" style={{ borderColor: C.input, background: C.card }}>
+            <select data-testid="board-create-assignee" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className="w-full rounded-md border px-2 py-2 text-sm" style={{ borderColor: C.input, background: C.card }}>
               <option value="">—</option>
               {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
