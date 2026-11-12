@@ -57,6 +57,7 @@ import { useTaskTypes, useEventTypes, type TaskTypeInfo, type TaskTypeDTO } from
 import { BoardActionsCtx, CardQuickMenu, type BoardActions } from "@/components/boards/card-quick-menu"
 import { HelpButton } from "@/components/help/help-button"
 import { boardTaskFromTemplate, type BoardTaskTemplate } from "@/lib/task-templates/board-task-from-template"
+import { mayDeleteTask, mayManageTask } from "@/lib/tasks/task-ownership"
 
 // Shared CRM surfaces; stage and priority colors retain their meaning.
 const C = {
@@ -191,6 +192,15 @@ function BoardInner() {
   // the inline SLA-target editor in Reports. Server still enforces; this only hides.
   const myRole = (session?.user as { role?: string } | undefined)?.role ?? "viewer"
   const canManageBoard = myRole === "admin" || myRole === "superadmin" || myRole === "manager"
+  // A board task is changed by its own people and deleted by its author (task-ownership.ts):
+  // the board does not offer what the server would refuse.
+  const tPanel = useTranslations("taskPanel")
+  const peopleOf = (x: Task) => ({
+    divisionId, createdBy: x.creator?.id ?? null, assignedTo: x.assignee?.id ?? null,
+    collaboratorIds: x.collaborators?.map((c) => c.user.id) ?? [],
+  })
+  const mayManage = (x: Task | undefined) => !x || mayManageTask(myRole, myId, peopleOf(x))
+  const mayDelete = (x: Task | undefined) => !x || mayDeleteTask(myRole, myId, peopleOf(x))
   const locale = useLocale()
   // Org task types (active only) for the type filter, the create dialog, and the
   // card color dots. Falls back to the legacy TYPE_ICON glyphs if none load.
@@ -489,12 +499,13 @@ function BoardInner() {
   // (resolveLaneKey prefers boardColumnKey, so status alone would leave the
   // card stuck in its old kanban lane).
   const listUpdate = useCallback(async (taskId: string, patch: Record<string, unknown>) => {
+    if (!mayManage(tasksRef.current.find((x) => x.id === taskId))) { flashToast(tPanel("notYours")); return }
     if (typeof patch.status === "string") {
       const col = visibleColumns.find((c) => c.mapsToStatus === patch.status)
       if (col) patch = { ...patch, boardColumnKey: col.key }
     }
     await patchTask(taskId, patch)
-  }, [patchTask, visibleColumns])
+  }, [patchTask, visibleColumns, mayManage, flashToast, tPanel])
   // The list keeps its own search (the table's box) but takes the board's
   // «assigned to me» / «created by me» — the filter a person leaves on.
   const listSource = useMemo(() => tasks.filter((t2) => {
@@ -539,6 +550,7 @@ function BoardInner() {
   const listDelete = useCallback(async (id: string) => {
     const at = tasksRef.current.findIndex((x) => x.id === id)
     const original = tasksRef.current[at]
+    if (!mayDelete(original)) { flashToast(tPanel("notYoursToDelete")); return }
     setTasks((ts) => ts.filter((x) => x.id !== id))
     // Refused: the task comes back where it was.
     const undo = () => { if (original) setTasks((ts) => (ts.some((x) => x.id === id) ? ts : [...ts.slice(0, at), original, ...ts.slice(at)])) }
@@ -548,7 +560,7 @@ function BoardInner() {
         if (!res.ok) { undo(); flashToast(res.status === 403 ? t("noEditPermission") : t("changeFailed")) }
       } catch { undo(); flashToast(t("networkError")) }
     }, true)
-  }, [flashToast, tracked, t])
+  }, [flashToast, tracked, t, mayDelete, tPanel])
 
   // Lazy assignable-users list for the card ⋯ menu (cached after first open).
   const assignablesRef = useRef<OrgUser[] | null>(null)
@@ -798,7 +810,7 @@ function BoardInner() {
             return (
               <DroppableColumn key={col.key} col={col} count={count}>
                 {items.map((t2) => (
-                  <DraggableCard key={t2.id} task={t2} locale={locale} onOpen={() => setOpenTaskId(t2.id)} />
+                  <DraggableCard key={t2.id} task={t2} locale={locale} canMove={mayManage(t2)} onOpen={() => setOpenTaskId(t2.id)} />
                 ))}
                 {isDone && (doneView.overflow > 0 || showAllDone) && (
                   <button
@@ -951,8 +963,9 @@ function DroppableColumn({ col, count, children }: { col: BoardCol; count: numbe
 // Draggable wrapper (dnd-kit): holds the interactive role/click/keyboard so a
 // click opens the card and a >8px drag moves it. The visual is <Card>; while
 // dragging the source dims (the DragOverlay renders the lifted copy).
-function DraggableCard({ task, locale, onOpen }: { task: Task; locale: string; onOpen: () => void }) {
-  const draggable = useDraggable({ id: task.id })
+function DraggableCard({ task, locale, canMove, onOpen }: { task: Task; locale: string; canMove: boolean; onOpen: () => void }) {
+  // Someone else's task opens on a click but does not move (task-ownership.ts).
+  const draggable = useDraggable({ id: task.id, disabled: !canMove })
   const droppable = useDroppable({ id: task.id })
   const setNodeRef = useCallback((node: HTMLDivElement | null) => {
     draggable.setNodeRef(node)
@@ -968,7 +981,8 @@ function DraggableCard({ task, locale, onOpen }: { task: Task; locale: string; o
       aria-label={task.title}
       onClick={onOpen}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen() } }}
-      className="cursor-grab rounded-md transition-shadow hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA580C] focus-visible:ring-offset-1 active:cursor-grabbing"
+      data-can-move={canMove ? "true" : "false"}
+      className={`${canMove ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"} rounded-md transition-shadow hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EA580C] focus-visible:ring-offset-1`}
       style={{
         opacity: draggable.isDragging ? 0.4 : 1,
         transform: CSS.Transform.toString(draggable.transform),

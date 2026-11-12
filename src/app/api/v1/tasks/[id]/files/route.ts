@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { withRlsAuth } from "@/lib/with-rls"
+import { refusedTaskIds, NOT_YOUR_TASK } from "@/lib/tasks/task-ownership"
 import { writeFile, mkdir, unlink } from "fs/promises"
 import path from "path"
 import crypto from "crypto"
@@ -121,6 +122,10 @@ export const DELETE = withRlsAuth("tasks", "write", async (req, auth, { params }
     if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 })
     const file = await prisma.taskAttachment.findFirst({ where: { id: fileId, taskId: id, organizationId: auth.orgId } })
     if (!file) return NextResponse.json({ error: "File not found" }, { status: 404 })
+    // A file of a board task goes by the hand of the task's people, or of whoever added it (task-ownership.ts).
+    if (file.uploadedBy !== auth.userId && (await refusedTaskIds(prisma, auth.orgId, auth.role, auth.userId, [id], "manage")).length > 0) {
+      return NextResponse.json({ error: "Forbidden", message: NOT_YOUR_TASK }, { status: 403 })
+    }
     await prisma.taskAttachment.delete({ where: { id: file.id } })
     // The stored name is ours (32 hex + a whitelisted extension), never a path.
     if (/^[0-9a-f]{32}\.[a-z0-9]{1,5}$/u.test(file.fileName)) {

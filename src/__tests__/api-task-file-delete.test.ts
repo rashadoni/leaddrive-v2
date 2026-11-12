@@ -7,9 +7,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
 const state = vi.hoisted(() => ({
-  files: [] as Array<{ id: string; taskId: string; organizationId: string; fileName: string; originalName: string }>,
+  files: [] as Array<{ id: string; taskId: string; organizationId: string; fileName: string; originalName: string; uploadedBy?: string | null }>,
   unlinked: [] as string[],
   activities: [] as unknown[],
+  // Who the board task t1 is: the caller u-1 made it, unless a test says otherwise.
+  t1: { id: "t1", divisionId: "board-1", createdBy: "u-1", assignedTo: null as string | null, collaborators: [] as { userId: string }[] },
 }))
 vi.mock("@/lib/with-rls", () => ({
   withRlsAuth: (_m: string, _a: string, handler: (req: NextRequest, auth: unknown, ctx: unknown) => Promise<Response>) =>
@@ -19,7 +21,11 @@ vi.mock("fs/promises", async (orig) => ({ ...(await orig<typeof import("fs/promi
 vi.mock("@/lib/runtime-paths", () => ({ runtimePublicUploadDirectory: () => "/uploads/tasks" }))
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    task: { findFirst: vi.fn(async ({ where }: { where: { id: string; organizationId: string } }) => (where.id === "t1" && where.organizationId === "org-z" ? { id: "t1" } : null)) },
+    task: {
+      findFirst: vi.fn(async ({ where }: { where: { id: string; organizationId: string } }) => (where.id === "t1" && where.organizationId === "org-z" ? { id: "t1" } : null)),
+      findMany: vi.fn(async ({ where }: { where: { id: { in: string[] }; organizationId: string } }) =>
+        (where.organizationId === "org-z" && where.id.in.includes("t1") ? [state.t1] : [])),
+    },
     taskAttachment: {
       findFirst: vi.fn(async ({ where }: { where: { id: string; taskId: string; organizationId: string } }) =>
         state.files.find((f) => f.id === where.id && f.taskId === where.taskId && f.organizationId === where.organizationId) ?? null),
@@ -41,6 +47,7 @@ beforeEach(() => {
   ]
   state.unlinked = []
   state.activities = []
+  state.t1 = { id: "t1", divisionId: "board-1", createdBy: "u-1", assignedTo: null, collaborators: [] }
 })
 
 describe("DELETE /api/v1/tasks/[id]/files", () => {
@@ -61,5 +68,20 @@ describe("DELETE /api/v1/tasks/[id]/files", () => {
   it("a stored name that is not one of ours is never turned into a path", async () => {
     expect((await del("t1", "f3")).status).toBe(200)
     expect(state.unlinked).toEqual([])
+  })
+
+  // Ulviyya, 2026-11-12: «özümüzdən başqa bizim taskları heç kim idarə edə bilməsin».
+  it("someone else's board task keeps its files: only its people, or who added the file, remove one", async () => {
+    state.t1 = { id: "t1", divisionId: "board-1", createdBy: "u-7", assignedTo: "u-8", collaborators: [] }
+    const refused = await del("t1", "f1")
+    expect(refused.status).toBe(403)
+    expect(state.files.map((f) => f.id)).toEqual(["f1", "f2", "f3"])
+    expect(state.unlinked).toEqual([])
+
+    state.files[0].uploadedBy = "u-1"
+    expect((await del("t1", "f1")).status).toBe(200)
+
+    state.t1 = { id: "t1", divisionId: "board-1", createdBy: "u-7", assignedTo: "u-8", collaborators: [{ userId: "u-1" }] }
+    expect((await del("t1", "f3")).status).toBe(200)
   })
 })

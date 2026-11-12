@@ -33083,6 +33083,8 @@
     "nothingToFill": "Hər şey artıq doldurulub — heç nə dəyişmədi."
   },
   "taskPanel": {
+    "notYoursToDelete": "Bu tapşırığı yalnız onu yaradan silə bilər.",
+    "notYours": "Bu tapşırığı yalnız onu yaradan, icraçısı və həmicraçıları dəyişə bilər. Lentə yaza bilərsiniz.",
     "task": "Tapşırıq",
     "close": "Bağla",
     "loading": "Yüklənir…",

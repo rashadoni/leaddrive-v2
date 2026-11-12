@@ -33087,6 +33087,8 @@
     "nothingToFill": "Everything is already filled in — nothing was changed."
   },
   "taskPanel": {
+    "notYoursToDelete": "Only the task's author can delete it.",
+    "notYours": "Only the task's author, assignee and co-assignees can change it. You can write in its feed.",
     "task": "Task",
     "close": "Close",
     "loading": "Loading…",

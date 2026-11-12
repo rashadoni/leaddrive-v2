@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma, logAudit } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
+import { mayManageRow, NOT_YOUR_TASK } from "@/lib/tasks/task-ownership"
 
 /**
  * Stop a recurring task series — Roadmap #22 follow-up.
@@ -30,9 +31,12 @@ export const POST = withRlsAuth("tasks", "write", async (_req, authResult, { par
     // the effective root, then clear it + every descendant.
     const target = await prisma.task.findFirst({
       where: { id, organizationId: orgId },
-      select: { id: true, title: true, recurrenceParentId: true, recurrenceRule: true },
+      select: { id: true, title: true, recurrenceParentId: true, recurrenceRule: true, divisionId: true, createdBy: true, assignedTo: true },
     })
     if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    if (!(await mayManageRow(prisma, orgId, authResult.role, authResult.userId, { id: target.id, divisionId: target.divisionId ?? null, createdBy: target.createdBy ?? null, assignedTo: target.assignedTo ?? null }))) {
+      return NextResponse.json({ error: "Forbidden", message: NOT_YOUR_TASK }, { status: 403 })
+    }
     if (!target.recurrenceRule && !target.recurrenceParentId) {
       return NextResponse.json({ error: "Task is not part of a recurring series" }, { status: 400 })
     }

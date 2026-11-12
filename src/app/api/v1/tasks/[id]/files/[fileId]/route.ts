@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { unlink } from "fs/promises"
 import path from "path"
 import { withRlsAuth } from "@/lib/with-rls"
+import { refusedTaskIds, NOT_YOUR_TASK } from "@/lib/tasks/task-ownership"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
 
 export const DELETE = withRlsAuth("tasks", "delete", async (req, auth, { params }: { params: Promise<{ id: string; fileId: string }> }) => {
@@ -13,6 +14,10 @@ export const DELETE = withRlsAuth("tasks", "delete", async (req, auth, { params 
       where: { id: fileId, taskId: id, organizationId: auth.orgId },
     })
     if (!file) return NextResponse.json({ error: "File not found" }, { status: 404 })
+    // A file of a board task goes by the hand of the task's people, or of whoever added it (task-ownership.ts).
+    if (file.uploadedBy !== auth.userId && (await refusedTaskIds(prisma, auth.orgId, auth.role, auth.userId, [id], "manage")).length > 0) {
+      return NextResponse.json({ error: "Forbidden", message: NOT_YOUR_TASK }, { status: 403 })
+    }
 
     // Path-traversal defense — strip directory components, verify resolved path
     // stays under the tasks uploads dir before unlinking.
