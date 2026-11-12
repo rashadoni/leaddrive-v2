@@ -107,10 +107,12 @@ describe("messages that arrived before files were kept get their files", () => {
       { id: "m-post", organizationId: ORG, mediaUrl: "https://www.instagram.com/p/DfRrlDeA4VU/", messageType: "document" },
     ]
   })
-  const transport = vi.fn<OutboundWebhookTransport>(async (request) =>
-    String(request.url).includes("n=2")
+  const transport = vi.fn<OutboundWebhookTransport>(async (target) => {
+    const headers: Record<string, string> = { "content-type": "image/jpeg" }
+    return target.url.href.includes("n=2")
       ? { status: 404, headers: {}, bodyBytes: new Uint8Array() }
-      : { status: 200, headers: { "content-type": "image/jpeg" }, bodyBytes: JPEG })
+      : { status: 200, headers, bodyBytes: JPEG }
+  })
 
   it("a dry run counts and changes nothing", async () => {
     const report = await backfillMetaMediaMessages({ dryRun: true, limit: 50 }, { transport, resolveHost })

@@ -112,7 +112,7 @@ export async function backfillMetaMediaMessages(
   options: { dryRun: boolean; limit: number },
   seams: { transport?: OutboundWebhookTransport; resolveHost?: OutboundWebhookResolver } = {},
 ): Promise<MetaMediaBackfillReport> {
-  const rows = await runWithRlsBypass(() => prisma.channelMessage.findMany({
+  const rows: Array<{ id: string; organizationId: string; mediaUrl: string | null }> = await runWithRlsBypass(() => prisma.channelMessage.findMany({
     where: {
       OR: [
         { mediaUrl: { startsWith: "https://lookaside.fbsbx.com/" } },
