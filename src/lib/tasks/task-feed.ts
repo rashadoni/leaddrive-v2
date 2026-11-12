@@ -11,11 +11,12 @@
 export interface FeedPerson { id: string; name: string; avatar?: string | null }
 
 export type FeedItem =
-  | { kind: "message"; id: string; at: string; user: FeedPerson | null; text: string; mentions: string[]; system: boolean }
+  | { kind: "message"; id: string; at: string; user: FeedPerson | null; text: string; mentions: string[]; system: boolean; editedAt?: string | null }
   | { kind: "event"; id: string; at: string; user: FeedPerson | null; action: string; oldValue: string | null; newValue: string | null; text: string | null }
 
 interface CommentRow {
   id: string; createdAt: Date; content: string; isSystem: boolean; mentions: string[]
+  editedAt?: Date | null
   user: { id: string; name: string; avatar: string | null } | null
 }
 interface ActivityRow {
@@ -35,6 +36,7 @@ export function buildTaskFeed(
   const items: FeedItem[] = [
     ...comments.map((c): FeedItem => ({
       kind: "message", id: c.id, at: c.createdAt.toISOString(), user: c.user, text: c.content, mentions: c.mentions ?? [], system: c.isSystem,
+      editedAt: c.editedAt ? c.editedAt.toISOString() : null,
     })),
     ...activities.map((a): FeedItem => {
       const meta = (a.metadata && typeof a.metadata === "object" ? a.metadata : {}) as { text?: unknown; actorName?: unknown }

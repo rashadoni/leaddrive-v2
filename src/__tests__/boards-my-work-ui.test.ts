@@ -11,6 +11,8 @@ import { readFileSync } from "node:fs"
 
 type Messages = { [key: string]: string | Messages }
 const ru = JSON.parse(readFileSync("messages/ru.json", "utf8")) as Messages
+// The page reads who is looking (the new task is theirs by default).
+vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: { id: "u-me" } }, status: "authenticated" }) }))
 vi.mock("next-intl", async (importOriginal) => {
   const actual = await importOriginal<typeof import("next-intl")>()
   return {

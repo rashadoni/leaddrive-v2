@@ -96,29 +96,38 @@ export const POST = withRlsAuth("tasks", "write", async (req, auth, { params }: 
  */
 export const DELETE = withRlsAuth("tasks", "write", async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
-  const fileId = new URL(req.url).searchParams.get("fileId")
-  if (!fileId) return NextResponse.json({ error: "fileId is required" }, { status: 400 })
+  // Several at once (Xayala, 2026-11-12: «qrup halında silmək imkanı olsun»):
+  // `fileId` repeated or comma-separated. Every one must be removable, or none is.
+  const fileIds = [...new Set(new URL(req.url).searchParams.getAll("fileId").flatMap((v) => v.split(",")).map((v) => v.trim()).filter(Boolean))]
+  if (fileIds.length === 0) return NextResponse.json({ error: "fileId is required" }, { status: 400 })
+  if (fileIds.length > 200) return NextResponse.json({ error: "At most 200 files at once" }, { status: 400 })
   try {
     const task = await prisma.task.findFirst({ where: { id, organizationId: auth.orgId, deletedAt: null }, select: { id: true } })
     if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 })
-    const file = await prisma.taskAttachment.findFirst({ where: { id: fileId, taskId: id, organizationId: auth.orgId } })
-    if (!file) return NextResponse.json({ error: "File not found" }, { status: 404 })
+    type Row = { id: string; fileName: string; originalName: string; uploadedBy: string | null }
+    const files: Row[] = await prisma.taskAttachment.findMany({
+      where: { id: { in: fileIds }, taskId: id, organizationId: auth.orgId },
+      select: { id: true, fileName: true, originalName: true, uploadedBy: true },
+    })
+    if (files.length !== fileIds.length) return NextResponse.json({ error: "File not found" }, { status: 404 })
     // A file of a board task goes by the hand of the task's people, or of whoever added it (task-ownership.ts).
-    if (file.uploadedBy !== auth.userId && (await refusedTaskIds(prisma, auth.orgId, auth.role, auth.userId, [id], "manage")).length > 0) {
+    if (files.some((file) => file.uploadedBy !== auth.userId)
+      && (await refusedTaskIds(prisma, auth.orgId, auth.role, auth.userId, [id], "manage")).length > 0) {
       return NextResponse.json({ error: "Forbidden", message: NOT_YOUR_TASK }, { status: 403 })
     }
-    await prisma.taskAttachment.delete({ where: { id: file.id } })
-    // The stored name is ours (32 hex + a whitelisted extension), never a path.
-    if (/^[0-9a-f]{32}\.[a-z0-9]{1,5}$/u.test(file.fileName)) {
-      await unlink(path.join(runtimePublicUploadDirectory("tasks"), file.fileName)).catch(() => {})
+    await prisma.taskAttachment.deleteMany({ where: { id: { in: files.map((file) => file.id) }, taskId: id, organizationId: auth.orgId } })
+    for (const file of files) {
+      // The stored name is ours (32 hex + a whitelisted extension), never a path.
+      if (/^[0-9a-f]{32}\.[a-z0-9]{1,5}$/u.test(file.fileName)) {
+        await unlink(path.join(runtimePublicUploadDirectory("tasks"), file.fileName)).catch(() => {})
+      }
     }
-    await prisma.taskActivity.create({
-      data: { organizationId: auth.orgId, taskId: id, userId: auth.userId, action: "file_removed", oldValue: file.originalName },
+    await prisma.taskActivity.createMany({
+      data: files.map((file) => ({ organizationId: auth.orgId, taskId: id, userId: auth.userId, action: "file_removed", oldValue: file.originalName })),
     }).catch(() => {})
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, data: { removed: files.length } })
   } catch (e) {
     console.error("[task-files DELETE]", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 })
-

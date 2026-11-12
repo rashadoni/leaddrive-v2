@@ -2,14 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { AtSign, Bell, BellOff, Loader2, Paperclip, Send, X } from "lucide-react"
+import { AtSign, Bell, BellOff, Loader2, Paperclip, Pencil, Send, Trash2, X } from "lucide-react"
 import { formatDate, formatTime } from "@/lib/format-date"
 import type { FeedItem, FeedPerson } from "@/lib/tasks/task-feed"
 import { describeFeedEvent } from "@/lib/tasks/feed-text"
 import { fileUrl, isImageFile, joinMessageFiles, matchMessageFiles, splitMessageFiles, type MessageFile } from "@/lib/tasks/message-files"
 import { insertMention, mentionCandidates, mentionQueryAt, mentionedIds, type MentionPerson } from "@/lib/tasks/mentions"
 
-interface FeedData { items: FeedItem[]; followers: FeedPerson[]; following: boolean }
+interface FeedData { items: FeedItem[]; followers: FeedPerson[]; following: boolean; me?: { id: string | null; admin: boolean } }
 
 /**
  * The card's right column — Bordio's chat (owner, 2026-11-07): what happened
@@ -46,6 +46,31 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
   const boxRef = useRef<HTMLTextAreaElement>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  // One's own message: changed in place or removed (Ulviyya, 2026-11-12).
+  const [editing, setEditing] = useState<{ id: string; body: string; names: string[] } | null>(null)
+  const [removing, setRemoving] = useState<string | null>(null)
+  const [messageError, setMessageError] = useState<string | null>(null)
+  const mayChange = (item: Extract<FeedItem, { kind: "message" }>) =>
+    !item.system && !!data?.me && (data.me.admin || (!!data.me.id && item.user?.id === data.me.id))
+  const saveEdit = async () => {
+    if (!editing) return
+    const content = joinMessageFiles(editing.body, editing.names)
+    if (!content.trim()) return
+    setMessageError(null)
+    const res = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/comments/${encodeURIComponent(editing.id)}`, {
+      method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content }),
+    }).catch(() => null)
+    if (!res?.ok) { setMessageError(t("saveFailed")); return }
+    setEditing(null)
+    setLocalKey((key) => key + 1)
+  }
+  const removeMessage = async (id: string) => {
+    setMessageError(null)
+    const res = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/comments/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "include" }).catch(() => null)
+    setRemoving(null)
+    if (!res?.ok) { setMessageError(t("saveFailed")); return }
+    setLocalKey((key) => key + 1)
+  }
 
   useEffect(() => {
     let alive = true
@@ -165,12 +190,54 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
                   <span className="flex-shrink-0">{formatTime(item.at, locale)}</span>
                 </div>
               ) : (
-                <div className="mb-3">
-                  <div className="mb-0.5 text-xs font-medium">{item.user?.name ?? t("someone")}</div>
-                  <div className={`whitespace-pre-wrap rounded-xl border bg-background px-3 py-2 text-sm ${item.system ? "text-muted-foreground" : ""}`}>
-                    <MessageBody text={item.text ?? ""} files={files} />
-                    <span className="float-right ml-2 mt-1 text-[11px] text-muted-foreground">{formatTime(item.at, locale)}</span>
+                <div className="group mb-3" data-testid="task-feed-message" data-message-id={item.id}>
+                  <div className="mb-0.5 flex items-center gap-1.5 text-xs">
+                    <span className="font-medium">{item.user?.name ?? t("someone")}</span>
+                    {item.editedAt && <span className="text-muted-foreground">{t("messageEdited")}</span>}
+                    {mayChange(item) && editing?.id !== item.id && (
+                      removing === item.id ? (
+                        <span className="ml-auto flex items-center gap-1.5">
+                          <span className="text-muted-foreground">{t("confirmRemoveMessage")}</span>
+                          <button type="button" data-testid="task-feed-message-remove-yes" onClick={() => void removeMessage(item.id)} className="rounded border border-destructive/50 px-1.5 text-destructive">{t("yes")}</button>
+                          <button type="button" onClick={() => setRemoving(null)} className="rounded border px-1.5">{t("no")}</button>
+                        </span>
+                      ) : (
+                        <span className="ml-auto flex items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                          <button type="button" data-testid="task-feed-message-edit" onClick={() => { const split = splitMessageFiles(item.text ?? ""); setEditing({ id: item.id, body: split.body, names: split.names }) }} className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-muted-foreground hover:text-foreground">
+                            <Pencil className="h-3 w-3" /> {t("editMessage")}
+                          </button>
+                          <button type="button" data-testid="task-feed-message-remove" onClick={() => setRemoving(item.id)} className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-3 w-3" /> {t("removeMessage")}
+                          </button>
+                        </span>
+                      )
+                    )}
                   </div>
+                  {editing?.id === item.id ? (
+                    <div className="rounded-xl border bg-background p-2">
+                      <textarea
+                        data-testid="task-feed-message-editor"
+                        autoFocus
+                        value={editing.body}
+                        onChange={(e) => setEditing({ ...editing, body: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void saveEdit() }
+                          if (e.key === "Escape") setEditing(null)
+                        }}
+                        rows={Math.max(2, editing.body.split("\n").length)}
+                        className="w-full resize-none bg-transparent text-sm focus:outline-none"
+                      />
+                      <div className="flex justify-end gap-1.5">
+                        <button type="button" onClick={() => setEditing(null)} className="rounded border px-2 py-0.5 text-xs">{t("cancel")}</button>
+                        <button type="button" data-testid="task-feed-message-save" onClick={() => void saveEdit()} className="rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground">{t("save")}</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={`whitespace-pre-wrap rounded-xl border bg-background px-3 py-2 text-sm ${item.system ? "text-muted-foreground" : ""}`}>
+                      <MessageBody text={item.text ?? ""} files={files} />
+                      <span className="float-right ml-2 mt-1 text-[11px] text-muted-foreground">{formatTime(item.at, locale)}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

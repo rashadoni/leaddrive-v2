@@ -204,6 +204,20 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
   }
 
   const [removing, setRemoving] = useState<string | null>(null)
+  // Several files at once (Xayala, 2026-11-12: «qrup halında silmək imkanı olsun»).
+  const [pickedFiles, setPickedFiles] = useState<ReadonlySet<string>>(new Set())
+  const [confirmBulk, setConfirmBulk] = useState(false)
+  const togglePicked = (id: string) => setPickedFiles((now) => { const next = new Set(now); if (next.has(id)) next.delete(id); else next.add(id); return next })
+  const removePicked = async () => {
+    const ids = [...pickedFiles]
+    setConfirmBulk(false)
+    if (ids.length === 0) return
+    const query = ids.map((id) => `fileId=${encodeURIComponent(id)}`).join("&")
+    const res = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/files?${query}`, { method: "DELETE", credentials: "include" }).catch(() => null)
+    if (!res?.ok) setError(t("saveFailed"))
+    else setPickedFiles(new Set())
+    reload()
+  }
   const removeFile = async (fileId: string) => {
     setRemoving(null)
     const res = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/files?fileId=${encodeURIComponent(fileId)}`, { method: "DELETE", credentials: "include" }).catch(() => null)
@@ -437,10 +451,42 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
 
               {task.attachments.length > 0 && (
                 <section className="border-t py-3">
-                  <h3 className="mb-2 text-sm font-semibold">{t("files")}</h3>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <h3 className="text-sm font-semibold">{t("files")} <span className="font-normal text-muted-foreground">{task.attachments.length}</span></h3>
+                    {canEdit && task.attachments.length > 1 && (
+                      <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <input
+                          type="checkbox"
+                          data-testid="task-files-select-all"
+                          checked={task.attachments.every((file) => pickedFiles.has(file.id))}
+                          onChange={(e) => setPickedFiles(e.target.checked ? new Set(task.attachments.map((file) => file.id)) : new Set())}
+                        />
+                        {t("selectAllFiles")}
+                      </label>
+                    )}
+                  </div>
+                  {canEdit && pickedFiles.size > 0 && (
+                    <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive" data-testid="task-files-bulk">
+                      <span>{t("filesSelected", { count: String(pickedFiles.size) })}</span>
+                      {confirmBulk ? (
+                        <span className="ml-auto flex items-center gap-1.5">
+                          {t("confirmRemoveFiles", { count: String(pickedFiles.size) })}
+                          <button type="button" data-testid="task-files-bulk-yes" onClick={() => void removePicked()} className="rounded border border-destructive px-2 py-0.5">{t("yes")}</button>
+                          <button type="button" onClick={() => setConfirmBulk(false)} className="rounded border px-2 py-0.5 text-foreground">{t("no")}</button>
+                        </span>
+                      ) : (
+                        <button type="button" data-testid="task-files-bulk-remove" onClick={() => setConfirmBulk(true)} className="ml-auto inline-flex items-center gap-1 rounded border border-destructive px-2 py-0.5">
+                          <Trash2 className="h-3.5 w-3.5" /> {t("removeSelectedFiles", { count: String(pickedFiles.size) })}
+                        </button>
+                      )}
+                    </div>
+                  )}
                   <ul className="flex flex-col gap-1">
                     {task.attachments.map((file) => (
                       <li key={file.id} className="group flex items-center gap-2" data-testid="task-file">
+                        {canEdit && (
+                          <input type="checkbox" aria-label={file.originalName} data-testid="task-file-pick" checked={pickedFiles.has(file.id)} onChange={() => togglePicked(file.id)} className="shrink-0" />
+                        )}
                         <a href={`/uploads/tasks/${file.fileName}`} target="_blank" rel="noreferrer" className="inline-flex min-w-0 items-center gap-1.5 text-sm hover:underline"><Paperclip className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{file.originalName}</span></a>
                         {/* Zeytun, 2026-11-12: «əlavə olunanları da silmək olmur» — a file is removed in two clicks. */}
                         {canEdit && (removing === file.id ? (

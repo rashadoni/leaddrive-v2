@@ -2399,6 +2399,7 @@
     "pickerButton": "From template…"
   },
   "board": {
+    "boardLabel": "Board",
     "newTask": "New Task",
     "assignedToMe": "Assigned to me",
     "createdByMe": "Created by me",
@@ -33101,6 +33102,16 @@
     "nothingToFill": "Everything is already filled in — nothing was changed."
   },
   "taskPanel": {
+    "messageEdited": "(edited)",
+    "editMessage": "Edit",
+    "removeMessage": "Delete",
+    "confirmRemoveMessage": "Delete?",
+    "yes": "Yes",
+    "no": "No",
+    "selectAllFiles": "Select all",
+    "filesSelected": "Selected: {count}",
+    "removeSelectedFiles": "Delete selected ({count})",
+    "confirmRemoveFiles": "Delete {count} files?",
     "notYoursToDelete": "Only the task's author can delete it.",
     "notYours": "Only the task's author, assignee and co-assignees can change it. You can write in its feed.",
     "task": "Task",
@@ -33299,6 +33310,7 @@
     "openCount": "{count} open",
     "overdueCount": "{count} overdue",
     "allBoards": "All boards",
+    "newTask": "New task",
     "showDone": "Show finished",
     "hideDone": "Hide finished",
     "markDone": "Mark «{title}» as done",

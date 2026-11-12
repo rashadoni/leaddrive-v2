@@ -2399,6 +2399,7 @@
     "pickerButton": "Şablondan…"
   },
   "board": {
+    "boardLabel": "Lövhə",
     "newTask": "Yeni Tapşırıq",
     "assignedToMe": "Mənə təyin olunanlar",
     "createdByMe": "Mənim yaratdıqlarım",
@@ -33097,6 +33098,16 @@
     "nothingToFill": "Hər şey artıq doldurulub — heç nə dəyişmədi."
   },
   "taskPanel": {
+    "messageEdited": "(redaktə edilib)",
+    "editMessage": "Redaktə et",
+    "removeMessage": "Sil",
+    "confirmRemoveMessage": "Silinsin?",
+    "yes": "Bəli",
+    "no": "Xeyr",
+    "selectAllFiles": "Hamısını seç",
+    "filesSelected": "Seçilib: {count}",
+    "removeSelectedFiles": "Seçilənləri sil ({count})",
+    "confirmRemoveFiles": "{count} fayl silinsin?",
     "notYoursToDelete": "Bu tapşırığı yalnız onu yaradan silə bilər.",
     "notYours": "Bu tapşırığı yalnız onu yaradan, icraçısı və həmicraçıları dəyişə bilər. Lentə yaza bilərsiniz.",
     "task": "Tapşırıq",
@@ -33295,6 +33306,7 @@
     "openCount": "{count} açıq",
     "overdueCount": "{count} gecikmiş",
     "allBoards": "Bütün lövhələr",
+    "newTask": "Yeni tapşırıq",
     "showDone": "Bitənləri göstər",
     "hideDone": "Bitənləri gizlət",
     "markDone": "«{title}» — bitdi kimi qeyd et",
