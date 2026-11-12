@@ -2408,6 +2408,7 @@
     "priority": "Prioritet",
     "assignee": "Təyin olunan",
     "loading": "Yüklənir…",
+    "doneMore": "Daha {count} göstər ({left} qalıb)",
     "doneOverflow": "+{count} daha çox tamamlanmış — hamısını göstər ↓",
     "doneShowLess": "Yığ ↑",
     "noPermission": "Bu status keçidi üçün icazəniz yoxdur",
