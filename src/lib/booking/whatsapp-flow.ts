@@ -140,6 +140,22 @@ export function bookingFlowJson(): Record<string, unknown> {
         data: {
           service: { type: "string", __example__: "Saç kəsimi" },
           details: { type: "string", __example__: "30 dəq · 25 ₼" },
+          // The other services a salon has, and the masters who do the one on
+          // screen. Both are hidden when there is nothing to choose between.
+          has_services: { type: "boolean", __example__: true },
+          services: {
+            type: "array",
+            items: { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } },
+            __example__: [{ id: "p1", title: "Saç kəsimi" }, { id: "p2", title: "Rəng" }],
+          },
+          service_init: { type: "string", __example__: "p1" },
+          has_hosts: { type: "boolean", __example__: true },
+          hosts: {
+            type: "array",
+            items: { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } },
+            __example__: [{ id: "any", title: "Fərqi yoxdur" }, { id: "h1", title: "Leyla" }],
+          },
+          host_init: { type: "string", __example__: "any" },
           // A salon without a photo still gets a form: the image is hidden
           // rather than absent, because an empty `src` is not a string Meta
           // accepts and a missing data key is a form that will not open.
@@ -169,8 +185,14 @@ export function bookingFlowJson(): Record<string, unknown> {
               // outright — «Property 'init-value' is not allowed in 'TextInput'
               // component» — and that one line was the whole reason the form
               // would not publish (2026-11-11).
-              "init-values": { client: "${data.client}", day: "${data.day_init}" },
+              "init-values": { client: "${data.client}", day: "${data.day_init}", service: "${data.service_init}", host: "${data.host_init}" },
               children: [
+                // What is being booked, and with whom. Changing either is not
+                // an answer to the times on screen but a new question — the
+                // agent sends the form back with that service's or that
+                // master's own times (src/lib/booking/whatsapp-agent.ts).
+                { type: "Dropdown", name: "service", label: "Xidmət", visible: "${data.has_services}", "data-source": "${data.services}" },
+                { type: "Dropdown", name: "host", label: "Usta", visible: "${data.has_hosts}", "data-source": "${data.hosts}" },
                 { type: "Dropdown", name: "day", label: "Gün", required: true, "data-source": "${data.days}" },
                 // One block per day slot. Only the chosen day's times are on
                 // screen; the rest are not rendered, so the form stays the
@@ -189,6 +211,8 @@ export function bookingFlowJson(): Record<string, unknown> {
                   "on-click-action": {
                     name: "complete",
                     payload: {
+                      service: "${form.service}",
+                      host: "${form.host}",
                       day: "${form.day}",
                       ...Object.fromEntries(BOOKING_FLOW_DAY_IDS.map((day, index) => [`t${index}`, `\${form.t${index}}`])),
                       client: "${form.client}",
@@ -352,7 +376,7 @@ export async function deleteBookingFlow(
  * visible one is filled), the name they typed over the one WhatsApp knows, and
  * an optional note for the salon.
  */
-export function readFlowReply(responseJson: unknown): { token: string | null; time: string; day: string; client: string; note: string } | null {
+export function readFlowReply(responseJson: unknown): { token: string | null; time: string; day: string; client: string; note: string; serviceId: string; hostId: string } | null {
   if (typeof responseJson !== "string" || !responseJson.trim()) return null
   let parsed: unknown
   try {
@@ -379,8 +403,15 @@ export function readFlowReply(responseJson: unknown): { token: string | null; ti
     day,
     client: text("client"),
     note: text("note"),
+    serviceId: text("service"),
+    // «Fərqi yoxdur» is a choice too: it says the client does not mind, which
+    // is not the same as not having been asked.
+    hostId: value.host === undefined ? "" : (text("host") || ANY_HOST),
   }
 }
+
+/** What the master dropdown says when the client does not mind which one. */
+export const ANY_HOST = "any"
 
 /**
  * Remember which form this organisation may send, or forget it.
@@ -434,7 +465,7 @@ async function rememberBookingFlow(organizationId: string, flowId: string | null
  * A form closed on a day but no time is still an answer: it says which day the
  * client wants, and that day's times go back as a fresh message.
  */
-export function flowTap(interactive: unknown): { replyId: string; name: string | null; note: string | null } | null {
+export function flowTap(interactive: unknown): { replyId: string; name: string | null; note: string | null; serviceId: string | null; hostId: string | null } | null {
   if (!interactive || typeof interactive !== "object") return null
   const reply = (interactive as { nfm_reply?: unknown }).nfm_reply
   if (!reply || typeof reply !== "object") return null
@@ -442,7 +473,13 @@ export function flowTap(interactive: unknown): { replyId: string; name: string |
   if (!submitted) return null
   const replyId = submitted.time || (submitted.day ? `${FLOW_DAY_PREFIX}${submitted.day}` : "")
   if (!replyId) return null
-  return { replyId, name: submitted.client || null, note: submitted.note || null }
+  return {
+    replyId,
+    name: submitted.client || null,
+    note: submitted.note || null,
+    serviceId: submitted.serviceId || null,
+    hostId: submitted.hostId || null,
+  }
 }
 
 /**

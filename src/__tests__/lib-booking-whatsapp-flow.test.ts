@@ -172,6 +172,21 @@ describe("the form a client fills in", () => {
     expect(form.children.some((child) => child.type === "RadioButtonsGroup")).toBe(false)
   })
 
+  it("lets a client change what is being booked, and with whom", () => {
+    const service = form.children.find((child) => child.name === "service")
+    const host = form.children.find((child) => child.name === "host")
+    expect(service).toMatchObject({ type: "Dropdown", "data-source": "${data.services}", visible: "${data.has_services}" })
+    expect(host).toMatchObject({ type: "Dropdown", "data-source": "${data.hosts}", visible: "${data.has_hosts}" })
+    // Neither is required: a salon with one service and one master shows
+    // neither control, and a form cannot be held shut by a hidden one.
+    expect(service).not.toHaveProperty("required")
+    expect(host).not.toHaveProperty("required")
+    // They come back with the answer, or the agent cannot act on them.
+    const footer = form.children.find((child) => child.type === "Footer") as { "on-click-action": { payload: Record<string, string> } }
+    expect(footer["on-click-action"].payload.service).toBe("${form.service}")
+    expect(footer["on-click-action"].payload.host).toBe("${form.host}")
+  })
+
   it("shows the service the way a salon would: picture, name, price", () => {
     const children = screen.layout.children
     expect(children[0]).toMatchObject({ type: "Image", src: "${data.photo}", visible: "${data.has_photo}" })
@@ -192,6 +207,8 @@ describe("the form a client fills in", () => {
     const footer = form.children.find((child) => child.type === "Footer") as { "on-click-action": { name: string; payload: Record<string, string> } }
     expect(footer["on-click-action"].name).toBe("complete")
     expect(footer["on-click-action"].payload).toEqual({
+      service: "${form.service}",
+      host: "${form.host}",
       day: "${form.day}",
       ...Object.fromEntries(BOOKING_FLOW_DAY_IDS.map((ignored, index) => [`t${index}`, `\${form.t${index}}`])),
       client: "${form.client}",
@@ -302,15 +319,28 @@ describe("a form that comes back", () => {
     // that already books — the form adds a way in, not a second code path.
     // Only the day on screen has an answer in it; the rest are days the
     // client never saw.
-    expect(flowTap(submission({ flow_token: "bkflow:conv-1", day: "d2", t0: "", t2: "bk:offer-9", client: "Günel", note: "Rəngə də baxaq" })))
-      .toEqual({ replyId: "bk:offer-9", name: "Günel", note: "Rəngə də baxaq" })
+    expect(flowTap(submission({ flow_token: "bkflow:conv-1", day: "d2", t0: "", t2: "bk:offer-9", client: "Günel", note: "Rəngə də baxaq", service: "page-1", host: "any" })))
+      .toEqual({ replyId: "bk:offer-9", name: "Günel", note: "Rəngə də baxaq", serviceId: "page-1", hostId: "any" })
   })
 
   it("leaves the name alone when the form came back without one", () => {
     // Then the client keeps the name WhatsApp knows them by; an empty string
     // overwriting it is how a meeting ends up booked for nobody.
     expect(flowTap(submission({ day: "d1", t1: "bkt:service-3:host-1:2026-11-14T09:00:00.000Z", client: "   " })))
-      .toEqual({ replyId: "bkt:service-3:host-1:2026-11-14T09:00:00.000Z", name: null, note: null })
+      .toEqual({ replyId: "bkt:service-3:host-1:2026-11-14T09:00:00.000Z", name: null, note: null, serviceId: null, hostId: null })
+  })
+
+  it("says which service and which master the client left the form on", () => {
+    // Both are ordinary choices, not filters the form can apply: a published
+    // form cannot ask us for another service's times, so what comes back is
+    // what the client wants, and the agent answers with a new form.
+    const chosen = flowTap(submission({ day: "d0", t0: "bk:offer-1", client: "Günel", service: "page-2", host: "host-7" }))!
+    expect(chosen.serviceId).toBe("page-2")
+    expect(chosen.hostId).toBe("host-7")
+    // «No preference» is a choice too: it says the client does not mind,
+    // which is not the same as never having been asked.
+    expect(flowTap(submission({ day: "d0", t0: "bk:offer-1", host: "   " }))!.hostId).toBe("any")
+    expect(flowTap(submission({ day: "d0", t0: "bk:offer-1" }))!.hostId).toBeNull()
   })
 
   it("reads a day with no time as the day it is", () => {
@@ -318,7 +348,7 @@ describe("a form that comes back", () => {
     // show me that day. The slot is all the form can give — what d3 meant is
     // known to the message that offered it.
     expect(flowTap(submission({ day: "d3", client: "Günel" })))
-      .toEqual({ replyId: "bkds:d3", name: "Günel", note: null })
+      .toEqual({ replyId: "bkds:d3", name: "Günel", note: null, serviceId: null, hostId: null })
     // A slot the published form does not have is not a day at all.
     expect(flowTap(submission({ day: "d9", client: "Günel" }))).toBeNull()
   })

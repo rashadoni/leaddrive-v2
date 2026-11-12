@@ -1491,6 +1491,64 @@ pgDescribe("online booking on a real Postgres", () => {
     }, { bookingWhatsApp: { flowId: "flow-published-1" } })
   })
 
+  it("WhatsApp: the form's own dropdowns ask again instead of booking the wrong thing", async () => {
+    // The owner, seeing the first form: «если несколько услуг будет, такую
+    // форму тоже сделай — чтоб выбрал внутри, дальше время и мастера, или же
+    // без мастера» (2026-11-12). Neither dropdown can filter the times on
+    // screen: a published form has no way to ask us for another service's
+    // day. So what they do is ask again — and what matters is that they never
+    // book the thing the client just said they did not want.
+    const cutSlug = await newPage({ title: "Saç kəsimi", durationMinutes: 45, hostIds: [HOST_A, HOST_B] })
+    const colourSlug = await newPage({ title: "Rəng", durationMinutes: 60, hostIds: [HOST_A] })
+    const cut = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug: cutSlug } }))
+    const colour = await bypass(() => prisma.bookingPage.findFirstOrThrow({ where: { slug: colourSlug } }))
+    await withWhatsAppBooking(async () => {
+      const conversation = `conv-${randomUUID()}`
+      expect(await turnIn(conversation, { client: decides({ action: "offer", language: "az", serviceId: cut.id }) })).toEqual({ handled: true })
+
+      const form = whatsapp.flows.at(-1)!
+      // Both lists are there, and both say what the form was sent for.
+      expect(form.data.has_services).toBe(true)
+      expect((form.data.services as { id: string }[]).map((item) => item.id)).toEqual(expect.arrayContaining([cut.id, colour.id]))
+      expect(form.data.service_init).toBe(cut.id)
+      expect(form.data.has_hosts).toBe(true)
+      expect((form.data.hosts as { id: string }[])[0].id).toBe("any")
+      expect(form.data.host_init).toBe("any")
+
+      const time = (form.data.t0 as { id: string }[])[0].id
+      const submit = (answers: Record<string, unknown>) => {
+        const reply = { flow_token: form.flowToken, day: "d0", t0: time, client: "Günel", service: cut.id, host: "any", ...answers }
+        return turnIn(conversation, {
+          replyId: (reply.t0 as string) || `bkds:${reply.day}`,
+          senderName: "Günel",
+          text: "[Форма]",
+          form: { serviceId: reply.service as string, hostId: reply.host as string },
+        })
+      }
+
+      // Another service: the times on screen belong to a 45-minute haircut,
+      // and nothing about them is true for an hour of colouring.
+      expect(await submit({ service: colour.id })).toEqual({ handled: true })
+      expect(await bypass(() => prisma.booking.count({ where: { organizationId: ORG, status: "confirmed", bookingPageId: { in: [cut.id, colour.id] } } }))).toBe(0)
+      const again = whatsapp.flows.at(-1)!
+      expect(again.data.service).toBe("Rəng")
+      expect(again.data.service_init).toBe(colour.id)
+      expect(again.data.details).toMatch(/60 dəq/)
+
+      // A master, and the moment the client already picked: that very time
+      // with that master, not a second question.
+      const colourForm = again
+      const colourTime = (colourForm.data.t0 as { id: string }[])[0].id
+      expect(await turnIn(conversation, {
+        replyId: colourTime, senderName: "Günel", text: "[Форма]",
+        form: { serviceId: colour.id, hostId: HOST_A },
+      })).toEqual({ handled: true })
+      const booked = await bypass(() => prisma.booking.findMany({ where: { organizationId: ORG, bookingPageId: colour.id, status: "confirmed" } }))
+      expect(booked).toHaveLength(1)
+      expect(booked[0].hostUserId).toBe(HOST_A)
+    }, { bookingWhatsApp: { flowId: "flow-published-1" } })
+  })
+
   it("WhatsApp: a number without a published form is sent the menu, exactly as before", async () => {
     // The fallback is not a detail: every number had the menu until today, and
     // a form belongs only to an account that published one. A number that

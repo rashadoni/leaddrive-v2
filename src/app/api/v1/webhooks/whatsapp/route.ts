@@ -1474,6 +1474,7 @@ async function processMessages(
     // in the form that the sender's WhatsApp profile cannot give us.
     let bookingName = senderName
     let bookingNote: string | undefined
+    let bookingForm: { serviceId?: string | null; hostId?: string | null } | undefined
     if (!replyId && convId && !replyHeld && !flowTookOwnership && asStringOrNull(msg.interactive?.nfm_reply?.response_json)) {
       try {
         const { flowTap } = await import("@/lib/booking/whatsapp-flow")
@@ -1482,6 +1483,8 @@ async function processMessages(
           replyId = tapped.replyId
           if (tapped.name) bookingName = tapped.name
           bookingNote = tapped.note ?? undefined
+          // The form's own dropdowns: another service, another master.
+          bookingForm = { serviceId: tapped.serviceId, hostId: tapped.hostId }
         }
       } catch (err) {
         console.error("[WA Webhook] flow reply unreadable:", err)
@@ -1499,6 +1502,7 @@ async function processMessages(
           text,
           replyId,
           note: bookingNote,
+          form: bookingForm,
           contactId: contactId ?? undefined,
           leadId: leadId ?? undefined,
         })

@@ -43,7 +43,7 @@ export { clock, dayLabel, type ReplyLanguage } from "./whatsapp-format"
 import path from "node:path"
 import { OFFER_HOLD_MINUTES, readWhatsAppBookingSetting } from "./whatsapp-setting"
 import { BOOKING_PHOTO_DIRECTORY, bookingPhotoPath } from "./service-photo"
-import { BOOKING_FLOW_DAY_IDS, BOOKING_FLOW_SCREEN, FLOW_DAY_PREFIX, PLACEHOLDER_PHOTO } from "./whatsapp-flow"
+import { ANY_HOST, BOOKING_FLOW_DAY_IDS, BOOKING_FLOW_SCREEN, FLOW_DAY_PREFIX, PLACEHOLDER_PHOTO } from "./whatsapp-flow"
 import { autonomyVerdict, type AutonomyReason, type AutonomyRules } from "./whatsapp-rules"
 
 // ─── Choosing three times out of a day ──────────────────────────────────────
@@ -158,7 +158,7 @@ const WORDS = {
     noneThen: { morning: "səhər boş vaxt yoxdur.", afternoon: "günorta boş vaxt yoxdur.", evening: "axşam boş vaxt yoxdur.", any: "boş vaxt yoxdur." },
     hold: `Vaxt ${OFFER_HOLD_MINUTES} dəqiqə sizin üçün saxlanılır`, pick: "Vaxt seçin",
     which: "Hansı sizə uyğundur?", or: "və ya",
-    otherDay: "Başqa gün", pickDay: "Hansı gün sizə uyğundur?", dayFree: (count: number) => `${count} boş vaxt`, noDays: "Yaxın günlərdə boş vaxt yoxdur.",
+    anyHost: "Fərqi yoxdur", otherDay: "Başqa gün", pickDay: "Hansı gün sizə uyğundur?", dayFree: (count: number) => `${count} boş vaxt`, noDays: "Yaxın günlərdə boş vaxt yoxdur.",
     booked: "Yazıldınız ✅", address: "Ünvan", cancel: "Ləğv etmək üçün",
     held: "Vaxtı sizin üçün saxladıq ⏳", heldNote: "Administrator təsdiqləyəcək və yazacağıq.",
     confirmed: "Təsdiqləndi ✅", declined: "Təəssüf ki, bu vaxtı təsdiqləyə bilmədik.",
@@ -171,7 +171,7 @@ const WORDS = {
     noneThen: { morning: "утром свободного времени нет.", afternoon: "днём свободного времени нет.", evening: "вечером свободного времени нет.", any: "свободного времени нет." },
     hold: `Держим время за вами ${OFFER_HOLD_MINUTES} минут`, pick: "Выбрать время",
     which: "Какое вам удобно?", or: "или",
-    otherDay: "Другой день", pickDay: "Какой день вам удобен?", dayFree: (count: number) => `свободно: ${count}`, noDays: "В ближайшие дни свободного времени нет.",
+    anyHost: "Не важно", otherDay: "Другой день", pickDay: "Какой день вам удобен?", dayFree: (count: number) => `свободно: ${count}`, noDays: "В ближайшие дни свободного времени нет.",
     booked: "Вы записаны ✅", address: "Адрес", cancel: "Отменить запись",
     held: "Время придержали за вами ⏳", heldNote: "Администратор подтвердит, и мы напишем.",
     confirmed: "Подтверждено ✅", declined: "К сожалению, это время подтвердить не удалось.",
@@ -184,7 +184,7 @@ const WORDS = {
     noneThen: { morning: "there is nothing free in the morning.", afternoon: "there is nothing free in the afternoon.", evening: "there is nothing free in the evening.", any: "there is nothing free." },
     hold: `We hold the time for you for ${OFFER_HOLD_MINUTES} minutes`, pick: "Pick a time",
     which: "Which one works for you?", or: "or",
-    otherDay: "Another day", pickDay: "Which day suits you?", dayFree: (count: number) => `${count} free`, noDays: "Nothing is free in the days ahead.",
+    anyHost: "No preference", otherDay: "Another day", pickDay: "Which day suits you?", dayFree: (count: number) => `${count} free`, noDays: "Nothing is free in the days ahead.",
     booked: "You're booked ✅", address: "Address", cancel: "To cancel",
     held: "We're holding the time for you ⏳", heldNote: "The salon will confirm and we will write to you.",
     confirmed: "Confirmed ✅", declined: "We could not confirm that time, sorry.",
@@ -379,6 +379,11 @@ export interface BookingTurnInput {
   replyId: string | null
   /** What the client wrote in the form's own note field, if anything. */
   note?: string
+  /**
+   * What the form's dropdowns said when it was confirmed. A service or a
+   * master is not an answer to the times on screen — it is a new question.
+   */
+  form?: { serviceId?: string | null; hostId?: string | null }
   contactId?: string
   leadId?: string
   now?: Date
@@ -545,6 +550,36 @@ function weekOfDays(choices: OfferChoice[], days: { date: string; slots: Slot[] 
  * kind WhatsApp renders: a form must open with no photo rather than fail to
  * open with one.
  */
+/**
+ * The other services a salon takes bookings for, and the masters who do this
+ * one — the two dropdowns above the day.
+ *
+ * Both are ordinary choices, not filters the form can apply: without an
+ * endpoint a published form cannot ask us for another service's times. So
+ * what they do is ask again, and the agent answers with a new form. One list
+ * never grows past what WhatsApp shows in a dropdown.
+ */
+async function serviceChoices(organizationId: string, service: ServiceContext, hosts: { id: string; name: string }[], request: OfferRequest): Promise<Record<string, unknown>> {
+  const words = WORDS[request.language]
+  const services = await prisma.bookingPage.findMany({
+    where: { organizationId, isActive: true },
+    orderBy: { title: "asc" },
+    take: 20,
+    select: { id: true, title: true },
+  })
+  const masters = hosts.filter((host) => service.hostIds.includes(host.id)).slice(0, 19)
+  return {
+    has_services: services.length > 1,
+    services: services.length > 1 ? services.map((item) => ({ id: item.id, title: item.title.slice(0, 30) })) : [{ id: service.id, title: service.title.slice(0, 30) }],
+    service_init: service.id,
+    has_hosts: masters.length > 1,
+    hosts: masters.length > 1
+      ? [{ id: ANY_HOST, title: words.anyHost }, ...masters.map((host) => ({ id: host.id, title: host.name.slice(0, 30) }))]
+      : [{ id: ANY_HOST, title: words.anyHost }],
+    host_init: request.hostId ?? ANY_HOST,
+  }
+}
+
 const PHOTO_CACHE = new Map<string, { at: number; photo: string | null }>()
 const PHOTO_CACHE_MS = 10 * 60_000
 /** Meta renders JPEG and PNG, and advises keeping an image under 300 KB. */
@@ -672,6 +707,10 @@ async function sendOffers(input: BookingTurnInput, service: ServiceContext, requ
       days: week.map((day, index) => ({ id: `d${index}`, title: shortDayLabel(`${day.date}T12:00:00Z`, request.language, "UTC") })),
       day_init: "d0",
       client: input.senderName.trim(),
+      // What else the salon does, and who else could do this one. Both are
+      // hidden when there is nothing to choose between — a dropdown with one
+      // option is a control that only takes up room (owner, 2026-11-12).
+      ...(await serviceChoices(input.organizationId, service, context.hosts, request)),
     }
     // Every slot the published form knows about needs times, even the ones no
     // day was found for: a data key the screen declares and the message omits
@@ -836,6 +875,76 @@ async function dayOfSlot(input: BookingTurnInput, slot: string): Promise<{ servi
     if (request && date) return { serviceId: request.serviceId, date }
   }
   return null
+}
+
+/**
+ * What the client changed in the form before confirming — or nothing.
+ *
+ * `null` means «nothing changed, carry on»: anything else is handled here and
+ * the turn ends. The two cases are deliberately different, because they cost
+ * the client different things:
+ *
+ *   • another SERVICE changes the duration and the price, so every time on
+ *     screen is wrong. The form comes back for that service.
+ *   • another MASTER usually does not: the moment the client picked may well
+ *     be free for them too. So it is tried first, and only a master who is
+ *     busy then sends the form back with their own times.
+ */
+async function narrowFromForm(input: BookingTurnInput, rules: AutonomyRules, now: Date): Promise<boolean | null> {
+  const sent = await lastFormRequest(input)
+  if (!sent) return null
+  const wantedService = input.form?.serviceId && input.form.serviceId !== sent.serviceId ? input.form.serviceId : null
+  const wantedHost = input.form?.hostId === ANY_HOST ? null : input.form?.hostId || null
+  const hostChanged = input.form?.hostId !== undefined && input.form?.hostId !== null && wantedHost !== (sent.hostId ?? null)
+  if (!wantedService && !hostChanged) return null
+
+  const serviceId = wantedService ?? sent.serviceId
+  const context = await loadContext(input, now)
+  const service = context?.services.find((item) => item.id === serviceId)
+  if (!context || !service) return null
+  // A master this service does not work with is not a choice at all.
+  if (wantedHost && !service.hostIds.includes(wantedHost)) return null
+  const request: OfferRequest = {
+    text: "", serviceId: service.id, date: null, partOfDay: "any",
+    notBefore: null, notAfter: null, hostId: wantedHost, language: sent.language,
+  }
+
+  // Only the master changed, and the client named a time: try that very time
+  // with them. Busy, and the booking path itself offers what is free instead.
+  if (!wantedService && wantedHost && input.replyId) {
+    const chosen = await chosenMoment(input, input.replyId)
+    if (chosen) return bookFreeSlot(input, `${service.id}:${wantedHost}:${chosen}`, rules, now)
+  }
+  return sendOffers(input, service, request, { timezone: context.timezone, closedDates: context.closedDates, hosts: context.hosts, greet: false }, now)
+}
+
+/** The service and master the newest form was sent for. */
+async function lastFormRequest(input: BookingTurnInput): Promise<OfferRequest | null> {
+  const recent = await prisma.bookingOffer.findMany({
+    where: { organizationId: input.organizationId, conversationId: input.conversationId },
+    orderBy: { createdAt: "desc" },
+    take: 40,
+    select: { request: true },
+  })
+  for (const offer of recent) {
+    const request = readRequest(offer.request)
+    if (request?.daySlots && Object.keys(request.daySlots).length) return request
+  }
+  return null
+}
+
+/** The moment behind a tapped time, whether it was held or not. */
+async function chosenMoment(input: BookingTurnInput, replyId: string): Promise<string | null> {
+  if (replyId.startsWith(SLOT_PREFIX)) {
+    const moment = replyId.slice(SLOT_PREFIX.length).split(":").slice(2).join(":")
+    return Number.isNaN(Date.parse(moment)) ? null : moment
+  }
+  if (!replyId.startsWith(OFFER_PREFIX)) return null
+  const offer = await prisma.bookingOffer.findFirst({
+    where: { organizationId: input.organizationId, id: replyId.slice(OFFER_PREFIX.length), conversationId: input.conversationId },
+    select: { startsAt: true },
+  })
+  return offer?.startsAt.toISOString() ?? null
 }
 
 /** A day tapped in that menu: the same offer message, for that date. */
@@ -1221,6 +1330,15 @@ export async function handleWhatsAppBookingTurn(input: BookingTurnInput): Promis
   const setting = readWhatsAppBookingSetting(organization?.settings)
   if (setting.mode !== "book") return { handled: false }
   if (setting.channelConfigId && setting.channelConfigId !== input.channelConfigId) return { handled: false }
+  // The form lets a client change WHAT they are booking, not only when: another
+  // service, another master (owner, 2026-11-12: «если несколько услуг… выбрал
+  // внутри, дальше время и мастера или же без мастера»). Neither is an answer
+  // to the times on screen — those were computed for the service and master
+  // the form was sent for — so the form comes back with the right ones.
+  if (input.form && input.replyId) {
+    const narrowed = await narrowFromForm(input, setting.rules, now)
+    if (narrowed !== null) return { handled: narrowed }
+  }
   if (input.replyId?.startsWith(OFFER_PREFIX)) {
     return { handled: await bookOffer(input, input.replyId.slice(OFFER_PREFIX.length), setting.rules, now) }
   }
