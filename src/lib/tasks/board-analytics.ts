@@ -70,6 +70,18 @@ export interface Tier1Analytics {
     completionRate: number
   }[]
   due: { overdue: TaskRef[]; dueSoon: TaskRef[] }
+  /**
+   * Work done counted in pieces (Elvira, 2026-11-12: «45 ədəd vinil» came as
+   * one task with a list; the owner: «Да, делай»). A task with subtasks counts
+   * each subtask closed in the period, for the subtask's assignee (or the
+   * task's); a task without them counts once, when it is closed — as before.
+   */
+  units: {
+    thisWeek: number
+    tasksThisWeek: number
+    subtasksThisWeek: number
+    byAssignee: { userId: string | null; name: string | null; count: number }[]
+  }
   workMix: { type: string; count: number }[]
 }
 
@@ -102,18 +114,6 @@ export interface MonteCarlo {
   // horizon (backlog too big for the throughput) ⇒ the date is NOT trustworthy and
   // is left empty; the UI shows "≥ Nd" instead of a fabricated date.
   forecast: { p: number; days: number; capped: boolean; date: string }[]
-  /**
-   * Work done counted in pieces (Elvira, 2026-11-12: «45 ədəd vinil» came as
-   * one task with a list; the owner: «Да, делай»). A task with subtasks counts
-   * each subtask closed in the period, for the subtask's assignee (or the
-   * task's); a task without them counts once, when it is closed — as before.
-   */
-  units: {
-    thisWeek: number
-    tasksThisWeek: number
-    subtasksThisWeek: number
-    byAssignee: { userId: string | null; name: string | null; count: number }[]
-  }
 }
 
 const STAGES = ["backlog", "todo", "in_progress", "testing", "review", "done"] as const
