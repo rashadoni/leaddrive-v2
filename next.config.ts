@@ -2,6 +2,7 @@ import createNextIntlPlugin from "next-intl/plugin"
 import withSerwistInit from "@serwist/next"
 import { withSentryConfig } from "@sentry/nextjs"
 import type { NextConfig } from "next"
+import { precacheOfflineOnly } from "./src/lib/sw-precache-policy"
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts")
 const nextBuildCpus = process.env.NEXT_BUILD_CPUS
@@ -20,6 +21,9 @@ const withSerwist = withSerwistInit({
   // on every new SW install (i.e. on every deploy). That is correct behaviour:
   // the page is static, and the next deploy naturally refreshes it.
   additionalPrecacheEntries: [{ url: "/offline", revision: null }],
+  // Nothing of the build is fetched ahead of time: 2 437 files were re-downloaded by every open
+  // browser after every deploy (src/lib/sw-precache-policy.ts). Files are cached as pages open.
+  manifestTransforms: [precacheOfflineOnly],
 })
 
 const nextConfig: NextConfig = {
