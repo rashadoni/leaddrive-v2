@@ -380,6 +380,24 @@ async function main() {
     await page.close()
     return { title, subtasks: checklist.length }
   })
+  // Xayala, 2026-11-12: «sadece oz tasklarimi gorende bura task elave etmek isdeyirem» —
+  // a new task made while the board shows one person's tasks was nobody's and vanished.
+  await step('a board showing only my tasks gives a new task to me; showing someone else\'s, to them', async () => {
+    const page = await sessions.boardsOnly.newPage()
+    // The select takes its value once the people have loaded: wait for it, do not read it at once.
+    const assigneeOfNewTask = async (query, expected) => {
+      await page.goto(`/boards/${f.boards.DZEYTUN.id}${query}`, { timeout: 180000 })
+      await page.getByRole('button', { name: 'Yeni Tapşırıq' }).click()
+      await page.waitForSelector('[data-testid="board-create-assignee"] option + option', { state: 'attached', timeout: 60000 })
+      await page.waitForFunction((want) => document.querySelector('[data-testid="board-create-assignee"]')?.value === want, expected, { timeout: 30000 })
+        .catch(async () => assert.fail(`new task from ${query || 'the whole board'}: assignee «${await page.inputValue('[data-testid="board-create-assignee"]')}», expected «${expected}»`))
+    }
+    await assigneeOfNewTask('?mine=1', f.users.boardsOnly.id)
+    await assigneeOfNewTask(`?assignee=${f.users.marketer.id}`, f.users.marketer.id)
+    await assigneeOfNewTask('', '')
+    await page.close()
+  })
+
   await step('a folder opens as the list of its boards\' tasks, each row naming its board; the kanban is the second tab', async () => {
     const page = await sessions.clerk.newPage()
     await page.goto(`/boards/${f.boards.CUSTSERV.id}`, { timeout: 180000 })
