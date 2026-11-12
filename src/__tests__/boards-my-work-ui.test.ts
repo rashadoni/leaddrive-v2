@@ -65,16 +65,18 @@ let container: HTMLDivElement
 let root: Root
 let calls: { url: string; method: string; body?: unknown }[]
 let patchStatus = 200
+let doneToday: unknown[] | null = null
 beforeEach(() => {
   calls = []
   patchStatus = 200
+  doneToday = null
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : undefined })
     if (url === "/api/v1/divisions") return new Response(JSON.stringify({ success: true, data: { divisions: DIVISIONS, myOpenTasks: 4 } }))
-    if (url.startsWith("/api/v1/tasks?")) return new Response(JSON.stringify({ success: true, data: { tasks: url.includes("open=1") ? TASKS : [], total: 4 } }))
+    if (url.startsWith("/api/v1/tasks?")) return new Response(JSON.stringify({ success: true, data: { tasks: url.includes("open=1") ? TASKS : url.includes("completedAfter=") && doneToday ? doneToday : [], total: 4 } }))
     if (url.startsWith("/api/v1/tasks/")) return new Response("{}", { status: patchStatus })
     return new Response("{}", { status: 404 })
   }))
@@ -169,6 +171,8 @@ describe("Mənim işlərim", () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       calls.push({ url, method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : undefined })
       if (url === "/api/v1/divisions") return new Response(JSON.stringify({ success: true, data: { divisions: DIVISIONS } }))
+      // Today's finished tasks are a read of their own, answered at once here.
+      if (url.includes("completedAfter=")) return new Response(JSON.stringify({ success: true, data: { tasks: [], total: 0 } }))
       if (url.startsWith("/api/v1/tasks?")) {
         await new Promise<void>((release) => { held.push(release) })
         return new Response(JSON.stringify({ success: true, data: { tasks: TASKS, total: 4 } }))
@@ -197,6 +201,7 @@ describe("Mənim işlərim", () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       calls.push({ url, method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : undefined })
       if (url === "/api/v1/divisions") return new Response(JSON.stringify({ success: true, data: { divisions: DIVISIONS } }))
+      if (url.includes("completedAfter=")) return new Response(JSON.stringify({ success: true, data: { tasks: [], total: 0 } }))
       if (url.startsWith("/api/v1/tasks?")) {
         await new Promise<void>((hold) => { release = hold })
         return new Response(JSON.stringify({ success: true, data: { tasks: TASKS, total: 4 } }))
@@ -242,4 +247,18 @@ describe("Mənim işlərim", () => {
     await act(async () => { (container.querySelector('[data-task-id="t-today"] button:not([data-testid])') as HTMLButtonElement).click() })
     expect(container.querySelector('[data-testid="task-panel"]')?.getAttribute("data-task")).toBe("t-today")
   })
+
+  // Zeytun, 2026-11-12: «bağlayan kimi silinir» — a task ticked today stays in sight until the day ends.
+  it("keeps today's finished tasks in sight, struck through, and the check takes one back to the board's first open column", async () => {
+    doneToday = [{ id: "t-closed", title: "Aksiya Email", status: "done", boardColumnKey: "c_done", dueDate: day(0), divisionId: "p1", completedAt: new Date().toISOString() }]
+    await render()
+    const group = container.querySelector('[data-testid="my-work-group"][data-group="doneToday"]')
+    expect(group?.textContent).toContain("Aksiya Email")
+    expect(calls.some((c) => c.url.includes("completedAfter="))).toBe(true)
+    await act(async () => { (group!.querySelector('[data-testid="my-work-reopen"]') as HTMLButtonElement).click() })
+    await flush()
+    const patch = calls.find((c) => c.method === "PATCH" && c.url === "/api/v1/tasks/t-closed")
+    expect(patch?.body).toEqual({ status: "todo", boardColumnKey: "c_todo" })
+  })
 })
+

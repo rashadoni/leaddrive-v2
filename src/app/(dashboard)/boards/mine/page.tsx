@@ -86,6 +86,9 @@ export default function MyWorkPage() {
   const [boardFilter, setBoardFilter] = useState("")
   const [showDone, setShowDone] = useState(false)
   const [doneTasks, setDoneTasks] = useState<MyTask[] | null>(null)
+  // Finished today stay in sight, struck through, until the day ends — a tick
+  // must not look like a delete (Zeytun, 2026-11-12: «bağlayan kimi silinir»).
+  const [doneToday, setDoneToday] = useState<MyTask[]>([])
   const [ticked, setTicked] = useState<Map<string, Ticked>>(new Map())
   // Beside the state: a read of the list that began earlier has to tell which
   // ticks it may forget without waiting for a render first.
@@ -145,6 +148,15 @@ export default function MyWorkPage() {
     }
   }, [changeTasks, changeTicked])
   useEffect(() => { load() }, [load])
+  const loadDoneToday = useCallback(async () => {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    try {
+      const done = await readTasks(`status=done,completed,cancelled&completedAfter=${encodeURIComponent(start.toISOString())}`)
+      setDoneToday(done.tasks)
+    } catch { /* the open list stands on its own */ }
+  }, [])
+  useEffect(() => { loadDoneToday() }, [loadDoneToday])
 
   const loadDone = useCallback(async () => {
     const since = new Date(Date.now() - DONE_WINDOW_DAYS * 86_400_000).toISOString()
@@ -232,6 +244,28 @@ export default function MyWorkPage() {
   // 2026-11-11: «слишком всё грубовато»): white cards, near-black titles in a
   // medium weight, one compact line per task, small grey details, colour only
   // for what is late (orange-red text) or critical (a small chip).
+  /** Back to the board's first open column. */
+  async function reopen(task: MyTask) {
+    if (busy.has(task.id)) return
+    const board = task.divisionId ? boardById.get(task.divisionId) : undefined
+    const open = (board?.boardColumns ?? []).find((c) => !["done", "completed", "cancelled"].includes(c.mapsToStatus))
+    setBusy((s) => new Set(s).add(task.id))
+    try {
+      const res = await fetch(`/api/v1/tasks/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(open ? { status: open.mapsToStatus, boardColumnKey: open.key } : { status: "todo", boardColumnKey: null }),
+      })
+      if (!res.ok) flash(t("changeFailed"))
+      else { setDoneToday((list) => list.filter((x) => x.id !== task.id)); setDoneTasks(null); load() }
+    } catch {
+      flash(t("changeFailed"))
+    } finally {
+      setBusy((s) => { const next = new Set(s); next.delete(task.id); return next })
+    }
+  }
+
   const row = (task: MyTask, finished: boolean) => {
     const board = task.divisionId ? boardById.get(task.divisionId) : undefined
     const isTicked = finished || ticked.has(task.id)
@@ -247,7 +281,19 @@ export default function MyWorkPage() {
     return (
       <li key={task.id} data-testid="my-work-row" data-task-id={task.id} className="flex items-center gap-3 border-t border-gray-100 px-4 py-2 dark:border-gray-800">
         {finished ? (
-          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gray-700 text-white dark:bg-gray-300 dark:text-gray-900" aria-hidden="true"><Check className="h-2.5 w-2.5" /></span>
+          <button
+            type="button"
+            onClick={() => reopen(task)}
+            disabled={busy.has(task.id)}
+            aria-pressed
+            aria-label={t("markOpen", { title: task.title })}
+            title={t("markOpen", { title: task.title })}
+            data-testid="my-work-reopen"
+            data-crm-color-role="status"
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gray-700 text-white hover:bg-gray-500 dark:bg-gray-300 dark:text-gray-900"
+          >
+            {busy.has(task.id) ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Check className="h-2.5 w-2.5" />}
+          </button>
         ) : (
           <button
             type="button"
@@ -298,6 +344,7 @@ export default function MyWorkPage() {
   }
 
   const shownDone = doneTasks ? visible(doneTasks).filter((x) => !(tasks ?? []).some((open) => open.id === x.id)) : []
+  const shownDoneToday = showDone ? [] : visible(doneToday).filter((x) => !(tasks ?? []).some((open) => open.id === x.id))
 
   return (
     <div className={cn("mx-auto space-y-4", view === "list" && "max-w-5xl pb-16")}>
@@ -375,7 +422,7 @@ export default function MyWorkPage() {
         </div>
       )}
 
-      {tasks && view === "list" && (groups.size > 0 || showDone) && (
+      {tasks && view === "list" && (groups.size > 0 || showDone || shownDoneToday.length > 0) && (
         <div className="space-y-3">
           {MY_WORK_GROUPS.map((g) => {
             const list = groups.get(g) ?? []
@@ -390,6 +437,15 @@ export default function MyWorkPage() {
               </section>
             )
           })}
+          {shownDoneToday.length > 0 && (
+            <section data-testid="my-work-group" data-group="doneToday" className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+              <h2 className="flex items-baseline gap-1.5 px-4 py-2 text-[13px] font-medium text-gray-700 dark:text-gray-300">
+                {t("groups.doneToday")}
+                <span className="text-gray-400">{shownDoneToday.length}</span>
+              </h2>
+              <ul>{shownDoneToday.map((task) => row(task, true))}</ul>
+            </section>
+          )}
           {showDone && (
             <section data-testid="my-work-group" data-group="done" className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
               <h2 className="flex items-baseline gap-1.5 px-4 py-2 text-[13px] font-medium text-gray-700 dark:text-gray-300">
@@ -410,7 +466,7 @@ export default function MyWorkPage() {
         <TaskPanel
           taskId={openTaskId}
           canEdit
-          onClose={() => { setOpenTaskId(null); load(); if (showDone) setDoneTasks(null) }}
+          onClose={() => { setOpenTaskId(null); load(); loadDoneToday(); if (showDone) setDoneTasks(null) }}
           onMutated={() => {}}
         />
       )}

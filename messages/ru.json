@@ -33326,6 +33326,7 @@
     "lateDays": "{days, plural, one {# день} few {# дня} many {# дней} other {# дня}}",
     "lateBy": "{days, plural, one {просрочено на # день} few {просрочено на # дня} many {просрочено на # дней} other {просрочено на # дня}}",
     "groups": {
+      "doneToday": "Завершены сегодня",
       "overdue": "Просрочено",
       "today": "Сегодня",
       "tomorrow": "Завтра",
