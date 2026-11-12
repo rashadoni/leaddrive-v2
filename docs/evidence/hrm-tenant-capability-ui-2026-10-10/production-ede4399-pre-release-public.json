@@ -1,0 +1,52 @@
+{
+  "phase": "before-authorized-release",
+  "checkedAt": "2026-10-10T13:44:22.979373+00:00",
+  "authenticated": false,
+  "businessDataRead": false,
+  "results": [
+    {
+      "path": "/api/v1/ping",
+      "status": 200,
+      "location": null,
+      "contentType": "application/json",
+      "json": {
+        "ok": true
+      }
+    },
+    {
+      "path": "/api/v1/public/build-info",
+      "status": 200,
+      "location": null,
+      "contentType": "application/json",
+      "json": {
+        "sha": "ede43999335b",
+        "artifactSha": "ede43999335b0a1df8a37474c2194b2c0c236c19",
+        "builtAt": "2026-10-10T13:07:07Z"
+      }
+    },
+    {
+      "path": "/api/v1/admin/tenants/hrm-ui-auth-probe/capabilities",
+      "status": 307,
+      "location": "https://app.leaddrivecrm.org/login?callbackUrl=%2Fapi%2Fv1%2Fadmin%2Ftenants%2Fhrm-ui-auth-probe%2Fcapabilities",
+      "contentType": null
+    },
+    {
+      "path": "/api/v1/workforce/exceptions",
+      "status": 307,
+      "location": "https://app.leaddrivecrm.org/login?callbackUrl=%2Fapi%2Fv1%2Fworkforce%2Fexceptions",
+      "contentType": null
+    },
+    {
+      "path": "/admin",
+      "status": 307,
+      "location": "https://app.leaddrivecrm.org/login?callbackUrl=%2Fadmin",
+      "contentType": null
+    },
+    {
+      "path": "/workforce",
+      "status": 307,
+      "location": "https://app.leaddrivecrm.org/login?callbackUrl=%2Fworkforce",
+      "contentType": null
+    }
+  ]
+}

@@ -1,0 +1,300 @@
+{
+  "version": 1,
+  "candidateHead": "f219771906cb4df755df69ad600a30c33d7b52cd",
+  "checkedMergeSha": "5c02f3c9daca7a99293ffd3bb694bf7b654e2ddb",
+  "startedAt": "2026-10-10T13:39:49.680Z",
+  "environment": "hosted Chromium / loopback Next dev / disposable PostgreSQL16",
+  "authentication": "real CSRF + credentials provider + session cookie; no auth mocks",
+  "authenticationDiagnostics": [
+    {
+      "ordinal": 1,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-10T13:39:53.468Z"
+    },
+    {
+      "ordinal": 2,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-10T13:40:18.480Z"
+    },
+    {
+      "ordinal": 3,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-10T13:40:23.215Z"
+    },
+    {
+      "ordinal": 4,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-10T13:40:27.147Z"
+    },
+    {
+      "ordinal": 5,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-10T13:40:30.976Z"
+    },
+    {
+      "ordinal": 6,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-10T13:40:34.758Z"
+    },
+    {
+      "ordinal": 7,
+      "csrfStatus": 200,
+      "callbackStatus": 200,
+      "pacingWaitMs": 0,
+      "callbackStartedAt": "2026-10-10T13:40:38.237Z"
+    }
+  ],
+  "reflowDiagnostics": [],
+  "readingDiagnostics": [],
+  "nativeZoomDiagnostics": [],
+  "nativeCaptureDiagnostics": [],
+  "focusGeometryDiagnostics": [],
+  "nativeZoomVerdict": "NOT RUN",
+  "contrastDiagnostics": [],
+  "contrastVerdict": "NOT RUN",
+  "cases": [
+    {
+      "name": "confirmation-cancel-confirm-ORGANIZATION-en",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "confirmation-cancel-confirm-TEAM-ru",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "confirmation-cancel-confirm-ORGANIZATION-az",
+      "status": "PASS",
+      "posts": 1,
+      "tombstones": 2,
+      "audits": 1
+    },
+    {
+      "name": "committed-response-loss-exact-retry-same-task-double-submit-en",
+      "status": "PASS",
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "unknownNoticeVisibleAndFocused": true
+    },
+    {
+      "name": "committed-response-loss-exact-retry-same-task-double-submit-ru",
+      "status": "PASS",
+      "posts": 2,
+      "reversedResponses": [
+        true,
+        false
+      ],
+      "byteIdenticalRetry": true,
+      "replayWrites": 0,
+      "unknownNoticeVisibleAndFocused": true
+    }
+  ],
+  "limitations": [
+    "Development bundle, not production build",
+    "No production business data",
+    "No Android/AT/load/pilot evidence",
+    "Keyboard cases cover reversal actions; fixture selection/refresh uses existing UI",
+    "No whole-page keyboard, all-page zoom or WCAG acceptance",
+    "Native200 cases are fixture-extension automatic browser zoom, not a human browser-shortcut/AT session",
+    "Contrast covers bounded default-light enabled/normal/native-focused text targets only; no dark/forced-color/hover/pressed/non-text/focus-ring or overall WCAG compliance claim"
+  ],
+  "status": "FAIL",
+  "sourceBindings": [
+    {
+      "path": "scripts/workforce-calendar-browser-evidence.mjs",
+      "bytes": 69280,
+      "sha256": "fb2ba9bf4e7e83a4a7b59545b20cd75efde4b29042ec2e95f483d99e4b742592"
+    },
+    {
+      "path": "scripts/workforce-native-browser-zoom.mjs",
+      "bytes": 16379,
+      "sha256": "8b7301de5dcf30543c56cfdd60104ffc2cbc4ca7760608c07abe7f5101b87feb"
+    },
+    {
+      "path": "scripts/workforce-calendar-contrast-colors.mjs",
+      "bytes": 11547,
+      "sha256": "ccfd96a15c6f9fd055d84a2cd7a2a53da694c3c5b8cb96b56d05807af133e901"
+    },
+    {
+      "path": "scripts/workforce-calendar-contrast-dom.mjs",
+      "bytes": 9466,
+      "sha256": "b31415b556b8decfee3800f4dfbb33b86f499cf29a789502f2060303ae43db81"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-native-zoom-extension/manifest.json",
+      "bytes": 228,
+      "sha256": "8684a33b8edce2587e17612e0b7dc7f1b25a85fe2dde08ba642b6f21ba3ec7cb"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-native-zoom-extension/background.js",
+      "bytes": 144,
+      "sha256": "45e33ffc8a0f58560b991a8ef59dd0a31b5e93781850538e94ae03eb67d72c6c"
+    },
+    {
+      "path": "scripts/ci/fixtures/workforce-calendar-browser.sql",
+      "bytes": 3598,
+      "sha256": "a3fd69a50c189da4ecabab4ae1d3b19c487c729734e6e638b34f0a8616e9eff7"
+    },
+    {
+      "path": "scripts/_rls.mjs",
+      "bytes": 2250,
+      "sha256": "fae67dd4467cfd14667236a570ee4884100d8236496f64e31984305146ad7266"
+    },
+    {
+      "path": ".github/workflows/workforce-calendar-browser-evidence.yml",
+      "bytes": 8632,
+      "sha256": "5c503403a3c30ca57b93dc7abda58ade8315ed55ea899aa1ad5a417de8ead059"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "bytes": 961874,
+      "sha256": "6c6281e85cc6db06b0d8758a44d76e8b71e918d46d8a376f02f557b1cc989121"
+    },
+    {
+      "path": "src/components/workforce/workforce-calendar-configuration.tsx",
+      "bytes": 40783,
+      "sha256": "4c94db0bfd601f35a6b420658a3b429d2639b9aee7731a72b808ffad430fe0a7"
+    },
+    {
+      "path": "src/app/api/v1/workforce/configuration/calendar/route.ts",
+      "bytes": 9445,
+      "sha256": "72a2ed0cf250b979624a0f9de828390795f760aeee04760a9a1ada564af38379"
+    },
+    {
+      "path": "src/lib/workforce/calendar-configuration.ts",
+      "bytes": 40230,
+      "sha256": "1a8247f514e4acfcfae2d3e5799d1fa8dc6fa8a3143c23e21b942f168f0131f5"
+    },
+    {
+      "path": "src/lib/workforce/calendar-configuration-contract.ts",
+      "bytes": 6168,
+      "sha256": "adf955bbd6be337f8760dc154148cdf45bbb6895f8de82f98750d504bcec62e9"
+    },
+    {
+      "path": "src/lib/workforce/calendar-moved-day-pair.ts",
+      "bytes": 5258,
+      "sha256": "3368b2bf1e2ac6b08693f0f1e93b72cbb181799d51398f3c9d9974df12e3b5b2"
+    },
+    {
+      "path": "src/lib/with-workforce-rls-auth.ts",
+      "bytes": 21653,
+      "sha256": "289aa253b4d8d3a25913136a545db598bf1a01c9b571b6c89e2689da2fe6d8ff"
+    },
+    {
+      "path": "src/lib/with-rls.ts",
+      "bytes": 10390,
+      "sha256": "533dfc91f795970fe7abaf1aedc37e7ea82d175257b33a0d84c864e791618e38"
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "bytes": 26606,
+      "sha256": "a0cd1185fe0db3b543998dacbf815322c84010a75f539fc6d9631679a32907bd"
+    },
+    {
+      "path": "src/lib/api-auth.ts",
+      "bytes": 25973,
+      "sha256": "1bd273786679f9b59718a4eec9314f51ae19efcddd6455cae8d562d88d1c8f84"
+    },
+    {
+      "path": "src/lib/user-module-access.ts",
+      "bytes": 9778,
+      "sha256": "aab31a0abf2e4be7c96df6c6ad9e474c6a2141764a6894882172d16519d12166"
+    },
+    {
+      "path": "src/proxy.ts",
+      "bytes": 50300,
+      "sha256": "9d3fe10f167e964101aaf7e1f455bebb71ae05024f7e91fb20c0f2c48049f40d"
+    },
+    {
+      "path": "src/app/layout.tsx",
+      "bytes": 3211,
+      "sha256": "261242a8ef66750a5f296c56dd93ddda08e39eb1560bc4dbc18f58f0ee975625"
+    },
+    {
+      "path": "src/app/(dashboard)/layout.tsx",
+      "bytes": 13392,
+      "sha256": "be2ef432d60a19e8ea930becd30894b76c7bda5875a81246a95cb4cdfe4b6e3f"
+    },
+    {
+      "path": "src/app/globals.css",
+      "bytes": 52755,
+      "sha256": "7ab5a052ade58a3be83771ce412d57b801b57145b9d37fe7947d1c803eaeb019"
+    },
+    {
+      "path": "src/components/providers.tsx",
+      "bytes": 1890,
+      "sha256": "3d82c0cf34677754f2e4d80e0978d2583bded1daa1d476ba59f2e0524242526d"
+    },
+    {
+      "path": "src/components/ui/button.tsx",
+      "bytes": 2099,
+      "sha256": "2d401bc2999487316df2b5319e28bd3fb5077cb0f625e272ca9a4bf100e6771a"
+    },
+    {
+      "path": "src/components/ui/input.tsx",
+      "bytes": 833,
+      "sha256": "f114d3bfb7b66f7ae843119f34bd32b91bf2f9a2fcf6123c962038f98cadee90"
+    },
+    {
+      "path": "src/components/ui/select.tsx",
+      "bytes": 1025,
+      "sha256": "9289ce86e4ea159cf5a12a5ae5a51ed3798e9cf041eb584fad40c242be119f9c"
+    },
+    {
+      "path": "messages/en.json",
+      "bytes": 1370769,
+      "sha256": "9e7e0bc2baaeabbf49f85289f349a7b9ab4992d2d842eab030878488d233e9c8"
+    },
+    {
+      "path": "messages/ru.json",
+      "bytes": 2022458,
+      "sha256": "1dc262e3ef0f82c9805bcc86ee04e21ea71593d3194cb0e9eb8dbc2bbe870bb3"
+    },
+    {
+      "path": "messages/az.json",
+      "bytes": 1516396,
+      "sha256": "32d39aa0e8b15128f6888019e45d2951a09fe44172f3b356278a16ec53154b79"
+    }
+  ],
+  "databaseRole": {
+    "superuser": false,
+    "bypassRls": false,
+    "unscopedUsers": 0,
+    "unscopedTeams": 0,
+    "unscopedWorkforceAudits": 0
+  },
+  "failure": {
+    "name": "TimeoutError",
+    "message": "page.waitForResponse: Timeout 30000ms exceeded while waiting for event \"response\"",
+    "sourcePosition": {
+      "line": 1017,
+      "column": 3
+    }
+  },
+  "readDiagnostics": [],
+  "interceptedFailureCount": 0,
+  "nativeZoomCleanup": [],
+  "completedAt": "2026-10-10T13:41:08.569Z"
+}
