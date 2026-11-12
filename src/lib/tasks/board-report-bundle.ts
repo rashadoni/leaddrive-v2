@@ -92,6 +92,7 @@ export async function loadBoardReportBundle(
           type: true, dueDate: true, completedAt: true, createdAt: true, assignedTo: true,
           estimatedHours: true, estimatedPrice: true,
           assignee: { select: { id: true, name: true } },
+          checklist: { select: { completedAt: true, assignedTo: true, assignee: { select: { name: true } } } },
         },
       })
     : []
@@ -110,6 +111,9 @@ export async function loadBoardReportBundle(
     assigneeName: t.assignee?.name ?? null,
     estimatedHours: t.estimatedHours != null ? Number(t.estimatedHours) : null,
     estimatedPrice: t.estimatedPrice != null ? Number(t.estimatedPrice) : null,
+    subtasks: (t.checklist ?? []).map((c: { completedAt: Date | null; assignedTo: string | null; assignee: { name: string } | null }) => ({
+      completedAt: c.completedAt, assignedTo: c.assignedTo, assigneeName: c.assignee?.name ?? null,
+    })),
   }))
 
   const now = new Date()

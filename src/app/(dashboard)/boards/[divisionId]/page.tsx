@@ -1085,7 +1085,8 @@ function Card({ task, locale, overlay }: { task: Task; locale: string; overlay?:
           <div className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ background: C.border }}>
             <div className="h-full rounded-full" style={{ width: `${progress}%`, background: C.amber }} />
           </div>
-          <span className="text-[10px] font-semibold" style={{ color: C.amber }}>{progress}%</span>
+          {/* «3/45» — pieces done of the list (Elvira, 2026-11-12), not a percentage. */}
+          <span className="text-[10px] font-semibold tabular-nums" style={{ color: C.amber }}>{clDone}/{clTotal}</span>
         </div>
       )}
     </div>

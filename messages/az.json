@@ -2517,6 +2517,9 @@
     "loading": "Hesabatlar yüklənir…",
     "kpiWip": "İşdə",
     "kpiWipSub": "indi açıq",
+    "kpiUnits": "Bu həftə görülən iş",
+    "kpiUnitsSub": "{tasks} tapşırıq + {subtasks} alt tapşırıq",
+    "unitsByAssigneeTitle": "Kim nə qədər gördü",
     "kpiClosed": "Bu həftə bağlandı",
     "kpiClosedSub": "tamamlanma tarixinə görə",
     "kpiOverdue": "Gecikmiş",
@@ -33096,6 +33099,10 @@
     "nothingToFill": "Hər şey artıq doldurulub — heç nə dəyişmədi."
   },
   "taskPanel": {
+    "splitList": "Siyahını alt tapşırıqlara böl ({count})",
+    "splitListDone": "Siyahının bütün sətirləri artıq alt tapşırıqdır",
+    "pasteHint": "Siyahı yapışdırın — hər sətir ayrıca alt tapşırıq olur",
+    "listAdded": "Əlavə olunan alt tapşırıq: {count}",
     "notYoursToDelete": "Bu tapşırığı yalnız onu yaradan silə bilər.",
     "notYours": "Bu tapşırığı yalnız onu yaradan, icraçısı və həmicraçıları dəyişə bilər. Lentə yaza bilərsiniz.",
     "task": "Tapşırıq",
@@ -33182,6 +33189,7 @@
       "start": "{name} başlama tarixini {to} etdi",
       "startCleared": "{name} başlama tarixini götürdü",
       "priority": "{name} prioriteti dəyişdi: {to}",
+      "subtasksAdded": "{name} siyahıdan {count} alt tapşırıq əlavə etdi",
       "subtaskDone": "{name} alt tapşırığı bağladı: {to}",
       "subtaskReopened": "{name} alt tapşırığı yenidən açdı: {to}",
       "board": "{name} tapşırığı köçürdü: {to}",

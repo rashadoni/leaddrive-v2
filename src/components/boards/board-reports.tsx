@@ -188,7 +188,17 @@ export function BoardReports({ divisionId, assignees, onOpenTask, reloadKey, can
           {/* KPI row */}
           <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <KpiCard title={t("kpiWip")} value={data.totals.wip} sub={t("kpiWipSub")} icon={<Layers className="h-5 w-5" />} />
-            <KpiCard title={t("kpiClosed")} value={data.totals.throughputThisWeek} sub={t("kpiClosedSub")} icon={<CheckCircle2 className="h-5 w-5" />} />
+            {/* Work in pieces: a task's closed subtasks count one each (Elvira, 2026-11-12: «45 ədəd vinil»). */}
+            {data.units ? (
+              <KpiCard
+                title={t("kpiUnits")}
+                value={data.units.thisWeek}
+                sub={t("kpiUnitsSub", { tasks: data.units.tasksThisWeek, subtasks: data.units.subtasksThisWeek })}
+                icon={<CheckCircle2 className="h-5 w-5" />}
+              />
+            ) : (
+              <KpiCard title={t("kpiClosed")} value={data.totals.throughputThisWeek} sub={t("kpiClosedSub")} icon={<CheckCircle2 className="h-5 w-5" />} />
+            )}
             <KpiCard title={t("kpiOverdue")} value={data.totals.overdue} sub={t("kpiOverdueSub")} icon={<AlertTriangle className="h-5 w-5" />} />
             <KpiCard title={t("kpiDueSoon")} value={data.totals.dueSoon} sub={t("kpiDueSoonSub")} icon={<Clock className="h-5 w-5" />} />
           </div>
@@ -217,10 +227,10 @@ export function BoardReports({ divisionId, assignees, onOpenTask, reloadKey, can
               <DualLine weeks={data.createdVsResolved} createdLabel={t("created")} resolvedLabel={t("resolved")} />
             </ReportCard>
 
-            <ReportCard title={t("assigneeThroughputTitle")} sub={`${rangeSub} · ${t("byCompletedDate")}`} icon={<Users className="h-4 w-4" />}>
+            <ReportCard title={data.units ? t("unitsByAssigneeTitle") : t("assigneeThroughputTitle")} sub={`${rangeSub} · ${t("byCompletedDate")}`} icon={<Users className="h-4 w-4" />}>
               <HBars
                 empty={t("noClosed")}
-                items={data.assigneeThroughput.map((a) => ({ label: a.name ?? t("unassigned"), value: a.count, color: "#EA580C" }))}
+                items={(data.units?.byAssignee ?? data.assigneeThroughput).map((a) => ({ label: a.name ?? t("unassigned"), value: a.count, color: "#EA580C" }))}
               />
             </ReportCard>
 
