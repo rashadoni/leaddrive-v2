@@ -25,6 +25,7 @@ import {
   matchEmailIntakeRoute,
   type EmailIntakeRoute,
 } from "@/lib/ticketing/email-intake"
+import { customerDescriptionForStorage } from "@/lib/ticketing/portal-ticket-view"
 import { autoExitSequenceEnrollments } from "@/lib/sequence-auto-exit"
 import { firstRfcMessageId } from "@/lib/sequence-threading"
 import { processGoogleAlertsInbound } from "@/lib/social/google-alerts-ingest"
@@ -375,6 +376,9 @@ async function handleConfiguredEmailIntake(payload: InboundEmailPayload, bodyTex
 
     const trimmed = stripReplyQuotes(bodyText).slice(0, 10000)
     if (!trimmed) return NextResponse.json({ success: false, skipped: "empty_body" }, { status: 202 })
+    // Anyone can write to an intake address: stored so that no reader takes the
+    // sender's text for a transcript a chat channel wrote (portal-ticket-view.ts).
+    const description = customerDescriptionForStorage(trimmed)
 
     const contact = await findOrCreateEmailContact(
       match.channel.organizationId,
@@ -407,7 +411,7 @@ async function handleConfiguredEmailIntake(payload: InboundEmailPayload, bodyTex
           orgId: match.channel.organizationId,
           route: match.route,
           subject,
-          body: trimmed,
+          description,
           contactId: contact.contactId,
           companyId: contact.companyId,
           requesterName: contact.requesterName,
@@ -417,7 +421,7 @@ async function handleConfiguredEmailIntake(payload: InboundEmailPayload, bodyTex
       : await createTicketWithAssignment({
           organizationId: match.channel.organizationId,
           subject,
-          description: trimmed,
+          description,
           priority: ticketPriorityFromRoute(match.route.priority),
           categoryId: match.route.categoryId,
           category: match.route.category || "general",
@@ -517,7 +521,7 @@ async function createComplaintFromConfiguredEmail(input: {
   orgId: string
   route: EmailIntakeRoute
   subject: string
-  body: string
+  description: string
   contactId: string | null
   companyId: string | null
   requesterName: string | null
@@ -545,7 +549,7 @@ async function createComplaintFromConfiguredEmail(input: {
         organizationId: input.orgId,
         ticketNumber,
         subject: input.subject,
-        description: input.body,
+        description: input.description,
         priority: complaintPriorityFromRoute(input.route.priority),
         status: "open",
         category: "complaint",
