@@ -91,17 +91,17 @@ export async function transcribeAndStoreInboundVoice(input: {
   organizationId: string
   messageId: string
   audioUrl: string
+  /** The file itself when we already keep it (lib/inbox/meta-media); then the URL is not fetched. */
+  audio?: { bytes: Uint8Array; contentType?: string; filename?: string }
   metadata: Prisma.InputJsonObject
   source: string
 }): Promise<string | null> {
-  const transcription = await transcribeInboundVoice({
-    organizationId: input.organizationId,
-    source: input.source,
-    audioUrl: input.audioUrl,
-  })
+  const transcription = await transcribeInboundVoice(input.audio
+    ? { organizationId: input.organizationId, source: input.source, audio: input.audio }
+    : { organizationId: input.organizationId, source: input.source, audioUrl: input.audioUrl })
   if (!transcription) return null
   try {
-    await storeVoiceTranscript({ ...input, transcription })
+    await storeVoiceTranscript({ organizationId: input.organizationId, messageId: input.messageId, metadata: input.metadata, transcription })
   } catch (error) {
     console.error(`[voice transcript] ${input.source}: saving failed:`, error instanceof Error ? error.message : "unknown error")
     return null

@@ -37,6 +37,9 @@ export const CSP_REPORT_URI = "/api/v1/public/csp-report"
 // v16-webapp-prime.us.tiktok.com, p16-common-sign.tiktokcdn-us.com, …).
 const SOCIAL_MEDIA_CDNS = [
   "https://*.fbcdn.net",
+  // Instagram/Messenger attachments of messages that arrived before files were kept locally
+  // (lib/inbox/meta-media): a voice note or video there plays from Meta's CDN.
+  "https://lookaside.fbsbx.com",
   "https://*.cdninstagram.com",
   "https://*.tiktokcdn.com",
   "https://*.tiktokcdn-us.com",

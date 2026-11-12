@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { fetchAndStoreMetaMedia } from "@/lib/inbox/meta-media"
 import { prisma } from "@/lib/prisma"
 import { upsertSocialConversation } from "@/lib/facebook"
 import { notifyConversationRecipients } from "@/lib/social/notify-recipients"
@@ -169,7 +170,8 @@ export async function POST(req: NextRequest) {
         if (!event.message) continue
         const senderId = event.sender?.id
         const text = event.message?.text || "[media]"
-        const { mediaUrl, messageType } = parseInstagramAttachment(event.message?.attachments)
+        // Both are replaced below when the file is kept.
+        let { mediaUrl, messageType } = parseInstagramAttachment(event.message?.attachments) as { mediaUrl: string | null; messageType: string | null }
         const externalMessageId =
           typeof event.message?.mid === "string" && event.message.mid.trim()
             ? event.message.mid.trim()
@@ -187,6 +189,17 @@ export async function POST(req: NextRequest) {
           })
           if (duplicate) continue
         }
+
+        // Keep the customer's file itself, typed by what it is — not Meta's link and its label
+        // (lib/inbox/meta-media). Not kept: the message holds Meta's link, as before.
+        const storedMedia = mediaUrl ? await fetchAndStoreMetaMedia(mediaUrl, channel.organizationId) : null
+        if (storedMedia) {
+          mediaUrl = storedMedia.url
+          messageType = storedMedia.kind
+        }
+        const storedAudio = storedMedia
+          ? { bytes: storedMedia.bytes, contentType: storedMedia.mime, filename: storedMedia.fileName ?? undefined }
+          : undefined
 
         const senderName = await resolveMetaSenderName({
           organizationId: channel.organizationId, platform: "instagram", senderId,
@@ -279,6 +292,7 @@ export async function POST(req: NextRequest) {
             organizationId: channel.organizationId,
             messageId: inboundMessage.id,
             audioUrl: mediaUrl,
+            audio: storedAudio,
             metadata: messageMetadata,
             sendFallback: send,
             onTranscript: async (transcript) => {
@@ -312,6 +326,7 @@ export async function POST(req: NextRequest) {
             organizationId: channel.organizationId,
             messageId: inboundMessage.id,
             audioUrl: mediaUrl,
+            audio: storedAudio,
             metadata: messageMetadata,
             source: "Instagram",
           })
