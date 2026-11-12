@@ -33299,6 +33299,7 @@
     "openCount": "{count} open",
     "overdueCount": "{count} overdue",
     "allBoards": "All boards",
+    "doneMore": "Show {count} more ({left} left)",
     "showDone": "Show finished",
     "hideDone": "Hide finished",
     "markDone": "Mark «{title}» as done",
@@ -33349,7 +33350,7 @@
       "week": "This week",
       "later": "Later",
       "none": "No due date",
-      "done": "Finished (last 14 days)"
+      "done": "Finished"
     }
   }
 }

@@ -41,7 +41,10 @@ export const GET = withRls(async (req, { orgId, session }) => {
         skip: offset,
         take: limit,
         // id last: equal positions/dates must not reorder between pages (the board reads them all).
-        orderBy: [{ boardPosition: "asc" }, { dueDate: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+        // `sort=completed`: the newest finished first — «Mənim işlərim» reads every finished task a page at a time.
+        orderBy: sp.get("sort") === "completed"
+          ? [{ completedAt: { sort: "desc", nulls: "last" } }, { id: "desc" }]
+          : [{ boardPosition: "asc" }, { dueDate: "asc" }, { createdAt: "asc" }, { id: "asc" }],
         include: {
           assignee: { select: { id: true, name: true, avatar: true } },
           creator: { select: { id: true, name: true } },

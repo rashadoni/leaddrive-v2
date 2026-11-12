@@ -33295,6 +33295,7 @@
     "openCount": "{count} açıq",
     "overdueCount": "{count} gecikmiş",
     "allBoards": "Bütün lövhələr",
+    "doneMore": "Daha {count} göstər ({left} qalıb)",
     "showDone": "Bitənləri göstər",
     "hideDone": "Bitənləri gizlət",
     "markDone": "«{title}» — bitdi kimi qeyd et",
@@ -33345,7 +33346,7 @@
       "week": "Bu həftə",
       "later": "Sonra",
       "none": "Tarixsiz",
-      "done": "Bitənlər (son 14 gün)"
+      "done": "Bitənlər"
     }
   }
 }
