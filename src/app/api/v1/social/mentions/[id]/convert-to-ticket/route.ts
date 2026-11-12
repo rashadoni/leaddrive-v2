@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { createTicketWithAssignment, fireTicketHooks } from "@/lib/ticket-factory"
 import { CONVERTED_STATUS } from "@/lib/social/mention-status"
+import { customerDescriptionForStorage } from "@/lib/ticketing/portal-ticket-view"
 import { withSocialMonitoringMutationFence } from "@/lib/social/with-monitoring-mutation-fence"
 
 export const POST = withSocialMonitoringMutationFence("tickets", "write", async (_req, auth, { params }: { params: Promise<{ id: string }> }) => {
@@ -22,16 +23,23 @@ export const POST = withSocialMonitoringMutationFence("tickets", "write", async 
 
   const rawSubject = mention.text.split(/\r?\n/)[0]
   const subject = `[${mention.platform}] ${rawSubject.length > 80 ? rawSubject.slice(0, 77) + "…" : rawSubject}`
+  // The post, its author's name and its link are a stranger's public text: stored so
+  // that no reader takes a chat transcript in them for the team's (portal-ticket-view.ts).
+  // The header labels are this route's own.
+  const outside = (value: string | null) => (value ? customerDescriptionForStorage(value) : value)
+  const authorName = outside(mention.authorName)
+  const authorHandle = outside(mention.authorHandle)
+  const url = outside(mention.url)
   const description = [
     `Platform: ${mention.platform}`,
-    mention.authorName ? `Author: ${mention.authorName}${mention.authorHandle ? " (@" + mention.authorHandle + ")" : ""}` : null,
-    mention.url ? `URL: ${mention.url}` : null,
+    authorName ? `Author: ${authorName}${authorHandle ? " (@" + authorHandle + ")" : ""}` : null,
+    url ? `URL: ${url}` : null,
     mention.sentiment ? `Sentiment: ${mention.sentiment}` : null,
     mention.reach ? `Reach: ${mention.reach}` : null,
     mention.engagement ? `Engagement: ${mention.engagement}` : null,
     "",
     "Content:",
-    mention.text,
+    customerDescriptionForStorage(mention.text),
   ]
     .filter(Boolean)
     .join("\n")
