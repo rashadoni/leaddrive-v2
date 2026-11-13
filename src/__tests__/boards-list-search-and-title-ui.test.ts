@@ -130,8 +130,14 @@ describe("the boards' list in Bordio's make", () => {
     expect(frame.className).not.toMatch(/rounded-xl|bg-card|\bborder\b/)
     const table = container.querySelector("table")!
     // One variable drives every line; the dark theme dims it instead of each rule naming a colour.
-    expect(table.className).toContain("[--ld-line:hsl(var(--border))]")
+    // Both themes are dimmed: Zeytun works on the light one, and the first cut dimmed only the dark.
+    expect(table.className).toContain("[--ld-line:hsl(var(--border)/0.55)]")
     expect(table.className).toContain("dark:[--ld-line:hsl(var(--border)/0.45)]")
+    expect(table.className).not.toContain("[--ld-line:hsl(var(--border))]")
+    // No column of row buttons: it made the list 75px wider than the page (measured on the live board).
+    expect(table.className).toContain("[&_[data-actions]]:hidden")
+    expect(container.querySelectorAll("tr[data-group-head] td[data-actions]")).toHaveLength(2)
+    expect(container.querySelectorAll("tr[data-row] td[data-actions]")).toHaveLength(2)
     expect(table.className).toContain("[&_tr]:border-[color:var(--ld-line)]")
     expect(table.className).not.toContain("border-border")
     expect(table.className).toContain("[&_tr[data-row]]:h-[49px]")
@@ -163,11 +169,13 @@ describe("the boards' list in Bordio's make", () => {
     expect(cells).toHaveLength(3)
     // Three people: three faces, the primary first, no name beside them, the names on hover.
     const faces = cells[0].querySelector('[data-testid="assignee-faces"]')!
-    expect([...faces.children].map((f) => f.textContent)).toEqual(["S", "G", "K"])
-    expect(cells[0].textContent).toBe("SGK")
+    expect([...faces.children].map((f) => f.textContent)).toEqual(["SH", "GA", "KK"])
+    expect(cells[0].textContent).toBe("SHGAKK")
+    // A face is a filled circle — it has to cover the one under it and be seen on a light page.
+    expect((faces.children[1] as HTMLElement).className).toContain("bg-zinc-200")
     expect(cells[0].querySelector("[data-assignee-trigger]")?.getAttribute("title")).toBe("Sabina Hasanova, Gullu Alekberova, Khayala Khankishiyeva")
     // Six people: four faces and how many more.
-    expect([...cells[1].querySelector('[data-testid="assignee-faces"]')!.children].map((f) => f.textContent)).toEqual(["S", "Ə", "Ə", "Ə", "+2"])
+    expect([...cells[1].querySelector('[data-testid="assignee-faces"]')!.children].map((f) => f.textContent)).toEqual(["SH", "Ə1", "Ə2", "Ə3", "+2"])
     // One person: the face and the name, as before.
     expect(cells[2].querySelector('[data-testid="assignee-faces"]')).toBeNull()
     expect(cells[2].textContent).toBe("SSabina Hasanova")

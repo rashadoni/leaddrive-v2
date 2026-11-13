@@ -147,10 +147,10 @@ type ColumnKey = (typeof DEFAULT_COLUMN_ORDER)[number]
 // Bordio's measures, applied from the table down: cell padding 12/14, one text
 // size, 26px avatars, a line between columns, the tick and the row buttons on hover.
 const BORDIO_TABLE_CLASSES = [
-  // One quiet line colour for the whole list. On the dark theme the shared border is three times
-  // louder against the page than Bordio's own lines, and the list read as a ruled notebook
-  // (owner, 2026-11-13: «как обычная тетрадь в линию»).
-  "[--ld-line:hsl(var(--border))] dark:[--ld-line:hsl(var(--border)/0.45)]",
+  // One quiet line colour for the whole list. The shared border is two to three times louder
+  // against the page than Bordio's own lines — on both themes — and the list read as a ruled
+  // notebook (owner, 2026-11-13: «как обычная тетрадь в линию»). Zeytun works on the light one.
+  "[--ld-line:hsl(var(--border)/0.55)] dark:[--ld-line:hsl(var(--border)/0.45)]",
   "[&_tr]:border-[color:var(--ld-line)] [&_td]:border-[color:var(--ld-line)]",
   "[&_tr[data-row]_td]:px-3.5 [&_tr[data-row]_td]:py-1.5 [&_tr[data-row]]:h-[49px]",
   "[&_tr[data-row]_td[data-col]]:border-l",
@@ -162,11 +162,23 @@ const BORDIO_TABLE_CLASSES = [
   "[&_[data-assignee-trigger]]:max-w-[148px]",
   "[&_[data-avatar]]:h-[26px] [&_[data-avatar]]:w-[26px] [&_[data-avatar]]:text-[11px]",
   "[&_td[data-select]_input]:opacity-0 [&_tr:hover_td[data-select]_input]:opacity-100 [&_td[data-select]_input:checked]:opacity-100 [&_td[data-select]_input:focus-visible]:opacity-100",
-  "[&_tr[data-row]_td[data-actions]]:px-1 [&_td[data-actions]>div]:opacity-0 [&_tr:hover_td[data-actions]>div]:opacity-100 [&_td[data-actions]>div:focus-within]:opacity-100",
+  // No column of row buttons, as in Bordio: it took 86px from the name and made the list wider
+  // than the page. A click opens the task (its card deletes it); the tick selects several.
+  "[&_[data-actions]]:hidden",
 ].join(" ")
 
 /** Faces shown before «+N» when several people are on one task. */
 const MAX_FACES = 4
+// A solid fill: overlapping faces must cover each other, and a tint of the page colour was invisible on the light theme.
+const FACE_CLASSES = "flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-[10px] font-medium ring-2 ring-background dark:bg-zinc-700"
+/** «Gullu Alekberova» → «GA»: two people of one task often share a first letter. */
+function initialsOf(name: string | null | undefined): string {
+  const words = (name ?? "").trim().split(/\s+/u).filter(Boolean)
+  if (words.length === 0) return "?"
+  const first = [...words[0]][0] ?? ""
+  const last = words.length > 1 ? [...words[words.length - 1]][0] ?? "" : ""
+  return (first + last).toLocaleUpperCase("az")
+}
 
 const STATUS_OPTIONS = ["pending", "in_progress", "completed", "cancelled"] as const
 const PRIORITY_OPTIONS = ["low", "medium", "high", "urgent"] as const
@@ -459,7 +471,7 @@ export function InlineTasksTable({
     <>
       {columnOrder.map((key) => headCell(key, "td"))}
       {visibleCustomFields.map((def) => <td key={def.id} className="w-px whitespace-nowrap px-3.5 text-left text-sm font-normal text-muted-foreground">{def.fieldLabel}</td>)}
-      <td />
+      <td data-actions="" />
     </>
   ) : null
   const renderRow = (task: InlineTask) => (
@@ -1510,12 +1522,12 @@ function InlineAssigneeCell({ value, assignee, users, onSave, collaborators = []
         {faces ? (
           <span data-testid="assignee-faces" className="flex items-center">
             {faces.slice(0, MAX_FACES).map((p, i) => (
-              <span key={p.id} data-avatar="" className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-foreground ring-2 ring-background", i > 0 && "-ml-1.5")}>
-                {p.name?.charAt(0)?.toUpperCase() || "?"}
+              <span key={p.id} data-avatar="" className={cn(FACE_CLASSES, "text-zinc-700 dark:text-zinc-100", i > 0 && "-ml-1.5")}>
+                {initialsOf(p.name)}
               </span>
             ))}
             {faces.length > MAX_FACES && (
-              <span data-avatar="" className="-ml-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground ring-2 ring-background">
+              <span data-avatar="" className={cn(FACE_CLASSES, "-ml-1.5 text-zinc-500 dark:text-zinc-300")}>
                 +{faces.length - MAX_FACES}
               </span>
             )}
