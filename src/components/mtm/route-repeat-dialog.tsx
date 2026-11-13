@@ -6,6 +6,8 @@ import { CalendarDays, Repeat } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { mtmChipClass } from "@/components/mtm/calm-classes"
+import { formatDate } from "@/lib/format-date"
 import {
   MTM_ROUTE_REPEAT_MAX_ROUTES,
   isoWeekday,
@@ -22,7 +24,7 @@ function addDays(dateKey: string, days: number): string {
 }
 
 function dayLabel(dateKey: string, locale: string, options: Intl.DateTimeFormatOptions): string {
-  return new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" }).format(new Date(`${dateKey}T00:00:00.000Z`))
+  return formatDate(new Date(`${dateKey}T00:00:00.000Z`), locale, { ...options, timeZone: "UTC" })
 }
 
 /**
@@ -143,10 +145,10 @@ export function MtmRouteRepeatDialog({ open, source, today, publish, orgId, onCl
                       key={day}
                       type="button"
                       size="sm"
-                      variant={weekday === day ? "default" : "outline"}
+                      variant="outline"
                       aria-pressed={weekday === day}
                       data-testid={`mtm-route-repeat-weekday-${day}`}
-                      className="min-h-10 min-w-12"
+                      className={`min-h-10 min-w-12 ${mtmChipClass(weekday === day)}`}
                       onClick={() => setWeekday(day)}
                     >
                       {name}
@@ -163,10 +165,10 @@ export function MtmRouteRepeatDialog({ open, source, today, publish, orgId, onCl
                     key={weeks}
                     type="button"
                     size="sm"
-                    variant={everyWeeks === weeks ? "default" : "outline"}
+                    variant="outline"
                     aria-pressed={everyWeeks === weeks}
                     data-testid={`mtm-route-repeat-every-${weeks}`}
-                    className="min-h-10"
+                    className={`min-h-10 ${mtmChipClass(everyWeeks === weeks)}`}
                     onClick={() => setEveryWeeks(weeks)}
                   >
                     {t(weeks === 1 ? "everyWeek" : "everyTwoWeeks")}
