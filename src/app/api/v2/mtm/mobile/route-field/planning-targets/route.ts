@@ -140,6 +140,7 @@ function planningContactSelect(
   organizationId: string,
   routeDate: Date,
   customerAssignmentRequired: boolean,
+  clinicId: string | null = null,
 ) {
   const assignmentWindow = activeFieldAssignmentWindow(routeDate)
   return {
@@ -148,6 +149,8 @@ function planningContactSelect(
     workplaces: {
       where: {
         ...activeWorkplaceWindow(routeDate),
+        // Opened from a clinic: that clinic is the place, whichever is primary.
+        ...(clinicId ? { customerId: clinicId } : {}),
         customer: {
           organizationId,
           deletedAt: null,
@@ -231,6 +234,14 @@ export const GET = withMobileRls(async (req, auth) => {
     return noStoreJson({ error: "Planning target filter is invalid", code: "MTM_ROUTE_FIELD_PLANNING_TARGET_FILTER_INVALID" }, { status: 400 })
   }
 
+  // «Врачи клиники» (Zeytun 2026-11-13: «выбор клиники будет для того, чтоб
+  // выбрать там врачей»): with doctors, only those working at this clinic on
+  // the route's day, each placed at this clinic.
+  const clinicId = params.get("customerId")?.trim() || null
+  if (clinicId && (kind !== "contact" || clinicId.length > ROUTE_FIELD_PLANNING_TARGET_ID_MAX_LENGTH)) {
+    return noStoreJson({ error: "Planning target filter is invalid", code: "MTM_ROUTE_FIELD_PLANNING_TARGET_FILTER_INVALID" }, { status: 400 })
+  }
+
   const context = {
     organizationId: auth.orgId,
     agentId: actor.agentId,
@@ -240,6 +251,7 @@ export const GET = withMobileRls(async (req, auth) => {
     search,
     objectType,
     organizationKind,
+    clinicId,
   }
   const rawPage = params.get("page")
   let page: ReturnType<typeof readRouteFieldPlanningTargetPage> | null = null
@@ -387,6 +399,7 @@ export const GET = withMobileRls(async (req, auth) => {
   if (searchWhere) contactFilters.push(searchWhere)
   const afterPage = contactKeysetFilter(page)
   if (afterPage) contactFilters.push(afterPage)
+  if (clinicId) contactFilters.push({ workplaces: { some: { ...activeWorkplaceWindow(routeDate), customerId: clinicId } } })
   const commonWhere: Prisma.MtmContactWhereInput = {
     organizationId: auth.orgId,
     deletedAt: null,
@@ -429,7 +442,7 @@ export const GET = withMobileRls(async (req, auth) => {
     where: phase === "direct" ? directWhere : customerAssignedWhere,
     orderBy: [{ displayName: "asc" }, { id: "asc" }],
     take: limit + 1,
-    select: planningContactSelect(actor.agentId, auth.orgId, routeDate, phase === "customer"),
+    select: planningContactSelect(actor.agentId, auth.orgId, routeDate, phase === "customer", clinicId),
   }) as unknown as PlanningContact[]
   const pageRows = rows.slice(0, limit)
   const targets = pageRows

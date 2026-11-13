@@ -69,6 +69,8 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
   const [loading, setLoading] = useState(true)
   const [sectionsLoading, setSectionsLoading] = useState(true) // distinct from task loading
   const [view, setView] = useState<DeptView>("list")
+  // The «Hesabatlar» tab is per person (lib/tasks/board-reports-access.ts).
+  const [reportsOpen, setReportsOpen] = useState(true)
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
 
   const TASK_CAP = 200 // GET /tasks rejects limit > 200 unless the request names one board
@@ -83,6 +85,7 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
       .then((j) => {
         if (!alive) return
         const all = (j?.data?.divisions ?? []) as SectionLite[]
+        setReportsOpen(j?.data?.me?.boardReports !== false)
         setSections(all.filter((d) => d.parentDivisionId === division.id))
       })
       .catch(() => {})
@@ -237,7 +240,7 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
 
       {/* Tabs — the list first: it is what the folder opens in. */}
       <div data-crm-tabs="" className="mb-3 inline-flex w-fit overflow-hidden rounded-md border">
-        {(["list", "board", "reports"] as const).map((v) => (
+        {(["list", "board", "reports"] as const).filter((v) => v !== "reports" || reportsOpen).map((v) => (
           <button key={v} type="button" data-crm-tab="" data-state={view === v ? "active" : "inactive"} onClick={() => setView(v)} className={`px-4 py-1.5 text-sm font-medium ${view === v ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}>
             {v === "list" ? tc("list") : v === "board" ? t("boardView") : t("reportsTab")}
           </button>
@@ -265,7 +268,7 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
         ))}
       </div>
 
-      {view === "reports" ? (
+      {view === "reports" && reportsOpen ? (
         <div className="flex-1 overflow-hidden rounded-lg border">
           <BoardReports divisionId={division.id} assignees={assignees} onOpenTask={setOpenTaskId} sectionsParam={sectionsParam} />
         </div>
@@ -291,6 +294,7 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
             categoryColumnLabel={tc("quarter")}
             sortBy={listSort}
             onSortChange={setListSort}
+            look="bordio"
           />
         </div>
       ) : loading || sectionsLoading ? (

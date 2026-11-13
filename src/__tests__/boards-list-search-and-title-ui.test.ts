@@ -87,6 +87,50 @@ describe("the board's list view searches with the board's own search", () => {
   })
 })
 
+// The client, 2026-11-13: «дизайн намного красивее в бордио… расстояние между строк, оформление строк, величина шрифтов».
+describe("the boards' list in Bordio's make", () => {
+  const render = async (look?: "bordio") => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ success: true, data: [] }))))
+    try { window.localStorage.clear() } catch { /* no storage */ }
+    await act(async () => {
+      root.render(createElement(InlineTasksTable, {
+        tasks: [task("a", "Kampaniya noyabr"), { ...task("b", "Banner"), status: "done" }],
+        selectedIds: new Set<string>(), onToggleSelect: noop, onToggleSelectAll: noop,
+        onUpdate: async () => {}, onDelete: noop, onEdit: noop, onOpenDetail: noop,
+        statusLabels: {}, priorityLabels: {}, customFieldDefs: [], users: [], sortBy: "", onSortChange: noop,
+        customGroups: [{ key: "todo", label: "Yeni tapşırıq" }, { key: "done", label: "Tamamlandı" }], groupKeyOf: (x: { status: string }) => x.status,
+        search: "", onSearchChange: noop, look,
+      } as never))
+    })
+    await flush()
+  }
+  const texts = (row: Element) => [...row.children].map((cell) => cell.textContent?.trim() ?? "")
+
+  it("each group's own line carries its name, its count and the column names — status and date first", async () => {
+    await render("bordio")
+    const heads = [...container.querySelectorAll("tr[data-group-head]")]
+    expect(heads).toHaveLength(2)
+    const cells = texts(heads[0])
+    expect(cells[0]).toBe("Yeni tapşırıq1")
+    expect(cells.slice(1, 5)).toEqual(["Статус", "Срок", "Приоритет", "Исполнитель"])
+    // The header band is kept for screen readers only, and the table wears the look.
+    expect(container.querySelector("thead tr")?.className).toContain("sr-only")
+    expect(container.querySelector("table")?.getAttribute("data-look")).toBe("bordio")
+    // A row's cells follow the same order.
+    const row = container.querySelector("tr[data-row]")!
+    expect([...row.querySelectorAll("td[data-col]")].map((td) => td.getAttribute("data-col")).slice(0, 4)).toEqual(["status", "dueDate", "priority", "assignee"])
+  })
+
+  it("the CRM's own list keeps its header band and its column order", async () => {
+    await render()
+    expect(container.querySelector("tr[data-group-head]")).toBeNull()
+    expect(container.querySelector("thead tr")?.className).not.toContain("sr-only")
+    const row = container.querySelector("tr[data-row]")!
+    const order = [...row.querySelectorAll("td[data-col]")].map((td) => td.getAttribute("data-col"))
+    expect(order.indexOf("priority")).toBeLessThan(order.indexOf("status"))
+  })
+})
+
 describe("a board names itself from what the sidebar already read", () => {
   it("knows every board's name once the sidebar tree has loaded", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ success: true, data: { divisions: [
