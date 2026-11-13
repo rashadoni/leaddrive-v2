@@ -871,6 +871,7 @@ function BoardInner() {
             onSortChange={setListSort}
             search={search}
             onSearchChange={setSearch}
+            look="bordio"
           />
         </div>
       )}
