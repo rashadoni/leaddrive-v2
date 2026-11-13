@@ -514,6 +514,10 @@ export function MtmRouteBuilder({
   const [direction, setDirection] = useState<CandidateDirection>("ORGANIZATION")
   const [routeTargetTypes, setRouteTargetTypes] = useState<MtmRouteTargetType[]>(() => coerceMtmRouteTargetTypes(null))
   const [routeTargetTypeId, setRouteTargetTypeId] = useState("")
+  // A clinic opened for its doctors (Zeytun 2026-11-13: «выбор клиники будет
+  // для того, чтоб выбрать там врачей… визит только к субъектам»): the doctor
+  // list filtered to that clinic, and the target type to return to.
+  const [clinicFocus, setClinicFocus] = useState<{ id: string; name: string; customer: Candidate["customer"]; returnTo: MtmRouteTargetType | null } | null>(null)
   const [candidateSort, setCandidateSort] = useState<CandidateSort>("NAME")
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1)
@@ -1037,6 +1041,7 @@ export function MtmRouteBuilder({
   const coverageLocale = locale === "az" ? "az" : locale === "en" ? "en" : "ru"
   const selectedAgentName = agents.find((agent) => agent.id === primaryAgentId)?.name
   const enabledRouteTargetTypes = useMemo(() => routeTargetTypes.filter((target) => target.enabled), [routeTargetTypes])
+  const hasDoctorTarget = enabledRouteTargetTypes.some((target) => target.direction === "DOCTOR")
   const selectedRouteTargetType = enabledRouteTargetTypes.find((target) => target.id === routeTargetTypeId)
     ?? enabledRouteTargetTypes.find((target) => target.direction === direction)
     ?? enabledRouteTargetTypes[0]
@@ -1131,6 +1136,7 @@ export function MtmRouteBuilder({
   }, [candidateFilters, customerSearch, direction, selectedOrganizationName, t])
 
   function changeRouteTargetType(target: MtmRouteTargetType) {
+    setClinicFocus(null)
     setRouteTargetTypeId(target.id)
     setDirection(target.direction)
     setInlineAssignmentOpen(false)
@@ -1143,6 +1149,24 @@ export function MtmRouteBuilder({
     }
   }
 
+  /** A clinic is chosen to pick its doctors; the clinic itself is not a stop. */
+  function openClinicDoctors(candidate: Candidate) {
+    const doctors = enabledRouteTargetTypes.find((target) => target.direction === "DOCTOR")
+    if (!doctors) return false
+    const returnTo = enabledRouteTargetTypes.find((target) => target.id === routeTargetTypeId) ?? null
+    changeRouteTargetType(doctors)
+    setCandidateFilters({ ...emptyCandidateFilters, customerId: candidate.customerId })
+    setCandidateOrganizationOptions([{ id: candidate.customerId, name: candidate.name }])
+    setClinicFocus({ id: candidate.customerId, name: candidate.name, customer: candidate.customer, returnTo })
+    return true
+  }
+
+  function closeClinicDoctors() {
+    const returnTo = clinicFocus?.returnTo
+    if (returnTo) changeRouteTargetType(returnTo)
+    else setClinicFocus(null)
+  }
+
   function directionLabelKey(value: CandidateDirection) {
     if (value === "DOCTOR") return "directionDoctors"
     if (value === "PHARMACY") return "directionPharmacies"
@@ -1150,6 +1174,7 @@ export function MtmRouteBuilder({
   }
 
   function clearAllCandidateFilters() {
+    setClinicFocus(null)
     setCustomerSearch("")
     setCandidateFilters(emptyCandidateFilters)
     setCandidateDistrictOptions([])
@@ -2197,7 +2222,10 @@ export function MtmRouteBuilder({
                   value={candidateFilters.customerId}
                   values={candidateOrganizationOptions}
                   allLabel={t("all")}
-                  onChange={(value) => setCandidateFilters((current) => ({ ...current, customerId: value }))}
+                  onChange={(value) => {
+                    if (clinicFocus && value !== clinicFocus.id) setClinicFocus(null)
+                    setCandidateFilters((current) => ({ ...current, customerId: value }))
+                  }}
                 />
                 {direction === "DOCTOR" ? (
                   <>
@@ -2236,6 +2264,21 @@ export function MtmRouteBuilder({
             <p className="mt-2 text-xs text-muted-foreground">{t("capacityPolicyPending")}</p>
               </div>
             </details>
+            {clinicFocus ? (
+              <div data-testid="mtm-route-clinic-doctors" role="status" className="mt-2 flex flex-wrap items-center gap-2 border border-l-4 border-border border-l-primary bg-card px-3 py-2 text-sm">
+                <span className="min-w-0 flex-1">{t("clinicDoctorsBanner", { name: clinicFocus.name })}</span>
+                {!customerSearchLoading && visibleCandidates.length === 0 && !stops.some((stop) => stop.customerId === clinicFocus.id && !stop.contactId) ? (
+                  <Button type="button" size="sm" variant="outline" className="min-h-10" data-testid="mtm-route-clinic-add-itself" onClick={() => {
+                    setStops((current) => [...current, { customerId: clinicFocus.id, contactId: null, customer: clinicFocus.customer, contact: null }])
+                  }}>
+                    {t("clinicAddWithoutDoctor")}
+                  </Button>
+                ) : null}
+                <Button type="button" size="sm" variant="ghost" className="min-h-10" data-testid="mtm-route-clinic-back" onClick={closeClinicDoctors}>
+                  {t("clinicDoctorsBack")}
+                </Button>
+              </div>
+            ) : null}
             {inlineAssignmentOpen && canManageAssignments ? (
               <RouteBuilderInlineAssignmentPanel
                 open={inlineAssignmentOpen}
@@ -2289,15 +2332,23 @@ export function MtmRouteBuilder({
                     data-testid="mtm-route-candidate"
                     type="button"
                     disabled={Boolean(selectedPosition)}
-                    aria-label={selectedPosition ? t("customerAlreadySelected", { position: selectedPosition }) : t("addCandidateAction", { name: candidate.name })}
-                    onClick={() => setStops((current) => [...current, {
+                    data-clinic-doctors={!candidate.contactId && candidate.customer.objectType === "CLINIC" && hasDoctorTarget ? "true" : undefined}
+                    aria-label={selectedPosition
+                      ? t("customerAlreadySelected", { position: selectedPosition })
+                      : !candidate.contactId && candidate.customer.objectType === "CLINIC" && hasDoctorTarget
+                        ? t("clinicDoctorsOpen", { name: candidate.name })
+                        : t("addCandidateAction", { name: candidate.name })}
+                    onClick={() => {
+                      if (!candidate.contactId && candidate.customer.objectType === "CLINIC" && openClinicDoctors(candidate)) return
+                      setStops((current) => [...current, {
                       customerId: candidate.customerId,
                       contactId: candidate.contactId,
                       customer: candidate.customer,
                       contact: candidate.contactId
                         ? { id: candidate.contactId, displayName: candidate.name, specialtyName: candidate.specialtyName }
                         : null,
-                    }])}
+                    }])
+                    }}
                     className={`group flex min-h-16 items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-default disabled:border-emerald-200 disabled:opacity-100 dark:disabled:border-emerald-900 ${
                       candidateIndex === visibleCandidates.length - 1 && visibleCandidates.length % 2 === 1
                         ? "sm:col-span-2"
@@ -2340,7 +2391,7 @@ export function MtmRouteBuilder({
                     </span>
                     {!selectedPosition ? (
                       <span className="hidden shrink-0 rounded-full border border-primary/40 px-2.5 py-1 text-xs font-semibold text-primary sm:inline-flex">
-                        {t("addCandidateShort")}
+                        {!candidate.contactId && candidate.customer.objectType === "CLINIC" && hasDoctorTarget ? t("clinicDoctorsShort") : t("addCandidateShort")}
                       </span>
                     ) : null}
                   </button>
