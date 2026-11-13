@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { withRlsAuth } from "@/lib/with-rls"
+import { boardPeopleIds } from "@/lib/tasks/board-people"
 
 /**
  * GET /api/v1/users/assignable
@@ -17,11 +18,18 @@ import { withRlsAuth } from "@/lib/with-rls"
  * headroom for power users while throttling a compromised JWT enumerating
  * the user directory at high speed.
  *
+ * `?divisionId=<board>` narrows the list to that board's own people
+ * (src/lib/tasks/board-people.ts): a board task is given to its board's
+ * members, not to the whole company. It only ever narrows what the caller
+ * could read in full, so it needs no access check of its own.
+ *
  * Returns: [{ id, name, email, avatar }]
  */
 export const GET = withRlsAuth("tasks", "read", async (req, authResult) => {
   const orgId = authResult.orgId
-  const requestedRole = new URL(req.url).searchParams.get("role")
+  const query = new URL(req.url).searchParams
+  const requestedRole = query.get("role")
+  const divisionId = query.get("divisionId")
 
   if (!checkRateLimit(`users-assignable:${authResult.userId}`, { maxRequests: 120, windowMs: 60_000 })) {
     console.warn(`[users/assignable GET] 429 rate-limit hit for user ${authResult.userId}`)
@@ -29,10 +37,12 @@ export const GET = withRlsAuth("tasks", "read", async (req, authResult) => {
   }
 
   try {
+    const boardPeople = divisionId ? await boardPeopleIds(prisma, orgId, divisionId) : null
     const users = await prisma.user.findMany({
       where: {
         organizationId: orgId,
         isActive: true,
+        ...(boardPeople ? { id: { in: boardPeople } } : {}),
         // An outside reviewer is never an assignee.
         ...(requestedRole ? { role: requestedRole } : { role: { not: "reviewer" } }),
       },

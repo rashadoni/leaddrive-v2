@@ -95,6 +95,7 @@ pgDescribe("Bordio-style task card on a real Postgres", () => {
   let time!: typeof import("@/app/api/v1/tasks/[id]/time/route")
   let taskRoute!: typeof import("@/app/api/v1/tasks/[id]/route")
   let importRoute!: typeof import("@/app/api/v1/divisions/[id]/import-external/route").POST
+  let assignable!: typeof import("@/app/api/v1/users/assignable/route").GET
 
   const as = (id: string, role: string) => {
     session.current = { user: { id, organizationId: ORG, role, email: `${id}@card.test`, name: id } }
@@ -119,6 +120,7 @@ pgDescribe("Bordio-style task card on a real Postgres", () => {
     time = await import("@/app/api/v1/tasks/[id]/time/route")
     taskRoute = await import("@/app/api/v1/tasks/[id]/route")
     importRoute = (await import("@/app/api/v1/divisions/[id]/import-external/route")).POST
+    assignable = (await import("@/app/api/v1/users/assignable/route")).GET
     await bypass(async () => {
       await prisma.organization.create({ data: { id: ORG, name: "card", slug: "card", modules: { crm: true, tasks: true } } })
       for (const [id, role] of [["admin", "admin"], ["sabina", "sales"], ["nazrin", "sales"], ["aytan", "sales"], ["outsider", "sales"]]) {
@@ -209,6 +211,42 @@ pgDescribe("Bordio-style task card on a real Postgres", () => {
     const read = await call(taskRoute.GET(request("GET", "/api/v1/tasks/task-1"), onTask("task-1")))
     expect(read.body.data.reporter?.name).toBe("nazrin")
     expect((await call(taskRoute.PATCH(request("PATCH", "/api/v1/tasks/task-1", { reporterId: "nobody" }), onTask("task-1")))).status).toBe(400)
+  })
+
+  // Zeytun, 2026-11-13: «digər departamentlərdən adamların adlarını görməli deyiləm… bir sürü ad çıxır» — the card
+  // offered the whole company where the board has its own people. Read from the tables the «Üzvlər» tab writes.
+  it("a board's task is offered the board's own people: members, the department's, the heads — not the rest of the company", async () => {
+    const names = async (query: string) => {
+      const res = await call(assignable(request("GET", `/api/v1/users/assignable${query}`), {} as never))
+      expect(res.status, JSON.stringify(res.body)).toBe(200)
+      return (res.body.data as Array<{ name: string }>).map((u) => u.name)
+    }
+    as("sabina", "sales")
+    // Without a board — everyone, as every other screen of the CRM expects.
+    expect(await names("")).toEqual(["admin", "aytan", "nazrin", "outsider", "sabina"])
+    // On the board — its three members; neither the admin (who sees every board) nor a colleague from elsewhere.
+    expect(await names(`?divisionId=${BOARD}`)).toEqual(["aytan", "nazrin", "sabina"])
+    // A board that does not exist narrows nothing rather than offering nobody.
+    expect(await names("?divisionId=no-such-board")).toEqual(["admin", "aytan", "nazrin", "outsider", "sabina"])
+
+    await bypass(async () => {
+      await prisma.division.create({ data: { id: "card-dept", organizationId: ORG, key: "CDEP", name: "Card department", isDepartment: true, headUserId: "admin" } })
+      await prisma.division.update({ where: { id: BOARD }, data: { parentDivisionId: "card-dept" } })
+      await prisma.boardPermission.create({ data: { organizationId: ORG, userId: "outsider", divisionId: "card-dept", canView: true } })
+    })
+    try {
+      // Let onto the department — on each of its boards; its head too.
+      expect(await names(`?divisionId=${BOARD}`)).toEqual(["admin", "aytan", "nazrin", "outsider", "sabina"])
+      // The board's own «no» beats the department's «yes».
+      await bypass(() => prisma.boardPermission.create({ data: { organizationId: ORG, userId: "outsider", divisionId: BOARD, canView: false } }))
+      expect(await names(`?divisionId=${BOARD}`)).toEqual(["admin", "aytan", "nazrin", "sabina"])
+    } finally {
+      await bypass(async () => {
+        await prisma.boardPermission.deleteMany({ where: { organizationId: ORG, userId: "outsider" } })
+        await prisma.division.update({ where: { id: BOARD }, data: { parentDivisionId: null } })
+        await prisma.division.delete({ where: { id: "card-dept" } })
+      })
+    }
   })
 
   it("a timer runs on one task at a time, time can be written by hand, and the database refuses two running timers", async () => {

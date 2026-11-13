@@ -568,7 +568,8 @@ function BoardInner() {
   const fetchAssignables = useCallback(async (): Promise<OrgUser[]> => {
     if (assignablesRef.current) return assignablesRef.current
     try {
-      const res = await fetch("/api/v1/users/assignable", { credentials: "include" })
+      // The board's own people (board-people.ts), not the whole company.
+      const res = await fetch(`/api/v1/users/assignable?divisionId=${encodeURIComponent(divisionId)}`, { credentials: "include" })
       const j = res.ok ? await res.json() : null
       const list = (j?.data ?? []) as OrgUser[]
       assignablesRef.current = list

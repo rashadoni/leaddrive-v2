@@ -70,7 +70,7 @@ beforeEach(() => {
       { id: "b1", name: "Pharmastore", parentDivisionId: "dig", boardColumns: [] },
       { id: "b2", name: "Zeytun", parentDivisionId: "dig", boardColumns: [] },
     ] })
-    if (url === "/api/v1/users/assignable") return json([{ id: "s", name: "Sabina Hasanova" }, { id: "n", name: "Nazrin Shirinova" }, { id: "a", name: "Aytan Mushkurova" }])
+    if (url.startsWith("/api/v1/users/assignable")) return json([{ id: "s", name: "Sabina Hasanova" }, { id: "n", name: "Nazrin Shirinova" }, { id: "a", name: "Aytan Mushkurova" }])
     if (url.startsWith("/api/v1/custom-fields")) return json([{ fieldName: "brand", isActive: true, options: ["Zeytun", "Pharmastore"] }])
     if (url.startsWith("/api/v1/task-types")) return json([{ id: "1", name: "digital_marketing", displayName: "DIGITAL MARKETING", color: "#000", sortOrder: 0, isActive: true }])
     return json({})
@@ -375,6 +375,31 @@ describe("a picture the file gate refused", () => {
     } finally {
       clicked.mockRestore()
       TASK.attachments = was
+    }
+  })
+
+  // Zeytun, 2026-11-13, an employee on Pharmastore choosing her manager as the reporter: «digər departamentlərdən
+  // adamların adlarını görməli deyiləm… bir sürü ad çıxır». The card asked for the whole company.
+  it("offers the board's own people for assignee, reporter and co-assignee, and keeps a name already on the task", async () => {
+    const task = TASK as unknown as Record<string, unknown>
+    const was = { assignedTo: task.assignedTo, assignee: task.assignee }
+    // The task is already given to someone who is not on this board.
+    Object.assign(task, { assignedTo: "dinara", assignee: { id: "dinara", name: "Dinara Mehdiyeva" } })
+    try {
+      await open()
+      // The people are asked for the task's own board, once it is known which board that is.
+      expect(calls.filter((c) => c.includes("/api/v1/users/assignable"))).toEqual(["GET /api/v1/users/assignable?divisionId=b1"])
+      const selects = [...container.querySelectorAll("select")] as HTMLSelectElement[]
+      const names = (select: HTMLSelectElement) => [...select.options].slice(1).map((o) => o.text)
+      const assignee = selects.find((s) => s.value === "dinara")!
+      // Her name stays in its field, among the board's three.
+      expect(names(assignee)).toEqual(["Aytan Mushkurova", "Dinara Mehdiyeva", "Nazrin Shirinova", "Sabina Hasanova"])
+      // «Add a person» offers the board's people only: she is the assignee already, the rest are the board's.
+      const add = selects.find((s) => s.options[0]?.text.startsWith("+"))!
+      expect(names(add).every((name) => ["Aytan Mushkurova", "Nazrin Shirinova", "Sabina Hasanova"].includes(name))).toBe(true)
+      expect(names(add)).not.toContain("Dinara Mehdiyeva")
+    } finally {
+      Object.assign(task, was)
     }
   })
 
