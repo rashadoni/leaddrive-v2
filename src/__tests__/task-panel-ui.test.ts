@@ -65,6 +65,11 @@ beforeEach(() => {
       return json({ entries: [], totalMinutes: 90, running: timer.running })
     }
     if (url === "/api/v1/tasks/t1/feed") return json(FEED)
+    if (url === "/api/v1/divisions") return json({ divisions: [
+      { id: "dig", name: "Digital Marketing", isDepartment: true },
+      { id: "b1", name: "Pharmastore", parentDivisionId: "dig", boardColumns: [] },
+      { id: "b2", name: "Zeytun", parentDivisionId: "dig", boardColumns: [] },
+    ] })
     if (url === "/api/v1/users/assignable") return json([{ id: "s", name: "Sabina Hasanova" }, { id: "n", name: "Nazrin Shirinova" }, { id: "a", name: "Aytan Mushkurova" }])
     if (url.startsWith("/api/v1/custom-fields")) return json([{ fieldName: "brand", isActive: true, options: ["Zeytun", "Pharmastore"] }])
     if (url.startsWith("/api/v1/task-types")) return json([{ id: "1", name: "digital_marketing", displayName: "DIGITAL MARKETING", color: "#000", sortOrder: 0, isActive: true }])
@@ -307,6 +312,16 @@ describe("a picture the file gate refused", () => {
       TASK.attachments = was.attachments
       delete (FEED as { me?: unknown }).me
     }
+  })
+
+  // 2026-11-13: the card showed the raw key «taskPanel.board» — the label was never added to the messages.
+  it("names the board field in words and never shows a message key", async () => {
+    await open()
+    const field = container.querySelector('[data-testid="task-panel-board"]') as HTMLSelectElement
+    expect(field).not.toBeNull()
+    expect([...field.options].map((o) => o.text)).toEqual(["Digital Marketing · Pharmastore", "Digital Marketing · Zeytun"])
+    expect(container.textContent).toContain("Доска")
+    expect(container.textContent).not.toMatch(/taskPanel\.[a-zA-Z]/u)
   })
 })
 
