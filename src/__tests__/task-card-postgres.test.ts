@@ -247,6 +247,42 @@ pgDescribe("Bordio-style task card on a real Postgres", () => {
         await prisma.division.delete({ where: { id: "card-dept" } })
       })
     }
+  // Ulviyya (Zeytun), 2026-11-13: «в тасках включите функцию жирный шрифт как в бордио». Two columns hold one
+  // text; what is read here is the rows themselves, because a mock would only show what the route meant to write.
+  it("a formatted description is stored cleaned, its plain text is derived from it, and a plain edit drops the formatting", async () => {
+    const stored = () => bypass(() => prisma.task.findUniqueOrThrow({ where: { id: "task-1" }, select: { description: true, descriptionHtml: true } }))
+    const patch = (body: unknown) => call(taskRoute.PATCH(request("PATCH", "/api/v1/tasks/task-1", body), onTask("task-1")))
+
+    // The text sent beside the HTML is not believed; a script, a handler and a link do not reach the row.
+    const first = await patch({
+      description: "something else entirely",
+      descriptionHtml: '<p onclick="x()">Banner <strong>1080 × 1920</strong><script>alert(1)</script> <a href="javascript:x()">sayt</a></p><ol><li><p>Vizual</p></li><li><p><u>Nazrin</u> təsdiq edir</p></li></ol>',
+    })
+    expect(first.status, JSON.stringify(first.body)).toBe(200)
+    expect(await stored()).toEqual({
+      description: "Banner 1080 × 1920 sayt\n1. Vizual\n2. Nazrin təsdiq edir",
+      descriptionHtml: "<p>Banner <strong>1080 × 1920</strong> sayt</p><ol><li><p>Vizual</p></li><li><p><u>Nazrin</u> təsdiq edir</p></li></ol>",
+    })
+    // The card reads both back.
+    const read = await call(taskRoute.GET(request("GET", "/api/v1/tasks/task-1"), onTask("task-1")))
+    expect(read.body.data.descriptionHtml).toContain("<strong>1080 × 1920</strong>")
+    expect(read.body.data.description).toContain("1. Vizual")
+
+    // Text without formatting is an ordinary description: no HTML is kept for it.
+    expect((await patch({ descriptionHtml: "<p>Sadə mətn</p><p>ikinci sətir</p>" })).status).toBe(200)
+    expect(await stored()).toEqual({ description: "Sadə mətn\nikinci sətir", descriptionHtml: null })
+
+    // An edit that knows nothing of formatting (the full form, voice, an AI tool) must not leave old formatting behind.
+    expect((await patch({ descriptionHtml: "<p><em>kursiv</em></p>" })).status).toBe(200)
+    expect((await stored()).descriptionHtml).toBe("<p><em>kursiv</em></p>")
+    expect((await patch({ description: "yeni sadə mətn" })).status).toBe(200)
+    expect(await stored()).toEqual({ description: "yeni sadə mətn", descriptionHtml: null })
+
+    // A description longer than the old 5 000 limit (Bordio's own run to ~9 000) can be edited now.
+    const long = "uzun mətn ".repeat(900)
+    expect((await patch({ description: long })).status).toBe(200)
+    expect((await stored()).description).toBe(long)
+    await patch({ description: "" })
   })
 
   it("a timer runs on one task at a time, time can be written by hand, and the database refuses two running timers", async () => {

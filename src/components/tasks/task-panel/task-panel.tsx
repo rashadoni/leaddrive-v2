@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import {
   Calendar, CalendarClock, ChevronsUp, Clock, Download, Hourglass, Link2, ListChecks, MoreHorizontal, Paperclip, Play, Repeat, Square, Tag, Trash2, X,
@@ -14,6 +14,7 @@ import { applyTaskPatch, revertTaskPatch } from "@/lib/client/optimistic-task-pa
 import { STATUS_TO_STAGE, foldToVisibleStage } from "@/lib/tasks/board-columns"
 import { listLinesOf, newSubtaskTitles } from "@/lib/tasks/list-lines"
 import { withPeopleOnTask } from "@/lib/tasks/board-people"
+import { descriptionTextOf } from "@/lib/tasks/rich-description"
 import { fileDownloadUrl } from "@/lib/tasks/message-files"
 import { saveTaskFiles } from "@/lib/tasks/save-task-files"
 
@@ -26,12 +27,17 @@ import { saveTaskFiles } from "@/lib/tasks/save-task-files"
  * The board stays visible to the left; Escape or ✕ closes.
  */
 
+// The editor brings its own library; the card opens without waiting for it, showing the text meanwhile.
+const TaskDescriptionEditor = lazy(() => import("@/components/tasks/task-panel/task-description-editor"))
+
 interface Person { id: string; name: string; avatar?: string | null }
 interface PanelTask {
   id: string
   divisionId: string | null
   title: string
   description: string | null
+  /** The description with its formatting; null while it is plain text. */
+  descriptionHtml?: string | null
   status: string
   priority: string
   type: string | null
@@ -518,32 +524,51 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                 </div>
               )}
 
-              <section className="border-t pt-4">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <h3 className="text-sm font-semibold">{t("description")}</h3>
-                  {canEdit && listToAdd.length > 0 && (
-                    <button
-                      type="button"
-                      data-testid="task-panel-split-list"
-                      disabled={splitting}
-                      onClick={() => void splitList()}
-                      className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-primary/60 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
-                    >
-                      <ListChecks className="h-3.5 w-3.5" /> {t("splitList", { count: String(listToAdd.length) })}
-                    </button>
-                  )}
-                  {splitNote && <span role="status" className="ml-auto text-xs text-muted-foreground">{splitNote}</span>}
-                </div>
-                <textarea
-                  value={description}
-                  readOnly={!canEdit}
-                  onChange={(e) => setDescription(e.target.value)}
-                  onBlur={() => { if (description !== (task.description ?? "")) void patch({ description }) }}
-                  rows={Math.max(3, description.split("\n").length + 1)}
-                  placeholder={canEdit ? t("descriptionPlaceholder") : ""}
-                  className="w-full resize-none rounded-md border border-transparent bg-transparent px-1 text-sm leading-6 hover:border-border focus:border-border focus:outline-none"
-                />
-              </section>
+              {(() => {
+                const listActions = (
+                  <>
+                    {canEdit && listToAdd.length > 0 && (
+                      <button
+                        type="button"
+                        data-testid="task-panel-split-list"
+                        disabled={splitting}
+                        onClick={() => void splitList()}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-primary/60 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-60"
+                      >
+                        <ListChecks className="h-3.5 w-3.5" /> {t("splitList", { count: String(listToAdd.length) })}
+                      </button>
+                    )}
+                    {splitNote && <span role="status" className="text-xs text-muted-foreground">{splitNote}</span>}
+                  </>
+                )
+                return (
+                  <Suspense
+                    fallback={(
+                      <section className="border-t pt-4">
+                        <div className="mb-2 flex min-h-8 flex-wrap items-center gap-2">
+                          <h3 className="text-sm font-semibold">{t("description")}</h3>
+                          <div className="ml-auto flex flex-wrap items-center gap-2">{listActions}</div>
+                        </div>
+                        <div className="min-h-[4.5rem] whitespace-pre-wrap px-1 py-0.5 text-sm leading-6">{description}</div>
+                      </section>
+                    )}
+                  >
+                    <TaskDescriptionEditor
+                      key={task.id}
+                      html={task.descriptionHtml ?? null}
+                      text={task.description ?? ""}
+                      canEdit={canEdit}
+                      title={t("description")}
+                      placeholder={canEdit ? t("descriptionPlaceholder") : ""}
+                      labels={{ bold: t("formatBold"), italic: t("formatItalic"), underline: t("formatUnderline"), numbered: t("formatNumbered"), bulleted: t("formatBulleted") }}
+                      extra={listActions}
+                      onText={setDescription}
+                      // The server cleans the HTML and derives the text from it; the text sent beside it is only what the card shows meanwhile.
+                      onSave={(html) => void patch({ descriptionHtml: html, description: descriptionTextOf(html) })}
+                    />
+                  </Suspense>
+                )
+              })()}
 
               {task.attachments.length > 0 && (
                 <section className="border-t py-3">

@@ -414,3 +414,98 @@ describe("a picture the file gate refused", () => {
   })
 })
 
+// Ulviyya (Zeytun), 2026-11-13: «в тасках включите функцию жирный шрифт как в бордио».
+describe("the description's formatting", () => {
+  // jsdom lays nothing out; the editor asks where the cursor is to scroll it into view.
+  beforeEach(() => {
+    const none = () => ({ length: 0, item: () => null, [Symbol.iterator]: function* () {} }) as unknown as DOMRectList
+    const box = () => ({ x: 0, y: 0, width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0, toJSON: () => ({}) }) as DOMRect
+    Object.assign(Range.prototype, { getClientRects: none, getBoundingClientRect: box })
+    Object.assign(Element.prototype, { getClientRects: none, scrollIntoView: () => {} })
+    Object.assign(document, { elementFromPoint: () => null })
+  })
+
+  type Live = { commands: { focus: () => boolean; selectAll: () => boolean; setContent: (html: string) => boolean; setTextSelection: (at: { from: number; to: number }) => boolean; insertContent: (text: string) => boolean }; getHTML: () => string }
+  const field = () => container.querySelector('[data-testid="task-description"]') as HTMLElement & { editor: Live }
+  const settle = async () => { for (let i = 0; i < 4; i += 1) { await flush(); await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) }) } }
+  const openCard = async () => { await open(); await settle() }
+  const into = async () => { await act(async () => { field().editor.commands.focus(); field().dispatchEvent(new FocusEvent("focusin", { bubbles: true })) }) }
+  const leave = async () => {
+    await act(async () => { field().dispatchEvent(new FocusEvent("blur")); field().dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body })) })
+    await settle()
+  }
+  const patches = () => calls.filter((c) => c.startsWith("PATCH /api/v1/tasks/t1 ")).map((c) => JSON.parse(c.slice("PATCH /api/v1/tasks/t1 ".length)) as Record<string, unknown>)
+  const withTask = async (fields: Record<string, unknown>, run: () => Promise<void>) => {
+    const task = TASK as unknown as Record<string, unknown>
+    const was = Object.fromEntries(Object.keys(fields).map((key) => [key, task[key]]))
+    Object.assign(task, fields)
+    try { await run() } finally { Object.assign(task, was) }
+  }
+
+  it("a stored description shows its bold, italic, underline and lists; the buttons appear only while it is edited", async () => {
+    await withTask({ description: "Son tarix — 27 noyabr. yalnız az\n1. Vizual\n2. Sayt", descriptionHtml: "<p><strong>Son tarix — 27 noyabr.</strong> <em>yalnız az</em> <u>Nazrin</u></p><ol><li><p>Vizual</p></li><li><p>Sayt</p></li></ol>" }, async () => {
+      await openCard()
+      expect(field().querySelector("strong")?.textContent).toBe("Son tarix — 27 noyabr.")
+      expect(field().querySelector("em")?.textContent).toBe("yalnız az")
+      expect(field().querySelector("u")?.textContent).toBe("Nazrin")
+      expect([...field().querySelectorAll("ol li")].map((li) => li.textContent)).toEqual(["Vizual", "Sayt"])
+      // Nothing on the title's line until the text is being edited.
+      expect(container.querySelector('[data-testid="task-description-toolbar"]')).toBeNull()
+      await into()
+      const names = [...container.querySelectorAll('[data-testid="task-description-toolbar"] button')].map((b) => b.getAttribute("title"))
+      expect(names).toEqual(["Жирный (Ctrl+B)", "Курсив (Ctrl+I)", "Подчёркнутый (Ctrl+U)", "Нумерованный список", "Маркированный список"])
+      // Looked at and left: nothing is saved.
+      await leave()
+      expect(patches()).toEqual([])
+      expect(container.querySelector('[data-testid="task-description-toolbar"]')).toBeNull()
+    })
+  })
+
+  it("selected text made bold is saved as formatting, with the same words as plain text", async () => {
+    await withTask({ description: "Banner 1080 x 1920", descriptionHtml: null }, async () => {
+      await openCard()
+      // A plain description opens as the same text.
+      expect(field().textContent).toBe("Banner 1080 x 1920")
+      await into()
+      await act(async () => { field().editor.commands.setTextSelection({ from: 8, to: 19 }) })
+      const bold = container.querySelector('[data-testid="task-description-bold"]') as HTMLButtonElement
+      expect(bold.getAttribute("aria-pressed")).toBe("false")
+      // The press does not take the cursor out of the text.
+      const down = new MouseEvent("mousedown", { bubbles: true, cancelable: true })
+      await act(async () => { bold.dispatchEvent(down) })
+      expect(down.defaultPrevented).toBe(true)
+      await click(bold)
+      expect(field().querySelector("strong")?.textContent).toBe("1080 x 1920")
+      expect((container.querySelector('[data-testid="task-description-bold"]') as HTMLButtonElement).getAttribute("aria-pressed")).toBe("true")
+      // Nothing is sent while the text is still being edited…
+      expect(patches()).toEqual([])
+      // …and one save when the field is left.
+      await leave()
+      expect(patches()).toEqual([{ descriptionHtml: "<p>Banner <strong>1080 x 1920</strong></p>", description: "Banner 1080 x 1920" }])
+    })
+  })
+
+  it("a list made with the button offers «split into subtasks» at once", async () => {
+    await withTask({ description: "", descriptionHtml: null }, async () => {
+      await openCard()
+      expect(container.querySelector('[data-testid="task-description-placeholder"]')?.textContent).toBe("Добавьте описание…")
+      await into()
+      await act(async () => { field().editor.commands.setContent("<ol><li><p>167 x 88 Ferveks</p></li><li><p>122 x 88 Hedelix</p></li></ol>") })
+      // setContent is the test's way to type; the panel hears it as typing.
+      await act(async () => { field().editor.commands.insertContent(" ") })
+      await settle()
+      expect(container.querySelector('[data-testid="task-description-placeholder"]')).toBeNull()
+      expect(container.querySelector('[data-testid="task-panel-split-list"]')?.textContent).toContain("2")
+    })
+  })
+
+  it("someone who may not change the task reads the formatting and gets no buttons", async () => {
+    await withTask({ description: "Vacib", descriptionHtml: "<p><strong>Vacib</strong></p>", you: { mayManage: false, mayDelete: false } }, async () => {
+      await openCard()
+      expect(field().querySelector("strong")?.textContent).toBe("Vacib")
+      expect(field().getAttribute("contenteditable")).toBe("false")
+      await act(async () => { field().dispatchEvent(new FocusEvent("focusin", { bubbles: true })) })
+      expect(container.querySelector('[data-testid="task-description-toolbar"]')).toBeNull()
+    })
+  })
+})

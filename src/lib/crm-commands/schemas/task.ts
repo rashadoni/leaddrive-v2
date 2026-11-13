@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { MAX_DESCRIPTION_HTML, MAX_DESCRIPTION_TEXT } from "@/lib/tasks/rich-description"
 
 export const createTaskCommandSchema = z.strictObject({
   // CRM tasks share this route and accept short titles; board UI applies 3..200.
@@ -47,7 +48,11 @@ export type CreateTaskCommandInput = z.infer<typeof createTaskCommandSchema>
  */
 export const updateTaskCommandSchema = z.object({
   title:        z.string().min(1).max(300).optional(),
-  description:  z.string().max(5000).optional(),
+  // 5 000 refused an edit of the longer descriptions that came from Bordio (Zeytun has five, up to ~9 000).
+  description:  z.string().max(MAX_DESCRIPTION_TEXT).optional(),
+  // The description with its formatting (rich-description.ts). The command cleans it and derives
+  // `description` from it; null drops the formatting and keeps the text.
+  descriptionHtml: z.string().max(MAX_DESCRIPTION_HTML).nullable().optional(),
   status:       z.enum(["backlog", "todo", "in_progress", "testing", "review", "done", "pending", "completed", "cancelled"]).optional(),
   priority:     z.enum(["low", "medium", "high", "urgent", "critical"]).optional(),
   // type validated dynamically against the org's active TaskType.name (see
