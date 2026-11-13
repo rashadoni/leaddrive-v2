@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Building2, Check, Copy, Loader2, Undo2 } from "lucide-react"
@@ -89,9 +89,20 @@ export function InboxPageAgents({ children, onReplyModeChanged }: {
 
   useEffect(() => { void load() }, [load])
 
+  const panelRef = useRef<HTMLDivElement>(null)
+
   const pick = (key: string) => {
     setSelected(key)
     setSavedAt(0)
+    // The list is long: a row picked near its end leaves the panel above the screen. Bring the
+    // panel's top back, but only when it is actually out of sight — a click on a row beside a
+    // visible panel must not move the page.
+    requestAnimationFrame(() => {
+      const panel = panelRef.current
+      if (!panel) return
+      const top = panel.getBoundingClientRect().top
+      if (top < 0 || top > window.innerHeight * 0.6) panel.scrollIntoView({ behavior: "smooth", block: "start" })
+    })
     const page = pages.find((p) => p.channelConfigId === key)
     setDraft(page ? { ...page, agent: page.agent ? { ...page.agent } : null, hours: page.hours ? structuredClone(page.hours) : null } : null)
   }
@@ -172,7 +183,7 @@ export function InboxPageAgents({ children, onReplyModeChanged }: {
         ))}
       </div>
 
-      <div className="min-w-0">
+      <div ref={panelRef} className="min-w-0 scroll-mt-20">
         {selected === COMMON || !draft ? children : (
           <div className="space-y-5 rounded-lg border bg-card p-5">
             <div>
