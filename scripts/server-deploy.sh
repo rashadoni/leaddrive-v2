@@ -5471,6 +5471,14 @@ backup_runtime_directory() {
     log "No $label runtime directory to back up"
     return 0
   }
+  # The copy guards the one-time move of a checkout directory to its runtime
+  # home. Once the checkout path is a link, nothing is moved and the copy is
+  # read by nothing — and it was every client file: from 2026-08-30 each deploy
+  # copied all of uploads into its backup, five kept, 42 GiB on 2026-11-13.
+  if [ -L "$source" ]; then
+    log "$label already lives outside the release ($(readlink -- "$source")); nothing is moved, so nothing is copied"
+    return 0
+  fi
   resolved_source="$(readlink -f -- "$source")" || fatal "cannot resolve $label backup source"
   [ -d "$resolved_source" ] || fatal "$label backup source is not a directory: $source"
   [ ! -e "$destination" ] && [ ! -L "$destination" ] || \

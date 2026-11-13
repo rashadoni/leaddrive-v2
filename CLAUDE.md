@@ -417,6 +417,15 @@ from current main before staging» (`booking_artifact_admission=BLOCKED`), не
   (`uploads-offsite-install.sh --recipient age1…`), программа приезжает
   деплоем; сторож читает `/var/lib/leaddrive-uploads-offsite/state` и тревожит
   на 30/50 ч. Порядок — `docs/BACKUP_RUNBOOK.md`, «Копия файлов клиентов».
+- **Сторож видит рост, а не только остаток места** (2026-11-14). Раз в час он
+  меряет `du` папки из `WATCHED_GROWTH_DIRS` и хранит у себя сутки замеров:
+  диск вырос за сутки больше чем на `GROWTH_WARN_GIB` (10) — предупреждение с
+  папками, которые выросли; бэкапы деплоя (`/opt/leaddrive-v2-backups`) больше
+  `DEPLOY_BACKUPS_WARN_GIB` (8) — отдельное предупреждение. Повод: 2026-11-13
+  каждый деплой копировал в свой бэкап все файлы клиентов (8,4 ГиБ, пять копий
+  — 42 ГиБ за день), а тревога «мало места» сработала бы при 15 ГиБ остатка.
+  Деплой теперь копирует папку рантайма, только если переносит её
+  (`backup_runtime_directory`, стережёт `server-deploy-runtime-backup.test.ts`).
 - **Новое условие, без которого прод нельзя считать здоровым, — в
   `WATCHED_JOBS` / `assessPage` / `assessDisks`**, и с тестом в
   `scripts/backup/host-health-contract.test.mjs` (гейт в `static-checks`).
