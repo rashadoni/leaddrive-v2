@@ -28858,6 +28858,8 @@
     "messageAuthorAi": "AI agent",
     "messageAuthorOperator": "Operator",
     "messageAuthorUnknown": "Author not recorded",
+    "messageAuthorApp": "From the {app} app",
+    "messageAuthorAppHint": "This reply was written in the {app} app itself, not in the CRM. Meta does not say which team member sent it. To have a name under a reply, answer from the CRM.",
     "messageSentViaInbox": "via LeadDrive Inbox → {channel}",
     "messageSentViaChannel": "channel: {channel}",
     "messageOnBehalfOfCompany": "on behalf of the company",

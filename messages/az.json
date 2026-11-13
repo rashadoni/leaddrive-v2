@@ -28854,6 +28854,8 @@
     "messageAuthorAi": "AI agent",
     "messageAuthorOperator": "Operator",
     "messageAuthorUnknown": "Müəllif qeydə alınmayıb",
+    "messageAuthorApp": "{app} tətbiqindən",
+    "messageAuthorAppHint": "Bu cavab CRM-də yox, {app} tətbiqinin özündə yazılıb. Onu hansı əməkdaşın göndərdiyini Meta bildirmir. Cavabın altında ad görünsün deyə CRM-dən cavab verin.",
     "messageSentViaInbox": "LeadDrive Inbox vasitəsilə → {channel}",
     "messageSentViaChannel": "kanal: {channel}",
     "messageOnBehalfOfCompany": "şirkət adından",
