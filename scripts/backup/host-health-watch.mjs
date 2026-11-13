@@ -84,6 +84,31 @@ export const WATCHED_MOUNTS = ['/', '/var/lib/leaddrive-v2', '/var/backups/leadd
 // that grow here — call recordings, encrypted files, out-logs — grow in
 // gibibytes a day, so gibibytes is the honest unit. The percentage catches the
 // case the floors cannot: a disk so small that even 6 GiB is nearly all of it.
+// What grows on this disk, measured once an hour (du is the one slow read here).
+// 2026-11-13: each deploy copied all client files (8.4 GiB) into the deploy
+// backups, five kept — 42 GiB in a day, and the free-space alarm (15 GiB left)
+// would have spoken only when the disk was nearly gone. Growth is the earlier
+// signal, and naming the folder that grew is what saves the search.
+export const DEPLOY_BACKUPS_DIR = '/opt/leaddrive-v2-backups'
+export const WATCHED_GROWTH_DIRS = [
+  DEPLOY_BACKUPS_DIR,
+  '/var/lib/leaddrive-v2/uploads',
+  '/var/lib/postgresql',
+  '/var/backups/leaddrive',
+  '/var/log',
+  '/opt/leaddrive-v2/web-releases',
+  '/opt/leaddrive-v2/line-releases',
+]
+// Five deploy backups of a release (~0.8 GiB each, measured 2026-11-14) are
+// about 4 GiB; twice that means the deploy is keeping something it should not.
+export const DEPLOY_BACKUPS_WARN_GIB = 8
+// The whole product grows by about a gibibyte a month (files, recordings, logs);
+// ten in a day is never ordinary.
+export const GROWTH_WARN_GIB = 10
+export const GROWTH_WINDOW_MS = 24 * 3600_000
+export const SIZES_EVERY_MS = 3600_000
+const GIB = 1024 ** 3
+
 export const DISK_WARN_GIB = 15
 export const DISK_CRIT_GIB = 6
 export const DISK_WARN_PERCENT = 10
@@ -96,7 +121,7 @@ export const DISK_CRIT_PERCENT = 5
  * (production runs Europe/Berlin) and `Date.parse` cannot be trusted with
  * "Mon 2026-11-02 02:15:31 CET".
  */
-export function probeProgram(jobs = WATCHED_JOBS, mounts = WATCHED_MOUNTS, backupDir = BACKUP_DIR, files = WATCHED_BACKUP_FILES) {
+export function probeProgram(jobs = WATCHED_JOBS, mounts = WATCHED_MOUNTS, backupDir = BACKUP_DIR, files = WATCHED_BACKUP_FILES, sizeDirs = []) {
   return [
     'set -u',
     "printf 'now=%s\\n' \"$(date -u +%s)\"",
@@ -127,6 +152,14 @@ export function probeProgram(jobs = WATCHED_JOBS, mounts = WATCHED_MOUNTS, backu
     `for mount in ${mounts.join(' ')}; do`,
     '  df -P -- "$mount" 2>/dev/null | awk -v m="$mount" \'NR==2 {printf "disk=%s fs=%s total=%s avail=%s\\n", m, $1, $2, $4}\'',
     'done',
+    // Sizes only when asked (once an hour): du walks every file.
+    ...(sizeDirs.length
+      ? [
+          `for dir in ${sizeDirs.join(' ')}; do`,
+          '  if [ -d "$dir" ]; then printf \'size=%s bytes=%s\\n\' "$dir" "$(du -sxb -- "$dir" 2>/dev/null | cut -f1)"; fi',
+          'done',
+        ]
+      : []),
   ].join('\n')
 }
 
@@ -140,7 +173,7 @@ function splitFound(value) {
 }
 
 export function parseProbe(text) {
-  const out = { now: NaN, jobs: new Map(), disks: [], files: new Map(), backupDir: '', newest: null, offsite: {} }
+  const out = { now: NaN, jobs: new Map(), disks: [], files: new Map(), backupDir: '', newest: null, offsite: {}, sizes: new Map() }
   for (const line of text.split('\n')) {
     if (!line.trim()) continue
     const fields = Object.fromEntries(
@@ -155,6 +188,10 @@ export function parseProbe(text) {
     if (fields.now !== undefined) out.now = Number(fields.now) * 1000
     else if (fields.unit !== undefined) out.jobs.set(fields.unit, fields)
     else if (fields.disk !== undefined) out.disks.push(fields)
+    else if (fields.size !== undefined) {
+      const bytes = Number(fields.bytes)
+      if (fields.bytes !== '' && Number.isFinite(bytes)) out.sizes.set(fields.size, bytes)
+    }
     // The offsite state is a file of its own, so each of its keys arrives on
     // its own line — not one line with every field, like the others here.
     else if (Object.keys(fields).some((key) => key.startsWith('offsite'))) Object.assign(out.offsite, fields)
@@ -319,6 +356,55 @@ export function assessDisks(probe) {
   return problems
 }
 
+const gibText = (bytes) => `${(bytes / GIB).toFixed(1)} ГиБ`
+
+/** The deploy's own backups: a release each, not the client files. */
+export function assessDeployBackups(probe) {
+  const bytes = probe?.sizes?.get(DEPLOY_BACKUPS_DIR)
+  if (!Number.isFinite(bytes) || bytes <= DEPLOY_BACKUPS_WARN_GIB * GIB) return []
+  return [{
+    key: 'deploy-backups',
+    critical: false,
+    text: `бэкапы деплоя в ${DEPLOY_BACKUPS_DIR} заняли ${gibText(bytes)} (норма до ${DEPLOY_BACKUPS_WARN_GIB}): деплой хранит то, что не должен копировать`,
+  }]
+}
+
+/**
+ * Adds this hour's reading to the history kept on this box: used space of the
+ * root filesystem and the size of each watched folder. A day and a bit is kept.
+ */
+export function recordGrowth(history, probe, now) {
+  if (!probe?.sizes?.size) return history
+  const root = probe.disks.find((disk) => disk.disk === '/')
+  const used = root ? (Number(root.total) - Number(root.avail)) * 1024 : NaN
+  if (!Number.isFinite(used)) return history
+  const sample = { at: now, used, sizes: Object.fromEntries(probe.sizes) }
+  return [...history, sample].filter((s) => now - s.at <= GROWTH_WINDOW_MS + 6 * 3600_000)
+}
+
+/**
+ * The disk grew too much in a day: say by how much and which watched folders
+ * grew — or that none did, so the search starts elsewhere.
+ */
+export function assessGrowth(history) {
+  if (!history?.length) return []
+  const latest = history[history.length - 1]
+  // The reading closest to a day before the latest one, but at least 20 hours old.
+  const old = history.filter((s) => latest.at - s.at >= 20 * 3600_000).at(-1)
+  if (!old) return []
+  const grew = latest.used - old.used
+  if (grew <= GROWTH_WARN_GIB * GIB) return []
+  const hoursApart = Math.round((latest.at - old.at) / 3600_000)
+  const folders = Object.entries(latest.sizes)
+    .map(([dir, bytes]) => [dir, bytes - (old.sizes?.[dir] ?? bytes)])
+    .filter(([, diff]) => diff >= 0.5 * GIB)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([dir, diff]) => `${dir} +${gibText(diff)}`)
+  const where = folders.length ? `больше всего выросли: ${folders.join(', ')}` : 'наблюдаемые папки не выросли — рост в другом месте'
+  return [{ key: 'growth', critical: false, text: `за ${hoursApart} ч занято на диске на ${gibText(grew)} больше; ${where}` }]
+}
+
 /** The verdict about the page, with ping as the discriminator. */
 export function assessPage(page) {
   if (page.ok) {
@@ -333,13 +419,14 @@ export function assessPage(page) {
   return [{ key: 'page', critical: true, text }]
 }
 
-async function readProduction() {
+async function readProduction(withSizes = false) {
   const override = process.env.LD_HOST_WATCH_PROBE_CMD
+  const program = probeProgram(WATCHED_JOBS, WATCHED_MOUNTS, BACKUP_DIR, WATCHED_BACKUP_FILES, withSizes ? WATCHED_GROWTH_DIRS : [])
   const result = override
     ? await run('sh', ['-c', override], SSH_TIMEOUT_MS)
     : await run(
         'ssh',
-        ['-i', PROD_KEY, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', PROD_HOST, probeProgram()],
+        ['-i', PROD_KEY, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', PROD_HOST, program],
         SSH_TIMEOUT_MS,
       )
   if (result.code !== 0) {
@@ -402,7 +489,10 @@ async function main() {
 
   const page = await checkPage()
   if (!page.ok) page.pingOk = (await get(`${BASE_URL}/api/v1/ping`, PAGE_TIMEOUT_MS)).status === 200
-  const read = await readProduction()
+  const history = Array.isArray(local.growth) ? local.growth : []
+  const sizesDue = !history.length || Date.now() - history[history.length - 1].at >= SIZES_EVERY_MS
+  const read = await readProduction(sizesDue)
+  const growth = read.probe ? recordGrowth(history, read.probe, Date.now()) : history
 
   // When this box has no network every probe fails at once, and none of those
   // failures says anything about production.
@@ -415,7 +505,9 @@ async function main() {
     ...assessPage(page),
     ...(read.error
       ? [{ key: 'unreachable', critical: true, text: `не удалось прочитать состояние прода по ssh: ${read.error}` }]
-      : [...assessJobs(read.probe), ...assessBackupFiles(read.probe), ...assessUploadsOffsite(read.probe), ...assessDisks(read.probe)]),
+      : [...assessJobs(read.probe), ...assessBackupFiles(read.probe), ...assessUploadsOffsite(read.probe), ...assessDisks(read.probe), ...assessDeployBackups(read.probe)]),
+    // From this box's own history: it speaks even in the hour no sizes were read.
+    ...assessGrowth(growth),
   ]
 
   const now = Date.now()
@@ -442,7 +534,7 @@ async function main() {
     }
   }
 
-  if (!dryRun) writeFileSync(stateFile, JSON.stringify({ ...local, incidents }), { mode: 0o600 })
+  if (!dryRun) writeFileSync(stateFile, JSON.stringify({ ...local, incidents, growth }), { mode: 0o600 })
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

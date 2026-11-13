@@ -14,7 +14,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BACKUP_DIR,
+  DEPLOY_BACKUPS_DIR,
+  DEPLOY_BACKUPS_WARN_GIB,
   DISK_CRIT_GIB,
+  GROWTH_WARN_GIB,
+  WATCHED_GROWTH_DIRS,
+  assessDeployBackups,
+  assessGrowth,
+  recordGrowth,
   WATCHED_BACKUP_FILES,
   WATCHED_JOBS,
   WATCHED_MOUNTS,
@@ -436,4 +443,80 @@ test('the installer refuses to pretend: no notifier, no key, no watch', () => {
   for (const unit of ['ld-host-watch.service', 'ld-host-watch.timer', 'ld-host-watch-failed.service']) {
     assert.ok(source.includes(unit), `${unit} is never installed`);
   }
+});
+
+// 2026-11-13: every deploy copied all client files (8.4 GiB) into its own
+// backups and kept five — 42 GiB in a day, found by hand. The free-space alarm
+// would have spoken only with 15 GiB left. These two speak a day after it starts
+// and name the folder.
+const GIB = 1024 ** 3;
+const sized = (sizes, { total = 193 * GIB, used = 80 * GIB } = {}) =>
+  parseProbe(
+    [
+      `now=${Math.round(NOW / 1000)}`,
+      `disk=/ fs=/dev/sda1 total=${Math.round(total / 1024)} avail=${Math.round((total - used) / 1024)}`,
+      ...Object.entries(sizes).map(([dir, bytes]) => `size=${dir} bytes=${bytes}`),
+      '',
+    ].join('\n'),
+  );
+
+test('folder sizes are read only when asked, and only by reading', () => {
+  assert.doesNotMatch(probeProgram(), /\bdu\b/, 'the five-minute pass must not walk the disk');
+  const withSizes = probeProgram(WATCHED_JOBS, WATCHED_MOUNTS, BACKUP_DIR, WATCHED_BACKUP_FILES, WATCHED_GROWTH_DIRS);
+  assert.match(withSizes, /du -sxb/);
+  for (const [, target] of withSizes.matchAll(/\d?>\s*(\S+)/g)) assert.equal(target, '/dev/null');
+  // Run for real: a folder that exists here is measured, one that does not is skipped.
+  const out = execFileSync('bash', ['-c', probeProgram([], [], BACKUP_DIR, [], ['/tmp', '/no/such/folder'])], { encoding: 'utf8' });
+  const parsed = parseProbe(out);
+  assert.ok(parsed.sizes.get('/tmp') >= 0, 'the existing folder was not measured');
+  assert.equal(parsed.sizes.has('/no/such/folder'), false);
+  assert.ok(WATCHED_GROWTH_DIRS.includes(DEPLOY_BACKUPS_DIR));
+});
+
+test('deploy backups that hold more than a few releases are a warning that names the folder', () => {
+  assert.deepEqual(assessDeployBackups(sized({ [DEPLOY_BACKUPS_DIR]: 4 * GIB })), []);
+  const heavy = assessDeployBackups(sized({ [DEPLOY_BACKUPS_DIR]: 48 * GIB }));
+  assert.equal(heavy.length, 1);
+  assert.equal(heavy[0].critical, false);
+  assert.match(heavy[0].text, /\/opt\/leaddrive-v2-backups/);
+  assert.match(heavy[0].text, /48\.0 ГиБ/);
+  // Not measured this pass: no claim either way.
+  assert.deepEqual(assessDeployBackups(sized({})), []);
+  assert.ok(DEPLOY_BACKUPS_WARN_GIB < 42, 'the 2026-11-13 shape must be caught');
+});
+
+test('a day of growth beyond the line is named with the folders that grew', () => {
+  const at = (h) => NOW - h * HOUR;
+  let history = [];
+  // The shape of 2026-11-13: client files steady, deploy backups +42 GiB.
+  history = recordGrowth(history, sized({ [DEPLOY_BACKUPS_DIR]: 4 * GIB, '/var/lib/leaddrive-v2/uploads': 9 * GIB, '/var/log': 3 * GIB }, { used: 29 * GIB }), at(24));
+  history = recordGrowth(history, sized({ [DEPLOY_BACKUPS_DIR]: 20 * GIB, '/var/lib/leaddrive-v2/uploads': 9 * GIB, '/var/log': 3 * GIB }, { used: 45 * GIB }), at(12));
+  history = recordGrowth(history, sized({ [DEPLOY_BACKUPS_DIR]: 46 * GIB, '/var/lib/leaddrive-v2/uploads': 9.2 * GIB, '/var/log': 3.1 * GIB }, { used: 71 * GIB }), at(0));
+  const [problem] = assessGrowth(history);
+  assert.equal(problem.key, 'growth');
+  assert.match(problem.text, /за 24 ч занято на диске на 42\.0 ГиБ больше/);
+  assert.match(problem.text, /\/opt\/leaddrive-v2-backups \+42\.0 ГиБ/);
+  assert.doesNotMatch(problem.text, /uploads|\/var\/log/, 'folders that barely moved are not named');
+
+  // Growth outside the watched folders still speaks, and says where NOT to look.
+  const elsewhere = [
+    { at: at(24), used: 30 * GIB, sizes: { '/var/log': 3 * GIB } },
+    { at: at(0), used: 30 * GIB + (GROWTH_WARN_GIB + 1) * GIB, sizes: { '/var/log': 3 * GIB } },
+  ];
+  assert.match(assessGrowth(elsewhere)[0].text, /рост в другом месте/);
+
+  // Ordinary growth, and a history younger than a day, are silent.
+  assert.deepEqual(assessGrowth([{ at: at(24), used: 30 * GIB, sizes: {} }, { at: at(0), used: 31 * GIB, sizes: {} }]), []);
+  assert.deepEqual(assessGrowth([{ at: at(10), used: 30 * GIB, sizes: {} }, { at: at(0), used: 70 * GIB, sizes: {} }]), []);
+  assert.deepEqual(assessGrowth([]), []);
+});
+
+test('the growth history keeps a day and a bit, and ignores a pass without sizes', () => {
+  const at = (h) => NOW - h * HOUR;
+  let history = [];
+  for (let h = 40; h >= 0; h -= 1) history = recordGrowth(history, sized({ '/var/log': 3 * GIB }), at(h));
+  assert.ok(history.length <= 31 && history.length >= 30, `kept ${history.length} hourly readings`);
+  assert.equal(history.at(-1).at, NOW);
+  const same = recordGrowth(history, parseProbe(`now=${Math.round(NOW / 1000)}\n`), NOW + HOUR);
+  assert.equal(same, history, 'a pass that measured no sizes changes nothing');
 });
