@@ -61,8 +61,9 @@ import {
   User, Users, UserX, UserPlus, Bot, Ban, Hash, Folder, Check, Clock,
   MoreHorizontal, Paperclip, Smile, Sparkles, Zap, SlidersHorizontal,
   Mail, Phone, Eye, CalendarClock, ChevronDown, X, RotateCcw, CheckCircle2,
-  Trash2, Megaphone, AtSign,
+  Trash2, Megaphone, AtSign, Smartphone,
 } from "lucide-react"
+import { messageAuthor } from "@/lib/inbox/message-author"
 import {
   CHANNELS, REPLY_CHANNELS, ChannelIcon, channelColor, channelLabel,
   avatarTint, initials, extractQuickReplies, appendTag, dropTag, convStatusTab, convMatchesView, extractAttachments,
@@ -2737,16 +2738,26 @@ export default function InboxV2Page() {
                               authorName?: string
                               sentVia?: string
                               sentOnBehalfOfCompany?: boolean
+                              source?: string
+                              sentFromBusinessApp?: boolean
                             }
                           }).metadata
                           if (!out) return null
-                          const isAi = meta?.aiAutoReply === true || meta?.aiGenerated === true || meta?.authorType === "ai"
-                          const author = isAi
+                          // Who wrote it: the AI, a person in the CRM, or the platform's app on a
+                          // phone, where Meta names no person (lib/inbox/message-author).
+                          const who = messageAuthor(meta, m.channelType)
+                          const isAi = who.kind === "ai"
+                          const fromApp = who.kind === "app"
+                          const author = who.kind === "ai"
                             ? t("messageAuthorAi")
-                            : meta?.authorName || (meta?.authorType === "operator" ? t("messageAuthorOperator") : t("messageAuthorUnknown"))
+                            : who.kind === "app"
+                              ? t("messageAuthorApp", { app: who.app })
+                              : who.kind === "person"
+                                ? who.name
+                                : who.kind === "operator" ? t("messageAuthorOperator") : t("messageAuthorUnknown")
                           const badge = (
                             <>
-                              {isAi ? <Sparkles className="h-2.5 w-2.5" /> : <User className="h-2.5 w-2.5" />}
+                              {isAi ? <Sparkles className="h-2.5 w-2.5" /> : fromApp ? <Smartphone className="h-2.5 w-2.5" /> : <User className="h-2.5 w-2.5" />}
                               {author}
                             </>
                           )
@@ -2754,7 +2765,9 @@ export default function InboxV2Page() {
                             "inline-flex items-center gap-0.5 rounded-full px-1.5 py-px font-medium",
                             isAi
                               ? "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300"
-                              : "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
+                              : fromApp
+                                ? "bg-muted text-muted-foreground"
+                                : "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
                           )
                           const authorBadge = canDebugAi && isAi && meta?.aiLogId ? (
                             <button
@@ -2766,7 +2779,7 @@ export default function InboxV2Page() {
                               {badge}
                             </button>
                           ) : (
-                            <span title={isAi ? t("aiGeneratedHint") : author} className={cls}>{badge}</span>
+                            <span title={isAi ? t("aiGeneratedHint") : who.kind === "app" ? t("messageAuthorAppHint", { app: who.app }) : author} className={cls} data-testid="inbox-message-author">{badge}</span>
                           )
                           const route = meta?.sentVia === "leaddrive_inbox"
                             ? t("messageSentViaInbox", { channel: channelLabel(m.channelType || "email") })

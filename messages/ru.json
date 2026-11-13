@@ -28858,6 +28858,8 @@
     "messageAuthorAi": "ИИ-агент",
     "messageAuthorOperator": "Оператор",
     "messageAuthorUnknown": "Автор не зафиксирован",
+    "messageAuthorApp": "Из приложения {app}",
+    "messageAuthorAppHint": "Ответ написан в самом приложении {app}, не в CRM. Кто из сотрудников его отправил, Meta не сообщает. Чтобы под ответом было имя, отвечайте из CRM.",
     "messageSentViaInbox": "через LeadDrive Inbox → {channel}",
     "messageSentViaChannel": "канал: {channel}",
     "messageOnBehalfOfCompany": "от имени компании",
