@@ -9,6 +9,7 @@ import type { MtmExcelRowError, MtmExcelImportType, ParsedMtmWorkbook } from "@/
 import { localDateTimeToUtc } from "@/lib/timezone"
 import { readExcelWorkingHours } from "@/lib/mtm/excel-customer-hours"
 import { readWorkingHours } from "@/lib/mtm/customer-hours"
+import { applyDoctorImportRows, validateDoctorImport, type DoctorImportRow } from "@/lib/mtm/excel-doctors"
 
 type AppPrisma = typeof appPrisma
 type DbClient = AppPrisma | Prisma.TransactionClient
@@ -23,6 +24,8 @@ export interface MtmExcelSummary {
   errorRows: number
   warningRows: number
   requiresConflictOverride: boolean
+  /** Doctors import: clinics the file creates (they come without a pin). */
+  newPlaces?: number
 }
 
 interface SnapshotRow {
@@ -30,7 +33,7 @@ interface SnapshotRow {
   sourceRows?: number[]
   operation: RowOperation
   existingId?: string
-  warnings?: Array<{ code: string; message: string }>
+  warnings?: Array<{ code: string; message: string; params?: Record<string, string | number> }>
   data: Record<string, unknown>
 }
 
@@ -529,14 +532,22 @@ export async function validateMtmExcelImport(params: {
   /** The organization's MTM timezone: route `planned_time` is local time there. */
   timezone: string
 }): Promise<MtmExcelValidationResult> {
-  const validated = params.parsed.type === "CUSTOMERS"
+  const doctors = params.parsed.type === "DOCTORS"
+    ? await validateDoctorImport(params.db, params.organizationId, params.parsed, new Date())
+    : null
+  const validated = doctors
+    ? { rows: doctors.rows as unknown as SnapshotRow[], errors: doctors.errors }
+    : params.parsed.type === "CUSTOMERS"
     ? await validateCustomers(params.db, params.organizationId, params.parsed)
     : params.parsed.type === "ROUTES"
       ? await validateRoutes(params.db, params.organizationId, params.parsed, params.actor, params.timezone)
       : params.parsed.type === "SALES_FACTS"
         ? await validateSalesFacts(params.db, params.organizationId, params.parsed)
         : await validatePlanFact(params.db, params.organizationId, params.parsed)
-  const summary = summaryFor(params.parsed, validated.rows, validated.errors)
+  const summary: MtmExcelSummary = {
+    ...summaryFor(params.parsed, validated.rows, validated.errors),
+    ...(doctors ? { newPlaces: doctors.newClinics } : {}),
+  }
   const snapshot: MtmValidatedExcelSnapshot = {
     snapshotVersion: 1,
     templateVersion: params.parsed.templateVersion,
@@ -549,7 +560,11 @@ export async function validateMtmExcelImport(params: {
   return {
     snapshot,
     errors: validated.errors,
-    preview: validated.rows.slice(0, 20).map((row) => ({ rowNumber: row.rowNumber, operation: row.operation, warnings: row.warnings ?? [], ...row.data })),
+    // Rows with something to check come first: the preview shows twenty.
+    preview: [...validated.rows]
+      .sort((left, right) => Number((right.warnings?.length ?? 0) > 0) - Number((left.warnings?.length ?? 0) > 0))
+      .slice(0, 20)
+      .map((row) => ({ rowNumber: row.rowNumber, operation: row.operation, warnings: row.warnings ?? [], ...row.data })),
   }
 }
 
@@ -871,6 +886,7 @@ export async function applyMtmExcelImportJob(params: {
     if (snapshot.type === "CUSTOMERS") await applyCustomerRows(tx, params.organizationId, params.requestedBy, snapshot.rows)
     else if (snapshot.type === "ROUTES") await applyRouteRows(tx, params.organizationId, params.requestedBy, snapshot.rows)
     else if (snapshot.type === "SALES_FACTS") await applySalesRows(tx, params.organizationId, job.id, snapshot.rows)
+    else if (snapshot.type === "DOCTORS") await applyDoctorImportRows(tx, params.organizationId, params.requestedBy, snapshot.rows as unknown as DoctorImportRow[])
     else await applyPlanRows(tx, params.organizationId, job.id, snapshot.rows)
 
     const finalStatus = snapshot.summary.errorRows > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED"

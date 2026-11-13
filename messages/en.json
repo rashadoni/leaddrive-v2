@@ -14982,6 +14982,7 @@
       "excelImportRoutes": "A route is the rows sharing one route code, one row per stop. New routes are created as drafts; a draft with the same code is replaced whole, a published one cannot be changed.",
       "excelImportSales": "Each row is one line of a sales document, matched by document number, date and line number: an existing line is updated, a new one added.",
       "excelImportPlan": "Each row is a plan for a period by client, employee, territory or product. A row with the same period and breakdown is updated, a new one added.",
+      "excelImportDoctors": "One row is a doctor, his agent and one of his clinics. A doctor is found by his code, or by his name among the agent's own doctors; the same name under one agent in two rows is one doctor with two clinics. A clinic is found by name and city or created without a pin. Nothing is deleted or ended.",
       "excelTemplate": "Download the template for the chosen type: a sheet with the required columns and a sheet of rules. The second row is an example — replace it with your data.",
       "excelUpload": "Upload a completed .xlsx template of up to 20 MB. The file is only checked first — nothing in the data changes until you press “Apply”.",
       "excelImportRestricted": "Import is switched off in the MTM settings or not allowed for your role. Exporting to Excel still works.",
@@ -15035,13 +15036,27 @@
     "applyFailed": "Could not apply the import.",
     "queued": "Large import queued for background processing.",
     "applied": "Import applied successfully.",
+    "newPlaces": "{count, plural, one {# new clinic} other {# new clinics}} will be created without a pin. The agent starts a visit there with «Client is here», and a manager confirms the pin.",
+    "checkWarnings": "Check before applying — it is imported exactly as written",
+    "previewDoctor": "Doctor",
+    "previewAgent": "Agent",
+    "previewClinics": "Clinics",
+    "previewAction": "Action",
+    "warnings": {
+      "TWO_CLINICS": "{name}: one doctor in clinics {clinics}",
+      "NAMESAKE_OTHER_AGENT": "{name}: the same name is also given to {agents} — imported as separate doctors",
+      "SAME_NAME_EXISTS": "{name}: a doctor with this name already exists in MTM under another agent — a new one is created",
+      "CLINIC_SPELLINGS": "One clinic written differently in the file: {spellings}",
+      "OTHER_PRIMARY_AGENT": "{name}: already has a primary agent — this agent is added as a second one"
+    },
     "types": {
       "CUSTOMERS": "Customers",
       "ROUTES": "Route plans",
       "SALES_FACTS": "External orders and sales",
       "VISIT_RESULTS": "Visit results and actions",
       "PLAN_FACT": "Sales plan",
-      "CUSTOMER_REQUESTS": "Customer requests"
+      "CUSTOMER_REQUESTS": "Customer requests",
+      "DOCTORS": "Doctors"
     }
   },
   "mtmTasksPage": {

@@ -754,6 +754,18 @@ jobs:
           MTM_EXCEL_ROUTES_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           MTM_EXCEL_ROUTES_DB_GATE: required
 
+      - name: MTM Excel doctors database gate
+        # Doctors from Excel (Zeytun, 2026-11-13), asked of the real upload and
+        # apply handlers on a real Postgres: one name under one agent is one
+        # doctor with several clinics, namesakes of other agents stay apart, a
+        # clinic MTM knows is reused, a file with an unknown agent writes
+        # nothing, a repeated file adds nothing, and a second agent of a doctor
+        # who has a primary one is written as SECONDARY (one primary allowed).
+        run: npx vitest run src/__tests__/mtm-excel-doctors-postgres.test.ts
+        env:
+          MTM_EXCEL_DOCTORS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          MTM_EXCEL_DOCTORS_DB_GATE: required
+
       - name: MTM sign-in by WhatsApp code database gate
         # Same gate as in pr-checks: a code from LeadDrive's WhatsApp finds the
         # one card with the number, is kept hashed under the company, works
