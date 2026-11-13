@@ -127,7 +127,33 @@ interface Props {
       list showed the whole board under an empty box (found 2026-11-09). */
   search?: string
   onSearchChange?: (search: string) => void
+  /**
+   * The boards' list in Bordio's make (the client, 2026-11-13: «дизайн намного
+   * красивее в бордио… расстояние между строк, оформление строк, величина
+   * шрифтов»; measured on Bordio's live page): 49px rows, 14px in every cell,
+   * the column names on each group's own line instead of a header band, thin
+   * lines between the columns, Status · Due date · Priority · Assignee first.
+   * /tasks keeps the CRM look.
+   */
+  look?: "bordio"
 }
+
+/** Columns in the order the table shows them; Bordio leads with status and date. */
+const DEFAULT_COLUMN_ORDER = ["category", "type", "eventType", "priority", "status", "dueDate", "assignee", "project"] as const
+const BORDIO_COLUMN_ORDER = ["status", "dueDate", "priority", "assignee", "category", "type", "eventType", "project"] as const
+type ColumnKey = (typeof DEFAULT_COLUMN_ORDER)[number]
+
+// Bordio's measures, applied from the table down: cell padding 12/14, one text
+// size, 26px avatars, a line between columns, the tick and the row buttons on hover.
+const BORDIO_TABLE_CLASSES = [
+  "[&_tr[data-row]_td]:px-3.5 [&_tr[data-row]_td]:py-3 [&_tr[data-row]]:h-[49px]",
+  "[&_tr[data-row]_td[data-col]]:border-l [&_tr[data-row]_td[data-col]]:border-border",
+  "[&_tr[data-row]_.text-xs]:text-sm [&_tr[data-row]_td]:text-sm",
+  "[&_td[data-col=status]]:min-w-[140px] [&_td[data-col=dueDate]]:min-w-[130px] [&_td[data-col=priority]]:min-w-[130px] [&_td[data-col=assignee]]:min-w-[190px]",
+  "[&_[data-avatar]]:h-[26px] [&_[data-avatar]]:w-[26px] [&_[data-avatar]]:text-[11px]",
+  "[&_td[data-select]_input]:opacity-0 [&_tr:hover_td[data-select]_input]:opacity-100 [&_td[data-select]_input:checked]:opacity-100 [&_td[data-select]_input:focus-visible]:opacity-100",
+  "[&_td[data-actions]>div]:opacity-0 [&_tr:hover_td[data-actions]>div]:opacity-100 [&_td[data-actions]>div:focus-within]:opacity-100",
+].join(" ")
 
 const STATUS_OPTIONS = ["pending", "in_progress", "completed", "cancelled"] as const
 const PRIORITY_OPTIONS = ["low", "medium", "high", "urgent"] as const
@@ -284,6 +310,7 @@ export function InlineTasksTable({
   rowClassName, categoryColumnLabel, statusLabels, priorityLabels,
   customFieldDefs, users, projects = [], groupOpenClosed = false, customGroups, groupKeyOf, statusOptions, sortBy, onSortChange,
   loading = false, search: searchProp, onSearchChange,
+  look,
 }: Props) {
   const t = useTranslations("tasks")
   const tc = useTranslations("common")
@@ -394,6 +421,33 @@ export function InlineTasksTable({
     }
     return { known, extra }
   }, [customGroups, groupKeyOf, filtered])
+  const bordio = look === "bordio"
+  const columnOrder: readonly ColumnKey[] = bordio ? BORDIO_COLUMN_ORDER : DEFAULT_COLUMN_ORDER
+  // One column name, for the header band (th) or for a group's own line (td, Bordio's make).
+  const headCell = (key: ColumnKey, Tag: "th" | "td"): ReactNode => {
+    if (!isVisible(key)) return null
+    const plain = Tag === "th" ? "w-px whitespace-nowrap px-2 py-2.5 text-left" : "w-px whitespace-nowrap px-3.5 text-left text-sm font-normal text-muted-foreground"
+    const sortable = Tag === "th" ? "w-px whitespace-nowrap text-left" : "w-px whitespace-nowrap px-3.5 py-0 text-left text-sm font-normal text-muted-foreground"
+    switch (key) {
+      case "category": return <Tag key={key} className={plain}>{categoryColumnLabel ?? t("colCategory")}</Tag>
+      case "type": return <Tag key={key} className={plain}>{t("opGbType")}</Tag>
+      case "eventType": return <Tag key={key} className={plain}>{t("opGbEvent")}</Tag>
+      case "priority": return <SortableHeader key={key} as={Tag} label={t("colPriority")} columnKey="priority" currentSort={sortBy} onSort={onSortChange} className={sortable} />
+      case "status": return <SortableHeader key={key} as={Tag} label={t("colStatus")} columnKey="status" currentSort={sortBy} onSort={onSortChange} className={sortable} />
+      case "dueDate": return <SortableHeader key={key} as={Tag} label={t("colDueDate")} columnKey="dueDate" currentSort={sortBy} onSort={onSortChange} className={sortable} />
+      case "assignee": return <Tag key={key} className={plain}>{t("colAssignee")}</Tag>
+      case "project": return <Tag key={key} className={plain}>{t("colProject")}</Tag>
+    }
+  }
+  // Bordio's make: each group's line carries the column names; the header band is for screen readers only.
+  const grouped = Boolean((groupedByKey && customGroups) || groupOpenClosed)
+  const groupHead = bordio ? (
+    <>
+      {columnOrder.map((key) => headCell(key, "td"))}
+      {visibleCustomFields.map((def) => <td key={def.id} className="w-px whitespace-nowrap px-3.5 text-left text-sm font-normal text-muted-foreground">{def.fieldLabel}</td>)}
+      <td />
+    </>
+  ) : null
   const renderRow = (task: InlineTask) => (
     <TaskRow
       key={task.id}
@@ -414,6 +468,7 @@ export function InlineTasksTable({
       taskTypeMap={taskTypeMap}
       eventTypeMap={eventTypeMap}
       statusOptions={statusOptions}
+      columnOrder={columnOrder}
     />
   )
 
@@ -491,13 +546,18 @@ export function InlineTasksTable({
           {/* Column sizing relies on AUTO table layout: w-px+nowrap columns
               shrink to content, the w-full/max-w-0 title column absorbs the
               rest. Adding `table-fixed` here would break title truncation. */}
-          <table className="w-full text-sm">
+          <table className={cn("w-full text-sm", bordio && BORDIO_TABLE_CLASSES)} data-look={look}>
             <thead>
               {/* Compact header (Bordio reference): every data column is
                   shrink-to-fit (w-px + nowrap) so it's exactly as wide as its
                   content; the Task column absorbs the remaining width. More
                   columns fit on screen without horizontal scrolling. */}
-              <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <tr className={cn(
+                "border-b border-border text-muted-foreground",
+                bordio ? "text-sm font-normal" : "bg-muted/40 text-xs font-semibold uppercase tracking-wider",
+                // The groups carry the column names themselves; the band stays for screen readers.
+                bordio && grouped && "sr-only",
+              )}>
                 <th className="w-8 px-2 py-2.5">
                   <input
                     type="checkbox"
@@ -513,48 +573,7 @@ export function InlineTasksTable({
                   onSort={onSortChange}
                   className="w-full min-w-[220px] text-left"
                 />
-                {isVisible("category") && (
-                  <th className="w-px whitespace-nowrap px-2 py-2.5 text-left">{categoryColumnLabel ?? t("colCategory")}</th>
-                )}
-                {isVisible("type") && (
-                  <th className="w-px whitespace-nowrap px-2 py-2.5 text-left">{t("opGbType")}</th>
-                )}
-                {isVisible("eventType") && (
-                  <th className="w-px whitespace-nowrap px-2 py-2.5 text-left">{t("opGbEvent")}</th>
-                )}
-                {isVisible("priority") && (
-                  <SortableHeader
-                    label={t("colPriority")}
-                    columnKey="priority"
-                    currentSort={sortBy}
-                    onSort={onSortChange}
-                    className="w-px whitespace-nowrap text-left"
-                  />
-                )}
-                {isVisible("status") && (
-                  <SortableHeader
-                    label={t("colStatus")}
-                    columnKey="status"
-                    currentSort={sortBy}
-                    onSort={onSortChange}
-                    className="w-px whitespace-nowrap text-left"
-                  />
-                )}
-                {isVisible("dueDate") && (
-                  <SortableHeader
-                    label={t("colDueDate")}
-                    columnKey="dueDate"
-                    currentSort={sortBy}
-                    onSort={onSortChange}
-                    className="w-px whitespace-nowrap text-left"
-                  />
-                )}
-                {isVisible("assignee") && (
-                  <th className="w-px whitespace-nowrap px-2 py-2.5 text-left">{t("colAssignee")}</th>
-                )}
-                {isVisible("project") && (
-                  <th className="w-px whitespace-nowrap px-2 py-2.5 text-left">{t("colProject")}</th>
-                )}
+                {columnOrder.map((key) => headCell(key, "th"))}
                 {visibleCustomFields.map(def => (
                   <th key={def.id} className="w-px whitespace-nowrap px-2 py-2.5 text-left">
                     {def.fieldLabel}
@@ -582,14 +601,14 @@ export function InlineTasksTable({
                     if (g.optional && rows.length === 0) return null
                     return (
                       <Fragment key={g.key}>
-                        <GroupHeaderRow label={g.label} count={rows.length} collapsed={collapsed.has(g.key)} onToggle={() => toggleGroup(g.key)} colSpan={totalCols} />
+                        <GroupHeaderRow label={g.label} count={rows.length} collapsed={collapsed.has(g.key)} onToggle={() => toggleGroup(g.key)} colSpan={totalCols} head={groupHead} />
                         {!collapsed.has(g.key) && rows.map(renderRow)}
                       </Fragment>
                     )
                   })}
                   {[...groupedByKey.extra].map(([k, rows]) => (
                     <Fragment key={k}>
-                      <GroupHeaderRow label={k} count={rows.length} collapsed={collapsed.has(k)} onToggle={() => toggleGroup(k)} colSpan={totalCols} />
+                      <GroupHeaderRow label={k} count={rows.length} collapsed={collapsed.has(k)} onToggle={() => toggleGroup(k)} colSpan={totalCols} head={groupHead} />
                       {!collapsed.has(k) && rows.map(renderRow)}
                     </Fragment>
                   ))}
@@ -597,9 +616,9 @@ export function InlineTasksTable({
               ) : groupOpenClosed ? (
                 <>
                   {onCreate && <AddTaskRow onCreate={onCreate} totalCols={totalCols} />}
-                  <GroupHeaderRow label={t("openTasks")} count={openTasks.length} collapsed={collapsed.has("open")} onToggle={() => toggleGroup("open")} colSpan={totalCols} />
+                  <GroupHeaderRow label={t("openTasks")} count={openTasks.length} collapsed={collapsed.has("open")} onToggle={() => toggleGroup("open")} colSpan={totalCols} head={groupHead} />
                   {!collapsed.has("open") && openTasks.map(renderRow)}
-                  <GroupHeaderRow label={t("closedTasks")} count={closedTasks.length} collapsed={collapsed.has("closed")} onToggle={() => toggleGroup("closed")} colSpan={totalCols} />
+                  <GroupHeaderRow label={t("closedTasks")} count={closedTasks.length} collapsed={collapsed.has("closed")} onToggle={() => toggleGroup("closed")} colSpan={totalCols} head={groupHead} />
                   {!collapsed.has("closed") && closedTasks.map(renderRow)}
                 </>
               ) : (
@@ -625,9 +644,25 @@ export function InlineTasksTable({
 }
 
 // ─── Open/Closed group header row (Bordio table view) ────────────
-function GroupHeaderRow({ label, count, collapsed, onToggle, colSpan }: {
+function GroupHeaderRow({ label, count, collapsed, onToggle, colSpan, head }: {
   label: string; count: number; collapsed: boolean; onToggle: () => void; colSpan: number
+  /** Bordio's make: the column names, on the group's own line. */
+  head?: ReactNode
 }) {
+  if (head) {
+    return (
+      <tr className="h-[54px] border-b border-border" data-group-head="">
+        <td colSpan={2} className="px-3.5">
+          <button type="button" onClick={onToggle} className="flex items-center gap-2 text-base font-medium text-foreground hover:opacity-80">
+            {collapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            {label}
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[13px] font-medium leading-none text-muted-foreground">{count}</span>
+          </button>
+        </td>
+        {head}
+      </tr>
+    )
+  }
   return (
     <tr className="bg-muted/30 border-b border-border">
       <td colSpan={colSpan} className="px-2 py-2">
@@ -643,8 +678,9 @@ function GroupHeaderRow({ label, count, collapsed, onToggle, colSpan }: {
 
 // ─── Sortable Header ─────────────────────────────────────────────
 function SortableHeader({
-  label, columnKey, currentSort, onSort, className,
+  label, columnKey, currentSort, onSort, className, as: Tag = "th",
 }: {
+  as?: "th" | "td"
   label: string
   columnKey: string
   currentSort: string
@@ -653,13 +689,13 @@ function SortableHeader({
 }) {
   const keys = COLUMN_SORT_KEYS[columnKey]
   if (!keys) {
-    return <th className={cn("px-2 py-2.5", className)}>{label}</th>
+    return <Tag className={cn("px-2 py-2.5", className)}>{label}</Tag>
   }
   const isAsc = currentSort === keys.asc
   const isDesc = currentSort === keys.desc
   const Icon = isAsc ? ArrowUp : isDesc ? ArrowDown : ArrowUpDown
   return (
-    <th className={cn("px-2 py-2.5", className)}>
+    <Tag className={cn("px-2 py-2.5", className)}>
       <button
         type="button"
         onClick={() => onSort(isAsc ? keys.desc : keys.asc)}
@@ -672,7 +708,7 @@ function SortableHeader({
           (isAsc || isDesc) ? "opacity-100 text-primary" : "opacity-40"
         )} />
       </button>
-    </th>
+    </Tag>
   )
 }
 
@@ -695,11 +731,12 @@ interface TaskRowProps {
   taskTypeMap: Map<string, TaskTypeInfo>
   eventTypeMap: Map<string, TaskTypeInfo>
   statusOptions?: string[]
+  columnOrder: readonly ColumnKey[]
 }
 
 function TaskRow({
   task, isSelected, onToggleSelect, onUpdate, onDelete, onEdit, onOpenDetail,
-  rowClassName, statusLabels, priorityLabels, customFieldDefs, users, projects, hiddenColumns, taskTypeMap, eventTypeMap, statusOptions,
+  rowClassName, statusLabels, priorityLabels, customFieldDefs, users, projects, hiddenColumns, taskTypeMap, eventTypeMap, statusOptions, columnOrder,
 }: TaskRowProps) {
   const isVisible = (key: string) => !hiddenColumns.has(key)
   const tc = useTranslations("common")
@@ -708,8 +745,144 @@ function TaskRow({
   // The todo→pending display-fold only applies when "todo" isn't a real option.
   const statusOpts = statusOptions ?? [...STATUS_OPTIONS]
 
+  const columnCells: Record<ColumnKey, ReactNode> = {
+    /* Category (read-only). Board quarter-axis tasks (category mapped into
+          relatedType, values Q1–Q4) render as the compact amber Q-badge from
+          the kanban featured cards — no emoji fallback, no missing-i18n-key
+          text, no 100px reserve, so the Rüb/Quarter column shrinks to badge
+          width. */
+    category: isVisible("category") && (
+        <td data-col="category" className="whitespace-nowrap px-2 py-2 align-middle text-xs text-muted-foreground">
+          {task.relatedType ? (
+            QUARTER_RE.test(task.relatedType) ? (
+              <span className="inline-block rounded bg-[#FF8B00] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                {task.relatedType}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                <span>{CATEGORY_ICONS[task.relatedType] || "📋"}</span>
+                <span className="truncate max-w-[100px]">
+                  {task.relatedName || tc(task.relatedType)}
+                </span>
+              </span>
+            )
+          ) : "—"}
+        </td>
+    ),
+
+    /* Task type (read-only — functional category). Colored rounded square
+          + truncated label = the reference's Type chip. */
+    type: isVisible("type") && (
+        <td data-col="type" className="whitespace-nowrap px-2 py-2 align-middle text-xs">
+          {task.type ? (
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap" title={taskTypeMap.get(task.type)?.displayName ?? task.type}>
+              <span className="h-3.5 w-3.5 shrink-0 rounded-[4px]" style={{ background: taskTypeMap.get(task.type)?.color ?? "#9CA3AF" }} />
+              <span className="truncate max-w-[110px]">{taskTypeMap.get(task.type)?.displayName ?? task.type}</span>
+            </span>
+          ) : <span className="text-muted-foreground">—</span>}
+        </td>
+    ),
+
+    /* Event type (read-only — channel/source axis) */
+    eventType: isVisible("eventType") && (
+        <td data-col="eventType" className="whitespace-nowrap px-2 py-2 align-middle text-xs">
+          {task.eventType ? (
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap" title={eventTypeMap.get(task.eventType)?.displayName ?? task.eventType}>
+              <span className="h-3.5 w-3.5 shrink-0 rounded-[4px]" style={{ background: eventTypeMap.get(task.eventType)?.color ?? "#9CA3AF" }} />
+              <span className="truncate max-w-[110px]">{eventTypeMap.get(task.eventType)?.displayName ?? task.eventType}</span>
+            </span>
+          ) : <span className="text-muted-foreground">—</span>}
+        </td>
+    ),
+
+    /* Priority (editable) — colored direction icon + plain label */
+    priority: isVisible("priority") && (
+        <td data-col="priority" className="whitespace-nowrap px-2 py-2 align-middle">
+          <InlineSelectCell
+            value={task.priority}
+            options={[...PRIORITY_OPTIONS]}
+            labels={priorityLabels}
+            badgeClasses={PRIORITY_BADGE_CLASSES}
+            icons={Object.fromEntries([...PRIORITY_OPTIONS, task.priority].map(p => [p, <PriorityGlyph key={p} priority={p} />]))}
+            onSave={(newValue) => onUpdate(task.id, { priority: newValue })}
+          />
+        </td>
+    ),
+
+    /* Status (editable) — status icon + plain label (reference look) */
+    status: isVisible("status") && (
+        <td data-col="status" className="whitespace-nowrap px-2 py-2 align-middle">
+          <InlineSelectCell
+            value={statusOpts.includes(task.status) ? task.status : task.status === "todo" ? "pending" : task.status}
+            options={statusOpts}
+            labels={statusLabels}
+            badgeClasses={STATUS_BADGE_CLASSES}
+            icons={statusIconMap([...new Set([...statusOpts, task.status])])}
+            onSave={(newValue) => onUpdate(task.id, { status: newValue })}
+          />
+        </td>
+    ),
+
+    /* Due date (editable) */
+    dueDate: isVisible("dueDate") && (
+        <td data-col="dueDate" className="whitespace-nowrap px-2 py-2 align-middle">
+          <InlineDateCell
+            value={task.dueDate}
+            status={task.status}
+            overdueDays
+            onSave={(newValue) => onUpdate(task.id, { dueDate: newValue })}
+          />
+        </td>
+    ),
+
+    /* Assignee (editable) — co-assignees shown as a "+N" chip (names on hover) */
+    assignee: isVisible("assignee") && (
+        <td data-col="assignee" className="whitespace-nowrap px-2 py-2 align-middle">
+          <span className="inline-flex items-center gap-1">
+            <InlineAssigneeCell
+              value={task.assignedTo}
+              assignee={task.assignee}
+              users={users}
+              collaborators={task.collaborators}
+              onSave={(newValue) => {
+                // Promoting a current co-assignee to primary also removes them
+                // from the collaborator set (server would filter the dup; this
+                // keeps the optimistic row consistent too).
+                const patch: Record<string, unknown> = { assignedTo: newValue }
+                if (newValue && task.collaborators?.some((c) => c.id === newValue)) {
+                  patch.collaboratorIds = task.collaborators.filter((c) => c.id !== newValue).map((c) => c.id)
+                }
+                return onUpdate(task.id, patch)
+              }}
+              onSaveCollaborators={(ids) => onUpdate(task.id, { collaboratorIds: ids })}
+            />
+            {(task.collaborators?.length ?? 0) > 0 && (
+              <span
+                className="rounded-full border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                title={task.collaborators!.map((c) => c.name).join(", ")}
+              >
+                +{task.collaborators!.length}
+              </span>
+            )}
+          </span>
+        </td>
+    ),
+
+    /* Project (editable; Phase 2 Notion-tasks plan) */
+    project: isVisible("project") && (
+        <td data-col="project" className="whitespace-nowrap px-2 py-2 align-middle">
+          <InlineProjectCell
+            value={task.projectId ?? null}
+            project={task.project ?? null}
+            projects={projects}
+            onSave={(newValue) => onUpdate(task.id, { projectId: newValue })}
+          />
+        </td>
+    ),
+  }
+
   return (
-    <tr className={cn(
+    <tr data-row="" className={cn(
       "border-b border-border last:border-0 transition-colors hover:bg-muted/40 group",
       // Checkbox-selected rows get a light orange wash so the selection is
       // obvious at a glance (user feedback 2026-06-12). Hover deepens (not
@@ -718,7 +891,7 @@ function TaskRow({
       extraClass,
     )}>
       {/* Bulk select */}
-      <td className="w-8 px-2 py-2 align-middle" onClick={e => e.stopPropagation()}>
+      <td data-select="" className="w-8 px-2 py-2 align-middle" onClick={e => e.stopPropagation()}>
         <input
           type="checkbox"
           checked={isSelected}
@@ -763,139 +936,7 @@ function TaskRow({
         </div>
       </td>
 
-      {/* Category (read-only). Board quarter-axis tasks (category mapped into
-          relatedType, values Q1–Q4) render as the compact amber Q-badge from
-          the kanban featured cards — no emoji fallback, no missing-i18n-key
-          text, no 100px reserve, so the Rüb/Quarter column shrinks to badge
-          width. */}
-      {isVisible("category") && (
-        <td className="whitespace-nowrap px-2 py-2 align-middle text-xs text-muted-foreground">
-          {task.relatedType ? (
-            QUARTER_RE.test(task.relatedType) ? (
-              <span className="inline-block rounded bg-[#FF8B00] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-                {task.relatedType}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                <span>{CATEGORY_ICONS[task.relatedType] || "📋"}</span>
-                <span className="truncate max-w-[100px]">
-                  {task.relatedName || tc(task.relatedType)}
-                </span>
-              </span>
-            )
-          ) : "—"}
-        </td>
-      )}
-
-      {/* Task type (read-only — functional category). Colored rounded square
-          + truncated label = the reference's Type chip. */}
-      {isVisible("type") && (
-        <td className="whitespace-nowrap px-2 py-2 align-middle text-xs">
-          {task.type ? (
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap" title={taskTypeMap.get(task.type)?.displayName ?? task.type}>
-              <span className="h-3.5 w-3.5 shrink-0 rounded-[4px]" style={{ background: taskTypeMap.get(task.type)?.color ?? "#9CA3AF" }} />
-              <span className="truncate max-w-[110px]">{taskTypeMap.get(task.type)?.displayName ?? task.type}</span>
-            </span>
-          ) : <span className="text-muted-foreground">—</span>}
-        </td>
-      )}
-
-      {/* Event type (read-only — channel/source axis) */}
-      {isVisible("eventType") && (
-        <td className="whitespace-nowrap px-2 py-2 align-middle text-xs">
-          {task.eventType ? (
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap" title={eventTypeMap.get(task.eventType)?.displayName ?? task.eventType}>
-              <span className="h-3.5 w-3.5 shrink-0 rounded-[4px]" style={{ background: eventTypeMap.get(task.eventType)?.color ?? "#9CA3AF" }} />
-              <span className="truncate max-w-[110px]">{eventTypeMap.get(task.eventType)?.displayName ?? task.eventType}</span>
-            </span>
-          ) : <span className="text-muted-foreground">—</span>}
-        </td>
-      )}
-
-      {/* Priority (editable) — colored direction icon + plain label */}
-      {isVisible("priority") && (
-        <td className="whitespace-nowrap px-2 py-2 align-middle">
-          <InlineSelectCell
-            value={task.priority}
-            options={[...PRIORITY_OPTIONS]}
-            labels={priorityLabels}
-            badgeClasses={PRIORITY_BADGE_CLASSES}
-            icons={Object.fromEntries([...PRIORITY_OPTIONS, task.priority].map(p => [p, <PriorityGlyph key={p} priority={p} />]))}
-            onSave={(newValue) => onUpdate(task.id, { priority: newValue })}
-          />
-        </td>
-      )}
-
-      {/* Status (editable) — status icon + plain label (reference look) */}
-      {isVisible("status") && (
-        <td className="whitespace-nowrap px-2 py-2 align-middle">
-          <InlineSelectCell
-            value={statusOpts.includes(task.status) ? task.status : task.status === "todo" ? "pending" : task.status}
-            options={statusOpts}
-            labels={statusLabels}
-            badgeClasses={STATUS_BADGE_CLASSES}
-            icons={statusIconMap([...new Set([...statusOpts, task.status])])}
-            onSave={(newValue) => onUpdate(task.id, { status: newValue })}
-          />
-        </td>
-      )}
-
-      {/* Due date (editable) */}
-      {isVisible("dueDate") && (
-        <td className="whitespace-nowrap px-2 py-2 align-middle">
-          <InlineDateCell
-            value={task.dueDate}
-            status={task.status}
-            overdueDays
-            onSave={(newValue) => onUpdate(task.id, { dueDate: newValue })}
-          />
-        </td>
-      )}
-
-      {/* Assignee (editable) — co-assignees shown as a "+N" chip (names on hover) */}
-      {isVisible("assignee") && (
-        <td className="whitespace-nowrap px-2 py-2 align-middle">
-          <span className="inline-flex items-center gap-1">
-            <InlineAssigneeCell
-              value={task.assignedTo}
-              assignee={task.assignee}
-              users={users}
-              collaborators={task.collaborators}
-              onSave={(newValue) => {
-                // Promoting a current co-assignee to primary also removes them
-                // from the collaborator set (server would filter the dup; this
-                // keeps the optimistic row consistent too).
-                const patch: Record<string, unknown> = { assignedTo: newValue }
-                if (newValue && task.collaborators?.some((c) => c.id === newValue)) {
-                  patch.collaboratorIds = task.collaborators.filter((c) => c.id !== newValue).map((c) => c.id)
-                }
-                return onUpdate(task.id, patch)
-              }}
-              onSaveCollaborators={(ids) => onUpdate(task.id, { collaboratorIds: ids })}
-            />
-            {(task.collaborators?.length ?? 0) > 0 && (
-              <span
-                className="rounded-full border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-                title={task.collaborators!.map((c) => c.name).join(", ")}
-              >
-                +{task.collaborators!.length}
-              </span>
-            )}
-          </span>
-        </td>
-      )}
-
-      {/* Project (editable; Phase 2 Notion-tasks plan) */}
-      {isVisible("project") && (
-        <td className="whitespace-nowrap px-2 py-2 align-middle">
-          <InlineProjectCell
-            value={task.projectId ?? null}
-            project={task.project ?? null}
-            projects={projects}
-            onSave={(newValue) => onUpdate(task.id, { projectId: newValue })}
-          />
-        </td>
-      )}
+      {columnOrder.map((key) => <Fragment key={key}>{columnCells[key]}</Fragment>)}
 
       {/* Custom fields */}
       {customFieldDefs.map(def => {
@@ -912,7 +953,7 @@ function TaskRow({
       })}
 
       {/* Actions */}
-      <td className="whitespace-nowrap px-2 py-2 align-middle">
+      <td data-actions="" className="whitespace-nowrap px-2 py-2 align-middle">
         <div className="flex items-center gap-0.5 opacity-50 hover:opacity-100 focus-within:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
           <button type="button" onClick={onEdit} title={tc("edit")} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
             <Pencil className="h-3.5 w-3.5" />
@@ -1445,7 +1486,7 @@ function InlineAssigneeCell({ value, assignee, users, onSave, collaborators = []
       >
         {assignee ? (
           <>
-            <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary shrink-0">
+            <div data-avatar="" className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary shrink-0">
               {assignee.name?.charAt(0)?.toUpperCase() || "?"}
             </div>
             <span className="truncate">{displayName}</span>
@@ -1509,7 +1550,7 @@ function InlineAssigneeCell({ value, assignee, users, onSave, collaborators = []
                     onClick={(e) => { e.stopPropagation(); pick(u.id) }}
                     className="flex min-w-0 flex-1 items-center gap-2 py-1.5 text-left text-xs"
                   >
-                    <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary shrink-0">
+                    <div data-avatar="" className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary shrink-0">
                       {u.name?.charAt(0)?.toUpperCase() || "?"}
                     </div>
                     <span className="truncate flex-1">{u.name}</span>

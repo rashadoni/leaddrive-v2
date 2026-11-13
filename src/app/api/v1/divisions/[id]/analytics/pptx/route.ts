@@ -33,7 +33,7 @@ export const GET = withRlsAuth("tasks", "read", async (req: NextRequest, auth, {
       sections: searchParams.get("sections"),
       withFlow: true,
     })
-    if (!res.ok) return NextResponse.json({ error: "Not found" }, { status: res.status })
+    if (!res.ok) return NextResponse.json({ error: res.status === 403 ? "Forbidden" : "Not found" }, { status: res.status })
 
     const branding = await resolveOrgPptxBranding(auth.orgId)
     const generatedAt = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })

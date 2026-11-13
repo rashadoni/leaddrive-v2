@@ -55,6 +55,8 @@ import { createMtmRouteTravelPlan, resolveMtmRouteTravelPolicy } from "@/lib/mtm
 import { resolveWorkCalendarDay, type WorkCalendarOverride } from "@/lib/mtm/work-calendar"
 import { assignmentIntersectsRouteDay } from "@/lib/mtm/operational-week"
 import { isValidTimezone } from "@/lib/timezone"
+import { localDateKeyToUtc } from "@/lib/mtm/mobile-week"
+import { previousVisitNotesForPoints } from "@/lib/mtm/previous-visit-note"
 
 const routeInclude = {
   agent: { select: { id: true, name: true } },
@@ -283,6 +285,18 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth, { params }: {
       status: route.status,
     })) return routeNotFound()
 
+    // The note left at the last visit to each stop's doctor or place, before
+    // this route's day (Zeytun 2026-11-13): shown on the stop and at check-in.
+    const previousNotes = await previousVisitNotesForPoints(prisma, {
+      organizationId: auth.orgId,
+      before: localDateKeyToUtc(routeDate, timezone),
+      points: route.points.map((point: RoutePointRow) => ({
+        id: point.id,
+        customerId: point.customerId,
+        contactId: point.contactId,
+      })),
+    })
+
     const points = route.points.map((point: RoutePointRow) => {
       const customer = withNormalizedCoordinates(point.customer)
       const distanceMeters =
@@ -315,7 +329,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth, { params }: {
         }
       })
       const geofenceRadiusMeters = effectiveGeofenceRadius(customer.geofenceRadius, settings.geofenceRadius)
-      return { ...point, customer, distanceMeters, visits, geofenceRadiusMeters }
+      return { ...point, customer, distanceMeters, visits, geofenceRadiusMeters, previousNote: previousNotes.get(point.id) ?? null }
     })
     const travelPolicy = resolveMtmRouteTravelPolicy({
       tenantCalculationEnabled: settings.routeTravelEnabled,

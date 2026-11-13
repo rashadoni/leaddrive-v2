@@ -231,7 +231,8 @@ function BoardInner() {
   const view: BoardView = picked.board === divisionId ? picked.view : DEFAULT_BOARD_VIEW
   const setView = useCallback((next: BoardView) => setPicked({ board: divisionId, view: next }), [divisionId])
   // «Üzvlər» is for the roles that may manage a board.
-  const activeView: BoardView = view === "members" && !canManageBoard ? DEFAULT_BOARD_VIEW : view
+  const [reportsOpen, setReportsOpen] = useState(true)
+  const activeView: BoardView = (view === "members" && !canManageBoard) || (view === "reports" && !reportsOpen) ? DEFAULT_BOARD_VIEW : view
   const [reportsReloadKey, setReportsReloadKey] = useState(0)
   const [doneShown, setDoneShown] = useState(DONE_PAGE)
   useEffect(() => { setDoneShown(DONE_PAGE) }, [divisionId])
@@ -305,6 +306,8 @@ function BoardInner() {
           if (!divRes.ok) return
           const dj = await divRes.json()
           const list: Division[] = dj?.data?.divisions ?? []
+          // The «Hesabatlar» tab is per person (board-reports-access.ts); the server refuses it too.
+          setReportsOpen(dj?.data?.me?.boardReports !== false)
           rememberBoardNames(list)
           setDivisions(list)
           setDivision(list.find((d) => d.id === divisionId) ?? null)
@@ -734,7 +737,7 @@ function BoardInner() {
 
       {/* Board / Reports tab switch */}
       <div data-crm-tabs="" className="flex items-center gap-1 px-5 pt-1">
-        {BOARD_VIEWS.filter((v) => v !== "members" || canManageBoard).map((v) => (
+        {BOARD_VIEWS.filter((v) => (v !== "members" || canManageBoard) && (v !== "reports" || reportsOpen)).map((v) => (
           <button data-crm-tab="" data-state={activeView === v ? "active" : "inactive"}
             key={v}
             type="button"
@@ -868,6 +871,7 @@ function BoardInner() {
             onSortChange={setListSort}
             search={search}
             onSearchChange={setSearch}
+            look="bordio"
           />
         </div>
       )}
