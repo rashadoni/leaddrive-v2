@@ -12,7 +12,7 @@
  * that what already happened is not on the wall at all.
  */
 import { describe, expect, it } from "vitest"
-import { BOARD_FIT, boardClock, boardDayLabel, boardLasts, boardLayout, boardStartsIn, screenOf, type Board, type BoardMeeting } from "@/lib/booking/board-view"
+import { BOARD_FIT, boardClock, boardDayLabel, boardLasts, boardLayout, boardStartsIn, releaseToLoad, screenOf, type Board, type BoardMeeting } from "@/lib/booking/board-view"
 
 const min = (clock: string) => Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3))
 const meeting = (id: string, hostId: string, from: string, to: string, name = id): BoardMeeting => ({ id, hostId, start: min(from), end: min(to), name, service: "Saç kəsimi" })
@@ -114,5 +114,30 @@ describe("the words on the wall", () => {
     expect(boardLasts(30)).toBe("30 dəq")
     expect(boardLasts(90)).toBe("1 saat 30 dəq")
     expect(boardClock(9 * 60 + 5)).toBe("09:05")
+  })
+})
+
+describe("a screen nobody touches, and the next release", () => {
+  const OLD = "a".repeat(40)
+  const NEW = "b".repeat(40)
+
+  it("loads itself again when the server runs a release that is not its own", () => {
+    expect(releaseToLoad(OLD, NEW, null)).toBe(NEW)
+  })
+
+  it("stays as it is while the server runs the same release", () => {
+    expect(releaseToLoad(OLD, OLD, null)).toBeNull()
+  })
+
+  it("does not blink every five minutes when a reload did not help", () => {
+    // A cached page or a rollback in between: the tab already tried this release once.
+    expect(releaseToLoad(OLD, NEW, NEW)).toBeNull()
+    // …but a release after that one is a new reason.
+    expect(releaseToLoad(OLD, "c".repeat(40), NEW)).toBe("c".repeat(40))
+  })
+
+  it("never reloads on an answer that is not a release, or from a build that has none", () => {
+    for (const served of [null, undefined, "", "613312f22a58", 42, { sha: NEW }]) expect(releaseToLoad(OLD, served, null)).toBeNull()
+    expect(releaseToLoad("", NEW, null)).toBeNull()
   })
 })

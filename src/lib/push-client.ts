@@ -32,17 +32,17 @@ export async function registerPush(headers: Record<string, string> = {}): Promis
     if (perm !== "granted") return { ok: false, error: "permission-declined" }
   }
 
-  // Fetch the VAPID public key from the server
-  const keyRes = await fetch("/api/v1/push/vapid-key", { headers })
-  const keyJson = await keyRes.json().catch(() => null)
-  if (!keyJson?.success) return { ok: false, error: "no-vapid-key" }
-
   // Make sure SW is registered and ready (Serwist auto-registers sw.js)
   const reg = await navigator.serviceWorker.ready
 
-  // Subscribe (or re-use existing subscription)
+  // Subscribe (or re-use existing subscription). The server's public key is needed only to
+  // create a subscription: a browser that already has one was asking for the key on every
+  // page load and throwing the answer away.
   let subscription = await reg.pushManager.getSubscription()
   if (!subscription) {
+    const keyRes = await fetch("/api/v1/push/vapid-key", { headers })
+    const keyJson = await keyRes.json().catch(() => null)
+    if (!keyJson?.success) return { ok: false, error: "no-vapid-key" }
     subscription = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(keyJson.data.publicKey) as unknown as BufferSource,

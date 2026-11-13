@@ -30,6 +30,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { useEventTypes, useTaskTypes, type TaskTypeInfo } from "@/components/tasks/use-task-types"
 import { CLOSED_STATUSES } from "@/lib/tasks/status"
+import { sharedGetJson } from "@/lib/client/shared-get"
 
 export interface InlineTask {
   id: string
@@ -349,8 +350,9 @@ export function InlineTasksTable({
       const customFieldKeys = customFieldDefs.filter(d => d.isActive).map(d => `cf:${d.id}`)
       setHiddenColumns(new Set(["category", "project", ...customFieldKeys]))
     }
-    fetch(`/api/v1/saved-views?entityType=tasks`, { credentials: "include" })
-      .then(r => (r.ok ? r.json() : null))
+    // Shared with the saved-view bar above the table, which reads the same list (lib/client/shared-get).
+    sharedGetJson<{ data?: Array<{ name: string; isShared: boolean; filters?: unknown }> }>(`/api/v1/saved-views?entityType=tasks`)
+      .then(r => (r.ok ? r.json : null))
       .then(j => {
         if (cancelled) return
         const v = (j?.data ?? []).find((x: { name: string; isShared: boolean }) => x.name === ORG_DEFAULT_VIEW_NAME && x.isShared)

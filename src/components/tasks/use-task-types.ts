@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { sharedGetJson } from "@/lib/client/shared-get"
 
 export interface TaskTypeDTO {
   id: string
@@ -25,15 +26,21 @@ export function useConfigTypes(endpoint: "task-types" | "event-types", activeOnl
   const [types, setTypes] = useState<TaskTypeDTO[]>([])
   const [loading, setLoading] = useState(true)
 
-  const refetch = useCallback(async () => {
+  // `shared`: the read a component makes when it appears joins the same read by another part of
+  // the page (lib/client/shared-get). A refetch — after the editor saved something — reads for itself.
+  const load = useCallback(async (shared: boolean) => {
     setLoading(true)
+    const url = `/api/v1/${endpoint}${activeOnly ? "?activeOnly=true" : ""}`
     try {
-      const res = await fetch(`/api/v1/${endpoint}${activeOnly ? "?activeOnly=true" : ""}`, {
-        credentials: "include",
-      })
-      if (res.ok) {
-        const j = await res.json()
-        setTypes(j?.data ?? [])
+      if (shared) {
+        const read = await sharedGetJson<{ data?: TaskTypeDTO[] }>(url)
+        if (read.ok) setTypes(read.json?.data ?? [])
+      } else {
+        const res = await fetch(url, { credentials: "include" })
+        if (res.ok) {
+          const j = await res.json()
+          setTypes(j?.data ?? [])
+        }
       }
     } catch {
       /* keep last-good list; consumers fall back gracefully */
@@ -42,7 +49,9 @@ export function useConfigTypes(endpoint: "task-types" | "event-types", activeOnl
     }
   }, [endpoint, activeOnly])
 
-  useEffect(() => { refetch() }, [refetch])
+  const refetch = useCallback(() => load(false), [load])
+
+  useEffect(() => { void load(true) }, [load])
 
   const typeMap = useMemo(
     () => new Map<string, TaskTypeInfo>(types.map((t) => [t.name, { displayName: t.displayName, color: t.color }])),

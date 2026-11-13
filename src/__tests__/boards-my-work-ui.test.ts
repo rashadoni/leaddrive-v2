@@ -78,6 +78,8 @@ beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : undefined })
     if (url === "/api/v1/divisions") return new Response(JSON.stringify({ success: true, data: { divisions: DIVISIONS, myOpenTasks: 4 } }))
+    // The count for the closed line: nothing finished, unless a test says otherwise.
+    if (url.includes("status=done,completed,cancelled&limit=1")) return new Response(JSON.stringify({ success: true, data: { tasks: [], total: 0 } }))
     if (url.startsWith("/api/v1/tasks?")) return new Response(JSON.stringify({ success: true, data: { tasks: url.includes("open=1") ? TASKS : url.includes("completedAfter=") && doneToday ? doneToday : [], total: 4 } }))
     if (url.startsWith("/api/v1/tasks/")) return new Response("{}", { status: patchStatus })
     return new Response("{}", { status: 404 })
@@ -175,6 +177,8 @@ describe("Mənim işlərim", () => {
       if (url === "/api/v1/divisions") return new Response(JSON.stringify({ success: true, data: { divisions: DIVISIONS } }))
       // Today's finished tasks are a read of their own, answered at once here.
       if (url.includes("completedAfter=")) return new Response(JSON.stringify({ success: true, data: { tasks: [], total: 0 } }))
+      // …and so is the count for the closed line.
+      if (url.includes("status=done,completed,cancelled&limit=1")) return new Response(JSON.stringify({ success: true, data: { tasks: [], total: 0 } }))
       if (url.startsWith("/api/v1/tasks?")) {
         await new Promise<void>((release) => { held.push(release) })
         return new Response(JSON.stringify({ success: true, data: { tasks: TASKS, total: 4 } }))
@@ -204,6 +208,8 @@ describe("Mənim işlərim", () => {
       calls.push({ url, method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : undefined })
       if (url === "/api/v1/divisions") return new Response(JSON.stringify({ success: true, data: { divisions: DIVISIONS } }))
       if (url.includes("completedAfter=")) return new Response(JSON.stringify({ success: true, data: { tasks: [], total: 0 } }))
+      // …and so is the count for the closed line.
+      if (url.includes("status=done,completed,cancelled&limit=1")) return new Response(JSON.stringify({ success: true, data: { tasks: [], total: 0 } }))
       if (url.startsWith("/api/v1/tasks?")) {
         await new Promise<void>((hold) => { release = hold })
         return new Response(JSON.stringify({ success: true, data: { tasks: TASKS, total: 4 } }))
@@ -243,6 +249,8 @@ describe("Mənim işlərim", () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       calls.push({ url, method: init?.method ?? "GET", body: undefined })
       if (url === "/api/v1/divisions") return new Response(JSON.stringify({ success: true, data: { divisions: DIVISIONS, myOpenTasks: 4 } }))
+      // The count for the closed line, read with the page.
+      if (url.includes("status=done,completed,cancelled&limit=1")) return new Response(JSON.stringify({ success: true, data: { tasks: finished.slice(0, 1), total: finished.length } }))
       if (url.includes("sort=completed")) {
         const offset = Number(new URL(url, "http://x").searchParams.get("offset"))
         return new Response(JSON.stringify({ success: true, data: { tasks: finished.slice(offset, offset + 50), total: finished.length } }))
@@ -251,6 +259,11 @@ describe("Mənim işlərim", () => {
       return new Response("{}", { status: 404 })
     }))
     await render()
+    // Sabina, 2026-11-13: «560 bağlanmış taskım var… sistemdə görünmür» — the line with the
+    // count is on the page before anything is pressed, closed, as Bordio's «Closed tasks 560».
+    expect(container.querySelector('[data-testid="my-work-done-count"]')?.textContent).toBe("120")
+    expect(container.querySelector('[data-testid="my-work-show-done"]')?.getAttribute("aria-expanded")).toBe("false")
+    expect(container.querySelectorAll('[data-group="done"] [data-testid="my-work-row"]')).toHaveLength(0)
     await act(async () => { (container.querySelector('[data-testid="my-work-show-done"]') as HTMLButtonElement).click() })
     await flush()
     const reads = () => calls.filter((c) => c.url.includes("sort=completed")).map((c) => c.url)

@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import type { SavedViewEntityType } from "@/lib/saved-views/entity-types"
+import { sharedGetJson } from "@/lib/client/shared-get"
 
 export interface SavedView {
   id: string
@@ -66,14 +67,18 @@ export function SavedViewBar({ entityType, currentFilters, onApply, onDefaultLoa
   const [draft, setDraft] = useState({ name: "", isDefault: false, isShared: false })
   const [saving, setSaving] = useState(false)
 
-  const fetchViews = useCallback(async () => {
+  // `shared`: the read on appearing joins the table's own read of the same list
+  // (lib/client/shared-get); a re-read after saving or deleting a view reads for itself.
+  const fetchViews = useCallback(async (shared = false) => {
     try {
       setLoading(true)
-      const res = await fetch(`/api/v1/saved-views?entityType=${entityType}`, {
-        headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
-      })
-      const json = await res.json()
-      if (json.success) {
+      const url = `/api/v1/saved-views?entityType=${entityType}`
+      const json = shared
+        ? (await sharedGetJson<{ success?: boolean; data?: SavedView[] }>(url)).json
+        : await (await fetch(url, {
+            headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
+          })).json()
+      if (json?.success) {
         // "__"-prefixed names are reserved internal views (e.g. __table_default__,
         // the org-wide column default) — never shown as user chips.
         const arr = (json.data as SavedView[]).filter((v) => !v.name.startsWith("__"))
@@ -91,7 +96,7 @@ export function SavedViewBar({ entityType, currentFilters, onApply, onDefaultLoa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entityType, orgId])
 
-  useEffect(() => { void fetchViews() }, [fetchViews])
+  useEffect(() => { void fetchViews(true) }, [fetchViews])
 
   const handleApply = (view: SavedView) => {
     setActiveViewId(view.id)

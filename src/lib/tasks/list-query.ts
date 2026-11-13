@@ -45,6 +45,8 @@ export interface TaskListFilters {
   planRange?: { gte?: Date; lte?: Date } | null
   /** Only tasks the caller has NOT planned for any day — their waiting list. */
   unplanned?: boolean
+  /** A team's page: board tasks of the team's people (assignee or co-assignee). */
+  teamId?: string
 }
 
 const dayParam = (value: string | null): Date | undefined =>
@@ -84,6 +86,7 @@ export function parseTaskListFilters(sp: URLSearchParams): TaskListFilters {
       ? { gte: dayParam(sp.get("planFrom")), lte: dayParam(sp.get("planTo")) }
       : null,
     unplanned: sp.get("unplanned") === "1",
+    teamId: sp.get("teamId") || "",
   }
 }
 
@@ -136,6 +139,18 @@ export async function buildTaskListWhere(
   if (f.open) and.push({ status: { notIn: [...CLOSED_TASK_STATUSES] } })
   if (f.planRange) and.push({ plans: { some: { userId, day: f.planRange } } })
   if (f.unplanned) and.push({ plans: { none: { userId } } })
+  // A team's tasks narrow like «mine»: its people's board tasks, and the access
+  // rules below still decide which of them this viewer may see.
+  if (f.teamId) {
+    const members: { userId: string }[] = await prisma.boardTeamMember.findMany({
+      where: { organizationId: orgId, teamId: f.teamId }, select: { userId: true },
+    })
+    const ids = members.map((m) => m.userId)
+    and.push({
+      divisionId: { not: null },
+      OR: [{ assignedTo: { in: ids } }, { collaborators: { some: { userId: { in: ids } } } }],
+    })
+  }
   if (and.length) where.AND = and
 
   // CRM sharing-rules: managers+ unrestricted; lower roles narrowed to own /

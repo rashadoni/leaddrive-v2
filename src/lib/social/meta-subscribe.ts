@@ -16,8 +16,9 @@
 const META_GRAPH_BASE = process.env.META_GRAPH_BASE || "https://graph.facebook.com/v21.0"
 
 // DM-relevant fields. `messages` is the inbound-message event the inbox webhook consumes;
-// `messaging_postbacks` covers button/quick-reply taps.
-const DM_SUBSCRIBED_FIELDS = "messages,messaging_postbacks"
+// `messaging_postbacks` covers button/quick-reply taps; `message_echoes` reports what the team
+// answered in Messenger itself, so the thread shows it (lib/inbox/meta-dm-app-echo).
+const DM_SUBSCRIBED_FIELDS = "messages,messaging_postbacks,message_echoes"
 
 /**
  * `options.fields` narrows what the Page sends us. The demo's own Page

@@ -115,6 +115,9 @@ export const NOT_OPENABLE: Record<string, "internal" | "config" | "nested" | "pe
   // An employee's own section (their clients). Like the other MTM cards, not
   // registered for voice yet; nothing in it is read aloud until it is.
   "mtm/agents/[id]": "pending",
+  // A boards team (its people's tasks). A grouping of people, not a record the
+  // assistant reads aloud; like the boards themselves, not registered for voice.
+  "boards/team/[teamId]": "pending",
   "mtm/contacts/[id]": "pending",
   "mtm/customers/[id]": "pending",
   "mtm/promotions/[id]": "pending",

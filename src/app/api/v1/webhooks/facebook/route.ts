@@ -231,7 +231,17 @@ export async function POST(req: NextRequest) {
       await runWithTenant(channel.organizationId, async () => {
 
       for (const event of entry.messaging || []) {
-        if (event.message?.is_echo) continue // skip echoes
+        if (event.message?.is_echo) {
+          // A reply typed in Messenger / the Instagram app itself, or the echo of one we sent — kept
+          // as an outbound row so the thread shows it is answered (lib/inbox/meta-dm-app-echo).
+          try {
+            const { ingestMetaDmEcho } = await import("@/lib/inbox/meta-dm-app-echo")
+            await ingestMetaDmEcho({ channel, platform, accountId: String(event.sender?.id || pageId), event })
+          } catch (e) {
+            console.error("[FB Webhook] echo ingest failed:", e)
+          }
+          continue
+        }
         // Seen receipts, reactions, edits and postbacks arrive in the same `messaging` array but carry
         // no `message`. Recording them wrote a phantom "[media]" inbound (no mid, no attachment) a few
         // seconds after the customer's real text, and counted it as unread.

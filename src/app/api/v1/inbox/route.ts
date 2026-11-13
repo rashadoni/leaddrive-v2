@@ -1065,12 +1065,12 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
   }
 
   // Media SEND (Slice 3b): securely resolve the previously-uploaded attachment (org from session,
-  // never trust the client URL as a path). Only WhatsApp + Telegram deliver media in this slice.
+  // never trust the client URL as a path). WhatsApp, Telegram, Instagram and Facebook deliver media.
   const attachment = attachmentUrl ? await readInboxAttachment(attachmentUrl, orgId) : null
   if (attachmentUrl) {
     if (!attachment) return NextResponse.json({ error: "Invalid or missing attachment" }, { status: 400 })
-    if (channel !== "whatsapp" && channel !== "telegram") {
-      return NextResponse.json({ error: "Attachments are supported on WhatsApp and Telegram only" }, { status: 400 })
+    if (channel !== "whatsapp" && channel !== "telegram" && channel !== "instagram" && channel !== "facebook") {
+      return NextResponse.json({ error: "Attachments are supported on WhatsApp, Telegram, Instagram and Facebook only" }, { status: 400 })
     }
   }
 
