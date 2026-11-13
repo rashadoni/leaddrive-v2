@@ -296,6 +296,37 @@ describe("GET /api/v2/mtm/mobile/route-field/planning-targets", () => {
     })
   })
 
+  it("opens one clinic's doctors, each placed at that clinic, and binds the clinic into the cursor (Zeytun 2026-11-13)", async () => {
+    // The database answers with the workplace the query asked for: Klinika 3.
+    vi.mocked(prisma.mtmContact.findMany).mockResolvedValueOnce([
+      contact("contact-1", "Dr. Əliyeva", [workplace("clinic-3", false)]),
+    ] as never)
+
+    const response = await lookup("?kind=contact&date=2026-08-30&customerId=clinic-3")
+    expect(response.status).toBe(200)
+    const query = vi.mocked(prisma.mtmContact.findMany).mock.calls[0][0] as {
+      where: { AND?: unknown[] }
+      select: { workplaces: { where: Record<string, unknown> } }
+    }
+    // Only doctors working at the clinic on that day …
+    expect(query.where.AND).toContainEqual({ workplaces: { some: expect.objectContaining({ customerId: "clinic-3" }) } })
+    // … and the clinic, not the doctor's primary place, is the stop.
+    expect(query.select.workplaces.where).toMatchObject({ customerId: "clinic-3" })
+    const payload = await response.json()
+    expect(payload).toMatchObject({ success: true, data: { targets: [{ kind: "contact", contactId: "contact-1", customerId: "clinic-3" }] } })
+
+    // The next page belongs to that clinic only.
+    const elsewhere = await lookup(`?kind=contact&date=2026-08-30&customerId=clinic-7&page=${encodeURIComponent(payload.data.nextPage)}`)
+    expect(elsewhere.status).toBe(400)
+  })
+
+  it("takes a clinic only with doctors", async () => {
+    const response = await lookup("?kind=organization&date=2026-08-30&customerId=clinic-3")
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ code: "MTM_ROUTE_FIELD_PLANNING_TARGET_FILTER_INVALID" })
+    expect(prisma.mtmCustomer.findMany).not.toHaveBeenCalled()
+  })
+
   it("fails closed for an ambiguous direct workplace and never falls through in the same request", async () => {
     const ambiguous = contact("contact-ambiguous", "Dr. Ambiguous", [
       workplace("customer-a", false),
