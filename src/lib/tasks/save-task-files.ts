@@ -1,3 +1,5 @@
+"use client"
+
 /**
  * Saving several of a task's files at one press, each under its author's name
  * (Güllü, Zeytun, 2026-11-13: nine visuals of one post were nine clicks, nine
