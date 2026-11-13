@@ -1077,16 +1077,22 @@ export const POST = withMobileRls(async (req, auth) => {
           const forceRequested = data.force === true
           const forceAuthorized = forceRequested && FORCE_CHECK_IN_ROLES.has(auth.role)
           const requestedRouteTarget = Boolean(data.routeId || data.routePointId)
+          // Validated above: a visit create names its customer.
+          const requestedCustomerId = data.customerId as string
+          // Anything but a string or null is not a doctor; the stop check below refuses it.
+          const requestedContactId: string | null | undefined =
+            typeof data.contactId === "string" || data.contactId === null ? data.contactId : undefined
           const routePoint = requestedRouteTarget
             ? await tx.mtmRoutePoint.findFirst({
                 where: {
                   // A doctor stop named by its id: the clinic is checked below
                   // (doctor-visit-place.ts) — the doctor may be at his other one.
                   ...routePointCheckInWhere({
-                    routePointId: data.routePointId,
-                    routeId: data.routeId,
-                    customerId: data.customerId,
-                    contactId: data.contactId,
+                    // A malformed id stays an id that matches nothing, never «any stop».
+                    routePointId: data.routePointId == null ? undefined : String(data.routePointId),
+                    routeId: data.routeId == null ? undefined : String(data.routeId),
+                    customerId: requestedCustomerId,
+                    contactId: requestedContactId,
                   }),
                   deletedAt: null,
                   status: "PENDING",
@@ -1121,13 +1127,13 @@ export const POST = withMobileRls(async (req, auth) => {
           // Where the visit happens: the stop's clinic, or the doctor's other
           // clinic the agent chose on the spot. The stop itself stays planned
           // where it was (its fence below reads the stop's own clinic).
-          const visitPlace = routePoint && typeof data.customerId === "string"
+          const visitPlace = routePoint
             ? await doctorVisitPlace(tx, {
                 organizationId: orgId,
                 agentId,
                 point: { customerId: routePoint.customerId, contactId: routePoint.contactId },
-                requestedCustomerId: data.customerId,
-                requestedContactId: data.contactId,
+                requestedCustomerId,
+                requestedContactId,
                 at: checkInAt,
               })
             : null
@@ -1143,7 +1149,7 @@ export const POST = withMobileRls(async (req, auth) => {
             rejectCheckIn(MTM_CHECK_IN_ERROR.ROUTE_TARGET_MISMATCH)
           } else {
             const otherClinic = visitPlace?.ok === true && visitPlace.otherClinic
-            const customerId = visitPlace?.ok ? visitPlace.customerId : data.customerId
+            const customerId: string = visitPlace?.ok ? visitPlace.customerId : requestedCustomerId
             const contactId = routePoint?.contactId ?? data.contactId ?? null
             const visitActor = { agentId, role: "AGENT" as const, scopedAgentIds: [agentId] }
             await lockMtmActiveVisitSlot(tx, { organizationId: orgId, agentId })
