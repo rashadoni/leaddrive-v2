@@ -3521,6 +3521,10 @@ model AiAgentConfig {
   intents           String[] @default([]) // Intents: "sales_inquiry", "pricing", "demo_request"
   greeting          String?
   maxToolRounds     Int      @default(5)
+  /// Set only on agentType="inbox_page": the one page (ChannelConfig) this agent answers on.
+  /// The organisation's common inbox agent (agentType="inbox") leaves it null. One agent per
+  /// page is held by a partial unique index in migration 20261215110000 (not expressible here).
+  channelConfigId   String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -3530,6 +3534,7 @@ model AiAgentConfig {
   agentSessions AgentSession[]
 
   @@index([organizationId])
+  @@index([organizationId, channelConfigId])
   @@map("ai_agent_configs")
 }
 

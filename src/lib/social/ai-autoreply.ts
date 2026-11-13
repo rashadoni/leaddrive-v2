@@ -1,3 +1,5 @@
+import { getBusinessHoursDecision } from "@/lib/inbox/business-hours"
+import { aiScheduleAllows, readAiSchedule, resolveInboxAgent } from "@/lib/inbox/page-agent"
 import { prisma } from "@/lib/prisma"
 import { anthropicAvailable, anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
@@ -440,6 +442,9 @@ export async function generateChannelAiReply(opts: {
   senderName: string
   contactId?: string | null
   conversationId?: string | null
+  /** The page (ChannelConfig) the conversation came in on — picks that page's own agent. Absent:
+   *  looked up from the conversation. */
+  channelConfigId?: string | null
   /** When false, do NOT persist the assistant turn to AiChatMessage — the caller persists it AFTER a
    *  confirmed send (flow `ai_reply`), so a failed delivery never pollutes history with a reply the
    *  customer never received (Codex review #4). Default true = webhook behavior (persist in-generate). */
@@ -514,9 +519,11 @@ export async function generateChannelAiReply(opts: {
   // hijack each other. Its systemPrompt / model / temperature / maxTokens override the
   // built-in defaults when set; with no agent (or null fields) behavior is IDENTICAL to
   // before (fail-soft) — FB/IG/VK/Telegram unaffected until an org configures an inbox agent.
-  const agent = await prisma.aiAgentConfig
-    .findFirst({ where: { organizationId: orgId, agentType: "inbox", isActive: true }, orderBy: { priority: "desc" } })
-    .catch(() => null)
+  // The page the conversation came in on may have an agent of its own (lib/inbox/page-agent);
+  // without one this is the organisation's common inbox agent, as before.
+  const agent = await resolveInboxAgent({
+    organizationId: orgId, channelConfigId: opts.channelConfigId, conversationId,
+  })
   const approvedCompanyPhone = approvedCompanyPhoneFromKnowledge(agent?.knowledgeBase)
   const approvedCompanyAddress = approvedCompanyAddressFromKnowledge(agent?.knowledgeBase)
   const gobustonePersona = /(?:gobustone|qobustone)/iu.test([
@@ -1055,6 +1062,18 @@ export async function maybeAiAutoReply(opts: {
     if (holdsAutomaticReply(cfg?.settings)) {
       return finishTerminal({ replied: false, escalated: false, skipped: "reply_held" })
     }
+    // The page's own switch for WHEN the AI answers, against the page's own working hours
+    // (falling back to the platform's, then the organisation's). Outside its time the turn is a
+    // person's, the same way a conversation outside the rollout is — no model call.
+    const aiSchedule = readAiSchedule(cfg?.settings)
+    if (aiSchedule !== "always") {
+      const hours = await getBusinessHoursDecision({
+        organizationId: opts.orgId, channelType: opts.platform, channelConfigId: opts.channelConfigId,
+      })
+      if (!aiScheduleAllows(aiSchedule, hours.open)) {
+        return finishTerminal({ replied: false, escalated: false, skipped: "outside_ai_schedule" })
+      }
+    }
     const policy = readAiReplyPolicy(cfg?.settings)
     if (!isInAiRollout(opts.conversationId, policy.aiRolloutPercent)) {
       // Deterministically outside the audience — straight to a human, no LLM call.
@@ -1110,6 +1129,7 @@ export async function maybeAiAutoReply(opts: {
       senderName: opts.senderName,
       contactId: opts.contactId,
       conversationId: opts.conversationId,
+      channelConfigId: opts.channelConfigId,
       persistAssistant: false,
     })
     if (!ai.reply) {

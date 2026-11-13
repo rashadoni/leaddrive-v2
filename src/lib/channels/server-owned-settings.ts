@@ -36,6 +36,7 @@ import { CHANNEL_FORM_TYPES } from "@/lib/channels/channel-config-payload"
 export const REPLY_POLICY_SETTING_KEYS = [
   "replyMode",
   "afterHoursAi",
+  "aiSchedule",
   "outOfOffice",
   "draftMode",
   "escalateKeywords",

@@ -98,6 +98,7 @@ export async function runAutonomousInboxAgent(
     businessOpen?: (input: {
       organizationId: string
       channelType: string
+      channelConfigId?: string | null
       now: Date
     }) => Promise<boolean>
   },
@@ -305,6 +306,7 @@ export async function runAutonomousInboxAgent(
       if (!pending && !await businessOpen({
         organizationId: organization.id,
         channelType: platform,
+        channelConfigId: conversation.channelConfigId,
         now: options.now,
       })) {
         increment(result.skipped, "outside-business-hours")

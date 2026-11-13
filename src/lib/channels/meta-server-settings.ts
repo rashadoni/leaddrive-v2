@@ -37,6 +37,7 @@ export const META_SERVER_OWNED_SETTING_KEYS = [
   "revokedByMeta",
   "replyMode",
   "afterHoursAi",
+  "aiSchedule",
   "outOfOffice",
   "draftMode",
   "escalateKeywords",
