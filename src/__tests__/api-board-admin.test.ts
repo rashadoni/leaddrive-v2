@@ -5,6 +5,7 @@ vi.mock("@/lib/prisma", () => {
   const prisma: any = {
     division: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     boardPermission: { findMany: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
+    boardTeam: { findMany: vi.fn().mockResolvedValue([]) },
     boardColumn: { createMany: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
     user: { findFirst: vi.fn() },
     task: { findMany: vi.fn(), update: vi.fn() },

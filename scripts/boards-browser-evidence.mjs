@@ -548,6 +548,34 @@ async function main() {
     assert.ok(!JSON.stringify(author.json ?? {}).includes(`${f.tasks.zeytunOne.id}`), 'author told about own message')
   })
 
+  // Owner, 2026-11-13: Bordio's «Teams & Users».
+  await step('teams: the admin makes a team and puts a person in it; the team page lists that person\'s open tasks, the sidebar names the team', async () => {
+    const made = await api('admin', '/api/v1/tasks/teams', { method: 'POST', body: { name: 'Digital Marketing TEAM' } })
+    assert.equal(made.status, 201, JSON.stringify(made.json))
+    const teamId = made.json.data.id
+    assert.equal((await api('marketer', '/api/v1/tasks/teams', { method: 'POST', body: { name: 'Öz komandam' } })).status, 403)
+    const placed = await api('admin', '/api/v1/tasks/teams/members', { method: 'PUT', body: { userId: f.users.marketer.id, teamId, role: 'leader' } })
+    assert.equal(placed.status, 200, JSON.stringify(placed.json))
+    const task = await api('marketer', '/api/v1/tasks', { method: 'POST', body: { title: 'Fixture komanda işi', divisionId: f.boards.DPHARMA.id, status: 'todo', assignedTo: f.users.marketer.id } })
+    assert.equal(task.status, 201, JSON.stringify(task.json))
+    const page = await sessions.marketer.newPage()
+    await page.goto(`/boards/team/${teamId}`, { timeout: 180000 })
+    await page.waitForSelector('[data-testid="team-page"]', { timeout: 120000 })
+    await page.locator('tr[data-row]', { hasText: 'Fixture komanda işi' }).first().waitFor({ timeout: 60000 })
+    // The clerk's Cust-Serv work is not this team's.
+    assert.equal(await page.locator('tr[data-row]', { hasText: 'Fixture mxOne' }).count(), 0)
+    await page.waitForSelector(`[data-testid="sidebar-team-link"][href="/boards/team/${teamId}"]`, { timeout: 60000 })
+    await page.click('[data-testid="team-tab-members"]')
+    assert.match(await page.innerText('[data-testid="team-members"]'), /Fixture marketer[\s\S]*Rəhbər/u)
+    await page.close()
+    // The admin's page: the team with its one person.
+    const adminTeams = await sessions.admin.newPage()
+    await adminTeams.goto('/boards/teams', { timeout: 180000 })
+    await adminTeams.waitForSelector(`[data-testid="teams-team"][data-team="${teamId}"]`, { timeout: 120000 })
+    assert.match(await adminTeams.innerText(`[data-testid="teams-team"][data-team="${teamId}"]`), /Digital Marketing TEAM\s*1/u)
+    await adminTeams.close()
+  })
+
   await step('a tenant with the boards and no CRM: boards work, CRM is closed', async () => {
     const page = await sessions.boardsTenantAdmin.newPage()
     await openBoard(page, 'SOLO')

@@ -22,7 +22,7 @@ export const GET = withRls(async (req, { orgId, session }) => {
   // One board's tasks come in one answer (the board page reads all of them —
   // fetch-board-tasks.ts); any other list stays at 200 a page.
   // «Mənim işlərim» (mine=1) and a folder's boards (divisionIds) are one answer too.
-  const maxLimit = sp.get("divisionId") || sp.get("divisionIds") || sp.get("mine") === "1" ? BOARD_TASKS_PAGE : 200
+  const maxLimit = sp.get("divisionId") || sp.get("divisionIds") || sp.get("mine") === "1" || sp.get("teamId") ? BOARD_TASKS_PAGE : 200
   if (isNaN(page) || isNaN(limit) || page < 1 || limit < 1 || limit > maxLimit || isNaN(offset) || offset < 0) {
     return NextResponse.json({ error: "Invalid page or limit" }, { status: 400 })
   }

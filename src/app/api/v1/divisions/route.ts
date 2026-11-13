@@ -54,7 +54,13 @@ export const GET = withRlsAuth("tasks", "read", async (_req, auth) => {
       },
     })
     const myOpenTasks = await myOpenTasksRead
-    return NextResponse.json({ success: true, data: { divisions, myOpenTasks } })
+    // The sidebar lists the teams under «Mənim işlərim» (board-teams.ts) — read with the boards it already asks for.
+    const teams = await prisma.boardTeam.findMany({
+      where: { organizationId: auth.orgId },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      select: { id: true, name: true },
+    }).catch(() => [])
+    return NextResponse.json({ success: true, data: { divisions, myOpenTasks, teams, canManageTeams: isAdminRole(auth.role) } })
   } catch (e) {
     console.error("[divisions GET]", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
