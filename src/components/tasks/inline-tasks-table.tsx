@@ -170,7 +170,9 @@ const BORDIO_TABLE_CLASSES = [
 /** Faces shown before «+N» when several people are on one task. */
 const MAX_FACES = 4
 // A solid fill: overlapping faces must cover each other, and a tint of the page colour was invisible on the light theme.
-const FACE_CLASSES = "flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-[10px] font-medium ring-2 ring-background dark:bg-zinc-700"
+// Its own size and a 3px overlap: at 6px the next face covered the second letter («GA» read as «G» on the live board).
+const FACE_CLASSES = "flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-zinc-200 text-[10px] font-medium tracking-tight ring-[1.5px] ring-background dark:bg-zinc-700"
+const FACE_OVERLAP = "-ml-[3px]"
 /** «Gullu Alekberova» → «GA»: two people of one task often share a first letter. */
 function initialsOf(name: string | null | undefined): string {
   const words = (name ?? "").trim().split(/\s+/u).filter(Boolean)
@@ -1522,12 +1524,12 @@ function InlineAssigneeCell({ value, assignee, users, onSave, collaborators = []
         {faces ? (
           <span data-testid="assignee-faces" className="flex items-center">
             {faces.slice(0, MAX_FACES).map((p, i) => (
-              <span key={p.id} data-avatar="" className={cn(FACE_CLASSES, "text-zinc-700 dark:text-zinc-100", i > 0 && "-ml-1.5")}>
+              <span key={p.id} data-face="" className={cn(FACE_CLASSES, "text-zinc-700 dark:text-zinc-100", i > 0 && FACE_OVERLAP)}>
                 {initialsOf(p.name)}
               </span>
             ))}
             {faces.length > MAX_FACES && (
-              <span data-avatar="" className={cn(FACE_CLASSES, "-ml-1.5 text-zinc-500 dark:text-zinc-300")}>
+              <span data-face="" className={cn(FACE_CLASSES, FACE_OVERLAP, "text-zinc-500 dark:text-zinc-300")}>
                 +{faces.length - MAX_FACES}
               </span>
             )}
