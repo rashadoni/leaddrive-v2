@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { AlertCircle, Check, Loader2, MessageSquare, Paperclip, Plus, RotateCcw } from "lucide-react"
+import { AlertCircle, Check, ChevronDown, ChevronRight, Loader2, MessageSquare, Paperclip, Plus, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/format-date"
 import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
@@ -53,6 +53,13 @@ interface Ticked { status: string; boardColumnKey: string | null }
 // задачи не только за 14 дней… все можешь подгружать»; Sabina saw 25 of her 467).
 const DONE_PAGE = 50
 const priorityKey = (p: string) => `priority${p[0].toUpperCase()}${p.slice(1)}`
+
+async function readTasksPage(query: string, limit: number): Promise<{ tasks: MyTask[]; total: number }> {
+  const res = await fetch(`/api/v1/tasks?mine=1&${query}&limit=${limit}`, { credentials: "include" })
+  if (!res.ok) throw new Error(String(res.status))
+  const json = await res.json()
+  return { tasks: json?.data?.tasks ?? [], total: json?.data?.total ?? 0 }
+}
 
 async function readTasks(query: string): Promise<{ tasks: MyTask[]; total: number }> {
   const res = await fetch(`/api/v1/tasks?mine=1&${query}&limit=${BOARD_TASKS_PAGE}`, { credentials: "include" })
@@ -166,6 +173,16 @@ export default function MyWorkPage() {
     } catch { /* the open list stands on its own */ }
   }, [])
   useEffect(() => { loadDoneToday() }, [loadDoneToday])
+  // How many she has finished in all — shown on the «Bitənlər» line before it is
+  // opened, as Bordio's «Closed tasks 560» (Sabina, 2026-11-13: «bordioda 560
+  // bağlanmış taskım var… sistemdə görünmür» — they were behind a button).
+  const loadDoneCount = useCallback(async () => {
+    try {
+      const done = await readTasksPage("status=done,completed,cancelled", 1)
+      setDoneTotal(done.total)
+    } catch { /* the line shows no number */ }
+  }, [])
+  useEffect(() => { loadDoneCount() }, [loadDoneCount])
 
   const [doneTotal, setDoneTotal] = useState(0)
   const [doneLoading, setDoneLoading] = useState(false)
@@ -413,15 +430,6 @@ export default function MyWorkPage() {
             <option value="">{t("allBoards")}</option>
             {filterBoards.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
           </select>
-          <button
-            type="button"
-            onClick={() => setShowDone((v) => !v)}
-            aria-pressed={showDone}
-            data-testid="my-work-show-done"
-            className={cn("h-8 rounded-lg border px-2.5 text-[13px] text-gray-700 dark:text-gray-200", showDone ? "border-gray-400 bg-gray-100 dark:border-gray-500 dark:bg-gray-800" : "border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900")}
-          >
-            {t(showDone ? "hideDone" : "showDone")}
-          </button>
           {createBoards.length > 0 && (
             <button
               type="button"
@@ -464,7 +472,7 @@ export default function MyWorkPage() {
         </div>
       )}
 
-      {tasks && view === "list" && (groups.size > 0 || showDone || shownDoneToday.length > 0) && (
+      {tasks && view === "list" && (groups.size > 0 || showDone || shownDoneToday.length > 0 || doneTotal > 0) && (
         <div className="space-y-3">
           {MY_WORK_GROUPS.map((g) => {
             const list = groups.get(g) ?? []
@@ -488,14 +496,26 @@ export default function MyWorkPage() {
               <ul>{shownDoneToday.map((task) => row(task, true))}</ul>
             </section>
           )}
-          {showDone && (
+          {(showDone || doneTotal > 0) && (
             <section data-testid="my-work-group" data-group="done" className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
-              <h2 className="flex items-baseline gap-1.5 px-4 py-2 text-[13px] font-medium text-gray-700 dark:text-gray-300">
-                {t("groups.done")}
-                {doneTasks ? <span className="text-gray-400">{doneTotal}</span> : <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" aria-hidden="true" />}
+              {/* Always on the page with its count, closed until pressed — Bordio's «Closed tasks 560». */}
+              <h2>
+                <button
+                  type="button"
+                  onClick={() => setShowDone((v) => !v)}
+                  aria-expanded={showDone}
+                  data-testid="my-work-show-done"
+                  title={t(showDone ? "hideDone" : "showDone")}
+                  className="flex w-full items-center gap-1.5 px-4 py-2.5 text-left text-[13px] font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-900"
+                >
+                  {showDone ? <ChevronDown className="h-4 w-4 text-gray-400" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 text-gray-400" aria-hidden="true" />}
+                  {t("groups.done")}
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400" data-testid="my-work-done-count">{doneTotal}</span>
+                  {showDone && !doneTasks && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" aria-hidden="true" />}
+                </button>
               </h2>
-              {doneTasks && shownDone.length > 0 && <ul>{shownDone.map((task) => row(task, true))}</ul>}
-              {doneTasks && doneTasks.length < doneTotal && (
+              {showDone && doneTasks && shownDone.length > 0 && <ul>{shownDone.map((task) => row(task, true))}</ul>}
+              {showDone && doneTasks && doneTasks.length < doneTotal && (
                 <LoadMoreWhenSeen onSeen={loadMoreDone}>
                   <button
                     type="button"
@@ -532,7 +552,7 @@ export default function MyWorkPage() {
         <TaskPanel
           taskId={openTaskId}
           canEdit
-          onClose={() => { setOpenTaskId(null); load(); loadDoneToday(); if (showDone) setDoneTasks(null) }}
+          onClose={() => { setOpenTaskId(null); load(); loadDoneToday(); loadDoneCount(); if (showDone) setDoneTasks(null) }}
           onMutated={() => {}}
         />
       )}
