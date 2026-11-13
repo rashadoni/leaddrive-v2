@@ -1,3 +1,5 @@
+"use client"
+
 /**
  * Parts of one page that need the same list read it once.
  *
