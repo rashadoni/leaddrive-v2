@@ -115,7 +115,7 @@ beforeEach(() => {
     if (url === "/api/v1/tasks/t1") { gets += 1; return Promise.resolve(json(TASK)) }
     if (url === "/api/v1/tasks/t1/time") return Promise.resolve(json({ entries: [], totalMinutes: 0, running: null }))
     if (url === "/api/v1/tasks/t1/feed") return Promise.resolve(json({ items: [], followers: [], following: false }))
-    if (url === "/api/v1/users/assignable") return Promise.resolve(json(PEOPLE))
+    if (url.startsWith("/api/v1/users/assignable")) return Promise.resolve(json(PEOPLE))
     if (url.startsWith("/api/v1/custom-fields")) return Promise.resolve(json([]))
     if (url.startsWith("/api/v1/task-types")) return Promise.resolve(json([{ id: "1", name: "digital_marketing", displayName: "DIGITAL MARKETING", color: "#000", sortOrder: 0, isActive: true }]))
     return Promise.resolve(json({}))

@@ -445,7 +445,11 @@ async function main() {
     assert.equal(await cards.first().getAttribute('aria-label'), 'Fixture old-01')
     const more = page.locator('[data-testid="board-done-more"]')
     assert.match(await more.innerText(), /5/u)
-    await more.click()
+    // Scrolled into view, the rest loads by itself (ShowMoreWhenSeen) and the button goes away; the click is
+    // for when the observer has not fired. Requiring the click to land raced that load (2026-11-13: «element is
+    // not visible» on a run where the five were already on their way). Either way the five must arrive.
+    await more.scrollIntoViewIfNeeded().catch(() => {})
+    await more.click({ timeout: 3000 }).catch(() => {})
     await page.waitForFunction(() => document.querySelectorAll('[aria-label^="Fixture old-"]').length === 35, null, { timeout: 30000 })
     assert.equal(await more.count(), 0)
     await page.close()

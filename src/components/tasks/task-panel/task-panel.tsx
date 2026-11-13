@@ -13,6 +13,7 @@ import { TaskPanelSubtasks, endOfDayIso, type Subtask } from "@/components/tasks
 import { applyTaskPatch, revertTaskPatch } from "@/lib/client/optimistic-task-patch"
 import { STATUS_TO_STAGE, foldToVisibleStage } from "@/lib/tasks/board-columns"
 import { listLinesOf, newSubtaskTitles } from "@/lib/tasks/list-lines"
+import { withPeopleOnTask } from "@/lib/tasks/board-people"
 import { descriptionTextOf } from "@/lib/tasks/rich-description"
 import { fileDownloadUrl } from "@/lib/tasks/message-files"
 import { saveTaskFiles } from "@/lib/tasks/save-task-files"
@@ -175,14 +176,23 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
     return () => { alive = false }
   }, [taskId, reloadKey])
 
+  // A board task is given to its board's own people (board-people.ts) — asked once the task says
+  // which board it is on, and again when it is moved to another one. `undefined` = not known yet.
+  const peopleBoard = task ? task.divisionId : undefined
+  useEffect(() => {
+    if (peopleBoard === undefined) return
+    let alive = true
+    fetch(`/api/v1/users/assignable${peopleBoard ? `?divisionId=${encodeURIComponent(peopleBoard)}` : ""}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((usersJson) => { if (alive) setPeople(Array.isArray(usersJson?.data) ? usersJson.data as Person[] : []) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [peopleBoard])
+
   useEffect(() => {
     let alive = true
-    Promise.all([
-      fetch("/api/v1/users/assignable", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/v1/custom-fields?entityType=task", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-    ]).then(([usersJson, fieldsJson]) => {
+    fetch("/api/v1/custom-fields?entityType=task", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null).then((fieldsJson) => {
       if (!alive) return
-      setPeople((usersJson?.data ?? []) as Person[])
       const brand = ((fieldsJson?.data ?? []) as { fieldName: string; options?: string[]; isActive?: boolean }[]).find((f) => f.fieldName === "brand" && f.isActive !== false)
       setBrandOptions(brand?.options ?? null)
     })
@@ -289,7 +299,12 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
   const statusLabel = useCallback((value: string) => columns.find((c) => c.key === shownStatus(value))?.label ?? value, [columns, shownStatus])
   const statusValue = useMemo(() => (task ? shownStatus(task.status) : ""), [shownStatus, task])
   const runningSeconds = time?.running ? Math.max(0, Math.floor((now - new Date(time.running.startedAt).getTime()) / 1000)) : 0
-  const people4mention = useMemo(() => people.map((p) => ({ id: p.id, name: p.name })), [people])
+  // Whoever is already on the task stays in its fields, member of the board or not.
+  const peopleShown = useMemo(
+    () => withPeopleOnTask(people, task ? [task.assignee, task.reporter, ...task.collaborators.map((c) => c.user), ...task.checklist.map((item) => item.assignee)] : []) as Person[],
+    [people, task],
+  )
+  const people4mention = useMemo(() => peopleShown.map((p) => ({ id: p.id, name: p.name })), [peopleShown])
 
   const field = (label: string, control: React.ReactNode, icon?: React.ReactNode) => (
     <>
@@ -406,7 +421,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                   <div className="flex flex-wrap items-center gap-1.5">
                     <select disabled={!canEdit} value={task.assignedTo ?? ""} onChange={(e) => void patch({ assignedTo: e.target.value || null })} className={`${selectClass} max-w-[12rem]`}>
                       <option value="">{t("nobody")}</option>
-                      {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      {peopleShown.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                     {task.collaborators.map(({ user }) => (
                       <span key={user.id} className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs">
@@ -425,7 +440,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                 {field(t("reporter"), (
                   <select disabled={!canEdit} value={task.reporterId ?? ""} onChange={(e) => void patch({ reporterId: e.target.value || null })} className={selectClass}>
                     <option value="">{task.creator ? t("reporterIsAuthor", { name: task.creator.name }) : t("nobody")}</option>
-                    {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    {peopleShown.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 ))}
                 {field(t("type"), (
@@ -623,7 +638,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                 </section>
               )}
 
-              <TaskPanelSubtasks taskId={task.id} items={task.checklist} people={people} canEdit={canEdit} onChanged={() => { reload(); onMutated() }} />
+              <TaskPanelSubtasks taskId={task.id} items={task.checklist} people={peopleShown} canEdit={canEdit} onChanged={() => { reload(); onMutated() }} />
 
               <p className="mt-6 text-xs text-muted-foreground">
                 {t("createdBy", { name: task.creator?.name ?? "—", date: formatDate(task.createdAt, locale, { day: "numeric", month: "short", year: "numeric" }) })}

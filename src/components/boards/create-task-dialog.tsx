@@ -54,17 +54,18 @@ export function CreateTaskDialog({
     try { last = localStorage.getItem(LAST_BOARD_KEY) ?? "" } catch { /* no storage */ }
     return boards.some((b) => b.id === last) ? last : givenDivisionId || boards[0].id
   })
-  const tCommon = useTranslations("common")
-  // Lazy: the full org user list is only fetched when this dialog opens.
+  // Lazy: asked when the dialog opens — the people of the board the task is made on (board-people.ts),
+  // again when another board is picked.
   const [users, setUsers] = useState<OrgUser[]>([])
   useEffect(() => {
     let alive = true
-    fetch("/api/v1/users/assignable", { credentials: "include" })
+    fetch(`/api/v1/users/assignable${divisionId ? `?divisionId=${encodeURIComponent(divisionId)}` : ""}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => { if (alive && j) setUsers(j.data ?? []) })
       .catch(() => {})
     return () => { alive = false }
-  }, [])
+  }, [divisionId])
+  const tCommon = useTranslations("common")
   const [title, setTitle] = useState("")
   const [type, setType] = useState<string>(taskTypes[0]?.name ?? "task")
   const [priority, setPriority] = useState<string>("medium")
