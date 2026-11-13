@@ -190,8 +190,19 @@ async function main() {
     sessions[key] = context
     return context
   }
+  // `next dev` drops an idle keep-alive connection now and then; a read that lands on it fails with
+  // ECONNRESET before the server has seen it (2026-11-13: «Təqvim» red on two runs of three, at the
+  // same poll). A browser asks again on its own; so does this helper — for reads only, never a write.
+  const fetchOnce = (key, path, method, body) => sessions[key].request.fetch(path, { method, timeout: 120000, ...(body ? { data: body } : {}) })
   const api = async (key, path, { method = 'GET', body } = {}) => {
-    const response = await sessions[key].request.fetch(path, { method, timeout: 120000, ...(body ? { data: body } : {}) })
+    let response
+    for (let attempt = 0; ; attempt++) {
+      try { response = await fetchOnce(key, path, method, body); break } catch (error) {
+        const dropped = /ECONNRESET|socket hang up|EPIPE/.test(String(error?.message ?? error))
+        if (method !== 'GET' || !dropped || attempt >= 2) throw error
+        await new Promise((resolve) => setTimeout(resolve, 300))
+      }
+    }
     let json = null
     try { json = await response.json() } catch { /* not JSON */ }
     return { status: response.status(), json }
