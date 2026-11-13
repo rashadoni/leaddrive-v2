@@ -27,6 +27,7 @@ interface SpawnArgs {
     organizationId: string
     title: string
     description: string | null
+    descriptionHtml?: string | null
     priority: string
     dueDate: Date | null
     assignedTo: string | null
@@ -69,6 +70,7 @@ export async function spawnNextRecurringTask({ task }: SpawnArgs): Promise<{ id:
         organizationId: task.organizationId,
         title: task.title,
         description: task.description,
+        descriptionHtml: task.descriptionHtml ?? null,
         priority: task.priority,
         status: "pending",
         dueDate: next,

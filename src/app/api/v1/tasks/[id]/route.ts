@@ -97,6 +97,10 @@ export const PATCH = withRlsAuth("tasks", "write", async (req: NextRequest, auth
   // shared with voice receipts (roadmap C1.13).
   const fieldPerms = await getFieldPermissions(orgId, role, "task")
   const filteredBody = filterWritableFields(body, fieldPerms, role)
+  // The formatted description is the description: a role that may not write the one may not write the other.
+  if (filteredBody.descriptionHtml !== undefined && !("description" in filterWritableFields({ description: "" }, fieldPerms, role))) {
+    delete filteredBody.descriptionHtml
+  }
 
   try {
     const result = await updateTaskCommand(createRestActorContext({

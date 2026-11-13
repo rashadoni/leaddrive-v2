@@ -1859,6 +1859,8 @@ model Task {
   organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   title              String
   description        String?
+  // The same text with its formatting, as cleaned HTML (src/lib/tasks/rich-description.ts); NULL = plain.
+  descriptionHtml    String?
   status             String             @default("pending") // Kanban statuses (target): backlog | todo | in_progress | testing | review | done. Legacy values pending/completed/cancelled still accepted. NOTE (as of this turn): POST still defaults to legacy "pending" and the Zod enum accepts only the 4 legacy values — migrating the route to Kanban statuses + a data migration (pending→todo, completed→done) is a later turn. Don't trust this column to hold a Kanban status yet.
   priority           String             @default("medium")
   dueDate            DateTime?
