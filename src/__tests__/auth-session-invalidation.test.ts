@@ -480,3 +480,117 @@ describe("session refresh deferred to the route for API calls", () => {
     }
   })
 })
+
+/**
+ * Opening a page sends dozens of API requests at once; each used to read the person, their
+ * company and their CRM eligibility for itself. Requests whose reads overlap now share one
+ * (lib/auth-refresh-flight). Nothing is kept once the read settles: the next request reads again.
+ */
+describe("requests that arrive together share one read of the person", () => {
+  const existing = (user = USER) => ({ token: { sub: user.id, role: user.role, organizationId: user.organizationId, sessionFingerprint: authorizedFingerprint(user) }, user: undefined })
+  /** A database read that answers only when the test says so. */
+  function heldRead() {
+    let answer!: (row: unknown) => void
+    let fail!: (error: Error) => void
+    const pending = new Promise((resolve, reject) => { answer = resolve; fail = reject })
+    return { pending, answer, fail }
+  }
+
+  it("two requests in flight read the database once, and each gets its own session", async () => {
+    const read = heldRead()
+    prismaMock.user.findUnique.mockReturnValueOnce(read.pending)
+    const first = jwtCallback()(existing())
+    await vi.waitFor(() => expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1))
+    const second = jwtCallback()(existing())
+    await Promise.resolve()
+    read.answer({ ...USER })
+    const [a, b] = await Promise.all([first, second])
+
+    expect(a).toMatchObject({ sub: USER.id, role: USER.role, organizationId: USER.organizationId })
+    expect(b).toMatchObject({ sub: USER.id, role: USER.role, organizationId: USER.organizationId })
+    expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1)
+    expect(readLegacyCrmCredentialBoundary).toHaveBeenCalledTimes(1)
+    // Two sessions, not one object handed to both requests.
+    expect(a).not.toBe(b)
+    expect(a.modules).not.toBe(b.modules)
+  })
+
+  it("keeps nothing: the request after a shared read is refused once the person is deactivated", async () => {
+    const read = heldRead()
+    prismaMock.user.findUnique.mockReturnValueOnce(read.pending)
+    const first = jwtCallback()(existing())
+    await vi.waitFor(() => expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1))
+    const second = jwtCallback()(existing())
+    read.answer({ ...USER })
+    expect(await first).not.toBeNull()
+    expect(await second).not.toBeNull()
+
+    prismaMock.user.findUnique.mockResolvedValue({ ...USER, isActive: false })
+    expect(await jwtCallback()(existing())).toBeNull()
+    expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(2)
+    const { sessionReadsInFlight } = await import("@/lib/auth-refresh-flight")
+    expect(sessionReadsInFlight()).toBe(0)
+  })
+
+  it("a refusal is shared too: everyone waiting on the read of a deactivated person is refused", async () => {
+    const read = heldRead()
+    prismaMock.user.findUnique.mockReturnValueOnce(read.pending)
+    const first = jwtCallback()(existing())
+    await vi.waitFor(() => expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1))
+    const second = jwtCallback()(existing())
+    read.answer({ ...USER, isActive: false })
+    expect(await Promise.all([first, second])).toEqual([null, null])
+  })
+
+  it("a failed read denies everyone who shared it and is not remembered", async () => {
+    const read = heldRead()
+    prismaMock.user.findUnique.mockReturnValueOnce(read.pending)
+    const first = jwtCallback()(existing())
+    await vi.waitFor(() => expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1))
+    const second = jwtCallback()(existing())
+    read.fail(new Error("db down"))
+    expect(await Promise.all([first, second])).toEqual([null, null])
+
+    prismaMock.user.findUnique.mockResolvedValue({ ...USER })
+    expect(await jwtCallback()(existing())).toMatchObject({ sub: USER.id })
+    expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(2)
+  })
+
+  it("each request still answers for its own cookie: a stale fingerprint is refused on a shared read", async () => {
+    const read = heldRead()
+    prismaMock.user.findUnique.mockReturnValueOnce(read.pending)
+    const current = jwtCallback()(existing())
+    await vi.waitFor(() => expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1))
+    const stale = jwtCallback()({ token: { ...existing().token, sessionFingerprint: "issued-before-the-password-change" }, user: undefined })
+    read.answer({ ...USER })
+    expect(await current).toMatchObject({ sub: USER.id })
+    expect(await stale).toBeNull()
+    expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1)
+  })
+
+  it("another person's read is never shared", async () => {
+    const OTHER = { ...USER, id: "user-2", email: "other@example.com", name: "Other", role: "viewer" }
+    const read = heldRead()
+    prismaMock.user.findUnique.mockReturnValueOnce(read.pending).mockResolvedValueOnce({ ...OTHER })
+    const first = jwtCallback()(existing())
+    await vi.waitFor(() => expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1))
+    const other = await jwtCallback()(existing(OTHER))
+    read.answer({ ...USER })
+
+    expect(other).toMatchObject({ sub: OTHER.id, role: "viewer", name: "Other" })
+    expect(await first).toMatchObject({ sub: USER.id, role: USER.role, name: USER.name })
+    expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(2)
+    expect(prismaMock.user.findUnique.mock.calls.map(([args]: any[]) => args.where)).toEqual([{ id: USER.id }, { id: OTHER.id }])
+  })
+
+  it("a session update reads for itself even while another read is running", async () => {
+    const read = heldRead()
+    prismaMock.user.findUnique.mockReturnValueOnce(read.pending).mockResolvedValueOnce({ ...USER })
+    const first = jwtCallback()(existing())
+    await vi.waitFor(() => expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1))
+    await jwtCallback()({ ...existing(), trigger: "update", session: { name: "X" } })
+    expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(2)
+    read.answer({ ...USER })
+    await first
+  })
+})
