@@ -141,13 +141,36 @@ describe("Komandalar və istifadəçilər", () => {
     expect(calls).toContain('PUT /api/v1/tasks/teams/members {"userId":"new-1","teamId":"t-dig"}')
   })
 
-  it("someone who is not the admin reads the teams and changes nothing", async () => {
+  // Owner, 2026-11-13: «создал также такое же ограничение к команде и пользователи?» — the section is the
+  // admin's. Typed into the address bar by anyone else, it used to open read-only with every colleague's e-mail.
+  it("someone who is not the admin does not see the section at all", async () => {
     canManage = false
     await render()
-    expect(container.textContent).toContain("yalnız admin")
+    expect(container.querySelector('[data-testid="teams-admin-only"]')?.textContent).toContain("yalnız administrator")
+    expect(container.querySelector('[data-testid="teams-list"]')).toBeNull()
+    expect(container.querySelector('[data-testid="teams-people"]')).toBeNull()
+    expect(container.querySelectorAll('[data-testid="teams-person"]')).toHaveLength(0)
+    expect(container.textContent).not.toContain("@")
     expect(container.querySelector('[data-testid="teams-add-user"]')).toBeNull()
-    expect(container.querySelector('[data-testid="teams-create"]')).toBeNull()
-    expect((person("nazrin").querySelector('[data-testid="teams-person-team"]') as HTMLSelectElement).disabled).toBe(true)
     expect(calls).toEqual([])
+  })
+
+  // Owner, same day, on the first cut: «как будто 2008-й год». `data-crm-filter` made the workspace stylesheet
+  // draw each team as a bordered chip of its own width, with the name cut short.
+  it("the team list is one list of equal rows: no filter chips, the whole name on hover, the page titled by the team picked", async () => {
+    await render()
+    expect(container.querySelector('[data-testid="teams-list"] [data-crm-filter]')).toBeNull()
+    const rows = [...container.querySelectorAll('[data-testid="teams-list"] [data-testid="teams-team"]')] as HTMLElement[]
+    // Every row is the same block; only the picked one is filled.
+    expect(new Set(rows.map((row) => row.className.replace(/\bbg-muted\b|text-foreground(\/75)?|hover:\S+/gu, "").replace(/\s+/gu, " ").trim())).size).toBe(1)
+    expect(rows[0].querySelector("button [title]")?.getAttribute("title")).toBe("Traditional Marketing")
+    expect(container.querySelector("#teams-people-title")?.textContent).toBe("Bütün istifadəçilər")
+    await click(container.querySelector('[data-testid="teams-team"][data-team="t-dig"] button'))
+    expect(container.querySelector("#teams-people-title")?.textContent).toBe("Digital Marketing")
+    expect(container.querySelector('[data-testid="teams-team"][data-team="t-dig"] button')?.getAttribute("aria-current")).toBe("true")
+    expect(container.querySelector('[data-testid="teams-team"][data-team="t-trad"] button')?.getAttribute("aria-current")).toBeNull()
+    // No vertical rules between the people's columns, and no glyph standing in for an icon.
+    expect(container.querySelector('[data-testid="teams-people"] td.border-l')).toBeNull()
+    expect(container.querySelector('[data-testid="teams-people"]')?.textContent).not.toContain("✓")
   })
 })
