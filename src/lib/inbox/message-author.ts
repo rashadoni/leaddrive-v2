@@ -18,14 +18,8 @@ export type MessageAuthor =
   | { kind: "operator" }
   | { kind: "unknown" }
 
-export type MessageAuthorMetadata = {
-  aiAutoReply?: unknown
-  aiGenerated?: unknown
-  authorType?: unknown
-  authorName?: unknown
-  source?: unknown
-  sentFromBusinessApp?: unknown
-} | null | undefined
+/** A message's stored metadata — any shape; only the keys below are read. */
+export type MessageAuthorMetadata = Record<string, unknown> | null | undefined
 
 /** The app a team answers from on each platform — Messenger, not "Facebook", is what they open. */
 const APP_BY_CHANNEL: Record<string, string> = {
