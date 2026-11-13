@@ -25,12 +25,13 @@ import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { MtmRouteRepeatDialog } from "@/components/mtm/route-repeat-dialog"
 import dynamic from "next/dynamic"
 import type { MtmRouteAssignment, MtmRoutePoint, MtmRouteRecord } from "@/components/mtm/route-types"
 import {
   Route, MapPin, User, CheckCircle2, Plus, Pencil, Trash2, Send,
   ArrowLeft, List, CalendarDays, Clock, Navigation, RefreshCw, X, Columns3, ClipboardCheck, Users, UserRound, FileSpreadsheet, TableProperties,
-  Camera, PenLine, StickyNote, ArrowDownUp,
+  Camera, PenLine, StickyNote, ArrowDownUp, Repeat,
 } from "lucide-react"
 import { mtmRouteReturnTarget, type MtmRouteAssignmentDirection } from "@/lib/mtm/route-links"
 import { fetchMtmRoutesInRange } from "@/lib/mtm/route-range-client"
@@ -631,6 +632,8 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
   }, [routes, selectedRouteId])
 
   const todayKey = mtmCalendarDayKey(new Date())
+  // «Повторить маршрут» (Zeytun 2026-11-13): the route open in the details.
+  const [repeatOpen, setRepeatOpen] = useState(false)
   const approvalTotal = approvalCounts ? approvalCounts.routeChanges + approvalCounts.customerRequests + approvalCounts.customerLocationRequests + approvalCounts.customerHoursRequests : 0
   const filtered = routes.filter(r => {
     if (activeFilter !== "all" && r.status !== activeFilter) return false
@@ -1050,6 +1053,27 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
         onRouteChanged={refreshRouteViews}
       />
 
+      <MtmRouteRepeatDialog
+        open={repeatOpen && selectedRoute !== null}
+        source={selectedRoute ? {
+          date: String(selectedRoute.date),
+          name: selectedRoute.name ?? null,
+          agentId: selectedRoute.agentId ?? null,
+          assignments: (selectedRoute.assignments ?? []).map((assignment: MtmRouteAssignment) => ({ agentId: assignment.agentId, role: assignment.role })),
+          points: selectedRoutePoints.flatMap((point: MtmRoutePoint) => (point.customerId ?? point.customer?.id) ? [{
+            customerId: (point.customerId ?? point.customer?.id) as string,
+            contactId: point.contactId ?? null,
+            orderIndex: point.orderIndex,
+            plannedTime: point.plannedTime ? String(point.plannedTime) : null,
+          }] : []),
+        } : null}
+        today={todayKey}
+        publish={capabilities.canPublish && selectedRoute?.status !== "DRAFT"}
+        orgId={orgId ? String(orgId) : undefined}
+        onClose={() => setRepeatOpen(false)}
+        onCreated={refreshRouteViews}
+      />
+
       <MtmExcelExchangePanel
         open={excelOpen}
         orgId={orgId ? String(orgId) : undefined}
@@ -1083,6 +1107,9 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
                 {capabilities.canRequestCustomer && selectedRoute.historicalAccessOnly !== true ? <Button size="sm" variant="outline" onClick={() => { setCustomerRequestRouteId(selectedRoute.id); setCustomerRequestOpen(true) }}>
                   <User className="mr-1 h-4 w-4" />{t("requestNewCustomer")}
                 </Button> : null}
+                {capabilities.canCreateRoute && selectedRoute.historicalAccessOnly !== true && selectedRoute.agentId && selectedRoutePoints.length > 0 ? (
+                  <Hint text={t("hint.repeat")}><Button data-testid="mtm-route-repeat" size="sm" variant="outline" onClick={() => setRepeatOpen(true)}><Repeat className="mr-1 h-4 w-4" />{t("repeatButton")}</Button></Hint>
+                ) : null}
                 {canEditRoute(selectedRoute) ? (
                   <>
                     <Hint text={t("hint.edit")}><Button data-testid="mtm-route-edit" size="sm" variant="outline" onClick={() => openRouteEditor(selectedRoute)}><Pencil className="mr-1 h-4 w-4" />{t("edit")}</Button></Hint>
