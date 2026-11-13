@@ -11,13 +11,18 @@
  * İstifadəçilər» shows (owner: «пользователь, который создаётся в разделе
  * команда, чтоб был виден и в разделе пользователи») — a person added here is
  * made through the same API and is there at once; the rest of the card
- * (password, modules, 2FA) stays there. Only the admin changes anything.
+ * (password, modules, 2FA) stays there. The section is the admin's alone.
+ *
+ * The look (owner, 2026-11-13, on the first cut: «как будто 2008-й год»): the
+ * team list is a plain list of equal rows, not `data-crm-filter` pills — that
+ * attribute makes the workspace stylesheet draw a bordered chip of the text's
+ * own width. Lines are quiet, a choice in a cell reads as text until touched.
  */
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
-import { Loader2, Pencil, Plus, Trash2, UserPlus, X } from "lucide-react"
+import { Check, ChevronDown, Info, Loader2, Lock, Pencil, Plus, Trash2, UserPlus, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { orgFromSession } from "@/lib/nav-items"
 import { tenantHideableModules } from "@/lib/user-module-access"
@@ -67,12 +72,7 @@ export default function TeamsAndUsersPage() {
     for (const team of teams ?? []) for (const member of team.members) map.set(member.userId, { teamId: team.id, role: member.role })
     return map
   }, [teams])
-  // Without the right to read the users (a member looking at the page) the teams' own people are shown.
-  const rows: Person[] = useMemo(() => {
-    if (people.length > 0) return people
-    return (teams ?? []).flatMap((team) => team.members.map((m) => ({ id: m.userId, name: m.name, role: "" })))
-  }, [people, teams])
-  const active = rows.filter((p) => p.isActive !== false)
+  const active = people.filter((p) => p.isActive !== false)
   const shown = selected ? active.filter((p) => membership.get(p.id)?.teamId === selected) : active
 
   const send = async (url: string, method: string, body?: unknown): Promise<boolean> => {
@@ -124,149 +124,201 @@ export default function TeamsAndUsersPage() {
   if (teams === null) {
     return <p className="flex items-center gap-2 p-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> {t("loading")}</p>
   }
-  const select = "h-8 max-w-full rounded-md border border-transparent bg-transparent px-1.5 text-sm hover:border-border focus:border-border disabled:opacity-70"
+  // The section is the admin's: nobody else manages people, and a colleague's e-mail is not theirs to browse.
+  if (!canManage && error !== "load") {
+    return (
+      <div className="mx-auto flex max-w-sm flex-col items-center px-6 pt-24 text-center" data-testid="teams-admin-only">
+        <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground"><Lock className="h-5 w-5" aria-hidden="true" /></span>
+        <h1 className="text-lg font-semibold tracking-tight">{t("title")}</h1>
+        <p className="mt-1.5 text-sm leading-6 text-muted-foreground">{t("adminOnlyPage")}</p>
+      </div>
+    )
+  }
+  const selectedTeam = teams.find((team) => team.id === selected) ?? null
+  const ring = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+  // One row shape for «everyone» and for each team: the same width, the name whole, the head-count on the right.
+  const teamRow = (on: boolean) => cn(
+    "group/team relative flex h-10 items-center rounded-lg text-sm transition-colors duration-150",
+    on ? "bg-muted text-foreground" : "text-foreground/75 hover:bg-muted/60 hover:text-foreground",
+  )
+  const teamButton = cn("flex h-full min-w-0 flex-1 items-center gap-3 rounded-lg px-3 text-left", ring)
+  const count = "shrink-0 text-xs tabular-nums text-muted-foreground"
+  // A cell's choice reads as text until the row is touched: no boxes down the column, the arrow in one line.
+  const choice = cn(
+    "peer h-8 w-full cursor-pointer appearance-none truncate rounded-md border border-transparent bg-transparent pl-2.5 pr-8 text-sm transition-colors duration-150",
+    "hover:border-input hover:bg-background focus-visible:border-input focus-visible:bg-background disabled:cursor-default disabled:hover:border-transparent disabled:hover:bg-transparent",
+    ring,
+  )
+  const arrow = "pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60 transition-colors peer-hover:text-foreground peer-focus-visible:text-foreground"
+  const line = "border-border/60"
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 pb-16">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1>
-        {canManage && (
-          <button type="button" data-crm-button="default" data-testid="teams-add-user" onClick={() => setAdding(true)} className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground">
-            <UserPlus className="h-4 w-4" aria-hidden="true" /> {t("addUser")}
-          </button>
-        )}
-      </div>
-      {!canManage && <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">{t("adminOnly")}</p>}
-      {error && <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{t(error === "load" ? "loadFailed" : error === "name" ? "nameTaken" : "saveFailed")}</p>}
+    <div className="mx-auto max-w-6xl pb-16">
+      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-7">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
+        </div>
+        <button type="button" data-crm-button="default" data-testid="teams-add-user" onClick={() => setAdding(true)} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground">
+          <UserPlus className="h-4 w-4" aria-hidden="true" /> {t("addUser")}
+        </button>
+      </header>
+      {error && <p role="alert" className="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">{t(error === "load" ? "loadFailed" : error === "name" ? "nameTaken" : "saveFailed")}</p>}
 
-      <div className="grid gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
-        <section className="rounded-xl border border-border bg-card p-3" data-testid="teams-list">
-          <h2 className="mb-2 px-2 text-base font-medium">{t("teams")}</h2>
-          <button type="button" data-crm-filter="" data-state={selected === "" ? "active" : "inactive"} onClick={() => setSelected("")} className="flex h-9 w-full items-center justify-between px-2 text-sm">
-            <span>{t("allTeams")}</span><span className="text-xs text-muted-foreground">{active.length}</span>
-          </button>
-          {teams.map((team) => (
-            <div key={team.id} className="group flex items-center gap-1" data-testid="teams-team" data-team={team.id}>
-              {renaming?.id === team.id ? (
-                <input
-                  autoFocus
-                  value={renaming.name}
-                  onChange={(e) => setRenaming({ id: team.id, name: e.target.value })}
-                  onBlur={() => void renameTeam()}
-                  onKeyDown={(e) => { if (e.key === "Enter") void renameTeam(); if (e.key === "Escape") setRenaming(null) }}
-                  className="h-9 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-sm"
-                />
-              ) : (
-                <button type="button" data-crm-filter="" data-state={selected === team.id ? "active" : "inactive"} onClick={() => setSelected(team.id)} className="flex h-9 min-w-0 flex-1 items-center justify-between gap-2 px-2 text-sm">
-                  <span className="truncate">{team.name}</span><span className="shrink-0 text-xs text-muted-foreground">{team.members.length}</span>
-                </button>
-              )}
-              {canManage && renaming?.id !== team.id && (removing === team.id ? (
-                <span className="flex shrink-0 items-center gap-1 text-xs">
-                  <button type="button" data-testid="teams-team-remove-yes" onClick={() => void removeTeam(team.id)} className="rounded border border-destructive/50 px-1.5 py-0.5 text-destructive">{t("removeYes")}</button>
-                  <button type="button" onClick={() => setRemoving(null)} className="rounded border px-1.5 py-0.5">{t("no")}</button>
-                </span>
-              ) : (
-                <span className="flex shrink-0 items-center opacity-0 focus-within:opacity-100 group-hover:opacity-100">
-                  <button type="button" title={t("rename")} aria-label={`${t("rename")}: ${team.name}`} onClick={() => setRenaming({ id: team.id, name: team.name })} className="rounded p-1 text-muted-foreground hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
-                  <button type="button" title={t("removeTeam")} aria-label={`${t("removeTeam")}: ${team.name}`} data-testid="teams-team-remove" onClick={() => setRemoving(team.id)} className="rounded p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
-                </span>
-              ))}
-            </div>
-          ))}
-          {canManage && (newTeam === null ? (
-            <button type="button" data-testid="teams-create" onClick={() => setNewTeam("")} className="mt-1 flex h-9 w-full items-center gap-1.5 rounded-md px-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
-              <Plus className="h-4 w-4" aria-hidden="true" /> {t("createTeam")}
+      <div className="grid items-start gap-x-10 gap-y-8 md:grid-cols-[17rem_minmax(0,1fr)]">
+        <nav aria-label={t("teams")} data-testid="teams-list" className="md:sticky md:top-4">
+          <h2 className="mb-2 px-3 text-sm font-semibold">{t("teams")}</h2>
+          <div className={teamRow(selected === "")}>
+            <button type="button" aria-current={selected === "" ? "true" : undefined} onClick={() => setSelected("")} className={teamButton}>
+              <span className={cn("min-w-0 flex-1 truncate", selected === "" && "font-medium")}>{t("allTeams")}</span>
+              <span className={count}>{active.length}</span>
             </button>
-          ) : (
-            <input
-              autoFocus
-              data-testid="teams-create-name"
-              value={newTeam}
-              placeholder={t("teamName")}
-              onChange={(e) => setNewTeam(e.target.value)}
-              onBlur={() => void createTeam()}
-              onKeyDown={(e) => { if (e.key === "Enter") void createTeam(); if (e.key === "Escape") setNewTeam(null) }}
-              className="mt-1 h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
-            />
-          ))}
-          {removing && <p className="mt-2 px-2 text-xs text-muted-foreground">{t("removeTeamHint")}</p>}
-        </section>
-
-        <section className="overflow-hidden rounded-xl border border-border bg-card" data-testid="teams-people">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="h-11 border-b border-border text-left text-muted-foreground">
-                  <th className="px-3.5 font-normal">{t("colName")} <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs">{shown.length}</span></th>
-                  <th className="px-3.5 font-normal">{t("colTeam")}</th>
-                  <th className="px-3.5 font-normal">{t("colTeamRole")}</th>
-                  <th className="px-3.5 font-normal" title={t("reportsHint")}>{t("colReports")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((person) => {
-                  const at = membership.get(person.id)
-                  const admin = person.role === "admin" || person.role === "superadmin"
-                  const reportsOpen = admin || !person.boardReportsHidden
-                  return (
-                    <tr key={person.id} className="h-[49px] border-b border-border last:border-0 hover:bg-muted/40" data-testid="teams-person" data-user={person.id}>
-                      <td className="px-3.5">
-                        <div className="flex min-w-0 items-center gap-2.5">
-                          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-muted text-[11px] text-muted-foreground" aria-hidden="true">{initials(person.name)}</span>
-                          <span className="min-w-0">
-                            <span className="block truncate">{person.name}</span>
-                            {person.email && <span className="block truncate text-xs text-muted-foreground">{person.email}</span>}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="border-l border-border px-2">
-                        <select data-testid="teams-person-team" aria-label={`${t("colTeam")}: ${person.name}`} disabled={!canManage} value={at?.teamId ?? ""} onChange={(e) => void setTeam(person.id, e.target.value)} className={select}>
-                          <option value="">{t("noTeam")}</option>
-                          {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-                        </select>
-                      </td>
-                      <td className="border-l border-border px-2">
-                        {at ? (
-                          <select data-testid="teams-person-role" aria-label={`${t("colTeamRole")}: ${person.name}`} disabled={!canManage} value={at.role} onChange={(e) => void setRole(person.id, e.target.value as TeamRole)} className={select}>
-                            <option value="member">{t("roleMember")}</option>
-                            <option value="leader">{t("roleLeader")}</option>
-                          </select>
-                        ) : <span className="px-1.5 text-muted-foreground">–</span>}
-                      </td>
-                      <td className="border-l border-border px-3.5">
-                        {people.length === 0 ? <span className="text-muted-foreground">–</span> : admin ? (
-                          <span className="text-muted-foreground" title={t("reportsAlways")}>✓ {t("reportsAdmin")}</span>
-                        ) : (
-                          <button
-                            type="button"
-                            data-crm-color-role="toggle"
-                            data-testid="teams-person-reports"
-                            disabled={!canManage}
-                            aria-pressed={reportsOpen}
-                            aria-label={`${t("colReports")}: ${person.name}`}
-                            title={t("reportsHint")}
-                            onClick={() => void setReports(person, !reportsOpen)}
-                            className={cn("relative inline-flex h-[18px] w-[30px] shrink-0 rounded-full transition-colors disabled:opacity-60", reportsOpen ? "bg-emerald-600" : "bg-muted-foreground/40")}
-                          >
-                            <span className={cn("pointer-events-none absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-all", reportsOpen ? "left-[14px]" : "left-0.5")} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-                {shown.length === 0 && (
-                  <tr><td colSpan={4} className="px-3.5 py-8 text-center text-muted-foreground">{t("nobody")}</td></tr>
-                )}
-              </tbody>
-            </table>
           </div>
-          {canManage && (
-            <p className="border-t border-border px-3.5 py-2.5 text-xs text-muted-foreground">
-              {t("fullCardHint")} <Link href="/settings/users" className="underline hover:text-foreground">{t("fullCardLink")}</Link>
+          {teams.map((team) => {
+            const on = selected === team.id
+            return (
+              <div key={team.id} className={cn(teamRow(on), "mt-0.5")} data-testid="teams-team" data-team={team.id}>
+                {renaming?.id === team.id ? (
+                  <input
+                    autoFocus
+                    aria-label={`${t("rename")}: ${team.name}`}
+                    value={renaming.name}
+                    onChange={(e) => setRenaming({ id: team.id, name: e.target.value })}
+                    onBlur={() => void renameTeam()}
+                    onKeyDown={(e) => { if (e.key === "Enter") void renameTeam(); if (e.key === "Escape") setRenaming(null) }}
+                    className={cn("h-10 min-w-0 flex-1 rounded-lg border border-input bg-background px-3 text-sm", ring)}
+                  />
+                ) : removing === team.id ? (
+                  <>
+                    <span className="min-w-0 flex-1 truncate px-3" title={team.name}>{team.name}</span>
+                    <span className="mr-1.5 flex shrink-0 items-center gap-1">
+                      <button type="button" data-testid="teams-team-remove-yes" onClick={() => void removeTeam(team.id)} className={cn("h-7 rounded-md bg-destructive/10 px-2.5 text-xs font-medium text-destructive hover:bg-destructive/15", ring)}>{t("removeYes")}</button>
+                      <button type="button" onClick={() => setRemoving(null)} className={cn("h-7 rounded-md px-2.5 text-xs font-medium text-muted-foreground hover:bg-background hover:text-foreground", ring)}>{t("no")}</button>
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" aria-current={on ? "true" : undefined} onClick={() => setSelected(team.id)} className={teamButton}>
+                      <span className={cn("min-w-0 flex-1 truncate", on && "font-medium")} title={team.name}>{team.name}</span>
+                      <span className={cn(count, "transition-opacity group-hover/team:opacity-0")}>{team.members.length}</span>
+                    </button>
+                    {/* The row's own actions take the head-count's place when the row is touched: the row never changes width. */}
+                    <span className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover/team:opacity-100">
+                      <button type="button" title={t("rename")} aria-label={`${t("rename")}: ${team.name}`} onClick={() => setRenaming({ id: team.id, name: team.name })} className={cn("flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-background hover:text-foreground", ring)}><Pencil className="h-3.5 w-3.5" /></button>
+                      <button type="button" title={t("removeTeam")} aria-label={`${t("removeTeam")}: ${team.name}`} data-testid="teams-team-remove" onClick={() => setRemoving(team.id)} className={cn("flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-background hover:text-destructive", ring)}><Trash2 className="h-3.5 w-3.5" /></button>
+                    </span>
+                  </>
+                )}
+              </div>
+            )
+          })}
+          {removing && <p className="mt-2 px-3 text-xs leading-5 text-muted-foreground">{t("removeTeamHint")}</p>}
+          <div className={cn("mt-2 border-t pt-2", line)}>
+            {newTeam === null ? (
+              <button type="button" data-testid="teams-create" onClick={() => setNewTeam("")} className={cn("flex h-10 w-full items-center gap-2 rounded-lg px-3 text-sm text-muted-foreground transition-colors duration-150 hover:bg-muted/60 hover:text-foreground", ring)}>
+                <Plus className="h-4 w-4" aria-hidden="true" /> {t("createTeam")}
+              </button>
+            ) : (
+              <input
+                autoFocus
+                data-testid="teams-create-name"
+                aria-label={t("teamName")}
+                value={newTeam}
+                placeholder={t("teamName")}
+                onChange={(e) => setNewTeam(e.target.value)}
+                onBlur={() => void createTeam()}
+                onKeyDown={(e) => { if (e.key === "Enter") void createTeam(); if (e.key === "Escape") setNewTeam(null) }}
+                className={cn("h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground", ring)}
+              />
+            )}
+          </div>
+        </nav>
+
+        <section className="min-w-0" data-testid="teams-people" aria-labelledby="teams-people-title">
+          <div className="mb-3 flex items-baseline gap-2 px-1">
+            <h2 id="teams-people-title" className="truncate text-sm font-semibold">{selectedTeam?.name ?? t("allPeople")}</h2>
+            <span className="text-sm tabular-nums text-muted-foreground">{shown.length}</span>
+          </div>
+          <div className={cn("overflow-hidden rounded-xl border bg-card", line)}>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[46rem] text-sm">
+                <thead>
+                  <tr className={cn("h-10 border-b text-left text-xs text-muted-foreground", line)}>
+                    <th className="px-4 font-medium">{t("colName")}</th>
+                    <th className="w-[17.5rem] px-4 font-medium">{t("colTeam")}</th>
+                    <th className="w-[9rem] px-4 font-medium">{t("colTeamRole")}</th>
+                    <th className="w-[9.5rem] px-4 font-medium">
+                      <span className="inline-flex items-center gap-1.5" title={t("reportsHint")}>{t("colReports")} <Info className="h-3.5 w-3.5 opacity-70" aria-hidden="true" /></span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shown.map((person) => {
+                    const at = membership.get(person.id)
+                    const admin = person.role === "admin" || person.role === "superadmin"
+                    const reportsOpen = admin || !person.boardReportsHidden
+                    return (
+                      <tr key={person.id} className={cn("h-14 border-b transition-colors duration-150 last:border-0 hover:bg-muted/40", line)} data-testid="teams-person" data-user={person.id}>
+                        <td className="px-4">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-[11px] font-medium tracking-tight text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100" aria-hidden="true">{initials(person.name)}</span>
+                            <span className="min-w-0">
+                              <span className="block truncate leading-5">{person.name}</span>
+                              {person.email && <span className="block truncate text-xs leading-4 text-muted-foreground">{person.email}</span>}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4">
+                          <span className="relative -ml-2.5 block">
+                            <select data-testid="teams-person-team" aria-label={`${t("colTeam")}: ${person.name}`} value={at?.teamId ?? ""} onChange={(e) => void setTeam(person.id, e.target.value)} className={cn(choice, !at && "text-muted-foreground")}>
+                              <option value="">{t("noTeam")}</option>
+                              {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+                            </select>
+                            <ChevronDown className={arrow} aria-hidden="true" />
+                          </span>
+                        </td>
+                        <td className="px-4">
+                          {at ? (
+                            <span className="relative -ml-2.5 block">
+                              <select data-testid="teams-person-role" aria-label={`${t("colTeamRole")}: ${person.name}`} value={at.role} onChange={(e) => void setRole(person.id, e.target.value as TeamRole)} className={cn(choice, at.role === "leader" && "font-medium")}>
+                                <option value="member">{t("roleMember")}</option>
+                                <option value="leader">{t("roleLeader")}</option>
+                              </select>
+                              <ChevronDown className={arrow} aria-hidden="true" />
+                            </span>
+                          ) : <span className="text-muted-foreground/70" aria-hidden="true">—</span>}
+                        </td>
+                        <td className="px-4">
+                          {admin ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground" title={t("reportsAlways")}><Check className="h-3.5 w-3.5" aria-hidden="true" /> {t("reportsAdmin")}</span>
+                          ) : (
+                            <button
+                              type="button"
+                              data-crm-color-role="toggle"
+                              data-testid="teams-person-reports"
+                              aria-pressed={reportsOpen}
+                              aria-label={`${t("colReports")}: ${person.name}`}
+                              title={t("reportsHint")}
+                              onClick={() => void setReports(person, !reportsOpen)}
+                              className={cn("relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200", ring, reportsOpen ? "bg-emerald-600" : "bg-muted-foreground/35")}
+                            >
+                              <span className={cn("pointer-events-none absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out", reportsOpen && "translate-x-4")} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {shown.length === 0 && (
+                    <tr><td colSpan={4} className="px-4 py-12 text-center text-sm text-muted-foreground">{t("nobody")}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <p className={cn("border-t bg-muted/30 px-4 py-3 text-xs leading-5 text-muted-foreground", line)}>
+              {t("fullCardHint")} <Link href="/settings/users" className={cn("rounded font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground", ring)}>{t("fullCardLink")}</Link>
             </p>
-          )}
+          </div>
         </section>
       </div>
 
@@ -324,31 +376,44 @@ function AddUserDialog({ teams, defaultTeam, hiddenModules, onClose, onAdded }: 
       setSaving(false)
     }
   }
-  const field = "mb-3 h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+  const field = "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+  const label = "mb-1.5 block text-sm font-medium"
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div data-crm-dialog="" role="dialog" aria-modal="true" aria-label={t("addUser")} className="mx-4 w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{t("addUser")}</h2>
-          <button type="button" aria-label={t("close")} onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose() }}>
+      <div data-crm-dialog="" role="dialog" aria-modal="true" aria-labelledby="team-user-title" className="w-full max-w-md rounded-xl border border-border/60 bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h2 id="team-user-title" className="text-lg font-semibold tracking-tight">{t("addUser")}</h2>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">{t("addUserHint")}</p>
+          </div>
+          <button type="button" aria-label={t("close")} onClick={onClose} className="-mr-1.5 -mt-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"><X className="h-4 w-4" /></button>
         </div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="team-user-name">{t("colName")}</label>
-        <input id="team-user-name" data-testid="teams-new-user-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} className={field} />
-        <label className="mb-1 block text-sm font-medium" htmlFor="team-user-email">{t("email")}</label>
-        <input id="team-user-email" data-testid="teams-new-user-email" type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ad.soyad@company.az" className={field} />
-        <label className="mb-1 block text-sm font-medium" htmlFor="team-user-password">{t("password")}</label>
-        <input id="team-user-password" data-testid="teams-new-user-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={field} />
-        <label className="mb-1 block text-sm font-medium" htmlFor="team-user-team">{t("colTeam")}</label>
-        <select id="team-user-team" data-testid="teams-new-user-team" value={teamId} onChange={(e) => setTeamId(e.target.value)} className={field}>
-          <option value="">{t("noTeam")}</option>
-          {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-        </select>
-        <p className="mb-3 text-xs text-muted-foreground">{t("addUserHint")}</p>
-        {error && <p role="alert" className="mb-3 text-sm text-destructive">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="h-9 rounded-md border border-border px-3 text-sm">{t("cancel")}</button>
-          <button type="button" data-crm-button="default" data-testid="teams-new-user-save" disabled={!valid || saving} onClick={() => void submit()} className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-50">
+        <div className="grid gap-4">
+          <div>
+            <label className={label} htmlFor="team-user-name">{t("colName")}</label>
+            <input id="team-user-name" data-testid="teams-new-user-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} className={field} />
+          </div>
+          <div>
+            <label className={label} htmlFor="team-user-email">{t("email")}</label>
+            <input id="team-user-email" data-testid="teams-new-user-email" type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ad.soyad@company.az" className={field} />
+          </div>
+          <div>
+            <label className={label} htmlFor="team-user-password">{t("password")}</label>
+            <input id="team-user-password" data-testid="teams-new-user-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={field} />
+          </div>
+          <div>
+            <label className={label} htmlFor="team-user-team">{t("colTeam")}</label>
+            <select id="team-user-team" data-testid="teams-new-user-team" value={teamId} onChange={(e) => setTeamId(e.target.value)} className={field}>
+              <option value="">{t("noTeam")}</option>
+              {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+            </select>
+          </div>
+        </div>
+        {error && <p role="alert" className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+        <div className="mt-6 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="h-10 rounded-lg border border-input px-4 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50">{t("cancel")}</button>
+          <button type="button" data-crm-button="default" data-testid="teams-new-user-save" disabled={!valid || saving} onClick={() => void submit()} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50">
             {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />} {t("add")}
           </button>
         </div>
