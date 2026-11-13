@@ -254,6 +254,35 @@ describe("GET /api/v1/mtm/mobile/routes/targets", () => {
     expect(body.data.page).toEqual({ number: 1, limit: 1, hasMore: false })
   })
 
+  it("lists the doctors of one clinic, at that clinic, when the planner opens it (Zeytun 2026-11-13)", async () => {
+    const clinic = (id: string) => ({
+      id, name: id, code: null, objectType: "CLINIC", category: "A", address: null, city: null, phone: null, latitude: null, longitude: null,
+      agentAssignments: [{ effectiveFrom: new Date("2026-08-01T00:00:00.000Z"), effectiveTo: null }],
+    })
+    vi.mocked(prisma.mtmContact.findMany).mockResolvedValue([{
+      id: "doctor-1", displayName: "Dr Aygun", type: "DOCTOR", specialtyName: null, phone: null, agentAssignments: [],
+      // Her primary workplace is elsewhere; the planner opened Klinika 3.
+      workplaces: [{ id: "w-primary", customer: clinic("clinic-primary") }, { id: "w-3", customer: clinic("clinic-3") }],
+    }] as never)
+
+    const response = await GET(request("agentId=agent-1&date=2026-08-25&targetTypeId=doctors&customerId=clinic-3"))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data.items).toEqual([expect.objectContaining({
+      targetKey: "contact:doctor-1",
+      customer: expect.objectContaining({ id: "clinic-3" }),
+    })])
+    const query = vi.mocked(prisma.mtmContact.findMany).mock.calls[0]?.[0] as any
+    expect(query.where.AND).toContainEqual({ workplaces: { some: expect.objectContaining({ customerId: "clinic-3", deletedAt: null }) } })
+  })
+
+  it("rejects an oversized clinic id before reading anything", async () => {
+    const response = await GET(request(`agentId=agent-1&date=2026-08-25&targetTypeId=doctors&customerId=${"x".repeat(65)}`))
+    expect(response.status).toBe(400)
+    expect(prisma.mtmContact.findMany).not.toHaveBeenCalled()
+  })
+
   it("denies a field agent who requests another employee before reading the target catalogue", async () => {
     const response = await GET(request("agentId=agent-2&date=2026-08-25"))
 
