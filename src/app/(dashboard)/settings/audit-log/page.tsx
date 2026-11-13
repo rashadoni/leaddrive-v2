@@ -74,7 +74,7 @@ export default function AuditLogPage() {
     }
 
     fetchLogs()
-  }, [session])
+  }, [session?.user?.id, session?.user?.organizationId])
 
   const columns = [
     { key: "createdAt", label: tc("date"), sortable: true },

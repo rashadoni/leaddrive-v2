@@ -111,7 +111,7 @@ export default function ProductsPage() {
     } catch (err) { console.error(err) } finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchProducts() }, [session])
+  useEffect(() => { fetchProducts() }, [session?.user?.id, session?.user?.organizationId])
 
   function resetAi() {
     setAiFields(new Set()); setTouched(new Set()); setAiNote("")

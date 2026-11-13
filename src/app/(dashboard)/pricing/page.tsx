@@ -193,9 +193,9 @@ export default function PricingPage() {
     finally { setWonDealsLoading(false) }
   }, [orgId, salesData])
 
-  useEffect(() => { if (session) fetchData() }, [session])
-  useEffect(() => { if (session && activeTab === "sales") { fetchSales(); fetchProfiles() } }, [session, activeTab])
-  useEffect(() => { if (session && activeTab === "sales" && salesData.length >= 0) fetchWonDeals() }, [session, activeTab, salesData])
+  useEffect(() => { if (session) fetchData() }, [session?.user?.id, session?.user?.organizationId])
+  useEffect(() => { if (session && activeTab === "sales") { fetchSales(); fetchProfiles() } }, [session?.user?.id, session?.user?.organizationId, activeTab])
+  useEffect(() => { if (session && activeTab === "sales" && salesData.length >= 0) fetchWonDeals() }, [session?.user?.id, session?.user?.organizationId, activeTab, salesData])
 
   // ─── Computed values ────────────────────────────────────
   const adjustedData = useMemo(() => {

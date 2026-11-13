@@ -79,7 +79,7 @@ export default function EventsPage() {
     } catch (err) { console.error(err) } finally { setLoading(false) }
   }
 
-  useEffect(() => { if (session) fetchEvents() }, [session, debouncedSearch, statusFilter])
+  useEffect(() => { if (session) fetchEvents() }, [session?.user?.id, session?.user?.organizationId, debouncedSearch, statusFilter])
 
   const handleDelete = async () => {
     if (!deleteEvent) return

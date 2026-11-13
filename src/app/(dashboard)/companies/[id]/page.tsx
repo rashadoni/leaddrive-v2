@@ -164,7 +164,7 @@ export default function CompanyDetailPage() {
     finally { setCallsLoading(false) }
   }
 
-  useEffect(() => { if (params.id) fetchCompany() }, [params.id, session])
+  useEffect(() => { if (params.id) fetchCompany() }, [params.id, session?.user?.id, session?.user?.organizationId])
   useEffect(() => { if (params.id && orgId) { fetchPricing(); fetchTimeline() } }, [params.id, orgId])
 
   if (loading) {

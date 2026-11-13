@@ -129,7 +129,7 @@ export default function EventDetailPage() {
     } catch (err) { console.error(err) } finally { setLoading(false) }
   }
 
-  useEffect(() => { if (params.id) fetchEvent() }, [params.id, session])
+  useEffect(() => { if (params.id) fetchEvent() }, [params.id, session?.user?.id, session?.user?.organizationId])
 
   // Fetch CRM contacts for picker
   useEffect(() => {

@@ -197,7 +197,7 @@ export default function LeadsPage() {
     } catch (err) { console.error(err) } finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchLeads() }, [session])
+  useEffect(() => { fetchLeads() }, [session?.user?.id, session?.user?.organizationId])
 
   // Drop bulk selection whenever the underlying view changes — selected ids
   // could point at rows no longer in the filtered/kanban scope.

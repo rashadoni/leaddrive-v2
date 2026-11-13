@@ -393,7 +393,7 @@ export default function DealDetailPage() {
     } catch {}
   }
 
-  useEffect(() => { if (session) { fetchDeal(); fetchCounts() } }, [session, id])
+  useEffect(() => { if (session) { fetchDeal(); fetchCounts() } }, [session?.user?.id, session?.user?.organizationId, id])
   // A voice edit to THIS deal was just saved: show the new values, so the
   // user can see on the card whether everything is right.
   useEffect(() => {
@@ -405,7 +405,7 @@ export default function DealDetailPage() {
     return () => window.removeEventListener(VOICE_RECORD_CHANGED_EVENT, onChanged)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, orgId])
-  useEffect(() => { if (session) fetchActivityCounts() }, [session, id, timelineKey])
+  useEffect(() => { if (session) fetchActivityCounts() }, [session?.user?.id, session?.user?.organizationId, id, timelineKey])
   useEffect(() => { if (deal?.pipelineId) fetchPipelineStages(deal.pipelineId) }, [deal?.pipelineId])
 
   const saveTags = async (newTags: string[]) => {

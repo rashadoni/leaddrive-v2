@@ -65,7 +65,7 @@ export default function ProjectDetailPage() {
     } catch { setProject(null) } finally { setLoading(false) }
   }, [id, orgId])
 
-  useEffect(() => { if (session) fetchProject() }, [session, fetchProject])
+  useEffect(() => { if (session) fetchProject() }, [session?.user?.id, session?.user?.organizationId, fetchProject])
 
   useEffect(() => {
     if (!orgId) return

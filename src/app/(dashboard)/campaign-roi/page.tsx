@@ -386,7 +386,7 @@ export default function CampaignROIPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [session])
+  }, [session?.user?.id, session?.user?.organizationId])
 
   const totalSent = campaigns.reduce((s, c) => s + c.totalSent, 0)
   const totalOpened = campaigns.reduce((s, c) => s + c.totalOpened, 0)

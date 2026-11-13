@@ -119,7 +119,7 @@ export default function EmailTemplatesPage() {
     fetchTemplates(ac.signal)
     fetchScores(ac.signal)
     return () => ac.abort()
-  }, [session])
+  }, [session?.user?.id, session?.user?.organizationId])
 
   const handleDelete = async () => {
     if (!deleteId) return

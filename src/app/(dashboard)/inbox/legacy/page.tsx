@@ -172,7 +172,7 @@ export default function InboxPage() {
     } catch (err) { console.error(err) } finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchInbox() }, [session, channelFilter])
+  useEffect(() => { fetchInbox() }, [session?.user?.id, session?.user?.organizationId, channelFilter])
 
   // Auto-refresh polling every 15 seconds
   const [isLive, setIsLive] = useState(true)

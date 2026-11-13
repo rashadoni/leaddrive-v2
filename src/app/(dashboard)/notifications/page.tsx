@@ -93,7 +93,7 @@ export default function NotificationsPage() {
     } catch (err) { console.error(err) } finally { setLoadingMore(false) }
   }
 
-  useEffect(() => { fetchNotifications() }, [session])
+  useEffect(() => { fetchNotifications() }, [session?.user?.id, session?.user?.organizationId])
 
   const markAllRead = async () => {
     try {

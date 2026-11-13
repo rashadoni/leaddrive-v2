@@ -259,7 +259,7 @@ export default function ContactDetailPage() {
 
   useEffect(() => {
     if (id && session) fetchContact()
-  }, [id, session])
+  }, [id, session?.user?.id, session?.user?.organizationId])
 
   const openEdit = () => {
     if (!contact) return

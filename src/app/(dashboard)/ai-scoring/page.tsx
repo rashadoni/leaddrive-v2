@@ -66,7 +66,7 @@ export default function AILeadScoringPage() {
     } catch (err) { console.error(err) } finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchLeads() }, [session])
+  useEffect(() => { fetchLeads() }, [session?.user?.id, session?.user?.organizationId])
 
   async function scoreAll() {
     setScoring(true)

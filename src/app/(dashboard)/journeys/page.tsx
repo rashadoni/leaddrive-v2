@@ -289,7 +289,7 @@ export default function JourneysPage() {
     } catch (err) { console.error(err) } finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchJourneys() }, [session])
+  useEffect(() => { fetchJourneys() }, [session?.user?.id, session?.user?.organizationId])
 
   const handleDelete = async () => {
     if (!deleteId) return

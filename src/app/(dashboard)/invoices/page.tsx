@@ -189,7 +189,7 @@ export default function InvoicesPage() {
       fetchStats()
       fetchInvoices()
     }
-  }, [session, statusFilter])
+  }, [session?.user?.id, session?.user?.organizationId, statusFilter])
 
   const handleDelete = async () => {
     if (!deleteId) return
