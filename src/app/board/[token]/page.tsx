@@ -8,11 +8,17 @@
  * WhatsApp appears on the wall by itself. What it draws, and why it stopped
  * being an hour grid, is in src/components/booking/board-screen.tsx and
  * src/lib/booking/board-view.ts; this file only keeps the time and the turns.
+ *
+ * And it keeps itself current: a tab opened once on a monitor would otherwise
+ * run the page it was opened with for months. Every few minutes it asks which
+ * release the server runs, and loads itself again when that is not its own.
  */
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { BoardScreen } from "@/components/booking/board-screen"
-import { boardClock, screenOf, type Board } from "@/lib/booking/board-view"
+import { boardClock, releaseToLoad, screenOf, type Board } from "@/lib/booking/board-view"
+import { reloadBoardPage } from "@/lib/booking/board-reload"
+import { DEPLOY_SHA } from "@/generated/build-sha"
 import { dashboardFont } from "@/lib/fonts/dashboard-font"
 
 const REFRESH_MS = 30_000
@@ -21,6 +27,10 @@ const ROTATE_MS = 12_000
 const TICK_MS = 5_000
 /** Four missed answers. A screen that cannot reach the server says so rather than show a stale day as today's. */
 const STALE_MS = 2 * 60_000
+/** How often the wall asks whether a newer release is being served. */
+const RELEASE_MS = 5 * 60_000
+/** The release this tab already reloaded for, so one that did not help is not tried again. */
+const RELEASE_KEY = "leaddrive-board-release"
 
 function minutesIn(timezone: string, at: number): number {
   const parts = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timezone }).formatToParts(new Date(at))
@@ -62,6 +72,29 @@ export default function BoardPage() {
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), TICK_MS)
     return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    // A local build has no release compiled in: nothing to compare, nothing to ask.
+    if (!DEPLOY_SHA) return
+    let alive = true
+    const tried = () => { try { return window.sessionStorage.getItem(RELEASE_KEY) } catch { return null } }
+    const check = () => {
+      void fetch("/api/v1/public/build-info", { cache: "no-store" })
+        .then((response) => response.ok ? response.json() : null)
+        .then((info) => {
+          if (!alive) return
+          // The server answered with its own release, so it is up: loading the
+          // page again now cannot leave the wall blank.
+          const next = releaseToLoad(DEPLOY_SHA, info?.artifactSha, tried())
+          if (!next) return
+          try { window.sessionStorage.setItem(RELEASE_KEY, next) } catch { /* a private window: the reload is still worth one try */ }
+          reloadBoardPage()
+        })
+        .catch(() => undefined)
+    }
+    const timer = window.setInterval(check, RELEASE_MS)
+    return () => { alive = false; window.clearInterval(timer) }
   }, [])
 
   const nowMinutes = board ? minutesIn(board.timezone, now) : 0
