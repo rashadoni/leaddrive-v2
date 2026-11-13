@@ -724,6 +724,10 @@ model User {
   /// for every non-admin role). Ignored for admin/superadmin/reviewer. Catalog
   /// and enforcement: `src/lib/settings-sections.ts`.
   settingsSections  String[]     @default([])
+  /// The boards' «Hesabatlar» tab is closed for this person (they name every
+  /// colleague's numbers). A DENY flag — false = sees them. Ignored for
+  /// admin/superadmin. Rule: `src/lib/tasks/board-reports-access.ts`.
+  boardReportsHidden Boolean     @default(false)
   avatar            String?
   phone             String?
   department        String?

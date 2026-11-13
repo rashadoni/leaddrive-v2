@@ -22,7 +22,7 @@ export const GET = withRlsAuth("tasks", "read", async (req: NextRequest, auth, {
       sections: searchParams.get("sections"),
       withFlow: searchParams.get("flow") === "1",
     })
-    if (!res.ok) return NextResponse.json({ error: "Not found" }, { status: res.status })
+    if (!res.ok) return NextResponse.json({ error: res.status === 403 ? "Forbidden" : "Not found" }, { status: res.status })
     return NextResponse.json({ success: true, data: res.data })
   } catch (e) {
     console.error("[divisions analytics GET]", e)

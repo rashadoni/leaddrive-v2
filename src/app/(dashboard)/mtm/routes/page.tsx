@@ -963,6 +963,10 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: MtmRouteS
             ) : null}
           </nav>
           <div className="flex shrink-0 items-center justify-end gap-2">
+            {/* Zeytun 2026-11-13: «общий календарь… не нашёл — либо кнопку, либо в
+                маршруте посмотреть весь календарь». The sidebar has it; the
+                routes page now opens it with a button that says so. */}
+            {!calendarSurface ? <Hint text={t("hint.openCalendar")}><Button data-testid="mtm-routes-open-calendar" asChild variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10"><Link href="/mtm/calendar"><CalendarDays className="mr-1 h-4 w-4" />{t("openCalendar")}</Link></Button></Hint> : null}
             {returnTarget ? <Hint text={t("hint.returnBack")}><Button asChild variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10"><Link href={returnTarget.href}><ArrowLeft className="mr-1 h-4 w-4" />{t(returnTarget.label)}</Link></Button></Hint> : null}
             {capabilities.canReview ? <Hint text={t("hint.excel")}><Button data-testid="mtm-routes-excel-exchange" variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10" onClick={() => setExcelOpen(true)}><FileSpreadsheet className="mr-1 h-4 w-4" />{t("excelExchange")}</Button></Hint> : null}
             <Hint wrap text={capabilities.canCreateRoute ? t("hint.addRoute") : t("selfPlanningDisabled")}><Button data-testid="mtm-route-builder-open" className="min-h-11 flex-1 whitespace-nowrap px-4 sm:flex-none lg:min-h-10" onClick={() => openPlanner()} disabled={!capabilities.canCreateRoute}><Plus className="mr-1 h-4 w-4" /> {t("add")}</Button></Hint>

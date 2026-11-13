@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { boardReportsOpenFor } from "@/lib/tasks/board-reports-access"
 import { z } from "zod"
 import { Prisma } from "@prisma/client"
 import { prisma, logAudit } from "@/lib/prisma"
@@ -60,7 +61,9 @@ export const GET = withRlsAuth("tasks", "read", async (_req, auth) => {
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
       select: { id: true, name: true },
     }).catch(() => [])
-    return NextResponse.json({ success: true, data: { divisions, myOpenTasks, teams, canManageTeams: isAdminRole(auth.role) } })
+    // Whether the «Hesabatlar» tab is this person's to see (board-reports-access.ts).
+    const boardReports = await boardReportsOpenFor(prisma, auth.orgId, auth.userId, auth.role).catch(() => true)
+    return NextResponse.json({ success: true, data: { divisions, myOpenTasks, teams, canManageTeams: isAdminRole(auth.role), me: { boardReports } } })
   } catch (e) {
     console.error("[divisions GET]", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
