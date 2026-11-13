@@ -579,6 +579,7 @@ export async function executeConversationAction(
           senderName: ctx.conversation.contactName,
           contactId: ctx.conversation.contactId,
           conversationId: cid,
+          channelConfigId: ctx.conversation.channelConfigId,
           persistAssistant: false,
         })
         if (!generated.reply) {
@@ -799,6 +800,7 @@ export async function executeConversationAction(
         const decision = await getBusinessHoursDecision({
           organizationId: orgId,
           channelType,
+          channelConfigId: ctx.conversation.channelConfigId,
         })
         const detail = {
           reason: decision.reason,

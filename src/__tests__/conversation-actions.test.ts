@@ -769,9 +769,11 @@ describe("business_hours_gate", () => {
         replyMessage: "Welcome",
       },
     })
+    // The page the conversation came in on goes along: its own hours win over the platform's.
     expect(getBusinessHoursDecision).toHaveBeenCalledWith({
       organizationId: "org_1",
       channelType: "whatsapp",
+      channelConfigId: "ch_1",
     })
     expect(sendReply).not.toHaveBeenCalled()
     expect(updateMany).not.toHaveBeenCalled()

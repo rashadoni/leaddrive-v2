@@ -305,17 +305,30 @@ export function evaluateBusinessHours(
   };
 }
 
+/**
+ * A page's own hours live in the same table under this key in `channelType` — one Instagram
+ * account, one Facebook page, one bot (owner 2026-11-13: the hours, like the agent, are per page,
+ * not per platform). No row under the key means the page keeps its platform's hours.
+ */
+export function pageBusinessHoursKey(channelConfigId: string): string {
+  return `page:${channelConfigId}`;
+}
+
 export async function getBusinessHoursDecision(params: {
   organizationId: string;
   channelType?: string | null;
+  /** The page the conversation came in on; its own hours win over the platform's. */
+  channelConfigId?: string | null;
   now?: Date;
 }): Promise<BusinessHoursDecision> {
   const channelType = normalizeBusinessHoursChannelType(params.channelType);
-  const candidates = channelType === "all" ? ["all"] : [channelType, "all"];
+  const pageKey = params.channelConfigId ? pageBusinessHoursKey(params.channelConfigId) : null;
+  const candidates = [...(pageKey ? [pageKey] : []), ...(channelType === "all" ? ["all"] : [channelType, "all"])];
   const rows = await prisma.businessHours.findMany({
     where: { organizationId: params.organizationId, channelType: { in: candidates } },
   }) as BusinessHoursRow[];
-  const matched = rows.find((row) => row.channelType === channelType)
+  const matched = (pageKey ? rows.find((row) => row.channelType === pageKey) : undefined)
+    ?? rows.find((row) => row.channelType === channelType)
     ?? rows.find((row) => row.channelType === "all")
     ?? null;
 
