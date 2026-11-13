@@ -6007,6 +6007,7 @@ enum MtmImportType {
   SALES_FACTS
   VISIT_RESULTS
   PLAN_FACT
+  DOCTORS
 }
 
 enum MtmImportStatus {

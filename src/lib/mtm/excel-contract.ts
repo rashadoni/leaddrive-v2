@@ -14,7 +14,7 @@ const PREFIXED_SPREADSHEETML_NAMESPACE = new RegExp(
   `xmlns:([A-Za-z_][\\w.-]*)=["']${SPREADSHEETML_NAMESPACE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`,
 )
 
-export type MtmExcelImportType = "CUSTOMERS" | "ROUTES" | "SALES_FACTS" | "PLAN_FACT"
+export type MtmExcelImportType = "CUSTOMERS" | "ROUTES" | "SALES_FACTS" | "PLAN_FACT" | "DOCTORS"
 export type MtmExcelLocale = "az" | "ru" | "en"
 
 export interface MtmExcelColumn {
@@ -117,24 +117,41 @@ const CONTRACTS: Record<MtmExcelImportType, MtmExcelContract> = {
       { key: "currency", required: false, example: "AZN" },
     ],
   },
+  // Doctors with their clinics and agents (Zeytun, 2026-11-13): one row is
+  // «this agent visits this doctor at this clinic». A doctor of two clinics
+  // takes two rows; the clinic is found by name and city or created.
+  DOCTORS: {
+    type: "DOCTORS",
+    sheet: "doctors",
+    columns: [
+      { key: "agent", required: true, example: "AG-001" },
+      { key: "doctor_name", required: true, example: "Aliyeva Leyla" },
+      { key: "doctor_code", required: false, example: "" },
+      { key: "specialty", required: false, example: "Neurologist" },
+      { key: "clinic_name", required: true, example: "City Clinic 3" },
+      { key: "clinic_city", required: false, example: "Baku" },
+      { key: "clinic_district", required: false, example: "Yasamal" },
+      { key: "clinic_address", required: false, example: "12 Nizami Street" },
+    ],
+  },
 }
 
 const COPY: Record<MtmExcelLocale, { title: string; steps: string[]; required: string; optional: string }> = {
   en: {
     title: "LeadDrive MTM Excel template",
-    steps: ["Keep machine column names unchanged.", "Use ISO dates (YYYY-MM-DD) and 24-hour time (HH:mm).", "External codes are text; keep leading zeroes.", "Remove formulas from data cells before upload.", "Places: opening hours go in mon_from/mon_to … sun_from/sun_to and one lunch_from/lunch_to for every working day. Leave both columns of a day empty for a day off; leave all of them empty to keep the place's hours as they are."],
+    steps: ["Keep machine column names unchanged.", "Use ISO dates (YYYY-MM-DD) and 24-hour time (HH:mm).", "External codes are text; keep leading zeroes.", "Remove formulas from data cells before upload.", "Places: opening hours go in mon_from/mon_to … sun_from/sun_to and one lunch_from/lunch_to for every working day. Leave both columns of a day empty for a day off; leave all of them empty to keep the place's hours as they are.", "Doctors: one row per doctor and clinic. agent is the employee's code or full name as in MTM. A doctor who works in two clinics takes two rows with the same name and agent. A clinic is found by name and city, or created."],
     required: "Required",
     optional: "Optional",
   },
   ru: {
     title: "Шаблон LeadDrive MTM для Excel",
-    steps: ["Не изменяйте машинные имена столбцов.", "Используйте даты YYYY-MM-DD и время HH:mm.", "Внешние коды являются текстом; сохраняйте ведущие нули.", "Перед загрузкой удалите формулы из ячеек данных.", "Места: часы приёма — в колонках mon_from/mon_to … sun_from/sun_to (с/до по дням) и один обед lunch_from/lunch_to на все рабочие дни. Обе колонки дня пустые — выходной; все пустые — часы места не меняются."],
+    steps: ["Не изменяйте машинные имена столбцов.", "Используйте даты YYYY-MM-DD и время HH:mm.", "Внешние коды являются текстом; сохраняйте ведущие нули.", "Перед загрузкой удалите формулы из ячеек данных.", "Места: часы приёма — в колонках mon_from/mon_to … sun_from/sun_to (с/до по дням) и один обед lunch_from/lunch_to на все рабочие дни. Обе колонки дня пустые — выходной; все пустые — часы места не меняются.", "Врачи: одна строка — врач и клиника. agent — код сотрудника или его полное имя, как в MTM. Врач в двух клиниках — две строки с тем же именем и агентом. Клиника находится по названию и городу, иначе создаётся."],
     required: "Обязательно",
     optional: "Необязательно",
   },
   az: {
     title: "LeadDrive MTM Excel şablonu",
-    steps: ["Maşın sütun adlarını dəyişməyin.", "Tarix üçün YYYY-MM-DD, vaxt üçün HH:mm istifadə edin.", "Xarici kodlar mətndir; başlanğıc sıfırlarını saxlayın.", "Yükləməzdən əvvəl məlumat xanalarındakı formulları silin.", "Yerlər: qəbul saatları mon_from/mon_to … sun_from/sun_to sütunlarında (günlər üzrə başlanğıc/son) və bütün iş günləri üçün bir nahar lunch_from/lunch_to. Günün hər iki sütunu boşdursa — istirahət günü; hamısı boşdursa — yerin saatları dəyişmir."],
+    steps: ["Maşın sütun adlarını dəyişməyin.", "Tarix üçün YYYY-MM-DD, vaxt üçün HH:mm istifadə edin.", "Xarici kodlar mətndir; başlanğıc sıfırlarını saxlayın.", "Yükləməzdən əvvəl məlumat xanalarındakı formulları silin.", "Yerlər: qəbul saatları mon_from/mon_to … sun_from/sun_to sütunlarında (günlər üzrə başlanğıc/son) və bütün iş günləri üçün bir nahar lunch_from/lunch_to. Günün hər iki sütunu boşdursa — istirahət günü; hamısı boşdursa — yerin saatları dəyişmir.", "Həkimlər: bir sətir — həkim və klinika. agent — əməkdaşın kodu və ya MTM-dəki tam adı. İki klinikada işləyən həkim — eyni ad və agentlə iki sətir. Klinika ad və şəhərə görə tapılır, yoxdursa yaradılır."],
     required: "Məcburi",
     optional: "İstəyə bağlı",
   },

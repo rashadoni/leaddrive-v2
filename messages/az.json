@@ -14978,6 +14978,7 @@
       "excelImportRoutes": "Marşrut — eyni marşrut kodlu sətirlərdir, hər nöqtəyə bir sətir. Yenilər qaralama kimi yaradılır; eyni kodlu qaralama tam əvəzlənir, dərc olunmuşu dəyişmək olmaz.",
       "excelImportSales": "Sətir — satış sənədinin bir mövqeyidir. Sənədin nömrəsi, tarixi və sətir nömrəsinə görə axtarılır: varsa yenilənir, yoxsa əlavə olunur.",
       "excelImportPlan": "Sətir — müştəri, əməkdaş, ərazi və ya məhsul üzrə dövr planıdır. Eyni dövr və kəsikli sətir yenilənir, yenisi əlavə olunur.",
+      "excelImportDoctors": "Sətir — həkim, onun agenti və klinikalarından biri. Həkim koduna və ya bu agentin həkimləri arasında adına görə tapılır; bir agentdə iki sətirdə eyni ad — iki klinikalı bir həkimdir. Klinika ad və şəhərə görə tapılır, yoxdursa xəritədə nöqtəsiz yaradılır. Heç nə silinmir və bağlanmır.",
       "excelTemplate": "Seçilmiş növ üçün şablonu endir: lazımi sütunlu vərəq və qaydalar vərəqi. İkinci sətir nümunədir: onu öz məlumatlarınızla əvəz edin.",
       "excelUpload": "Doldurulmuş .xlsx şablonunu yüklə (20 MB-a qədər). Fayl əvvəlcə yalnız yoxlanılır — «Tətbiq et» basılmayınca bazada heç nə dəyişmir.",
       "excelImportRestricted": "İdxal MTM ayarlarında söndürülüb və ya rolunuza icazə verilməyib. Excel-ə ixrac mümkündür.",
@@ -15031,13 +15032,27 @@
     "applyFailed": "İdxal tətbiq edilmədi.",
     "queued": "Böyük idxal fon növbəsinə əlavə edildi.",
     "applied": "İdxal uğurla tətbiq edildi.",
+    "newPlaces": "{count, plural, one {# yeni klinika} other {# yeni klinika}} xəritədə nöqtəsiz yaradılacaq. Agent oraya vizitə «Müştəri buradadır» ilə başlayacaq, rəhbər nöqtəni təsdiqləyəcək.",
+    "checkWarnings": "Yükləmədən əvvəl yoxlayın — yazıldığı kimi yüklənəcək",
+    "previewDoctor": "Həkim",
+    "previewAgent": "Agent",
+    "previewClinics": "Klinikalar",
+    "previewAction": "Əməliyyat",
+    "warnings": {
+      "TWO_CLINICS": "{name}: bir həkim, klinikalar: {clinics}",
+      "NAMESAKE_OTHER_AGENT": "{name}: eyni ad {agents} agentində də var — ayrı həkimlər olacaq",
+      "SAME_NAME_EXISTS": "{name}: bu adda həkim MTM-də başqa agentdə artıq var — yeni həkim yaradılacaq",
+      "CLINIC_SPELLINGS": "Faylda bir klinika müxtəlif yazılıb: {spellings}",
+      "OTHER_PRIMARY_AGENT": "{name}: həkimin artıq əsas agenti var — bu agent ikinci kimi əlavə olunacaq"
+    },
     "types": {
       "CUSTOMERS": "Müştərilər",
       "ROUTES": "Marşrut planları",
       "SALES_FACTS": "Xarici sifarişlər və satışlar",
       "VISIT_RESULTS": "Ziyarət nəticələri və hərəkətlər",
       "PLAN_FACT": "Satış planı",
-      "CUSTOMER_REQUESTS": "Müştəri sorğuları"
+      "CUSTOMER_REQUESTS": "Müştəri sorğuları",
+      "DOCTORS": "Həkimlər"
     }
   },
   "mtmTasksPage": {

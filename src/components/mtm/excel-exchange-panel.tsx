@@ -12,8 +12,8 @@ import { Select } from "@/components/ui/select"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { formatDate } from "@/lib/format-date"
 
-type ImportType = "CUSTOMERS" | "ROUTES" | "SALES_FACTS" | "PLAN_FACT"
-type ExportType = ImportType | "VISIT_RESULTS" | "CUSTOMER_REQUESTS"
+type ImportType = "CUSTOMERS" | "ROUTES" | "SALES_FACTS" | "PLAN_FACT" | "DOCTORS"
+type ExportType = Exclude<ImportType, "DOCTORS"> | "VISIT_RESULTS" | "CUSTOMER_REQUESTS"
 
 interface ImportSummary {
   totalRows: number
@@ -24,7 +24,11 @@ interface ImportSummary {
   errorRows: number
   warningRows: number
   requiresConflictOverride: boolean
+  /** Doctors import: clinics the file creates, without a pin. */
+  newPlaces?: number
 }
+
+type ImportWarning = { code: string; message: string; params?: Record<string, string | number> }
 
 interface ImportResult {
   job: { id: string; status: string; originalFileName: string }
@@ -52,7 +56,7 @@ interface Props {
   onApplied?: () => void
 }
 
-const IMPORT_TYPES: ImportType[] = ["CUSTOMERS", "ROUTES", "SALES_FACTS", "PLAN_FACT"]
+const IMPORT_TYPES: ImportType[] = ["CUSTOMERS", "ROUTES", "SALES_FACTS", "PLAN_FACT", "DOCTORS"]
 const EXPORT_TYPES: ExportType[] = ["CUSTOMERS", "ROUTES", "SALES_FACTS", "VISIT_RESULTS", "PLAN_FACT", "CUSTOMER_REQUESTS"]
 
 /** What an import of this type does to the data already there (excel-import.ts). */
@@ -61,6 +65,7 @@ const IMPORT_TYPE_HINT = {
   ROUTES: "hint.excelImportRoutes",
   SALES_FACTS: "hint.excelImportSales",
   PLAN_FACT: "hint.excelImportPlan",
+  DOCTORS: "hint.excelImportDoctors",
 } as const
 
 /** What each export file holds (excel-export.ts). */
@@ -241,7 +246,40 @@ export function MtmExcelExchangePanel({ open, onClose, orgId, onApplied }: Props
                       </Hint>
                     </div>
                   ) : <div className="flex items-center gap-2 text-sm text-emerald-700"><CheckCircle2 className="h-4 w-4" />{t("validationPassed")}</div>}
-                  {result.preview.length > 0 ? (
+                  {summary?.newPlaces ? (
+                    <p className="text-sm" data-testid="mtm-import-new-places">{t("newPlaces", { count: summary.newPlaces })}</p>
+                  ) : null}
+                  {(() => {
+                    // What the file will do that a person should look at first (doctors: two
+                    // clinics, the same name under two agents, one clinic spelled two ways).
+                    const warnings = result.preview.flatMap((row) => (Array.isArray(row.warnings) ? row.warnings as ImportWarning[] : []))
+                    if (warnings.length === 0) return null
+                    return (
+                      <div className="border border-l-4 border-border border-l-amber-500 bg-card p-3 text-foreground dark:border-l-amber-500" data-testid="mtm-import-warnings">
+                        <div className="mb-2 flex items-center gap-2 text-sm font-medium"><AlertTriangle className="h-4 w-4 text-amber-600" />{t("checkWarnings")}</div>
+                        <div className="space-y-1 text-xs">
+                          {warnings.slice(0, 20).map((warning, index) => (
+                            <p key={`${warning.code}-${index}`}>{t.has(`warnings.${warning.code}`) ? t(`warnings.${warning.code}`, warning.params ?? {}) : warning.message}</p>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
+                  {type === "DOCTORS" && result.preview.length > 0 ? (
+                    <div className="overflow-x-auto border">
+                      <table className="w-full min-w-[640px] text-left text-xs">
+                        <thead className="bg-muted"><tr>{(["previewDoctor", "previewAgent", "previewClinics", "previewAction"] as const).map((key) => <th key={key} className="px-3 py-2 font-medium">{t(key)}</th>)}</tr></thead>
+                        <tbody>{result.preview.slice(0, 8).map((row, index) => (
+                          <tr key={index} className="border-t">
+                            <td className="max-w-48 truncate px-3 py-2">{String(row.doctorName ?? "")}</td>
+                            <td className="max-w-40 truncate px-3 py-2">{String(row.agentName ?? "")}</td>
+                            <td className="max-w-64 truncate px-3 py-2">{Array.isArray(row.clinics) ? (row.clinics as Array<{ name?: string }>).map((clinic) => clinic.name).join(", ") : ""}</td>
+                            <td className="px-3 py-2">{t(String(row.operation) === "CREATE" ? "createRows" : String(row.operation) === "UPDATE" ? "updateRows" : "unchangedRows")}</td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                  ) : result.preview.length > 0 ? (
                     <div className="overflow-x-auto border">
                       <table className="w-full min-w-[640px] text-left text-xs">
                         <thead className="bg-muted"><tr>{Object.keys(result.preview[0]).slice(0, 6).map((key) => <th key={key} className="px-3 py-2 font-medium">{key}</th>)}</tr></thead>
