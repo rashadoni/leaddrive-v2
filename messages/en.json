@@ -28738,7 +28738,7 @@
     "sendWindowClosed": "Can't send a free-form WhatsApp message — this contact hasn't written in the last 24h. Outside that window WhatsApp requires an approved template.",
     "sendFailed": "Couldn't send: {error}",
     "attach": "Attach a file",
-    "attachWaTgOnly": "Attachments work on WhatsApp & Telegram",
+    "attachWaTgOnly": "Attachments work on WhatsApp, Telegram, Instagram & Facebook",
     "uploadFailed": "Couldn't upload the file",
     "bulkSelectAria": "Select conversation",
     "bulkSelectAllVisible": "Select all visible (up to {count})",

@@ -387,6 +387,9 @@ function formatCustomerStage(stage: string | null | undefined, locale: string): 
   return CUSTOMER_STAGE_LABELS[stage]?.[localeKey(locale)] ?? stage
 }
 
+/** Channels whose customers can be sent a file from the composer. */
+const ATTACH_CHANNELS = new Set(["whatsapp", "telegram", "instagram", "facebook"])
+
 export default function InboxV2Page() {
   const { data: session } = useSession()
   const orgId = session?.user?.organizationId
@@ -2710,7 +2713,11 @@ export default function InboxV2Page() {
                             </a>
                           )
                         )}
-                        <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                        {/* A message with no words is stored as "[media]"; under the picture or the video
+                            itself that placeholder says nothing. It stays when the file was not kept. */}
+                        {!(typeof m.mediaUrl === "string" && m.mediaUrl && /^\[(media|attachment|вложение)\]$/i.test((m.body ?? "").trim())) && (
+                          <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                        )}
                       </div>
                       <div className={cn("flex flex-wrap items-center gap-x-1 gap-y-0.5 mt-1 text-[10px] text-muted-foreground", out ? "justify-end" : "justify-start")}>
                         <ChannelIcon channel={m.channelType || "email"} className="h-2.5 w-2.5" />
@@ -2977,7 +2984,7 @@ export default function InboxV2Page() {
                         ))}
                       </select>
                     )}
-                    {/* Media SEND (Slice 3c) — attach a file (WhatsApp/Telegram only) → upload → chip → send. */}
+                    {/* Media SEND (Slice 3c) — attach a file (WhatsApp, Telegram, Instagram, Facebook) → upload → chip → send. */}
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -2987,12 +2994,12 @@ export default function InboxV2Page() {
                     />
                     <button
                       type="button"
-                      disabled={uploading || (replyChannel !== "whatsapp" && replyChannel !== "telegram")}
-                      title={replyChannel === "whatsapp" || replyChannel === "telegram" ? t("attach") : t("attachWaTgOnly")}
+                      disabled={uploading || !ATTACH_CHANNELS.has(replyChannel)}
+                      title={ATTACH_CHANNELS.has(replyChannel) ? t("attach") : t("attachWaTgOnly")}
                       onClick={() => fileInputRef.current?.click()}
                       className={cn(
                         "p-1.5 rounded-md text-muted-foreground",
-                        (replyChannel === "whatsapp" || replyChannel === "telegram") && !uploading
+                        ATTACH_CHANNELS.has(replyChannel) && !uploading
                           ? "hover:bg-muted"
                           : "opacity-40 cursor-not-allowed",
                       )}
