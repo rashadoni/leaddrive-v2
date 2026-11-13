@@ -33134,6 +33134,7 @@
     "nothingToFill": "Всё уже заполнено — ничего не изменено."
   },
   "taskPanel": {
+    "board": "Доска",
     "messageEdited": "(изменено)",
     "editMessage": "Изменить",
     "removeMessage": "Удалить",

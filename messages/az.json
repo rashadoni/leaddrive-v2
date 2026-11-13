@@ -33130,6 +33130,7 @@
     "nothingToFill": "Hər şey artıq doldurulub — heç nə dəyişmədi."
   },
   "taskPanel": {
+    "board": "Lövhə",
     "messageEdited": "(redaktə edilib)",
     "editMessage": "Redaktə et",
     "removeMessage": "Sil",
