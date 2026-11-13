@@ -291,6 +291,7 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
             categoryColumnLabel={tc("quarter")}
             sortBy={listSort}
             onSortChange={setListSort}
+            look="bordio"
           />
         </div>
       ) : loading || sectionsLoading ? (
