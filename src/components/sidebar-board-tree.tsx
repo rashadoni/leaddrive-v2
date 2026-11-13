@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
-import { ChevronRight, Columns3, Folder, FolderOpen, UserCheck } from "lucide-react"
+import { ChevronRight, Columns3, Folder, FolderOpen, Settings2, UserCheck, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { boardIdFromPath, boardNavTree, type BoardNavLeaf, type TabDivision } from "@/lib/tasks/board-tabs"
 import { rememberBoardNames } from "@/lib/tasks/board-names-cache"
@@ -28,6 +28,9 @@ export function SidebarBoardTree({ pathname, visible }: { pathname: string; visi
   const [divisions, setDivisions] = useState<TabDivision[] | null>(null)
   // «Mənim işlərim»: the person's open tasks on all boards, counted with the list.
   const [myOpenTasks, setMyOpenTasks] = useState<number | null>(null)
+  // The teams (Bordio's «Teams»): each opens its people's tasks from every board.
+  const [teams, setTeams] = useState<{ id: string; name: string }[]>([])
+  const [canManageTeams, setCanManageTeams] = useState(false)
   const readAt = useRef(0)
   const onBoards = pathname === "/boards" || pathname.startsWith("/boards/")
 
@@ -49,6 +52,8 @@ export function SidebarBoardTree({ pathname, visible }: { pathname: string; visi
         if (!mounted.current) return
         setDivisions(json.data.divisions)
         setMyOpenTasks(typeof json.data.myOpenTasks === "number" ? json.data.myOpenTasks : null)
+        setTeams(Array.isArray(json.data.teams) ? json.data.teams : [])
+        setCanManageTeams(json.data.canManageTeams === true)
       })
       .catch(() => { readAt.current = 0 })
   }, [pathname, onBoards])
@@ -104,6 +109,38 @@ export function SidebarBoardTree({ pathname, visible }: { pathname: string; visi
         count={myOpenTasks}
         testId="sidebar-my-work-link"
       />
+      {(teams.length > 0 || canManageTeams) && (
+        <div data-testid="sidebar-teams">
+          <div className="flex min-h-7 items-center gap-1.5 pl-2 pr-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-white/40">
+            <Users className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span className="flex-1">{t("teams")}</span>
+            {canManageTeams && (
+              <Link
+                href="/boards/teams"
+                prefetch={false}
+                data-testid="sidebar-teams-manage"
+                title={t("manageTeams")}
+                aria-label={t("manageTeams")}
+                className={cn("rounded p-1 hover:bg-white/[0.08] hover:text-white", pathname === "/boards/teams" ? "text-white" : "text-white/50")}
+              >
+                <Settings2 className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+            )}
+          </div>
+          {teams.map((team) => (
+            <NavRow
+              key={team.id}
+              href={`/boards/team/${team.id}`}
+              active={pathname === `/boards/team/${team.id}`}
+              icon={null}
+              label={team.name}
+              count={null}
+              testId="sidebar-team-link"
+            />
+          ))}
+          <div className="pl-2 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-white/40">{t("boards")}</div>
+        </div>
+      )}
       {tree.map((node) => {
         if (!node.isDepartment) return <BoardLink key={node.id} board={node} active={node.id === currentId} icon />
         const isOpen = open.has(node.id)

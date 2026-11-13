@@ -153,6 +153,8 @@ model Organization {
   divisions        Division[]
   boardPermissions BoardPermission[]
   boardNotes       BoardNote[]
+  boardTeams       BoardTeam[]
+  boardTeamMembers BoardTeamMember[]
   taskFollowers    TaskFollower[]
   taskTimeEntries  TaskTimeEntry[]
   taskPlans        TaskPlan[]
@@ -846,6 +848,7 @@ model User {
   // Jira-style Kanban board
   boardPermissions BoardPermission[]
   boardNotes       BoardNote[]       @relation("BoardNoteAuthor")
+  boardTeamMember  BoardTeamMember?
   reportedTasks    Task[]            @relation("TaskReporter")
   checklistItems   TaskChecklist[]   @relation("TaskChecklistAssignee")
   taskFollows      TaskFollower[]    @relation("TaskFollows")
@@ -2265,6 +2268,39 @@ model BoardNote {
 
   @@index([organizationId, divisionId, updatedAt])
   @@map("board_notes")
+}
+
+// Teams of the boards — Bordio's «Teams & Users» (owner, 2026-11-13). A team is
+// people, not a board: its page shows its members' tasks from every board they
+// can be seen on. A person is in ONE team (userId is unique), as its leader or
+// a member — the role names who leads, it gives no rights of its own (rights
+// stay with the organization's role and the task's own people).
+model BoardTeam {
+  id             String            @id @default(cuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  sortOrder      Int               @default(0)
+  createdAt      DateTime          @default(now())
+  members        BoardTeamMember[]
+
+  @@unique([organizationId, name])
+  @@map("board_teams")
+}
+
+model BoardTeamMember {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  teamId         String
+  team           BoardTeam    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId         String       @unique
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String       @default("member") // leader | member
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, teamId])
+  @@map("board_team_members")
 }
 
 // Task audit log (spec calls it "Activity"). Named TaskActivity to avoid
