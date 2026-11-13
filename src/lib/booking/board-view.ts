@@ -172,3 +172,27 @@ export function boardLasts(minutes: number): string {
   const rest = minutes % 60
   return rest ? `${hours} saat ${rest} dəq` : `${hours} saat`
 }
+
+// ─── A screen nobody touches, and the next release ──────────────────────────
+
+const RELEASE = /^[0-9a-f]{40}$/
+
+/**
+ * The release a screen should load itself again for, or null to stay as it is.
+ *
+ * A monitor on a wall is opened once and left for months: without this it
+ * keeps running the page it was opened with, and every later change to the
+ * screen reaches the server and never the wall (the 2026-11-13 redesign needed
+ * somebody to walk to the monitor and reload it).
+ *
+ * `mine` is the release compiled into this page, `served` is what the server
+ * says it runs now, `tried` is the release this tab already reloaded for. A
+ * reload that did not help — a cached page, a rollback in between — is not
+ * repeated for the same release: a wall must not blink every five minutes.
+ */
+export function releaseToLoad(mine: string, served: unknown, tried: string | null): string | null {
+  // A local build carries no release, so it has nothing to compare with.
+  if (!RELEASE.test(mine)) return null
+  if (typeof served !== "string" || !RELEASE.test(served)) return null
+  return served === mine || served === tried ? null : served
+}
