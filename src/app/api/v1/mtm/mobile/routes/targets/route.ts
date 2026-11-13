@@ -99,13 +99,10 @@ export const GET = withMobileRls(async (req, auth) => {
   const date = params.get("date")?.trim() ?? ""
   const targetTypeId = params.get("targetTypeId")?.trim().toLowerCase() ?? ""
   const search = params.get("search")?.trim() ?? ""
-  // «Врачи клиники» (Zeytun 2026-11-13: «выбор клиники будет для того, чтоб
-  // выбрать там врачей»): with a doctor target, only that clinic's doctors.
-  const clinicId = params.get("customerId")?.trim() ?? ""
   const page = positiveInteger(params.get("page"), 1, MAX_PAGE)
   const limit = positiveInteger(params.get("limit"), DEFAULT_LIMIT, MAX_LIMIT)
 
-  if (!agentId || !isDateKey(date) || !page || !limit || search.length > MAX_SEARCH_LENGTH || clinicId.length > 64) {
+  if (!agentId || !isDateKey(date) || !page || !limit || search.length > MAX_SEARCH_LENGTH) {
     return inputError()
   }
 
@@ -347,7 +344,6 @@ export const GET = withMobileRls(async (req, auth) => {
           ],
         },
         contactSearch,
-        ...(clinicId ? [{ workplaces: { some: { ...workplaceWhere, customerId: clinicId } } }] : []),
       ],
     },
     skip,
@@ -400,8 +396,7 @@ export const GET = withMobileRls(async (req, auth) => {
     // choosing the first eligible current workplace in the deterministic
     // Prisma order instead of emitting duplicate `contact:<id>` cards.
     const workplace = contact.workplaces.find((candidate) =>
-      (!clinicId || candidate.customer.id === clinicId)
-      && Boolean(directAssignment || candidate.customer.agentAssignments[0]),
+      Boolean(directAssignment || candidate.customer.agentAssignments[0]),
     )
     if (!workplace) return []
     const customerAssignment = workplace.customer.agentAssignments[0]

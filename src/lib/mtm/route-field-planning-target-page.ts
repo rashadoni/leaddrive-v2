@@ -16,6 +16,8 @@ export type RouteFieldPlanningTargetPageContext = {
   search: string
   objectType: string | null
   organizationKind: string | null
+  /** «Врачи клиники» (2026-11-13): the doctors of one clinic. Absent on older cursors. */
+  clinicId?: string | null
 }
 
 type RouteFieldPlanningTargetPageCursor = RouteFieldPlanningTargetPageContext & {
@@ -60,6 +62,7 @@ function isCursor(value: unknown): value is RouteFieldPlanningTargetPageCursor {
     && typeof cursor.search === "string"
     && isNullableString(cursor.objectType)
     && isNullableString(cursor.organizationKind)
+    && (cursor.clinicId === undefined || isNullableString(cursor.clinicId))
     && hasPosition
     && typeof cursor.exp === "number"
     && Number.isSafeInteger(cursor.exp)
@@ -124,6 +127,7 @@ export function readRouteFieldPlanningTargetPage(
     || decoded.search !== expected.search
     || decoded.objectType !== expected.objectType
     || decoded.organizationKind !== expected.organizationKind
+    || (decoded.clinicId ?? null) !== (expected.clinicId ?? null)
   ) throw new RouteFieldPlanningTargetPageCursorError()
   return decoded
 }
