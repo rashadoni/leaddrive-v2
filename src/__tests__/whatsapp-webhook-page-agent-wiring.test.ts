@@ -12,7 +12,7 @@ const source = readFileSync(resolve("src/app/api/v1/webhooks/whatsapp/route.ts")
 
 describe("the WhatsApp webhook uses the number's page agent", () => {
   it("asks for the number's turn with the channel it arrived on", () => {
-    expect(source).toMatch(/whatsAppPageTurn\(\{[^}]*channelConfigId: opts\.channelConfigId[^}]*channelSettings: opts\.channelSettings/s)
+    expect(source).toMatch(/whatsAppPageTurn\(\{[^}]*channelConfigId: opts\.channelConfigId[^}]*channelSettings: opts\.channelSettings/)
   })
 
   it("stops before the model when the schedule gives the turn to a person", () => {
