@@ -6,9 +6,9 @@ import { sendWhatsAppMessage, sendWhatsAppMedia } from "@/lib/whatsapp"
 import { resolveTelegramSendTarget, sendTelegramText } from "@/lib/telegram"
 import { sendTelegramMedia } from "@/lib/telegram-media"
 import { sendChatwootMessage } from "@/lib/chatwoot"
-import { sendFacebookMessage, sendInstagramMessage } from "@/lib/facebook"
 import { sendVkMessage } from "@/lib/vkontakte"
-import { sendInstagramLoginMessage } from "@/lib/social/instagram-login"
+import { metaDmAttachmentType, sendMetaDmAttachment, sendMetaDmText } from "@/lib/social/meta-dm-attachment"
+import { createOutboundMediaLink } from "@/lib/inbox/outbound-media-link"
 import { isIgLogin } from "@/lib/social/tenant-meta-app"
 import { ensureConversation } from "@/lib/inbox-ensure-conversation"
 import { isImageMime } from "@/lib/inbox-attachment"
@@ -311,6 +311,8 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
   let { channelConfigId } = opts
   let status = "delivered"
   let whatsAppMessageId: string | undefined
+  let metaMessageId: string | undefined
+  let metaMessageIds: string[] | undefined
   let errorMsg = ""
   let resolvedChatId: string | undefined
   let deliveryUnknown = false
@@ -528,13 +530,41 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
         if (!config?.apiKey) return { success: false, statusCode: 400, error: `${channel} не настроен` }
         // An Instagram-Login token only works against graph.instagram.com; a Facebook-Login page
         // token only against graph.facebook.com. The webhook's AI auto-reply already splits this way.
-        const ok = channel === "facebook"
-          ? await sendFacebookMessage(to, body, config.apiKey, orgId)
-          : isIgLogin(config.settings)
-            ? await sendInstagramLoginMessage(to, body, config.apiKey)
-            : await sendInstagramMessage(to, body, config.apiKey, orgId)
-        status = ok ? "delivered" : "failed"
-        if (!ok) errorMsg = `${channel} send failed`
+        const igLogin = channel === "instagram" && isIgLogin(config.settings)
+        // Meta echoes every send back to the webhook; the ids kept here are how the echo is known
+        // to be ours and not a reply typed in the app (lib/inbox/meta-dm-app-echo).
+        const sentIds: string[] = []
+        if (attachment) {
+          const type = metaDmAttachmentType(channel, attachment.mime)
+          if (!type) {
+            return { success: false, statusCode: 400, error: "Instagram принимает фото, видео, аудио и PDF" }
+          }
+          const link = createOutboundMediaLink(attachment.url, orgId)
+          if (!link) return { success: false, statusCode: 400, error: "Invalid or missing attachment" }
+          const file = await sendMetaDmAttachment({ igLogin, recipientId: to, token: config.apiKey, type, url: link })
+          if (file.messageId) sentIds.push(file.messageId)
+          status = file.ok ? "delivered" : "failed"
+          if (!file.ok) {
+            errorMsg = `${channel} send failed${file.error ? `: ${file.error}` : ""}`
+            break
+          }
+          // Text cannot ride with an attachment in one call, so the caption follows it.
+          if (body.trim()) {
+            const caption = await sendMetaDmText({ igLogin, recipientId: to, token: config.apiKey, text: body })
+            if (caption.messageId) sentIds.push(caption.messageId)
+            // The file is with the customer; a lost caption is reported, not hidden.
+            if (!caption.ok) errorMsg = `${channel}: file sent, text failed${caption.error ? `: ${caption.error}` : ""}`
+          }
+        } else {
+          const sent = await sendMetaDmText({ igLogin, recipientId: to, token: config.apiKey, text: body })
+          if (sent.messageId) sentIds.push(sent.messageId)
+          status = sent.ok ? "delivered" : "failed"
+          if (!sent.ok) errorMsg = `${channel} send failed${sent.error ? `: ${sent.error}` : ""}`
+        }
+        if (sentIds.length) {
+          metaMessageId = sentIds[0]
+          metaMessageIds = sentIds
+        }
         break
       }
 
@@ -564,6 +594,7 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
     if (errorMsg) metadata.error = errorMsg
     if (deliveryUnknown) metadata.deliveryUnknown = true
     if (resolvedChatId) metadata.chatId = resolvedChatId
+    if (metaMessageIds) metadata.metaMessageIds = metaMessageIds
     if (channel === "tiktok") {
       metadata.chatwootConversationId = to
       metadata.deliveryAttempted = true
@@ -590,9 +621,13 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
         subject: subject || undefined,
         body,
         mediaUrl: attachment?.url,
-        messageType: attachment ? (isImageMime(attachment.mime) ? "image" : "document") : undefined,
+        messageType: attachment
+          ? isImageMime(attachment.mime) ? "image"
+            : attachment.mime.startsWith("video/") ? "video"
+              : attachment.mime.startsWith("audio/") ? "audio" : "document"
+          : undefined,
         status,
-        externalId: whatsAppMessageId,
+        externalId: whatsAppMessageId ?? metaMessageId,
         contactId: contactId || undefined,
         leadId: leadId || undefined,
         conversationId: conversationId || undefined,

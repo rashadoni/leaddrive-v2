@@ -28729,7 +28729,7 @@
     "sendWindowClosed": "Sərbəst WhatsApp mesajı göndərmək olmur — kontakt son 24 saatda yazmayıb. Bu pəncərədən kənarda WhatsApp təsdiqlənmiş şablon tələb edir.",
     "sendFailed": "Göndərilmədi: {error}",
     "attach": "Fayl əlavə et",
-    "attachWaTgOnly": "Qoşmalar yalnız WhatsApp və Telegram-da işləyir",
+    "attachWaTgOnly": "Qoşmalar WhatsApp, Telegram, Instagram və Facebook-da işləyir",
     "uploadFailed": "Faylı yükləmək alınmadı",
     "bulkSelectAria": "Söhbəti seç",
     "bulkSelectAllVisible": "Bütün görünənləri seç (maks. {count})",

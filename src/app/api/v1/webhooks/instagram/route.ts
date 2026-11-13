@@ -163,7 +163,18 @@ export async function POST(req: NextRequest) {
       // RLS: org resolved — ALL remaining per-entry work runs tenant-scoped.
       await runWithTenant(channel.organizationId, async () => {
       for (const event of entry.messaging || []) {
-        if (event.message?.is_echo) continue // skip our own echoes
+        if (event.message?.is_echo) {
+          // A reply somebody typed in the Instagram app itself — or the echo of one we sent. Stored as
+          // an outbound row so the thread shows it is answered (lib/inbox/meta-dm-app-echo). A failure
+          // here must not cost the customer messages that share this delivery.
+          try {
+            const { ingestMetaDmEcho } = await import("@/lib/inbox/meta-dm-app-echo")
+            await ingestMetaDmEcho({ channel, platform: "instagram", accountId: String(igAccountId), event })
+          } catch (e) {
+            console.error("[IG Webhook] echo ingest failed:", e)
+          }
+          continue
+        }
         // Seen receipts, reactions, edits and postbacks arrive in the same `messaging` array but carry
         // no `message`. Recording them wrote a phantom "[media]" inbound (no mid, no attachment) a few
         // seconds after the customer's real text, and counted it as unread.

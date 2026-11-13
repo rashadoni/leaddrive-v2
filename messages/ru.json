@@ -28733,7 +28733,7 @@
     "sendWindowClosed": "Нельзя отправить свободное WhatsApp-сообщение — контакт не писал последние 24 часа. Вне этого окна WhatsApp требует одобренный шаблон.",
     "sendFailed": "Не удалось отправить: {error}",
     "attach": "Прикрепить файл",
-    "attachWaTgOnly": "Вложения — только в WhatsApp и Telegram",
+    "attachWaTgOnly": "Вложения — в WhatsApp, Telegram, Instagram и Facebook",
     "uploadFailed": "Не удалось загрузить файл",
     "bulkSelectAria": "Выбрать диалог",
     "bulkSelectAllVisible": "Выбрать все видимые (до {count})",
