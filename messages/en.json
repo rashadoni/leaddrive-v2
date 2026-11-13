@@ -5109,6 +5109,7 @@
     "pageAgentNoneTitle": "This page has no agent of its own",
     "pageAgentNoneHint": "The common agent answers here now.",
     "pageAgentCreateFromCommon": "Create from the common agent",
+    "pageAgentReplyHeld": "The team also answers this number from the WhatsApp Business app, so automatic AI replies are held here even when the switch is on.",
     "pageAgentSaveFailed": "Could not save",
     "pageAgentDay_mon": "Monday",
     "pageAgentDay_tue": "Tuesday",

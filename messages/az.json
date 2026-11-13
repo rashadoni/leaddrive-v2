@@ -5109,6 +5109,7 @@
     "pageAgentNoneTitle": "Bu səhifənin öz agenti yoxdur",
     "pageAgentNoneHint": "Hazırda burada ümumi agent cavab verir.",
     "pageAgentCreateFromCommon": "Ümumi agent əsasında yarat",
+    "pageAgentReplyHeld": "Bu nömrəyə komanda WhatsApp Business tətbiqindən də cavab verir, ona görə açar aktiv olsa belə Sİ avtomatik cavabları burada saxlanılır.",
     "pageAgentSaveFailed": "Yadda saxlamaq olmadı",
     "pageAgentDay_mon": "Bazar ertəsi",
     "pageAgentDay_tue": "Çərşənbə axşamı",

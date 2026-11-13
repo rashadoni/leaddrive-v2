@@ -1,5 +1,4 @@
-import { getBusinessHoursDecision } from "@/lib/inbox/business-hours"
-import { aiScheduleAllows, readAiSchedule, resolveInboxAgent } from "@/lib/inbox/page-agent"
+import { pageAiScheduleAllowsNow, resolveInboxAgent } from "@/lib/inbox/page-agent"
 import { prisma } from "@/lib/prisma"
 import { anthropicAvailable, anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
@@ -1065,14 +1064,10 @@ export async function maybeAiAutoReply(opts: {
     // The page's own switch for WHEN the AI answers, against the page's own working hours
     // (falling back to the platform's, then the organisation's). Outside its time the turn is a
     // person's, the same way a conversation outside the rollout is — no model call.
-    const aiSchedule = readAiSchedule(cfg?.settings)
-    if (aiSchedule !== "always") {
-      const hours = await getBusinessHoursDecision({
-        organizationId: opts.orgId, channelType: opts.platform, channelConfigId: opts.channelConfigId,
-      })
-      if (!aiScheduleAllows(aiSchedule, hours.open)) {
-        return finishTerminal({ replied: false, escalated: false, skipped: "outside_ai_schedule" })
-      }
+    if (!(await pageAiScheduleAllowsNow({
+      organizationId: opts.orgId, channelType: opts.platform, channelConfigId: opts.channelConfigId, settings: cfg?.settings,
+    }))) {
+      return finishTerminal({ replied: false, escalated: false, skipped: "outside_ai_schedule" })
     }
     const policy = readAiReplyPolicy(cfg?.settings)
     if (!isInAiRollout(opts.conversationId, policy.aiRolloutPercent)) {

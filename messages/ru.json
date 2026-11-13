@@ -5109,6 +5109,7 @@
     "pageAgentNoneTitle": "У страницы нет своего агента",
     "pageAgentNoneHint": "Сейчас здесь отвечает общий агент.",
     "pageAgentCreateFromCommon": "Создать на основе общего",
+    "pageAgentReplyHeld": "На этом номере команда отвечает и из приложения WhatsApp Business, поэтому автоответы ИИ здесь придержаны, даже если переключатель включён.",
     "pageAgentSaveFailed": "Не удалось сохранить",
     "pageAgentDay_mon": "Понедельник",
     "pageAgentDay_tue": "Вторник",

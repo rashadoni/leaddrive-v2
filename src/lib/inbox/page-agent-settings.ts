@@ -11,6 +11,8 @@ import {
   normalizeBusinessHoursSchedule,
   pageBusinessHoursKey,
 } from "@/lib/inbox/business-hours"
+import { aiReplyEnabled } from "@/lib/inbox/reply-mode"
+import { holdsAutomaticReply } from "@/lib/inbox/whatsapp-reply-hold"
 import {
   AI_SCHEDULES,
   INBOX_AGENT_TYPE,
@@ -20,11 +22,10 @@ import {
 } from "@/lib/inbox/page-agent"
 
 /**
- * The channels whose automatic replies are written by the inbox agent. WhatsApp is not here on
- * purpose: its AI is a different agent with its own screen, and a page agent saved for a WhatsApp
- * number would be a setting nothing reads.
+ * The channels a page agent answers on. On WhatsApp the live reply is Da Vinci's with the page's
+ * words (`whatsAppPageTurn`); everywhere else it is the inbox engine (`resolveInboxAgent`).
  */
-export const PAGE_AGENT_CHANNEL_TYPES = ["instagram", "facebook", "telegram", "vkontakte", "chatwoot"] as const
+export const PAGE_AGENT_CHANNEL_TYPES = ["instagram", "facebook", "whatsapp", "telegram", "vkontakte", "chatwoot"] as const
 
 export type PageAgentFields = {
   systemPrompt: string
@@ -41,6 +42,11 @@ export type PageAgentRow = {
   name: string
   isActive: boolean
   aiOn: boolean
+  /**
+   * A WhatsApp number the team also answers from the WhatsApp Business app: automatic replies are
+   * held there whatever the switch says (lib/inbox/whatsapp-reply-hold). Shown, not changed, here.
+   */
+  replyHeld: boolean
   aiSchedule: AiSchedule
   agent: PageAgentFields | null
   hours: PageHours | null
@@ -56,9 +62,10 @@ function agentFields(row: { systemPrompt: string | null; knowledgeBase: string |
   }
 }
 
-function replyModeOf(settings: unknown): string {
+/** WhatsApp's AI is on until somebody turns it off; every other channel's is off until turned on. */
+function aiIsOn(settings: unknown, channelType: string): boolean {
   const mode = settings && typeof settings === "object" ? (settings as Record<string, unknown>).replyMode : null
-  return typeof mode === "string" ? mode : "agent"
+  return aiReplyEnabled(typeof mode === "string" ? mode : undefined, channelType === "whatsapp")
 }
 
 export async function listPageAgents(organizationId: string): Promise<{
@@ -90,7 +97,8 @@ export async function listPageAgents(organizationId: string): Promise<{
       channelType: channel.channelType,
       name: channel.configName,
       isActive: channel.isActive,
-      aiOn: replyModeOf(channel.settings) === "ai",
+      aiOn: aiIsOn(channel.settings, channel.channelType),
+      replyHeld: channel.channelType === "whatsapp" && holdsAutomaticReply(channel.settings),
       aiSchedule: readAiSchedule(channel.settings),
       agent: own ? agentFields(own) : null,
       hours: ownHours
