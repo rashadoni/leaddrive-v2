@@ -1268,6 +1268,89 @@ pgDescribe("online booking on a real Postgres", () => {
     expect(await bypass(() => prisma.booking.count({ where: { organizationId: ORG, resourceId: rooms[1].id, status: "confirmed" } }))).toBe(1)
   })
 
+  it("the wall screen stands a room's meeting in the room's column, and the settings name whose meetings a narrowed screen leaves out", async () => {
+    // Two things the owner found on the same morning (2026-11-13), standing at
+    // the monitor with a booking he knew existed: the screen was empty, and
+    // nothing said why. It was narrowed to four masters and the visit was with
+    // a fifth. And an office that books rooms wants a column per ROOM — while
+    // the record files a room's meeting under the service's first master, who
+    // is not in it. So, on real rows:
+    //
+    //   • a meeting booked on a room is in the room's column and NOT in the
+    //     column of the master it is filed under;
+    //   • a screen narrowed to some chairs shows only theirs;
+    //   • the settings count what a screen holds that day and name whose
+    //     meetings it leaves out.
+    const { boardByToken, boardLinksToday } = await import("@/lib/booking/board")
+    // Its own people and its own room: nobody else's day stands in this one.
+    const owner = `user-wall-owner-${ORG}`
+    const other = `user-wall-other-${ORG}`
+    await bypass(() => prisma.user.createMany({ data: [
+      { id: owner, organizationId: ORG, email: `${owner}@example.test`, name: "Aysel", passwordHash: "-", role: "manager" },
+      { id: other, organizationId: ORG, email: `${other}@example.test`, name: "Leyla", passwordHash: "-", role: "manager" },
+    ] }))
+    const room = await bypass(() => prisma.bookingResource.create({ data: { organizationId: ORG, name: "Otaq A" }, select: { id: true } }))
+    const roomSlug = await newPage({ title: "İclas otağı", durationMinutes: 60, hostIds: [owner], resourceIds: [room.id] })
+    const cutSlug = await newPage({ title: "Saç kəsimi", durationMinutes: 60, hostIds: [other] })
+    const at = await slotWithin(roomSlug, 36 * 3600_000, 60 * 3600_000)
+    const onRoom = await bookOn(roomSlug, at, room.id)
+    expect(onRoom.status, await onRoom.clone().text()).toBe(201)
+    const onOther = await bookOn(cutSlug, at, other)
+    expect(onOther.status, await onOther.clone().text()).toBe(201)
+    // The record itself still files the room's meeting under the owner — that
+    // is the trap the screen has to step over.
+    expect((await bypass(() => prisma.booking.findFirstOrThrow({ where: { organizationId: ORG, resourceId: room.id } }))).hostUserId).toBe(owner)
+
+    const narrowed = { id: "wall-narrowed", token: `wall-narrowed-${"n".repeat(24)}`, hostIds: [owner, room.id] }
+    const everyone = { id: "wall-everyone", token: `wall-everyone-${"e".repeat(24)}`, hostIds: [] as string[] }
+    await bypass(() => prisma.bookingBoardLink.createMany({ data: [narrowed, everyone].map((link) => ({
+      ...link, organizationId: ORG, title: "ZAL1", columns: 2, createdBy: owner,
+    })) }))
+    const thatDay = new Date(at)
+
+    const board = await boardByToken(narrowed.token, thatDay)
+    expect(board?.hosts.map((column) => ({ name: column.hostName, room: column.room === true, meetings: column.meetings.map((meeting) => meeting.service) }))).toEqual([
+      // Aysel is free: the room's meeting is not hers, whatever the record says.
+      { name: "Aysel", room: false, meetings: [] },
+      { name: "Otaq A", room: true, meetings: ["İclas otağı"] },
+    ])
+    // Still a name and a service and nothing else of the client.
+    expect(Object.keys(board!.hosts[1].meetings[0]).sort()).toEqual(["end", "hostId", "id", "name", "service", "start"])
+    expect(JSON.stringify(board)).not.toContain("50 123")
+
+    // Nobody chosen: every chair with a meeting that day gets a column, the
+    // room as a room — and the owner gets none, because she has no meeting.
+    const whole = await boardByToken(everyone.token, thatDay)
+    expect(whole?.hosts.find((column) => column.hostId === room.id)).toMatchObject({ hostName: "Otaq A", room: true })
+    expect(whole?.hosts.find((column) => column.hostId === other)?.meetings.map((meeting) => meeting.service)).toEqual(["Saç kəsimi"])
+    expect(whole?.hosts.some((column) => column.hostId === owner)).toBe(false)
+
+    // What the settings say about that day, read under the tenant's own scope.
+    const today = await tenant(ORG, () => boardLinksToday(ORG, [narrowed, everyone], thatDay))
+    expect(today.get(narrowed.id)?.shown).toBe(1)
+    expect(today.get(narrowed.id)?.elsewhere).toContainEqual({ name: "Leyla", count: 1 })
+    expect(today.get(narrowed.id)?.elsewhere.some((item) => item.name === "Otaq A" || item.name === "Aysel")).toBe(false)
+    // A screen that leaves nobody out has nothing to explain.
+    expect(today.get(everyone.id)?.elsewhere).toEqual([])
+    expect(today.get(everyone.id)?.shown).toBeGreaterThanOrEqual(2)
+
+    // And the settings API carries it, and takes a room for a column.
+    const boards = await import("@/app/api/v1/booking-pages/board/route")
+    const listed = await boards.GET(json("GET", "/api/v1/booking-pages/board"))
+    const links = (await listed.json()).data.links as { id: string; today: { shown: number; elsewhere: unknown[] } }[]
+    expect(links.find((link) => link.id === narrowed.id)?.today).toEqual({ shown: expect.any(Number), elsewhere: expect.any(Array) })
+    const made = await boards.POST(json("POST", "/api/v1/booking-pages/board", { title: "Otaqlar", hostIds: [room.id], columns: 1 }))
+    expect(made.status, await made.clone().text()).toBe(201)
+    // A screen of rooms alone: the room's meeting is found through the room,
+    // not through the master it is filed under — she is not on this screen.
+    const roomsOnly = await bypass(() => prisma.bookingBoardLink.findFirstOrThrow({ where: { organizationId: ORG, title: "Otaqlar" } }))
+    const office = await boardByToken(roomsOnly.token, thatDay)
+    expect(office?.hosts.map((column) => [column.hostName, column.meetings.map((meeting) => meeting.service)])).toEqual([["Otaq A", ["İclas otağı"]]])
+    // …but never somebody else's: a screen is not a way to read another tenant's day.
+    const foreign = await boards.POST(json("POST", "/api/v1/booking-pages/board", { title: "Özgə", hostIds: ["room-of-nobody"], columns: 1 }))
+    expect(foreign.status).toBe(400)
+  })
+
   it("a room keeps its own hours: it is booked inside them and refused outside", async () => {
     // A room with no hours of its own is open whenever the service is, exactly
     // like a master without a schedule. One that has them is the narrower of

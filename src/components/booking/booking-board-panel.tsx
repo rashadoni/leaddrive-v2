@@ -15,10 +15,18 @@
  *      its name, meant making a second link and walking to the monitor to
  *      retype the address. Now every screen edits in place, and its address
  *      never changes.
+ *
+ * And a third, on 2026-11-13: he booked a visit, opened the monitor and found
+ * it empty («на сегодня же была запись, где она?»). The screen was narrowed to
+ * four masters and the visit was with a fifth — exactly what it was told to
+ * show, and exactly what looks broken. A wall cannot explain itself to the
+ * people in the room, so this panel does: under every screen, how many of
+ * today's meetings it holds and whose it leaves out, with one button that
+ * stops leaving anybody out. Rooms are columns here like masters are.
  */
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
-import { Check, Copy, Monitor } from "lucide-react"
+import { Check, Copy, EyeOff, Monitor } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -33,6 +41,8 @@ interface BoardLink {
   url: string
   hostIds: string[]
   columns: number
+  /** Today on this screen, and today's meetings it will never show. */
+  today?: { shown: number; elsewhere: { name: string; count: number }[] }
 }
 
 type Draft = { title: string; hostIds: string[] | null; columns: number }
@@ -52,6 +62,22 @@ export function BookingBoardPanel({ hosts }: { hosts: { id: string; name: string
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [copied, setCopied] = useState<string | null>(null)
+  /** Rooms, chairs, courts: columns of a screen exactly as masters are. */
+  const [rooms, setRooms] = useState<{ id: string; name: string }[]>([])
+  const chairs = [...hosts, ...rooms]
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void fetch("/api/v1/booking-pages/resources", { cache: "no-store", signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((body) => {
+        if (!body?.success || controller.signal.aborted) return
+        setRooms((body.data.resources as { id: string; name: string; isActive: boolean }[]).filter((room) => room.isActive).map(({ id, name }) => ({ id, name })))
+      })
+      // A salon without rooms, or a hiccup: the picker simply lists masters.
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -91,6 +117,22 @@ export function BookingBoardPanel({ hosts }: { hosts: { id: string; name: string
     setEditing(null)
   }
 
+  /** One press from «why is the screen empty» to a screen that leaves nobody out. */
+  async function showEveryone(link: BoardLink) {
+    setBusy(true); setError("")
+    const response = await fetch("/api/v1/booking-pages/board", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: link.id, title: link.title, hostIds: [], columns: link.columns }),
+    }).catch(() => null)
+    const body = await response?.json().catch(() => null)
+    setBusy(false)
+    if (!response?.ok || !body?.success) { setError(t("errSave")); return }
+    const saved: BoardLink = body.data.link
+    setLinks((current) => (current ?? []).map((item) => item.id === saved.id ? saved : item))
+    if (editing === link.id) setEditing(null)
+  }
+
   async function revoke(id: string) {
     setBusy(true); setError("")
     const response = await fetch(`/api/v1/booking-pages/board?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => null)
@@ -108,6 +150,14 @@ export function BookingBoardPanel({ hosts }: { hosts: { id: string; name: string
     } catch {
       window.prompt(t("copyLink"), url)
     }
+  }
+
+  /** «3 чел. · 2 комнаты»: whom a narrowed screen shows, said in the two kinds it can hold. */
+  const whoOf = (link: BoardLink) => {
+    const roomIds = new Set(rooms.map((room) => room.id))
+    const ofRooms = link.hostIds.filter((id) => roomIds.has(id)).length
+    const ofPeople = link.hostIds.length - ofRooms
+    return [ofPeople ? t("hostsCount", { count: ofPeople }) : "", ofRooms ? t("boardRoomsCount", { count: ofRooms }) : ""].filter(Boolean).join(" · ")
   }
 
   /** The same fields whether a screen is being made or changed. */
@@ -148,10 +198,10 @@ export function BookingBoardPanel({ hosts }: { hosts: { id: string; name: string
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
       <span className="w-full shrink-0 text-sm font-medium sm:w-32">{t("boardWho")}</span>
       <Picked
-        items={hosts}
+        items={chairs}
         chosen={draft.hostIds}
-        allLabel={t("waRulesAllOf", { count: hosts.length })}
-        addLabel={t("waRulesAddMore", { count: hosts.length - (draft.hostIds?.length ?? 0) })}
+        allLabel={t("waRulesAllOf", { count: chairs.length })}
+        addLabel={t("waRulesAddMore", { count: chairs.length - (draft.hostIds?.length ?? 0) })}
         searchLabel={t("hostsSearch")}
         emptyLabel={t("hostsNone")}
         pickLabel={t("waRulesPick")}
@@ -191,7 +241,8 @@ export function BookingBoardPanel({ hosts }: { hosts: { id: string; name: string
           <div className="min-w-0">
             <p className="truncate font-medium">{link.title}</p>
             <p className="truncate text-xs text-muted-foreground">
-              {t("boardColumnsOf", { count: link.columns })} · {link.hostIds.length ? t("hostsCount", { count: link.hostIds.length }) : t("waRulesSumHostsAll")}
+              {t("boardColumnsOf", { count: link.columns })} · {link.hostIds.length ? whoOf(link) : t("boardWhoAll")}
+              {link.today ? ` · ${link.today.shown ? t("boardTodayShown", { count: link.today.shown }) : t("boardTodayNone")}` : ""}
             </p>
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-1">
@@ -212,6 +263,16 @@ export function BookingBoardPanel({ hosts }: { hosts: { id: string; name: string
             {copied === link.url ? t("linkCopied") : t("copyLink")}
           </Button>
         </div>
+        {/* The answer to «where is today's booking»: it is with somebody this
+            screen was told not to show. Said here, with the way out beside it. */}
+        {link.today?.elsewhere.length ? <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+          <EyeOff className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <p className="min-w-0 flex-1">{t("boardTodayElsewhere", {
+            count: link.today.elsewhere.reduce((sum, item) => sum + item.count, 0),
+            names: link.today.elsewhere.slice(0, 4).map((item) => item.name).join(", ") + (link.today.elsewhere.length > 4 ? "…" : ""),
+          })}</p>
+          <Button variant="outline" size="sm" disabled={busy} onClick={() => void showEveryone(link)}>{t("boardShowEveryone")}</Button>
+        </div> : null}
         {editing === link.id ? form : null}
       </li>)}
     </ul>
