@@ -17,6 +17,7 @@ import {
 import { CANONICAL_STAGES, STAGE_LABELS } from "./board-columns"
 import { computeFlowMetrics, computeCfd, computeReopened, computeSla, DEFAULT_SLA_TARGET_DAYS } from "./board-flow"
 import type { Role } from "@/lib/permissions"
+import { boardReportsOpenFor } from "./board-reports-access"
 
 export interface BoardReportBundleOpts {
   range?: string | null
@@ -36,7 +37,7 @@ export interface BoardReportBundleMeta {
 }
 
 export type LoadBoardReportBundleResult =
-  | { ok: false; status: 404 }
+  | { ok: false; status: 404 | 403 }
   | { ok: true; meta: BoardReportBundleMeta; data: Record<string, unknown> }
 
 export async function loadBoardReportBundle(
@@ -51,6 +52,8 @@ export async function loadBoardReportBundle(
     select: { id: true, name: true, key: true, slaTargetDays: true, isDepartment: true },
   })
   if (!division) return { ok: false, status: 404 }
+  // Closed for this person by an admin (board-reports-access.ts) — the screen and the export alike.
+  if (!(await boardReportsOpenFor(prisma, orgId, userId, role))) return { ok: false, status: 403 }
 
   const accessible = await getAccessibleDivisionIds(prisma, orgId, userId, role)
 

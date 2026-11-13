@@ -65,6 +65,7 @@ interface User extends Record<string, unknown> {
   totpEnabled: boolean
   require2fa: boolean
   voiceEnabled?: boolean
+  boardReportsHidden?: boolean
   hiddenModules?: string[]
   hiddenChannelConfigIds?: string[]
   settingsSections?: string[]
@@ -1050,6 +1051,8 @@ function ResetPasswordDialog({
 
 export default function UsersSettingsPage() {
   const { data: session } = useSession()
+  const orgHasBoards = session?.user?.role === "superadmin"
+    || tenantHideableModules(orgFromSession(session?.user)).includes("boards")
   const ts = useTranslations("settings")
   const tc = useTranslations("common")
   const tu = useTranslations("settingsUsers")
@@ -1487,6 +1490,36 @@ export default function UsersSettingsPage() {
         )
       },
     },
+    // The boards' «Hesabatlar» tab, per person (owner, 2026-11-13: «только кому
+    // доступен он мог видеть»). Shown where the organization has the boards.
+    ...(orgHasBoards ? [{
+      key: "boardReports", label: tu("boardReportsColumn"),
+      render: (item: User) => {
+        // The admin always sees them — the switch would promise a restriction that never applies.
+        if (item.role === "admin" || item.role === "superadmin") return <span className="text-muted-foreground" title={tu("boardReportsAlways")}>✓</span>
+        const open = !item.boardReportsHidden
+        return (
+          <button data-crm-color-role="toggle"
+            type="button"
+            data-testid="user-board-reports"
+            title={tu("boardReportsTooltip")}
+            aria-label={`${tu("boardReportsTooltip")}: ${item.name}`}
+            aria-pressed={open}
+            className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors ${
+              open ? "bg-primary" : "bg-muted-foreground/40"
+            }`}
+            onClick={async (e) => {
+              e.stopPropagation()
+              await updateUser(item, { boardReportsHidden: open })
+            }}
+          >
+            <span className={`pointer-events-none inline-block h-3 w-3 rounded-full bg-white shadow transform transition-transform ${
+              open ? "translate-x-3" : "translate-x-0"
+            }`} />
+          </button>
+        )
+      },
+    }] : []),
   ]
 
   if (loading) {
