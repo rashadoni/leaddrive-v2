@@ -41,12 +41,31 @@ type PlanningContact = {
   workplaces: PlanningWorkplace[]
 }
 
-const routeFieldPlanningOrganizationSelect = {
-  id: true,
-  name: true,
-  address: true,
-  city: true,
-} satisfies Prisma.MtmCustomerSelect
+/**
+ * An organization row says how many doctors work there on the route date, so
+ * the app opens a clinic's doctors from any tab it is listed on — «Bütün
+ * müştərilər» too, not only «Klinikalar» (Zeytun, 2026-11-13: «klinikanı
+ * müştəri kimi açır, həkimləri yox»). A pharmacy keeps being a stop.
+ */
+function routeFieldPlanningOrganizationSelect(date: Date) {
+  return {
+    id: true,
+    name: true,
+    address: true,
+    city: true,
+    objectType: true,
+    _count: {
+      select: {
+        contactWorkplaces: {
+          where: {
+            ...activeWorkplaceWindow(date),
+            contact: { deletedAt: null, status: "ACTIVE", type: "DOCTOR" },
+          },
+        },
+      },
+    },
+  } satisfies Prisma.MtmCustomerSelect
+}
 
 function noStoreJson(body: unknown, init?: ResponseInit) {
   const headers = new Headers(init?.headers)
@@ -80,6 +99,29 @@ function activeWorkplaceWindow(date: Date) {
       { OR: [{ startedOn: null }, { startedOn: { lte: date } }] },
       { OR: [{ endedOn: null }, { endedOn: { gt: date } }] },
     ],
+  }
+}
+
+/**
+ * A clinic where a doctor assigned to the agent works on the date. Offered
+ * to open its doctors; a pharmacy is a stop of its own and is never reached
+ * this way.
+ */
+function workplaceOfAgentDoctorWhere(input: { orgId: string; agentId: string; date: Date }): Prisma.MtmCustomerWhereInput {
+  return {
+    objectType: { not: "PHARMACY" },
+    contactWorkplaces: {
+      some: {
+        ...activeWorkplaceWindow(input.date),
+        contact: {
+          organizationId: input.orgId,
+          deletedAt: null,
+          status: "ACTIVE",
+          type: "DOCTOR",
+          agentAssignments: { some: { agentId: input.agentId, ...activeFieldAssignmentWindow(input.date) } },
+        },
+      },
+    },
   }
 }
 
@@ -277,8 +319,20 @@ export const GET = withMobileRls(async (req, auth) => {
     // through an actionable route saves fine but never appeared in the list.
     // Doctors stay assignment-only on purpose — see the note in
     // validateMtmMobileRouteTargetEligibility — and that branch is untouched.
+    //
+    // Plus every clinic where a doctor assigned to this agent works on the
+    // date (Zeytun, 2026-11-13: «burdakı 3 klinikanın heç biri klinikalar
+    // bölməsində çıxmır» — the doctors were his, their clinics were not). Such
+    // a clinic is offered to open its doctors, not as a stop of its own, so
+    // the write validator is not widened; a pharmacy is always a stop and is
+    // left out of this arm.
     const filters: Prisma.MtmCustomerWhereInput[] = [
-      eligibleFieldCustomerWhere({ agentId: actor.agentId, date: routeDate }),
+      {
+        OR: [
+          eligibleFieldCustomerWhere({ agentId: actor.agentId, date: routeDate }),
+          workplaceOfAgentDoctorWhere({ orgId: auth.orgId, agentId: actor.agentId, date: routeDate }),
+        ],
+      },
     ]
     if (targetId) filters.push({ id: targetId })
     const afterPage = customerKeysetFilter(page)
@@ -305,7 +359,7 @@ export const GET = withMobileRls(async (req, auth) => {
       },
       orderBy: [{ name: "asc" }, { id: "asc" }],
       take: limit + 1,
-      select: routeFieldPlanningOrganizationSelect,
+      select: routeFieldPlanningOrganizationSelect(routeDate),
     })
     const pageRows = rows.slice(0, limit)
     const last = pageRows.at(-1)
@@ -379,6 +433,8 @@ export const GET = withMobileRls(async (req, auth) => {
           customerId: row.id,
           name: row.name,
           address: row.address ?? row.city,
+          objectType: row.objectType,
+          doctorCount: row._count.contactWorkplaces,
         })),
         nextPage,
         limit,

@@ -40,12 +40,14 @@ function lookup(query = "") {
   return getPlanningTargets(request(query))
 }
 
-function organization(id = "customer-1", name = "North Clinic") {
+function organization(id = "customer-1", name = "North Clinic", objectType = "CLINIC", doctors = 0) {
   return {
     id,
     name,
     address: "Baku, route-safe address",
     city: "Baku",
+    objectType,
+    _count: { contactWorkplaces: doctors },
     managingManager: { name: "must-never-serialize manager" },
     agentAssignments: [{ agentId: "other-agent" }],
     latitude: 40.4,
@@ -136,7 +138,7 @@ describe("GET /api/v2/mtm/mobile/route-field/planning-targets", () => {
       expect(serializedWhere).not.toContain(ignoredFilter)
     }
     expect(firstArgs.take).toBe(2)
-    expect(firstArgs.select).toEqual({ id: true, name: true, address: true, city: true })
+    expect(firstArgs.select).toMatchObject({ id: true, name: true, address: true, city: true, objectType: true })
     expect(prisma.mtmCustomer.count).not.toHaveBeenCalled()
     expect(prisma.mtmContact.findMany).not.toHaveBeenCalled()
 
@@ -279,6 +281,44 @@ describe("GET /api/v2/mtm/mobile/route-field/planning-targets", () => {
     const replay = await lookup(`?kind=contact&date=2026-08-30&targetId=contact-2&search=Dr.%20Farid&page=${encodeURIComponent(payload.data.nextPage)}`)
     expect(replay.status).toBe(400)
     expect(await replay.json()).toMatchObject({ code: "MTM_ROUTE_FIELD_PLANNING_TARGET_PAGE_INVALID" })
+  })
+
+  it("says, on every organization row, its type and how many doctors work there on the route date (Zeytun 2026-11-13)", async () => {
+    // «Bütün müştərilər» lists clinics too; the app opens a clinic's doctors
+    // from there only if the row says it has some.
+    vi.mocked(prisma.mtmCustomer.findMany).mockResolvedValueOnce([
+      organization("clinic-1", "ATU Tədris Cərrahiyyə Klinikası", "CLINIC", 4),
+      organization("pharmacy-1", "Aptek 12", "PHARMACY", 0),
+    ] as never)
+
+    const response = await lookup("?kind=organization&date=2026-08-30")
+    expect(response.status).toBe(200)
+    const args = vi.mocked(prisma.mtmCustomer.findMany).mock.calls[0][0] as { select: Record<string, unknown> }
+    const counted = JSON.stringify(args.select)
+    // Only doctors who work there on the route date and are active.
+    expect(counted).toContain('"contactWorkplaces":{"where":')
+    expect(counted).toContain('"type":"DOCTOR"')
+    expect(counted).toContain('"status":"ACTIVE"')
+    expect(counted).toContain('"endedOn":{"gt":"2026-08-30T00:00:00.000Z"}')
+    expect((await response.json()).data.targets).toEqual([
+      expect.objectContaining({ customerId: "clinic-1", objectType: "CLINIC", doctorCount: 4 }),
+      expect.objectContaining({ customerId: "pharmacy-1", objectType: "PHARMACY", doctorCount: 0 }),
+    ])
+  })
+
+  it("offers a clinic where one of the agent's own doctors works, even if the clinic is not his (Zeytun 2026-11-13)", async () => {
+    await lookup("?kind=organization&date=2026-08-30&objectType=CLINIC")
+    const args = vi.mocked(prisma.mtmCustomer.findMany).mock.calls[0][0] as { where: { AND: Array<Record<string, any>> } }
+    const scope = args.where.AND[0]
+    expect(scope.OR).toHaveLength(2)
+    const viaDoctor = scope.OR[1]
+    // Not a pharmacy: a pharmacy is a stop of its own, and only its own scope may offer it.
+    expect(viaDoctor.objectType).toEqual({ not: "PHARMACY" })
+    const doctor = viaDoctor.contactWorkplaces.some.contact
+    expect(doctor).toMatchObject({ organizationId: ORG, deletedAt: null, status: "ACTIVE", type: "DOCTOR" })
+    expect(doctor.agentAssignments.some).toMatchObject({ agentId: "agent-1", deletedAt: null, effectiveFrom: { lte: new Date("2026-08-30T00:00:00.000Z") } })
+    // The doctor works there on the route date.
+    expect(JSON.stringify(viaDoctor.contactWorkplaces.some)).toContain('"endedOn":{"gt":"2026-08-30T00:00:00.000Z"}')
   })
 
   it("looks up one exact date-eligible organization for quick route add", async () => {
