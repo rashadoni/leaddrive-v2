@@ -429,8 +429,17 @@ describe("the description's formatting", () => {
   const field = () => container.querySelector('[data-testid="task-description"]') as HTMLElement & { editor: Live }
   const settle = async () => { for (let i = 0; i < 4; i += 1) { await flush(); await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) }) } }
   const openCard = async () => { await open(); await settle() }
-  const into = async () => { await act(async () => { field().editor.commands.focus(); field().dispatchEvent(new FocusEvent("focusin", { bubbles: true })) }) }
+  // The cursor is put into the field the way a click does — at once. The editor's own `focus` command
+  // waits for an animation frame, and on a slow machine that late focus arrived after the field had been
+  // left: the buttons «came back» (CI, 2026-11-13; six runs of six were green here).
+  const frame = () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 40)) })
+  const into = async () => {
+    await act(async () => { field().focus(); field().dispatchEvent(new FocusEvent("focusin", { bubbles: true })) })
+    await frame()
+  }
   const leave = async () => {
+    // A button of the bar asks the editor to keep the cursor, which it does a frame later: let that land first.
+    await frame()
     await act(async () => { field().dispatchEvent(new FocusEvent("blur")); field().dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body })) })
     await settle()
   }
