@@ -193,7 +193,7 @@ export default function InboxAnalyticsPage() {
     }
   }, [channel, agent, customerStage, messageStatus, headers, applyDateRange])
 
-  useEffect(() => { fetchAll() }, [fetchAll, session])
+  useEffect(() => { fetchAll() }, [fetchAll, session?.user?.id, session?.user?.organizationId])
 
   // B2: the stats/channels API has no channel/agent filters — fetch once per org.
   useEffect(() => {

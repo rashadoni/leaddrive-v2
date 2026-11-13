@@ -105,7 +105,7 @@ export default function CampaignsPage() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchCampaigns() }, [session])
+  useEffect(() => { fetchCampaigns() }, [session?.user?.id, session?.user?.organizationId])
 
   const handleDelete = async () => {
     if (!deleteId) return

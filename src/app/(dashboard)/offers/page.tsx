@@ -90,7 +90,7 @@ export default function OffersPage() {
 
   useEffect(() => {
     fetchOffers()
-  }, [session, statusFilter])
+  }, [session?.user?.id, session?.user?.organizationId, statusFilter])
 
   const handleDelete = async () => {
     if (!deleteId) return

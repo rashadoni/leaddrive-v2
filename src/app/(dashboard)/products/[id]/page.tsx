@@ -96,7 +96,7 @@ export default function ProductDetailPage() {
     setProductType(p.productType ?? "other")
   }
 
-  useEffect(() => { fetchProduct() }, [id, session])
+  useEffect(() => { fetchProduct() }, [id, session?.user?.id, session?.user?.organizationId])
 
   async function handleSave() {
     setSaving(true)

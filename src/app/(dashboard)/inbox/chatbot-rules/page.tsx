@@ -113,7 +113,7 @@ export default function ChatbotRulesPage() {
     }
   }, [headers])
 
-  useEffect(() => { load() }, [load, session])
+  useEffect(() => { load() }, [load, session?.user?.id, session?.user?.organizationId])
 
   const toggleMaster = async () => {
     setBusy(true)

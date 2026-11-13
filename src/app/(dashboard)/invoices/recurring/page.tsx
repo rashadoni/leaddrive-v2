@@ -156,7 +156,7 @@ export default function RecurringInvoicesPage() {
       fetchRules()
       fetchCompanies()
     }
-  }, [session, fetchRules, fetchCompanies])
+  }, [session?.user?.id, session?.user?.organizationId, fetchRules, fetchCompanies])
 
   const handleCreate = async () => {
     setSaving(true)

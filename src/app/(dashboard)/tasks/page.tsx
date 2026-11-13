@@ -674,7 +674,7 @@ export default function TasksPage() {
     fetchUsers()
     fetchProjects()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session])
+  }, [session?.user?.id, session?.user?.organizationId])
 
   // The tick shows at once (owner, 2026-11-09). Before, it waited for the
   // server, then for the whole list again, and a refusal (a board task the

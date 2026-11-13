@@ -480,7 +480,7 @@ export default function ContractsPage() {
     } catch { /* non-fatal */ }
   }
 
-  useEffect(() => { fetchContracts(); fetchOrgTags() }, [session])
+  useEffect(() => { fetchContracts(); fetchOrgTags() }, [session?.user?.id, session?.user?.organizationId])
 
   async function openDetail(contract: Contract) {
     setDetailContract(contract)

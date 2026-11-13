@@ -691,7 +691,7 @@ export default function InboxV2Page() {
       .then((j) => { if (j?.success) setMacros(j.data || []) })
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session])
+  }, [session?.user?.id, session?.user?.organizationId])
 
   // E3.1b — load the org's snippet library, re-filtered by the active reply channel.
   useEffect(() => {
@@ -700,7 +700,7 @@ export default function InboxV2Page() {
       .then((j) => { if (j?.success) setSnippets(j.data || []) })
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [replyChannel, session])
+  }, [replyChannel, session?.user?.id, session?.user?.organizationId])
 
   // Phase 2c — load assignable agents once (for the assignment dropdown).
   useEffect(() => {
@@ -709,7 +709,7 @@ export default function InboxV2Page() {
       .then((j) => { if (j?.success) setAgents(j.data || []) })
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session])
+  }, [session?.user?.id, session?.user?.organizationId])
 
   // Phase 5 — load team folders once.
   useEffect(() => {
@@ -718,7 +718,7 @@ export default function InboxV2Page() {
       .then((j) => { if (j?.success) setFolders(j.data || []) })
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session])
+  }, [session?.user?.id, session?.user?.organizationId])
 
   const createFolder = async () => {
     const name = normalizeInboxFolderName(newFolderName)

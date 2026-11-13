@@ -92,7 +92,7 @@ export default function OfferDetailPage() {
 
   useEffect(() => {
     if (params.id) fetchOffer()
-  }, [params.id, session])
+  }, [params.id, session?.user?.id, session?.user?.organizationId])
 
   const handleDelete = async () => {
     const res = await fetch(`/api/v1/offers/${params.id}`, {

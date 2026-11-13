@@ -96,7 +96,7 @@ export default function SalesForecastPage() {
 
   useEffect(() => {
     if (session) fetchData()
-  }, [session, fetchData])
+  }, [session?.user?.id, session?.user?.organizationId, fetchData])
 
   // Grid values are always stored WITHOUT VAT. Display multiplier applied if showVat=true.
   const getVal = (deptId: string, month: number): number => {

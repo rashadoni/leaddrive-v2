@@ -357,7 +357,7 @@ export default function PipelinesSettingsPage() {
     finally { setRulesLoading(null) }
   }
 
-  useEffect(() => { if (session) fetchPipelines() }, [session])
+  useEffect(() => { if (session) fetchPipelines() }, [session?.user?.id, session?.user?.organizationId])
 
   const toggleStage = (stageId: string) => {
     if (expandedStage === stageId) {

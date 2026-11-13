@@ -627,7 +627,7 @@ export default function ContractDetailPage() {
 
   useEffect(() => {
     if (params.id) fetchContract()
-  }, [params.id, session])
+  }, [params.id, session?.user?.id, session?.user?.organizationId])
 
   useEffect(() => {
     if (params.id && orgId) fetchVersions()

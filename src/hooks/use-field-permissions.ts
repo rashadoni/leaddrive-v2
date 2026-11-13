@@ -25,7 +25,7 @@ export function useFieldPermissions(entityType: string) {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [entityType, session])
+  }, [entityType, session?.user?.id, session?.user?.organizationId])
 
   return {
     permissions,

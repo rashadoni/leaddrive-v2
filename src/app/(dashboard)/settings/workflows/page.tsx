@@ -157,7 +157,7 @@ export default function WorkflowsPage() {
     } catch (err) { console.error(err) } finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchWorkflows() }, [session])
+  useEffect(() => { fetchWorkflows() }, [session?.user?.id, session?.user?.organizationId])
 
   const handleDelete = async () => {
     if (!deleteId) return
