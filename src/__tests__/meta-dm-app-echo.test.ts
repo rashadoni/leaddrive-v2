@@ -117,7 +117,7 @@ function inbound(body: string) {
 
 /** A reply the CRM itself sent, as send-conversation-reply records it. */
 function crmReply(body: string, extra: Row = {}) {
-  const row = {
+  const row: Row = {
     id: `out_${++db.seq}`, organizationId: ORG, channelConfigId: CHANNEL.id, conversationId: "conv_customer",
     direction: "outbound", channelType: "instagram", from: "system", to: CUSTOMER, body, status: "delivered",
     externalId: null, createdAt: new Date(), metadata: { sentVia: "leaddrive_inbox" }, ...extra,
