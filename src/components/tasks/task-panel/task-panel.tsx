@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import {
-  Calendar, CalendarClock, ChevronsUp, Clock, Hourglass, Link2, ListChecks, MoreHorizontal, Paperclip, Play, Repeat, Square, Tag, Trash2, X,
+  Calendar, CalendarClock, ChevronsUp, Clock, Download, Hourglass, Link2, ListChecks, MoreHorizontal, Paperclip, Play, Repeat, Square, Tag, Trash2, X,
 } from "lucide-react"
 import { useTaskTypes } from "@/components/tasks/use-task-types"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
@@ -13,6 +13,8 @@ import { TaskPanelSubtasks, endOfDayIso, type Subtask } from "@/components/tasks
 import { applyTaskPatch, revertTaskPatch } from "@/lib/client/optimistic-task-patch"
 import { STATUS_TO_STAGE, foldToVisibleStage } from "@/lib/tasks/board-columns"
 import { listLinesOf, newSubtaskTitles } from "@/lib/tasks/list-lines"
+import { fileDownloadUrl } from "@/lib/tasks/message-files"
+import { saveTaskFiles } from "@/lib/tasks/save-task-files"
 
 /**
  * The task card as a panel on the right of the board — Bordio's card (owner,
@@ -229,6 +231,18 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
   const [removing, setRemoving] = useState<string | null>(null)
   // Several files at once (Xayala, 2026-11-12: «qrup halında silmək imkanı olsun»).
   const [pickedFiles, setPickedFiles] = useState<ReadonlySet<string>>(new Set())
+  // Several files saved at one press: how far it has got, and what it could not save.
+  const [saving, setSaving] = useState<{ done: number; total: number } | null>(null)
+  const [saveNote, setSaveNote] = useState<string | null>(null)
+  const saveFiles = async () => {
+    if (!task || saving) return
+    const chosen = pickedFiles.size > 0 ? task.attachments.filter((file) => pickedFiles.has(file.id)) : task.attachments
+    setSaveNote(null)
+    setSaving({ done: 0, total: chosen.length })
+    const result = await saveTaskFiles(chosen, { onProgress: (done, total) => setSaving({ done, total }) })
+    setSaving(null)
+    if (result.failed.length > 0) setSaveNote(t("filesNotSaved", { count: String(result.failed.length), names: result.failed.join(", ") }))
+  }
   const [confirmBulk, setConfirmBulk] = useState(false)
   const togglePicked = (id: string) => setPickedFiles((now) => { const next = new Set(now); if (next.has(id)) next.delete(id); else next.add(id); return next })
   const removePicked = async () => {
@@ -520,8 +534,23 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                 <section className="border-t py-3">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <h3 className="text-sm font-semibold">{t("files")} <span className="font-normal text-muted-foreground">{task.attachments.length}</span></h3>
+                    {/* Güllü, 2026-11-13: the visuals of one post are saved at one press, each under its own name. */}
+                    {task.attachments.length > 1 && (
+                      <button
+                        type="button"
+                        data-testid="task-files-download-all"
+                        disabled={saving !== null}
+                        onClick={() => void saveFiles()}
+                        className="ml-auto inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-60"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        {saving
+                          ? t("savingFiles", { done: String(Math.min(saving.done + 1, saving.total)), total: String(saving.total) })
+                          : pickedFiles.size > 0 ? t("downloadSelectedFiles", { count: String(pickedFiles.size) }) : t("downloadAllFiles")}
+                      </button>
+                    )}
                     {canEdit && task.attachments.length > 1 && (
-                      <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <input
                           type="checkbox"
                           data-testid="task-files-select-all"
@@ -548,6 +577,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                       )}
                     </div>
                   )}
+                  {saveNote && <p role="alert" className="mb-2 text-xs text-destructive" data-testid="task-files-save-note">{saveNote}</p>}
                   <ul className="flex flex-col gap-1">
                     {task.attachments.map((file) => (
                       <li key={file.id} className="group flex items-center gap-2" data-testid="task-file">
@@ -555,6 +585,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                           <input type="checkbox" aria-label={file.originalName} data-testid="task-file-pick" checked={pickedFiles.has(file.id)} onChange={() => togglePicked(file.id)} className="shrink-0" />
                         )}
                         <a href={`/uploads/tasks/${file.fileName}`} target="_blank" rel="noreferrer" className="inline-flex min-w-0 items-center gap-1.5 text-sm hover:underline"><Paperclip className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{file.originalName}</span></a>
+                        <a href={fileDownloadUrl(file)} download={file.originalName} aria-label={`${t("downloadFile")}: ${file.originalName}`} title={t("downloadFile")} className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground" data-testid="task-file-download"><Download className="h-3.5 w-3.5" /></a>
                         {/* Zeytun, 2026-11-12: «əlavə olunanları da silmək olmur» — a file is removed in two clicks. */}
                         {canEdit && (removing === file.id ? (
                           <button type="button" data-crm-button="" onClick={() => void removeFile(file.id)} className="shrink-0 rounded-md border border-destructive px-2 py-0.5 text-xs text-destructive" data-testid="task-file-remove-confirm">{t("confirmRemoveFile")}</button>

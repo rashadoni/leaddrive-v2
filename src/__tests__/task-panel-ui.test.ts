@@ -198,6 +198,9 @@ describe("files in the card, as in Bordio", () => {
       await open()
       const img = container.querySelector('[data-testid="feed-message-pictures"] img') as HTMLImageElement
       expect(img.getAttribute("src")).toBe("/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg?w=480")
+      // The picture is saved from the card under its own name, without opening a tab.
+      const save = container.querySelector('[data-testid="feed-picture-download"]') as HTMLAnchorElement
+      expect([save.getAttribute("href"), save.getAttribute("download")]).toEqual(["/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg?download=1", "11.11.26 Stories-1.jpg"])
       const links = [...container.querySelectorAll('[data-testid="feed-message-files"] a')].map((a) => a.getAttribute("href"))
       expect(links).toEqual(["/uploads/tasks/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.pdf"])
       expect(container.querySelector('[data-testid="feed-message-files"]')?.textContent).toContain("köhnə.png")
@@ -311,6 +314,67 @@ describe("a picture the file gate refused", () => {
     } finally {
       TASK.attachments = was.attachments
       delete (FEED as { me?: unknown }).me
+    }
+  })
+
+  // Güllü, 2026-11-13: «при нажатии для скачивания визуала кидает на другую страницу и сохраняет не с
+  // наименованием, которое задавал дизайнер» — nine visuals of a post were nine tabs and nine hashes.
+  it("saves a file under its author's name, and all of a task's files at one press", async () => {
+    const was = TASK.attachments
+    TASK.attachments = [
+      { id: "f1", fileName: "aaaa.png", originalName: "13.11.2026-Qan-şəkəri-1.png" },
+      { id: "f2", fileName: "bbbb.png", originalName: "13.11.2026-Qan-şəkəri-2.png" },
+      { id: "f3", fileName: "cccc.mp4", originalName: "reels final.mp4" },
+    ] as never
+    const saved: string[] = []
+    const inFlight = { now: 0, most: 0 }
+    const stubbed = globalThis.fetch as unknown as (url: string, init?: RequestInit) => Promise<Response>
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (!url.startsWith("/uploads/tasks/")) return stubbed(url, init)
+      calls.push(`GET ${url}`)
+      inFlight.now += 1
+      inFlight.most = Math.max(inFlight.most, inFlight.now)
+      await Promise.resolve()
+      inFlight.now -= 1
+      return url.includes("cccc") ? new Response("gate", { status: 500 }) : new Response("bytes")
+    }))
+    const createObjectURL = vi.fn(() => "blob:saved")
+    Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() })
+    const clicked = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) { saved.push(this.download) })
+    try {
+      await open()
+      // Each file: one link that saves it, named as its author named it — no new tab.
+      const links = [...container.querySelectorAll('[data-testid="task-file-download"]')] as HTMLAnchorElement[]
+      expect(links.map((a) => [a.getAttribute("href"), a.getAttribute("download"), a.getAttribute("target")])).toEqual([
+        ["/uploads/tasks/aaaa.png?download=1", "13.11.2026-Qan-şəkəri-1.png", null],
+        ["/uploads/tasks/bbbb.png?download=1", "13.11.2026-Qan-şəkəri-2.png", null],
+        ["/uploads/tasks/cccc.mp4?download=1", "reels final.mp4", null],
+      ])
+
+      // All of them at one press: one after another, each under its own name; what failed is named.
+      const all = container.querySelector('[data-testid="task-files-download-all"]') as HTMLButtonElement
+      expect(all.textContent).toBe("Скачать все")
+      await click(all)
+      for (let i = 0; i < 6; i += 1) await flush()
+      expect(calls.filter((c) => c.startsWith("GET /uploads/tasks/"))).toEqual([
+        "GET /uploads/tasks/aaaa.png?download=1", "GET /uploads/tasks/bbbb.png?download=1", "GET /uploads/tasks/cccc.mp4?download=1",
+      ])
+      expect(inFlight.most).toBe(1)
+      expect(saved).toEqual(["13.11.2026-Qan-şəkəri-1.png", "13.11.2026-Qan-şəkəri-2.png"])
+      expect(container.querySelector('[data-testid="task-files-save-note"]')?.textContent).toBe("Не удалось скачать (1): reels final.mp4")
+      expect(all.disabled).toBe(false)
+
+      // With files ticked, the same button saves only those.
+      saved.length = 0
+      await click(container.querySelectorAll('[data-testid="task-file-pick"]')[1])
+      expect(all.textContent).toBe("Скачать выбранные (1)")
+      await click(all)
+      for (let i = 0; i < 6; i += 1) await flush()
+      expect(saved).toEqual(["13.11.2026-Qan-şəkəri-2.png"])
+      expect(container.querySelector('[data-testid="task-files-save-note"]')).toBeNull()
+    } finally {
+      clicked.mockRestore()
+      TASK.attachments = was
     }
   })
 

@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { AtSign, Bell, BellOff, Loader2, Paperclip, Pencil, Send, Trash2, X } from "lucide-react"
+import { AtSign, Bell, BellOff, Download, Loader2, Paperclip, Pencil, Send, Trash2, X } from "lucide-react"
 import { formatDate, formatTime } from "@/lib/format-date"
 import type { FeedItem, FeedPerson } from "@/lib/tasks/task-feed"
 import { describeFeedEvent } from "@/lib/tasks/feed-text"
-import { assignMessageFiles, fileUrl, isImageFile, joinMessageFiles, splitMessageFiles, type MessageFile } from "@/lib/tasks/message-files"
+import { assignMessageFiles, fileDownloadUrl, fileUrl, isImageFile, joinMessageFiles, splitMessageFiles, type MessageFile } from "@/lib/tasks/message-files"
 import { insertMention, mentionCandidates, mentionQueryAt, mentionedIds, type MentionPerson } from "@/lib/tasks/mentions"
 
 interface FeedData { items: FeedItem[]; followers: FeedPerson[]; following: boolean; me?: { id: string | null; admin: boolean } }
@@ -343,6 +343,7 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
 
 /** A message's text and, below it, the files it names — pictures shown, others as links. */
 function MessageBody({ text, matched }: { text: string; matched: ReadonlyArray<{ name: string; file: MessageFile | null }> }) {
+  const t = useTranslations("taskPanel")
   const { body, names } = splitMessageFiles(text)
   if (names.length === 0) return <>{text}</>
   const pictures = matched.filter((m) => m.file && isImageFile(m.file))
@@ -353,9 +354,22 @@ function MessageBody({ text, matched }: { text: string; matched: ReadonlyArray<{
       {pictures.length > 0 && (
         <span className="mt-1.5 flex flex-wrap gap-1.5" data-testid="feed-message-pictures">
           {pictures.map(({ name, file }) => (
-            <a key={file!.id} href={fileUrl(file!)} target="_blank" rel="noreferrer" title={name} className="block overflow-hidden rounded-md border">
-              <MessagePicture src={fileUrl(file!)} alt={name} />
-            </a>
+            <span key={file!.id} className="group/picture relative block overflow-hidden rounded-md border">
+              <a href={fileUrl(file!)} target="_blank" rel="noreferrer" title={name} className="block">
+                <MessagePicture src={fileUrl(file!)} alt={name} />
+              </a>
+              {/* Saved under the designer's own name, without leaving the card (Güllü, 2026-11-13). */}
+              <a
+                href={fileDownloadUrl(file!)}
+                download={file!.originalName}
+                aria-label={`${t("downloadFile")}: ${name}`}
+                title={t("downloadFile")}
+                data-testid="feed-picture-download"
+                className="absolute bottom-1 right-1 rounded bg-background/90 p-1 text-foreground opacity-0 shadow-sm transition-opacity focus-visible:opacity-100 group-hover/picture:opacity-100 [@media(hover:none)]:opacity-100"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </a>
+            </span>
           ))}
         </span>
       )}

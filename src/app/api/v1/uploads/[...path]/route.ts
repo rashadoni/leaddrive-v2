@@ -44,6 +44,8 @@ import {
   PATH_ENCODED_ORG_SUBDIRS,
   PROXIED_UPLOAD_SUBDIR_SET,
 } from "@/lib/upload-path-policy"
+import { announcedFileName, contentDisposition } from "@/lib/tasks/file-download-name"
+import { MAX_TASK_FILE_SIZE } from "@/lib/tasks/task-file-store"
 import { mtmMediaObjectReadFailureResponse } from "@/lib/mtm/media-object-http"
 import { readCommittedMtmMediaObject, toMtmReservedMediaObject } from "@/lib/mtm/media-object-lifecycle"
 import { mtmMediaObjectStorageSelect } from "@/lib/mtm/media-object-select"
@@ -61,6 +63,8 @@ import {
 
 const MAX_SERVED_FILE_SIZE = 50 * 1024 * 1024
 const MAX_PUBLIC_SERVED_FILE_SIZE = 6 * 1024 * 1024
+/** Room for the encryption envelope of the largest task file (a tag per 64 KiB record, and the header). */
+const TASK_FILE_ENVELOPE_ROOM = 2 * 1024 * 1024
 const DOWNLOAD_RATE_POLICY = { maxRequests: 120, windowSeconds: 60 }
 const DOWNLOAD_CONCURRENCY_POLICY = { maxConcurrent: 8, leaseSeconds: 300 }
 const PUBLIC_DOWNLOAD_RATE_POLICY = { maxRequests: 240, windowSeconds: 60 }
@@ -147,7 +151,15 @@ function dispositionFor(filename: string): string {
 
 async function serveUploadFile(
   parts: readonly string[],
-  access: { public: boolean; principal: string; organizationId: string | null },
+  access: {
+    public: boolean; principal: string; organizationId: string | null
+    /** The name to save the file under, when its owner row knows a better one than the name on disk. */
+    saveAs?: string
+    /** The reader pressed «download»: save, do not open. */
+    download?: boolean
+    /** A larger ceiling for a kind of file that is allowed to be larger (task videos). */
+    sizeLimit?: number
+  },
 ): Promise<NextResponse> {
   // Recheck the lexical policy at the last boundary before path.resolve. Both
   // public and authenticated dispatchers call this helper, and neither is
@@ -171,7 +183,7 @@ async function serveUploadFile(
   if (!fileStat.isFile()) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
-  const sizeLimit = access.public ? MAX_PUBLIC_SERVED_FILE_SIZE : MAX_SERVED_FILE_SIZE
+  const sizeLimit = access.public ? MAX_PUBLIC_SERVED_FILE_SIZE : (access.sizeLimit ?? MAX_SERVED_FILE_SIZE)
   if (fileStat.size < 0 || fileStat.size > sizeLimit) {
     return NextResponse.json({ error: "File is too large to serve" }, { status: 413 })
   }
@@ -208,7 +220,10 @@ async function serveUploadFile(
   const headers: Record<string, string> = {
     "Content-Type": mimeFor(filename),
     "Content-Length": String(opened.size),
-    "Content-Disposition": dispositionFor(filename),
+    "Content-Disposition": access.saveAs
+      // Whether it may open in the browser is still decided by the stored name's type.
+      ? contentDisposition(access.download || dispositionFor(filename).startsWith("attachment") ? "attachment" : "inline", access.saveAs)
+      : dispositionFor(filename),
     "X-Content-Type-Options": "nosniff",
     "Cross-Origin-Resource-Policy": access.public ? "cross-origin" : "same-origin",
     "Referrer-Policy": "no-referrer",
@@ -466,6 +481,8 @@ const authenticatedGET = withRlsSessionAuth(async (req, auth, { params }: RouteC
   }
 
   const [subdir] = parts
+  // Set by the tasks branch: the name the file is saved under, and whether «download» was pressed.
+  let taskFile: { saveAs: string; download: boolean } | null = null
   if (!PROXIED_UPLOAD_SUBDIR_SET.has(subdir)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
@@ -606,11 +623,13 @@ const authenticatedGET = withRlsSessionAuth(async (req, auth, { params }: RouteC
     }
     const ta = await prisma.taskAttachment.findFirst({
       where: { fileName, organizationId: auth.orgId },
-      select: { id: true },
+      select: { id: true, originalName: true },
     })
     if (!ta) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
+    // Saved under the name its author gave it, not the random one on disk (Güllü, 2026-11-13).
+    taskFile = { saveAs: announcedFileName(ta.originalName, fileName), download: new URL(req.url).searchParams.get("download") === "1" }
     if (thumbnailWidth) {
       return serveMtmDiskPhotoThumbnail({
         parts,
@@ -644,6 +663,9 @@ const authenticatedGET = withRlsSessionAuth(async (req, auth, { params }: RouteC
     principal: `${auth.orgId}:${auth.userId}`,
     // Every private branch above has tied the path to this tenant.
     organizationId: auth.orgId,
+    // A task takes files up to MAX_TASK_FILE_SIZE (videos from Bordio); the general 50 MB ceiling
+    // refused to hand 33 of Zeytun's own files back. The envelope on disk is a little larger.
+    ...(taskFile ? { ...taskFile, sizeLimit: MAX_TASK_FILE_SIZE + TASK_FILE_ENVELOPE_ROOM } : {}),
   })
 })
 

@@ -79,3 +79,8 @@ export function isImageFile(file: MessageFile): boolean {
 export function fileUrl(file: MessageFile): string {
   return `/uploads/tasks/${file.fileName}`
 }
+
+/** The same file, saved instead of opened — under its author's name (see file-download-name.ts). */
+export function fileDownloadUrl(file: MessageFile): string {
+  return `${fileUrl(file)}?download=1`
+}
