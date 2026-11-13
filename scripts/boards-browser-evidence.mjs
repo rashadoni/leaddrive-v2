@@ -78,7 +78,8 @@ async function seed() {
   const password = `Fixture!${randomUUID()}`
   const passwordHash = await bcrypt.hash(password, 4)
   const slug = `zeytun-e2e-${randomUUID().slice(0, 8)}`
-  const org = await db.organization.create({ data: { name: 'Fictional Zeytun E2E', slug, plan: 'enterprise', modules: { crm: true }, settings: { fixtureOnly: true } } })
+  // As Zeytun's own settings: the staff role may delete tasks (the owner's «Rollar» table) — which task is whose is the ownership rule's to decide.
+  const org = await db.organization.create({ data: { name: 'Fictional Zeytun E2E', slug, plan: 'enterprise', modules: { crm: true }, settings: { fixtureOnly: true, roleAccess: { sales: { tasks: 'full' } } } } })
   const foreign = await db.organization.create({ data: { name: 'Fictional Foreign E2E', slug: `${slug}-foreign`, plan: 'enterprise', modules: { crm: true }, settings: { fixtureOnly: true } } })
   const boardsTenant = await db.organization.create({ data: { name: 'Fictional Boards-only Tenant E2E', slug: `${slug}-boards`, plan: 'starter', features: ['boards', 'settings'], modules: { boards: true, crm: false, sales: false, settings: true }, settings: { fixtureOnly: true } } })
 
@@ -136,13 +137,14 @@ async function seed() {
   await task('pharmaWork', 'DPHARMA', 'in_progress', { assignedTo: users.marketerOld.id })
   await task('pharmaDone', 'DPHARMA', 'done')
   await task('zeytunOne', 'DZEYTUN', 'todo')
-  await task('zeytunTwo', 'DZEYTUN', 'in_progress')
+  // The manager's own task: a board task is changed by its people only (task-ownership.ts, 2026-11-12).
+  await task('zeytunTwo', 'DZEYTUN', 'in_progress', { assignedTo: users.manager.id })
   await task('tradOne', 'TZEYTUN', 'todo')
   // 35 tasks finished 40 days ago: the DONE column used to show only the last 14 days.
   for (let i = 1; i <= 35; i += 1) {
     await task(`old${i}`, 'TARCHIVE', 'done', { title: `Fixture old-${String(i).padStart(2, '0')}`, completedAt: new Date(Date.now() - (40 + i) * 86_400_000) })
   }
-  await task('mxOne', 'MX2611', 'todo')
+  await task('mxOne', 'MX2611', 'todo', { assignedTo: users.clerk.id })
   await task('mxTwo', 'MX2611', 'done')
   await task('foreignOne', 'FOREIGN', 'todo')
   await task('soloOne', 'SOLO', 'todo')
@@ -313,14 +315,32 @@ async function main() {
     assert.equal(read.json.data.status, 'done')
     assert.ok(read.json.data.completedAt)
   })
-  await step('a grant made before members could finish moves a task but cannot finish it', async () => {
-    const work = await api('marketerOld', `/api/v1/tasks/${f.tasks.pharmaOpen.id}`, { method: 'PATCH', body: { status: 'in_progress' } })
+  await step('a grant made before members could finish moves their own task but cannot finish it', async () => {
+    const back = await api('marketerOld', `/api/v1/tasks/${f.tasks.pharmaWork.id}`, { method: 'PATCH', body: { status: 'todo' } })
+    assert.equal(back.status, 200, JSON.stringify(back.json))
+    const work = await api('marketerOld', `/api/v1/tasks/${f.tasks.pharmaWork.id}`, { method: 'PATCH', body: { status: 'in_progress' } })
     assert.equal(work.status, 200, JSON.stringify(work.json))
-    const finish = await api('marketerOld', `/api/v1/tasks/${f.tasks.pharmaOpen.id}`, { method: 'PATCH', body: { status: 'done' } })
+    const finish = await api('marketerOld', `/api/v1/tasks/${f.tasks.pharmaWork.id}`, { method: 'PATCH', body: { status: 'done' } })
     assert.equal(finish.status, 403)
   })
-  await step('manager finishes a task on a marketing board', async () => {
-    const res = await api('manager', `/api/v1/tasks/${f.tasks.pharmaWork.id}`, { method: 'PATCH', body: { status: 'done' } })
+  // Ulviyya, 2026-11-12: «özümüzdən başqa bizim taskları heç kim idarə edə bilməsin»; the owner named the admin alone.
+  await step('a board task is its own people\'s: a colleague and a manager neither move nor delete it, its author deletes it, the admin may', async () => {
+    const colleague = await api('marketerOld', `/api/v1/tasks/${f.tasks.pharmaOpen.id}`, { method: 'PATCH', body: { status: 'in_progress' } })
+    assert.equal(colleague.status, 403, JSON.stringify(colleague.json))
+    const boss = await api('manager', `/api/v1/tasks/${f.tasks.pharmaWork.id}`, { method: 'PATCH', body: { status: 'done' } })
+    assert.equal(boss.status, 403, JSON.stringify(boss.json))
+    assert.equal((await api('manager', `/api/v1/tasks/${f.tasks.pharmaWork.id}`, { method: 'DELETE' })).status, 403)
+    // Its assignee changes it but does not delete it — only who made it does.
+    assert.equal((await api('marketerOld', `/api/v1/tasks/${f.tasks.pharmaWork.id}`, { method: 'DELETE' })).status, 403)
+    const made = await api('marketerOld', '/api/v1/tasks', { method: 'POST', body: { title: 'Fixture öz işim', divisionId: f.boards.DZEYTUN.id, status: 'todo' } })
+    assert.equal(made.status, 201, JSON.stringify(made.json))
+    assert.equal((await api('marketer', `/api/v1/tasks/${made.json.data.id}`, { method: 'DELETE' })).status, 403)
+    assert.equal((await api('marketerOld', `/api/v1/tasks/${made.json.data.id}`, { method: 'DELETE' })).status, 200)
+    const admin = await api('admin', `/api/v1/tasks/${f.tasks.pharmaOpen.id}`, { method: 'PATCH', body: { priority: 'high' } })
+    assert.equal(admin.status, 200, JSON.stringify(admin.json))
+  })
+  await step('manager finishes their own task on a marketing board', async () => {
+    const res = await api('manager', `/api/v1/tasks/${f.tasks.zeytunTwo.id}`, { method: 'PATCH', body: { status: 'done' } })
     assert.equal(res.status, 200, JSON.stringify(res.json))
   })
   await step('Cust-Serv clerk: sees only Cust-Serv, works there, cannot touch marketing', async () => {
@@ -469,8 +489,10 @@ async function main() {
     const page = await sessions.marketer.newPage()
     await page.goto('/boards/mine', { timeout: 180000 })
     await page.waitForSelector('[data-testid="my-work-row"]', { timeout: 120000 })
-    const rows = await page.$$eval('[data-testid="my-work-row"]', (els) => els.map((el) => el.getAttribute('data-task-id')))
+    // The open groups only: what she finished today stays on the page under «Bu gün bitənlər» (2026-11-12).
+    const rows = await page.$$eval('[data-testid="my-work-group"]:not([data-group="doneToday"]) [data-testid="my-work-row"]', (els) => els.map((el) => el.getAttribute('data-task-id')))
     assert.deepEqual([...rows].sort(), [...ids].sort())
+    assert.ok(await page.locator('[data-testid="my-work-group"][data-group="doneToday"] [data-testid="my-work-row"]').count() >= 1, 'the task she finished today is not shown')
     const link = page.locator('[data-testid="sidebar-my-work-link"]')
     await link.waitFor({ timeout: 60000 })
     assert.match(await link.innerText(), new RegExp(`Mənim işlərim\\s*${ids.length}$`))
