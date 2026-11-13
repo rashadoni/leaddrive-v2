@@ -1995,7 +1995,8 @@ pgDescribe("online booking on a real Postgres", () => {
       // keeps Meta's window open, so the reminder may be text with buttons.
       const startsAt = await slotWithin(slug, 18 * 3600_000, 24 * 3600_000)
       expect((await book(slug, startsAt, "Günel")).status).toBe(201)
-      const booking = await bypass(() => prisma.booking.findFirstOrThrow({ where: { organizationId: ORG, startsAt: new Date(startsAt) } }))
+      // By this scenario's own page — never by the time alone (see the move scenario below).
+      const booking = await bypass(() => prisma.booking.findFirstOrThrow({ where: { organizationId: ORG, bookingPage: { slug }, startsAt: new Date(startsAt) } }))
       const conversation = await conversationWith(phoneDigitsOf(booking.phone), "Günel", "Sabah manikür?")
 
       expect((await remindersPost(cronJson())).status).toBe(200)
@@ -2048,7 +2049,12 @@ pgDescribe("online booking on a real Postgres", () => {
       const make = async (index: number) => {
         const startsAt = await someSlot(slug, index)
         expect((await book(slug, startsAt, "Aytən")).status).toBe(201)
-        return bypass(() => prisma.booking.findFirstOrThrow({ where: { organizationId: ORG, startsAt: new Date(startsAt) } }))
+        // By this scenario's own page: at some hours another scenario of the file
+        // holds a meeting at the very same instant, and looking by the time alone
+        // handed back THAT one — the cancel and the move then acted on a stranger's
+        // meeting, and this page was left with two (three deploys of main in a row
+        // on 2026-11-13, 14:05–14:25 Baku).
+        return bypass(() => prisma.booking.findFirstOrThrow({ where: { organizationId: ORG, bookingPageId: page.id, startsAt: new Date(startsAt) } }))
       }
       const first = await make(6)
       const conversation = await conversationWith(phoneDigitsOf(first.phone), "Aytən", "Saç kəsimi")
