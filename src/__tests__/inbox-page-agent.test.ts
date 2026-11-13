@@ -59,7 +59,7 @@ vi.mock("@/lib/ai/anthropic-client", () => ({ getAnthropicClient: () => ({ messa
 
 import { generateChannelAiReply, maybeAiAutoReply } from "@/lib/social/ai-autoreply"
 import { getBusinessHoursDecision, pageBusinessHoursKey } from "@/lib/inbox/business-hours"
-import { resolveInboxAgent } from "@/lib/inbox/page-agent"
+import { resolveInboxAgent, whatsAppPageTurn } from "@/lib/inbox/page-agent"
 
 const ORG = "org_zeytun"
 const PHARMA = "cfg_pharma"
@@ -251,3 +251,63 @@ describe("when the AI answers on a page", () => {
     expect(anthropicCreate).toHaveBeenCalled()
   })
 })
+
+/**
+ * WhatsApp is answered by Da Vinci, the support assistant. A number with a page agent keeps Da
+ * Vinci and gets the page's words in place of the organisation-wide support instructions; the
+ * webhook appends exactly `instructions` to Da Vinci's base prompt.
+ */
+describe("a WhatsApp number's turn", () => {
+  const WA = "cfg_wa"
+  const SUPPORT = "Отвечай как служба поддержки аптечной сети."
+  const turn = (channelSettings: Row = {}, channelConfigId: string | null = WA) =>
+    whatsAppPageTurn({ organizationId: ORG, channelConfigId, channelSettings, supportPrompt: SUPPORT })
+
+  beforeEach(() => {
+    db.agents.push({
+      ...babyAgent, id: "agent_wa", channelConfigId: WA,
+      systemPrompt: "Ты принимаешь заказы оптовых аптек.", knowledgeBase: "Минимальный заказ: 50 AZN.",
+      greeting: "Salam! Zeytun topdan.", replyLanguage: "az",
+    })
+  })
+
+  it("with a page agent: the number's own rules, knowledge, greeting and language — not the support instructions", async () => {
+    const result = await turn()
+
+    expect(result).toMatchObject({ allowed: true, pageAgent: true })
+    expect(result.instructions).toContain("принимаешь заказы оптовых аптек")
+    expect(result.instructions).toContain("Минимальный заказ: 50 AZN")
+    expect(result.instructions).toContain("Zeytun topdan")
+    expect(result.instructions).not.toContain("служба поддержки аптечной сети")
+    // The reply language the page chose reaches the model as a rule of its own.
+    expect(result.instructions.split("\n\n").length).toBeGreaterThanOrEqual(4)
+  })
+
+  it("without a page agent: exactly what the number got before", async () => {
+    const result = await turn({}, "cfg_wa_other")
+
+    expect(result).toEqual({ allowed: true, pageAgent: false, instructions: `\n\nДОПОЛНИТЕЛЬНЫЕ ИНСТРУКЦИИ:\n${SUPPORT}` })
+  })
+
+  it("without a page agent and without support instructions: nothing is added", async () => {
+    const result = await whatsAppPageTurn({ organizationId: ORG, channelConfigId: "cfg_wa_other", channelSettings: {} })
+
+    expect(result).toEqual({ allowed: true, pageAgent: false, instructions: "" })
+  })
+
+  it("another number of the same company does not get this number's agent", async () => {
+    const result = await turn({}, "cfg_wa_second")
+
+    expect(result.instructions).not.toContain("оптовых аптек")
+  })
+
+  it("«only outside working hours»: the turn is a person's while the number is open", async () => {
+    const open = Object.fromEntries(["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((d) => [d, { enabled: true, intervals: [{ start: "00:00", end: "23:59" }] }]))
+    db.hours = [{ organizationId: ORG, channelType: pageBusinessHoursKey(WA), timezone: "Asia/Baku", isActive: true, schedule: open, holidays: [] }]
+
+    expect((await turn({ aiSchedule: "outside_hours" })).allowed).toBe(false)
+    expect((await turn({ aiSchedule: "inside_hours" })).allowed).toBe(true)
+    expect((await turn({})).allowed).toBe(true)
+  })
+})
+

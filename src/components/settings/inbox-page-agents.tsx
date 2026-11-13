@@ -34,6 +34,7 @@ type PageRow = {
   name: string
   isActive: boolean
   aiOn: boolean
+  replyHeld?: boolean
   aiSchedule: AiSchedule
   agent: AgentFields | null
   hours: Hours | null
@@ -42,7 +43,7 @@ type PageRow = {
 const COMMON = "__common__"
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const
 const PLATFORM_LABEL: Record<string, string> = {
-  instagram: "Instagram", facebook: "Facebook", telegram: "Telegram", vkontakte: "VKontakte", chatwoot: "TikTok",
+  instagram: "Instagram", facebook: "Facebook", whatsapp: "WhatsApp", telegram: "Telegram", vkontakte: "VKontakte", chatwoot: "TikTok",
 }
 const EMPTY_AGENT: AgentFields = { systemPrompt: "", knowledgeBase: "", greeting: "", replyLanguage: null }
 
@@ -186,6 +187,12 @@ export function InboxPageAgents({ children, onReplyModeChanged }: {
               </div>
               <Switch checked={draft.aiOn} onCheckedChange={(aiOn) => setDraft({ ...draft, aiOn })} />
             </div>
+
+            {draft.replyHeld && (
+              <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+                {t("pageAgentReplyHeld")}
+              </p>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>

@@ -24,6 +24,7 @@ import { whatsappAiHistory } from "@/lib/inbox/whatsapp-ai-reply-guard"
 import { withWhatsAppAiPolicy } from "@/lib/inbox/whatsapp-ai-test"
 import { isWhatsAppOptOut, recordWhatsAppOptOut, recordWhatsAppConversationOptOut } from "@/lib/inbox/whatsapp-opt-out"
 import { getSupportAgentConfig } from "@/lib/ai/support-agent"
+import { whatsAppPageTurn } from "@/lib/inbox/page-agent"
 import { isSupportAiEnabled } from "@/lib/ai/support-feature"
 import {
   OMNICHANNEL_COMMITMENT_RULES,
@@ -1650,6 +1651,19 @@ async function handleAiAutoReply(
   // newest-active findFirst would grab the omnichannel **inbox** persona (e.g. "Gobustone" + its
   // menu) once that's created, bleeding it into WhatsApp tech-support. See getSupportAgentConfig.
   const agentConfig = await getSupportAgentConfig(organizationId)
+  // This number's own «ИИ-агент» settings (lib/inbox/page-agent): when the AI answers here, and
+  // — if the number has a page agent — its rules, knowledge, greeting and language in place of
+  // the support agent's organisation-wide extra instructions. Da Vinci itself stays.
+  const pageTurn = await whatsAppPageTurn({
+    organizationId,
+    channelConfigId: opts.channelConfigId,
+    channelSettings: opts.channelSettings,
+    supportPrompt: agentConfig?.systemPrompt,
+  })
+  if (!pageTurn.allowed) {
+    console.log("[WA AI] outside this number's AI schedule — leaving the turn to a person")
+    return
+  }
 
   // No Claude for this organization (no key of its own, platform key not
   // allowed or absent) — skip auto-reply. The budget is checked at the call.
@@ -1763,9 +1777,7 @@ async function handleAiAutoReply(
 
   // Build system prompt
   let systemPrompt = WA_SYSTEM_PROMPT
-  if (agentConfig?.systemPrompt) {
-    systemPrompt += "\n\nДОПОЛНИТЕЛЬНЫЕ ИНСТРУКЦИИ:\n" + agentConfig.systemPrompt
-  }
+  systemPrompt += pageTurn.instructions
   systemPrompt += kbContext
   // What the company offers. The booking agent above acts only on a request
   // for a time and hands everything else here, where until now the assistant

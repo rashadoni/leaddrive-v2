@@ -111,9 +111,12 @@ describe("saving a page's own agent", () => {
     expect(db.channels.find((c) => c.id === "cfg_foreign")!.settings).toEqual({ replyMode: "agent" })
   })
 
-  it("refuses a WhatsApp number: its AI is a different agent, a page agent there would be read by nothing", async () => {
-    expect(await save({ agent }, ORG, "cfg_wa")).toMatchObject({ ok: false, status: 404 })
-    expect(db.agents).toHaveLength(1)
+  it("saves a page agent for a WhatsApp number too, and refuses a channel no agent answers on", async () => {
+    db.channels.push({ id: "cfg_email", organizationId: ORG, channelType: "email", configName: "info@", isActive: true, settings: {} })
+
+    expect(await save({ agent }, ORG, "cfg_wa")).toEqual({ ok: true })
+    expect(db.agents.find((a) => a.channelConfigId === "cfg_wa")).toMatchObject({ agentType: "inbox_page" })
+    expect(await save({ agent }, ORG, "cfg_email")).toMatchObject({ ok: false, status: 404 })
   })
 })
 
@@ -146,11 +149,22 @@ describe("the list the screen shows", () => {
 
     const { pages, commonAgent, defaultTimezone } = await listPageAgents(ORG)
 
-    // The WhatsApp number and the other organisation's page are not in it.
-    expect(pages.map((p) => p.channelConfigId)).toEqual([BABY])
+    // The other organisation's page is not in it.
+    expect(pages.map((p) => p.channelConfigId)).toEqual([BABY, "cfg_wa"])
     expect(pages[0]).toMatchObject({ name: "zeytun.baby", aiOn: true, aiSchedule: "always", hours: null })
     expect(pages[0].agent).toMatchObject({ knowledgeBase: "Bambi: 24 AZN." })
     expect(commonAgent).toMatchObject({ systemPrompt: "Общие правила." })
     expect(defaultTimezone).toBe("Asia/Baku")
+  })
+
+  it("shows a WhatsApp number's AI as on until somebody turns it off, and says when replies are held", async () => {
+    const before = (await listPageAgents(ORG)).pages.find((p) => p.channelConfigId === "cfg_wa")
+    expect(before).toMatchObject({ aiOn: true, replyHeld: false })
+
+    await save({ aiOn: false }, ORG, "cfg_wa")
+    db.channels.find((c) => c.id === "cfg_wa")!.settings.replyHold = "always"
+
+    const after = (await listPageAgents(ORG)).pages.find((p) => p.channelConfigId === "cfg_wa")
+    expect(after).toMatchObject({ aiOn: false, replyHeld: true })
   })
 })
