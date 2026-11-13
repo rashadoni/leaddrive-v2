@@ -1,3 +1,5 @@
+import { cleanDescription } from "@/lib/tasks/rich-description-server"
+import { MAX_DESCRIPTION_TEXT } from "@/lib/tasks/rich-description"
 import type { Prisma, Task } from "@prisma/client"
 import { prisma, logAudit } from "@/lib/prisma"
 import { requireFieldPermissions } from "@/lib/field-filter"
@@ -275,6 +277,19 @@ export async function updateTaskCommand(
       ? (await db.division.findFirst({ where: { id: existing.divisionId, organizationId: orgId }, select: { name: true } }))?.name ?? ""
       : ""
     boardMove = { from, to: target.name }
+  }
+
+  // The description's formatting (rich-description.ts). The HTML is cleaned here and the plain text
+  // is derived from it — whatever `description` came beside it is not believed. A plain edit from
+  // anywhere else (the full form, voice, an AI tool) drops formatting it knows nothing about, so the
+  // two columns never say different things.
+  if (parsed.data.descriptionHtml !== undefined) {
+    const rich = cleanDescription(parsed.data.descriptionHtml)
+    if (rich.text.length > MAX_DESCRIPTION_TEXT) throw validationError("Description is too long")
+    parsed.data.description = rich.text
+    parsed.data.descriptionHtml = rich.html
+  } else if (parsed.data.description !== undefined && existing.descriptionHtml != null) {
+    parsed.data.descriptionHtml = null
   }
 
   const data: Record<string, unknown> = { ...parsed.data }
