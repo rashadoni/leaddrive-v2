@@ -247,6 +247,8 @@ pgDescribe("Bordio-style task card on a real Postgres", () => {
         await prisma.division.delete({ where: { id: "card-dept" } })
       })
     }
+  })
+
   // Ulviyya (Zeytun), 2026-11-13: «в тасках включите функцию жирный шрифт как в бордио». Two columns hold one
   // text; what is read here is the rows themselves, because a mock would only show what the route meant to write.
   it("a formatted description is stored cleaned, its plain text is derived from it, and a plain edit drops the formatting", async () => {
