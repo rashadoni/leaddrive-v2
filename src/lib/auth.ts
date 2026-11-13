@@ -7,6 +7,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "./prisma"
 import { readLegacyCrmCredentialBoundary } from "./identity/legacy-crm-boundary"
 import { sessionRefreshDeferred } from "./auth-refresh-scope"
+import { sessionReadKey, shareSessionRead } from "./auth-refresh-flight"
 import { authenticateIdentityCrmPassword, resolveIdentityCrmSession, type IdentityCrmClaims } from "./identity/crm-session"
 import { runWithRlsBypass, runWithTenant } from "./rls-context"
 import {
@@ -64,6 +65,67 @@ async function crmSessionAuthority(user: { id: string; organizationId: string; r
   if (hint !== undefined) return await runWithTenant(user.organizationId, () =>
     resolveIdentityCrmSession(prisma, user.organizationId, user.id, hint))
   return await crmCredentialBoundary(user) === "LEGACY" ? { role: user.role, claims: undefined } : null
+}
+
+/**
+ * Everything the session refresh reads from the database, in the order and with the refusals
+ * it always had: `null` is "deny" — no such person, deactivated, company suspended (superadmin
+ * excepted), no CRM authority, or a reviewer whose grant is missing, closed or over. Otherwise
+ * the fresh row (with the role the authority names), the identity claims to keep, and a
+ * reviewer's end date. The fingerprint is checked by the caller against its own token.
+ */
+async function readSessionFacts(refreshWhere: { id: string }, identityCrmHint: unknown) {
+  // RLS: token-rotation refresh also precedes any tenant context — bypass-wrapped.
+  const row = await runWithRlsBypass(() => prisma.user.findUnique({
+    where: refreshWhere,
+    select: {
+      id: true,
+      name: true,
+      role: true,
+      isActive: true,
+      passwordHash: true,
+      // Keep long-lived JWTs in sync when an administrator disables
+      // 2FA after the token was issued. Without these fields a stale
+      // needsSetup2fa/needs2fa claim could strand the user on setup.
+      totpEnabled: true,
+      smsAuthEnabled: true,
+      verifiedPhone: true,
+      require2fa: true,
+      organizationId: true,
+      // Part of the exact session fingerprint below; logout-all
+      // advances it without changing the password hash.
+      passwordChangedAt: true,
+      // Re-read on every resolution, like the role: an admin unticking
+      // a module must take effect on the person's next request, not at
+      // their next sign-in.
+      hiddenModules: true,
+      hiddenChannelConfigIds: true,
+      settingsSections: true,
+      organization: {
+        select: { isActive: true, slug: true, plan: true, addons: true, features: true, modules: true, settings: true },
+      },
+    },
+  }))
+  // Fail CLOSED for a deleted user: the token names a `sub` but no row
+  // exists → invalidate rather than let a stale
+  // role/org token keep working until 8h expiry. (Codex review.)
+  if (!row) return null
+  // Fail CLOSED for a deactivated user — org-deactivation is caught in
+  // requireAuth, but per-user isActive=false was not enforced here.
+  if (!row.isActive) return null
+  // Tenant suspension revokes ordinary Auth.js sessions immediately,
+  // including routes that call auth() directly instead of requireAuth.
+  // The superadmin exception is deliberate and mirrors authorize() and
+  // resolveCookieSession rather than being inferred from a stale token.
+  if (row.role !== "superadmin" && row.organization?.isActive !== true) return null
+  const authority = await crmSessionAuthority(row, identityCrmHint)
+  if (!authority) return null
+  const user = { ...row, role: authority.role }
+  // A reviewer's session ends with their grant: at the end date, or the
+  // moment an admin closes it, whichever comes first.
+  const reviewerAccessUntil = await reviewerAccessUntilFor(user)
+  if (reviewerAccessUntil === false) return null
+  return { user, claims: authority.claims, reviewerAccessUntil }
 }
 
 /**
@@ -480,64 +542,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (!refreshWhere) {
             return null
           }
-          let freshUser = await runWithRlsBypass(() => prisma.user.findUnique({
-            where: refreshWhere,
-            select: {
-              id: true,
-              name: true,
-              role: true,
-              isActive: true,
-              passwordHash: true,
-              // Keep long-lived JWTs in sync when an administrator disables
-              // 2FA after the token was issued. Without these fields a stale
-              // needsSetup2fa/needs2fa claim could strand the user on setup.
-              totpEnabled: true,
-              smsAuthEnabled: true,
-              verifiedPhone: true,
-              require2fa: true,
-              organizationId: true,
-              // Part of the exact session fingerprint below; logout-all
-              // advances it without changing the password hash.
-              passwordChangedAt: true,
-              // Re-read on every resolution, like the role: an admin unticking
-              // a module must take effect on the person's next request, not at
-              // their next sign-in.
-              hiddenModules: true,
-              hiddenChannelConfigIds: true,
-              settingsSections: true,
-              organization: {
-                select: { isActive: true, slug: true, plan: true, addons: true, features: true, modules: true, settings: true },
-              },
-            },
-          }))
-          // Fail CLOSED for a deleted user: the token names a `sub` but no row
-          // exists → invalidate rather than let a stale
-          // role/org token keep working until 8h expiry. (Codex review.)
-          if (!freshUser) {
-            return null
-          }
-          // Fail CLOSED for a deactivated user — org-deactivation is caught in
-          // requireAuth, but per-user isActive=false was not enforced here.
-          if (!freshUser.isActive) {
-            return null
-          }
-          // Tenant suspension revokes ordinary Auth.js sessions immediately,
-          // including routes that call auth() directly instead of requireAuth.
-          // The superadmin exception is deliberate and mirrors authorize() and
-          // resolveCookieSession rather than being inferred from a stale token.
-          if (freshUser.role !== "superadmin" && freshUser.organization?.isActive !== true) {
-            return null
-          }
-          const authority = await crmSessionAuthority(freshUser, token.identityCrm)
-          if (!authority) return null
-          freshUser = { ...freshUser, role: authority.role }
-          if (authority.claims) token.identityCrm = authority.claims
+          // The read itself — the person, their CRM eligibility, a reviewer's grant — is shared
+          // by requests that arrive together (lib/auth-refresh-flight). A session update always
+          // reads for itself. Each request gets its own copy: nothing below can reach another's.
+          const read = () => readSessionFacts(refreshWhere, token.identityCrm)
+          const facts = structuredClone(trigger === "update"
+            ? await read()
+            : await shareSessionRead(sessionReadKey(token), read))
+          if (!facts) return null
+          const freshUser = facts.user
+          if (facts.claims) token.identityCrm = facts.claims
           else delete token.identityCrm
-          // A reviewer's session ends with their grant: at the end date, or the
-          // moment an admin closes it, whichever comes first.
-          const freshReviewerAccessUntil = await reviewerAccessUntilFor(freshUser)
-          if (freshReviewerAccessUntil === false) return null
-          token.reviewerAccessUntil = freshReviewerAccessUntil ?? undefined
+          token.reviewerAccessUntil = facts.reviewerAccessUntil ?? undefined
           const currentSessionFingerprint = createSessionFingerprint({
             principalId: freshUser.id,
             passwordHash: freshUser.passwordHash,
