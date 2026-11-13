@@ -4,7 +4,19 @@
  * Scheduled jobs are intentionally external to the web process. Production's
  * managed crontab calls the CRON_SECRET-protected endpoints, while PostgreSQL
  * SystemJobLease provides cross-process fencing and run telemetry.
+ *
+ * Sentry starts only where it has somewhere to send (`SENTRY_DSN`). Started
+ * without one it reports nothing, but still registers OpenTelemetry for the
+ * whole process: every request, every step Next takes inside it and every
+ * Prisma call then opens spans nobody receives. Production has no DSN, and a
+ * CPU profile of the web process on 2026-11-13 put ~7% of its only thread into
+ * that tracing while three page loads kept it busy for 6.8 s.
  */
+/** Exported for the test: the one condition under which the SDK is loaded. */
+export function sentryHasDestination(env: Record<string, string | undefined> = process.env): boolean {
+  return typeof env.SENTRY_DSN === "string" && env.SENTRY_DSN.trim() !== ""
+}
+
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     // `ws` reaches the server bundle through @google/genai, and it looks for an
@@ -20,10 +32,10 @@ export async function register() {
     process.env.WS_NO_BUFFER_UTIL ??= "1"
     const { installServerShutdownDeadline } = await import("./lib/server-shutdown-deadline")
     installServerShutdownDeadline()
-    await import("../sentry.server.config")
+    if (sentryHasDestination()) await import("../sentry.server.config")
   }
 
-  if (process.env.NEXT_RUNTIME === "edge") {
+  if (process.env.NEXT_RUNTIME === "edge" && sentryHasDestination()) {
     await import("../sentry.edge.config")
   }
 }
