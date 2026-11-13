@@ -8,6 +8,7 @@ vi.mock("@/lib/prisma", () => ({
     task: { findMany: vi.fn() },
     boardColumn: { findMany: vi.fn() },
     taskActivity: { findMany: vi.fn().mockResolvedValue([]) },
+    user: { findFirst: vi.fn().mockResolvedValue({ boardReportsHidden: false }) },
   },
 }))
 vi.mock("@/lib/api-auth", () => ({
@@ -177,4 +178,41 @@ describe("GET /api/v1/divisions/[id]/analytics", () => {
     const res = await GET(req("http://localhost/api/v1/divisions/DEPT/analytics"), params("DEPT"))
     expect(res.status).toBe(404)
   })
+
+  // Owner, 2026-11-13: «нужно ограничивать доступ к отчётам пользователям. Чтоб только кому доступен он мог видеть».
+  describe("reports closed for one person (board-reports-access.ts)", () => {
+    const board = () => {
+      vi.mocked(prisma.division.findFirst).mockResolvedValue({ id: "d1" } as any)
+      vi.mocked(prisma.boardPermission.findMany).mockResolvedValue([{ divisionId: "d1", canView: true }] as any)
+      vi.mocked(prisma.division.findMany).mockResolvedValue([] as any)
+      vi.mocked(prisma.task.findMany).mockResolvedValue([] as any)
+      vi.mocked(prisma.boardColumn.findMany).mockResolvedValue([] as any)
+    }
+
+    it("a member whose reports are closed gets 403 and no task is read", async () => {
+      board()
+      vi.mocked(requireAuth).mockResolvedValue(SALES as any)
+      vi.mocked((prisma as any).user.findFirst).mockResolvedValue({ boardReportsHidden: true })
+      const res = await GET(req("http://localhost/api/v1/divisions/d1/analytics"), params("d1"))
+      expect(res.status).toBe(403)
+      expect((prisma as any).user.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "u-sales", organizationId: "org-1" } }))
+      expect(prisma.task.findMany).not.toHaveBeenCalled()
+    })
+
+    it("the same member with reports open reads them", async () => {
+      board()
+      vi.mocked(requireAuth).mockResolvedValue(SALES as any)
+      vi.mocked((prisma as any).user.findFirst).mockResolvedValue({ boardReportsHidden: false })
+      expect((await GET(req("http://localhost/api/v1/divisions/d1/analytics"), params("d1"))).status).toBe(200)
+    })
+
+    it("the admin reads them whatever the flag says, without the flag being asked", async () => {
+      board()
+      vi.mocked(requireAuth).mockResolvedValue(ADMIN as any)
+      vi.mocked((prisma as any).user.findFirst).mockResolvedValue({ boardReportsHidden: true })
+      expect((await GET(req("http://localhost/api/v1/divisions/d1/analytics"), params("d1"))).status).toBe(200)
+      expect((prisma as any).user.findFirst).not.toHaveBeenCalled()
+    })
+  })
 })
+

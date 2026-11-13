@@ -47,6 +47,8 @@ const updateUserSchema = z.object({
   // owner, so a self-service flag would let any member switch on a surface that
   // reads the whole organisation aloud. Granting it stays an admin action.
   voiceEnabled: z.boolean().optional(),
+  // The boards' «Hesabatlar» tab closed for this person (board-reports-access.ts).
+  boardReportsHidden: z.boolean().optional(),
   // E.164-ish: '+' followed by 7-15 digits. Allow null (clearing the field)
   // and empty string (coerced to null below).
   phone: z
@@ -275,6 +277,7 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
     // the gate re-checks the org entitlement and the role on every session, so
     // this flag says "switched on", not "allowed".
     if (parsed.data.voiceEnabled !== undefined) updateData.voiceEnabled = parsed.data.voiceEnabled
+    if (parsed.data.boardReportsHidden !== undefined) updateData.boardReportsHidden = parsed.data.boardReportsHidden
 
     const save = async (client: Pick<Prisma.TransactionClient, "user">, before: typeof existing, tx?: Prisma.TransactionClient) => {
       const user = await client.user.update({
@@ -282,6 +285,7 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
         data: updateData,
         select: {
           id: true, name: true, email: true, role: true, voiceEnabled: true, hiddenModules: true, hiddenChannelConfigIds: true, settingsSections: true,
+          boardReportsHidden: true,
           phone: true, department: true, isActive: true, totpEnabled: true, require2fa: true,
           smsAuthEnabled: true, verifiedPhone: true,
           skills: true, maxTickets: true, isAvailable: true, preferredLanguage: true, createdAt: true,
@@ -319,6 +323,10 @@ export const PUT = withRlsSessionAuth(async (req: NextRequest, authResult, { par
       if (updateData.settingsSections !== undefined) {
         oldValue.settingsSections = before.settingsSections
         newValue.settingsSections = user.settingsSections
+      }
+      if (updateData.boardReportsHidden !== undefined && before.boardReportsHidden !== user.boardReportsHidden) {
+        oldValue.boardReportsHidden = before.boardReportsHidden
+        newValue.boardReportsHidden = user.boardReportsHidden
       }
       if (securityStateChanged) newValue.sessionsInvalidated = true
 
