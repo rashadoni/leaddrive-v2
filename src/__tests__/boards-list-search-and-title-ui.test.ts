@@ -121,6 +121,67 @@ describe("the boards' list in Bordio's make", () => {
     expect([...row.querySelectorAll("td[data-col]")].map((td) => td.getAttribute("data-col")).slice(0, 4)).toEqual(["status", "dueDate", "priority", "assignee"])
   })
 
+  // Owner, 2026-11-13: «таблицы грубее сравнительно с бордио и как будто обычная тетрадь в линию».
+  // Measured on the live board: lines three times louder than Bordio's, the name squeezed to 143px,
+  // a frame around the list, and «name +2» where Bordio shows the faces.
+  it("the list has no frame, one quiet line colour, and the task's name keeps its room", async () => {
+    await render("bordio")
+    const frame = container.querySelector('[data-testid="tasks-table-frame"]')!
+    expect(frame.className).not.toMatch(/rounded-xl|bg-card|\bborder\b/)
+    const table = container.querySelector("table")!
+    // One variable drives every line; the dark theme dims it instead of each rule naming a colour.
+    expect(table.className).toContain("[--ld-line:hsl(var(--border))]")
+    expect(table.className).toContain("dark:[--ld-line:hsl(var(--border)/0.45)]")
+    expect(table.className).toContain("[&_tr]:border-[color:var(--ld-line)]")
+    expect(table.className).not.toContain("border-border")
+    expect(table.className).toContain("[&_tr[data-row]]:h-[49px]")
+    expect(container.querySelectorAll("tr[data-row] td[data-title]")).toHaveLength(2)
+    expect(table.className).toContain("[&_td[data-title]]:min-w-[260px]")
+  })
+
+  it("several people on a task are their faces in a row; one person keeps the name", async () => {
+    const people = [{ id: "u1", name: "Sabina Hasanova" }, { id: "u2", name: "Gullu Alekberova" }, { id: "u3", name: "Khayala Khankishiyeva" }]
+    const many = { ...task("m", "Banner"), assignedTo: "u1", assignee: people[0], collaborators: people.slice(1) }
+    const crowd = { ...task("x", "Stories"), assignedTo: "u1", assignee: people[0], collaborators: [1, 2, 3, 4, 5].map((n) => ({ id: `c${n}`, name: `Əməkdaş ${n}` })) }
+    const one = { ...task("o", "Reels"), assignedTo: "u1", assignee: people[0], collaborators: [] }
+    const renderPeople = async (look?: "bordio") => {
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ success: true, data: [] }))))
+      await act(async () => {
+        root.render(createElement(InlineTasksTable, {
+          tasks: [many, crowd, one],
+          selectedIds: new Set<string>(), onToggleSelect: noop, onToggleSelectAll: noop,
+          onUpdate: async () => {}, onDelete: noop, onEdit: noop, onOpenDetail: noop,
+          statusLabels: {}, priorityLabels: {}, customFieldDefs: [], users: people, sortBy: "", onSortChange: noop,
+          customGroups: [{ key: "todo", label: "Yeni tapşırıq" }], groupKeyOf: (x: { status: string }) => x.status,
+          search: "", onSearchChange: noop, look,
+        } as never))
+      })
+      await flush()
+    }
+    await renderPeople("bordio")
+    const cells = [...container.querySelectorAll('tr[data-row] td[data-col="assignee"]')]
+    expect(cells).toHaveLength(3)
+    // Three people: three faces, the primary first, no name beside them, the names on hover.
+    const faces = cells[0].querySelector('[data-testid="assignee-faces"]')!
+    expect([...faces.children].map((f) => f.textContent)).toEqual(["S", "G", "K"])
+    expect(cells[0].textContent).toBe("SGK")
+    expect(cells[0].querySelector("[data-assignee-trigger]")?.getAttribute("title")).toBe("Sabina Hasanova, Gullu Alekberova, Khayala Khankishiyeva")
+    // Six people: four faces and how many more.
+    expect([...cells[1].querySelector('[data-testid="assignee-faces"]')!.children].map((f) => f.textContent)).toEqual(["S", "Ə", "Ə", "Ə", "+2"])
+    // One person: the face and the name, as before.
+    expect(cells[2].querySelector('[data-testid="assignee-faces"]')).toBeNull()
+    expect(cells[2].textContent).toBe("SSabina Hasanova")
+
+    // The CRM's own list is untouched: a name and «+N».
+    act(() => root.unmount())
+    root = createRoot(container)
+    await renderPeople()
+    const own = container.querySelector('tr[data-row] td[data-col="assignee"]')!
+    expect(own.querySelector('[data-testid="assignee-faces"]')).toBeNull()
+    expect(own.textContent).toBe("SSabina Hasanova+2")
+    expect(container.querySelector('[data-testid="tasks-table-frame"]')!.className).toContain("rounded-xl")
+  })
+
   it("the CRM's own list keeps its header band and its column order", async () => {
     await render()
     expect(container.querySelector("tr[data-group-head]")).toBeNull()

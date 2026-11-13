@@ -147,14 +147,26 @@ type ColumnKey = (typeof DEFAULT_COLUMN_ORDER)[number]
 // Bordio's measures, applied from the table down: cell padding 12/14, one text
 // size, 26px avatars, a line between columns, the tick and the row buttons on hover.
 const BORDIO_TABLE_CLASSES = [
-  "[&_tr[data-row]_td]:px-3.5 [&_tr[data-row]_td]:py-3 [&_tr[data-row]]:h-[49px]",
-  "[&_tr[data-row]_td[data-col]]:border-l [&_tr[data-row]_td[data-col]]:border-border",
+  // One quiet line colour for the whole list. On the dark theme the shared border is three times
+  // louder against the page than Bordio's own lines, and the list read as a ruled notebook
+  // (owner, 2026-11-13: «как обычная тетрадь в линию»).
+  "[--ld-line:hsl(var(--border))] dark:[--ld-line:hsl(var(--border)/0.45)]",
+  "[&_tr]:border-[color:var(--ld-line)] [&_td]:border-[color:var(--ld-line)]",
+  "[&_tr[data-row]_td]:px-3.5 [&_tr[data-row]_td]:py-1.5 [&_tr[data-row]]:h-[49px]",
+  "[&_tr[data-row]_td[data-col]]:border-l",
   "[&_tr[data-row]_.text-xs]:text-sm [&_tr[data-row]_td]:text-sm",
-  "[&_td[data-col=status]]:min-w-[140px] [&_td[data-col=dueDate]]:min-w-[130px] [&_td[data-col=priority]]:min-w-[130px] [&_td[data-col=assignee]]:min-w-[190px]",
+  // The task's name gets the room: without the header band nothing else asks for it, and the
+  // name was squeezed to 143px between eight shrink-to-fit columns.
+  "[&_td[data-title]]:min-w-[260px]",
+  "[&_td[data-col=status]]:min-w-[130px] [&_td[data-col=dueDate]]:min-w-[112px] [&_td[data-col=priority]]:min-w-[112px] [&_td[data-col=assignee]]:min-w-[172px]",
+  "[&_[data-assignee-trigger]]:max-w-[148px]",
   "[&_[data-avatar]]:h-[26px] [&_[data-avatar]]:w-[26px] [&_[data-avatar]]:text-[11px]",
   "[&_td[data-select]_input]:opacity-0 [&_tr:hover_td[data-select]_input]:opacity-100 [&_td[data-select]_input:checked]:opacity-100 [&_td[data-select]_input:focus-visible]:opacity-100",
-  "[&_td[data-actions]>div]:opacity-0 [&_tr:hover_td[data-actions]>div]:opacity-100 [&_td[data-actions]>div:focus-within]:opacity-100",
+  "[&_tr[data-row]_td[data-actions]]:px-1 [&_td[data-actions]>div]:opacity-0 [&_tr:hover_td[data-actions]>div]:opacity-100 [&_td[data-actions]>div:focus-within]:opacity-100",
 ].join(" ")
+
+/** Faces shown before «+N» when several people are on one task. */
+const MAX_FACES = 4
 
 const STATUS_OPTIONS = ["pending", "in_progress", "completed", "cancelled"] as const
 const PRIORITY_OPTIONS = ["low", "medium", "high", "urgent"] as const
@@ -471,6 +483,7 @@ export function InlineTasksTable({
       eventTypeMap={eventTypeMap}
       statusOptions={statusOptions}
       columnOrder={columnOrder}
+      stackPeople={bordio}
     />
   )
 
@@ -543,7 +556,7 @@ export function InlineTasksTable({
       </div>
 
       {/* Desktop table — hidden below md: breakpoint (mobile cards take over) */}
-      <div className="hidden md:block rounded-xl border border-border bg-card overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+      <div data-testid="tasks-table-frame" className={cn("hidden md:block overflow-hidden", !bordio && "rounded-xl border border-border bg-card shadow-[0_1px_3px_rgba(0,0,0,0.05)]")}>
         <div className="overflow-x-auto">
           {/* Column sizing relies on AUTO table layout: w-px+nowrap columns
               shrink to content, the w-full/max-w-0 title column absorbs the
@@ -734,11 +747,13 @@ interface TaskRowProps {
   eventTypeMap: Map<string, TaskTypeInfo>
   statusOptions?: string[]
   columnOrder: readonly ColumnKey[]
+  /** Bordio's make: several people on a task are a row of overlapping faces, not a name and «+N». */
+  stackPeople?: boolean
 }
 
 function TaskRow({
   task, isSelected, onToggleSelect, onUpdate, onDelete, onEdit, onOpenDetail,
-  rowClassName, statusLabels, priorityLabels, customFieldDefs, users, projects, hiddenColumns, taskTypeMap, eventTypeMap, statusOptions, columnOrder,
+  rowClassName, statusLabels, priorityLabels, customFieldDefs, users, projects, hiddenColumns, taskTypeMap, eventTypeMap, statusOptions, columnOrder, stackPeople,
 }: TaskRowProps) {
   const isVisible = (key: string) => !hiddenColumns.has(key)
   const tc = useTranslations("common")
@@ -857,8 +872,9 @@ function TaskRow({
                 return onUpdate(task.id, patch)
               }}
               onSaveCollaborators={(ids) => onUpdate(task.id, { collaboratorIds: ids })}
+              stacked={stackPeople}
             />
-            {(task.collaborators?.length ?? 0) > 0 && (
+            {!stackPeople && (task.collaborators?.length ?? 0) > 0 && (
               <span
                 className="rounded-full border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
                 title={task.collaborators!.map((c) => c.name).join(", ")}
@@ -906,7 +922,7 @@ function TaskRow({
           counters (comments / checklist) right after the name, Bordio-style.
           w-full + max-w-0 lets this cell absorb the leftover width while the
           inner truncate still works (auto table layout). */}
-      <td className="w-full max-w-0 px-2 py-2 align-middle">
+      <td data-title="" className="w-full max-w-0 px-2 py-2 align-middle">
         <div className="flex min-w-0 items-center gap-2">
           <InlineTitleCell
             value={task.title}
@@ -1419,7 +1435,7 @@ export function InlineDateCell({ value, status, onSave, overdueDays = false }: {
 }
 
 // ─── Inline Assignee Cell ────────────────────────────────────────
-function InlineAssigneeCell({ value, assignee, users, onSave, collaborators = [], onSaveCollaborators }: {
+function InlineAssigneeCell({ value, assignee, users, onSave, collaborators = [], onSaveCollaborators, stacked = false }: {
   value: string | null
   assignee?: { id: string; name: string; avatar?: string | null } | null
   users: InlineUser[]
@@ -1428,6 +1444,8 @@ function InlineAssigneeCell({ value, assignee, users, onSave, collaborators = []
       list so a task can be assigned to several people from the table. */
   collaborators?: { id: string; name: string }[]
   onSaveCollaborators?: (ids: string[]) => Promise<void> | void
+  /** Several people → their faces overlapping, names on hover (Bordio's make). One person keeps the name. */
+  stacked?: boolean
 }) {
   const t = useTranslations("tasks")
   const [open, setOpen] = useState(false)
@@ -1476,6 +1494,8 @@ function InlineAssigneeCell({ value, assignee, users, onSave, collaborators = []
   }
 
   const displayName = assignee?.name || (value ? "—" : "")
+  // The primary first, then the co-assignees: the same order the card shows.
+  const faces = stacked && assignee && collaborators.length > 0 ? [{ id: assignee.id, name: assignee.name }, ...collaborators] : null
 
   return (
     <div ref={containerRef} className="relative inline-block">
@@ -1483,10 +1503,24 @@ function InlineAssigneeCell({ value, assignee, users, onSave, collaborators = []
         type="button"
         onClick={(e) => { e.stopPropagation(); setOpen(o => !o) }}
         disabled={saving}
-        title={t("inlineSelectTooltip")}
+        title={faces ? faces.map((p) => p.name).join(", ") : t("inlineSelectTooltip")}
+        data-assignee-trigger=""
         className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs hover:bg-muted transition max-w-[160px] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
       >
-        {assignee ? (
+        {faces ? (
+          <span data-testid="assignee-faces" className="flex items-center">
+            {faces.slice(0, MAX_FACES).map((p, i) => (
+              <span key={p.id} data-avatar="" className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-foreground ring-2 ring-background", i > 0 && "-ml-1.5")}>
+                {p.name?.charAt(0)?.toUpperCase() || "?"}
+              </span>
+            ))}
+            {faces.length > MAX_FACES && (
+              <span data-avatar="" className="-ml-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground ring-2 ring-background">
+                +{faces.length - MAX_FACES}
+              </span>
+            )}
+          </span>
+        ) : assignee ? (
           <>
             <div data-avatar="" className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary shrink-0">
               {assignee.name?.charAt(0)?.toUpperCase() || "?"}
