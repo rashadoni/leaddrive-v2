@@ -98,8 +98,11 @@ async function findOwnSend(params: {
   recipientId: string
   mid: string
   text: string | null
+  /** When our row for this message would have been written. Live: the last minutes. */
+  window: { from: Date; to: Date }
+  dryRun: boolean
 }): Promise<{ kind: "own_send" | "duplicate" } | null> {
-  const { organizationId, platform, recipientId, mid, text } = params
+  const { organizationId, platform, recipientId, mid, text, window, dryRun } = params
   const byId = await prisma.channelMessage.findFirst({
     where: {
       organizationId,
@@ -121,7 +124,7 @@ async function findOwnSend(params: {
       direction: "outbound",
       to: recipientId,
       body: text,
-      createdAt: { gte: new Date(Date.now() - OWN_SEND_TEXT_WINDOW_MS) },
+      createdAt: { gte: window.from, lte: window.to },
     },
     orderBy: { createdAt: "asc" },
     select: { id: true, externalId: true, metadata: true },
@@ -132,6 +135,7 @@ async function findOwnSend(params: {
     return meta.source !== META_APP_ECHO_SOURCE && !str(meta.echoMid)
   })
   if (!unclaimed) return null
+  if (dryRun) return { kind: "own_send" }
   await prisma.channelMessage.update({
     where: { id: unclaimed.id },
     data: {
@@ -155,8 +159,9 @@ async function ensureEchoConversation(params: {
   recipientId: string
   lastMessage: string
   at: Date
+  historical: boolean
 }): Promise<string | null> {
-  const { channel, platform, recipientId, lastMessage, at } = params
+  const { channel, platform, recipientId, lastMessage, at, historical } = params
   const organizationId = channel.organizationId
   const where = { organizationId_platform_externalId: { organizationId, platform, externalId: recipientId } }
   const existing = await prisma.socialConversation.findUnique({
@@ -167,7 +172,9 @@ async function ensureEchoConversation(params: {
     const newer = !existing.lastMessageAt || at >= existing.lastMessageAt
     await prisma.socialConversation.update({
       where: { id: existing.id },
-      data: { unreadCount: 0, ...(newer ? { lastMessage, lastMessageAt: at } : {}) },
+      // A reply brought in from history clears the badge only when nothing came after it: the
+      // customer may have written again since, and that message is still unread.
+      data: { ...(newer || !historical ? { unreadCount: 0 } : {}), ...(newer ? { lastMessage, lastMessageAt: at } : {}) },
     }).catch(() => null)
     return existing.id
   }
@@ -210,6 +217,14 @@ export async function ingestMetaDmEcho(params: {
   event: MetaDmEchoEvent
   /** Tests pass [] so they do not sleep. */
   retryDelaysMs?: number[]
+  /**
+   * The message is being brought in from the account's history, not from a live webhook
+   * (lib/inbox/instagram-app-replies-backfill): our own row is looked for around the time the
+   * message was sent rather than "just now", and nothing waits for a row still being written.
+   */
+  historical?: boolean
+  /** Decide and report, write nothing. */
+  dryRun?: boolean
 }): Promise<MetaDmEchoOutcome> {
   const { channel, platform, accountId, event } = params
   const organizationId = channel.organizationId
@@ -226,9 +241,17 @@ export async function ingestMetaDmEcho(params: {
   const parsed = parseInstagramAttachment(message.attachments) as { mediaUrl: string | null; messageType: string | null }
   if (!text && !parsed.mediaUrl) return "skipped"
 
-  const delays = params.retryDelaysMs ?? OWN_SEND_RETRY_DELAYS_MS
+  const historical = params.historical === true
+  const dryRun = params.dryRun === true
+  const at = eventDate(event.timestamp)
+  // Our row is written after the send returns, so it trails the message by seconds; the minutes
+  // before it allow for two clocks that disagree.
+  const window = historical
+    ? { from: new Date(at.getTime() - 2 * 60_000), to: new Date(at.getTime() + OWN_SEND_TEXT_WINDOW_MS) }
+    : { from: new Date(Date.now() - OWN_SEND_TEXT_WINDOW_MS), to: new Date(Date.now() + 60_000) }
+  const delays = historical ? [] : params.retryDelaysMs ?? OWN_SEND_RETRY_DELAYS_MS
   for (let attempt = 0; ; attempt += 1) {
-    const own = await findOwnSend({ organizationId, platform, recipientId, mid, text })
+    const own = await findOwnSend({ organizationId, platform, recipientId, mid, text, window, dryRun })
     if (own) {
       // One line per echo of our own send: it is how a live account shows that echoes arrive at all.
       if (own.kind === "own_send") console.log(`[Meta Echo] ${platform} echo of our own send recognised (org=${sanitizeLog(organizationId)})`)
@@ -238,6 +261,8 @@ export async function ingestMetaDmEcho(params: {
     await sleep(delays[attempt])
   }
 
+  if (dryRun) return "stored"
+
   let mediaUrl = parsed.mediaUrl
   let messageType = parsed.messageType
   const stored = mediaUrl ? await fetchAndStoreMetaMedia(mediaUrl, organizationId).catch(() => null) : null
@@ -246,9 +271,8 @@ export async function ingestMetaDmEcho(params: {
     messageType = stored.kind
   }
 
-  const at = eventDate(event.timestamp)
   const body = text ?? "[media]"
-  const conversationId = await ensureEchoConversation({ channel, platform, recipientId, lastMessage: body, at })
+  const conversationId = await ensureEchoConversation({ channel, platform, recipientId, lastMessage: body, at, historical })
 
   try {
     await prisma.channelMessage.create({
@@ -273,6 +297,7 @@ export async function ingestMetaDmEcho(params: {
           sentFromBusinessApp: true,
           accountId,
           recipientId,
+          ...(historical ? { importedFromHistory: true } : {}),
         },
       },
     })

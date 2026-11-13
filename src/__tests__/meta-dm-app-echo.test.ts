@@ -13,7 +13,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>
 
-const db = vi.hoisted(() => ({ messages: [] as Row[], conversations: [] as Row[], seq: 0 }))
+const db = vi.hoisted(() => ({ messages: [] as Row[], conversations: [] as Row[], channels: [] as Row[], seq: 0 }))
 
 function matches(row: Row, where: Row): boolean {
   for (const [key, cond] of Object.entries(where)) {
@@ -29,6 +29,7 @@ function matches(row: Row, where: Row): boolean {
     }
     if (cond && typeof cond === "object" && !Array.isArray(cond) && !(cond instanceof Date)) {
       if ("gte" in cond && !(row[key] >= cond.gte)) return false
+      if ("lte" in cond && !(row[key] <= cond.lte)) return false
       continue
     }
     if (row[key] !== cond) return false
@@ -38,6 +39,7 @@ function matches(row: Row, where: Row): boolean {
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    channelConfig: { findMany: vi.fn(async () => db.channels) },
     socialConversation: {
       findUnique: vi.fn(async ({ where }: Row) => {
         const k = where.organizationId_platform_externalId
@@ -85,7 +87,13 @@ const media = vi.hoisted(() => ({ fetchAndStoreMetaMedia: vi.fn() }))
 vi.mock("@/lib/inbox/meta-media", () => media)
 vi.mock("@/lib/social/meta-sender-profile", () => ({ resolveMetaSenderName: vi.fn(async () => "aysel.m") }))
 
+vi.mock("@/lib/rls-context", () => ({
+  runWithRlsBypass: (fn: () => unknown) => fn(),
+  runWithTenant: (_org: string, fn: () => unknown) => fn(),
+}))
+
 import { ingestMetaDmEcho } from "@/lib/inbox/meta-dm-app-echo"
+import { backfillInstagramAppReplies } from "@/lib/inbox/instagram-app-replies-backfill"
 import { selectUncoveredAiInboundBatch } from "@/lib/social/ai-autoreply"
 
 const ORG = "org_zeytun"
@@ -254,5 +262,129 @@ describe("the echo of a reply the CRM sent itself", () => {
     crmReply("Bəli", { createdAt: new Date(Date.now() - 3 * 3_600_000) })
 
     expect(await ingest(echo({}, { mid: "mid.phone", text: "Bəli" }))).toBe("stored")
+  })
+})
+
+/**
+ * The replies typed in the app before the webhook kept them: read from Instagram's own history.
+ * What matters is the thread afterwards — the reply is there once, a reply the CRM sent that day
+ * (and kept no id for) is not doubled, and a customer who wrote again later is still unread.
+ */
+describe("replies brought in from the account's Instagram history", () => {
+  const HOUR = 3_600_000
+  const t = (hoursAgo: number) => new Date(Date.now() - hoursAgo * HOUR)
+  const iso = (d: Date) => d.toISOString()
+
+  function history(messages: Row[], updated = t(1)) {
+    const page = {
+      data: [{
+        updated_time: iso(updated),
+        participants: { data: [{ id: ACCOUNT }, { id: CUSTOMER }] },
+        // Graph returns newest first.
+        messages: { data: messages.slice().reverse() },
+      }],
+    }
+    return vi.fn(async () => new Response(JSON.stringify(page), { status: 200 })) as unknown as typeof fetch
+  }
+  const fromAccount = (id: string, at: Date, message: string, extra: Row = {}) =>
+    ({ id, created_time: iso(at), from: { id: ACCOUNT }, to: { data: [{ id: CUSTOMER }] }, message, ...extra })
+  const fromCustomer = (id: string, at: Date, message: string) =>
+    ({ id, created_time: iso(at), from: { id: CUSTOMER }, to: { data: [{ id: ACCOUNT }] }, message })
+
+  const run = (fetchImpl: typeof fetch, dryRun = false) =>
+    backfillInstagramAppReplies({ organizationId: ORG, since: t(72), dryRun, fetchImpl })
+
+  beforeEach(() => {
+    db.channels = [{ ...CHANNEL }]
+    db.conversations[0].lastMessageAt = t(50)
+  })
+
+  it("puts yesterday's phone reply into the thread at the time it was sent", async () => {
+    const sentAt = t(49)
+    const report = await run(history([
+      fromCustomer("mid.q", t(50), "Xırdalanda var?"),
+      fromAccount("mid.a", sentAt, "Bəli, var"),
+    ]))
+
+    expect(report).toMatchObject({ channels: 1, accountMessages: 1, stored: 1, alreadyKnown: 0, errors: [] })
+    const row = outboundRows()[0]
+    expect(row).toMatchObject({ body: "Bəli, var", status: "sent", conversationId: "conv_customer", externalId: "mid.a" })
+    expect(row.createdAt).toEqual(sentAt)
+    expect(db.conversations[0]).toMatchObject({ unreadCount: 0, lastMessage: "Bəli, var" })
+  })
+
+  it("does not double a reply the CRM sent that day without keeping Meta's id", async () => {
+    crmReply("Əlaqə nömrənizi qeyd edin", { createdAt: new Date(t(30).getTime() + 2_000) })
+
+    const report = await run(history([fromAccount("mid.crm", t(30), "Əlaqə nömrənizi qeyd edin")]))
+
+    expect(report).toMatchObject({ stored: 0, alreadyKnown: 1 })
+    expect(outboundRows()).toHaveLength(1)
+  })
+
+  it("changes nothing when it is run a second time", async () => {
+    const pages = [fromAccount("mid.a", t(49), "Bəli, var"), fromAccount("mid.b", t(48), "Buyurun")]
+    await run(history(pages))
+
+    const again = await run(history(pages))
+
+    expect(again).toMatchObject({ stored: 0, alreadyKnown: 2 })
+    expect(outboundRows()).toHaveLength(2)
+  })
+
+  it("leaves the unread badge when the customer wrote again after that reply", async () => {
+    db.conversations[0].lastMessageAt = t(2) // the customer's newer message, already in the CRM
+    db.conversations[0].lastMessage = "Bəs qiyməti?"
+
+    await run(history([fromAccount("mid.a", t(49), "Bəli, var")]))
+
+    expect(db.conversations[0]).toMatchObject({ unreadCount: 3, lastMessage: "Bəs qiyməti?" })
+    expect(outboundRows()).toHaveLength(1)
+  })
+
+  it("writes nothing in a dry run and says what it would write", async () => {
+    crmReply("Salam", { createdAt: new Date(t(30).getTime() + 2_000) })
+
+    const report = await run(history([
+      fromAccount("mid.crm", t(30), "Salam"),
+      fromAccount("mid.a", t(29), "Bəli, var"),
+    ]), true)
+
+    expect(report).toMatchObject({ dryRun: true, stored: 1, alreadyKnown: 1 })
+    expect(outboundRows()).toHaveLength(1)
+    expect(outboundRows()[0].metadata.echoMid).toBeUndefined()
+    expect(db.conversations[0].unreadCount).toBe(3)
+  })
+
+  it("takes only what the account sent inside the period, and never the customer's messages", async () => {
+    const report = await run(history([
+      fromAccount("mid.old", t(200), "köhnə cavab"),
+      fromCustomer("mid.q", t(50), "Xırdalanda var?"),
+      fromAccount("mid.a", t(49), "Bəli, var"),
+    ]))
+
+    expect(report).toMatchObject({ accountMessages: 1, stored: 1 })
+    expect(db.messages.map((m) => m.externalId)).toEqual(["mid.a"])
+  })
+
+  it("keeps a photo sent from the phone and skips a message Instagram cannot show", async () => {
+    media.fetchAndStoreMetaMedia.mockResolvedValue({ url: `/uploads/inbox/${ORG}/cc33dd44.jpg`, kind: "image" })
+
+    const report = await run(history([
+      fromAccount("mid.photo", t(49), "", { attachments: { data: [{ image_data: { url: "https://lookaside.fbsbx.com/x" } }] } }),
+      fromAccount("mid.none", t(48), "", { is_unsupported: true }),
+    ]))
+
+    expect(report).toMatchObject({ stored: 1, skipped: 1 })
+    expect(outboundRows()[0]).toMatchObject({ mediaUrl: `/uploads/inbox/${ORG}/cc33dd44.jpg`, messageType: "image" })
+  })
+
+  it("reports Instagram's refusal instead of writing anything", async () => {
+    const refused = vi.fn(async () => new Response(JSON.stringify({ error: { message: "Invalid OAuth access token" } }), { status: 400 })) as unknown as typeof fetch
+
+    const report = await run(refused)
+
+    expect(report.errors).toHaveLength(1)
+    expect(outboundRows()).toHaveLength(0)
   })
 })
