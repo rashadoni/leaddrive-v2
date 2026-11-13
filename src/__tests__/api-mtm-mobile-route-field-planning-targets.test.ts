@@ -201,7 +201,7 @@ describe("GET /api/v2/mtm/mobile/route-field/planning-targets", () => {
     expect(directArgs.select.phone).toBeUndefined()
     expect(directArgs.select.agentAssignments).toBeUndefined()
     expect(directArgs.select.fieldPotentials).toBeUndefined()
-    expect(directArgs.select.workplaces).toMatchObject({ take: 2, select: { customerId: true, isPrimary: true } })
+    expect(directArgs.select.workplaces).toMatchObject({ take: 6, select: { customerId: true, isPrimary: true } })
     const directWorkplace = directArgs.select.workplaces as { select: Record<string, unknown> }
     expect(directWorkplace.select.startedOn).toBeUndefined()
     expect(directWorkplace.select.endedOn).toBeUndefined()
@@ -367,26 +367,52 @@ describe("GET /api/v2/mtm/mobile/route-field/planning-targets", () => {
     expect(prisma.mtmCustomer.findMany).not.toHaveBeenCalled()
   })
 
-  it("fails closed for an ambiguous direct workplace and never falls through in the same request", async () => {
-    const ambiguous = contact("contact-ambiguous", "Dr. Ambiguous", [
+  // Zeytun 2026-11-13: «некоторые врачи бывают в разных клиниках… чтоб агент
+  // сам принимал решение». Without a single primary clinic such a doctor used
+  // to vanish from the planner; the client's file has no primary at all.
+  it("lists a doctor with two clinics: the clinic of his last visit first, both offered to the agent", async () => {
+    const twoClinics = contact("contact-two", "Dr. Two Clinics", [
       workplace("customer-a", false),
       workplace("customer-b", false),
     ])
-    vi.mocked(prisma.mtmContact.findMany).mockResolvedValueOnce([ambiguous] as never)
+    vi.mocked(prisma.mtmContact.findMany).mockResolvedValueOnce([twoClinics, contact("contact-one", "Dr. One")] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValueOnce([{ contactId: "contact-two", customerId: "customer-b" }] as never)
 
-    const directResponse = await lookup("?kind=contact&date=2026-08-30")
-    const directPayload = await directResponse.json()
-    expect(directResponse.status).toBe(200)
-    expect(directPayload).toMatchObject({ success: true, data: { targets: [] } })
-    expect(directPayload.data.nextPage).toMatch(/^v1:/)
-    expect(prisma.mtmContact.findMany).toHaveBeenCalledTimes(1)
+    const response = await lookup("?kind=contact&date=2026-08-30")
+    expect(response.status).toBe(200)
+    const payload = await response.json()
+    expect(payload.data.targets).toEqual([
+      expect.objectContaining({
+        contactId: "contact-two",
+        customerId: "customer-b",
+        workplaces: [
+          { customerId: "customer-b", name: "North Clinic", address: "Baku, route-safe address", lastVisited: true },
+          { customerId: "customer-a", name: "North Clinic", address: "Baku, route-safe address", lastVisited: false },
+        ],
+      }),
+      expect.objectContaining({ contactId: "contact-one", customerId: "customer-1" }),
+    ])
+    // One clinic: nothing to choose, and the row stays as older apps read it.
+    expect(payload.data.targets[1].workplaces).toBeUndefined()
+    // The last visit is asked only for the doctor with several clinics, inside the tenant.
+    const visitQuery = vi.mocked(prisma.mtmVisit.findMany).mock.calls[0][0] as { where: Record<string, unknown>; distinct: unknown }
+    expect(visitQuery.where).toMatchObject({ organizationId: ORG, deletedAt: null, contactId: { in: ["contact-two"] } })
+    expect(visitQuery.distinct).toEqual(["contactId"])
+  })
 
-    vi.mocked(prisma.mtmContact.findMany).mockResolvedValueOnce([])
-    const customerResponse = await lookup(`?kind=contact&date=2026-08-30&page=${encodeURIComponent(directPayload.data.nextPage)}`)
-    expect(customerResponse.status).toBe(200)
-    const customerArgs = vi.mocked(prisma.mtmContact.findMany).mock.calls[1][0] as { where: Record<string, unknown> }
-    expect(customerArgs.where.agentAssignments).toMatchObject({ none: { agentId: AGENT } })
-    expect(await customerResponse.json()).toMatchObject({ success: true, data: { targets: [], nextPage: null } })
+  it("never visited: the primary clinic first, and no visit query for single-clinic doctors", async () => {
+    vi.mocked(prisma.mtmContact.findMany).mockResolvedValueOnce([
+      contact("contact-two", "Dr. Two Clinics", [workplace("customer-main", true), workplace("customer-side", false)]),
+    ] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValueOnce([] as never)
+    const payload = await (await lookup("?kind=contact&date=2026-08-30")).json()
+    expect(payload.data.targets[0]).toMatchObject({ customerId: "customer-main" })
+    expect(payload.data.targets[0].workplaces.map((place: { customerId: string }) => place.customerId)).toEqual(["customer-main", "customer-side"])
+
+    vi.mocked(prisma.mtmVisit.findMany).mockClear()
+    vi.mocked(prisma.mtmContact.findMany).mockResolvedValueOnce([contact("contact-one", "Dr. One")] as never)
+    await lookup("?kind=contact&date=2026-08-30")
+    expect(prisma.mtmVisit.findMany).not.toHaveBeenCalled()
   })
 
   it("rejects unavailable tenant capability, invalid principal, disabled self planning and invalid dates before candidate queries", async () => {

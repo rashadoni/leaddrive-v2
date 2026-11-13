@@ -56,6 +56,7 @@ import { resolveWorkCalendarDay, type WorkCalendarOverride } from "@/lib/mtm/wor
 import { assignmentIntersectsRouteDay } from "@/lib/mtm/operational-week"
 import { isValidTimezone } from "@/lib/timezone"
 import { localDateKeyToUtc } from "@/lib/mtm/mobile-week"
+import { doctorOtherClinics, type DoctorOtherClinic } from "@/lib/mtm/doctor-visit-place"
 import { previousVisitNotesForPoints } from "@/lib/mtm/previous-visit-note"
 
 const routeInclude = {
@@ -297,6 +298,22 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth, { params }: {
       })),
     })
 
+    // A doctor who works in two clinics (Zeytun 2026-11-13): his other
+    // clinics where the reading agent may visit him today, with their pins,
+    // so the phone can offer «he is here today» at check-in — offline too.
+    const otherClinics = actor.agentId
+      ? await doctorOtherClinics(prisma, {
+          organizationId: auth.orgId,
+          agentId: actor.agentId,
+          date: route.date,
+          points: route.points.map((point: RoutePointRow) => ({
+            id: point.id,
+            customerId: point.customerId,
+            contactId: point.contactId,
+          })),
+        })
+      : new Map<string, DoctorOtherClinic[]>()
+
     const points = route.points.map((point: RoutePointRow) => {
       const customer = withNormalizedCoordinates(point.customer)
       const distanceMeters =
@@ -329,7 +346,23 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth, { params }: {
         }
       })
       const geofenceRadiusMeters = effectiveGeofenceRadius(customer.geofenceRadius, settings.geofenceRadius)
-      return { ...point, customer, distanceMeters, visits, geofenceRadiusMeters, previousNote: previousNotes.get(point.id) ?? null }
+      const doctorClinics = (otherClinics.get(point.id) ?? []).map((clinic) => ({
+        id: clinic.id,
+        name: clinic.name,
+        address: clinic.address ?? clinic.city,
+        latitude: clinic.latitude,
+        longitude: clinic.longitude,
+        geofenceRadiusMeters: effectiveGeofenceRadius(clinic.geofenceRadius, settings.geofenceRadius),
+      }))
+      return {
+        ...point,
+        customer,
+        distanceMeters,
+        visits,
+        geofenceRadiusMeters,
+        previousNote: previousNotes.get(point.id) ?? null,
+        otherClinics: doctorClinics,
+      }
     })
     const travelPolicy = resolveMtmRouteTravelPolicy({
       tenantCalculationEnabled: settings.routeTravelEnabled,

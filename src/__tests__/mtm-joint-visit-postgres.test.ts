@@ -158,6 +158,7 @@ pgDescribe("joint visit on a real Postgres", () => {
   let evaluate!: typeof import("@/app/api/v1/mtm/mobile/manager/visits/[id]/evaluation/route").PUT
   let agentJoint!: typeof import("@/app/api/v1/mtm/mobile/joint-visit/route").GET
   let syncPush!: typeof import("@/app/api/v1/mtm/mobile/sync/push/route").POST
+  let routeDetail!: typeof import("@/app/api/v1/mtm/routes/[id]/route").GET
   let review!: typeof import("@/app/api/v1/mtm/visits/[id]/review/route").GET
   let visitList!: typeof import("@/app/api/v1/mtm/visits/route").GET
   let agentRatings!: typeof import("@/app/api/v1/mtm/agents/[id]/evaluations/route").GET
@@ -183,6 +184,7 @@ pgDescribe("joint visit on a real Postgres", () => {
     evaluate = (await import("@/app/api/v1/mtm/mobile/manager/visits/[id]/evaluation/route")).PUT
     agentJoint = (await import("@/app/api/v1/mtm/mobile/joint-visit/route")).GET
     syncPush = (await import("@/app/api/v1/mtm/mobile/sync/push/route")).POST
+    routeDetail = (await import("@/app/api/v1/mtm/routes/[id]/route")).GET
     review = (await import("@/app/api/v1/mtm/visits/[id]/review/route")).GET
     visitList = (await import("@/app/api/v1/mtm/visits/route")).GET
     agentRatings = (await import("@/app/api/v1/mtm/agents/[id]/evaluations/route")).GET
@@ -885,5 +887,161 @@ pgDescribe("joint visit on a real Postgres", () => {
     const own = await call(evaluate, `${BASE}/mobile/manager/visits/visit-joint-abroad/evaluation`, "PUT", { scores: { OBJECTIONS: 4 } }, params("visit-joint-abroad"))
     expect(own.status).toBe(200)
     expect(ids(await storedQuestions("visit-joint-abroad") as Question[])).toEqual(ORIGINAL_IDS)
+  })
+
+  // A doctor who works in two clinics (Zeytun, 2026-11-13: «некоторые врачи
+  // бывают в разных клиниках… чтоб агент сам уже принимал решение где
+  // находится врач»). The stop stays planned where it was; the visit is
+  // recorded where it happened — through the same check-in the phone queues
+  // offline, so the place is decided by the agent on the spot.
+  describe("a doctor at his other clinic", () => {
+    const CLINIC_A = "customer-doctor-clinic-a"
+    const CLINIC_B = "customer-doctor-clinic-b"
+    const CLINIC_C = "customer-doctor-clinic-c"
+    const DOCTOR = "contact-doctor-two-clinics"
+    const DOCTOR_VIA_A = "contact-doctor-via-clinic-a"
+    const DOCTOR_ROUTE = "route-doctor-elvin"
+    const STOP_DOCTOR = "point-doctor-two-clinics"
+    const STOP_VIA_A = "point-doctor-via-clinic-a"
+    const AT_A = CUSTOMER_AT
+    const AT_B = { latitude: 40.4363, longitude: 49.8671 } // 3 km north
+    const AT_C = { latitude: 40.3823, longitude: 49.8671 } // 3 km south
+    const since = new Date("2026-01-01T00:00:00.000Z")
+    let doctorSequence = 0
+
+    beforeAll(async () => {
+      const day = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`)
+      await bypass(async () => {
+        await prisma.mtmCustomer.createMany({
+          data: [
+            { id: CLINIC_A, organizationId: ORG, name: "Clinic A", objectType: "CLINIC", ...AT_A, geofenceRadius: 300 },
+            { id: CLINIC_B, organizationId: ORG, name: "Clinic B", objectType: "CLINIC", ...AT_B, geofenceRadius: 300 },
+            { id: CLINIC_C, organizationId: ORG, name: "Clinic C", objectType: "CLINIC", ...AT_C, geofenceRadius: 300 },
+          ],
+        })
+        // Clinic A is Elvin's; B and C are nobody's.
+        await prisma.mtmCustomerAgentAssignment.create({ data: { organizationId: ORG, customerId: CLINIC_A, agentId: ELVIN, effectiveFrom: since } })
+        await prisma.mtmContact.createMany({
+          data: [
+            { id: DOCTOR, organizationId: ORG, firstName: "Two", lastName: "Clinics", displayName: "Dr. Two Clinics", type: "DOCTOR" },
+            { id: DOCTOR_VIA_A, organizationId: ORG, firstName: "Via", lastName: "Clinic", displayName: "Dr. Via Clinic A", type: "DOCTOR" },
+          ],
+        })
+        // The first doctor is Elvin's own; the second reaches him only through clinic A.
+        await prisma.mtmContactAgentAssignment.create({ data: { organizationId: ORG, contactId: DOCTOR, agentId: ELVIN, effectiveFrom: since } })
+        await prisma.mtmContactWorkplace.createMany({
+          data: [
+            { organizationId: ORG, contactId: DOCTOR, customerId: CLINIC_A },
+            { organizationId: ORG, contactId: DOCTOR, customerId: CLINIC_B },
+            { organizationId: ORG, contactId: DOCTOR_VIA_A, customerId: CLINIC_A },
+            { organizationId: ORG, contactId: DOCTOR_VIA_A, customerId: CLINIC_C },
+          ],
+        })
+        await prisma.mtmRoute.create({
+          data: {
+            id: DOCTOR_ROUTE,
+            organizationId: ORG,
+            agentId: ELVIN,
+            date: day,
+            status: "IN_PROGRESS",
+            startedAt: new Date(),
+            totalPoints: 2,
+            points: {
+              create: [
+                { id: STOP_DOCTOR, organizationId: ORG, customerId: CLINIC_A, contactId: DOCTOR, orderIndex: 0 },
+                { id: STOP_VIA_A, organizationId: ORG, customerId: CLINIC_A, contactId: DOCTOR_VIA_A, orderIndex: 1 },
+              ],
+            },
+          },
+        })
+      })
+    })
+
+    async function checkInAtStop(stop: string, contactId: string, customerId: string, at: { latitude: number; longitude: number }) {
+      phoneOf(ELVIN, "AGENT")
+      const id = `visit-doctor-${++doctorSequence}`
+      const result = await call(syncPush, `${BASE}/mobile/sync/push`, "POST", {
+        operations: [{
+          operationId: `op-doctor-${doctorSequence}`,
+          entity: "visits",
+          op: "create",
+          clientTimestamp: Date.now(),
+          data: {
+            id,
+            routeId: DOCTOR_ROUTE,
+            routePointId: stop,
+            customerId,
+            contactId,
+            status: "CHECKED_IN",
+            checkInAt: new Date().toISOString(),
+            checkInLat: at.latitude,
+            checkInLng: at.longitude,
+          },
+        }],
+      })
+      expect(result.status).toBe(200)
+      return { id, op: result.body.results[0] }
+    }
+
+    const visitRow = (id: string) => bypass(() => prisma.mtmVisit.findUnique({
+      where: { id },
+      select: { customerId: true, contactId: true, routePointId: true, checkInCustomerLat: true, checkInCustomerLng: true, status: true },
+    }))
+    const pointRow = (id: string) => bypass(() => prisma.mtmRoutePoint.findUniqueOrThrow({
+      where: { id },
+      select: { customerId: true, contactId: true, status: true },
+    }))
+
+    it("the phone learns, with the route, the doctor's other clinic the agent may see him at", async () => {
+      phoneOf(ELVIN, "AGENT")
+      const route = await call(routeDetail, `${BASE}/routes/${DOCTOR_ROUTE}`, "GET", undefined, params(DOCTOR_ROUTE))
+      expect(route.status).toBe(200)
+      const points = route.body.data.points as Array<{ id: string; otherClinics: Array<Record<string, unknown>> }>
+      const doctorStop = points.find((point) => point.id === STOP_DOCTOR)!
+      expect(doctorStop.otherClinics).toEqual([
+        expect.objectContaining({ id: CLINIC_B, name: "Clinic B", latitude: AT_B.latitude, longitude: AT_B.longitude, geofenceRadiusMeters: 300 }),
+      ])
+      // Clinic C is not Elvin's and the second doctor is his only through A.
+      expect(points.find((point) => point.id === STOP_VIA_A)!.otherClinics).toEqual([])
+    })
+
+    it("refuses the other clinic of a doctor the agent reaches only through the planned one — and writes nothing", async () => {
+      const { id, op } = await checkInAtStop(STOP_VIA_A, DOCTOR_VIA_A, CLINIC_C, AT_C)
+      expect(op).toMatchObject({ status: "conflict", serverData: { code: "MTM_ROUTE_TARGET_MISMATCH" } })
+      expect(await visitRow(id)).toBeNull()
+    })
+
+    it("refuses a clinic where the doctor does not work", async () => {
+      const { id, op } = await checkInAtStop(STOP_DOCTOR, DOCTOR, EXTRA_CLIENT, CUSTOMER_AT)
+      expect(op).toMatchObject({ status: "conflict", serverData: { code: "MTM_ROUTE_TARGET_MISMATCH" } })
+      expect(await visitRow(id)).toBeNull()
+    })
+
+    it("records the visit at the clinic where the doctor is today; the stop stays planned at its own and is done at check-out", async () => {
+      const { id, op } = await checkInAtStop(STOP_DOCTOR, DOCTOR, CLINIC_B, AT_B)
+      expect(op.status).toBe("ok")
+      // The visit is at B, judged by B's pin; the stop is still planned at A.
+      expect(await visitRow(id)).toMatchObject({
+        customerId: CLINIC_B,
+        contactId: DOCTOR,
+        routePointId: STOP_DOCTOR,
+        checkInCustomerLat: AT_B.latitude,
+        checkInCustomerLng: AT_B.longitude,
+        status: "CHECKED_IN",
+      })
+      expect(await pointRow(STOP_DOCTOR)).toMatchObject({ customerId: CLINIC_A, contactId: DOCTOR, status: "PENDING" })
+
+      const out = await call(syncPush, `${BASE}/mobile/sync/push`, "POST", {
+        operations: [{
+          operationId: `op-doctor-out-${doctorSequence}`,
+          entity: "visits",
+          op: "update",
+          clientTimestamp: Date.now(),
+          data: { id, status: "CHECKED_OUT", checkOutAt: new Date().toISOString(), checkOutLat: AT_B.latitude, checkOutLng: AT_B.longitude },
+        }],
+      })
+      expect(out.body.results[0].status).toBe("ok")
+      expect(await pointRow(STOP_DOCTOR)).toMatchObject({ customerId: CLINIC_A, status: "VISITED" })
+    })
   })
 })

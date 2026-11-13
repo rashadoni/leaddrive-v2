@@ -155,17 +155,25 @@ function contactKeysetFilter(page: { lastName: string | null; lastId: string | n
   }
 }
 
-function selectPlanningWorkplace(workplaces: PlanningWorkplace[]): PlanningWorkplace | null {
-  if (workplaces.length === 1) return workplaces[0]
-  // Relation rows are ordered primary-first and capped at two. Therefore a
-  // first primary plus a non-primary proves uniqueness; two primaries or no
-  // primary are ambiguous and must never be guessed by the mobile planner.
-  const primary = workplaces.filter((workplace) => workplace.isPrimary)
-  return primary.length === 1 ? primary[0] : null
+/** How many of a doctor's clinics the planner lists; real doctors have one to three. */
+const PLANNING_WORKPLACE_LIMIT = 6
+
+/**
+ * A doctor who works in two clinics (Zeytun, 2026-11-13: «некоторые врачи
+ * бывают в разных клиниках… чтоб агент сам принимал решение»). He used to
+ * vanish from the planner when no single clinic was marked primary. Now he is
+ * always listed: the clinic of his last visit first, then the primary one,
+ * then the rest — and `workplaces` lets the agent pick another. `customerId`
+ * stays the default, so an app that does not know `workplaces` still saves.
+ */
+function orderPlanningWorkplaces(workplaces: PlanningWorkplace[], lastVisitedCustomerId: string | undefined): PlanningWorkplace[] {
+  const lastVisited = workplaces.filter((workplace) => workplace.customerId === lastVisitedCustomerId)
+  return [...lastVisited, ...workplaces.filter((workplace) => workplace.customerId !== lastVisitedCustomerId)]
 }
 
-function projectPlanningContact(source: PlanningContact) {
-  const workplace = selectPlanningWorkplace(source.workplaces)
+function projectPlanningContact(source: PlanningContact, lastVisitedCustomerId: string | undefined) {
+  const ordered = orderPlanningWorkplaces(source.workplaces, lastVisitedCustomerId)
+  const workplace = ordered[0]
   if (!workplace) return null
   return {
     kind: "contact" as const,
@@ -174,6 +182,16 @@ function projectPlanningContact(source: PlanningContact) {
     customerId: workplace.customerId,
     organizationName: workplace.customer.name,
     address: workplace.customer.address ?? workplace.customer.city,
+    ...(ordered.length > 1
+      ? {
+          workplaces: ordered.map((place) => ({
+            customerId: place.customerId,
+            name: place.customer.name,
+            address: place.customer.address ?? place.customer.city,
+            lastVisited: place.customerId === lastVisitedCustomerId,
+          })),
+        }
+      : {}),
   }
 }
 
@@ -203,7 +221,7 @@ function planningContactSelect(
         },
       },
       orderBy: [{ isPrimary: "desc" }, { startedOn: "desc" }, { id: "asc" }],
-      take: 2,
+      take: PLANNING_WORKPLACE_LIMIT,
       select: {
         customerId: true,
         isPrimary: true,
@@ -221,8 +239,9 @@ function planningContactSelect(
  * tenant, authenticated AGENT, route date and normalized filters. Contact
  * candidates are intentionally scanned in two disjoint phases: direct contact
  * assignments first, then customer assignments only where no direct contact
- * assignment exists. That preserves the write validator's eligibility rules
- * without ever choosing a workplace for an ambiguous direct assignment.
+ * assignment exists. That preserves the write validator's eligibility rules:
+ * each phase lists only the clinics the save would accept for that doctor
+ * (all his clinics when he is the agent's, else only the agent's clinics).
  */
 export const GET = withMobileRls(async (req, auth) => {
   const permission = requireMobilePermission(auth, "ROUTE_EXECUTE")
@@ -501,8 +520,24 @@ export const GET = withMobileRls(async (req, auth) => {
     select: planningContactSelect(actor.agentId, auth.orgId, routeDate, phase === "customer", clinicId),
   }) as unknown as PlanningContact[]
   const pageRows = rows.slice(0, limit)
+  // Where each doctor with several clinics was seen last — the clinic the
+  // picker offers first. Asked only for those doctors.
+  const severalClinics = pageRows.filter((row) => row.workplaces.length > 1)
+  const lastVisits: Array<{ contactId: string | null; customerId: string }> = severalClinics.length > 0
+    ? await prisma.mtmVisit.findMany({
+        where: {
+          organizationId: auth.orgId,
+          deletedAt: null,
+          contactId: { in: severalClinics.map((row) => row.id) },
+        },
+        orderBy: [{ checkInAt: "desc" }, { id: "desc" }],
+        distinct: ["contactId"],
+        select: { contactId: true, customerId: true },
+      })
+    : []
+  const lastVisitedClinic = new Map(lastVisits.map((visit) => [visit.contactId, visit.customerId]))
   const targets = pageRows
-    .map(projectPlanningContact)
+    .map((row) => projectPlanningContact(row, lastVisitedClinic.get(row.id)))
     .filter((target): target is NonNullable<ReturnType<typeof projectPlanningContact>> => target !== null)
   const last = pageRows.at(-1)
   const nextPage = rows.length > limit && last
