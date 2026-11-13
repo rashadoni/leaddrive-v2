@@ -1749,6 +1749,11 @@ HRM при этом не включается, лицо и отпечатки н
   организации, 10 минут, под HMAC (`src/lib/inbox/outbound-media-link.ts`,
   `/api/v1/public/inbox-media/…`). Подпись к файлу — отдельным сообщением. Instagram берёт фото,
   видео, аудио и PDF; остальное отказ словами до вызова Meta.
+- **Ответы, написанные в приложении до 13 ноября, дотягивает**
+  `cron-trigger.sh "/api/cron/instagram-app-replies-backfill?org=<id>&since=<дата>"` (без
+  `apply=1` — только подсчёт; не дальше 14 дней назад; только каналы Instagram-Login). Читает
+  историю аккаунта и отдаёт его сообщения тому же приёмнику, что вебхук, поэтому повтор ничего не
+  меняет, а отправленное из CRM не задваивается.
 - Стерегут `meta-dm-app-echo.test.ts`, `inbox-outbound-media-link.test.ts`,
   `lib-send-conversation-reply-instagram.test.ts`.
 
