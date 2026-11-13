@@ -173,6 +173,11 @@ describe("the boards' list in Bordio's make", () => {
     expect(cells[0].textContent).toBe("SHGAKK")
     // A face is a filled circle — it has to cover the one under it and be seen on a light page.
     expect((faces.children[1] as HTMLElement).className).toContain("bg-zinc-200")
+    // Two letters fit only if the next face covers 3px, not 6: at 6 «GA» read as «G» on the live board.
+    expect((faces.children[1] as HTMLElement).className).toContain("-ml-[3px]")
+    expect((faces.children[0] as HTMLElement).className).not.toContain("-ml-")
+    // A face sizes itself; the look's rule for single avatars (11px letters) does not reach it.
+    expect(faces.querySelector("[data-avatar]")).toBeNull()
     expect(cells[0].querySelector("[data-assignee-trigger]")?.getAttribute("title")).toBe("Sabina Hasanova, Gullu Alekberova, Khayala Khankishiyeva")
     // Six people: four faces and how many more.
     expect([...cells[1].querySelector('[data-testid="assignee-faces"]')!.children].map((f) => f.textContent)).toEqual(["SH", "Ə1", "Ə2", "Ə3", "+2"])
