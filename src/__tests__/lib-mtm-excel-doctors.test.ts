@@ -5,7 +5,7 @@
  * their own. Fictional names only — the repository is public.
  */
 import { describe, expect, it } from "vitest"
-import { foldName, splitDoctorName, validateDoctorImport } from "@/lib/mtm/excel-doctors"
+import { foldName, personNameKey, splitDoctorName, validateDoctorImport } from "@/lib/mtm/excel-doctors"
 import type { ParsedMtmWorkbook } from "@/lib/mtm/excel-contract"
 
 const AT = new Date("2026-11-14T08:00:00.000Z")
@@ -44,6 +44,12 @@ describe("names as the file and MTM both spell them", () => {
     expect(foldName("Doctor  Name.")).toBe(foldName("doctor name"))
     expect(foldName("İsmayılova")).toBe(foldName("Ismayilova"))
     expect(foldName("Klinika 3")).not.toBe(foldName("Klinika 13"))
+  })
+
+  it("finds a person whatever order the words of the name come in", () => {
+    expect(personNameKey("Abbaszadə Nərmin")).toBe(personNameKey("nermin  ABBASZADE"))
+    expect(personNameKey("Quliyev, Tural Rauf")).toBe(personNameKey("Rauf Tural Quliyev"))
+    expect(personNameKey("Tural Quliyev")).not.toBe(personNameKey("Tural Quliyeva"))
   })
 
   it("keeps the first word apart from the rest", () => {
@@ -87,6 +93,19 @@ describe("rows become doctors", () => {
     expect(same.rows[0]).toMatchObject({ operation: "UNCHANGED", existingId: "d1" })
     const more = await validateDoctorImport(db({ agents: AGENTS, places, doctors }), "org", file([{ agent: "AG-1", doctor_name: "Doctor One", clinic_name: "Clinic Z", clinic_city: "Bakı" }]), AT)
     expect(more.rows[0]).toMatchObject({ operation: "UPDATE", existingId: "d1", data: { assignAgent: false } })
+  })
+
+  it("finds the doctor MTM already has under the surname first, instead of creating him again", async () => {
+    // Zeytun, 2026-11-14: MTM held «Surname Name» from an earlier import, the
+    // file said «Name Surname», and every doctor was created a second time.
+    const doctors = [{ id: "d1", displayName: "Abbaszadə Nərmin", externalCode: "DOC.0001", agentAssignments: [{ agentId: "a1", role: "PRIMARY" }], workplaces: [{ customerId: "known" }] }]
+    const places = [{ id: "known", name: "Clinic A", city: "Bakı" }]
+    const result = await validateDoctorImport(db({ agents: AGENTS, places, doctors }), "org", file([
+      { agent: "Agent First", doctor_name: "Nərmin Abbaszadə", clinic_name: "Clinic A", clinic_city: "Bakı" },
+    ]), AT)
+    expect(result.errors).toEqual([])
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0]).toMatchObject({ operation: "UNCHANGED", existingId: "d1", data: { agentId: "a1" } })
   })
 
   it("refuses a row without a clinic, an unknown agent and an agent name two employees share", async () => {

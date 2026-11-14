@@ -76,6 +76,22 @@ export function foldName(value: string): string {
     .replace(/[^\p{L}\p{N}]+/gu, "")
 }
 
+/**
+ * A person's name with the order of its words aside: Zeytun's first doctor
+ * import wrote «Surname Name», its Excel file «Name Surname». Compared by
+ * `foldName` alone, the second import took all 430 doctors MTM already had
+ * for new ones (2026-11-14). Doctors and agents are found by this key;
+ * clinics keep `foldName` — «Klinika 3» and «3 Klinika» need not be one place.
+ */
+export function personNameKey(value: string): string {
+  return value
+    .split(/[\s.,;:()\-_/]+/u)
+    .map(foldName)
+    .filter(Boolean)
+    .sort()
+    .join(" ")
+}
+
 function text(value: unknown): string {
   return value == null ? "" : String(value).replace(/\s+/g, " ").trim()
 }
@@ -133,7 +149,7 @@ export async function validateDoctorImport(
   const agentsByName = new Map<string, Array<{ id: string; name: string }>>()
   for (const agent of agents as Array<{ id: string; name: string; externalCode: string | null }>) {
     if (agent.externalCode) agentByCode.set(agent.externalCode.trim(), agent)
-    const key = foldName(agent.name)
+    const key = personNameKey(agent.name)
     agentsByName.set(key, [...(agentsByName.get(key) ?? []), agent])
   }
   const placeByKey = new Map<string, string>()
@@ -155,7 +171,7 @@ export async function validateDoctorImport(
   const doctorByCode = new Map(doctorRows.filter((doctor) => doctor.externalCode).map((doctor) => [doctor.externalCode!.trim(), doctor]))
   const doctorsByName = new Map<string, ExistingDoctor[]>()
   for (const doctor of doctorRows) {
-    const key = foldName(doctor.displayName)
+    const key = personNameKey(doctor.displayName)
     doctorsByName.set(key, [...(doctorsByName.get(key) ?? []), doctor])
   }
 
@@ -189,7 +205,7 @@ export async function validateDoctorImport(
     if (agentValue) {
       agent = agentByCode.get(agentValue)
       if (!agent) {
-        const named = agentsByName.get(foldName(agentValue)) ?? []
+        const named = agentsByName.get(personNameKey(agentValue)) ?? []
         if (named.length === 1) agent = named[0]
         else if (named.length > 1) push(row.rowNumber, "agent", "AGENT_AMBIGUOUS", `Several active employees are called '${agentValue}'; use the employee's code`, agentValue)
         else push(row.rowNumber, "agent", "AGENT_NOT_FOUND", `No active employee with code or name '${agentValue}'`, agentValue)
@@ -205,7 +221,7 @@ export async function validateDoctorImport(
     if (spelling) spelling.spellings.add(clinicName)
     else clinicSpellings.set(key, { first: row.rowNumber, spellings: new Set([clinicName]) })
 
-    const groupKey = code ? `code:${code}` : `name:${foldName(name)}|agent:${agent.id}`
+    const groupKey = code ? `code:${code}` : `name:${personNameKey(name)}|agent:${agent.id}`
     const group = groups.get(groupKey) ?? {
       rowNumber: row.rowNumber,
       sourceRows: [],
@@ -240,7 +256,7 @@ export async function validateDoctorImport(
   // The same name under different agents in this file.
   const agentsOfName = new Map<string, Map<string, string>>()
   for (const group of groups.values()) {
-    const key = foldName(group.name)
+    const key = personNameKey(group.name)
     const byAgent = agentsOfName.get(key) ?? new Map<string, string>()
     byAgent.set(group.agent.id, group.agent.name)
     agentsOfName.set(key, byAgent)
@@ -253,16 +269,16 @@ export async function validateDoctorImport(
     const warnings: DoctorImportWarning[] = []
     const existing = group.code
       ? doctorByCode.get(group.code)
-      : (doctorsByName.get(foldName(group.name)) ?? []).find((doctor) => doctor.agentAssignments.some((assignment) => assignment.agentId === group.agent.id))
+      : (doctorsByName.get(personNameKey(group.name)) ?? []).find((doctor) => doctor.agentAssignments.some((assignment) => assignment.agentId === group.agent.id))
     const clinics = [...group.clinics.values()]
     if (clinics.length > 1) {
       warnings.push({ code: "TWO_CLINICS", message: `One doctor in ${clinics.length} clinics: ${clinics.map((clinic) => clinic.name).join(", ")}`, params: { name: group.name, clinics: clinics.map((clinic) => clinic.name).join(", ") } })
     }
-    const otherAgents = [...(agentsOfName.get(foldName(group.name))?.entries() ?? [])].filter(([agentId]) => agentId !== group.agent.id)
+    const otherAgents = [...(agentsOfName.get(personNameKey(group.name))?.entries() ?? [])].filter(([agentId]) => agentId !== group.agent.id)
     if (otherAgents.length > 0) {
       warnings.push({ code: "NAMESAKE_OTHER_AGENT", message: `The same name is also given to ${otherAgents.map(([, name]) => name).join(", ")}; imported as a separate doctor`, params: { name: group.name, agents: otherAgents.map(([, name]) => name).join(", ") } })
     }
-    if (!existing && !group.code && (doctorsByName.get(foldName(group.name))?.length ?? 0) > 0) {
+    if (!existing && !group.code && (doctorsByName.get(personNameKey(group.name))?.length ?? 0) > 0) {
       warnings.push({ code: "SAME_NAME_EXISTS", message: "A doctor with this name already exists in MTM under another agent; a new doctor is created", params: { name: group.name } })
     }
     for (const clinic of clinics) {
