@@ -35,12 +35,15 @@ set +a
 : "${WAL_ARTIFACT_GRACE_SECONDS:=1800}"
 # How full the bucket may get before this says so, and how often it is worth
 # asking. The account's cap is set in the provider's console and no API reports
-# it, so the threshold lives here. The owner keeps the daily storage cap at
-# $0.00 — the 10 GB free allowance, 9.31 GiB — so the default 7 GiB is roughly
-# three quarters of a hard stop that silences archiving, not of a bill.
-: "${WAL_USAGE_WARN_GIB:=7}"
+# it, so the threshold lives here. Until 2026-11-14 the owner kept the daily
+# storage cap at $0.00 — the 10 GB free allowance — and the default was 7 GiB.
+# That day the client files moved from Bordio (8.9 GB) went into the offsite
+# copy in this bucket, and on the owner's word the cap became $0.10 a day, which
+# Backblaze shows as 442 GB. 300 GiB is again about three quarters of the hard
+# stop that would silence archiving. Change it together with the cap.
+: "${WAL_USAGE_WARN_GIB:=300}"
 : "${WAL_USAGE_INTERVAL_SECONDS:=3600}"
-case "$WAL_USAGE_WARN_GIB" in '' | *[!0-9]*) WAL_USAGE_WARN_GIB=7 ;; esac
+case "$WAL_USAGE_WARN_GIB" in '' | *[!0-9]*) WAL_USAGE_WARN_GIB=300 ;; esac
 case "$WAL_USAGE_INTERVAL_SECONDS" in '' | *[!0-9]*) WAL_USAGE_INTERVAL_SECONDS=3600 ;; esac
 : "${WAL_DEPLOY_SHA_FILE:=/opt/leaddrive-v2/.next/standalone/.deploy-sha}"
 : "${AWS_BIN:=aws}"
