@@ -33512,6 +33512,7 @@
     "close": "Close",
     "email": "Email",
     "password": "Password",
+    "passwordHint": "Hand the password to the person yourself. They can change it in their profile later.",
     "addUserHint": "The new person sees the boards only and also appears in Settings → Users. Open other sections there.",
     "fullCardHint": "Password, sections and two-step sign-in —",
     "fullCardLink": "Settings → Users",

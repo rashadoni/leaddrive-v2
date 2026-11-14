@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Check, Circle, Copy, Eye, EyeOff, Wand2, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 import { passwordRuleChecks } from "@/lib/password-policy"
 
 /**
@@ -78,7 +79,7 @@ export function PasswordRules({ password, id }: { password: string; id?: string 
 }
 
 export function PasswordInput({
-  id, name, value, onChange, visible, onToggleVisible, onKeyDown, onKeyUp, describedBy, invalid,
+  id, name, value, onChange, visible, onToggleVisible, onKeyDown, onKeyUp, describedBy, invalid, testId, className,
 }: {
   id: string
   name: string
@@ -90,6 +91,9 @@ export function PasswordInput({
   onKeyUp?: (event: React.KeyboardEvent<HTMLInputElement>) => void
   describedBy?: string
   invalid?: boolean
+  testId?: string
+  /** For a form whose other boxes are drawn differently (the teams page's «add a user»). */
+  className?: string
 }) {
   const t = useTranslations("settingsUsers")
   return (
@@ -108,11 +112,13 @@ export function PasswordInput({
         required
         aria-describedby={describedBy}
         aria-invalid={invalid || undefined}
-        className={`pr-11 ${invalid ? "border-destructive focus-visible:ring-destructive" : ""}`}
+        data-testid={testId}
+        className={cn("pr-11", className, invalid && "border-destructive focus-visible:ring-destructive")}
       />
       <button
         type="button"
         onClick={onToggleVisible}
+        data-testid={testId ? `${testId}-toggle` : undefined}
         aria-label={visible ? t("hidePassword") : t("showPassword")}
         title={visible ? t("hidePassword") : t("showPassword")}
         className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
@@ -124,7 +130,7 @@ export function PasswordInput({
 }
 
 /** «Сгенерировать» and «Копировать» under a new-password box. */
-export function PasswordActions({ value, onGenerate }: { value: string; onGenerate: () => void }) {
+export function PasswordActions({ value, onGenerate, className }: { value: string; onGenerate: () => void; className?: string }) {
   const t = useTranslations("settingsUsers")
   const copy = async () => {
     try {
@@ -133,7 +139,7 @@ export function PasswordActions({ value, onGenerate }: { value: string; onGenera
     } catch { /* the password is on screen; copying by hand still works */ }
   }
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
+    <div className={cn("mt-2 flex flex-wrap gap-2", className)}>
       <button
         type="button"
         onClick={onGenerate}
