@@ -33508,6 +33508,7 @@
     "close": "Bağla",
     "email": "E-poçt",
     "password": "Şifrə",
+    "passwordHint": "Şifrəni işçiyə özünüz verin. Sonra o, profilində dəyişə bilər.",
     "addUserHint": "Yeni işçi yalnız lövhələri görəcək və «Ayarlar → İstifadəçilər»də də görünəcək. Digər bölmələri orada aça bilərsiniz.",
     "fullCardHint": "Şifrə, bölmələr və iki mərhələli giriş —",
     "fullCardLink": "Ayarlar → İstifadəçilər",

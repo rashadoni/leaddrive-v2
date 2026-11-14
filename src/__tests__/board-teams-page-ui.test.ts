@@ -141,6 +141,41 @@ describe("Komandalar və istifadəçilər", () => {
     expect(calls).toContain('PUT /api/v1/tasks/teams/members {"userId":"new-1","teamId":"t-dig"}')
   })
 
+  // Owner, 2026-11-14, on the add-user window: «как он будет заходить без пароля?» — the admin hands the password
+  // over, so the window says what the server will refuse while it is typed, shows it, and can make one up.
+  it("the password box says the server's rules while typing, shows the password, and makes up one the server takes", async () => {
+    await render()
+    await click(container.querySelector('[data-testid="teams-add-user"]'))
+    await type(container.querySelector('[data-testid="teams-new-user-name"]') as HTMLInputElement, "Rəşidə Məmmədova")
+    await type(container.querySelector('[data-testid="teams-new-user-email"]') as HTMLInputElement, "rashida@z.az")
+    const box = () => container.querySelector('[data-testid="teams-new-user-password"]') as HTMLInputElement
+    const save = () => container.querySelector('[data-testid="teams-new-user-save"]') as HTMLButtonElement
+    expect(container.querySelector('[data-testid="password-rules"]')?.textContent).toContain("Şifrədə olmalıdır:")
+
+    await type(box(), "Zeytun2024")
+    expect(box().getAttribute("aria-invalid")).toBe("true")
+    expect(container.querySelector('[data-rule="length"]')?.getAttribute("data-state")).toBe("bad")
+    expect(container.querySelector('[data-rule="special"]')?.getAttribute("data-state")).toBe("bad")
+    expect(save().disabled).toBe(true)
+
+    expect(box().type).toBe("password")
+    await click(container.querySelector('[data-testid="teams-new-user-password-toggle"]'))
+    expect(box().type).toBe("text")
+    await click(container.querySelector('[data-testid="teams-new-user-password-toggle"]'))
+    expect(box().type).toBe("password")
+
+    const make = [...container.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Şifrə yarat")!
+    await click(make)
+    expect(box().type).toBe("text")
+    expect(box().value).toMatch(/^Aa1!.{12,}$/u)
+    expect(box().getAttribute("aria-invalid")).toBeNull()
+    expect(save().disabled).toBe(false)
+    const madeUp = box().value
+    await click(save())
+    const made = calls.find((c) => c.startsWith("POST /api/v1/users "))!
+    expect(JSON.parse(made.slice("POST /api/v1/users ".length)).password).toBe(madeUp)
+  })
+
   // Owner, 2026-11-13: «создал также такое же ограничение к команде и пользователи?» — the section is the
   // admin's. Typed into the address bar by anyone else, it used to open read-only with every colleague's e-mail.
   it("someone who is not the admin does not see the section at all", async () => {

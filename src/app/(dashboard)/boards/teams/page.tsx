@@ -24,6 +24,7 @@ import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { Check, ChevronDown, Info, Loader2, Lock, Pencil, Plus, Trash2, UserPlus, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { PasswordActions, PasswordInput, PasswordRules, generateTemporaryPassword, passwordIsAcceptable } from "@/components/settings/password-field"
 import { orgFromSession } from "@/lib/nav-items"
 import { tenantHideableModules } from "@/lib/user-module-access"
 import type { TeamDTO, TeamRole } from "@/lib/tasks/board-teams"
@@ -346,10 +347,11 @@ function AddUserDialog({ teams, defaultTeam, hiddenModules, onClose, onAdded }: 
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [teamId, setTeamId] = useState(defaultTeam)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const valid = name.trim().length > 0 && /.+@.+\..+/u.test(email.trim()) && password.length > 0
+  const valid = name.trim().length > 0 && /.+@.+\..+/u.test(email.trim()) && passwordIsAcceptable(password)
 
   const submit = async () => {
     if (!valid || saving) return
@@ -380,9 +382,10 @@ function AddUserDialog({ teams, defaultTeam, hiddenModules, onClose, onAdded }: 
   const label = "mb-1.5 block text-sm font-medium"
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose() }}>
-      <div data-crm-dialog="" role="dialog" aria-modal="true" aria-labelledby="team-user-title" className="w-full max-w-md rounded-xl border border-border/60 bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-5 flex items-start justify-between gap-4">
+    // A window taller than a laptop's screen (the password's rules) scrolls as a whole instead of losing its top and its buttons.
+    <div className="fixed inset-0 z-50 flex overflow-y-auto bg-black/50 p-4" onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose() }}>
+      <div data-crm-dialog="" role="dialog" aria-modal="true" aria-labelledby="team-user-title" className="m-auto w-full max-w-md rounded-xl border border-border/60 bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 id="team-user-title" className="text-lg font-semibold tracking-tight">{t("addUser")}</h2>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">{t("addUserHint")}</p>
@@ -399,8 +402,34 @@ function AddUserDialog({ teams, defaultTeam, hiddenModules, onClose, onAdded }: 
             <input id="team-user-email" data-testid="teams-new-user-email" type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ad.soyad@company.az" className={field} />
           </div>
           <div>
-            <label className={label} htmlFor="team-user-password">{t("password")}</label>
-            <input id="team-user-password" data-testid="teams-new-user-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={field} />
+            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+              <label className="block text-sm font-medium" htmlFor="team-user-password">{t("password")}</label>
+              <PasswordActions
+                className="mt-0"
+                value={password}
+                onGenerate={() => {
+                  setPassword(generateTemporaryPassword())
+                  // A password made up here has to be read to be handed over.
+                  setShowPassword(true)
+                }}
+              />
+            </div>
+            {/* The same box as «Ayarlar → İstifadəçilər» (owner, 2026-11-14: «Да, добавь» — «и показать пароль»): the
+                server's rules while typing, the eye, «make one up» and «copy» — the admin hands the password over. */}
+            <PasswordInput
+              id="team-user-password"
+              name="new-user-password"
+              testId="teams-new-user-password"
+              value={password}
+              onChange={setPassword}
+              visible={showPassword}
+              onToggleVisible={() => setShowPassword((shown) => !shown)}
+              describedBy="team-user-password-rules"
+              invalid={password !== "" && !passwordIsAcceptable(password)}
+              className="bg-background focus-visible:border-input focus-visible:ring-ring/50"
+            />
+            <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("passwordHint")}</p>
+            <PasswordRules id="team-user-password-rules" password={password} />
           </div>
           <div>
             <label className={label} htmlFor="team-user-team">{t("colTeam")}</label>
@@ -411,7 +440,7 @@ function AddUserDialog({ teams, defaultTeam, hiddenModules, onClose, onAdded }: 
           </div>
         </div>
         {error && <p role="alert" className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-5 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="h-10 rounded-lg border border-input px-4 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50">{t("cancel")}</button>
           <button type="button" data-crm-button="default" data-testid="teams-new-user-save" disabled={!valid || saving} onClick={() => void submit()} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50">
             {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />} {t("add")}
