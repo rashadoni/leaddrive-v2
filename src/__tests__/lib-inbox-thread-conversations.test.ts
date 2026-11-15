@@ -1,6 +1,6 @@
 /**
  * The pieces of «one customer, one feed» that decide without a database: which conversations a thread is
- * made of, where a reply goes by default, which numbers a customer wrote, and what the switcher shows.
+ * made of, where a reply goes by default, and which numbers a customer wrote.
  */
 import { describe, expect, it } from "vitest"
 import {
@@ -10,7 +10,6 @@ import {
   threadConversationIds,
 } from "@/lib/inbox/thread-conversations"
 import { identifiersInTexts, phoneKey } from "@/lib/inbox/contact-link"
-import { inThreadFeed, threadFeedChannels } from "@/components/inbox/thread-channel-switcher"
 
 const message = (conversationId: string | null, channelType: string, direction: "inbound" | "outbound", at: string, extra: Record<string, unknown> = {}) =>
   ({ conversationId, channelType, direction, createdAt: at, status: "delivered", channelConfigId: `cfg-${channelType}`, ...extra })
@@ -75,23 +74,5 @@ describe("numbers and e-mails a customer wrote", () => {
       "Nömrəm 050 111 22 33, poçt Anar.MM@Example.com",
       "yenə: +994501112233",
     ])).toEqual({ phones: ["994501112233"], emails: ["anar.mm@example.com"] })
-  })
-})
-
-describe("the channel switcher above the feed", () => {
-  it("counts each channel's messages", () => {
-    expect(threadFeedChannels([{ channelType: "instagram" }, { channelType: "whatsapp" }, { channelType: "instagram" }])).toEqual([
-      { channel: "instagram", count: 2 },
-      { channel: "whatsapp", count: 1 },
-    ])
-  })
-
-  it("shows one channel's messages, or only the calls, or everything", () => {
-    expect(inThreadFeed("instagram", { kind: "message", channel: "instagram" })).toBe(true)
-    expect(inThreadFeed("instagram", { kind: "message", channel: "whatsapp" })).toBe(false)
-    expect(inThreadFeed("instagram", { kind: "call" })).toBe(false)
-    expect(inThreadFeed("calls", { kind: "call" })).toBe(true)
-    expect(inThreadFeed("calls", { kind: "message", channel: "whatsapp" })).toBe(false)
-    expect(inThreadFeed("all", { kind: "call" })).toBe(true)
   })
 })

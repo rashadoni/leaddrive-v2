@@ -33,30 +33,38 @@ export default function InboxHelpAz() {
       <HelpSection title="Səhifədə nə var">
         <p>
           Birinci zona — <strong>qovluq paneli</strong> — başında <HelpKey>Gələnlər</HelpKey> adı, altında
-          isə üç qrup var: <strong>baxış filtrləri</strong> (Hamısı, Mənim, Təyin edilməyib, Digər
-          agentlər, Çatbot, Mənimlə, Spam — Spam «soon» nişanı ilə hələ qeyri-aktivdir),
-          <strong> Kanallar</strong> siyahısı (yanında say) və <strong>Qovluqlar</strong> (komanda üçün
-          ümumi; altında «Yeni qovluq…» sahəsi).
+          isə dörd qrup var: <strong>baxış filtrləri</strong> (Hamısı, Mənim, Təyin edilməyib, AI
+          cavablayır, Cavab gözləyir, Digər agentlər, Mənimlə, Spam — Spam «soon» nişanı ilə hələ
+          qeyri-aktivdir), <strong> Kanallar</strong> siyahısı (hər kanal öz loqosu ilə, yanında say),
+          <strong> Etiketlər</strong> (söhbət etiketləri və sayı; basanda siyahı o etiketə görə süzülür) və
+          <strong> Qovluqlar</strong> (komanda üçün ümumi; altında «Yeni qovluq…» sahəsi). Ən aşağıda
+          <strong> Bu gün</strong> kartı: bu gün müştərilərdən gələn mesajlar, dünən eyni saata qədərki ilə
+          müqayisə, son 7 günün sütunları və adi ilk cavab vaxtı. Hesablanmış rəqəm yoxdursa, kart görünmür.
         </p>
         <p>
           İkinci zona — <strong>söhbət siyahısı</strong>: yuxarıda axtarış, altında üç status tabı
-          (<strong>Açıq</strong>, <strong>Bağlı</strong>, <strong>Təxirə salınmış</strong>) və sağ küncdə
-          canlılıq göstəricisi (<strong>Canlı</strong> / <strong>Sorğu</strong>). Hər sətirdə kontaktın
-          avatarı, adı, son mesajın önizləməsi və vaxtı, kanal nişanları və oxunmamış mesaj sayğacı olur.
+          (<strong>Açıq</strong>, <strong>Gözləyir</strong>, <strong>Bağlı</strong>) və sağ küncdə
+          canlılıq göstəricisi (<strong>canlı</strong> / <strong>hər 15 san</strong>). Hər sətirdə kontaktın
+          avatarı (küncündə müştərinin son yazdığı kanalın loqosu), adı, son mesajın önizləməsi və vaxtı,
+          rəngli etiketlər (müştərinin mərhələsi, söhbət etiketləri, «AI cavabladı», oxunmuş amma cavabsız
+          söhbətdə «Cavab gözləyir»), sağda isə ya oxunmamış mesaj sayğacı, ya da kim cavab verir —
+          əməkdaşın baş hərfləri və ya AI.
         </p>
         <p>
           Üçüncü zona — <strong>mesaj yazışması</strong>: yuxarıda kontakt başlığı və əməliyyat düymələri
-          (təyinat, iştirakçılar, bağla/yenidən aç, təxirə sal, qovluğa köçür), ortada mesaj balonları
-          (daxili qeydlər vaxt sırası ilə araya hörülür), aşağıda isə <strong>tərtibatçı</strong>
+          (təyinat, iştirakçılar, bağla/yenidən aç, təxirə sal, qovluğa köçür), onun altında müştərinin
+          kanalları — hər biri mesaj sayı ilə (birini basanda yalnız o kanal qalır, «Bütün kanallar bir
+          lentdə» hamısını qaytarır), ortada mesaj balonları (daxili qeydlər vaxt sırası ilə araya
+          hörülür; gün və ya kanal dəyişəndə «12 noyabr · Instagram» kimi xətt çəkilir), aşağıda isə <strong>tərtibatçı</strong>
           («Cavab» və «Komanda» tabları). Dördüncü zona — <strong>müştəri konteksti</strong>: təfərrüatlar,
           kanallar, teqlər, qeydlər və qoşmalar.
         </p>
         <dl className="rounded-md border p-3">
           <HelpDef term="Söhbət">Bir kontaktın bütün kanallar üzrə yazışması — bir sətir, açılanda tam tarixçə.</HelpDef>
-          <HelpDef term="Baxış filtri">Söhbətləri sahibinə görə süzür: Mənim, Təyin edilməyib, Digər agentlər, Çatbot, Mənimlə (iştirakçı olduqlarım).</HelpDef>
+          <HelpDef term="Baxış filtri">Söhbətləri sahibinə görə süzür: Mənim, Təyin edilməyib, AI cavablayır (AI cavab verib), Cavab gözləyir (son mesaj müştəridəndir), Digər agentlər, Mənimlə (iştirakçı olduqlarım).</HelpDef>
           <HelpDef term="Kanal">Mesajın gəldiyi yer — E-poçt, Telegram, WhatsApp, SMS, sosial. Panel hər kanalın yanında sayını göstərir.</HelpDef>
           <HelpDef term="Qovluq">Komanda üçün ümumi qovluq; söhbətləri ora yığa və ona görə süzə bilərsiniz.</HelpDef>
-          <HelpDef term="Status tabı">Açıq / Bağlı / Təxirə salınmış — söhbətin iş vəziyyəti.</HelpDef>
+          <HelpDef term="Status tabı">Açıq / Gözləyir / Bağlı — söhbətin iş vəziyyəti. «Gözləyir» — təxirə salınmış söhbətlər.</HelpDef>
           <HelpDef term="Cavab">Müştəriyə gedən mesaj. «Komanda» isə yalnız daxili qeyddir — müştəri görmür.</HelpDef>
           <HelpDef term="İştirakçı">Söhbətə əlavə edilmiş daxili həmkar (yalnız komanda görür, müştəri yox).</HelpDef>
         </dl>
@@ -83,7 +91,7 @@ export default function InboxHelpAz() {
         <HelpStep n={2}>
           <p>
             Söhbət siyahısının üstündəki <strong>status tablarından</strong> birini seçin:{" "}
-            <HelpKey>Açıq</HelpKey>, <HelpKey>Bağlı</HelpKey> və ya <HelpKey>Təxirə salınmış</HelpKey>.
+            <HelpKey>Açıq</HelpKey>, <HelpKey>Gözləyir</HelpKey> və ya <HelpKey>Bağlı</HelpKey>.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
             Hər tabın yanında o tabdakı söhbət sayı durur. Tab boşdursa, ortada «No &lt;status&gt;
@@ -178,7 +186,7 @@ export default function InboxHelpAz() {
             müddəti seçin: <HelpKey>1 saat</HelpKey>, <HelpKey>3 saat</HelpKey> və ya <HelpKey>Sabah</HelpKey>.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Söhbət <strong>Təxirə salınmış</strong> taba keçir. Təxirə salınmış söhbətdə saat ikonası
+            Söhbət <strong>Gözləyir</strong> tabına keçir. Təxirə salınmış söhbətdə saat ikonası
             sarı olur — onu basıb <HelpKey>Oyat (təxiri ləğv et)</HelpKey> ilə geri qaytara bilərsiniz.
           </HelpCallout>
         </HelpStep>

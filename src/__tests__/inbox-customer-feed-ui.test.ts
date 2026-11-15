@@ -2,7 +2,7 @@
 /**
  * One customer, one feed on the inbox screen (owner, 2026-11-15, approved mock-up «Bütün kanallar bir
  * lentdə»). The real inbox page on real React with the Azerbaijani copy and the network stubbed:
- *  - the customer's channels stand above his feed, with their counts, and narrow it;
+ *  - the channel chips over his feed (dense inbox, #1649) count his whole history and narrow it;
  *  - opening him reads his own history, older than the list;
  *  - a reply goes through the conversation of the chosen channel, by default where he wrote last;
  *  - assign and close reach every channel of his, and the farewell goes once;
@@ -196,10 +196,11 @@ async function choose(select: HTMLSelectElement, value: string) {
 }
 
 const words = (el: Element | null) => el?.textContent?.replace(/\s+/g, " ").trim() ?? ""
-const chips = () => [...container.querySelectorAll<HTMLButtonElement>('[role="tab"]')]
-/** A chip as it reads: its label and its count, one space apart. */
-const chipText = (b: Element) => [...b.childNodes].map((n) => n.textContent?.trim() ?? "").filter(Boolean).join(" ")
-const chip = (label: string) => chips().find((b) => chipText(b).startsWith(label)) ?? null
+/** The channel chips over the thread (dense inbox, #1649), keyed by their channel. */
+const chips = () => [...container.querySelectorAll<HTMLButtonElement>("[data-thread-channel]")]
+const chip = (channel: string) => container.querySelector<HTMLButtonElement>(`[data-thread-channel="${channel}"]`)
+/** A chip as it reads: its channel and the count it shows. */
+const chipCount = (b: Element) => [b.getAttribute("data-thread-channel"), b.querySelector("span.tabular-nums")?.textContent ?? null]
 const feed = () => words(container.querySelector(".overflow-y-auto.p-4"))
 const replyTarget = () => container.querySelector<HTMLSelectElement>('[data-testid="inbox-reply-target"]')!
 const sent = () => requests.filter((r) => r.url === "/api/v1/inbox" && r.method === "POST").map((r) => r.body)
@@ -207,15 +208,17 @@ const sent = () => requests.filter((r) => r.url === "/api/v1/inbox" && r.method 
 describe("one customer, one feed on the inbox screen", () => {
   it("shows his channels above the feed and his history from before the list", async () => {
     await renderInbox()
-    expect(chips().map(chipText)).toEqual(["WhatsApp 2", "Instagram 3", "Zəng 1", "Bütün kanallar bir lentdə"])
-    expect(chip("Bütün kanallar bir lentdə")!.getAttribute("aria-selected")).toBe("true")
+    // Counted over his whole history, not only the list's messages: Instagram 3 with last month's question.
+    expect(chips().map(chipCount)).toEqual([["instagram", "3"], ["whatsapp", "2"], ["voip", "1"], ["all", null]])
+    expect(words(chip("all"))).toBe("Bütün kanallar bir lentdə")
+    expect(chip("all")!.getAttribute("aria-pressed")).toBe("true")
     expect(feed()).toContain("Köhnə sual: qara rəng var?")
     expect(feed()).toContain("Salam, çəkmə 42 hələ var?")
 
-    await press(chip("WhatsApp")!)
+    await press(chip("whatsapp")!)
     expect(feed()).toContain("Salam, çəkmə 42 hələ var?")
     expect(feed()).not.toContain("Bu çəkmənin 42-si var?")
-    await press(chip("Instagram")!)
+    await press(chip("instagram")!)
     expect(feed()).toContain("Bu çəkmənin 42-si var?")
     expect(feed()).not.toContain("Salam, çəkmə 42 hələ var?")
   })
