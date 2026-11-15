@@ -82,7 +82,7 @@ describe("placeholder vocabulary", () => {
       expect(label, body).not.toBeNull()
       expect(en[label!.key], `${body} → ${label!.key}`).toBeTruthy()
     }
-    for (const key of ["mediaWithheld", "mediaUnavailable", "placeholderNoFile", "placeholderVoice"]) {
+    for (const key of ["mediaWithheld", "mediaWithheldButtons", "mediaUnavailable", "placeholderNoFile", "placeholderVoice"]) {
       expect(en[key], key).toBeTruthy()
     }
   })
@@ -108,10 +108,11 @@ describe("what the thread shows", () => {
 
   it("says the content is only in the app when the platform did not hand it over", () => {
     // @avtorental, 2026-11-15: Graph returns this message with an empty body and no attachments.
+    // The owner looked in the app: it was the «write on WhatsApp» button of their auto-reply.
     expect(placeholderView({ body: "[media]", mediaUrl: null, channelType: "instagram" }))
-      .toEqual({ kind: "withheld", app: "Instagram" })
+      .toEqual({ kind: "withheld", app: "Instagram", buttons: true })
     expect(placeholderView({ body: "[media]", mediaUrl: "", channelType: "facebook" }))
-      .toEqual({ kind: "withheld", app: "Messenger" })
+      .toEqual({ kind: "withheld", app: "Messenger", buttons: true })
     expect(placeholderView({ body: "[unsupported attachment]", channelType: "tiktok" }))
       .toEqual({ kind: "withheld", app: "TikTok" })
     expect(placeholderView({ body: "[unsupported]", channelType: "whatsapp" }))

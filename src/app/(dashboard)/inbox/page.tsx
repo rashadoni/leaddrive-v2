@@ -3015,7 +3015,7 @@ export default function InboxV2Page() {
                           return (
                             <p className="flex items-start gap-1.5 text-xs italic text-muted-foreground" data-testid="inbox-media-withheld">
                               <Paperclip className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                              <span>{view.kind === "withheld" ? t("mediaWithheld", { app: view.app }) : t("mediaUnavailable")}</span>
+                              <span>{view.kind === "withheld" ? t(view.buttons ? "mediaWithheldButtons" : "mediaWithheld", { app: view.app }) : t("mediaUnavailable")}</span>
                             </p>
                           )
                         })()}

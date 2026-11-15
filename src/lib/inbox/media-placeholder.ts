@@ -107,6 +107,9 @@ const APP_BY_CHANNEL: Record<string, string> = {
   telegram: "Telegram",
 }
 
+/** Meta's «[media]» with no file: an empty message, as Graph returns it too. */
+const META_APPS = new Set(["Instagram", "Messenger"])
+
 /** A translation key in the `inboxV2` namespace and its values. */
 export type PlaceholderLabel = { key: string; values?: Record<string, string> }
 
@@ -140,7 +143,9 @@ export function placeholderLabel(p: Placeholder): PlaceholderLabel {
  *     gives its file name to the link instead.
  *   - `withheld` — the platform delivered the message without the content we could keep (Meta's
  *     «[media]» with no file: Graph returns the same empty message; «[unsupported]»): it is only in
- *     the app.
+ *     the app. `buttons` — Meta's empty message, and the screen says what it usually is: the
+ *     buttons of another business's auto-reply (@avtorental 2026-11-15: «написать в WhatsApp»,
+ *     confirmed by the owner in the app) and some stickers.
  *   - `unavailable` — a «[media]» on a channel without an app to point at.
  *   - `label` — a readable name for what the message was; `noFile` when a file was expected and
  *     did not reach the CRM.
@@ -148,7 +153,7 @@ export function placeholderLabel(p: Placeholder): PlaceholderLabel {
 export type PlaceholderView =
   | { kind: "body" }
   | { kind: "hide"; fileName?: string }
-  | { kind: "withheld"; app: string }
+  | { kind: "withheld"; app: string; buttons?: true }
   | { kind: "unavailable" }
   | { kind: "label"; label: PlaceholderLabel; noFile: boolean }
 
@@ -165,7 +170,8 @@ export function placeholderView(message: {
   }
   const app = APP_BY_CHANNEL[(message.channelType ?? "").toLowerCase()]
   if (p.kind === "media" || p.kind === "unsupported") {
-    return app ? { kind: "withheld", app } : { kind: "unavailable" }
+    if (!app) return { kind: "unavailable" }
+    return p.kind === "media" && META_APPS.has(app) ? { kind: "withheld", app, buttons: true } : { kind: "withheld", app }
   }
   return { kind: "label", label: placeholderLabel(p), noFile: !hasFile && FILE_KINDS.has(p.kind) }
 }

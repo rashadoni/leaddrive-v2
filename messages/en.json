@@ -28891,6 +28891,7 @@
     "messageAuthorAppHint": "This reply was written in the {app} app itself, not in the CRM. Meta does not say which team member sent it. To have a name under a reply, answer from the CRM.",
     "mediaPreview": "Attachment",
     "mediaWithheld": "{app} did not pass the content of this message to the CRM. View it in the {app} app.",
+    "mediaWithheldButtons": "{app} did not pass the content of this message to the CRM — this is how auto-reply buttons and some stickers arrive. View it in the {app} app.",
     "mediaUnavailable": "The attachment could not be retrieved.",
     "placeholderImage": "Image",
     "placeholderVideo": "Video",
