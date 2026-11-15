@@ -176,6 +176,8 @@ async function resolveWhatsAppSessionPhones(orgId: string, channelConfigId: stri
     const batch = cleanPhones.slice(offset, offset + 250)
     const inbound = await prisma.channelMessage.findMany({
       where: { organizationId: orgId, channelConfigId, direction: "inbound", channelType: "whatsapp", createdAt: { gte: since },
+        // Imported history opens no Cloud API window (lib/whatsapp-history-import).
+        historyImportedAt: null,
         OR: batch.flatMap(phone => [{ from: phone }, { from: `+${phone}` }, { metadata: { path: ["waPhone"], equals: phone } as Prisma.JsonFilter }]),
       }, select: { from: true, metadata: true },
     })

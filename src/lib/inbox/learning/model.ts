@@ -52,6 +52,9 @@ export function isPersonAnswer(message: { direction: string; body: string | null
   const meta = (message.metadata && typeof message.metadata === "object" ? message.metadata : {}) as Record<string, unknown>
   if (meta.autoReply === true || meta.aiAutoReply === true || meta.aiGenerated === true) return false
   if (meta.authorType === "ai" || meta.aiDraftApproved === true) return false
+  // A reply imported from the WhatsApp Business app's history (lib/whatsapp-history-import) is a
+  // person's, but the import must set nothing in motion — training spends the AI budget.
+  if (meta.historyImport === true) return false
   if (meta.sentFromBusinessApp === true || meta.source === "business_app") return true
   if (typeof meta.authorName === "string" && meta.authorName.trim()) return true
   return meta.authorType === "operator"

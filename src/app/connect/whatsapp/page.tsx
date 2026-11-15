@@ -33,7 +33,9 @@ export default async function WhatsAppSignupWindowPage({
       mode={readSignupWindowMode(params.keepApp)}
       labels={{
         title: t("title"),
-        description: t("description"),
+        // Said before Meta's window opens: what to scan, and that the contacts and six months of
+        // chats follow (lib/whatsapp-history-import).
+        description: readSignupWindowMode(params.keepApp).keepBusinessApp ? t("keepAppDescription") : t("description"),
         button: t("button"),
         working: t("working"),
         done: t("done"),

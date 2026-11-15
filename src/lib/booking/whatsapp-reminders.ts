@@ -107,6 +107,8 @@ async function windowOpen(orgId: string, phone: string, now: Date): Promise<bool
   const inbound = await prisma.channelMessage.findFirst({
     where: {
       organizationId: orgId, channelType: "whatsapp", direction: "inbound",
+      // Imported history opens no Cloud API window (lib/whatsapp-history-import).
+      historyImportedAt: null,
       createdAt: { gt: since },
       metadata: { path: ["waPhone"], equals: digits },
     },

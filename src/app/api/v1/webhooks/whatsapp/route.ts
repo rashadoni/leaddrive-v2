@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse, after } from "next/server"
 import type { Prisma, PrismaClient } from "@prisma/client"
 import { publishWhatsAppIntegrationEvent } from "@/lib/integrations/whatsapp-events"
 import { prisma } from "@/lib/prisma"
@@ -462,15 +462,39 @@ async function handleWhatsAppChange(params: {
     return
   }
 
-  // Contacts and messaging history of a freshly connected coexistence number. Both are one-shot and
-  // can describe thousands of messages, so they are deliberately NOT written from inside this
-  // request yet; they are acknowledged and logged until the importer lands.
+  // Contacts and messaging history of a freshly connected coexistence number (lib/whatsapp-history-import).
+  // Meta: «a single webhook could potentially describe thousands of messages. Capture the webhook
+  // contents first, then process the contents asynchronously». So this request only stores the
+  // chunk — and the sync cannot be asked for twice, so a stored chunk is the one copy there is — and
+  // the import runs after the response. Nothing here goes near processMessages: an imported message
+  // fires no reply, ticket, notification or automation.
   if (field === "history" || field === "smb_app_state_sync") {
-    const chunks = Array.isArray(value.history) ? value.history.length : Array.isArray(value.state_sync) ? value.state_sync.length : 0
-    console.log(
-      `[WA Webhook] POST: ${sanitizeLog(field)} for phone_number_id=${sanitizeLog(String(phoneNumberId || ""))}`
-      + ` items=${chunks} — not imported yet`,
-    )
+    const channelConfig = await resolveChannel()
+    if (!channelConfig) {
+      console.log(`[WA Webhook] POST: no matching ChannelConfig for ${sanitizeLog(field)} phone_number_id=${sanitizeLog(String(phoneNumberId || ""))} — ignoring`)
+      return
+    }
+    const channel = { id: channelConfig.id, organizationId: channelConfig.organizationId, settings: channelConfig.settings }
+    const { captureHistoryWebhook, processHistoryChunks } = await import("@/lib/whatsapp-history-import/import")
+    await runWithTenant(channel.organizationId, () => captureHistoryWebhook({
+      channel,
+      field,
+      value,
+      phoneNumberId: String(phoneNumberId || ""),
+    }))
+    const importNow = () => runWithTenant(channel.organizationId, () => processHistoryChunks(channel))
+      .then((outcome) => {
+        if (outcome.processed || outcome.failed) {
+          console.log(`[WA History] channel=${sanitizeLog(channel.id)} processed=${outcome.processed} failed=${outcome.failed} remaining=${outcome.remaining}`)
+        }
+      })
+      .catch((err) => console.error("[WA History] import after response failed:", err))
+    try {
+      after(importNow)
+    } catch {
+      // Outside a request scope (a direct call in a test or script): run it here instead.
+      await importNow()
+    }
     return
   }
 

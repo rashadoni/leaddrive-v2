@@ -33185,6 +33185,7 @@
   "whatsappSignupWindow": {
     "title": "WhatsApp-ı qoşmaq",
     "description": "Meta daxil olmağı, şirkəti və WhatsApp nömrəsini seçməyi xahiş edəcək. Bitəndə bu pəncərə bağlanacaq, nömrə isə CRM-də görünəcək.",
+    "keepAppDescription": "Nömrə telefondakı WhatsApp Business tətbiqində qalır. Meta pəncərəsində QR-kodu bu tətbiqlə skan edin (və ya Meta-nın tətbiqə göndərdiyi mesajda qoşulmanı təsdiqləyin) və tarixçəni paylaşmağa icazə verin — kontaktlar və 6 ayın yazışması CRM-ə gələcək.",
     "button": "Facebook ilə davam et",
     "working": "Meta gözlənilir…",
     "done": "Hazırdır — pəncərəni bağlaya bilərsiniz.",

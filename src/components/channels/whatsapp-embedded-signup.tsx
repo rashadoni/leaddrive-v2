@@ -24,6 +24,12 @@ export type WhatsAppEmbeddedSignupLabels = {
   /** «Keep my WhatsApp Business app» — the recommended choice, and its requirements. */
   keepAppButton: string
   keepAppHint: string
+  /**
+   * What happens in Meta's window, said before it opens: scan the code with the WhatsApp Business
+   * app, the number stays on the phone, the contacts and six months of chats follow
+   * (lib/whatsapp-history-import).
+   */
+  keepAppSteps?: string[]
   /** «Move the number to the API» — and the honest warning that the app stops working. */
   moveButton: string
   moveHint: string
@@ -372,6 +378,11 @@ export function WhatsAppEmbeddedSignup({
               {status.kind === "working" ? labels.working : labels.keepAppButton}
             </button>
             <p className="text-[11px] leading-snug text-emerald-800">{labels.keepAppHint}</p>
+            {labels.keepAppSteps && labels.keepAppSteps.length > 0 && (
+              <ol className="list-decimal space-y-0.5 pl-4 text-[11px] leading-snug text-emerald-800" data-testid="whatsapp-keep-app-steps">
+                {labels.keepAppSteps.map((step) => <li key={step}>{step}</li>)}
+              </ol>
+            )}
           </div>
           <div className="space-y-1">
             <button

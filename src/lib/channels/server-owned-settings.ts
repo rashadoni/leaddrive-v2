@@ -89,6 +89,10 @@ const SERVER_OWNED_SETTING_KEYS_BY_TYPE: Readonly<Record<string, readonly string
     // The owner's per-channel override of that hold (lib/inbox/whatsapp-reply-hold). Set outside this
     // form, and dropping it would turn the hold back on or off behind his back.
     "replyHold",
+    // Meta's answer to the one-shot contacts and history request (lib/whatsapp-history-import/request):
+    // the `request_id` Meta asks to keep for support, or its refusal. A Save that erased it would
+    // offer to ask again a request Meta takes only once.
+    "historyImport",
     // Meta said this number's Cloud API side is temporarily down (lib/whatsapp-account-update); the
     // pause is lifted by a webhook, not by a Save.
     "cloudApiPaused",
