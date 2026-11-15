@@ -33,30 +33,38 @@ export default function InboxHelpEn() {
       <HelpSection title="What's on the page">
         <p>
           The first zone — the <strong>folders rail</strong> — has the <HelpKey>Inbox</HelpKey> title at
-          the top, then three groups: <strong>view filters</strong> (All, Me, Unassigned, Other agents,
-          Chatbot, With me, Spam — Spam is still disabled with a «soon» tag), the <strong>Channels</strong>
-          list (with counts), and <strong>Folders</strong> (team-shared; a «New folder…» field underneath).
+          the top, then four groups: <strong>view filters</strong> (All, Me, Unassigned, AI answering,
+          Awaiting reply, Other agents, With me, Spam — Spam is still disabled with a «soon» tag), the
+          <strong> Channels</strong> list (each with its own logo and a count), <strong>Labels</strong>
+          (conversation labels with counts; a press filters the list by one) and <strong>Folders</strong>
+          (team-shared; a «New folder…» field underneath). At the very bottom, the <strong>Today</strong>
+          card: incoming customer messages today, the change against yesterday up to the same hour, seven
+          days of bars and the usual time to a first reply. With nothing counted, there is no card.
         </p>
         <p>
           The second zone — the <strong>conversation list</strong>: search at the top, then three status
-          tabs (<strong>Opened</strong>, <strong>Closed</strong>, <strong>Snoozed</strong>) and a liveness
-          indicator in the corner (<strong>Live</strong> / <strong>Polling</strong>). Each row shows the
-          contact's avatar, name, a preview of the last message and its time, channel badges, and an unread
-          counter.
+          tabs (<strong>Opened</strong>, <strong>Snoozed</strong>, <strong>Closed</strong>) and a liveness
+          indicator in the corner (<strong>live</strong> / <strong>every 15 s</strong>). Each row shows the
+          contact's avatar (with the logo of the channel the customer wrote on last), name, a preview of the
+          last message and its time, coloured labels (the customer's stage, conversation labels, «AI
+          answered», «Awaiting reply» on a read but unanswered conversation), and on the right either the
+          unread counter or who answers: a colleague's initials or the AI.
         </p>
         <p>
           The third zone — the <strong>message thread</strong>: a contact header with action buttons at the
-          top (assign, participants, close/reopen, snooze, move to folder), message bubbles in the middle
-          (internal notes are woven in by time), and the <strong>composer</strong> at the bottom (a
+          top (assign, participants, close/reopen, snooze, move to folder), under it the customer's channels
+          with message counts (a press keeps only that channel, «All channels in one feed» brings everything
+          back), message bubbles in the middle (internal notes are woven in by time; a line like «12 November
+          · Instagram» wherever the day or the channel changes), and the <strong>composer</strong> at the bottom (a
           «Reply» and a «Team» tab). The fourth zone — the <strong>customer context</strong> panel:
           details, channels, tags, notes, and attachments.
         </p>
         <dl className="rounded-md border p-3">
           <HelpDef term="Conversation">One contact's correspondence across all channels — one row, the full history when opened.</HelpDef>
-          <HelpDef term="View filter">Filters conversations by owner: Me, Unassigned, Other agents, Chatbot, With me (where I'm a participant).</HelpDef>
+          <HelpDef term="View filter">Filters conversations by owner: Me, Unassigned, AI answering (the AI has replied), Awaiting reply (the customer wrote last), Other agents, With me (where I'm a participant).</HelpDef>
           <HelpDef term="Channel">Where the message came from — Email, Telegram, WhatsApp, SMS, social. The rail shows a count next to each.</HelpDef>
           <HelpDef term="Folder">A team-shared folder; you can file conversations into it and filter by it.</HelpDef>
-          <HelpDef term="Status tab">Opened / Closed / Snoozed — the conversation's work state.</HelpDef>
+          <HelpDef term="Status tab">Opened / Snoozed / Closed — the conversation's work state.</HelpDef>
           <HelpDef term="Reply">A message that goes to the customer. «Team» is an internal note instead — the customer never sees it.</HelpDef>
           <HelpDef term="Participant">An internal colleague added to a conversation (team-only, never the customer).</HelpDef>
         </dl>
@@ -84,7 +92,7 @@ export default function InboxHelpEn() {
         <HelpStep n={2}>
           <p>
             Choose one of the <strong>status tabs</strong> above the list: <HelpKey>Opened</HelpKey>,{" "}
-            <HelpKey>Closed</HelpKey>, or <HelpKey>Snoozed</HelpKey>.
+            <HelpKey>Snoozed</HelpKey>, or <HelpKey>Closed</HelpKey>.
           </p>
           <HelpCallout kind="see" label="What you'll see">
             Each tab shows a count of the conversations in it. If a tab is empty, the center shows «No
