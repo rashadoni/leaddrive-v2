@@ -324,6 +324,10 @@ const bulkSchema = z.object({
   webChatSessionIds: z.array(z.string().min(1)).max(MAX_BULK_IDS).default([]),
   threadRefs: z.array(threadRefSchema).max(MAX_BULK_IDS).default([]),
   message: z.string().max(4000).optional(),
+  // A customer's thread can hold several conversations, one per channel (lib/inbox/thread-conversations).
+  // Closing it closes them all, but the farewell goes once — to the channel the manager is answering in,
+  // not to his Instagram, WhatsApp and Messenger at the same time. Absent: every closed one gets it.
+  farewellIds: z.array(z.string().min(1)).max(MAX_BULK_IDS).optional(),
   operationId: z.string().uuid().optional(),
   closeOutcome: z.enum(CLOSE_OUTCOMES).optional(),
   closeOutcomeReason: z.string().max(2000).optional(),
@@ -546,8 +550,13 @@ export const POST = withInboxSessionWrite(async (req: NextRequest, auth) => {
     //    bound latency. Every target has a durable per-operation claim, so a
     //    lost HTTP response or a concurrent retry cannot issue the send twice.
     const sendResults = new Map<string, BulkFarewellDelivery>()
+    const farewellIds = parsed.data.farewellIds ? new Set(parsed.data.farewellIds) : null
+    // A thread shell made from a client threadRef is one channel on its own — it keeps its farewell.
+    const farewellTargets = farewellIds
+      ? effectiveConversations.filter((conv) => farewellIds.has(conv.id) || threadKeyByConvId.has(conv.id))
+      : effectiveConversations
     if (message && operationId) {
-      for (const group of chunk(effectiveConversations, SEND_CHUNK)) {
+      for (const group of chunk(farewellTargets, SEND_CHUNK)) {
         await Promise.all(group.map(async (conv: ConversationSnapshot & { tags: string[] }) => {
           const delivery = await executeIdempotentBulkFarewell({
             organizationId: orgId,
@@ -604,11 +613,13 @@ export const POST = withInboxSessionWrite(async (req: NextRequest, auth) => {
         ))
       }
     }
+    const farewellTargetIds = new Set(farewellTargets.map((conv) => conv.id))
     for (const conv of effectiveConversations) {
       const delivery = sendResults.get(conv.id)
       results.push(convResult(conv.id, {
         ok: true,
-        ...(message ? { sent: delivery?.sent === true } : {}),
+        // The customer's other channels were closed without a farewell on purpose — not a failed send.
+        ...(message && farewellTargetIds.has(conv.id) ? { sent: delivery?.sent === true } : {}),
         ...(delivery?.error ? { error: delivery.error } : {}),
         ...(delivery?.deliveryUnknown ? { deliveryUnknown: true } : {}),
         ...(delivery?.replayed ? { replayed: true } : {}),

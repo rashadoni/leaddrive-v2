@@ -226,6 +226,41 @@ describe("files in the card, as in Bordio", () => {
     } finally { restore() }
   })
 
+  // Nazrin, 2026-11-15: «papka yükləmək olsa daha rahat olar… bir dəfəyə bir neçə sənəd yükləyə bilək».
+  it("takes several files or a whole folder at once, says what it added, and names what it could not", async () => {
+    await open()
+    const input = container.querySelector('[data-testid="task-files-input"]') as HTMLInputElement
+    expect(input.multiple).toBe(true)
+    const folderInput = container.querySelector('[data-testid="task-folder-input"]') as HTMLInputElement
+    expect(folderInput.hasAttribute("webkitdirectory")).toBe(true)
+    expect(byText("button", "Папка")).toBeTruthy()
+
+    const logo = new File(["x"], "logo.png", { type: "image/png" })
+    const brief = new File(["%PDF-"], "brif.pdf", { type: "application/pdf" })
+    const svg = new File(["<svg/>"], "logo.svg", { type: "image/svg+xml" })
+    Object.defineProperty(input, "files", { configurable: true, value: [logo, brief, svg] })
+    await act(async () => { input.dispatchEvent(new Event("change", { bubbles: true })) })
+    await flush()
+    const parts = calls.filter((c) => c.startsWith("POST /api/v1/tasks/t1/files/parts?"))
+    expect(parts.map((c) => new URLSearchParams(c.split("?")[1].split(" ")[0]).get("name"))).toEqual(["brif.pdf", "logo.png"])
+    const note = container.querySelector('[data-testid="task-files-sent"]')?.textContent ?? ""
+    expect(note).toContain("Добавлено файлов: 2.")
+    expect(note).toContain("Не добавлено файлов: 1:")
+    expect(note).toContain("logo.svg — такой тип файла не принимается")
+
+    // A folder dropped on the card: the frame says where to let go, and the files go up.
+    const zone = container.querySelector('[data-testid="task-panel"]')!.parentElement!
+    const files = [new File(["y"], "afisha.png", { type: "image/png" })]
+    const dataTransfer = { types: ["Files"], items: [], files, dropEffect: "none" }
+    const dragEvent = (kind: string) => { const event = new Event(kind, { bubbles: true, cancelable: true }); Object.defineProperty(event, "dataTransfer", { value: dataTransfer }); return event }
+    await act(async () => { zone.dispatchEvent(dragEvent("dragenter")) })
+    expect(container.querySelector('[data-testid="task-files-drop"]')?.textContent).toContain("Отпустите файлы или папку здесь")
+    await act(async () => { zone.dispatchEvent(dragEvent("drop")) })
+    await flush()
+    expect(container.querySelector('[data-testid="task-files-drop"]')).toBeNull()
+    expect(calls.some((c) => c.includes("/files/parts?") && c.includes("name=afisha.png"))).toBe(true)
+  })
+
   it("a file is removed in two clicks", async () => {
     const restore = await withFiles([])
     try {
