@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from "react"
 import { Link2, Link2Off, Loader2, Search, UserCheck } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import type { InboxThreadConversation } from "@/lib/inbox-channels"
 import { channelLabel } from "@/lib/inbox-channels"
 import { isContactLinkablePlatform } from "@/lib/inbox/contact-link-platforms"
@@ -168,15 +169,17 @@ export function ContactLinkBar({
         <div key={conversation.key} className="flex flex-wrap items-center gap-2">
           <Link2 className="h-3.5 w-3.5 text-emerald-600" />
           <span className="text-muted-foreground">{text.linkedTo(who(conversation))}</span>
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             disabled={busy}
             onClick={() => unlink(conversation.id)}
-            className="ml-auto inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
+            className="ml-auto h-7 gap-1 px-2"
           >
             <Link2Off className="h-3.5 w-3.5" />
             {text.unlink}
-          </button>
+          </Button>
         </div>
       ))}
 
@@ -186,30 +189,33 @@ export function ContactLinkBar({
             <Link2Off className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-muted-foreground">{text.unlinked(who(unlinked))}</span>
             {!searching && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 disabled={busy}
                 onClick={() => setSearching(true)}
-                className="ml-auto inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
+                className="ml-auto h-7 gap-1 px-2"
               >
                 <UserCheck className="h-3.5 w-3.5" />
                 {text.same}
-              </button>
+              </Button>
             )}
           </div>
 
           {suggestions.map((suggestion) => (
             <div key={suggestion.id} className="flex flex-wrap items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 dark:border-emerald-900 dark:bg-emerald-950/30">
               <span>{text.suggest(readable(suggestion.matchedValue), suggestion.fullName)}</span>
-              <button
+              <Button
                 type="button"
+                size="sm"
                 disabled={busy}
                 onClick={() => link(unlinked.id, suggestion.id, "suggestion")}
-                className="ml-auto inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                className="ml-auto h-7 gap-1 px-2"
               >
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
                 {text.yes}
-              </button>
+              </Button>
             </div>
           ))}
 
