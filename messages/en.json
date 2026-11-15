@@ -28751,6 +28751,8 @@
     "snooze_3h": "3 hours",
     "snooze_tomorrow": "Tomorrow",
     "moveToFolder": "Move to folder",
+    "moreActionsMenu": "More",
+    "noFolder": "No folder",
     "createFolderFirst": "Create a folder first",
     "foldersTooltip": "Folders apply to social-channel conversations",
     "composer_reply": "Reply",

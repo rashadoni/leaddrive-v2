@@ -15,7 +15,7 @@
  * parity and is verified.
  */
 import { nativeTikTokReplyTarget } from "@/lib/tiktok-messaging/identity"
-import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react"
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useLocale, useTranslations } from "next-intl"
@@ -60,12 +60,13 @@ import {
 import {
   Search, Send, Plus, Loader2, Inbox as InboxIcon, ArrowLeft,
   User, Users, UserX, UserPlus, Bot, Ban, Hash, Folder, Check, Clock,
-  MoreHorizontal, Paperclip, Smile, Sparkles, Zap, SlidersHorizontal,
-  Mail, Phone, Eye, CalendarClock, ChevronDown, X, RotateCcw, CheckCircle2,
+  Paperclip, Smile, Sparkles, Zap, SlidersHorizontal,
+  Mail, Phone, Eye, CalendarClock, ChevronDown, ChevronRight, X, RotateCcw, CheckCircle2,
   Trash2, Megaphone, AtSign, Smartphone, PanelRight,
 } from "lucide-react"
 import { messageAuthor } from "@/lib/inbox/message-author"
 import { isMediaPlaceholder, placeholderView } from "@/lib/inbox/media-placeholder"
+import { threadHeaderActionInline, threadHeaderTier, type ThreadHeaderAction } from "@/lib/inbox/thread-header-layout"
 import {
   CHANNELS, REPLY_CHANNELS, ChannelIcon, channelColor, channelLabel,
   avatarTint, initials, extractQuickReplies, appendTag, dropTag, convStatusTab, convMatchesView, extractAttachments,
@@ -533,7 +534,6 @@ export default function InboxV2Page() {
   // Phase 2 — conversation status (close/reopen) + snooze. Only conversations
   // backed by a SocialConversation row (socialConversationId present) carry these.
   const [statusSaving, setStatusSaving] = useState(false)
-  const [showSnooze, setShowSnooze] = useState(false)
   const [agents, setAgents] = useState<{ id: string; name: string | null }[]>([])
   const [showAssign, setShowAssign] = useState(false)
   const [showParticipants, setShowParticipants] = useState(false)
@@ -552,21 +552,26 @@ export default function InboxV2Page() {
   // Context-panel declutter: empty label/tag sections collapse to a "+ add" row until expanded.
   const [showAddConvLabel, setShowAddConvLabel] = useState(false)
   const [showAddContactTag, setShowAddContactTag] = useState(false)
-  const [showFolderAssign, setShowFolderAssign] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const replyInputRef = useRef<HTMLTextAreaElement>(null)
   const composerRef = useRef<HTMLDivElement>(null)
-  const snoozeRef = useRef<HTMLDivElement>(null)
   const assignRef = useRef<HTMLDivElement>(null)
   const participantsRef = useRef<HTMLDivElement>(null)
+  // «Daha çox» in the thread header: every action that does not stand in the
+  // header at the column's width, written out (thread-header-layout.ts). A list
+  // action (assign, participants, snooze, folder) opens its list in place.
+  const [showMore, setShowMore] = useState(false)
+  const [moreView, setMoreView] = useState<"root" | "assign" | "participants" | "snooze" | "folder">("root")
+  const moreRef = useRef<HTMLDivElement>(null)
+  const [threadHeaderEl, setThreadHeaderEl] = useState<HTMLElement | null>(null)
+  const [threadHeaderWidth, setThreadHeaderWidth] = useState(0)
   // The customer card on the right is closed until the person opens it from the
   // avatar in the thread header (owner, 2026-11-15: it stood open for good and
   // squeezed the conversation). It closes on any press outside it or Escape.
   const [contactPanelOpen, setContactPanelOpen] = useState(false)
   const contactPanelRef = useRef<HTMLElement>(null)
   const contactPanelToggleRef = useRef<HTMLButtonElement>(null)
-  const folderAssignRef = useRef<HTMLDivElement>(null)
   const selectedContactIdRef = useRef<string | null>(null)
   const selectedScidRef = useRef<string | null>(null)
   // Phase 6 — realtime SSE: ref so the stream's refresh handler always calls the
@@ -785,7 +790,6 @@ export default function InboxV2Page() {
   const setConvFolder = async (folderId: string | null) => {
     const scid = selectedConvo?.socialConversationId
     if (!scid) return
-    setShowFolderAssign(false)
     setStatusSaving(true)
     try {
       const res = await fetch(`/api/v1/inbox/conversations/${scid}`, {
@@ -1166,11 +1170,11 @@ export default function InboxV2Page() {
 
   // Phase 4 — close the emoji / quick-reply popovers on outside click or Escape.
   useEffect(() => {
-    if (!showEmoji && !showQuickReplies && !showAiAssist && !showSnooze && !showAssign && !showFolderAssign && !showParticipants) return
-    const close = () => { setShowEmoji(false); setShowQuickReplies(false); setShowAiAssist(false); setShowSnooze(false); setShowAssign(false); setShowFolderAssign(false); setShowParticipants(false) }
+    if (!showEmoji && !showQuickReplies && !showAiAssist && !showAssign && !showParticipants && !showMore) return
+    const close = () => { setShowEmoji(false); setShowQuickReplies(false); setShowAiAssist(false); setShowAssign(false); setShowParticipants(false); setShowMore(false) }
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node
-      const inside = composerRef.current?.contains(t) || snoozeRef.current?.contains(t) || assignRef.current?.contains(t) || folderAssignRef.current?.contains(t) || participantsRef.current?.contains(t)
+      const inside = composerRef.current?.contains(t) || assignRef.current?.contains(t) || participantsRef.current?.contains(t) || moreRef.current?.contains(t)
       if (!inside) close()
     }
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close() }
@@ -1180,7 +1184,30 @@ export default function InboxV2Page() {
       document.removeEventListener("mousedown", onDown)
       document.removeEventListener("keydown", onKey)
     }
-  }, [showEmoji, showQuickReplies, showAiAssist, showSnooze, showAssign, showFolderAssign, showParticipants])
+  }, [showEmoji, showQuickReplies, showAiAssist, showAssign, showParticipants, showMore])
+
+  // The thread header's width decides which actions stand in it (see
+  // thread-header-layout.ts). Measured before paint, then on every resize: the
+  // column changes with the window, the CRM menu and the list beside it.
+  useLayoutEffect(() => {
+    if (!threadHeaderEl) return
+    const measure = () => setThreadHeaderWidth(Math.round(threadHeaderEl.getBoundingClientRect().width))
+    measure()
+    if (typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver(measure)
+    observer.observe(threadHeaderEl)
+    return () => observer.disconnect()
+  }, [threadHeaderEl])
+  const threadHeaderLayout = threadHeaderTier(threadHeaderWidth)
+
+  // «Daha çox» opens on its list of actions, never on a list left from last time,
+  // and never on top of another header list still standing open.
+  const toggleMore = () => {
+    setMoreView("root")
+    setShowAssign(false)
+    setShowParticipants(false)
+    setShowMore((open) => !open)
+  }
 
   // The reply box grows with its text (owner, 2026-11-15: a long text pasted
   // into the one-line box could not be read back). It starts one line high,
@@ -1485,7 +1512,6 @@ export default function InboxV2Page() {
   const setConvSnooze = async (untilMs: number | null) => {
     const scid = selectedConvo?.socialConversationId
     if (!scid) return
-    setShowSnooze(false)
     setStatusSaving(true)
     try {
       const res = await fetch(`/api/v1/inbox/conversations/${scid}`, {
@@ -2259,10 +2285,18 @@ export default function InboxV2Page() {
       <section className="flex-1 min-w-0 bg-card flex flex-col">
         {selectedConvo ? (
           <>
-            <header className="h-14 border-b border-border/60 flex items-center justify-between gap-2 px-4 shrink-0">
+            <header
+              ref={setThreadHeaderEl}
+              data-testid="inbox-thread-header"
+              data-layout={threadHeaderLayout}
+              className="min-h-14 border-b border-border/60 flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-1 shrink-0"
+            >
               {/* Never narrower than the avatar: it opens the customer card, and the
-                  actions on the right used to slide over it in a narrow thread. */}
-              <div className="flex items-center gap-3 min-w-[4.5rem] lg:min-w-11">
+                  actions on the right used to slide over it in a narrow thread. It
+                  takes the room the actions leave; should the avatar and the actions
+                  ever not fit side by side, the actions go to a second line instead
+                  of past the column's edge, where the inbox clips them. */}
+              <div className="flex flex-1 items-center gap-3 min-w-[4.5rem] lg:min-w-11">
                 <button onClick={() => setSelected(null)} className="lg:hidden p-1 hover:bg-muted rounded"><ArrowLeft className="h-4 w-4" /></button>
                 {/* The avatar opens the customer card; the line under the name says so in words. */}
                 <Hint text={contactPanelVisible ? t("contactPanelHintOpen") : t("contactPanelHint")} side="bottom" align="start">
@@ -2294,7 +2328,7 @@ export default function InboxV2Page() {
                 </button>
                 </Hint>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="ml-auto flex flex-wrap items-center justify-end gap-1" data-testid="inbox-thread-actions">
                 {(() => {
                   const phone = conversationPhone(selectedConvo)
                   const whatsappThread = isWhatsAppConversation(selectedConvo)
@@ -2348,266 +2382,374 @@ export default function InboxV2Page() {
                     />
                   )
                 })()}
-                <div ref={assignRef} className="relative">
-                  {(() => {
-                    const scid = selectedConvo.socialConversationId
-                    const assignee = agents.find((a) => a.id === selectedConvo.assignedTo)
-                    return (
-                      <>
-                        <button
-                          type="button"
-                          disabled={!scid || statusSaving}
-                          onClick={() => setShowAssign((v) => !v)}
-                          title={!scid ? t("assignTooltip") : t("assign")}
-                          className={cn(
-                            "flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors",
-                            scid && !statusSaving ? "text-muted-foreground hover:bg-muted hover:text-foreground" : "text-muted-foreground opacity-50 cursor-not-allowed",
-                            showAssign && "bg-muted text-foreground",
-                          )}
-                        >
-                          <User className="h-3.5 w-3.5" />
-                          <span className="max-w-24 truncate">{assignee?.name || (selectedConvo.assignedTo ? t("assigned") : t("assign"))}</span>
-                          <ChevronDown className="h-3 w-3" />
-                        </button>
-                        {showAssign && (
-                          <div className="absolute right-0 top-full mt-1 z-10 w-48 max-h-64 overflow-y-auto rounded-lg border bg-popover p-1 shadow-lg">
-                            <button type="button" onClick={() => setConvAssign(null)} className="w-full text-left rounded-md px-2.5 py-1.5 text-xs hover:bg-muted text-muted-foreground">
-                              {t("unassign")}
-                            </button>
-                            {agents.map((a) => (
-                              <button
-                                key={a.id}
-                                type="button"
-                                onClick={() => setConvAssign(a.id)}
-                                className={cn("w-full text-left rounded-md px-2.5 py-1.5 text-xs hover:bg-muted truncate", a.id === selectedConvo.assignedTo && "font-medium text-primary")}
-                              >
-                                {a.name || a.id}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    )
-                  })()}
-                </div>
-                <div ref={participantsRef} className="relative">
-                  {(() => {
-                    const scid = selectedConvo.socialConversationId
-                    const parts = selectedConvo.participants ?? []
-                    // [P3-followup] Enabled for ALL channels including web-chat: the inbox GET now
-                    // ensure-creates a SocialConversation per web-chat session (keyed w:<sessionId>), so
-                    // `scid` is populated and the first operand makes this true. Email/sms get their scid
-                    // eagerly on send (or via this add-participant POST). The old webChatSessionId gate is gone.
-                    const canParticipate = !!(scid || selectedConvo.contactId || selectedConvo.contactEmail || selectedConvo.contactPhone)
-                    return (
-                      <>
-                        <button
-                          type="button"
-                          disabled={!canParticipate || statusSaving}
-                          onClick={() => setShowParticipants((v) => !v)}
-                          title={!canParticipate ? t("assignTooltip") : t("participants")}
-                          className={cn(
-                            "flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors",
-                            canParticipate && !statusSaving ? "text-muted-foreground hover:bg-muted hover:text-foreground" : "text-muted-foreground opacity-50 cursor-not-allowed",
-                            showParticipants && "bg-muted text-foreground",
-                            !!myUserId && parts.includes(myUserId) && "ring-1 ring-primary/40", // I'm a participant — highlight
-                          )}
-                        >
-                          <UserPlus className="h-3.5 w-3.5" />
-                          {parts.length > 0 ? (
-                            <span className="flex -space-x-1.5">
-                              {parts.slice(0, 3).map((uid) => {
-                                const nm = agents.find((x) => x.id === uid)?.name || uid
-                                return (
-                                  <span key={uid} title={nm} className={cn("h-5 w-5 rounded-full ring-1 ring-background flex items-center justify-center text-[9px] font-semibold text-white", avatarTint(nm))}>
-                                    {initials(nm)}
-                                  </span>
-                                )
-                              })}
-                              {parts.length > 3 && <span className="h-5 w-5 rounded-full ring-1 ring-background bg-muted text-muted-foreground flex items-center justify-center text-[9px] font-semibold">+{parts.length - 3}</span>}
-                            </span>
-                          ) : (
-                            <span>{t("participants")}</span>
-                          )}
-                          <ChevronDown className="h-3 w-3" />
-                        </button>
-                        {showParticipants && (
-                          <div className="absolute right-0 top-full mt-1 z-10 w-52 max-h-64 overflow-y-auto rounded-lg border bg-popover p-1 shadow-lg">
-                            <div className="px-2.5 py-1 text-[10px] uppercase tracking-wide text-muted-foreground/70">{t("participantsHint")}</div>
-                            {agents.map((a) => {
-                              const on = parts.includes(a.id)
-                              return (
-                                <button
-                                  key={a.id}
-                                  type="button"
-                                  onClick={() => (on ? removeParticipant(a.id) : addParticipant(a.id))}
-                                  className={cn("w-full text-left rounded-md px-2.5 py-1.5 text-xs hover:bg-muted truncate flex items-center justify-between gap-2", on && "font-medium text-primary")}
-                                >
-                                  <span className="truncate">{a.name || a.id}</span>
-                                  {on ? <Check className="h-3.5 w-3.5 shrink-0" /> : <Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        )}
-                      </>
-                    )
-                  })()}
-                </div>
                 {(() => {
+                  // Everything after the call: which of these stand in the header and
+                  // which are items of «Daha çox» depends on the column's width
+                  // (thread-header-layout.ts). Each list is written once and shown
+                  // either under its header button or inside «Daha çox».
                   const scid = selectedConvo.socialConversationId
+                  const inline = (action: ThreadHeaderAction) => threadHeaderActionInline(threadHeaderLayout, action)
+                  const assignee = agents.find((a) => a.id === selectedConvo.assignedTo)
+                  const parts = selectedConvo.participants ?? []
+                  // [P3-followup] Enabled for ALL channels including web-chat: the inbox GET now
+                  // ensure-creates a SocialConversation per web-chat session (keyed w:<sessionId>), so
+                  // `scid` is populated and the first operand makes this true. Email/sms get their scid
+                  // eagerly on send (or via this add-participant POST). The old webChatSessionId gate is gone.
+                  const canParticipate = !!(scid || selectedConvo.contactId || selectedConvo.contactEmail || selectedConvo.contactPhone)
                   const isClosed = selectedConvo.status === "resolved" || selectedConvo.status === "archived"
+                  const isSnoozed = selectedConvo.snoozedUntil ? new Date(selectedConvo.snoozedUntil).getTime() > Date.now() : false
+                  const folder = folders.find((f) => f.id === selectedConvo.folderId)
+                  const canFolder = !!scid && folders.length > 0
+                  const closeOrReopen = () => {
+                    if (!scid) return
+                    if (isClosed) { setConvStatus("open"); return }
+                    // Close goes through the outcome dialog (Whelp UX) — reuse the bulk
+                    // pipeline with a single-conversation selection.
+                    setBulkSelected(new Set([convoKey(selectedConvo)]))
+                    openBulkClose()
+                  }
+                  const listItemClass = "w-full text-left rounded-md px-2.5 py-1.5 text-xs hover:bg-muted truncate"
+
+                  const assignOptions = (
+                    <>
+                      <button type="button" onClick={() => { setShowMore(false); setConvAssign(null) }} className={cn(listItemClass, "text-muted-foreground")}>
+                        {t("unassign")}
+                      </button>
+                      {agents.map((a) => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => { setShowMore(false); setConvAssign(a.id) }}
+                          className={cn(listItemClass, a.id === selectedConvo.assignedTo && "font-medium text-primary")}
+                        >
+                          {a.name || a.id}
+                        </button>
+                      ))}
+                    </>
+                  )
+                  const participantOptions = (
+                    <>
+                      <div className="px-2.5 py-1 text-[10px] uppercase tracking-wide text-muted-foreground/70">{t("participantsHint")}</div>
+                      {agents.map((a) => {
+                        const on = parts.includes(a.id)
+                        return (
+                          <button
+                            key={a.id}
+                            type="button"
+                            onClick={() => {
+                              if (on) { removeParticipant(a.id); return }
+                              setShowMore(false)
+                              addParticipant(a.id)
+                            }}
+                            className={cn(listItemClass, "flex items-center justify-between gap-2", on && "font-medium text-primary")}
+                          >
+                            <span className="truncate">{a.name || a.id}</span>
+                            {on ? <Check className="h-3.5 w-3.5 shrink-0" /> : <Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                          </button>
+                        )
+                      })}
+                    </>
+                  )
+                  const snoozeOptions = (
+                    <>
+                      {[
+                        { key: "snooze_1h", ms: 3_600_000 },
+                        { key: "snooze_3h", ms: 3 * 3_600_000 },
+                        { key: "snooze_tomorrow", ms: 24 * 3_600_000 },
+                      ].map((o) => (
+                        <button key={o.key} type="button" onClick={() => { setShowMore(false); setConvSnooze(Date.now() + o.ms) }} className={listItemClass}>
+                          {t(o.key)}
+                        </button>
+                      ))}
+                    </>
+                  )
+                  const folderOptions = (
+                    <>
+                      <button type="button" onClick={() => { setShowMore(false); setConvFolder(null) }} className={cn(listItemClass, "text-muted-foreground")}>
+                        {t("noFolder")}
+                      </button>
+                      {folders.map((f) => (
+                        <button key={f.id} type="button" onClick={() => { setShowMore(false); setConvFolder(f.id) }} className={cn(listItemClass, f.id === selectedConvo.folderId && "font-medium text-primary")}>
+                          {f.name}
+                        </button>
+                      ))}
+                    </>
+                  )
+
+                  // One written-out line of «Daha çox». An action that cannot run here
+                  // says why under its name instead of greying out without a word.
+                  const moreItem = (item: {
+                    id: string
+                    icon: ReactNode
+                    label: string
+                    value?: string | null
+                    why?: string | null
+                    disabled?: boolean
+                    tone?: "danger" | "success" | "primary"
+                    opensList?: boolean
+                    onSelect: () => void
+                  }) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      data-more-item={item.id}
+                      disabled={!!item.why || item.disabled}
+                      onClick={item.onSelect}
+                      className={cn(
+                        "flex w-full items-start gap-2 rounded-md px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent",
+                        item.tone === "danger" && "hover:bg-destructive/10 hover:text-destructive",
+                        item.tone === "success" && "text-emerald-700 dark:text-emerald-400",
+                        item.tone === "primary" && "font-medium text-primary",
+                      )}
+                    >
+                      <span className="mt-px shrink-0 opacity-80">{item.icon}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block">{item.label}</span>
+                        {item.why && <span className="block text-[11px] leading-snug text-muted-foreground">{item.why}</span>}
+                      </span>
+                      {item.value && <span className="max-w-24 shrink-0 truncate text-muted-foreground">{item.value}</span>}
+                      {item.opensList && <ChevronRight className="mt-px h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                    </button>
+                  )
+                  const moreList = (title: string, options: ReactNode) => (
+                    <>
+                      <button type="button" onClick={() => setMoreView("root")} className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground">
+                        <ArrowLeft className="h-3.5 w-3.5 shrink-0" /> {tc("back")}
+                      </button>
+                      <div className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold text-foreground">{title}</div>
+                      <div className="max-h-64 overflow-y-auto">{options}</div>
+                    </>
+                  )
+
                   return (
-                    <div className="flex items-center gap-1">
-                      {/* Trash, not destruction — see the DELETE handler. Shown to
-                          managers only: an agent clearing a thread another agent
-                          is working cannot undo it themselves. */}
-                      {scid && canManageConversations && (
-                        view === "trash" ? (
+                    <>
+                      {inline("assign") && (
+                        <div ref={assignRef} className="relative">
                           <button
                             type="button"
-                            disabled={trashSaving}
-                            onClick={() => void restoreConversation(scid)}
-                            title={t("restoreConversation")}
-                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                            disabled={!scid || statusSaving}
+                            onClick={() => { setShowMore(false); setShowParticipants(false); setShowAssign((v) => !v) }}
+                            title={!scid ? t("assignTooltip") : t("assign")}
+                            className={cn(
+                              "flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors",
+                              scid && !statusSaving ? "text-muted-foreground hover:bg-muted hover:text-foreground" : "text-muted-foreground opacity-50 cursor-not-allowed",
+                              showAssign && "bg-muted text-foreground",
+                            )}
                           >
-                            <RotateCcw className="h-3.5 w-3.5" /> {t("restoreConversation")}
+                            <User className="h-3.5 w-3.5" />
+                            <span className="max-w-24 truncate">{assignee?.name || (selectedConvo.assignedTo ? t("assigned") : t("assign"))}</span>
+                            <ChevronDown className="h-3 w-3" />
+                          </button>
+                          {showAssign && (
+                            <div className="absolute right-0 top-full mt-1 z-10 w-48 max-h-64 overflow-y-auto rounded-lg border bg-popover p-1 shadow-lg">
+                              {assignOptions}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {inline("participants") && (
+                        <div ref={participantsRef} className="relative">
+                          <button
+                            type="button"
+                            disabled={!canParticipate || statusSaving}
+                            onClick={() => { setShowMore(false); setShowAssign(false); setShowParticipants((v) => !v) }}
+                            title={!canParticipate ? t("assignTooltip") : t("participants")}
+                            className={cn(
+                              "flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors",
+                              canParticipate && !statusSaving ? "text-muted-foreground hover:bg-muted hover:text-foreground" : "text-muted-foreground opacity-50 cursor-not-allowed",
+                              showParticipants && "bg-muted text-foreground",
+                              !!myUserId && parts.includes(myUserId) && "ring-1 ring-primary/40", // I'm a participant — highlight
+                            )}
+                          >
+                            <UserPlus className="h-3.5 w-3.5" />
+                            {parts.length > 0 ? (
+                              <span className="flex -space-x-1.5">
+                                {parts.slice(0, 3).map((uid) => {
+                                  const nm = agents.find((x) => x.id === uid)?.name || uid
+                                  return (
+                                    <span key={uid} title={nm} className={cn("h-5 w-5 rounded-full ring-1 ring-background flex items-center justify-center text-[9px] font-semibold text-white", avatarTint(nm))}>
+                                      {initials(nm)}
+                                    </span>
+                                  )
+                                })}
+                                {parts.length > 3 && <span className="h-5 w-5 rounded-full ring-1 ring-background bg-muted text-muted-foreground flex items-center justify-center text-[9px] font-semibold">+{parts.length - 3}</span>}
+                              </span>
+                            ) : (
+                              <span>{t("participants")}</span>
+                            )}
+                            <ChevronDown className="h-3 w-3" />
+                          </button>
+                          {showParticipants && (
+                            <div className="absolute right-0 top-full mt-1 z-10 w-52 max-h-64 overflow-y-auto rounded-lg border bg-popover p-1 shadow-lg">
+                              {participantOptions}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {inline("lead") && (
+                        selectedConvo.linkedLead ? (
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/leads/${selectedConvo.linkedLead!.id}`)}
+                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" /> {t("linkedLeadOpen")}
                           </button>
                         ) : (
                           <button
                             type="button"
-                            disabled={trashSaving}
-                            onClick={() => void deleteConversation(scid)}
-                            title={t("deleteConversation")}
-                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                            disabled={!scid || statusSaving}
+                            onClick={openLeadConversion}
+                            title={t("leadHandoffAction")}
+                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <UserPlus className="h-3.5 w-3.5" /> {t("convertToLead")}
                           </button>
                         )
                       )}
-                      {selectedConvo.linkedLead ? (
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/leads/${selectedConvo.linkedLead!.id}`)}
-                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" /> {t("linkedLeadOpen")}
-                        </button>
-                      ) : (
+                      {inline("close") && (
                         <button
                           type="button"
                           disabled={!scid || statusSaving}
-                          onClick={openLeadConversion}
-                          title={t("leadHandoffAction")}
-                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+                          onClick={closeOrReopen}
+                          title={!scid ? t("statusTooltip") : isClosed ? t("reopenConv") : t("closeConv")}
+                          aria-label={isClosed ? t("reopenConv") : t("closeConv")}
+                          className={cn(
+                            "p-1.5 rounded-md text-muted-foreground",
+                            scid && !statusSaving ? "hover:bg-muted" : "opacity-50 cursor-not-allowed",
+                          )}
                         >
-                          <UserPlus className="h-3.5 w-3.5" /> {t("convertToLead")}
+                          {statusSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : isClosed ? <RotateCcw className="h-4 w-4" /> : <Check className="h-4 w-4" />}
                         </button>
                       )}
-                      <button
-                        type="button"
-                        disabled={!scid || statusSaving}
-                        onClick={() => {
-                          if (!scid) return
-                          if (isClosed) { setConvStatus("open"); return }
-                          // Close goes through the outcome dialog (Whelp UX) — reuse the bulk
-                          // pipeline with a single-conversation selection.
-                          setBulkSelected(new Set([convoKey(selectedConvo)]))
-                          openBulkClose()
-                        }}
-                        title={!scid ? t("statusTooltip") : isClosed ? t("reopenConv") : t("closeConv")}
-                        className={cn(
-                          "p-1.5 rounded-md text-muted-foreground",
-                          scid && !statusSaving ? "hover:bg-muted" : "opacity-50 cursor-not-allowed",
+                      <div ref={moreRef} className="relative">
+                        <button
+                          type="button"
+                          onClick={toggleMore}
+                          aria-expanded={showMore}
+                          aria-controls="inbox-thread-more-menu"
+                          data-testid="inbox-thread-more"
+                          className={cn(
+                            "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                            showMore && "bg-muted text-foreground",
+                          )}
+                        >
+                          {/* A snoozed thread used to show it with an amber clock in the header; the clock now marks «Daha çox», where «Oyat» is. */}
+                          {isSnoozed && <Clock className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />}
+                          <span className="whitespace-nowrap">{t("moreActionsMenu")}</span>
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                        {showMore && (
+                          <div
+                            id="inbox-thread-more-menu"
+                            data-testid="inbox-thread-more-menu"
+                            className="absolute right-0 top-full mt-1 z-10 w-64 rounded-lg border bg-popover p-1 shadow-lg"
+                          >
+                            {moreView === "assign" ? moreList(t("assign"), assignOptions)
+                              : moreView === "participants" ? moreList(t("participants"), participantOptions)
+                              : moreView === "snooze" ? moreList(t("snooze"), snoozeOptions)
+                              : moreView === "folder" ? moreList(t("moveToFolder"), folderOptions)
+                              : (
+                                <>
+                                  {!inline("assign") && moreItem({
+                                    id: "assign",
+                                    icon: <User className="h-3.5 w-3.5" />,
+                                    label: t("assign"),
+                                    value: assignee?.name || (selectedConvo.assignedTo ? t("assigned") : null),
+                                    why: !scid ? t("assignTooltip") : null,
+                                    disabled: statusSaving,
+                                    opensList: true,
+                                    onSelect: () => setMoreView("assign"),
+                                  })}
+                                  {!inline("participants") && moreItem({
+                                    id: "participants",
+                                    icon: <UserPlus className="h-3.5 w-3.5" />,
+                                    label: t("participants"),
+                                    value: parts.length > 0 ? String(parts.length) : null,
+                                    why: !canParticipate ? t("assignTooltip") : null,
+                                    disabled: statusSaving,
+                                    opensList: true,
+                                    onSelect: () => setMoreView("participants"),
+                                  })}
+                                  {!inline("lead") && (selectedConvo.linkedLead
+                                    ? moreItem({
+                                        id: "lead",
+                                        icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+                                        label: t("linkedLeadOpen"),
+                                        tone: "success",
+                                        onSelect: () => { setShowMore(false); router.push(`/leads/${selectedConvo.linkedLead!.id}`) },
+                                      })
+                                    : moreItem({
+                                        id: "lead",
+                                        icon: <UserPlus className="h-3.5 w-3.5" />,
+                                        label: t("convertToLead"),
+                                        tone: "primary",
+                                        disabled: !scid || statusSaving,
+                                        onSelect: () => { setShowMore(false); openLeadConversion() },
+                                      }))}
+                                  {!inline("close") && moreItem({
+                                    id: "close",
+                                    icon: isClosed ? <RotateCcw className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />,
+                                    label: isClosed ? t("reopenConv") : t("closeConv"),
+                                    why: !scid ? t("statusTooltip") : null,
+                                    disabled: statusSaving,
+                                    onSelect: () => { setShowMore(false); closeOrReopen() },
+                                  })}
+                                  {isSnoozed
+                                    ? moreItem({
+                                        id: "snooze",
+                                        icon: <Clock className="h-3.5 w-3.5 text-amber-500" />,
+                                        label: t("wake"),
+                                        disabled: statusSaving,
+                                        onSelect: () => { setShowMore(false); setConvSnooze(null) },
+                                      })
+                                    : moreItem({
+                                        id: "snooze",
+                                        icon: <Clock className="h-3.5 w-3.5" />,
+                                        label: t("snooze"),
+                                        why: !scid ? t("snoozeTooltip") : null,
+                                        disabled: statusSaving,
+                                        opensList: true,
+                                        onSelect: () => setMoreView("snooze"),
+                                      })}
+                                  {moreItem({
+                                    id: "folder",
+                                    icon: <Folder className="h-3.5 w-3.5" style={folder?.color ? { color: folder.color } : undefined} />,
+                                    label: t("moveToFolder"),
+                                    value: folder?.name,
+                                    why: !scid ? t("foldersTooltip") : !canFolder ? t("createFolderFirst") : null,
+                                    disabled: statusSaving,
+                                    opensList: true,
+                                    onSelect: () => setMoreView("folder"),
+                                  })}
+                                  {/* Trash, not destruction — see the DELETE handler. Shown to
+                                      managers only: an agent clearing a thread another agent
+                                      is working cannot undo it themselves. */}
+                                  {scid && canManageConversations && (view === "trash"
+                                    ? moreItem({
+                                        id: "trash",
+                                        icon: <RotateCcw className="h-3.5 w-3.5" />,
+                                        label: t("restoreConversation"),
+                                        tone: "success",
+                                        disabled: trashSaving,
+                                        onSelect: () => { setShowMore(false); void restoreConversation(scid) },
+                                      })
+                                    : moreItem({
+                                        id: "trash",
+                                        icon: <Trash2 className="h-3.5 w-3.5" />,
+                                        label: t("deleteConversation"),
+                                        tone: "danger",
+                                        disabled: trashSaving,
+                                        onSelect: () => { setShowMore(false); void deleteConversation(scid) },
+                                      }))}
+                                </>
+                              )}
+                          </div>
                         )}
-                      >
-                        {statusSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : isClosed ? <RotateCcw className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                      </button>
-                    </div>
+                      </div>
+                    </>
                   )
                 })()}
-                {(() => {
-                  const scid = selectedConvo.socialConversationId
-                  const isSnoozed = selectedConvo.snoozedUntil ? new Date(selectedConvo.snoozedUntil).getTime() > Date.now() : false
-                  if (isSnoozed) {
-                    return (
-                      <button
-                        type="button"
-                        disabled={statusSaving}
-                        onClick={() => setConvSnooze(null)}
-                        title={t("wake")}
-                        className={cn("p-1.5 rounded-md text-amber-500", statusSaving ? "opacity-50 cursor-not-allowed" : "hover:bg-muted")}
-                      >
-                        <Clock className="h-4 w-4" />
-                      </button>
-                    )
-                  }
-                  return (
-                    <div ref={snoozeRef} className="relative">
-                      <button
-                        type="button"
-                        disabled={!scid || statusSaving}
-                        onClick={() => setShowSnooze((v) => !v)}
-                        title={!scid ? t("snoozeTooltip") : t("snooze")}
-                        className={cn(
-                          "p-1.5 rounded-md text-muted-foreground",
-                          scid && !statusSaving ? "hover:bg-muted" : "opacity-50 cursor-not-allowed",
-                          showSnooze && "bg-muted text-foreground",
-                        )}
-                      >
-                        <Clock className="h-4 w-4" />
-                      </button>
-                      {showSnooze && (
-                        <div className="absolute right-0 top-full mt-1 z-10 w-36 rounded-lg border bg-popover p-1 shadow-lg">
-                          {[
-                            { key: "snooze_1h", ms: 3_600_000 },
-                            { key: "snooze_3h", ms: 3 * 3_600_000 },
-                            { key: "snooze_tomorrow", ms: 24 * 3_600_000 },
-                          ].map((o) => (
-                            <button key={o.key} type="button" onClick={() => setConvSnooze(Date.now() + o.ms)} className="w-full text-left rounded-md px-2.5 py-1.5 text-xs hover:bg-muted">
-                              {t(o.key)}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
-                {(() => {
-                  const scid = selectedConvo.socialConversationId
-                  const folder = folders.find((f) => f.id === selectedConvo.folderId)
-                  const canFolder = scid && folders.length > 0
-                  return (
-                    <div ref={folderAssignRef} className="relative">
-                      <button
-                        type="button"
-                        disabled={!canFolder || statusSaving}
-                        onClick={() => setShowFolderAssign((v) => !v)}
-                        title={!scid ? t("foldersTooltip") : folders.length === 0 ? t("createFolderFirst") : t("moveToFolder")}
-                        className={cn(
-                          "p-1.5 rounded-md text-muted-foreground",
-                          canFolder && !statusSaving ? "hover:bg-muted" : "opacity-50 cursor-not-allowed",
-                          showFolderAssign && "bg-muted text-foreground",
-                        )}
-                      >
-                        <Folder className="h-4 w-4" style={folder?.color ? { color: folder.color } : undefined} />
-                      </button>
-                      {showFolderAssign && (
-                        <div className="absolute right-0 top-full mt-1 z-10 w-44 max-h-64 overflow-y-auto rounded-lg border bg-popover p-1 shadow-lg">
-                          <button type="button" onClick={() => setConvFolder(null)} className="w-full text-left rounded-md px-2.5 py-1.5 text-xs hover:bg-muted text-muted-foreground">
-                            No folder
-                          </button>
-                          {folders.map((f) => (
-                            <button key={f.id} type="button" onClick={() => setConvFolder(f.id)} className={cn("w-full text-left rounded-md px-2.5 py-1.5 text-xs hover:bg-muted truncate", f.id === selectedConvo.folderId && "font-medium text-primary")}>
-                              {f.name}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
-                <button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></button>
               </div>
             </header>
 
