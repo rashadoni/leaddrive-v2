@@ -16,26 +16,42 @@ import { shapeHeatmap, shapeTrend, type HeatmapRow, type TrendDayRow } from "@/l
  * calendar days instead of UTC ones — Baku's day starts at 20:00 UTC, so a UTC «today» would
  * count last night's messages into today and drop the first four hours of it. The heatmap is
  * unchanged (the analytics page labels its axis UTC). An unknown zone is ignored, not a 500.
+ *
+ * The website chat (2026-11-15): its messages live in their own table (web_chat_messages) and
+ * are never copied into channel_messages, so both series read the two tables together — the
+ * visitor's messages as inbound, the bot's and the operators' as outbound. ?channel= keeps the
+ * website chat only with no filter or with channel=web-chat.
  */
 export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
   const { searchParams } = new URL(req.url)
   const tz = validTimeZone(searchParams.get("tz"))
-  const conds: Prisma.Sql[] = [Prisma.sql`"organizationId" = ${orgId}`]
+  // The two tables share the column names the window needs ("organizationId", "createdAt").
+  const shared: Prisma.Sql[] = [Prisma.sql`"organizationId" = ${orgId}`]
   const from = searchParams.get("from")
   const to = searchParams.get("to")
-  if (from) { const d = new Date(from); if (!isNaN(d.getTime())) conds.push(Prisma.sql`"createdAt" >= ${d}`) }
-  if (to) { const d = new Date(to); if (!isNaN(d.getTime())) conds.push(Prisma.sql`"createdAt" <= ${d}`) }
+  if (from) { const d = new Date(from); if (!isNaN(d.getTime())) shared.push(Prisma.sql`"createdAt" >= ${d}`) }
+  if (to) { const d = new Date(to); if (!isNaN(d.getTime())) shared.push(Prisma.sql`"createdAt" <= ${d}`) }
   const channel = searchParams.get("channel")?.trim()
+  const conds = [...shared]
   if (channel) conds.push(Prisma.sql`"channelType" = ${channel}`)
-  const where = Prisma.join(conds, " AND ")
+  const webConds = [...shared, Prisma.sql`"fromRole" IN ('visitor', 'bot', 'agent')`]
+  // Another channel asked for: the website chat contributes nothing (Postgres folds FALSE away).
+  if (channel && channel !== "web-chat") webConds.push(Prisma.sql`FALSE`)
+  const messages = Prisma.sql`
+    SELECT "createdAt", direction
+    FROM channel_messages
+    WHERE ${Prisma.join(conds, " AND ")}
+    UNION ALL
+    SELECT "createdAt", CASE WHEN "fromRole" = 'visitor' THEN 'inbound' ELSE 'outbound' END
+    FROM web_chat_messages
+    WHERE ${Prisma.join(webConds, " AND ")}`
 
   const heatRows = await prisma.$queryRaw<HeatmapRow[]>`
     SELECT EXTRACT(DOW FROM "createdAt")::int AS dow,
            EXTRACT(HOUR FROM "createdAt")::int AS hour,
            direction,
            COUNT(*)::int AS count
-    FROM channel_messages
-    WHERE ${where}
+    FROM (${messages}) m
     GROUP BY dow, hour, direction`
 
   // "createdAt" is a UTC wall clock without a zone; AT TIME ZONE 'UTC' gives it one, the second
@@ -47,8 +63,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
     SELECT to_char(${dayExpr}, 'YYYY-MM-DD') AS day,
            direction,
            COUNT(*)::int AS count
-    FROM channel_messages
-    WHERE ${where}
+    FROM (${messages}) m
     GROUP BY day, direction
     ORDER BY day`
 

@@ -68,6 +68,8 @@ let phoneStatusAfterRegister: string | null = null
 // request being refused — which is what we expect from today's live numbers.
 let isOnBizApp: boolean | "unreadable" = "unreadable"
 let templatesOk = true
+// Which `sync_type` Meta refuses at `/smb_app_data`, if any.
+let smbAppDataRefuses: string | null = null
 
 function stubGraph() {
   calls = []
@@ -94,6 +96,12 @@ function stubGraph() {
         : json({ error: { message: "(#200) You do not have permission" } }, 400)
     }
     if (url.endsWith("/111222333/subscribed_apps")) return subscribeOk ? json({ success: true }) : json({ error: { message: "(#200) no permission" } }, 400)
+    if (url.endsWith("/444555666/smb_app_data")) {
+      const syncType = (calls.at(-1)?.body as { sync_type?: string } | null)?.sync_type
+      return smbAppDataRefuses === syncType
+        ? json({ error: { message: "(#100) Sync already performed", code: 100 } }, 400)
+        : json({ messaging_product: "whatsapp", request_id: `req-${syncType}` })
+    }
     if (url.endsWith("/444555666/register")) {
       if (phoneStatusAfterRegister) phoneStatus = phoneStatusAfterRegister
       return registerOk ? json({ success: registerConfirmed }) : json({ error: { message: "(#133005) Two step verification PIN mismatch" } }, 400)
@@ -116,6 +124,7 @@ beforeEach(() => {
   phoneStatusAfterRegister = null
   isOnBizApp = "unreadable"
   templatesOk = true
+  smbAppDataRefuses = null
   db.templates.length = 0
   stubGraph()
 })
@@ -331,6 +340,45 @@ describe("a number that stays in the WhatsApp Business app (coexistence)", () =>
 
     expect(result).toMatchObject({ ok: true, coexistence: true, displayPhoneNumber: "+994 50 123 45 67" })
     expect(db.rows[0].phoneNumberId).toBe("444555666")
+  })
+
+  it("asks Meta for the contacts, then the chat history, once each, and keeps Meta's answers", async () => {
+    isOnBizApp = true
+
+    const result = await completeEmbeddedSignup({ ...input, signupEvent: "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" })
+
+    // Meta's order — contacts (step 1), then history (step 2) — with the business's own token.
+    const sync = calls.filter((c) => c.url.endsWith("/smb_app_data"))
+    expect(sync.map((c) => [c.method, c.auth, c.body])).toEqual([
+      ["POST", "Bearer BUSINESS_TOKEN", { messaging_product: "whatsapp", sync_type: "smb_app_state_sync" }],
+      ["POST", "Bearer BUSINESS_TOKEN", { messaging_product: "whatsapp", sync_type: "history" }],
+    ])
+    // The channel is saved first, so the webhooks the request sets off find their number.
+    expect(calls.findIndex((c) => c.url.endsWith("/smb_app_data"))).toBeGreaterThan(calls.findIndex((c) => c.url.endsWith("/subscribed_apps")))
+    expect(db.rows[0].settings.historyImport).toMatchObject({
+      contacts: { requestId: "req-smb_app_state_sync" },
+      history: { requestId: "req-history" },
+    })
+    expect(result).toMatchObject({ ok: true, historyImport: { history: { requestId: "req-history" } } })
+  })
+
+  it("keeps the connection and records Meta's words when it refuses the history request", async () => {
+    isOnBizApp = true
+    smbAppDataRefuses = "history"
+
+    const result = await completeEmbeddedSignup({ ...input, signupEvent: "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" })
+
+    expect(result).toMatchObject({ ok: true, coexistence: true })
+    expect(db.rows[0].isActive).toBe(true)
+    expect(db.rows[0].settings.historyImport).toMatchObject({
+      contacts: { requestId: "req-smb_app_state_sync" },
+      history: { error: "(#100) Sync already performed", errorCode: 100 },
+    })
+  })
+
+  it("asks for nothing on a number that moves to the API", async () => {
+    await completeEmbeddedSignup(input)
+    expect(calls.some((c) => c.url.endsWith("/smb_app_data"))).toBe(false)
   })
 
   it("still registers an ordinary number, exactly as before", async () => {

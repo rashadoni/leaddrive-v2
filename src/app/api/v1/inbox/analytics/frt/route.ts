@@ -20,6 +20,13 @@ import { conversationChannelSql, SANE_MIN_DATE } from "@/lib/inbox-analytics-fil
  *
  * Filters: ?from=&to= window (conversation createdAt), ?sla= (minutes, default 30, clamped
  * 1..1440), ?channel= (resolved channel — see inbox-analytics-filters), ?agent= (assignedTo).
+ *
+ * The website chat (2026-11-15): its messages live in web_chat_messages, never in channel_messages,
+ * so its sessions were never in the FRT aggregate. Each session is now one more conversation —
+ * first visitor message → first bot/operator message at or after it, the same pairing as
+ * stats/channels (web_fi / web_frt). Same window on the session's createdAt, ?agent= on its
+ * assignedUserId, and only with no ?channel= or channel=web-chat. Aging is unchanged: it reads
+ * open social_conversations, where the website chat already has its shell row.
  */
 export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
   const { searchParams } = new URL(req.url)
@@ -36,6 +43,14 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
   if (agent) convConds.push(Prisma.sql`"assignedTo" = ${agent}`)
   if (channel) convConds.push(conversationChannelSql(channel))
   const convWhere = Prisma.join(convConds, " AND ")
+
+  // Website-chat sessions in the same scope. Another channel asked for: none (Postgres folds FALSE away).
+  const webConds: Prisma.Sql[] = [Prisma.sql`"organizationId" = ${orgId}`]
+  if (from) { const d = new Date(from); if (!isNaN(d.getTime())) webConds.push(Prisma.sql`"createdAt" >= ${d}`) }
+  if (to) { const d = new Date(to); if (!isNaN(d.getTime())) webConds.push(Prisma.sql`"createdAt" <= ${d}`) }
+  if (agent) webConds.push(Prisma.sql`"assignedUserId" = ${agent}`)
+  if (channel && channel !== "web-chat") webConds.push(Prisma.sql`FALSE`)
+  const webWhere = Prisma.join(webConds, " AND ")
 
   const frtRows = await prisma.$queryRaw<{
     conversations: number
@@ -62,10 +77,29 @@ export const GET = withRlsAuth("inbox", "read", async (req, { orgId }) => {
       WHERE m.direction = 'outbound' AND m."createdAt" >= fi.first_in
       GROUP BY m."conversationId"
     ),
+    web_sessions AS (
+      SELECT id FROM web_chat_sessions WHERE ${webWhere}
+    ),
+    web_fi AS (
+      SELECT m."sessionId" AS sid, MIN(m."createdAt") AS first_in
+      FROM web_chat_messages m
+      JOIN web_sessions s ON s.id = m."sessionId"
+      WHERE m."fromRole" = 'visitor' AND m."createdAt" >= ${SANE_MIN_DATE}
+      GROUP BY m."sessionId"
+    ),
+    web_fr AS (
+      SELECT m."sessionId" AS sid, MIN(m."createdAt") AS first_reply
+      FROM web_chat_messages m
+      JOIN web_fi ON web_fi.sid = m."sessionId"
+      WHERE m."fromRole" IN ('bot', 'agent') AND m."createdAt" >= web_fi.first_in
+      GROUP BY m."sessionId"
+    ),
     j AS (
-      SELECT fi.cid,
-             EXTRACT(EPOCH FROM (fr.first_reply - fi.first_in)) / 60.0 AS frt_min
+      SELECT EXTRACT(EPOCH FROM (fr.first_reply - fi.first_in)) / 60.0 AS frt_min
       FROM fi LEFT JOIN fr ON fr.cid = fi.cid
+      UNION ALL
+      SELECT EXTRACT(EPOCH FROM (web_fr.first_reply - web_fi.first_in)) / 60.0
+      FROM web_fi LEFT JOIN web_fr ON web_fr.sid = web_fi.sid
     )
     SELECT COUNT(*)::int AS conversations,
            COUNT(frt_min)::int AS answered,

@@ -248,14 +248,25 @@ describe("Channel catalog — one tile per platform", () => {
       expect(choice()?.textContent).toContain("can no longer be used in the WhatsApp Business app")
     })
 
-    it("asks Meta for the coexistence path on the first option", async () => {
+    it("asks Meta for the coexistence path on the first option, after saying what happens there", async () => {
       await renderCatalog([], true)
       await click(action("whatsapp-business"))
 
       await click(choiceButtons()[0])
 
+      // First the explanation (owner's approved mock-up): the code to scan, the number staying on
+      // the phone, the contacts and six months of chats — and nothing started yet.
+      const dialog = container.querySelector<HTMLElement>('[data-testid="whatsapp-keep-app-dialog"]')
+      expect(dialog?.textContent).toContain("Scan the QR code in Meta's window with the app")
+      expect(dialog?.textContent).toContain("The last 6 months of chats come over")
+      expect(loginOptions).toEqual([])
+
+      const go = [...(dialog?.querySelectorAll<HTMLButtonElement>("button") ?? [])].find((b) => b.textContent === "Continue with Meta")
+      await click(go!)
+
       expect(loginOptions).toHaveLength(1)
       expect((loginOptions[0].extras as Record<string, unknown>).featureType).toBe("whatsapp_business_app_onboarding")
+      expect(container.querySelector('[data-testid="whatsapp-keep-app-dialog"]')).toBeNull()
     })
 
     it("leaves the old path exactly as it was on the second option", async () => {

@@ -28728,7 +28728,7 @@
     "channelName_webChat": "Sayt çatı",
     "todayCardTitle": "Bu gün",
     "todayCardUnit": "gələn mesaj",
-    "todayCardCountHint": "Bu gün müştərilərdən gələn mesajlar, bütün kanallar üzrə (sayt çatı hələ sayılmır). Sütunlar — son 7 gün, sonuncusu bu gündür.",
+    "todayCardCountHint": "Bu gün müştərilərdən gələn mesajlar, bütün kanallar üzrə, sayt çatı da daxil. Sütunlar — son 7 gün, sonuncusu bu gündür.",
     "todayCardDeltaHint": "Dünənlə müqayisə: dünən eyni saata qədər gələn mesajlarla.",
     "todayCardReply": "Orta cavab",
     "todayCardReplyHint": "Bu gün başlayan söhbətlərdə ilk cavaba qədər adi vaxt (median). AI cavabları da sayılır.",
@@ -33214,6 +33214,7 @@
   "whatsappSignupWindow": {
     "title": "WhatsApp-ı qoşmaq",
     "description": "Meta daxil olmağı, şirkəti və WhatsApp nömrəsini seçməyi xahiş edəcək. Bitəndə bu pəncərə bağlanacaq, nömrə isə CRM-də görünəcək.",
+    "keepAppDescription": "Nömrə telefondakı WhatsApp Business tətbiqində qalır. Meta pəncərəsində QR-kodu bu tətbiqlə skan edin (və ya Meta-nın tətbiqə göndərdiyi mesajda qoşulmanı təsdiqləyin) və tarixçəni paylaşmağa icazə verin — kontaktlar və 6 ayın yazışması CRM-ə gələcək.",
     "button": "Facebook ilə davam et",
     "working": "Meta gözlənilir…",
     "done": "Hazırdır — pəncərəni bağlaya bilərsiniz.",

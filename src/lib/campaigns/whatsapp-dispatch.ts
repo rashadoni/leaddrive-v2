@@ -110,6 +110,8 @@ export async function deliverWhatsAppCampaignRecipient(row: {
       where: {
         organizationId: row.organizationId, channelConfigId: row.channelConfigId,
         channelType: "whatsapp", direction: "inbound",
+        // Imported history opens no Cloud API window (lib/whatsapp-history-import).
+        historyImportedAt: null,
         createdAt: { gte: new Date(Date.now() - 23 * 60 * 60 * 1000) },
         OR: [{ from: row.recipientPhone }, { from: `+${row.recipientPhone}` },
           { metadata: { path: ["waPhone"], equals: row.recipientPhone } }],

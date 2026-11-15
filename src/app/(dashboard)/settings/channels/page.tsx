@@ -43,6 +43,9 @@ import { Input } from "@/components/ui/input"
 import { ChannelConfigForm } from "@/components/channel-config-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { useWhatsAppEmbeddedSignup } from "@/components/channels/whatsapp-embedded-signup"
+import { WhatsAppHistoryImportStatus } from "@/components/channels/whatsapp-history-import-status"
+import { WhatsAppKeepAppDialog } from "@/components/channels/whatsapp-keep-app-dialog"
+import { isCoexistenceChannel } from "@/lib/whatsapp-number-onboarding"
 import { metaOAuthReturnBanner } from "@/lib/channels/meta-oauth-return-banner"
 import { channelNumberLabel } from "@/lib/channels/channel-number-label"
 import { HelpButton } from "@/components/help/help-button"
@@ -1813,6 +1816,7 @@ function ChannelsPageInner() {
   // number that lives in the WhatsApp Business app. For a shop run from one phone that is the whole
   // business's WhatsApp, so the irreversible choice is not something a tile makes on its own.
   const [whatsappChoosing, setWhatsappChoosing] = useState(false)
+  const [whatsappExplaining, setWhatsappExplaining] = useState(false)
 
   // Back from Meta's login (lib/social/oauth-return): `?oauth=facebook|instagram` plus what the callback
   // reports — `connected`, `pages`, `ig`, or `error` — and `channelId`, the row it wired or started from.
@@ -2157,7 +2161,9 @@ function ChannelsPageInner() {
             data-crm-color-role="provider"
             type="button"
             className="w-full rounded-lg bg-emerald-600 px-2 py-1.5 text-[11px] font-semibold leading-4 text-white transition-colors hover:bg-emerald-700"
-            onClick={() => void whatsappSignup.start({ keepBusinessApp: true })}
+            // What happens in Meta's window is said first (components/channels/whatsapp-keep-app-dialog);
+            // its button opens the window.
+            onClick={() => setWhatsappExplaining(true)}
           >
             {c.esKeepApp}
           </button>
@@ -2308,6 +2314,12 @@ function ChannelsPageInner() {
             <div className="text-xs text-muted-foreground">
               {[card?.title || channel.channelType, channelProvider(channel), channelNumberLabel(channel, c.cardWaNumberIdPrefix)].filter(Boolean).join(" · ")}
             </div>
+            {/* A number that stays in the WhatsApp Business app brings its contacts and last six months
+                of chats with it (lib/whatsapp-history-import) — over minutes, so where it stands is
+                shown on the number itself, where the person who just connected it is looking. */}
+            {channel.channelType === "whatsapp" && channel.isActive && isCoexistenceChannel(channel.settings) && (
+              <WhatsAppHistoryImportStatus channelId={channel.id} locale={locale} />
+            )}
             {ownScreenHref ? (
               <p className="mt-1 text-xs text-muted-foreground">{c.cardVoipSettingsHint}</p>
             ) : rowBrokenBadge && (rowBrokenStatus || rowBrokenHint) ? (
@@ -2379,6 +2391,15 @@ function ChannelsPageInner() {
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-background text-foreground shadow-sm">
+      <WhatsAppKeepAppDialog
+        open={whatsappExplaining}
+        locale={locale}
+        onOpenChange={setWhatsappExplaining}
+        onContinue={() => {
+          setWhatsappExplaining(false)
+          void whatsappSignup.start({ keepBusinessApp: true })
+        }}
+      />
       {connectCard ? (
         <>
           <div className="border-b border-border bg-card px-6 py-5">

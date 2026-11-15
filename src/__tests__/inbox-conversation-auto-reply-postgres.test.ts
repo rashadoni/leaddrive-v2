@@ -129,8 +129,8 @@ function schemaWithoutEmbeddings(): string {
     sql(scratch!.adminDb, [
       `ALTER TABLE "social_conversations" DROP COLUMN "autoReplyOffAt", DROP COLUMN "autoReplyOffBy";`,
       `ALTER TABLE "tasks" DROP COLUMN "remindAt", DROP COLUMN "remindedAt";`,
-      readFileSync(path.join(ROOT, "prisma/migrations/20261220090000_conversation_auto_reply_switch/migration.sql"), "utf8"),
-      readFileSync(path.join(ROOT, "prisma/migrations/20261220091000_task_reminders/migration.sql"), "utf8"),
+      readFileSync(path.join(ROOT, "prisma/migrations/20261221090000_conversation_auto_reply_switch/migration.sql"), "utf8"),
+      readFileSync(path.join(ROOT, "prisma/migrations/20261221091000_task_reminders/migration.sql"), "utf8"),
     ].join("\n"))
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
 

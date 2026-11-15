@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Loader2 } from "lucide-react"
 import { appOrigin, readRelayedSignup, signupWindowUrl } from "@/lib/whatsapp-signup-window"
+import { WhatsAppKeepAppDialog } from "@/components/channels/whatsapp-keep-app-dialog"
 
 /**
  * "Connect WhatsApp with Meta" — Meta's Embedded Signup dialog (lib/whatsapp-embedded-signup).
@@ -326,12 +327,20 @@ export function WhatsAppEmbeddedSignup({
   labels,
   onConnected,
   fallback = null,
+  locale,
 }: {
   labels: WhatsAppEmbeddedSignupLabels
   onConnected?: (channelId: string) => void
   /** Shown instead once the server says Embedded Signup is not configured. */
   fallback?: ReactNode
+  /**
+   * With a locale, «keep my app» first shows what happens in Meta's window — the code to scan, the
+   * number staying on the phone, the contacts and six months of chats that follow
+   * (components/channels/whatsapp-keep-app-dialog) — and its button opens the window.
+   */
+  locale?: string
 }) {
+  const [explaining, setExplaining] = useState(false)
   const { availability, status, start } = useWhatsAppEmbeddedSignup({
     cancelledMessage: labels.cancelled,
     failedMessage: labels.failed,
@@ -364,7 +373,7 @@ export function WhatsAppEmbeddedSignup({
           <div className="space-y-1">
             <button data-crm-color-role="provider"
               type="button"
-              onClick={() => void start({ keepBusinessApp: true })}
+              onClick={() => (locale ? setExplaining(true) : void start({ keepBusinessApp: true }))}
               disabled={status.kind === "working"}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-70"
             >
@@ -400,6 +409,17 @@ export function WhatsAppEmbeddedSignup({
         </div>
       )}
       {status.kind === "error" && <p className="text-xs text-red-700">{status.message}</p>}
+      {locale && (
+        <WhatsAppKeepAppDialog
+          open={explaining}
+          locale={locale}
+          onOpenChange={setExplaining}
+          onContinue={() => {
+            setExplaining(false)
+            void start({ keepBusinessApp: true })
+          }}
+        />
+      )}
     </div>
   )
 }

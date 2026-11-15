@@ -825,6 +825,17 @@ jobs:
           INBOX_PANEL_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           INBOX_PANEL_DB_GATE: required
 
+      - name: WhatsApp history import database gate
+        # WhatsApp coexistence import (src/lib/whatsapp-history-import): the contacts and six months
+        # of chats of a number that stays in the WhatsApp Business app come in through the real
+        # webhook and set nothing in motion — the real deferred booking turn and autonomous inbox
+        # sweep answer only a live control, Meta's 24-hour window stays shut, no other table gains
+        # a row, a redelivery adds nothing. A real Postgres, an app role without BYPASSRLS.
+        run: npx vitest run src/__tests__/whatsapp-history-import-postgres.test.ts
+        env:
+          WHATSAPP_HISTORY_IMPORT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          WHATSAPP_HISTORY_IMPORT_DB_GATE: required
+
       - name: Inbox customer feed database gate
         # One customer, one feed (src/lib/inbox/contact-link, thread-history): an
         # Instagram conversation joins a customer only when a manager links it, and
@@ -835,6 +846,15 @@ jobs:
         env:
           INBOX_CUSTOMER_FEED_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           INBOX_CUSTOMER_FEED_DB_GATE: required
+
+      - name: Inbox analytics website chat database gate
+        # The website chat in the inbox reports (the «Bu gün» card, /inbox/analytics):
+        # analytics/temporal and analytics/frt read web_chat_messages next to
+        # channel_messages; other channels' figures do not move. A real Postgres.
+        run: npx vitest run src/__tests__/inbox-analytics-web-chat-postgres.test.ts
+        env:
+          INBOX_ANALYTICS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          INBOX_ANALYTICS_DB_GATE: required
 
       - name: AI voice assistant database gate
         # Весь голосовой помощник, проигранный без микрофона: настоящие роуты

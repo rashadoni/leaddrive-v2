@@ -469,6 +469,8 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
           adHeadline: s.adHeadline,
           adReferralAt: s.adReferralAt,
           linkedLead: qualificationLeadId ? linkedLeadById.get(qualificationLeadId) ?? null : null,
+          // Came over with the WhatsApp Business app's history (lib/whatsapp-history-import).
+          historyImport: metadata.historyImport === true,
         }
       })
 

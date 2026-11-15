@@ -361,6 +361,14 @@ export function selectUncoveredAiInboundBatch(
         && !Array.isArray(message.metadata)
         && (message.metadata as Record<string, unknown>).chatwootPollingAutomationSuppressed === "source-too-old"
       )
+      // Imported history of a coexistence number (lib/whatsapp-history-import): the team already
+      // dealt with these on the phone, possibly months ago. They are context, never a turn to answer.
+      && !(
+        message.metadata
+        && typeof message.metadata === "object"
+        && !Array.isArray(message.metadata)
+        && (message.metadata as Record<string, unknown>).historyImport === true
+      )
     )
     .slice(0, Math.max(1, limit))
 }
