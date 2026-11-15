@@ -9,14 +9,19 @@ import crypto from "crypto"
 import { validateUploadBytes } from "@/lib/upload-security"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
 import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
-import { TASK_FILE_EXTENSIONS, TASK_FILE_TYPES, taskFileTypeOf } from "@/lib/tasks/task-file-store"
+import { TASK_FILE_EXTENSIONS, TASK_FILE_TYPES, taskFileExtension, taskFileStoredType } from "@/lib/tasks/task-file-rules"
 
 // Task file attachments — mirrors the ContractFile route's security model
 // (src/app/api/v1/contracts/[id]/files/route.ts). Stored on disk as
 // public/uploads/tasks/<32-hex>.<ext>; served + org-checked by the F-41 gate.
-// The allowed types are the task's own (lib/tasks/task-file-store.ts); a card
-// upload stays at 10 MB, as its body crosses nginx and the Next proxy first.
+// The allowed types are the task's own (lib/tasks/task-file-rules.ts). One
+// request stays at 10 MB, as its body crosses nginx and the Next proxy first;
+// the card sends a bigger file in parts (./parts/route.ts, up to 100 MB).
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+// The Next proxy hands a route only the first 10 MB of a body: a form longer
+// than that arrives cut and cannot be read (Nazrin's promo video, 2026-11-15,
+// answered «server error»). Such a body is refused by its length, in words.
+const MAX_FORM_BYTES = MAX_FILE_SIZE + 64 * 1024
 
 export const GET = withRlsAuth("tasks", "read", async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
@@ -46,17 +51,20 @@ export const POST = withRlsAuth("tasks", "write", async (req, auth, { params }: 
     const task = await prisma.task.findFirst({ where: { id, organizationId: auth.orgId, deletedAt: null } })
     if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 })
 
-    const formData = await req.formData()
+    if (Number(req.headers.get("content-length") ?? 0) > MAX_FORM_BYTES) {
+      return NextResponse.json({ error: "File too large for one request (max 10MB); the card sends bigger files in parts", refusal: "too_big" }, { status: 413 })
+    }
+    const formData = await req.formData().catch(() => null)
+    if (!formData) return NextResponse.json({ error: "The upload arrived incomplete; please send the file again" }, { status: 400 })
     const file = formData.get("file") as File | null
     if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 })
     if (file.size > MAX_FILE_SIZE) return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 })
     // A browser names no type for a CorelDraw file and «octet-stream» for some
     // photos: then the name's extension says it (the bytes are checked below).
-    const given = file.type.toLowerCase().trim()
-    const mimeType = TASK_FILE_TYPES.includes(given) ? given : taskFileTypeOf(file.name) ?? given
-    if (!TASK_FILE_TYPES.includes(mimeType)) return NextResponse.json({ error: "File type not allowed" }, { status: 400 })
+    const mimeType = taskFileStoredType(file.name, file.type)
+    if (!mimeType || !TASK_FILE_TYPES.includes(mimeType)) return NextResponse.json({ error: "File type not allowed" }, { status: 400 })
 
-    const ext = path.extname(file.name).toLowerCase()
+    const ext = taskFileExtension(file.name)
     if (!ext || !TASK_FILE_EXTENSIONS.has(ext)) {
       return NextResponse.json({ error: "File extension not allowed" }, { status: 400 })
     }

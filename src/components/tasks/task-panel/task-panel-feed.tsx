@@ -8,6 +8,7 @@ import type { FeedItem, FeedPerson } from "@/lib/tasks/task-feed"
 import { describeFeedEvent } from "@/lib/tasks/feed-text"
 import { assignMessageFiles, fileDownloadUrl, fileUrl, isImageFile, joinMessageFiles, splitMessageFiles, type MessageFile } from "@/lib/tasks/message-files"
 import { insertMention, mentionCandidates, mentionQueryAt, mentionedIds, type MentionPerson } from "@/lib/tasks/mentions"
+import { sendTaskFile } from "@/lib/tasks/task-file-upload"
 
 interface FeedData { items: FeedItem[]; followers: FeedPerson[]; following: boolean; me?: { id: string | null; admin: boolean } }
 
@@ -116,13 +117,12 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
     // The files first: the message names only what reached the task.
     const attached: string[] = []
     for (const file of pending) {
-      const form = new FormData()
-      form.append("file", file)
-      const up = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/files`, { method: "POST", credentials: "include", body: form }).catch(() => null)
-      if (up?.ok) attached.push(file.name)
+      // In parts, like the card's own files: up to 100 MB (task-file-upload.ts).
+      const sent = await sendTaskFile(taskId, { file, name: file.name })
+      if (sent.ok) attached.push(file.name)
       else {
-        const reason = await up?.json().then((j: { error?: string }) => j.error).catch(() => null)
-        setSendError(`${t("uploadFailed")}: ${file.name}${reason ? ` — ${reason}` : ""}`)
+        const reason = sent.refusal === "server" && sent.message ? sent.message : t(`fileRefused.${sent.refusal}` as never)
+        setSendError(`${t("uploadFailed")}: ${file.name} — ${reason}`)
       }
     }
     if (pending.length > 0 && attached.length === 0 && !text.trim()) { setSending(false); return }
