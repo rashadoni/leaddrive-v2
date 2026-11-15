@@ -838,6 +838,14 @@ jobs:
           INBOX_LEARNING_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           INBOX_LEARNING_DB_GATE: required
 
+      - name: Inbox analytics website chat database gate
+        # Same gate as in pr-checks: the website chat in analytics/temporal and
+        # analytics/frt, other channels' figures unchanged. A real Postgres.
+        run: npx vitest run src/__tests__/inbox-analytics-web-chat-postgres.test.ts
+        env:
+          INBOX_ANALYTICS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          INBOX_ANALYTICS_DB_GATE: required
+
       - name: AI voice assistant database gate
         # Same gate as in pr-checks: the whole voice assistant replayed without
         # a microphone over real routes, real CRM commands and a real Postgres
