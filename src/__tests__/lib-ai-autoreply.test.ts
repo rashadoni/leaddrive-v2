@@ -1486,7 +1486,7 @@ describe("maybeAiAutoReply — feature-flag gate (safety)", () => {
 
     expect(result.skipped).toBe("cooldown_queued")
     expect(prisma.socialConversation.updateMany).toHaveBeenNthCalledWith(2, {
-      where: { id: "cv1", organizationId: "o1", assignedTo: null, status: "open" },
+      where: { id: "cv1", organizationId: "o1", assignedTo: null, status: "open", autoReplyOffAt: null },
       data: { aiReplyPendingMessageId: "msg-2" },
     })
     expect(anthropicCreate).not.toHaveBeenCalled()

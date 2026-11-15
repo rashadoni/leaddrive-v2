@@ -10,7 +10,7 @@ import { defaultLocale, locales, type Locale } from "@/i18n/routing"
 // the language of the person who acted — the screen they acted in, which in a
 // tenant is its working language — and only then the app default.
 
-export type TaskNotificationKind = "created" | "assigned" | "completed"
+export type TaskNotificationKind = "created" | "assigned" | "completed" | "reminder"
 
 const TEXT: Record<Locale, {
   title: Record<TaskNotificationKind, string>
@@ -19,19 +19,19 @@ const TEXT: Record<Locale, {
   urgent: Record<"urgent" | "critical", string>
 }> = {
   az: {
-    title: { created: "Yeni tapşırıq", assigned: "Sizə tapşırıq təyin olundu", completed: "Tapşırıq tamamlandı" },
+    title: { created: "Yeni tapşırıq", assigned: "Sizə tapşırıq təyin olundu", completed: "Tapşırıq tamamlandı", reminder: "Xatırlatma" },
     created: (title) => `Tapşırıq yaradıldı: «${title}»`,
     completed: (title) => `Tamamlandı: «${title}»`,
     urgent: { urgent: "Təcili", critical: "Kritik" },
   },
   ru: {
-    title: { created: "Новая задача", assigned: "Вам назначена задача", completed: "Задача выполнена" },
+    title: { created: "Новая задача", assigned: "Вам назначена задача", completed: "Задача выполнена", reminder: "Напоминание" },
     created: (title) => `Создана задача: «${title}»`,
     completed: (title) => `Выполнена: «${title}»`,
     urgent: { urgent: "Срочно", critical: "Критично" },
   },
   en: {
-    title: { created: "New task", assigned: "A task was assigned to you", completed: "Task completed" },
+    title: { created: "New task", assigned: "A task was assigned to you", completed: "Task completed", reminder: "Reminder" },
     created: (title) => `Task created: "${title}"`,
     completed: (title) => `Completed: "${title}"`,
     urgent: { urgent: "Urgent", critical: "Critical" },
@@ -54,6 +54,7 @@ export function taskNotificationText(
 ): { title: string; message: string } {
   const text = TEXT[locale]
   if (kind === "assigned") return { title: text.title.assigned, message: task.title }
+  if (kind === "reminder") return { title: text.title.reminder, message: task.title }
   if (kind === "completed") return { title: text.title.completed, message: text.completed(task.title) }
   const urgency = task.priority === "urgent" || task.priority === "critical" ? text.urgent[task.priority] : null
   return { title: text.title.created, message: `${text.created(task.title)}${urgency ? ` (${urgency})` : ""}` }

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { checkAiBudget } from "@/lib/ai/budget"
 import { claimConversationAiReply, releaseConversationAiReplyClaim } from "@/lib/social/ai-autoreply"
+import { AUTO_REPLY_ON } from "@/lib/inbox/conversation-auto-reply"
 
 const OPERATION_LEASE_MS = 150_000
 
@@ -14,9 +15,9 @@ export async function withWhatsAppAiReplyGuard(
   if (!conversationId) return
   const owner = await prisma.socialConversation.findFirst({
     where: { id: conversationId, organizationId },
-    select: { assignedTo: true, status: true },
+    select: { assignedTo: true, status: true, autoReplyOffAt: true },
   })
-  if (!owner || owner.assignedTo || owner.status !== "open") return
+  if (!owner || owner.assignedTo || owner.status !== "open" || owner.autoReplyOffAt) return
   const claim = await claimConversationAiReply({ organizationId, conversationId, holdMs: OPERATION_LEASE_MS })
   if (!claim.claimed) return
   try {
@@ -26,7 +27,7 @@ export async function withWhatsAppAiReplyGuard(
       // CAS also rechecks human ownership and protects against an expired owner
       // sending after a newer flow/webhook has reclaimed this conversation.
       const renewed = await prisma.socialConversation.updateMany({
-        where: { id: conversationId, organizationId, assignedTo: null, status: "open", aiReplyClaimToken: claim.token },
+        where: { id: conversationId, organizationId, assignedTo: null, status: "open", ...AUTO_REPLY_ON, aiReplyClaimToken: claim.token },
         data: { aiReplyClaimedUntil: new Date(Date.now() + OPERATION_LEASE_MS) },
       })
       return renewed.count === 1

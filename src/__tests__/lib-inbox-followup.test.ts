@@ -152,7 +152,7 @@ describe("runInboxFollowups", () => {
     expect(res.sent).toBe(1)
     // atomic claim BEFORE send, conditional on followUpSentAt: null
     expect(state.claims).toHaveLength(1)
-    expect(state.claims[0].where).toEqual({ id: "conv_1", followUpSentAt: null })
+    expect(state.claims[0].where).toEqual({ id: "conv_1", followUpSentAt: null, autoReplyOffAt: null })
     expect(state.claims[0].data).toEqual({ followUpSentAt: DAYTIME })
     expect(send).toHaveBeenCalledWith({
       conversationId: "cw_700",
@@ -166,7 +166,7 @@ describe("runInboxFollowups", () => {
     // NO lastMessageAt bump / no extra update on success
     expect(state.updated).toHaveLength(0)
     // WHERE shape didn't drift
-    expect(state.findManyWhere).toMatchObject({ platform: "tiktok", status: "open", followUpSentAt: null })
+    expect(state.findManyWhere).toMatchObject({ platform: "tiktok", status: "open", followUpSentAt: null, autoReplyOffAt: null })
     expect(state.findManyWhere.lastMessageAt.lte).toBeInstanceOf(Date)
   })
 

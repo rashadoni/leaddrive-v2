@@ -14,6 +14,9 @@ export const createTaskCommandSchema = z.strictObject({
   eventType: z.string().max(60).nullable().optional(),
   category: z.enum(["Q1", "Q2", "Q3", "Q4", "yearly", "normal"]).nullable().optional(),
   dueDate: z.string().refine((value) => !Number.isNaN(Date.parse(value)), "Invalid dueDate").optional(),
+  // When the assignee gets a bell + push about it (lib/tasks/task-reminders). Without an assignee
+  // the reminder goes to whoever set it.
+  remindAt: z.string().refine((value) => !Number.isNaN(Date.parse(value)), "Invalid remindAt").optional(),
   assignedTo: z.string().min(1).optional(),
   divisionId: z.string().min(1).nullable().optional(),
   estimatedHours: z.number().min(0).max(1000).nullable().optional(),

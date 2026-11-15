@@ -64,6 +64,8 @@ export const DEFAULT_SECTION_PUSH: Record<string, boolean> = {
 // KINDS_ON_UNLESS_SWITCHED_OFF
 // ---------------------------------------------------------------------------
 
+export const TASK_REMINDER_NOTIFICATION_KIND = "task.reminder"
+
 /**
  * Kinds that do not follow their section's switch: each is on until the person
  * switches off that very kind.
@@ -84,6 +86,9 @@ export const KINDS_ON_UNLESS_SWITCHED_OFF: ReadonlySet<string> = new Set([
   MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_KIND,
   // Once a year: next year's official holidays are waiting for an admin to add them.
   PUBLIC_CALENDAR_NOTIFICATION_KIND,
+  // A reminder the person set for himself (inbox panel «Напомнить», 2026-11-15): a section
+  // switched off by default must not swallow the one notice he asked for.
+  TASK_REMINDER_NOTIFICATION_KIND,
 ])
 
 // ---------------------------------------------------------------------------

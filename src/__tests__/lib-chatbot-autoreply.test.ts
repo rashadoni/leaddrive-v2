@@ -6,6 +6,7 @@ vi.mock("@/lib/prisma", () => ({
     chatbotRule: { findMany: vi.fn(), update: vi.fn() },
     channelMessage: { findMany: vi.fn(), create: vi.fn() },
     channelConfig: { findFirst: vi.fn() },
+    socialConversation: { findFirst: vi.fn() },
   },
 }))
 vi.mock("@/lib/whatsapp", () => ({ sendWhatsAppMessage: vi.fn() }))
@@ -64,6 +65,8 @@ describe("maybeAutoReply", () => {
     fn(prisma.channelMessage.findMany).mockResolvedValue([])
     fn(prisma.channelMessage.create).mockResolvedValue({})
     fn(prisma.chatbotRule.update).mockResolvedValue({})
+    // «AI rejimi» of the conversation: on unless a test switches it off.
+    fn(prisma.socialConversation.findFirst).mockResolvedValue({ autoReplyOffAt: null })
     fn(sendConversationReply).mockResolvedValue({
       success: true,
       statusCode: 201,
@@ -133,6 +136,23 @@ describe("maybeAutoReply", () => {
     expect(prisma.chatbotRule.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: "r1" }, data: { matchCount: { increment: 1 } } }),
     )
+  })
+
+  it("«AI rejimi» off for the conversation → no match, no send, nothing recorded — and the AI path is told it may go on", async () => {
+    enable(true); fn(prisma.chatbotRule.findMany).mockResolvedValue([rule()])
+    fn(prisma.socialConversation.findFirst).mockResolvedValue({ autoReplyOffAt: new Date() })
+    const result = await call({ contactId: "ct1" })
+    expect(result).toMatchObject({ matched: false, sent: false, skipped: "auto-reply-off" })
+    expect(sendWhatsAppMessage).not.toHaveBeenCalled()
+    expect(sendConversationReply).not.toHaveBeenCalled()
+    expect(prisma.channelMessage.create).not.toHaveBeenCalled()
+  })
+
+  it("a switch that cannot be read keeps the bot silent", async () => {
+    enable(true); fn(prisma.chatbotRule.findMany).mockResolvedValue([rule()])
+    fn(prisma.socialConversation.findFirst).mockRejectedValue(new Error("connection reset"))
+    expect(await call()).toMatchObject({ sent: false, skipped: "auto-reply-off" })
+    expect(sendWhatsAppMessage).not.toHaveBeenCalled()
   })
 
   it("send failure → matched, NOT sent, skipped send-failed, nothing recorded", async () => {

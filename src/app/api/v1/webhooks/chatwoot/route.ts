@@ -1,3 +1,4 @@
+import { autoReplyOff } from "@/lib/inbox/conversation-auto-reply"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { sanitizeLog } from "@/lib/sanitize"
@@ -419,6 +420,7 @@ export async function POST(req: NextRequest) {
       const { sendChatwootMessage } = await import("@/lib/chatwoot")
       await handleTikTokInboundAudio({
         organizationId: orgId,
+        conversationId: convId,
         messageId: savedMsg.id,
         audioUrl: mediaUrl,
         metadata: messageMetadata,
@@ -431,7 +433,7 @@ export async function POST(req: NextRequest) {
             channelConfigId: channelConfig.id,
           }),
       })
-    } else if (replyMode === "ai" && unsupportedMedia && convId) {
+    } else if (replyMode === "ai" && unsupportedMedia && convId && !await autoReplyOff(orgId, convId)) {
       const { sendChatwootMessage } = await import("@/lib/chatwoot")
       await sendChatwootMessage({
         conversationId: convExternalId,

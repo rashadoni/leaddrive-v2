@@ -149,7 +149,7 @@ export function BookingSummary({ page }: { page: PublicBookingPage }) {
 }
 
 export function BookingScheduler({
-  page, days, onBook, staff = false, initialStartsAt = null, onStartChange, onHostChange, onAddOnsChange,
+  page, days, onBook, staff = false, initialStartsAt = null, onStartChange, onHostChange, onAddOnsChange, initialClient = null,
 }: {
   page: PublicBookingPage
   days: DaySlots[]
@@ -163,6 +163,9 @@ export function BookingScheduler({
   initialStartsAt?: string | null
   /** Lets the screen around the form draw the time being taken. */
   onStartChange?: (startsAt: string | null) => void
+  /** Staff only: the customer the meeting is for, already known — the inbox conversation's
+   *  contact (owner, 2026-11-15, «Görüş» in the inbox panel). The picker shows it linked. */
+  initialClient?: { link: BookingClientLink; phone: string; email?: string | null } | null
 }) {
   const t = useTranslations("booking")
   const locale = useLocale()
@@ -173,9 +176,11 @@ export function BookingScheduler({
     setStartsAt(next)
     onStartChange?.(next)
   }
-  const [form, setForm] = useState({ name: "", phone: "", email: "", note: "" })
+  const [form, setForm] = useState(() => staff && initialClient
+    ? { name: initialClient.link.name, phone: initialClient.phone, email: initialClient.email ?? "", note: "" }
+    : { name: "", phone: "", email: "", note: "" })
   // Only a staff booking has one: the customer this meeting was pointed at.
-  const [client, setClient] = useState<BookingClientLink | null>(null)
+  const [client, setClient] = useState<BookingClientLink | null>(() => (staff && initialClient ? initialClient.link : null))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [confirmed, setConfirmed] = useState<BookingConfirmation | null>(null)

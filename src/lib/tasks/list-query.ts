@@ -47,6 +47,9 @@ export interface TaskListFilters {
   unplanned?: boolean
   /** A team's page: board tasks of the team's people (assignee or co-assignee). */
   teamId?: string
+  /** Tasks about one record — both or neither (the inbox panel's reminder card, 2026-11-15). */
+  relatedType?: string
+  relatedId?: string
 }
 
 const dayParam = (value: string | null): Date | undefined =>
@@ -87,6 +90,8 @@ export function parseTaskListFilters(sp: URLSearchParams): TaskListFilters {
       : null,
     unplanned: sp.get("unplanned") === "1",
     teamId: sp.get("teamId") || "",
+    relatedType: sp.get("relatedType") || "",
+    relatedId: sp.get("relatedId") || "",
   }
 }
 
@@ -114,6 +119,7 @@ export async function buildTaskListWhere(
     ...(f.category ? { category: f.category } : {}),
     ...(f.divisionId === "__none__" ? { divisionId: null } : f.divisionId ? { divisionId: f.divisionId } : {}),
     ...(f.projectId === "__none__" ? { projectId: null } : f.projectId ? { projectId: f.projectId } : {}),
+    ...(f.relatedType && f.relatedId ? { relatedType: f.relatedType, relatedId: f.relatedId } : {}),
     ...(f.createdRange ? { createdAt: f.createdRange } : {}),
     ...(f.completedRange ? { completedAt: f.completedRange } : {}),
     ...(f.startRange ? { startDate: f.startRange } : {}),

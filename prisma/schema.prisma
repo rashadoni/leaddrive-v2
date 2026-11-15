@@ -1866,6 +1866,11 @@ model Task {
   status             String             @default("pending") // Kanban statuses (target): backlog | todo | in_progress | testing | review | done. Legacy values pending/completed/cancelled still accepted. NOTE (as of this turn): POST still defaults to legacy "pending" and the Zod enum accepts only the 4 legacy values — migrating the route to Kanban statuses + a data migration (pending→todo, completed→done) is a later turn. Don't trust this column to hold a Kanban status yet.
   priority           String             @default("medium")
   dueDate            DateTime?
+  /// «Напомнить» (owner, 2026-11-15): when the assignee gets a bell + push about this task. The
+  /// cron `task-reminders` sends it once and stamps `remindedAt`; null = no reminder. See
+  /// src/lib/tasks/task-reminders.ts.
+  remindAt           DateTime?
+  remindedAt         DateTime?
   assignedTo         String?
   assignee           User?              @relation("TaskAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
   relatedType        String? // deal, contact, company, lead, ticket
@@ -5238,6 +5243,12 @@ model SocialConversation {
   aiReplyClaimedUntil        DateTime? // Lease expiry. Flow ai_reply can hold longer than webhook tight-loop without webhook reclaiming it after 8s.
   aiReplyPendingMessageId    String? // Wake marker: at least one inbound arrived while an AI reply lease was active. ChannelMessage rows remain the durable ordered queue.
   folderId                   String? // Phase 5 — team folder (null = no folder)
+  /// «AI rejimi» of one conversation (owner, 2026-11-15): set = every automatic reply to this
+  /// customer stays silent — AI on every channel, WhatsApp Da Vinci, the booking bot, the
+  /// keyword bot, flow replies, the voice-note fallback, the backlog sweep. Null = the channel
+  /// decides, as before. Read through src/lib/inbox/conversation-auto-reply.ts only.
+  autoReplyOffAt             DateTime?
+  autoReplyOffBy             String?
   /// Which advertisement brought this conversation — Meta's `referral` on the
   /// first Click-to-WhatsApp message, kept first-touch so a later tap cannot
   /// rewrite last month's report. The rest of the payload (body, creative,

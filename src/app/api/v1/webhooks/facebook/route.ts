@@ -388,6 +388,7 @@ export async function POST(req: NextRequest) {
           const handleAudio = platform === "instagram" ? handleInstagramInboundAudio : handleFacebookInboundAudio
           await handleAudio({
             organizationId: channel.organizationId,
+            conversationId: conv.id,
             messageId: inboundMessage.id,
             audioUrl: mediaUrl,
             audio: storedAudio,

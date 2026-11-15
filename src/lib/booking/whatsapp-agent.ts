@@ -18,6 +18,7 @@
  * anything). Those return `handled: false`, and the message continues on the
  * ordinary inbox path — a ticket and the support agent.
  */
+import { autoReplyOff } from "@/lib/inbox/conversation-auto-reply"
 import type Anthropic from "@anthropic-ai/sdk"
 import type { Prisma } from "@prisma/client"
 import { bookingDb as prisma } from "./db"
@@ -1399,6 +1400,9 @@ export async function handleWhatsAppBookingTurn(input: BookingTurnInput): Promis
   // A reminder we already sent is answered whatever the switch says today:
   // silence after a tap is the worst outcome of all.
   if (reminder) return { handled: await answerReminder(input, reminder, now) }
+  // «AI rejimi» off for this conversation: a person answers it (lib/inbox/conversation-auto-reply).
+  // Not handled, so the ordinary path files the message — and stays silent for the same reason.
+  if (await autoReplyOff(input.organizationId, input.conversationId)) return { handled: false }
   const organization = await prisma.organization.findUnique({ where: { id: input.organizationId }, select: { settings: true } })
   const setting = readWhatsAppBookingSetting(organization?.settings)
   if (setting.mode !== "book") return { handled: false }

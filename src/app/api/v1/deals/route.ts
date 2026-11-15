@@ -95,6 +95,12 @@ export const GET = withRls(async (req, { orgId, session }) => {
   try {
     const companyId = searchParams.get("companyId")
     const pipelineId = searchParams.get("pipelineId")
+    // One customer's deals — the inbox panel's «Sövdələşmə» card (owner, 2026-11-15).
+    const contactId = searchParams.get("contactId")
+    // open=1: not won and not lost, by the organization's own stage names and every spelling
+    // stored on its deals (orgStageVocabulary) — never a hardcoded «WON»/«LOST».
+    const openOnly = searchParams.get("open") === "1"
+    const openFilterClosedStages = openOnly ? (await orgStageVocabulary(orgId)).closedStages : []
     const fieldPerms = await getFieldPermissions(orgId, role, "deal")
     const visible = (field: string) => isFieldVisible(fieldPerms, role, field)
 
@@ -119,7 +125,9 @@ export const GET = withRls(async (req, { orgId, session }) => {
       ...searchWhere,
       ...(stage ? { stage } : {}),
       ...(companyId ? { companyId } : {}),
+      ...(contactId ? { contactId } : {}),
       ...(pipelineId ? { pipelineId } : {}),
+      ...(openOnly && openFilterClosedStages.length ? { stage: stage ? stage : { notIn: openFilterClosedStages } } : {}),
       ...(hasOffer === "true"
         ? { offers: { some: {} } }
         : hasOffer === "false"
