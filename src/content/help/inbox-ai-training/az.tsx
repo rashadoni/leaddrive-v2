@@ -50,6 +50,11 @@ export default function InboxAiTrainingHelpAz() {
                 tez-tez soruşduğu mövzulardan neçəsini bilir. Yaşıl — bilir, sarı — təsdiqinizi gözləyir, qırıq xətt —
                 hələ bilmir.
               </p>
+              <p>
+                Eyni kartda öyrənmənin gedişi görünür: AI həftə ərzində neçə əməkdaş cavabı və yazışma tapıb və
+                neçəsini oxuyub, rəqəm üçün neçə səssiz yoxlama toplanıb, son və növbəti keçid nə vaxtdır. AI
+                oxuyarkən səhifə özü yenilənir.
+              </p>
               <HelpCallout kind="tip" label="Nə vaxt ötürmək">
                 Rəqəm 30 müqayisədən sonra görünür, adətən 4–8 gün ərzində. Kanalı 80%-dən ötürməyi tövsiyə edirik.
               </HelpCallout>

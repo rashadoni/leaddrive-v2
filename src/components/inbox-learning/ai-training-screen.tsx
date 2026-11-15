@@ -18,7 +18,8 @@ import {
   KNOWLEDGE_TYPES, READINESS_MIN_QUESTIONS, READINESS_TARGET, TRAIT_TYPES,
   type Readiness,
 } from "@/lib/inbox/learning/model"
-import type { ChannelDetail, ChannelSummary, DifferenceView, LearnedItemView } from "@/lib/inbox/learning/service"
+import type { ChannelDetail, ChannelSummary, DifferenceView, LearnedItemView, LearningProgress } from "@/lib/inbox/learning/service"
+import { startVisibleInterval } from "@/lib/client/visible-interval"
 
 /**
  * «Обучение ИИ» (owner 2026-11-15, by the approved mock-up — «Давай»). One channel at a time: how
@@ -121,6 +122,15 @@ export function AiTrainingScreen() {
     await loadChannels()
     if (selected) await loadDetail(selected)
   }, [loadChannels, loadDetail, selected])
+
+  // While training is still reading the channel, follow it: once a minute, only while the tab is seen.
+  const following = channel?.mode === "learning"
+    && detail?.channel.id === channel?.id
+    && (detail?.progress.state === "waiting_first_run" || detail?.progress.state === "reading")
+  useEffect(() => {
+    if (!following) return
+    return startVisibleInterval(() => { void refresh() }, 60_000, { firstTickAfterMs: 60_000 })
+  }, [following, refresh])
 
   const setMode = async (mode: "learning" | "agent" | "ai" | "draft") => {
     if (!channel) return
@@ -230,6 +240,7 @@ export function AiTrainingScreen() {
               <ReadinessCard
                 channel={channel}
                 readiness={detail.readiness}
+                progress={detail.progress}
                 busy={busy}
                 onHandover={() => setHandover(true)}
                 onMode={setMode}
@@ -499,9 +510,10 @@ function Trend({ points }: { points: Readiness["trend"] }) {
   )
 }
 
-function ReadinessCard({ channel, readiness: r, busy, onHandover, onMode }: {
+function ReadinessCard({ channel, readiness: r, progress, busy, onHandover, onMode }: {
   channel: ChannelSummary
   readiness: Readiness
+  progress: LearningProgress
   busy: boolean
   onHandover: () => void
   onMode: (mode: "learning" | "agent" | "ai" | "draft") => void
@@ -555,6 +567,8 @@ function ReadinessCard({ channel, readiness: r, busy, onHandover, onMode }: {
         </div>
       </div>
 
+      <ProgressBlock progress={progress} />
+
       {r.compared > 0 && (
         <>
           <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
@@ -604,6 +618,65 @@ function ReadinessCard({ channel, readiness: r, busy, onHandover, onMode }: {
         <Button variant="outline" disabled={busy} onClick={() => onMode("agent")}>{t("stop")}</Button>
         <span className="text-xs text-muted-foreground">{t("silentNote")}</span>
       </div>
+    </div>
+  )
+}
+
+/* ─────────────── how far training has got ─────────────── */
+
+const clock = (iso: string, plusMinutes = 0) =>
+  new Date(new Date(iso).getTime() + plusMinutes * 60_000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+
+function ProgressBar({ label, value, total, hint }: { label: string; value: number; total: number; hint?: string }) {
+  const pct = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0
+  return (
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between gap-3 text-xs">
+        <span className="text-foreground">{label}</span>
+        <span className="shrink-0 tabular-nums text-muted-foreground">{hint ?? `${value} / ${total}`}</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={label} aria-valuenow={value} aria-valuemin={0} aria-valuemax={total}>
+        <div className={cn("h-full rounded-full transition-all", pct >= 100 ? "bg-emerald-500" : "bg-violet-500")} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * «Ход обучения» (owner 2026-11-15: «сделай так, чтоб как-то показывался прогресс обучения»): what the
+ * last pass found and read, and when the next one comes — so a fresh channel showing 0 everywhere
+ * says whether it is waiting, reading or has nothing to read.
+ */
+function ProgressBlock({ progress: p }: { progress: LearningProgress }) {
+  const t = useTranslations("aiTraining")
+  const busy = p.state === "waiting_first_run" || p.state === "reading"
+  const stoppedKey = p.stopped && p.stopped !== "run_cap" ? (["budget", "budget_unavailable", "day_cap", "no_api_key"].includes(p.stopped) ? p.stopped : "error") : null
+  return (
+    <div className="mt-4 space-y-3 rounded-xl border bg-muted/30 p-3" data-testid="learning-progress">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+          {busy
+            ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-600" />
+            : p.state === "listening" ? <Check className="h-4 w-4 shrink-0 text-emerald-600" /> : <GraduationCap className="h-4 w-4 shrink-0 text-muted-foreground" />}
+          <span>{t(`progress_${p.state}`)}</span>
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {p.lastRunAt
+            ? t("progressLastRun", { last: clock(p.lastRunAt), next: clock(p.lastRunAt, 5) })
+            : t("progressFirstRun")}
+        </span>
+      </div>
+      <p className="text-xs text-muted-foreground">{t(`progress_${p.state}Text`)}</p>
+      {stoppedKey && (
+        <p className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">{t(`progressStopped_${stoppedKey}`)}</p>
+      )}
+      {p.state !== "waiting_first_run" && p.state !== "nothing_found" && (
+        <div className="space-y-2.5">
+          <ProgressBar label={t("progressAnswers")} value={p.answersRead} total={p.answersTotal} />
+          <ProgressBar label={t("progressConversations")} value={p.conversationsRead} total={p.conversationsTotal} />
+          <ProgressBar label={t("progressCompared")} value={Math.min(p.compared, p.minQuestions)} total={p.minQuestions} hint={`${p.compared} / ${p.minQuestions}`} />
+        </div>
+      )}
     </div>
   )
 }
