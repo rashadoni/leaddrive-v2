@@ -33316,6 +33316,7 @@
     "fileRefused": {
       "too_big": "larger than 100 MB",
       "type": "this file type is not accepted",
+      "content": "the contents do not match the file type",
       "empty": "the file is empty",
       "network": "the connection dropped, try again",
       "server": "the server did not accept the file"

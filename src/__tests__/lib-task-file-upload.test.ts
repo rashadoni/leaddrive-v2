@@ -84,7 +84,7 @@ describe("task file sending", () => {
         : new Response("{}", { status: 201 }))
     const result = await sendTaskFiles("t1", [item("a.png", 5, "image/png"), item("b.png", 5, "image/png")])
     expect(result.added).toEqual(["a.png"])
-    expect(result.failed).toEqual([{ name: "b.png", refusal: "server", message: "File content is not a valid PNG" }])
+    expect(result.failed).toEqual([{ name: "b.png", refusal: "content", message: "File content is not a valid PNG" }])
     expect(sent.map((s) => s.url.searchParams.get("name"))).toEqual(["a.png", "a.png", "b.png"])
   })
 

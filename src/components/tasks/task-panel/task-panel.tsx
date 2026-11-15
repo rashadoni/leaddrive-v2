@@ -305,8 +305,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
     reload()
     onMutated()
   }
-  const refusalText = (failure: TaskFileFailure) =>
-    failure.refusal === "server" && failure.message ? failure.message : t(`fileRefused.${failure.refusal}` as never)
+  const refusalText = (failure: TaskFileFailure) => t(`fileRefused.${failure.refusal}` as never)
   const dragHasFiles = (event: React.DragEvent) => [...event.dataTransfer.types].includes("Files")
 
   // A status the board has no column for (the CRM's «pending» from the quick

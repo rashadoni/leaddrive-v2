@@ -33312,6 +33312,7 @@
     "fileRefused": {
       "too_big": "100 MB-dan böyükdür",
       "type": "bu növ fayl qəbul olunmur",
+      "content": "faylın içi adındakı növə uyğun gəlmir",
       "empty": "fayl boşdur",
       "network": "bağlantı kəsildi, yenidən cəhd edin",
       "server": "server faylı qəbul etmədi"

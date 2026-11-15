@@ -121,8 +121,7 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
       const sent = await sendTaskFile(taskId, { file, name: file.name })
       if (sent.ok) attached.push(file.name)
       else {
-        const reason = sent.refusal === "server" && sent.message ? sent.message : t(`fileRefused.${sent.refusal}` as never)
-        setSendError(`${t("uploadFailed")}: ${file.name} — ${reason}`)
+        setSendError(`${t("uploadFailed")}: ${file.name} — ${t(`fileRefused.${sent.refusal}` as never)}`)
       }
     }
     if (pending.length > 0 && attached.length === 0 && !text.trim()) { setSending(false); return }

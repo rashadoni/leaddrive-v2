@@ -21,7 +21,7 @@ import {
 
 export type TaskFileToSend = { file: File; name: string }
 
-export type TaskFileRefusal = "too_big" | "type" | "empty" | "server" | "network"
+export type TaskFileRefusal = "too_big" | "type" | "content" | "empty" | "server" | "network"
 
 export type TaskFileFailure = { name: string; refusal: TaskFileRefusal; message?: string }
 
@@ -141,7 +141,8 @@ export async function sendTaskFile(
     if (!res) return { ok: false, refusal: "network" }
     if (!res.ok) {
       const json = (await res.json().catch(() => null)) as { error?: string; refusal?: string } | null
-      const said = json?.refusal === "too_big" || json?.refusal === "type" ? json.refusal : "server"
+      // The server's own words are English; the card says the reason in the person's language.
+      const said = json?.refusal === "too_big" || json?.refusal === "type" || json?.refusal === "content" ? json.refusal : "server"
       return { ok: false, refusal: said, message: json?.error }
     }
     onSent?.(part.size)
