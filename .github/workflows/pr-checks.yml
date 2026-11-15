@@ -836,6 +836,15 @@ jobs:
           INBOX_CUSTOMER_FEED_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           INBOX_CUSTOMER_FEED_DB_GATE: required
 
+      - name: Inbox analytics website chat database gate
+        # The website chat in the inbox reports (the «Bu gün» card, /inbox/analytics):
+        # analytics/temporal and analytics/frt read web_chat_messages next to
+        # channel_messages; other channels' figures do not move. A real Postgres.
+        run: npx vitest run src/__tests__/inbox-analytics-web-chat-postgres.test.ts
+        env:
+          INBOX_ANALYTICS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          INBOX_ANALYTICS_DB_GATE: required
+
       - name: AI voice assistant database gate
         # Весь голосовой помощник, проигранный без микрофона: настоящие роуты
         # предложения/черновика/подтверждения/записи, настоящие CRM-команды и

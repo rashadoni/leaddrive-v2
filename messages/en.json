@@ -28732,7 +28732,7 @@
     "channelName_webChat": "Website chat",
     "todayCardTitle": "Today",
     "todayCardUnit": "{count, plural, one {incoming message} other {incoming messages}}",
-    "todayCardCountHint": "Messages from customers today across all channels (the website chat is not counted yet). Bars: the last 7 days, the last one is today.",
+    "todayCardCountHint": "Messages from customers today across all channels, the website chat included. Bars: the last 7 days, the last one is today.",
     "todayCardDeltaHint": "Against yesterday up to the same hour.",
     "todayCardReply": "Usual reply",
     "todayCardReplyHint": "How long a conversation started today usually waits for its first reply (median). AI replies count too.",

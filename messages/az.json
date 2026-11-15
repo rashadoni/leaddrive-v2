@@ -28728,7 +28728,7 @@
     "channelName_webChat": "Sayt çatı",
     "todayCardTitle": "Bu gün",
     "todayCardUnit": "gələn mesaj",
-    "todayCardCountHint": "Bu gün müştərilərdən gələn mesajlar, bütün kanallar üzrə (sayt çatı hələ sayılmır). Sütunlar — son 7 gün, sonuncusu bu gündür.",
+    "todayCardCountHint": "Bu gün müştərilərdən gələn mesajlar, bütün kanallar üzrə, sayt çatı da daxil. Sütunlar — son 7 gün, sonuncusu bu gündür.",
     "todayCardDeltaHint": "Dünənlə müqayisə: dünən eyni saata qədər gələn mesajlarla.",
     "todayCardReply": "Orta cavab",
     "todayCardReplyHint": "Bu gün başlayan söhbətlərdə ilk cavaba qədər adi vaxt (median). AI cavabları da sayılır.",
