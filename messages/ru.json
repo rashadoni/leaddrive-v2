@@ -28751,6 +28751,8 @@
     "snooze_3h": "3 часа",
     "snooze_tomorrow": "Завтра",
     "moveToFolder": "В папку",
+    "moreActionsMenu": "Ещё",
+    "noFolder": "Без папки",
     "createFolderFirst": "Сначала создайте папку",
     "foldersTooltip": "Папки доступны для диалогов соц-каналов",
     "composer_reply": "Ответ",
