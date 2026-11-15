@@ -29,6 +29,7 @@ const COPY: Record<Locale, {
   retrying: string
   refusedContacts: string
   refusedHistory: string
+  openInInbox: string
 }> = {
   az: {
     title: "Tarixçənin idxalı",
@@ -46,6 +47,7 @@ const COPY: Record<Locale, {
     retrying: "İstənilir…",
     refusedContacts: "Kontaktlar: {error}",
     refusedHistory: "Yazışma: {error}",
+    openInInbox: "Gedişatı gələnlər qutusunda aç",
   },
   ru: {
     title: "Импорт истории",
@@ -63,6 +65,7 @@ const COPY: Record<Locale, {
     retrying: "Запрашиваем…",
     refusedContacts: "Контакты: {error}",
     refusedHistory: "Переписка: {error}",
+    openInInbox: "Открыть ход импорта в инбоксе",
   },
   en: {
     title: "History import",
@@ -80,6 +83,7 @@ const COPY: Record<Locale, {
     retrying: "Requesting…",
     refusedContacts: "Contacts: {error}",
     refusedHistory: "Chats: {error}",
+    openInInbox: "Open the import in the inbox",
   },
 }
 
@@ -181,6 +185,11 @@ export function WhatsAppHistoryImportStatus({ channelId, locale }: { channelId: 
           )}
           {counts.length > 0 && <p className="text-muted-foreground">{counts.join(" · ")}</p>}
           {refusals.map((line) => <p key={line} className="break-words text-muted-foreground">{line}</p>)}
+          {(view.state === "importing" || view.state === "done" || view.state === "waiting") && (
+            <a href={`/inbox?whatsappImport=${encodeURIComponent(channelId)}`} className="inline-block font-semibold underline">
+              {c.openInInbox}
+            </a>
+          )}
           {view.canRetry && (
             <button
               type="button"

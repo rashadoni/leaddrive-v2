@@ -44,6 +44,7 @@ import { ChannelConfigForm } from "@/components/channel-config-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { useWhatsAppEmbeddedSignup } from "@/components/channels/whatsapp-embedded-signup"
 import { WhatsAppHistoryImportStatus } from "@/components/channels/whatsapp-history-import-status"
+import { WhatsAppKeepAppDialog } from "@/components/channels/whatsapp-keep-app-dialog"
 import { isCoexistenceChannel } from "@/lib/whatsapp-number-onboarding"
 import { metaOAuthReturnBanner } from "@/lib/channels/meta-oauth-return-banner"
 import { channelNumberLabel } from "@/lib/channels/channel-number-label"
@@ -262,7 +263,6 @@ const copy = {
     esChoosePrompt: "How should this number work?",
     esKeepApp: "Keep my WhatsApp Business app",
     esKeepAppHint: "It keeps working on your phone; LeadDrive answers alongside it. Needs the app 2.24.17 or newer.",
-    esKeepAppSteps: ["Scan the QR code in Meta's window with the WhatsApp Business app on the phone that has this number. If Meta sends a message to the app instead, confirm the connection there.", "The number stays on the phone: you can write from the app and from the CRM.", "Your contacts and the last 6 months of chats come into the CRM by themselves — allow it when the app asks. Meta does not move group chats."],
     esMoveToApi: "Move the number to the API",
     esMoveToApiHint: "The number can no longer be used in the WhatsApp Business app.",
     esChooseBack: "Cancel",
@@ -476,7 +476,6 @@ const copy = {
     esChoosePrompt: "Как должен работать этот номер?",
     esKeepApp: "Оставить приложение WhatsApp Business",
     esKeepAppHint: "Номер продолжит работать на телефоне, LeadDrive отвечает рядом. Нужно приложение 2.24.17 или новее.",
-    esKeepAppSteps: ["Отсканируйте QR-код из окна Meta приложением WhatsApp Business на телефоне с этим номером. Если вместо кода Meta пришлёт сообщение в приложение — подтвердите подключение там.", "Номер останется в телефоне: писать можно и из приложения, и из CRM.", "Контакты и переписка за последние 6 месяцев подтянутся в CRM сами — разрешите это, когда приложение спросит. Групповые чаты Meta не переносит."],
     esMoveToApi: "Перенести номер в API",
     esMoveToApiHint: "Приложением WhatsApp Business на этом номере пользоваться будет нельзя.",
     esChooseBack: "Отмена",
@@ -688,7 +687,6 @@ const copy = {
     esChoosePrompt: "Bu nömrə necə işləsin?",
     esKeepApp: "WhatsApp Business tətbiqim qalsın",
     esKeepAppHint: "Nömrə telefonda işləməyə davam edir, LeadDrive onunla birgə cavab verir. Tətbiqin 2.24.17 və ya daha yeni versiyası lazımdır.",
-    esKeepAppSteps: ["Meta pəncərəsindəki QR-kodu bu nömrənin olduğu telefonda WhatsApp Business tətbiqi ilə skan edin. Meta kod əvəzinə tətbiqə mesaj göndərsə, qoşulmanı orada təsdiqləyin.", "Nömrə telefonda qalır: həm tətbiqdən, həm CRM-dən yazmaq olar.", "Kontaktlar və son 6 ayın yazışması CRM-ə özü gələcək — tətbiq soruşanda icazə verin. Qrup söhbətlərini Meta köçürmür."],
     esMoveToApi: "Nömrəni API-yə köçür",
     esMoveToApiHint: "Bu nömrədə WhatsApp Business tətbiqindən istifadə etmək mümkün olmayacaq.",
     esChooseBack: "Ləğv et",
@@ -1818,6 +1816,7 @@ function ChannelsPageInner() {
   // number that lives in the WhatsApp Business app. For a shop run from one phone that is the whole
   // business's WhatsApp, so the irreversible choice is not something a tile makes on its own.
   const [whatsappChoosing, setWhatsappChoosing] = useState(false)
+  const [whatsappExplaining, setWhatsappExplaining] = useState(false)
 
   // Back from Meta's login (lib/social/oauth-return): `?oauth=facebook|instagram` plus what the callback
   // reports — `connected`, `pages`, `ig`, or `error` — and `channelId`, the row it wired or started from.
@@ -2162,17 +2161,13 @@ function ChannelsPageInner() {
             data-crm-color-role="provider"
             type="button"
             className="w-full rounded-lg bg-emerald-600 px-2 py-1.5 text-[11px] font-semibold leading-4 text-white transition-colors hover:bg-emerald-700"
-            onClick={() => void whatsappSignup.start({ keepBusinessApp: true })}
+            // What happens in Meta's window is said first (components/channels/whatsapp-keep-app-dialog);
+            // its button opens the window.
+            onClick={() => setWhatsappExplaining(true)}
           >
             {c.esKeepApp}
           </button>
           <p className="text-[10px] leading-3 text-muted-foreground">{c.esKeepAppHint}</p>
-          {/* What happens in Meta's window, said before it opens: the code to scan, that the number
-              stays on the phone, and that the contacts and six months of chats follow by themselves
-              (lib/whatsapp-history-import). */}
-          <ol className="list-decimal space-y-0.5 pl-4 text-[10px] leading-3 text-muted-foreground" data-testid="whatsapp-keep-app-steps">
-            {c.esKeepAppSteps.map((step) => <li key={step}>{step}</li>)}
-          </ol>
           <button
             type="button"
             className="w-full rounded-lg border border-emerald-300 px-2 py-1.5 text-[11px] font-semibold leading-4 text-emerald-800 transition-colors hover:bg-emerald-50 dark:text-emerald-300"
@@ -2396,6 +2391,15 @@ function ChannelsPageInner() {
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-background text-foreground shadow-sm">
+      <WhatsAppKeepAppDialog
+        open={whatsappExplaining}
+        locale={locale}
+        onOpenChange={setWhatsappExplaining}
+        onContinue={() => {
+          setWhatsappExplaining(false)
+          void whatsappSignup.start({ keepBusinessApp: true })
+        }}
+      />
       {connectCard ? (
         <>
           <div className="border-b border-border bg-card px-6 py-5">

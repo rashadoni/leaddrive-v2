@@ -69,6 +69,7 @@ import { ConversationLearningBanner, LearningAnswerMark, useConversationLearning
 import { placeholderPreview, placeholderView, voiceTranscript } from "@/lib/inbox/media-placeholder"
 import { threadHeaderActionInline, threadHeaderTier, type ThreadHeaderAction } from "@/lib/inbox/thread-header-layout"
 import { inboxListBesideThread, inboxRailFolded } from "@/lib/inbox/inbox-columns"
+import { importChipLabel, WhatsAppImportBanner, WhatsAppImportPanel } from "@/components/inbox/whatsapp-import-screen"
 import {
   CHANNELS, REPLY_CHANNELS, ChannelIcon, channelColor, channelLabel,
   avatarTint, initials, extractQuickReplies, appendTag, dropTag, convStatusTab, convMatchesView, extractAttachments,
@@ -438,6 +439,14 @@ export default function InboxV2Page() {
   const [stats, setStats] = useState<InboxStats>({ totalMessages: 0, inbound: 0, outbound: 0, conversations: 0 })
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<string | null>(null)
+  // The WhatsApp import screen (components/inbox/whatsapp-import-screen) shown in the thread's place.
+  const [importChannelId, setImportChannelId] = useState<string | null>(null)
+  // /inbox?whatsappImport=<channelId> — the channels screen's «open the import» link. Read once,
+  // after hydration, like the conversation deep link below.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("whatsappImport")
+    if (id) setImportChannelId(id)
+  }, [])
   // Bulk selection (keys = convoKey). Only rows backed by a SocialConversation or
   // WebChatSession are selectable — same gating as the single-thread actions.
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set())
@@ -2075,7 +2084,7 @@ export default function InboxV2Page() {
         className={cn(
           railFolded ? "min-w-0 flex-1" : "w-80 shrink-0",
           "bg-card flex flex-col",
-          selectedConvo && !listBesideThread && "hidden",
+          (selectedConvo || importChannelId) && !listBesideThread && "hidden",
         )}
       >
         {railFolded && (
@@ -2309,6 +2318,9 @@ export default function InboxV2Page() {
           onOpenChange={handleBulkCloseOpenChange}
           onConfirm={confirmBulkClose}
         />
+        {/* A number's contacts and six months of chats coming over from the WhatsApp Business
+            app (lib/whatsapp-history-import): the card opens the import screen in the thread's place. */}
+        <WhatsAppImportBanner locale={locale} onOpen={(channelId) => { setImportChannelId(channelId); setSelected(null) }} />
         <div className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-xs">
@@ -2333,7 +2345,7 @@ export default function InboxV2Page() {
               const extraTags = tags.length - (pill && !unreplied && tags.length > 0 ? 1 : 0)
               const key = convoKey(c)
               const isChecked = bulkSelected.has(key)
-              const openConversation = () => { setSelected(key); setReplyChannel(c.lastChannel || "email"); setSendError(null); setSendDeliveryUnknown(false); setAttachment(null); setReplyText(""); setMentionedUserIds([]); setMentionQuery(null); setShowAddConvLabel(false); setShowAddContactTag(false); markConversationRead(c) }
+              const openConversation = () => { setImportChannelId(null); setSelected(key); setReplyChannel(c.lastChannel || "email"); setSendError(null); setSendDeliveryUnknown(false); setAttachment(null); setReplyText(""); setMentionedUserIds([]); setMentionQuery(null); setShowAddConvLabel(false); setShowAddContactTag(false); markConversationRead(c) }
               return (
               <div
                 key={key}
@@ -2410,6 +2422,11 @@ export default function InboxV2Page() {
                         {pill.text}
                       </span>
                     )}
+                    {c.historyImport && (
+                      <span data-testid="conversation-history-import" className="shrink-0 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+                        {importChipLabel(locale)}
+                      </span>
+                    )}
                     {extraTags > 0 && (
                       <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                         +{extraTags}
@@ -2437,7 +2454,12 @@ export default function InboxV2Page() {
 
       {/* ─────────── ZONE 3 · Message thread ───────────
           On a phone the list takes the whole inbox: no empty column beside it. */}
-      <section className={cn("flex-1 min-w-0 bg-card flex flex-col", railFolded && !selectedConvo && "hidden")}>
+      <section className={cn("relative flex-1 min-w-0 bg-card flex flex-col", railFolded && !selectedConvo && !importChannelId && "hidden")}>
+        {importChannelId && (
+          <div className="absolute inset-0 z-20 bg-background">
+            <WhatsAppImportPanel channelId={importChannelId} locale={locale} onClose={() => setImportChannelId(null)} />
+          </div>
+        )}
         {selectedConvo ? (
           <>
             <header

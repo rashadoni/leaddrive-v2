@@ -290,7 +290,11 @@ async function contactsRoom(organizationId: string): Promise<number> {
 async function importAddressBook(channel: HistoryChannel, payload: Rec, now: Date) {
   const organizationId = channel.organizationId
   const entries = addressBookOf(payload, now)
-  const out = { contacts: entries.length, created: 0, matched: 0, renamed: 0, removedInApp: 0, withoutPhone: 0, overPlanLimit: 0 }
+  const out = {
+    contacts: entries.length, created: 0, matched: 0, renamed: 0, removedInApp: 0, withoutPhone: 0, overPlanLimit: 0,
+    // Who arrived, for the import screen's «new contacts» — the first ones only, it is a glimpse.
+    createdContactIds: [] as string[],
+  }
   // The plan's contact limit holds for an import too — the rest are still matched, never created.
   let room = await contactsRoom(organizationId)
   for (const entry of entries) {
@@ -331,6 +335,7 @@ async function importAddressBook(channel: HistoryChannel, payload: Rec, now: Dat
       })
       room -= 1
       out.created += 1
+      if (out.createdContactIds.length < 40) out.createdContactIds.push(created.id)
       contactId = created.id
     }
     await linkThreadToContact(organizationId, entry.phone, contactId, entry.fullName)

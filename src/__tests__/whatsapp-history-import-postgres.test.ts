@@ -323,10 +323,33 @@ const DECLINED = envelope("history", {
       expect(view).toMatchObject({
         state: "done",
         contacts: { received: 3, created: 1, matched: 1 },
-        history: { progress: 100, conversations: 2, messages: 6, declined: false },
+        history: { progress: 100, conversations: 3, messages: 6, declined: false },
       })
     })
   }, 120_000)
+
+  it("counts the import screen from the rows themselves, under the tenant's own scope", async () => {
+    const detail = await tenant(() => status.historyImportDetail(ORG, CHANNEL))
+    expect(detail).toMatchObject({
+      state: "done",
+      phone: "connected",
+      displayPhoneNumber: "+994 51 206 08 38",
+      counts: { conversations: 3, messages: 6, media: 1, mediaFiles: 0 },
+      newContacts: { total: 1, shown: [{ name: "Leyla Həsənova" }] },
+    })
+    // Every imported message lands in the month of its own date.
+    expect(detail!.months.reduce((sum, m) => sum + m.messages, 0)).toBe(6)
+    expect(detail!.months.map((m) => m.month)).toEqual([...new Set([ago(80 * DAY), ago(79 * DAY), ago(20 * HOUR), ago(5 * MIN)].map((d) => d.toISOString().slice(0, 7)))].sort())
+    // Aysel's conversation was there before; the history went into it, not into a second one.
+    expect(detail!.feed).toHaveLength(3)
+    expect(detail!.feed.map((f) => f.conversationId)).toContain("conv-aysel")
+
+    // The inbox card: on a channel this person may see, and not on one hidden from them.
+    expect(await tenant(() => status.inboxHistoryImports(ORG, () => true, NOW))).toEqual([
+      expect.objectContaining({ channelId: CHANNEL, state: "done", progress: 100, conversations: 3, contacts: 2 }),
+    ])
+    expect(await tenant(() => status.inboxHistoryImports(ORG, (id) => id !== CHANNEL, NOW))).toEqual([])
+  })
 
   it("adds no row to any other table and sends nothing anywhere", async () => {
     const after = await tableCounts()

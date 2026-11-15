@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Loader2 } from "lucide-react"
 import { appOrigin, readRelayedSignup, signupWindowUrl } from "@/lib/whatsapp-signup-window"
+import { WhatsAppKeepAppDialog } from "@/components/channels/whatsapp-keep-app-dialog"
 
 /**
  * "Connect WhatsApp with Meta" — Meta's Embedded Signup dialog (lib/whatsapp-embedded-signup).
@@ -24,12 +25,6 @@ export type WhatsAppEmbeddedSignupLabels = {
   /** «Keep my WhatsApp Business app» — the recommended choice, and its requirements. */
   keepAppButton: string
   keepAppHint: string
-  /**
-   * What happens in Meta's window, said before it opens: scan the code with the WhatsApp Business
-   * app, the number stays on the phone, the contacts and six months of chats follow
-   * (lib/whatsapp-history-import).
-   */
-  keepAppSteps?: string[]
   /** «Move the number to the API» — and the honest warning that the app stops working. */
   moveButton: string
   moveHint: string
@@ -332,12 +327,20 @@ export function WhatsAppEmbeddedSignup({
   labels,
   onConnected,
   fallback = null,
+  locale,
 }: {
   labels: WhatsAppEmbeddedSignupLabels
   onConnected?: (channelId: string) => void
   /** Shown instead once the server says Embedded Signup is not configured. */
   fallback?: ReactNode
+  /**
+   * With a locale, «keep my app» first shows what happens in Meta's window — the code to scan, the
+   * number staying on the phone, the contacts and six months of chats that follow
+   * (components/channels/whatsapp-keep-app-dialog) — and its button opens the window.
+   */
+  locale?: string
 }) {
+  const [explaining, setExplaining] = useState(false)
   const { availability, status, start } = useWhatsAppEmbeddedSignup({
     cancelledMessage: labels.cancelled,
     failedMessage: labels.failed,
@@ -370,7 +373,7 @@ export function WhatsAppEmbeddedSignup({
           <div className="space-y-1">
             <button data-crm-color-role="provider"
               type="button"
-              onClick={() => void start({ keepBusinessApp: true })}
+              onClick={() => (locale ? setExplaining(true) : void start({ keepBusinessApp: true }))}
               disabled={status.kind === "working"}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-70"
             >
@@ -378,11 +381,6 @@ export function WhatsAppEmbeddedSignup({
               {status.kind === "working" ? labels.working : labels.keepAppButton}
             </button>
             <p className="text-[11px] leading-snug text-emerald-800">{labels.keepAppHint}</p>
-            {labels.keepAppSteps && labels.keepAppSteps.length > 0 && (
-              <ol className="list-decimal space-y-0.5 pl-4 text-[11px] leading-snug text-emerald-800" data-testid="whatsapp-keep-app-steps">
-                {labels.keepAppSteps.map((step) => <li key={step}>{step}</li>)}
-              </ol>
-            )}
           </div>
           <div className="space-y-1">
             <button
@@ -411,6 +409,17 @@ export function WhatsAppEmbeddedSignup({
         </div>
       )}
       {status.kind === "error" && <p className="text-xs text-red-700">{status.message}</p>}
+      {locale && (
+        <WhatsAppKeepAppDialog
+          open={explaining}
+          locale={locale}
+          onOpenChange={setExplaining}
+          onContinue={() => {
+            setExplaining(false)
+            void start({ keepBusinessApp: true })
+          }}
+        />
+      )}
     </div>
   )
 }

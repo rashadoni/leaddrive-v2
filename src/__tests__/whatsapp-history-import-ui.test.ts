@@ -3,9 +3,19 @@
 import { act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+vi.mock("next-intl", () => ({
+  useLocale: () => "ru",
+  useTranslations: () => {
+    const translate = (key: string) => key
+    translate.has = () => false
+    return translate
+  },
+}))
 import { WhatsAppEmbeddedSignup } from "@/components/channels/whatsapp-embedded-signup"
 import { WhatsAppHistoryImportStatus } from "@/components/channels/whatsapp-history-import-status"
-import type { HistoryImportView } from "@/lib/whatsapp-history-import/status"
+import type { HistoryImportDetail, HistoryImportView } from "@/lib/whatsapp-history-import/status"
+import { WhatsAppImportBanner, WhatsAppImportPanel } from "@/components/inbox/whatsapp-import-screen"
 
 /**
  * The two screens of the WhatsApp coexistence import (lib/whatsapp-history-import): what the person
@@ -30,25 +40,42 @@ afterEach(async () => {
 const flush = () => act(async () => { await new Promise((r) => setTimeout(r, 0)) })
 
 describe("before Meta's window", () => {
-  it("says, before the click, what to scan and what comes over", async () => {
+  it("says, before Meta's window opens, what to scan and what comes over — and only its button opens it", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ configured: true, appId: "1", configId: "2" }))))
-    const steps = ["Scan the QR code with the WhatsApp Business app.", "The number stays on the phone.", "Contacts and 6 months of chats come over."]
+    process.env.NEXT_PUBLIC_APP_URL = window.location.origin
+    const login = vi.fn()
+    window.FB = { init: vi.fn(), login }
     await act(async () => {
       root.render(createElement(WhatsAppEmbeddedSignup, {
+        locale: "ru",
         labels: {
           title: "Connect", description: "", working: "…", connected: "{number}", paymentHint: "", cancelled: "", failed: "",
-          keepAppButton: "Keep my WhatsApp Business app", keepAppHint: "Keeps working.", keepAppSteps: steps,
+          keepAppButton: "Keep my WhatsApp Business app", keepAppHint: "Keeps working.",
           moveButton: "Move to the API", moveHint: "", agentBlockedHint: "", offboardingHint: "",
         },
       }))
     })
     await flush()
-    const list = container.querySelector('[data-testid="whatsapp-keep-app-steps"]')
-    expect(Array.from(list?.querySelectorAll("li") ?? []).map((li) => li.textContent)).toEqual(steps)
-    // Under the button that opens Meta's window, before the other path.
-    const text = container.textContent || ""
-    expect(text.indexOf(steps[0])).toBeGreaterThan(text.indexOf("Keep my WhatsApp Business app"))
-    expect(text.indexOf(steps[2])).toBeLessThan(text.indexOf("Move to the API"))
+    const keep = Array.from(container.querySelectorAll("button")).find((b) => b.textContent?.includes("Keep my WhatsApp Business app"))!
+    await act(async () => keep.click())
+    const dialog = container.querySelector('[data-testid="whatsapp-keep-app-dialog"]')!
+    expect(Array.from(dialog.querySelectorAll('[data-testid="whatsapp-keep-app-steps"] li')).map((li) => li.textContent)).toEqual([
+      "1Откройте приложение WhatsApp Business на телефоне",
+      "2Отсканируйте приложением QR-код в окне Meta",
+      "3Готово — сообщения приходят и в телефон, и сюда",
+    ])
+    expect(dialog.textContent).toContain("Ваши контакты переносятся в LeadDrive")
+    expect(dialog.textContent).toContain("Приходит переписка за последние 6 месяцев")
+    expect(dialog.textContent).toContain("официальный поставщик технологий Meta")
+    expect(login).not.toHaveBeenCalled()
+
+    const go = Array.from(dialog.querySelectorAll("button")).find((b) => b.textContent === "Продолжить с Meta")!
+    await act(async () => go.click())
+    await flush()
+    expect(login).toHaveBeenCalledTimes(1)
+    expect((login.mock.calls[0][1] as { extras: Record<string, unknown> }).extras.featureType).toBe("whatsapp_business_app_onboarding")
+    delete window.FB
+    delete process.env.NEXT_PUBLIC_APP_URL
   })
 })
 
@@ -60,6 +87,7 @@ describe("the import under the number", () => {
     canRetry: false,
     requests: { contacts: { requestedAt: "x", requestId: "r1" }, history: { requestedAt: "x", requestId: "r2" } },
     contacts: { received: 120, created: 80, matched: 40, overPlanLimit: 0, pending: 0 },
+    media: { received: 0, stored: 0, pending: 0 },
     history: { progress: 55, conversations: 31, messages: 912, pendingChunks: 1, failedChunks: 0, declined: false },
     ...patch,
   })
@@ -108,5 +136,93 @@ describe("the import under the number", () => {
   it("says plainly when the import is done", async () => {
     await show(view({ state: "done", history: { progress: 100, conversations: 31, messages: 1200, pendingChunks: 0, failedChunks: 0, declined: false } }))
     expect(container.textContent).toContain("Готово: контакты и переписка за 6 месяцев в CRM.")
+  })
+})
+
+describe("the import screen in the inbox", () => {
+  const detail = (patch: Partial<HistoryImportDetail>): HistoryImportDetail => ({
+    state: "importing",
+    onboardedAt: "2026-11-15T10:00:00.000Z",
+    windowEndsAt: "2026-11-16T10:00:00.000Z",
+    canRetry: false,
+    requests: { contacts: { requestedAt: "x", requestId: "r1" }, history: { requestedAt: "x", requestId: "r2" } },
+    contacts: { received: 40, created: 14, matched: 26, overPlanLimit: 0, pending: 0 },
+    media: { received: 0, stored: 0, pending: 0 },
+    history: { progress: 55, conversations: 31, messages: 912, pendingChunks: 1, failedChunks: 0, declined: false },
+    channelId: "cfg-1",
+    configName: "Mağaza Baku",
+    displayPhoneNumber: "+994 51 206 08 38",
+    phone: "connected",
+    counts: { conversations: 31, messages: 912, media: 0, mediaFiles: 0 },
+    months: [{ month: "2026-09", messages: 200 }, { month: "2026-10", messages: 400 }, { month: "2026-11", messages: 312 }],
+    newContacts: { total: 14, shown: Array.from({ length: 14 }, (_, i) => ({ id: `c${i}`, name: `Kontakt ${i}` })) },
+    feed: [{ conversationId: "conv-1", name: "Aysel Məmmədova", lastMessage: "95 ₼, endirim bitib", at: "2026-11-13T11:31:00.000Z" }],
+    ...patch,
+  })
+
+  async function showPanel(answer: HistoryImportDetail, locale = "az") {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(answer))))
+    const onClose = vi.fn()
+    await act(async () => { root.render(createElement(WhatsAppImportPanel, { channelId: "cfg-1", locale, onClose })) })
+    await flush()
+    return onClose
+  }
+
+  it("shows what is really counted, in the mock-up's order", async () => {
+    const onClose = await showPanel(detail({}))
+    const panel = container.querySelector('[data-testid="whatsapp-import-panel"]')!
+    expect(panel.textContent).toContain("WhatsApp idxalı")
+    expect(panel.textContent).toContain("+994 51 206 08 38 · Mağaza Baku · son 6 ay")
+    expect(panel.textContent).toContain("Telefon qoşulub")
+    expect(panel.textContent).toContain("55%")
+    expect(Array.from(panel.querySelectorAll("[data-step]")).map((el) => [el.getAttribute("data-step"), el.getAttribute("data-step-state")])).toEqual([
+      ["connect", "done"], ["contacts", "done"], ["chats", "run"], ["media", "wait"],
+    ])
+    // Counters with something in them only: no photos yet, so no «0 foto və səs»; and no «of N»,
+    // because Meta never says how many chats there are in all.
+    expect(panel.textContent).toContain("912mesaj")
+    expect(panel.textContent).not.toContain("foto və səs")
+    expect(panel.textContent).not.toMatch(/\/\s*\d/)
+    expect(panel.querySelectorAll('[data-testid="whatsapp-import-months"] > div')).toHaveLength(3)
+    // Twelve places: eleven people and «+3 daha».
+    const grid = panel.querySelector('[data-testid="whatsapp-import-new-contacts"]')!
+    expect(grid.children).toHaveLength(12)
+    expect(grid.textContent).toContain("+3daha")
+    expect(panel.querySelector('[data-testid="whatsapp-import-feed"]')?.textContent).toContain("95 ₼, endirim bitib")
+    // The import teaches the AI nothing, so the mock-up's training block is not here at all.
+    expect(panel.textContent).not.toMatch(/AI köməkçi|öyrən/)
+
+    const back = Array.from(panel.querySelectorAll("button")).find((b) => b.textContent === "Arxa fonda davam et")!
+    await act(async () => back.click())
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it("leaves out the blocks that have nothing yet, instead of drawing zeros", async () => {
+    await showPanel(detail({
+      state: "waiting",
+      contacts: { received: 0, created: 0, matched: 0, overPlanLimit: 0, pending: 0 },
+      history: { progress: null, conversations: 0, messages: 0, pendingChunks: 0, failedChunks: 0, declined: false },
+      counts: { conversations: 0, messages: 0, media: 0, mediaFiles: 0 },
+      months: [], newContacts: { total: 0, shown: [] }, feed: [],
+    }), "ru")
+    const panel = container.querySelector('[data-testid="whatsapp-import-panel"]')!
+    expect(panel.textContent).toContain("Meta присылает контакты и переписку за 6 месяцев частями")
+    expect(panel.querySelector('[data-testid="whatsapp-import-months"]')).toBeNull()
+    expect(panel.querySelector('[data-testid="whatsapp-import-new-contacts"]')).toBeNull()
+    expect(panel.querySelector('[data-testid="whatsapp-import-feed"]')).toBeNull()
+    expect(panel.textContent).not.toMatch(/(^|\D)0\s?(сообщений|переписок|контактов)/)
+  })
+
+  it("puts a card over the conversation list that opens the screen", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ imports: [{ channelId: "cfg-1", displayPhoneNumber: "+994 51 206 08 38", state: "importing", progress: 78, conversations: 1248, contacts: 312 }] }))))
+    const onOpen = vi.fn()
+    await act(async () => { root.render(createElement(WhatsAppImportBanner, { locale: "az", onOpen })) })
+    await flush()
+    const card = container.querySelector('[data-testid="whatsapp-import-banner"] button')!
+    expect(card.textContent).toContain("WhatsApp idxalı · son 6 ay")
+    expect(card.textContent).toContain("1 248 yazışma · 312 kontakt")
+    expect(card.textContent).toContain("78%")
+    await act(async () => (card as HTMLButtonElement).click())
+    expect(onOpen).toHaveBeenCalledWith("cfg-1")
   })
 })
