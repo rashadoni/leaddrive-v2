@@ -17,6 +17,7 @@ export const AI_FEATURES = {
   "inbox-lead-qualification": { ru: "Переписка — квалификация лидов", az: "Yazışma — lidlərin kvalifikasiyası", en: "Inbox — lead qualification" },
   "inbox-customer-stage": { ru: "Переписка — стадия клиента", az: "Yazışma — müştəri mərhələsi", en: "Inbox — customer stage" },
   "inbox-reply-score": { ru: "Переписка — оценка ответа", az: "Yazışma — cavabın qiymətləndirilməsi", en: "Inbox — reply scoring" },
+  "inbox-learning": { ru: "Переписка — обучение ИИ", az: "Yazışma — AI-ın öyrədilməsi", en: "Inbox — AI training" },
   "whatsapp-reply": { ru: "WhatsApp — ответы ИИ", az: "WhatsApp — AI cavabları", en: "WhatsApp — AI replies" },
   "web-chat": { ru: "Чат на сайте", az: "Saytda çat", en: "Website chat" },
   "portal-chat": { ru: "Портал клиента — чат", az: "Müştəri portalı — çat", en: "Customer portal — chat" },

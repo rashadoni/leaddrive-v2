@@ -18,6 +18,7 @@
 import { prisma } from "@/lib/prisma"
 import { getBusinessHoursDecision } from "@/lib/inbox/business-hours"
 import { languageRuleFor } from "@/lib/inbox/agent-instruction"
+import { learnedPromptBlocks } from "@/lib/inbox/learning/prompt-blocks"
 
 export const INBOX_AGENT_TYPE = "inbox"
 export const INBOX_PAGE_AGENT_TYPE = "inbox_page"
@@ -144,13 +145,24 @@ export async function whatsAppPageTurn(params: {
     now: params.now,
   })
   const page = allowed ? await findPageAgent(params.organizationId, params.channelConfigId) : null
+  // What the number learned from its own people in training (lib/inbox/learning): its character joins
+  // the instructions, its confirmed knowledge the facts — with or without a page agent.
+  const learned = allowed
+    ? await learnedPromptBlocks({ organizationId: params.organizationId, channelConfigId: params.channelConfigId })
+    : { character: "", knowledge: "" }
+  const learnedFacts = learned.knowledge
+    ? `ФАКТЫ КОМПАНИИ (утверждены компанией; цены и условия называй только отсюда):\n${learned.knowledge}`
+    : ""
   if (!page) {
     const support = params.supportPrompt?.trim()
-    return { allowed, pageAgent: false, instructions: support ? `\n\nДОПОЛНИТЕЛЬНЫЕ ИНСТРУКЦИИ:\n${support}` : "" }
+    const parts = [support ? `ДОПОЛНИТЕЛЬНЫЕ ИНСТРУКЦИИ:\n${support}` : "", learned.character.trim(), learnedFacts].filter(Boolean)
+    return { allowed, pageAgent: false, instructions: parts.length ? `\n\n${parts.join("\n\n")}` : "" }
   }
   const parts: string[] = []
   if (page.systemPrompt?.trim()) parts.push(`ДОПОЛНИТЕЛЬНЫЕ ИНСТРУКЦИИ:\n${page.systemPrompt.trim()}`)
+  if (learned.character.trim()) parts.push(learned.character.trim())
   if (page.knowledgeBase?.trim()) parts.push(`ФАКТЫ КОМПАНИИ (утверждены компанией; цены и условия называй только отсюда):\n${page.knowledgeBase.trim()}`)
+  if (learnedFacts) parts.push(learnedFacts)
   if (page.greeting?.trim()) parts.push(`ПРИВЕТСТВИЕ (используй ТОЛЬКО в самом первом ответе нового диалога): ${page.greeting.trim()}`)
   const language = languageRuleFor(page.replyLanguage).trim()
   if (language) parts.push(language)

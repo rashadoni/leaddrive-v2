@@ -65,6 +65,7 @@ import {
   Trash2, Megaphone, AtSign, Smartphone, PanelRight,
 } from "lucide-react"
 import { messageAuthor } from "@/lib/inbox/message-author"
+import { ConversationLearningBanner, LearningAnswerMark, useConversationLearning } from "@/components/inbox-learning/conversation-learning"
 import { isMediaPlaceholder, placeholderView } from "@/lib/inbox/media-placeholder"
 import { threadHeaderActionInline, threadHeaderTier, type ThreadHeaderAction } from "@/lib/inbox/thread-header-layout"
 import {
@@ -940,6 +941,8 @@ export default function InboxV2Page() {
   // page refresh. Keying by identity keeps the right thread open + live-updating.
   const convoKey = (c: InboxConversation) => c.webChatSessionId || c.socialConversationId || c.contactId || c.messages[0]?.id || ""
   const selectedConvo = selected !== null ? (filtered.find((c) => convoKey(c) === selected) ?? null) : null
+  // AI training on this conversation's channel (lib/inbox/learning): the strip and the marks under answers.
+  const learning = useConversationLearning(selectedConvo?.socialConversationId, selectedConvo?.messages.length)
 
   /* ── Bulk selection & actions ── */
   const BULK_LIMIT = 50
@@ -2736,6 +2739,8 @@ export default function InboxV2Page() {
               </div>
             </header>
 
+            <ConversationLearningBanner data={learning} />
+
             <div className="px-4 py-1.5">
               <div className="inline-flex gap-0.5 text-xs">
                 {(["chats", "calls"] as const).map((tab) => {
@@ -3022,6 +3027,7 @@ export default function InboxV2Page() {
                           />
                         )}
                       </div>
+                      {out && <LearningAnswerMark data={learning} messageId={m.id} />}
                     </div>
                   </div>
                 )

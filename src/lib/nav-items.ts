@@ -26,7 +26,7 @@ import {
   TrendingUp, Filter, Workflow, Server, Bell, CalendarDays, Headphones, Package, RefreshCw,
   FolderKanban, Wallet, MapPin, Route, Camera, AlertTriangle,
   ClipboardList, UserCog, GitBranch, Plug, Keyboard, Shield, Phone, PhoneIncoming,
-  Trophy, Activity, FileBarChart, Bot, Sparkles, Inbox, MessageSquareWarning, Key, Gauge, ChartPie, Award,
+  Trophy, Activity, FileBarChart, Bot, Sparkles, GraduationCap, Inbox, MessageSquareWarning, Key, Gauge, ChartPie, Award,
   Tag, Wrench, ScanLine, LayoutTemplate, Columns3, Library,
   Globe, Globe2, Hash, LayoutGrid, SearchCheck, Reply, Scale,
   CreditCard, BellRing, Lock,
@@ -479,6 +479,8 @@ export const navItems: NavItem[] = [
   // Per-group AI agent — last section of the Communication group (omnichannel's own
   // agent + per-channel AI/agent matrix; kept separate from the support/sales agents).
   { module: "omnichannel", href: "/inbox/ai-agent", icon: Sparkles, tKey: "aiAgentNav", group: "Communication", addon: "ai" },
+  // Its training (owner 2026-11-15): the AI learns from how the team answers on a channel.
+  { module: "omnichannel", href: "/inbox/ai-training", icon: GraduationCap, tKey: "aiTrainingNav", group: "Communication", addon: "ai" },
 
   // ── Org-level / cross-cutting settings ────────────────────────────────────
   // These nine used to exist ONLY as cards on the /settings hub. That made the
