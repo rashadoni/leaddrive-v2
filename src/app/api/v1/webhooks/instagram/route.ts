@@ -307,6 +307,7 @@ export async function POST(req: NextRequest) {
           const send = (reply: string) => sendInstagramLoginMessage(senderId, reply, channel.apiKey || "")
           await handleInstagramInboundAudio({
             organizationId: channel.organizationId,
+            conversationId: conv.id,
             messageId: inboundMessage.id,
             audioUrl: mediaUrl,
             audio: storedAudio,

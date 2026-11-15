@@ -27,7 +27,13 @@ describe("native WhatsApp AI spend and ownership", () => {
     expect(release).toHaveBeenCalledWith({ organizationId: "org", conversationId: "conversation", token: "owned-token" })
   })
 
-  it.each([null, { assignedTo: "human", status: "open" }, { assignedTo: null, status: "resolved" }])("leaves missing, assigned or closed conversations alone", async (owner) => {
+  it.each([
+    null,
+    { assignedTo: "human", status: "open" },
+    { assignedTo: null, status: "resolved" },
+    // «AI rejimi» switched off for this one conversation in the inbox panel.
+    { assignedTo: null, status: "open", autoReplyOffAt: new Date() },
+  ])("leaves missing, assigned, closed or switched-off conversations alone", async (owner) => {
     db.findFirst.mockResolvedValue(owner)
     const operation = vi.fn()
     await withWhatsAppAiReplyGuard("org", "conversation", operation)
@@ -57,7 +63,7 @@ describe("native WhatsApp AI spend and ownership", () => {
     })
     expect(send).not.toHaveBeenCalled()
     expect(db.updateMany).toHaveBeenLastCalledWith(expect.objectContaining({
-      where: { id: "conversation", organizationId: "org", assignedTo: null, status: "open", aiReplyClaimToken: "owned-token" },
+      where: { id: "conversation", organizationId: "org", assignedTo: null, status: "open", autoReplyOffAt: null, aiReplyClaimToken: "owned-token" },
     }))
   })
 

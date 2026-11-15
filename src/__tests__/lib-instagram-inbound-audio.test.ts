@@ -4,13 +4,14 @@ const deps = vi.hoisted(() => ({
   transcribe: vi.fn(),
   resolveTranscriptionClient: vi.fn(),
   updateMany: vi.fn(),
+  conversation: vi.fn(),
 }))
 
 vi.mock("@/lib/transcription/transcribe", () => ({
   resolveTranscriptionClient: deps.resolveTranscriptionClient,
 }))
 vi.mock("@/lib/prisma", () => ({
-  prisma: { channelMessage: { updateMany: deps.updateMany } },
+  prisma: { channelMessage: { updateMany: deps.updateMany }, socialConversation: { findFirst: deps.conversation } },
 }))
 
 import {
@@ -19,11 +20,12 @@ import {
   parseInstagramAttachment,
 } from "@/lib/social/instagram-inbound-audio"
 
-const { transcribe, resolveTranscriptionClient, updateMany } = deps
+const { transcribe, resolveTranscriptionClient, updateMany, conversation } = deps
 
 beforeEach(() => {
   vi.clearAllMocks()
   updateMany.mockResolvedValue({ count: 1 })
+  conversation.mockResolvedValue({ autoReplyOffAt: null })
   resolveTranscriptionClient.mockReturnValue({ transcribe })
   transcribe.mockResolvedValue({
     transcript: "Qiyməti bilmək istəyirəm",
@@ -58,6 +60,7 @@ describe("Instagram inbound audio", () => {
 
     await expect(handleInstagramInboundAudio({
       organizationId: "org1",
+      conversationId: "conv1",
       messageId: "msg1",
       audioUrl: "https://cdn.example/voice.ogg",
       metadata: { platform: "instagram" },
@@ -93,6 +96,7 @@ describe("Instagram inbound audio", () => {
 
     await expect(handleInstagramInboundAudio({
       organizationId: "org1",
+      conversationId: "conv1",
       messageId: "msg1",
       audioUrl: "https://cdn.example/voice.ogg",
       metadata: { platform: "instagram" },
@@ -104,11 +108,30 @@ describe("Instagram inbound audio", () => {
     expect(updateMany).not.toHaveBeenCalled()
   })
 
+  it("stays silent when «AI rejimi» is off for the conversation", async () => {
+    resolveTranscriptionClient.mockReturnValue(null)
+    conversation.mockResolvedValue({ autoReplyOffAt: new Date() })
+    const sendFallback = vi.fn().mockResolvedValue(true)
+
+    await expect(handleInstagramInboundAudio({
+      organizationId: "org1",
+      conversationId: "conv1",
+      messageId: "msg1",
+      audioUrl: "https://cdn.example/voice.ogg",
+      metadata: { platform: "instagram" },
+      onTranscript: vi.fn(),
+      sendFallback,
+    })).resolves.toBe("fallback")
+
+    expect(sendFallback).not.toHaveBeenCalled()
+  })
+
   it("does not ask for text when transcription succeeded but the reply pipeline failed", async () => {
     const sendFallback = vi.fn().mockResolvedValue(true)
 
     await expect(handleInstagramInboundAudio({
       organizationId: "org1",
+      conversationId: "conv1",
       messageId: "msg1",
       audioUrl: "https://cdn.example/voice.ogg",
       metadata: { platform: "instagram" },

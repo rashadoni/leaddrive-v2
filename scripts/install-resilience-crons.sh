@@ -138,7 +138,9 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   printf '%s\n' "* * * * * $TRIGGER /api/cron/voice-call-queues >> $LOG 2>&1"
   # Human callback outcomes create durable commitment tasks. A minute runner
   # makes the promised time actionable; the endpoint itself is leased and
-  # idempotent, so reinstall/retry cannot duplicate the reminder.
+  # idempotent, so reinstall/retry cannot duplicate the reminder. The same tick
+  # rings tasks' own «Напомнить» (lib/tasks/task-reminders): a minute already
+  # starts fifteen schedules (cron-trigger-spread.test.ts), so no line of its own.
   printf '%s\n' "* * * * * $TRIGGER /api/cron/commitment-escalation >> $LOG 2>&1"
   # PBX lifecycle events are the source of truth for inbound misses. This
   # worker records one generic, unassigned CRM task without placing a call or

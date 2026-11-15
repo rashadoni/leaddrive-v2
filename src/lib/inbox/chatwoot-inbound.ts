@@ -1,3 +1,4 @@
+import { autoReplyOff } from "@/lib/inbox/conversation-auto-reply"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
@@ -288,6 +289,7 @@ export async function runChatwootInboundAutomation(
       if (context.messageType === "audio" && context.mediaUrl) {
         await handleTikTokInboundAudio({
           organizationId: context.organizationId,
+          conversationId: context.conversationId,
           messageId: context.messageId,
           audioUrl: context.mediaUrl,
           metadata: context.metadata,
@@ -302,7 +304,7 @@ export async function runChatwootInboundAutomation(
             channelConfigId: context.channelConfig.id,
           }),
         })
-      } else if (context.unsupportedMedia) {
+      } else if (context.unsupportedMedia && !await autoReplyOff(context.organizationId, context.conversationId)) {
         await sendChatwootMessage({
           conversationId: context.chatwootConversationId,
           content: INSTAGRAM_AUDIO_TEXT_FALLBACK,

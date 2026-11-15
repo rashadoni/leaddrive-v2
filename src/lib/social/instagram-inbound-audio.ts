@@ -1,3 +1,4 @@
+import { autoReplyOff } from "@/lib/inbox/conversation-auto-reply"
 import type { Prisma } from "@prisma/client"
 import { storeVoiceTranscript, transcribeInboundVoice } from "@/lib/inbox/inbound-voice-transcript"
 
@@ -47,6 +48,8 @@ export const INSTAGRAM_AUDIO_TEXT_FALLBACK =
 
 type InboundAudioInput = {
   organizationId: string
+  /** The inbox conversation: its «AI rejimi» switch silences the fallback (conversation-auto-reply). */
+  conversationId: string
   messageId: string
   audioUrl: string
   /** The file itself when we already keep it (lib/inbox/meta-media); then the URL is not fetched. */
@@ -65,8 +68,12 @@ async function handleInboundAudio(
   const transcription = await transcribeInboundVoice(input.audio
     ? { organizationId: input.organizationId, source, audio: input.audio }
     : { organizationId: input.organizationId, source, audioUrl: input.audioUrl })
-  if (!transcription) {
+  const sendFallback = async () => {
+    if (await autoReplyOff(input.organizationId, input.conversationId)) return
     await input.sendFallback(INSTAGRAM_AUDIO_TEXT_FALLBACK)
+  }
+  if (!transcription) {
+    await sendFallback()
     return "fallback"
   }
   try {
@@ -78,7 +85,7 @@ async function handleInboundAudio(
     })
   } catch (error) {
     console.error(`[${source} audio] saving the transcript failed:`, error instanceof Error ? error.message : "unknown error")
-    await input.sendFallback(INSTAGRAM_AUDIO_TEXT_FALLBACK)
+    await sendFallback()
     return "fallback"
   }
 

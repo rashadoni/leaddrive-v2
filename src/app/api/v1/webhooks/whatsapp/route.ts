@@ -1,3 +1,4 @@
+import { autoReplyOff } from "@/lib/inbox/conversation-auto-reply"
 import { NextRequest, NextResponse, after } from "next/server"
 import type { Prisma, PrismaClient } from "@prisma/client"
 import { publishWhatsAppIntegrationEvent } from "@/lib/integrations/whatsapp-events"
@@ -1567,6 +1568,10 @@ async function processMessages(
       console.log(`[WA Webhook] reply held for ${sanitizeLog(waId)} — the team answers from the WhatsApp Business app`)
       continue
     }
+
+    // «AI rejimi» switched off for this one conversation in the inbox: the same «everything below
+    // writes to the customer» line, per customer instead of per number (conversation-auto-reply).
+    if (await autoReplyOff(orgId, convId)) continue
 
     if (inboundTicket.reopened && inboundTicket.ticketNumber) {
       // WA-specific: notify the customer that their ticket was reopened.

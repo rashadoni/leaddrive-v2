@@ -175,7 +175,9 @@ export async function createTaskCommand(
     eventType: input.eventType || null,
     category: input.category ?? null,
     dueDate: input.dueDate ? new Date(input.dueDate) : null,
-    assignedTo: input.assignedTo,
+    remindAt: input.remindAt ? new Date(input.remindAt) : null,
+    // A reminder must reach somebody: unassigned, it reminds the person who set it.
+    assignedTo: input.assignedTo ?? (input.remindAt && userId ? userId : undefined),
     divisionId: input.divisionId ?? null,
     estimatedHours: input.estimatedHours ?? null,
     estimatedPrice: input.estimatedPrice ?? null,

@@ -47,6 +47,8 @@ export const POST = withInboxSessionWrite(withConversationChannelAccess(async (r
     organizationId: orgId,
     conversationId: conv.id,
     holdMs: 10 * 60_000,
+    // A person sends (or discards) the draft he read: «AI rejimi» off does not stop that.
+    operatorAction: true,
   })
   if (!claim.claimed) {
     return NextResponse.json({ error: "This draft is already being processed" }, { status: 409 })

@@ -51,6 +51,7 @@ const db: {
   duplicateContent: boolean
   uniqueViolation: boolean
   duplicateConfig: boolean
+  autoReplyOff?: boolean
 } = {
   config: { id: "cfg_cw", organizationId: "org_1", settings: { accountId: 171064, webhookSecret: "secret123" } },
   messages: [],
@@ -117,6 +118,10 @@ vi.mock("@/lib/prisma", () => ({
     },
     contact: {
       updateMany: vi.fn(async () => ({})),
+    },
+    // «AI rejimi» of the conversation (lib/inbox/conversation-auto-reply): on unless a case says.
+    socialConversation: {
+      findFirst: vi.fn(async () => ({ autoReplyOffAt: db.autoReplyOff ? new Date() : null })),
     },
   },
 }))
@@ -236,6 +241,7 @@ function incomingPayload(over: ChatwootPayload = {}) {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 beforeEach(() => {
   db.config = { id: "cfg_cw", organizationId: "org_1", settings: { accountId: 171064, webhookSecret: "secret123" } }
+  db.autoReplyOff = false
   db.messages.length = 0
   db.existingMessageId = null
   db.priorContactId = null
@@ -742,6 +748,25 @@ describe("Chatwoot inbound webhook (Phase 1)", () => {
       // routed, not left to the sender's "any active chatwoot config" fallback
       channelConfigId: "cfg_cw",
     }))
+  })
+
+  it("CW-20c: «AI rejimi» off for the conversation keeps the unsupported-media fallback silent", async () => {
+    db.config = {
+      id: "cfg_cw",
+      organizationId: "org_1",
+      settings: { accountId: 171064, webhookSecret: "secret123", replyMode: "ai" },
+    }
+    db.autoReplyOff = true
+    const { POST } = await import("../app/api/v1/webhooks/chatwoot/route")
+    const res = await POST(cwRequest(incomingPayload({
+      content: null,
+      content_attributes: { is_unsupported: true },
+      attachments: [],
+    })))
+
+    expect(res.status).toBe(200)
+    expect(db.messages[0]).toMatchObject({ body: "[unsupported attachment]" })
+    expect(sendChatwootSpy).not.toHaveBeenCalled()
   })
 
   it("CW-20b: a terminal flow suppresses the unsupported-media fallback reply", async () => {

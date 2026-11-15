@@ -197,6 +197,8 @@ export async function runAutonomousInboxAgent(
         channelConfigId: { in: aiChannels.map((config) => config.id) },
         status: "open",
         assignedTo: null,
+        // «AI rejimi» switched off for this one conversation (lib/inbox/conversation-auto-reply).
+        autoReplyOffAt: null,
         AND: [
           { OR: recoveryScopes },
           { OR: [{ snoozedUntil: null }, { snoozedUntil: { lt: options.now } }] },

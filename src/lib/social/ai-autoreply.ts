@@ -1,5 +1,6 @@
 import { pageAiScheduleAllowsNow, resolveInboxAgent } from "@/lib/inbox/page-agent"
 import { learnedPromptBlocks } from "@/lib/inbox/learning/prompt-blocks"
+import { AUTO_REPLY_ON } from "@/lib/inbox/conversation-auto-reply"
 import { prisma } from "@/lib/prisma"
 import { anthropicAvailable, anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
@@ -400,6 +401,12 @@ export async function claimConversationAiReply(opts: {
    *  the webhook tight-loop guard. The flow `ai_reply` action passes a LONGER, operation-length hold
    *  so a slow generate+send can't be reclaimed mid-flight and double-send (Codex review #1). */
   holdMs?: number
+  /**
+   * An automatic writer (the default) cannot claim a conversation whose «AI rejimi» is off
+   * (lib/inbox/conversation-auto-reply). Only a person's own action — an operator sending an
+   * AI draft he approved — passes false.
+   */
+  operatorAction?: boolean
 }): Promise<AiReplyClaimResult> {
   const holdMs = opts.holdMs ?? AI_TIGHT_LOOP_MS
   const now = new Date()
@@ -410,6 +417,7 @@ export async function claimConversationAiReply(opts: {
     where: {
       id: opts.conversationId,
       organizationId: opts.organizationId,
+      ...(opts.operatorAction ? {} : AUTO_REPLY_ON),
       OR: [
         // New schema: no active lease, or lease expired.
         { aiReplyClaimedUntil: null, aiReplyClaimedAt: null },
@@ -964,8 +972,13 @@ export async function maybeAiAutoReply(opts: {
     }
     const owner = await prisma.socialConversation.findFirst({
       where: { id: opts.conversationId, organizationId: opts.orgId },
-      select: { assignedTo: true },
+      select: { assignedTo: true, autoReplyOffAt: true },
     })
+    // «AI rejimi» off for this one conversation (lib/inbox/conversation-auto-reply). The claim
+    // below refuses it too; this says why in the result.
+    if (owner?.autoReplyOffAt) {
+      return { replied: false, escalated: false, skipped: "auto_reply_off" }
+    }
     if (owner?.assignedTo) {
       return { replied: false, escalated: false, skipped: "assigned_to_human" }
     }
@@ -984,7 +997,7 @@ export async function maybeAiAutoReply(opts: {
     if (!claim.claimed) {
       if (opts.inboundMessageId) {
         await prisma.socialConversation.updateMany({
-          where: { id: opts.conversationId, organizationId: opts.orgId, assignedTo: null, status: "open" },
+          where: { id: opts.conversationId, organizationId: opts.orgId, assignedTo: null, status: "open", ...AUTO_REPLY_ON },
           data: { aiReplyPendingMessageId: opts.inboundMessageId },
         })
         // Close the missed-wakeup race: the former owner may have released
@@ -1178,8 +1191,11 @@ export async function maybeAiAutoReply(opts: {
     // or external send so a human assignment always wins the hand-off race.
     const ownerAfterGeneration = await prisma.socialConversation.findFirst({
       where: { id: opts.conversationId, organizationId: opts.orgId },
-      select: { assignedTo: true },
+      select: { assignedTo: true, autoReplyOffAt: true },
     })
+    if (ownerAfterGeneration?.autoReplyOffAt) {
+      return finishTerminal({ replied: false, escalated: false, skipped: "auto_reply_off" })
+    }
     if (ownerAfterGeneration?.assignedTo) {
       return finishTerminal({ replied: false, escalated: false, skipped: "assigned_to_human" })
     }
@@ -1226,6 +1242,7 @@ export async function maybeAiAutoReply(opts: {
         aiReplyClaimToken: claim.token,
         assignedTo: null,
         status: "open",
+        ...AUTO_REPLY_ON,
       },
       data: { aiReplyClaimedUntil: renewedUntil },
     })

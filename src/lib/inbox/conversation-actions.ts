@@ -11,6 +11,7 @@ import { createNotification } from "@/lib/notifications"
 import { createTicketWithAssignment } from "@/lib/ticket-factory"
 import { sendConversationReply, type ConversationReplyChannel } from "@/lib/inbox/send-conversation-reply"
 import { claimConversationAiReply, generateChannelAiReply, releaseConversationAiReplyClaim } from "@/lib/social/ai-autoreply"
+import { AUTO_REPLY_ON, autoReplyOff } from "@/lib/inbox/conversation-auto-reply"
 import { checkConversationAiLimits } from "@/lib/ai/budget"
 import { readAiReplyPolicy, decideAiReplyAction } from "@/lib/inbox/ai-reply-gate"
 import { saveConversationAiDraft } from "@/lib/inbox/ai-draft"
@@ -273,6 +274,16 @@ export interface ConversationActionContext {
   deliveryOperationId?: string
 }
 
+/**
+ * A reply a flow sends on its own is silenced by the conversation's «AI rejimi» switch
+ * (lib/inbox/conversation-auto-reply). A person's own action through the same code — the bulk
+ * close farewell carries the operator and no flow run — still goes out.
+ */
+async function silencedForAutomation(ctx: ConversationActionContext): Promise<boolean> {
+  const automated = Boolean(ctx.deliveryOperationId) || !ctx.actorUserId
+  return automated && await autoReplyOff(ctx.organizationId, ctx.conversationId)
+}
+
 function actionDeliveryIdempotency(
   ctx: ConversationActionContext,
   action: "send_reply" | "menu" | "ai_reply",
@@ -477,6 +488,7 @@ export async function executeConversationAction(
       case "send_reply": {
         const text = String(config.text ?? "").trim()
         if (!text) return { ok: false, action: action.type, error: "no_text" }
+        if (await silencedForAutomation(ctx)) return { ok: false, action: action.type, error: "auto_reply_off" }
         const channel = effectiveConversationChannel(ctx.conversation)
         if (!REPLY_CHANNELS.has(channel)) {
           return { ok: false, action: action.type, error: "unsupported_channel" }
@@ -518,6 +530,7 @@ export async function executeConversationAction(
           }
         }
 
+        if (await silencedForAutomation(ctx)) return { ok: false, action: action.type, error: "auto_reply_off" }
         const channel = effectiveConversationChannel(ctx.conversation)
         if (!REPLY_CHANNELS.has(channel)) {
           return { ok: false, action: action.type, error: "unsupported_channel" }
@@ -555,8 +568,11 @@ export async function executeConversationAction(
         }
         const owner = await prisma.socialConversation.findFirst({
           where: { id: cid, organizationId: orgId },
-          select: { assignedTo: true },
+          select: { assignedTo: true, autoReplyOffAt: true },
         })
+        if (owner?.autoReplyOffAt) {
+          return { ok: false, action: action.type, error: "auto_reply_off" }
+        }
         if (owner?.assignedTo) {
           return { ok: false, action: action.type, error: "assigned_to_human" }
         }
@@ -629,7 +645,7 @@ export async function executeConversationAction(
         // A slow generation can outlive its lease. An old worker may send only
         // if it still owns the token and the conversation remains unassigned.
         const renewed = await prisma.socialConversation.updateMany({
-          where: { id: cid, organizationId: orgId, assignedTo: null, status: "open", aiReplyClaimToken: claim.token },
+          where: { id: cid, organizationId: orgId, assignedTo: null, status: "open", ...AUTO_REPLY_ON, aiReplyClaimToken: claim.token },
           data: { aiReplyClaimedUntil: new Date(Date.now() + AI_FLOW_CLAIM_MS) },
         })
         if (renewed.count !== 1) {

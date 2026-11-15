@@ -141,8 +141,12 @@ describe("POST /api/cron/commitment-escalation", () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
       success: true,
-      data: { notified: 1, escalated: 0, scanned: 1 },
+      // The same minute rings tasks' own «Напомнить» (lib/tasks/task-reminders); none were due here.
+      data: { notified: 1, escalated: 0, scanned: 1, reminders: { scanned: 0, reminded: 0, skipped: 0 } },
     })
+    expect(mocks.taskFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ remindedAt: null, deletedAt: null }),
+    }))
     expect(mocks.withJobLease).toHaveBeenCalledWith(
       { name: "commitment-escalation", ttlMs: 180_000 },
       expect.any(Function),

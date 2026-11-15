@@ -838,6 +838,17 @@ jobs:
           INBOX_LEARNING_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           INBOX_LEARNING_DB_GATE: required
 
+      - name: Inbox panel database gate
+        # The inbox panel's «AI rejimi» (src/lib/inbox/conversation-auto-reply): one
+        # conversation switched off silences every automatic writer there — the shared AI
+        # lease, the keyword bot, flow replies, the booking bot, the backlog sweep, the
+        # TikTok nudge, the website chat — while the conversation beside it is answered;
+        # and a task's «Напомнить» rings once (src/lib/tasks/task-reminders).
+        run: npx vitest run src/__tests__/inbox-conversation-auto-reply-postgres.test.ts
+        env:
+          INBOX_PANEL_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          INBOX_PANEL_DB_GATE: required
+
       - name: WhatsApp history import database gate
         # WhatsApp coexistence import (src/lib/whatsapp-history-import): the contacts and six months
         # of chats of a number that stays in the WhatsApp Business app come in through the real

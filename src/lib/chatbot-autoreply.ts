@@ -12,6 +12,7 @@
  *    own outbound (the recorded auto-reply carries metadata.autoReply, so it's also
  *    excluded from re-triggering by the rate-limit scan).
  */
+import { autoReplyOff } from "@/lib/inbox/conversation-auto-reply"
 import { createHash } from "node:crypto"
 import { prisma } from "@/lib/prisma"
 import { sendWhatsAppMessage } from "@/lib/whatsapp"
@@ -149,7 +150,7 @@ export interface MaybeAutoReplyResult {
   // unanswered. Deliberately NOT ownership (see chatbotTookOwnership below):
   // the bot did not reply, so the caller is free to carry on — the AI path runs
   // its own preSend and will stand down the same way.
-  skipped?: "disabled" | "no-rule" | "no-conversation" | "rate-limited" | "send-failed" | "send-unknown" | "source_reply_detected"
+  skipped?: "disabled" | "auto-reply-off" | "no-rule" | "no-conversation" | "rate-limited" | "send-failed" | "send-unknown" | "source_reply_detected"
 }
 
 /**
@@ -235,6 +236,11 @@ export async function maybeAutoReply(opts: {
   const features = org?.features
   if (!isChatbotChannelEnabled(features, channelType)) {
     return { matched: false, sent: false, skipped: "disabled" }
+  }
+  // «AI rejimi» off for this conversation silences the keyword bot too — not a match, so the
+  // caller goes on to the AI path, which refuses the same conversation (conversation-auto-reply).
+  if (conversationId && await autoReplyOff(orgId, conversationId)) {
+    return { matched: false, sent: false, skipped: "auto-reply-off" }
   }
 
   // 2. active rules for the org.

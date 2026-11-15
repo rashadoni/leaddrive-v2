@@ -96,6 +96,7 @@ export async function runInboxFollowups(db: Db, opts: { now: Date; send: SendFn 
         platform: "tiktok",
         status: "open",
         followUpSentAt: null, // not yet nudged (the dedicated idempotency column)
+        autoReplyOffAt: null, // «AI rejimi» off: no automatic message of any kind (conversation-auto-reply)
         lastMessageAt: { lte: cutoff, gte: floor },
         OR: [{ snoozedUntil: null }, { snoozedUntil: { lt: now } }],
       },
@@ -153,7 +154,7 @@ export async function runInboxFollowups(db: Db, opts: { now: Date; send: SendFn 
         // followUpSentAt null→now (Postgres serializes the conditional UPDATE), so a
         // customer can never get two nudges even if two cron ticks overlap. count 0 = lost.
         const claim = await db.socialConversation.updateMany({
-          where: { id: conv.id, followUpSentAt: null },
+          where: { id: conv.id, followUpSentAt: null, autoReplyOffAt: null },
           data: { followUpSentAt: now },
         })
         if (claim.count !== 1) continue

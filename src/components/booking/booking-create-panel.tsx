@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ComponentProps } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useBookingWords } from "./booking-words"
 import { useQuery } from "@tanstack/react-query"
@@ -34,7 +34,7 @@ export interface BookingReadiness {
   waiting?: boolean
 }
 
-export function BookingCreatePanel({ pages, hosts, timezone, onSaved, initial, onStartChange, clash, alternatives, onPickAlternative, checks }: {
+export function BookingCreatePanel({ pages, hosts, timezone, onSaved, initial, onStartChange, clash, alternatives, onPickAlternative, checks, initialClient }: {
   pages: { id: string; title: string; hostIds: string[]; category?: string | null }[]
   hosts: { id: string; name: string }[]
   timezone: string
@@ -48,6 +48,8 @@ export function BookingCreatePanel({ pages, hosts, timezone, onSaved, initial, o
   alternatives?: BookingAlternative[]
   onPickAlternative?: (startsAt: string) => void
   checks?: BookingReadiness[]
+  /** The customer the meeting is for, when the screen already knows him (the inbox panel). */
+  initialClient?: ComponentProps<typeof BookingScheduler>["initialClient"]
 }) {
   const words = useBookingWords()
   const t = useTranslations("booking"), locale = useLocale()
@@ -143,7 +145,7 @@ export function BookingCreatePanel({ pages, hosts, timezone, onSaved, initial, o
       </div> : null}
 
       {error ? <CrmSection role="alert" tone="destructive"><p className="flex items-start gap-2.5 text-sm"><TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />{error}</p></CrmSection> : null}
-      {available.isFetching ? <p role="status" className="text-sm text-muted-foreground">{t("checkingSlots")}</p> : available.isError ? <p role="alert" className="text-sm text-destructive">{t(BOOKING_ERROR_KEYS[available.error.message] ?? "errLoad")}</p> : available.data ? <BookingScheduler key={`${pageId}:${day}:${hostId}`} page={available.data.page} days={available.data.days} onBook={book} staff initialStartsAt={initial?.startsAt ?? null} onStartChange={onStartChange} /> : null}
+      {available.isFetching ? <p role="status" className="text-sm text-muted-foreground">{t("checkingSlots")}</p> : available.isError ? <p role="alert" className="text-sm text-destructive">{t(BOOKING_ERROR_KEYS[available.error.message] ?? "errLoad")}</p> : available.data ? <BookingScheduler key={`${pageId}:${day}:${hostId}`} page={available.data.page} days={available.data.days} onBook={book} staff initialStartsAt={initial?.startsAt ?? null} onStartChange={onStartChange} initialClient={initialClient} /> : null}
     </>}
   </div>
 }

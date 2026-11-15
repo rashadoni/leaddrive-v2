@@ -44,7 +44,10 @@ export const GET = withRls(async (req, { orgId, session }) => {
         // `sort=completed`: the newest finished first — «Mənim işlərim» reads every finished task a page at a time.
         orderBy: sp.get("sort") === "completed"
           ? [{ completedAt: { sort: "desc", nulls: "last" } }, { id: "desc" }]
-          : [{ boardPosition: "asc" }, { dueDate: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+          // `sort=due`: the nearest due first — the inbox panel's reminder card reads one task.
+          : sp.get("sort") === "due"
+            ? [{ dueDate: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }, { id: "asc" }]
+            : [{ boardPosition: "asc" }, { dueDate: "asc" }, { createdAt: "asc" }, { id: "asc" }],
         include: {
           assignee: { select: { id: true, name: true, avatar: true } },
           creator: { select: { id: true, name: true } },

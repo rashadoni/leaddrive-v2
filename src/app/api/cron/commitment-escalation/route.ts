@@ -7,6 +7,7 @@ import { runWithRlsBypass } from "@/lib/rls-context"
 import { createNotification, deliverNotificationPush } from "@/lib/notifications"
 import { COMMITMENT_CALL_FIELD } from "@/lib/commitments/record-call-commitment"
 import { COMMITMENT_ALERT_TITLES, nextEscalationStep } from "@/lib/commitments/escalation"
+import { runTaskReminders } from "@/lib/tasks/task-reminders"
 
 /**
  * Missed-promise escalation.
@@ -45,9 +46,16 @@ export async function POST(req: NextRequest) {
 
   return runWithRlsBypass(async () => {
     try {
+      // The same minute also rings tasks' own «Напомнить» (lib/tasks/task-reminders, the inbox
+      // panel): a reminder set for 11:00 rings at 11:00, and a minute of the crontab already starts
+      // fifteen schedules, so it rides this one under the same lease.
       const run = await withJobLease(
         { name: "commitment-escalation", ttlMs: 180_000 },
-        () => runEscalationTick(new Date()),
+        async () => {
+          const now = new Date()
+          const escalation = await runEscalationTick(now)
+          return { ...escalation, reminders: await runTaskReminders(now) }
+        },
       )
       if (run.status === "skipped") {
         return NextResponse.json({ success: true, data: { skipped: run.reason } })

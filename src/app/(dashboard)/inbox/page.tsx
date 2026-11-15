@@ -74,6 +74,16 @@ import {
   Trash2, Megaphone, AtSign, Smartphone, PanelRight, Menu,
 } from "lucide-react"
 import { messageAuthor } from "@/lib/inbox/message-author"
+import { checkPermission, type Role } from "@/lib/permissions"
+import { DealForm } from "@/components/deal-form"
+import { PanelCard } from "@/components/inbox/customer-panel/panel-card"
+import { CustomerCard } from "@/components/inbox/customer-panel/customer-card"
+import { QuickActions } from "@/components/inbox/customer-panel/quick-actions"
+import { JourneyCard } from "@/components/inbox/customer-panel/journey-card"
+import { DealCard } from "@/components/inbox/customer-panel/deal-card"
+import { ReminderCard } from "@/components/inbox/customer-panel/reminder-card"
+import { MeetingDialog } from "@/components/inbox/customer-panel/meeting-dialog"
+import { useConversationPanel } from "@/components/inbox/customer-panel/use-conversation-panel"
 import { ConversationLearningBanner, LearningAnswerMark, useConversationLearning } from "@/components/inbox-learning/conversation-learning"
 import { placeholderPreview, placeholderView, voiceTranscript } from "@/lib/inbox/media-placeholder"
 import { threadHeaderActionInline, threadHeaderTier, type ThreadHeaderAction } from "@/lib/inbox/thread-header-layout"
@@ -452,6 +462,13 @@ export default function InboxV2Page() {
   // to the error boundary. Declared here, next to the translator they sit
   // beside everywhere else in the app.
   const tc = useTranslations("common")
+  const tp = useTranslations("inboxPanel")
+  // What the panel offers is what the server will allow (each route checks again on its own).
+  const sessionRole = (session?.user?.role || "viewer") as Role
+  const canReadDeals = checkPermission(sessionRole, "deals", "read")
+  const canWriteDeals = checkPermission(sessionRole, "deals", "write")
+  const canBookMeetings = checkPermission(sessionRole, "bookings", "write")
+  const canWriteTasks = checkPermission(sessionRole, "tasks", "write")
   // Dial-failure diagnostics reuse the voip namespace so the Q.850/DIALSTATUS
   // dictionary is written once for every surface that renders a call.
   const tVoip = useTranslations("voip")
@@ -604,6 +621,15 @@ export default function InboxV2Page() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const replyInputRef = useRef<HTMLTextAreaElement>(null)
+  // The customer panel (owner-approved mock-up, 2026-11-15): «Zəng et» presses the real call
+  // control beside the phone, «Etiket»/«Qeyd» bring their inputs up, «Görüş»/«Sövdələşmə» open
+  // the Meetings and Deals forms with the customer filled in.
+  const panelCallControlRef = useRef<HTMLSpanElement>(null)
+  const panelLabelInputRef = useRef<HTMLInputElement>(null)
+  const panelNoteInputRef = useRef<HTMLInputElement>(null)
+  const [panelMeetingOpen, setPanelMeetingOpen] = useState(false)
+  const [panelDealOpen, setPanelDealOpen] = useState(false)
+  const [panelRefresh, setPanelRefresh] = useState(0)
   const composerRef = useRef<HTMLDivElement>(null)
   const assignRef = useRef<HTMLDivElement>(null)
   const participantsRef = useRef<HTMLDivElement>(null)
@@ -1412,6 +1438,12 @@ export default function InboxV2Page() {
   // closes the dialog and leaves the card. A target already gone from the page
   // was removed by the press itself — never read that as «outside».
   const contactPanelVisible = contactPanelOpen && selectedConvo !== null
+  // Read only while the card is open: a closed card costs the conversation nothing.
+  const conversationPanel = useConversationPanel(
+    contactPanelVisible ? selectedConvo?.socialConversationId : null,
+    headers,
+    customerThread.conversationIds,
+  )
   useEffect(() => {
     if (!contactPanelVisible) return
     const onDown = (e: MouseEvent) => {
@@ -3840,16 +3872,245 @@ export default function InboxV2Page() {
         data-testid="inbox-contact-panel"
         className="absolute inset-y-0 right-0 z-30 flex w-72 max-w-[calc(100%-2.5rem)] flex-col border-l border-border/60 bg-card shadow-2xl"
       >
-          <div className="flex-1 overflow-y-auto">
-            <div className="flex flex-col items-center text-center px-4 py-5 border-b border-border/40">
-              <div className={cn("h-14 w-14 rounded-full flex items-center justify-center text-lg font-semibold text-white", avatarTint(selectedConvo.contactName))}>
-                {initials(selectedConvo.contactName)}
-              </div>
-              <div className="mt-2 font-semibold">{selectedConvo.contactName}</div>
-              {selectedConvo.contactId && (
-                <a href={`/contacts/${selectedConvo.contactId}`} className="text-xs text-primary hover:underline mt-0.5">{t("viewCrmContact")}</a>
-              )}
-            </div>
+          <div className="flex-1 space-y-2.5 overflow-y-auto bg-muted/30 p-3" data-testid="inbox-customer-panel-cards">
+            {(() => {
+              const phone = conversationPhone(selectedConvo)
+              const whatsappThread = isWhatsAppConversation(selectedConvo)
+              const scid = selectedConvo.socialConversationId ?? null
+              const panelData = conversationPanel.data
+              // The customer a meeting or a reminder is about: the CRM contact, else the lead this
+              // conversation already became.
+              const panelClient = selectedConvo.contactId
+                ? { type: "contact" as const, id: selectedConvo.contactId }
+                : selectedConvo.linkedLead
+                  ? { type: "lead" as const, id: selectedConvo.linkedLead.id }
+                  : null
+              const phoneControl = phone && whatsappThread && scid ? (
+                <WhatsAppOutboundCallControl
+                  conversationId={scid}
+                  headers={headers}
+                  locale={locale}
+                  className="h-6 w-6 shrink-0 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-300 dark:hover:bg-amber-950/40"
+                  onChanged={async () => {
+                    await loadConversationCalls(scid)
+                    await fetchInbox()
+                    setThreadTab("calls")
+                  }}
+                  onStatus={(message, tone) => {
+                    setCallError(message)
+                    setCallNoticeTone(tone)
+                  }}
+                />
+              ) : phone ? (
+                <ClickToCallButton
+                  phone={phone}
+                  contactId={selectedConvo.contactId ?? undefined}
+                  contactName={selectedConvo.contactName}
+                  conversationId={scid ?? undefined}
+                  label={callText.call}
+                  className="h-6 w-6 shrink-0 rounded-md border border-emerald-200 bg-emerald-50 p-0 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-950/25 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                  onStarted={() => {
+                    setCallNoticeTone("success")
+                    setCallError(callText.callStarted)
+                    void loadConversationCalls(scid)
+                  }}
+                  onError={(error) => {
+                    setCallNoticeTone("error")
+                    setCallError(formatCallCopy(callText.callFailed, { error }))
+                  }}
+                />
+              ) : null
+              const autoReply = panelData?.autoReply
+              const offWhen = autoReply?.offAt
+                ? formatDate(new Date(autoReply.offAt), locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
+                : ""
+              return (
+                <>
+                  <CustomerCard
+                    name={selectedConvo.contactName}
+                    initials={initials(selectedConvo.contactName)}
+                    tintClass={avatarTint(selectedConvo.contactName)}
+                    stageLabel={selectedConvo.contactLifecycleStage ? formatLifecycleStage(selectedConvo.contactLifecycleStage, locale) : null}
+                    since={panelData?.since ?? (seen ? seen.first.toISOString() : null)}
+                    channels={panelData?.channels ?? selectedConvo.channels}
+                    phone={phone}
+                    phoneControl={phoneControl ? <span ref={panelCallControlRef} className="inline-flex items-center gap-1 [&_select]:h-6 [&_select]:max-w-[7rem] [&_select]:text-[10px]">{phoneControl}</span> : null}
+                    email={selectedConvo.contactEmail}
+                    handle={customerChannelAddress}
+                    language={panelData?.language ?? null}
+                    crmHref={selectedConvo.contactId ? `/contacts/${selectedConvo.contactId}` : null}
+                  />
+
+                  <QuickActions
+                    call={phoneControl
+                      ? { enabled: true, hint: tp("hintCall", { phone: phone ?? "" }), run: () => panelCallControlRef.current?.querySelector<HTMLButtonElement>("button:not([disabled])")?.click() }
+                      : { enabled: false, hint: tp("hintCallNoPhone") }}
+                    assign={scid
+                      ? { enabled: true, hint: tp("hintAssign"), agents, assignedTo: selectedConvo.assignedTo ?? null, onAssign: (userId) => { void setConvAssign(userId) } }
+                      : { enabled: false, hint: tp("hintNeedsThread"), agents, assignedTo: null, onAssign: () => {} }}
+                    tag={scid
+                      ? { enabled: true, hint: tp("hintTag"), run: () => { setShowAddConvLabel(true); window.setTimeout(() => panelLabelInputRef.current?.focus(), 0) } }
+                      : { enabled: false, hint: tp("hintNeedsThread") }}
+                    note={scid
+                      ? { enabled: true, hint: tp("hintNote"), run: () => panelNoteInputRef.current?.focus() }
+                      : { enabled: false, hint: tp("hintNeedsThread") }}
+                    meeting={!panelClient
+                      ? { enabled: false, hint: tp("hintNeedsCustomer") }
+                      : !canBookMeetings
+                        ? { enabled: false, hint: tp("hintMeetingNoAccess") }
+                        : { enabled: true, hint: tp("hintMeeting"), run: () => setPanelMeetingOpen(true) }}
+                    deal={!selectedConvo.contactId
+                      ? { enabled: false, hint: tp("hintDealNoContact") }
+                      : !canWriteDeals
+                        ? { enabled: false, hint: tp("hintDealNoAccess") }
+                        : { enabled: true, hint: tp("hintDeal"), run: () => setPanelDealOpen(true) }}
+                    template={{
+                      enabled: quickReplies.length > 0,
+                      hint: quickReplies.length > 0 ? tp("hintTemplate") : tp("hintTemplateNone"),
+                      replies: quickReplies.map((reply) => ({ label: reply.name, text: reply.text })),
+                      onInsert: insertIntoReply,
+                    }}
+                    ai={!scid
+                      ? { enabled: false, hint: tp("hintNeedsThread"), off: false, saving: false, onToggle: () => {} }
+                      : {
+                          enabled: Boolean(autoReply),
+                          hint: !autoReply
+                            ? tp("aiLoading")
+                            : autoReply.off
+                              ? tp("hintAiOff", { name: autoReply.offByName || tp("someone"), when: offWhen })
+                              : autoReply.channelAi ? tp("hintAiOn") : tp("hintAiOnChannelOff"),
+                          off: Boolean(autoReply?.off),
+                          saving: conversationPanel.saving,
+                          onToggle: () => {
+                            if (!autoReply) return
+                            const turnOn = autoReply.off
+                            void conversationPanel.setAutoReply(turnOn).then((ok) => {
+                              if (!ok) toast.error(tp("aiSwitchFailed"))
+                              else toast.success(turnOn ? tp("aiSwitchedOn") : tp("aiSwitchedOff"))
+                            })
+                          },
+                        }}
+                  />
+
+                  {panelData ? <JourneyCard journey={panelData.journey} contactId={selectedConvo.contactId ?? null} /> : null}
+
+                  {selectedConvo.contactId && canReadDeals ? (
+                    <DealCard contactId={selectedConvo.contactId} headers={headers} refreshKey={panelRefresh} />
+                  ) : null}
+
+                  {/* «Etiketlər və qeyd» — the customer's tags, the conversation's labels and the team's
+                      notes in one card (owner-approved mock-up, 2026-11-15). */}
+                  {(scid || selectedConvo.contactId) ? (
+                    <PanelCard title={tp("tagsNoteTitle")} testId="inbox-panel-tags-note" className="space-y-2">
+                      {selectedConvo.contactId ? (
+                        <div className="space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {tagsLoading && contactTags.length === 0 && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground/50" />}
+                            {contactTags.map((tag) => (
+                              <span key={`c-${tag}`} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10.5px] font-medium text-primary">
+                                {tag}
+                                <button type="button" onClick={() => removeTag(tag)} aria-label={`Remove tag ${tag}`} className="hover:text-primary/60">
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </span>
+                            ))}
+                            {!showAddContactTag ? (
+                              <Hint text={t("tagsApply")} side="bottom">
+                                <button type="button" onClick={() => setShowAddContactTag(true)} className="inline-flex items-center gap-1 rounded-full border border-dashed px-2 py-0.5 text-[10.5px] text-muted-foreground hover:text-foreground">
+                                  <Plus className="h-3 w-3" />
+                                  {t("addTagAria")}
+                                </button>
+                              </Hint>
+                            ) : null}
+                          </div>
+                          {showAddContactTag ? (
+                            <div className="flex items-center gap-1.5">
+                              <Input
+                                autoFocus
+                                value={tagInput}
+                                onChange={(e) => setTagInput(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && addTag()}
+                                placeholder={t("addTag")}
+                                aria-label={t("addTagAria")}
+                                className="h-7 text-xs"
+                              />
+                              {tagSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {scid ? (
+                        <div className="space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {(selectedConvo.conversationTags ?? []).map((tag) => (
+                              <span key={`v-${tag}`} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10.5px] text-foreground/80">
+                                {tag}
+                                <button type="button" onClick={() => removeConversationTag(tag)} aria-label={`Remove conversation label ${tag}`} className="text-muted-foreground hover:text-foreground">
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </span>
+                            ))}
+                            {!showAddConvLabel ? (
+                              <button type="button" onClick={() => { setShowAddConvLabel(true); window.setTimeout(() => panelLabelInputRef.current?.focus(), 0) }} className="inline-flex items-center gap-1 rounded-full border border-dashed px-2 py-0.5 text-[10.5px] text-muted-foreground hover:text-foreground">
+                                <Plus className="h-3 w-3" />
+                                {n3Text.addConversationLabel}
+                              </button>
+                            ) : null}
+                          </div>
+                          {showAddConvLabel ? (
+                            <div className="flex items-center gap-1.5">
+                              <Input
+                                ref={panelLabelInputRef}
+                                autoFocus
+                                value={conversationTagInput}
+                                onChange={(e) => setConversationTagInput(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && addConversationTag()}
+                                placeholder={n3Text.addConversationLabel}
+                                aria-label={n3Text.addConversationLabel}
+                                className="h-7 text-xs"
+                              />
+                              {conversationTagSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {scid ? (
+                        <div className="space-y-1.5">
+                          {notes.map((n) => (
+                            <div key={n.id} className="rounded-[10px] border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
+                              <p className="whitespace-pre-wrap break-words text-[11.5px] leading-snug">{n.body}</p>
+                              <p className="mt-0.5 text-[10px] font-semibold text-amber-700/90 dark:text-amber-300/80">
+                                {n.authorName || t("agent")} · {formatDate(new Date(n.createdAt), locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            </div>
+                          ))}
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              ref={panelNoteInputRef}
+                              value={noteInput}
+                              onChange={(e) => setNoteInput(e.target.value)}
+                              onKeyDown={(e) => e.key === "Enter" && addNote()}
+                              placeholder={t("addNote")}
+                              aria-label={t("addNoteAria")}
+                              className="h-7 text-xs"
+                            />
+                            {noteSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground/60">{t("notePrivate")}</p>
+                        </div>
+                      ) : null}
+                    </PanelCard>
+                  ) : null}
+
+                  {panelClient && canWriteTasks ? (
+                    <ReminderCard related={panelClient} headers={headers} userId={myUserId} refreshKey={panelRefresh} />
+                  ) : null}
+
+                </>
+              )
+            })()}
 
             <Section title={customerStageText.title}>
               {selectedConvo.socialConversationId ? (
@@ -3946,54 +4207,6 @@ export default function InboxV2Page() {
             </Section>
 
             <Section title={t("details")}>
-              <Detail icon={Mail} label={t("email")} value={selectedConvo.contactEmail || "—"} />
-              {(() => {
-                const phone = conversationPhone(selectedConvo)
-                const whatsappThread = isWhatsAppConversation(selectedConvo)
-                return (
-                  <div className="flex items-center gap-2 text-xs">
-                    <Phone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    <span className="w-20 shrink-0 text-muted-foreground">{t("phone")}</span>
-                    <span className="min-w-0 flex-1 truncate font-medium" title={phone || "—"}>{phone || "—"}</span>
-                    {phone && whatsappThread && selectedConvo.socialConversationId ? (
-                      <WhatsAppOutboundCallControl
-                        conversationId={selectedConvo.socialConversationId}
-                        headers={headers}
-                        locale={locale}
-                        className="h-7 shrink-0 rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-300 dark:hover:bg-amber-950/40"
-                        onChanged={async () => {
-                          await loadConversationCalls(selectedConvo.socialConversationId)
-                          await fetchInbox()
-                          setThreadTab("calls")
-                        }}
-                        onStatus={(message, tone) => {
-                          setCallError(message)
-                          setCallNoticeTone(tone)
-                        }}
-                      />
-                    ) : phone ? (
-                      <ClickToCallButton
-                        phone={phone}
-                        contactId={selectedConvo.contactId ?? undefined}
-                        contactName={selectedConvo.contactName}
-                        conversationId={selectedConvo.socialConversationId ?? undefined}
-                        showLabel
-                        label={callText.call}
-                        className="h-7 shrink-0 gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/25 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
-                        onStarted={() => {
-                          setCallNoticeTone("success")
-                          setCallError(callText.callStarted)
-                          void loadConversationCalls(selectedConvo.socialConversationId)
-                        }}
-                        onError={(error) => {
-                          setCallNoticeTone("error")
-                          setCallError(formatCallCopy(callText.callFailed, { error }))
-                        }}
-                      />
-                    ) : null}
-                  </div>
-                )
-              })()}
               <Detail icon={User} label={n3Text.lifecycle} value={formatLifecycleStage(selectedConvo.contactLifecycleStage, locale)} />
               {(selectedConvo.closeOutcome === "won" || selectedConvo.closeOutcome === "lost") && (
                 <Detail icon={Check} label={t("closeOutcomeLabel")} value={t(`closeOutcome.${selectedConvo.closeOutcome}`)} />
@@ -4029,90 +4242,6 @@ export default function InboxV2Page() {
                 </div>
               </Section>
             ) : null}
-
-            {/* Declutter: unavailable sections are omitted (not rendered with hint paragraphs);
-                empty-but-editable ones collapse to a "+ add" row. */}
-            {selectedConvo.socialConversationId && (
-              <Section title={n3Text.conversationLabels}>
-                {(selectedConvo.conversationTags ?? []).length === 0 && !showAddConvLabel ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddConvLabel(true)}
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Plus className="h-3 w-3" />
-                    {n3Text.addConversationLabel}
-                  </button>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-1.5 items-center">
-                      {(selectedConvo.conversationTags ?? []).map((tag) => (
-                        <span key={tag} className="inline-flex items-center gap-1 rounded-md bg-muted text-foreground/80 px-2 py-0.5 text-xs">
-                          {tag}
-                          <button type="button" onClick={() => removeConversationTag(tag)} aria-label={`Remove conversation label ${tag}`} className="text-muted-foreground hover:text-foreground">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Input
-                        autoFocus={showAddConvLabel}
-                        value={conversationTagInput}
-                        onChange={(e) => setConversationTagInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && addConversationTag()}
-                        placeholder={n3Text.addConversationLabel}
-                        aria-label={n3Text.addConversationLabel}
-                        className="h-7 text-xs"
-                      />
-                      {conversationTagSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
-                    </div>
-                  </div>
-                )}
-              </Section>
-            )}
-
-            {selectedConvo.contactId && (
-              <Section title={t("tags")}>
-                {!tagsLoading && contactTags.length === 0 && !showAddContactTag ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddContactTag(true)}
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Plus className="h-3 w-3" />
-                    {t("addTagAria")}
-                  </button>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-1.5 items-center">
-                      {tagsLoading && contactTags.length === 0 && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground/50" />}
-                      {contactTags.map((t) => (
-                        <span key={t} className="inline-flex items-center gap-1 rounded-md bg-primary/10 text-primary px-2 py-0.5 text-xs">
-                          {t}
-                          <button type="button" onClick={() => removeTag(t)} aria-label={`Remove tag ${t}`} className="hover:text-primary/60">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Input
-                        autoFocus={showAddContactTag}
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && addTag()}
-                        placeholder={t("addTag")}
-                        aria-label={t("addTagAria")}
-                        className="h-7 text-xs"
-                      />
-                      {tagSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground/40">{t("tagsApply")}</p>
-                  </div>
-                )}
-              </Section>
-            )}
 
             {selectedConvo.socialConversationId && (callsLoading || conversationCalls.length > 0) && (
             <Section title={callText.calls}>
@@ -4164,34 +4293,6 @@ export default function InboxV2Page() {
                 </div>
             </Section>
             )}
-            {selectedConvo.socialConversationId && (
-            <Section title={t("notes")}>
-                <div className="space-y-2">
-                  <div className="space-y-1.5">
-                    {notes.map((n) => (
-                      <div key={n.id} className="rounded-md bg-amber-50 dark:bg-amber-900/15 px-2.5 py-1.5">
-                        <p className="text-xs whitespace-pre-wrap break-words">{n.body}</p>
-                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-                          {n.authorName || t("agent")} · {formatDate(new Date(n.createdAt), locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Input
-                      value={noteInput}
-                      onChange={(e) => setNoteInput(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && addNote()}
-                      placeholder={t("addNote")}
-                      aria-label={t("addNoteAria")}
-                      className="h-7 text-xs"
-                    />
-                    {noteSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground/40">{t("notePrivate")}</p>
-                </div>
-            </Section>
-            )}
             {(() => {
               const atts = extractAttachments(selectedConvo.messages)
               if (atts.length === 0) return null
@@ -4222,6 +4323,34 @@ export default function InboxV2Page() {
           </div>
       </aside>
       )}
+      {/* The panel's own forms open over the page, not inside the card: the card is its own
+          stacking layer and would keep a dialog under the header. */}
+      {selectedConvo && panelMeetingOpen && (selectedConvo.contactId || selectedConvo.linkedLead) ? (
+        <MeetingDialog
+          open={panelMeetingOpen}
+          onOpenChange={setPanelMeetingOpen}
+          client={{
+            type: selectedConvo.contactId ? "contact" : "lead",
+            id: selectedConvo.contactId || selectedConvo.linkedLead!.id,
+            name: selectedConvo.contactName,
+            phone: conversationPhone(selectedConvo) ?? "",
+            email: selectedConvo.contactEmail,
+          }}
+        />
+      ) : null}
+      {selectedConvo?.contactId && panelDealOpen && orgId ? (
+        <DealForm
+          open={panelDealOpen}
+          onOpenChange={setPanelDealOpen}
+          orgId={String(orgId)}
+          initialData={{ contactId: selectedConvo.contactId, name: selectedConvo.contactName }}
+          onSaved={() => {
+            setPanelDealOpen(false)
+            setPanelRefresh((n) => n + 1)
+            toast.success(tp("dealCreated"))
+          }}
+        />
+      ) : null}
       <Dialog
         open={leadAssignmentOpen}
         onOpenChange={(open) => !statusSaving && setLeadAssignmentOpen(open)}
@@ -4480,11 +4609,12 @@ export default function InboxV2Page() {
 
 /* ── Context-panel building blocks ── */
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  // A card like the rest of the panel (customer-panel/panel-card), so the sections the mock-up
+  // has no place for still sit in the same column, in the same hand.
   return (
-    <div className="px-4 py-3.5 border-b border-border/40">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-2">{title}</div>
+    <PanelCard title={title}>
       <div className="space-y-2">{children}</div>
-    </div>
+    </PanelCard>
   )
 }
 
