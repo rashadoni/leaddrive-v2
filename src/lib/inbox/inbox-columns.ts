@@ -42,3 +42,24 @@ export const INBOX_LIST_BESIDE_THREAD_MIN_PX =
 export function inboxListBesideThread(inboxWidth: number): boolean {
   return !(inboxWidth > 0) || inboxWidth >= INBOX_LIST_BESIDE_THREAD_MIN_PX
 }
+
+/**
+ * From this inbox width the folder rail stands beside the conversation (655 px):
+ * the conversation keeps the same 428 px it needs beside the list.
+ *
+ * On a phone the CRM menu stays a 64 px strip of icons and the page pads 12 px
+ * on each side, so a 390 px window gives the inbox 302 px (360 → 272,
+ * 430 → 342). The rail (224 px) left the list or the conversation 75 px —
+ * one letter a line. Below this width the rail folds behind «Qovluqlar» in the
+ * list's header and opens over the list; the list and an open conversation each
+ * take the whole inbox. A tablet (768 px window, 672 px of inbox) keeps the rail.
+ */
+export const INBOX_RAIL_BESIDE_MIN_PX = BORDERS_PX + RAIL_PX + SEAMS_PX / 2 + INBOX_THREAD_BESIDE_LIST_MIN_PX
+
+/**
+ * True when the folder rail folds behind «Qovluqlar» at this inbox width.
+ * Zero means «not measured»: the rail stands, as before the inbox measured itself.
+ */
+export function inboxRailFolded(inboxWidth: number): boolean {
+  return inboxWidth > 0 && inboxWidth < INBOX_RAIL_BESIDE_MIN_PX
+}
