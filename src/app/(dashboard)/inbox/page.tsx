@@ -555,7 +555,7 @@ export default function InboxV2Page() {
   const [showAddContactTag, setShowAddContactTag] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const replyInputRef = useRef<HTMLInputElement>(null)
+  const replyInputRef = useRef<HTMLTextAreaElement>(null)
   const composerRef = useRef<HTMLDivElement>(null)
   const assignRef = useRef<HTMLDivElement>(null)
   const participantsRef = useRef<HTMLDivElement>(null)
@@ -1211,6 +1211,23 @@ export default function InboxV2Page() {
     setShowParticipants(false)
     setShowMore((open) => !open)
   }
+
+  // The reply box grows with its text (owner, 2026-11-15: a long text pasted
+  // into the one-line box could not be read back). It starts one line high,
+  // grows to the CSS max-height and scrolls inside after that; an emptied box
+  // (sent, switched tab or conversation) is one line again. Measured on the
+  // width it has now, so a resized window refits it too.
+  const fitReplyBox = useCallback(() => {
+    const box = replyInputRef.current
+    if (!box) return
+    box.style.height = "auto"
+    box.style.height = `${box.scrollHeight + box.offsetHeight - box.clientHeight}px`
+  }, [])
+  useLayoutEffect(() => { fitReplyBox() }, [fitReplyBox, replyText, composerTab, selected])
+  useEffect(() => {
+    window.addEventListener("resize", fitReplyBox)
+    return () => window.removeEventListener("resize", fitReplyBox)
+  }, [fitReplyBox])
 
   // The customer card: a press anywhere outside it closes it, and so does Escape.
   // Inside means the card itself, the avatar that toggles it (its own click does
@@ -3121,9 +3138,13 @@ export default function InboxV2Page() {
                 <div ref={composerRef} className="relative">
                   {/* Input on its OWN full-width row — keeps it usable in the narrow 4-zone
                       thread column (previously it shared a row with the channel select + 4
-                      icons and collapsed to ~5 chars). Controls live in the toolbar below. */}
-                  <Input
+                      icons and collapsed to ~5 chars). Controls live in the toolbar below.
+                      Several lines, growing with the text (fitReplyBox): Enter sends,
+                      Shift+Enter starts a new line. */}
+                  <textarea
                     ref={replyInputRef}
+                    rows={1}
+                    data-testid="inbox-reply-box"
                     placeholder={composerTab === "note" ? t("addNote") : t("typeMessage")}
                     value={replyText}
                     onChange={(e) => {
@@ -3135,13 +3156,19 @@ export default function InboxV2Page() {
                       setSnippetQuery(composerTab !== "note" ? (v.match(/(?:^|\s)\/([^\s/]*)$/)?.[1] ?? null) : null)
                     }}
                     onKeyDown={(e) => {
-                      if (e.key !== "Enter" || e.shiftKey) return
+                      // Shift+Enter is a new line; so is Enter while an input method is composing a word.
+                      if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return
+                      // Plain Enter never adds a line: it sends, or does nothing while a picker is open.
+                      e.preventDefault()
                       if (mentionQuery !== null) return // let the @-dropdown handle selection; don't send mid-mention
                       if (snippetQuery !== null) return // snippet picker open — don't send the raw "/query"
                       if (composerTab === "note") addNote(replyText)
                       else handleSend()
                     }}
-                    className={cn("w-full h-9", composerTab === "note" && "bg-amber-50 dark:bg-amber-900/15")}
+                    className={cn(
+                      "block min-h-9 max-h-[min(40vh,20rem)] w-full resize-none overflow-y-auto rounded-lg border border-input bg-card px-3 py-2 text-base leading-5 transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 md:text-sm md:leading-5",
+                      composerTab === "note" && "bg-amber-50 dark:bg-amber-900/15",
+                    )}
                   />
                   {/* @-mention dropdown — pick a colleague to ping inside the internal/team note. */}
                   {composerTab === "note" && mentionQuery !== null && (() => {
