@@ -434,7 +434,7 @@ export function convStatusTab(
 
 /* ── Phase 2c — folder views by assignment ── */
 
-export type InboxView = "all" | "me" | "unassigned" | "others" | "chatbot" | "participating" | "spam" | "trash"
+export type InboxView = "all" | "me" | "unassigned" | "others" | "chatbot" | "awaiting" | "participating" | "spam" | "trash"
 
 /**
  * Whether a conversation matches the selected folder view, by its surfaced
@@ -443,7 +443,7 @@ export type InboxView = "all" | "me" | "unassigned" | "others" | "chatbot" | "pa
  * match nothing here (callers keep those views disabled).
  */
 export function convMatchesView(
-  c: { assignedTo?: string | null; botHandled?: boolean; participants?: string[] },
+  c: { assignedTo?: string | null; botHandled?: boolean; participants?: string[]; lastDirection?: string | null },
   view: InboxView,
   myUserId: string | null,
 ): boolean {
@@ -453,6 +453,8 @@ export function convMatchesView(
     case "unassigned": return c.assignedTo == null
     case "others": return c.assignedTo != null && c.assignedTo !== myUserId
     case "chatbot": return c.botHandled === true // threads the auto-reply bot answered
+    // «Cavab gözləyir» (dense inbox, 2026-11-15): the customer wrote last — same rule as lib/inbox/dense-inbox.
+    case "awaiting": return c.lastDirection === "inbound"
     case "participating": return !!myUserId && (c.participants?.includes(myUserId) ?? false) // I'm a collaborator
     // The server already returned exactly the deleted threads for this view, so
     // filtering again here would be filtering twice. It did worse than that:
