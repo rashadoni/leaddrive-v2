@@ -3,7 +3,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import {
-  Calendar, CalendarClock, ChevronsUp, Clock, Download, Hourglass, Link2, ListChecks, MoreHorizontal, Paperclip, Play, Repeat, Square, Tag, Trash2, X,
+  Calendar, CalendarClock, ChevronsUp, Clock, Download, FolderUp, Hourglass, Link2, ListChecks, MoreHorizontal, Paperclip, Play, Repeat, Square, Tag, Trash2, Upload, X,
 } from "lucide-react"
 import { useTaskTypes } from "@/components/tasks/use-task-types"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
@@ -17,6 +17,8 @@ import { withPeopleOnTask } from "@/lib/tasks/board-people"
 import { descriptionTextOf } from "@/lib/tasks/rich-description"
 import { fileDownloadUrl } from "@/lib/tasks/message-files"
 import { saveTaskFiles } from "@/lib/tasks/save-task-files"
+import { filesFromDrop, filesFromPicker, sendTaskFiles, type TaskFileFailure, type TaskFileToSend, type TaskFilesProgress } from "@/lib/tasks/task-file-upload"
+import { formatFileSize } from "@/lib/format-file-size"
 
 /**
  * The task card as a panel on the right of the board — Bordio's card (owner,
@@ -103,6 +105,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const fileRef = useRef<HTMLInputElement>(null)
+  const folderRef = useRef<HTMLInputElement>(null)
 
   const reload = useCallback(() => setReloadKey((key) => key + 1), [])
   // Edits show at once and go to the server behind the screen. While any is
@@ -278,13 +281,32 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
     reload()
   }
 
-  const upload = async (file: File) => {
-    const form = new FormData()
-    form.append("file", file)
-    const res = await fetch(`/api/v1/tasks/${encodeURIComponent(taskId)}/files`, { method: "POST", credentials: "include", body: form }).catch(() => null)
-    if (!res?.ok) setError(t("uploadFailed"))
+  // Many files, a whole folder, or dropped on the card (Nazrin, 2026-11-15:
+  // «papka yükləmək olsa daha rahat olar… bir dəfəyə bir neçə sənəd»), each
+  // up to 100 MB, sent in parts (task-file-upload.ts).
+  const [sending, setSending] = useState<TaskFilesProgress | null>(null)
+  const [sendNote, setSendNote] = useState<{ added: number; failed: TaskFileFailure[] } | null>(null)
+  const [dropping, setDropping] = useState(false)
+  const dragDepth = useRef(0)
+  const lastReload = useRef(0)
+  const sendFiles = async (items: TaskFileToSend[]) => {
+    if (sending || items.length === 0) return
+    setSendNote(null)
+    // Leaving the page mid-folder would drop the rest: the browser asks first.
+    const stay = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = "" }
+    window.addEventListener("beforeunload", stay)
+    const result = await sendTaskFiles(taskId, items, {
+      onProgress: setSending,
+      // The list grows while a folder goes up, without a load per file.
+      onFileDone: () => { if (Date.now() - lastReload.current > 2000) { lastReload.current = Date.now(); reload() } },
+    }).finally(() => window.removeEventListener("beforeunload", stay))
+    setSending(null)
+    if (result.added.length > 0 || result.failed.length > 0) setSendNote({ added: result.added.length, failed: result.failed })
     reload()
+    onMutated()
   }
+  const refusalText = (failure: TaskFileFailure) => t(`fileRefused.${failure.refusal}` as never)
+  const dragHasFiles = (event: React.DragEvent) => [...event.dataTransfer.types].includes("Files")
 
   // A status the board has no column for (the CRM's «pending» from the quick
   // add row, «completed», «cancelled») is shown as the column the board puts
@@ -348,7 +370,24 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
         ) : !task ? (
           <p className="p-6 text-sm text-muted-foreground">{t("loading")}</p>
         ) : (
-          <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <div
+            className="relative grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"
+            onDragEnter={canEdit ? (e) => { if (!dragHasFiles(e)) return; e.preventDefault(); dragDepth.current += 1; setDropping(true) } : undefined}
+            onDragOver={canEdit ? (e) => { if (!dragHasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = sending ? "none" : "copy" } : undefined}
+            onDragLeave={canEdit ? () => { dragDepth.current = Math.max(0, dragDepth.current - 1); if (dragDepth.current === 0) setDropping(false) } : undefined}
+            onDrop={canEdit ? (e) => {
+              if (!dragHasFiles(e)) return
+              e.preventDefault()
+              dragDepth.current = 0
+              setDropping(false)
+              if (!sending) void filesFromDrop(e.dataTransfer).then((items) => sendFiles(items))
+            } : undefined}
+          >
+            {dropping && (
+              <div className="pointer-events-none absolute inset-2 z-20 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-background/90" data-testid="task-files-drop">
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-primary"><Upload className="h-4 w-4" /> {t("dropFiles")}</span>
+              </div>
+            )}
             <div className="min-h-0 overflow-y-auto border-r px-6 py-4" data-testid="task-panel">
               <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="min-w-0 truncate">{path ? `${path} / ` : ""}<b className="font-semibold text-foreground">{task.taskKey ?? ""}</b></span>
@@ -483,8 +522,11 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
 
               {canEdit && (
                 <div className="my-4 flex flex-wrap items-center gap-2">
-                  <input ref={fileRef} type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); e.target.value = "" }} />
-                  <button type="button" data-crm-button="" onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm"><Paperclip className="h-4 w-4" /> {t("attach")}</button>
+                  <input ref={fileRef} type="file" multiple className="hidden" data-testid="task-files-input" onChange={(e) => { const chosen = filesFromPicker(e.target.files); e.target.value = ""; void sendFiles(chosen) }} />
+                  {/* A whole folder: Chrome, Edge, Opera, Safari and Firefox all read `webkitdirectory`. */}
+                  <input ref={folderRef} type="file" multiple className="hidden" data-testid="task-folder-input" {...{ webkitdirectory: "" }} onChange={(e) => { const chosen = filesFromPicker(e.target.files); e.target.value = ""; void sendFiles(chosen) }} />
+                  <button type="button" data-crm-button="" disabled={sending !== null} onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm disabled:opacity-60" data-testid="task-files-attach"><Paperclip className="h-4 w-4" /> {t("attach")}</button>
+                  <button type="button" data-crm-button="" disabled={sending !== null} onClick={() => folderRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm disabled:opacity-60" data-testid="task-folder-attach"><FolderUp className="h-4 w-4" /> {t("attachFolder")}</button>
                   {time?.running ? (
                     <button type="button" data-crm-button="" onClick={() => void timeAction({ action: "stop" })} className="inline-flex items-center gap-1.5 rounded-md border border-primary px-2.5 py-1 text-sm text-primary">
                       <Square className="h-4 w-4" /> {t("stopTimer")} {String(Math.floor(runningSeconds / 3600)).padStart(2, "0")}:{String(Math.floor((runningSeconds % 3600) / 60)).padStart(2, "0")}:{String(runningSeconds % 60).padStart(2, "0")}
@@ -521,6 +563,40 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                       {REPEATS.map((rule) => <option key={rule} value={rule}>{rule ? t(`repeats.${rule}` as never) : t("noRepeat")}</option>)}
                     </select>
                   </label>
+                </div>
+              )}
+
+              {sending && (
+                <div className="mb-4 rounded-md border px-3 py-2" role="status" data-testid="task-files-sending">
+                  <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                    <span className="font-medium">
+                      {t("sendingFiles", { done: String(Math.min(sending.doneFiles + 1, sending.totalFiles)), total: String(sending.totalFiles) })}
+                    </span>
+                    <span className="text-muted-foreground">{formatFileSize(sending.sentBytes, locale)} / {formatFileSize(sending.totalBytes, locale)}</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${sending.totalBytes > 0 ? Math.round((sending.sentBytes / sending.totalBytes) * 100) : 0}%` }} />
+                  </div>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">{sending.current}</p>
+                </div>
+              )}
+              {sendNote && !sending && (
+                <div className="mb-4 rounded-md border px-3 py-2 text-sm" role="status" data-testid="task-files-sent">
+                  <div className="flex items-start gap-2">
+                    <p className="min-w-0 flex-1">
+                      {sendNote.added > 0 && <span>{t("filesAdded", { count: String(sendNote.added) })} </span>}
+                      {sendNote.failed.length > 0 && <span className="text-destructive">{t("filesNotAdded", { count: String(sendNote.failed.length) })}</span>}
+                    </p>
+                    <button type="button" aria-label={t("close")} onClick={() => setSendNote(null)} className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+                  </div>
+                  {sendNote.failed.length > 0 && (
+                    <ul className="mt-1 flex flex-col gap-0.5 text-xs text-muted-foreground" data-testid="task-files-refused">
+                      {sendNote.failed.slice(0, 8).map((failure) => (
+                        <li key={failure.name} className="truncate"><span className="text-foreground">{failure.name}</span> — {refusalText(failure)}</li>
+                      ))}
+                      {sendNote.failed.length > 8 && <li>{t("andMore", { count: String(sendNote.failed.length - 8) })}</li>}
+                    </ul>
+                  )}
                 </div>
               )}
 

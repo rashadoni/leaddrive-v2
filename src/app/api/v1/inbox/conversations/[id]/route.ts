@@ -106,6 +106,16 @@ export const PATCH = withInboxSessionWrite(withConversationChannelAccess(async (
     if (!folder) return NextResponse.json({ error: "Invalid folder" }, { status: 400 })
   }
 
+  // contactId decides whose feed an Instagram/Messenger conversation joins (lib/inbox/contact-link),
+  // so like the assignee and the folder it must be a customer of THIS org (or null).
+  if (body.contactId) {
+    const contact = await prisma.contact.findFirst({
+      where: { id: String(body.contactId), organizationId: orgId },
+      select: { id: true },
+    })
+    if (!contact) return NextResponse.json({ error: "Invalid contact" }, { status: 400 })
+  }
+
   const updated = await prisma.socialConversation.updateMany({
     where: { id, organizationId: orgId },
     data: {
