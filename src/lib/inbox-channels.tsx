@@ -98,6 +98,31 @@ export interface InboxMessage {
   mediaUrl?: string | null
   messageType?: string
   metadata?: { [k: string]: unknown }
+  /** The stored conversation and the account the message travelled on — a customer thread mixes them. */
+  conversationId?: string | null
+  channelConfigId?: string | null
+}
+
+/**
+ * One stored conversation of a customer's thread on one channel (lib/inbox/thread-conversations) —
+ * what a reply goes through and what assign/close act on. State fields come from the conversation row.
+ */
+export interface InboxThreadConversation {
+  key: string
+  id: string
+  platform: string
+  channelConfigId: string | null
+  lastMessageAt: string
+  lastInboundAt: string | null
+  messageCount: number
+  unreadCount: number
+  status?: string
+  assignedTo?: string | null
+  snoozedUntil?: string | null
+  /** The @username / page name of an Instagram or Messenger sender. */
+  customerHandle?: string | null
+  /** Tied to a CRM customer by a manager («Bu eyni müştəridir»). */
+  contactLinked?: boolean
 }
 
 export interface InboxCallLog {
@@ -173,6 +198,10 @@ export interface InboxConversation {
   // Option-D — present only when the thread is backed by a persisted
   // SocialConversation row (channels that populate ChannelMessage.conversationId).
   socialConversationId?: string | null
+  /** The server's grouping key — stable while new messages arrive on another of the customer's channels. */
+  threadKey?: string
+  /** Every stored conversation of the thread, one per channel (a customer writes on several). */
+  threadConversations?: InboxThreadConversation[]
   whatsappReplyBlocked?: boolean
   status?: string
   assignedTo?: string | null

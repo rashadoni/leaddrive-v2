@@ -45,6 +45,10 @@ import { WhatsAppCallControls } from "@/components/inbox/whatsapp-call-controls"
 import { WhatsAppOutboundCallControl } from "@/components/inbox/whatsapp-outbound-call-control"
 import { InboxChannelAccounts } from "@/components/inbox/inbox-channel-accounts"
 import { AiDraftPanel } from "@/components/inbox/ai-draft-panel"
+import { ThreadChannelSwitcher, inThreadFeed, type ThreadFeedFilter } from "@/components/inbox/thread-channel-switcher"
+import { ContactLinkBar } from "@/components/inbox/contact-link-bar"
+import { useCustomerThread } from "@/components/inbox/use-customer-thread"
+import { defaultReplyTarget, replyTargetsOf, threadConversationIds } from "@/lib/inbox/thread-conversations"
 import { AiDebugDrawer } from "@/components/inbox/ai-debug-drawer"
 import { MessageDeliveryStatus } from "@/components/inbox/message-delivery-status"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
@@ -70,7 +74,7 @@ import { placeholderPreview, placeholderView, voiceTranscript } from "@/lib/inbo
 import { threadHeaderActionInline, threadHeaderTier, type ThreadHeaderAction } from "@/lib/inbox/thread-header-layout"
 import { inboxListBesideThread, inboxRailFolded } from "@/lib/inbox/inbox-columns"
 import {
-  CHANNELS, REPLY_CHANNELS, ChannelIcon, channelColor, channelLabel,
+  CHANNELS, ChannelIcon, channelColor, channelLabel,
   avatarTint, initials, extractQuickReplies, appendTag, dropTag, convStatusTab, convMatchesView, extractAttachments,
   normalizeInboxConversations, normalizeInboxChannelAccounts, inboxAccountsByChannel,
   type InboxConversation, type InboxStats, type MacroLike, type InboxCallLog, type InboxChannelAccountEntry,
@@ -461,7 +465,8 @@ export default function InboxV2Page() {
   const [customerStageFilter, setCustomerStageFilter] = useState<string>("all")
   const [unrepliedOnly, setUnrepliedOnly] = useState(false)
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest")
-  const [threadTab, setThreadTab] = useState<"chats" | "calls">("chats")
+  // The customer's feed: everything ("all"), one channel ("instagram"), or only the calls ("calls").
+  const [threadTab, setThreadTab] = useState<ThreadFeedFilter>("all")
 
   // Slice 4 — analytics drill-down deep-link: /inbox?conversation=<socialConversationId> selects
   // that thread once after the first data load. One-shot (ref) so it never overrides a later manual
@@ -473,9 +478,9 @@ export default function InboxV2Page() {
     deepLinkDone.current = true
     const id = new URLSearchParams(window.location.search).get("conversation")
     if (!id) return
-    const c = conversations.find((x) => x.socialConversationId === id)
+    const c = conversations.find((x) => x.socialConversationId === id || x.threadConversations?.some((tc) => tc.id === id))
     if (c) {
-      setSelected(c.webChatSessionId || c.socialConversationId || c.contactId || c.messages[0]?.id || "")
+      setSelected(c.webChatSessionId || c.threadKey || c.socialConversationId || c.contactId || c.messages[0]?.id || "")
       setReplyChannel(c.lastChannel || "email")
       if (new URLSearchParams(window.location.search).get("tab") === "calls") setThreadTab("calls")
     }
@@ -591,6 +596,8 @@ export default function InboxV2Page() {
   // Phase 6 — realtime SSE: ref so the stream's refresh handler always calls the
   // latest fetchInbox (with the current channel filter) without re-opening the stream.
   const fetchInboxRef = useRef<() => void>(() => {})
+  // The open customer's conversations, for handlers declared above the hook that reads them.
+  const customerThreadIdsRef = useRef<string[]>([])
   const [streamLive, setStreamLive] = useState(false)
 
   const headers = useMemo(
@@ -615,11 +622,18 @@ export default function InboxV2Page() {
     }
   }, [headers])
 
+  /** The trash takes the open customer's every channel, so no half of him stays in the list. */
+  const trashTargets = (scid: string): string[] => {
+    const ids = customerThreadIdsRef.current
+    return ids.includes(scid) ? ids : [scid]
+  }
+
   const deleteConversation = async (scid: string) => {
     if (!confirm(t("deleteConfirm"))) return
     setTrashSaving(true)
     try {
-      const res = await fetch(`/api/v1/inbox/conversations/${scid}`, { method: "DELETE", headers })
+      const responses = await Promise.all(trashTargets(scid).map((id) => fetch(`/api/v1/inbox/conversations/${id}`, { method: "DELETE", headers })))
+      const res = responses.find((r) => !r.ok) ?? responses[0]
       if (!res.ok) {
         toast.error((await readJsonSafely<{ error?: string }>(res))?.error || t("deleteFailed"))
         return
@@ -635,7 +649,8 @@ export default function InboxV2Page() {
   const restoreConversation = async (scid: string) => {
     setTrashSaving(true)
     try {
-      const res = await fetch(`/api/v1/inbox/conversations/${scid}`, { method: "POST", headers })
+      const responses = await Promise.all(trashTargets(scid).map((id) => fetch(`/api/v1/inbox/conversations/${id}`, { method: "POST", headers })))
+      const res = responses.find((r) => !r.ok) ?? responses[0]
       if (!res.ok) {
         toast.error((await readJsonSafely<{ error?: string }>(res))?.error || t("restoreFailed"))
         return
@@ -806,12 +821,8 @@ export default function InboxV2Page() {
     if (!scid) return
     setStatusSaving(true)
     try {
-      const res = await fetch(`/api/v1/inbox/conversations/${scid}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ folderId }),
-      })
-      if (!res.ok) console.error("inbox: folder assign failed", res.status)
+      const ok = await patchThreadConversations({ folderId })
+      if (!ok) console.error("inbox: folder assign failed")
       else { await fetchInbox(); setSelected(null) }
     } catch (err) {
       console.error(err)
@@ -952,10 +963,48 @@ export default function InboxV2Page() {
   // NOT the list index — a re-sort after sending or a new inbound message would otherwise point the
   // open thread at the wrong conversation, so the just-sent message only appeared after a manual
   // page refresh. Keying by identity keeps the right thread open + live-updating.
-  const convoKey = (c: InboxConversation) => c.webChatSessionId || c.socialConversationId || c.contactId || c.messages[0]?.id || ""
+  // `threadKey` first: a customer's thread keeps its key when his next message arrives on another channel.
+  const convoKey = (c: InboxConversation) => c.webChatSessionId || c.threadKey || c.socialConversationId || c.contactId || c.messages[0]?.id || ""
   const selectedConvo = selected !== null ? (filtered.find((c) => convoKey(c) === selected) ?? null) : null
   // AI training on this conversation's channel (lib/inbox/learning): the strip and the marks under answers.
   const learning = useConversationLearning(selectedConvo?.socialConversationId, selectedConvo?.messages.length)
+  // The open customer: his whole history, all his conversations, and where a reply goes.
+  const customerThread = useCustomerThread(selectedConvo, headers, selectedConvo?.lastMessageAt)
+  customerThreadIdsRef.current = customerThread.conversationIds
+  // The conversation a reply goes through — the one of the chosen channel, never another channel's.
+  const replyConversationId = (() => {
+    const target = customerThread.replyTarget
+    if (target && target.channel === replyChannel) return target.conversationId
+    return customerThread.replyTargets.find((x) => x.channel === replyChannel)?.conversationId ?? null
+  })()
+  useEffect(() => {
+    if (customerThread.replyTarget) setReplyChannel(customerThread.replyTarget.channel)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerThread.replyTarget?.key])
+  /** PATCH every conversation of the open customer — assign, folder, snooze, reopen act on all his channels. */
+  const patchThreadConversations = async (body: Record<string, unknown>): Promise<boolean> => {
+    const ids = customerThread.conversationIds
+    if (ids.length === 0) return false
+    const results = await Promise.all(ids.map((id) => fetch(`/api/v1/inbox/conversations/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify(body),
+    })))
+    const failed = results.find((res) => !res.ok)
+    if (failed) console.error("inbox: conversation save failed", failed.status)
+    return !failed
+  }
+  // After «Bu eyni müştəridir» / «Ayır» the conversation belongs to another thread — open that one.
+  const [pendingThreadConversation, setPendingThreadConversation] = useState<string | null>(null)
+  useEffect(() => {
+    if (!pendingThreadConversation) return
+    const next = conversations.find((c) => c.threadConversations?.some((tc) => tc.id === pendingThreadConversation))
+    if (next) {
+      setSelected(convoKey(next))
+      setThreadTab("all")
+      setPendingThreadConversation(null)
+    }
+  }, [conversations, pendingThreadConversation])
 
   /* ── Bulk selection & actions ── */
   const BULK_LIMIT = 50
@@ -1015,7 +1064,14 @@ export default function InboxV2Page() {
     // (WhatsApp/SMS/Telegram/Email groupings) travels as a threadRef the server
     // materializes into an idempotent platform-"inbox" shell.
     const webChatSessionIds = chosen.filter((c) => c.webChatSessionId).map((c) => c.webChatSessionId as string)
-    const ids = chosen.filter((c) => !c.webChatSessionId && c.socialConversationId).map((c) => c.socialConversationId as string)
+    // A customer's thread is all his channels: the action reaches every one of his conversations, and a
+    // farewell goes once — to the channel being answered (the open thread) or where he wrote last.
+    const isOpen = (c: InboxConversation) => selectedConvo !== null && convoKey(c) === convoKey(selectedConvo)
+    const persisted = chosen.filter((c) => !c.webChatSessionId && c.socialConversationId)
+    const ids = [...new Set(persisted.flatMap((c) => (isOpen(c) && customerThread.conversationIds.length ? customerThread.conversationIds : threadConversationIds(c))))]
+    const farewellIds = [...new Set(persisted.map((c) => (isOpen(c)
+      ? replyConversationId
+      : defaultReplyTarget(replyTargetsOf(c), c.lastChannel)?.conversationId) || c.socialConversationId as string))]
     const threadRefs = chosen
       .filter((c) => !c.webChatSessionId && !c.socialConversationId)
       .map((c) => ({
@@ -1035,7 +1091,7 @@ export default function InboxV2Page() {
       const res = await fetch("/api/v1/inbox/conversations/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ action, ids, webChatSessionIds, threadRefs, ...extra }),
+        body: JSON.stringify({ action, ids, webChatSessionIds, threadRefs, ...(action === "close" ? { farewellIds } : {}), ...extra }),
       })
       const json = await readJsonSafely<ApiEnvelope<{ summary?: { requested: number; updated: number; sendFailed: number; deliveryUnknown: number } }>>(res)
       if (!res.ok || !json?.success) {
@@ -1086,10 +1142,11 @@ export default function InboxV2Page() {
   }
   const selectedCallLogs = useMemo(() => {
     const byId = new Map<string, InboxCallLog>()
+    for (const call of customerThread.callLogs) byId.set(call.id, call)
     for (const call of selectedConvo?.callLogs ?? []) byId.set(call.id, call)
     for (const call of conversationCalls) byId.set(call.id, call)
     return Array.from(byId.values()).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-  }, [conversationCalls, selectedConvo?.callLogs])
+  }, [conversationCalls, selectedConvo?.callLogs, customerThread.callLogs])
 
   /* ── First / last seen for the context panel ── */
   const seen = useMemo(() => {
@@ -1341,25 +1398,45 @@ export default function InboxV2Page() {
   }, [selectedConvo?.contactId])
 
   // Phase 3b — load the selected conversation's internal notes.
+  // A customer's thread keeps its key while his newest message moves between channels, so what belongs
+  // to the opened customer resets on the key, and only the primary conversation's calls follow `scid`.
   useEffect(() => {
     const scid = selectedConvo?.socialConversationId ?? null
-    selectedScidRef.current = scid
     setNotes([])
     setCallError(null)
     setCallNoticeTone("error")
     const params = new URLSearchParams(window.location.search)
-    const deepLinkedCallsTab = !!scid && params.get("conversation") === scid && params.get("tab") === "calls"
-    setThreadTab(deepLinkedCallsTab ? "calls" : "chats")
+    const deepLinked = params.get("conversation")
+    const deepLinkedCallsTab = !!deepLinked && params.get("tab") === "calls"
+      && (deepLinked === scid || customerThreadIdsRef.current.includes(deepLinked))
+    setThreadTab(deepLinkedCallsTab ? "calls" : "all")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected])
+  useEffect(() => {
+    const scid = selectedConvo?.socialConversationId ?? null
+    selectedScidRef.current = scid
     void loadConversationCalls(scid)
+  }, [selectedConvo?.socialConversationId, loadConversationCalls])
+
+  // The team's notes on every channel of the customer, in one list (notes are about him, not a channel).
+  const threadNoteConversationIds = customerThread.conversationIds.join(",")
+  useEffect(() => {
+    const scid = selectedConvo?.socialConversationId ?? null
     if (!scid) return
     let ignore = false
-    fetch(`/api/v1/inbox/conversations/${scid}/notes`, { headers })
+    const ids = [...new Set([scid, ...threadNoteConversationIds.split(",").filter(Boolean)])]
+    Promise.all(ids.map((id) => fetch(`/api/v1/inbox/conversations/${id}/notes`, { headers })
       .then((r) => readJsonSafely<ApiEnvelope<{ id: string; authorName: string; body: string; createdAt: string }[]>>(r))
-      .then((j) => { if (!ignore && j?.success) setNotes(j.data || []) })
-      .catch(() => {})
+      .then((j) => (j?.success ? j.data || [] : []))
+      .catch(() => [])))
+      .then((lists) => {
+        if (ignore) return
+        const byId = new Map(lists.flat().map((n) => [n.id, n]))
+        setNotes([...byId.values()].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))
+      })
     return () => { ignore = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedConvo?.socialConversationId, loadConversationCalls])
+  }, [selectedConvo?.socialConversationId, threadNoteConversationIds])
 
   const saveContactTags = async (next: string[]) => {
     const cid = selectedConvo?.contactId
@@ -1402,13 +1479,9 @@ export default function InboxV2Page() {
     setConversations((prev) => prev.map((c) => (convoKey(c) === key ? { ...c, conversationTags: next } : c)))
     setConversationTagSaving(true)
     try {
-      const res = await fetch(`/api/v1/inbox/conversations/${scid}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ tags: next }),
-      })
-      if (!res.ok) {
-        console.error("inbox: conversation tag save failed", res.status)
+      const ok = await patchThreadConversations({ tags: next })
+      if (!ok) {
+        console.error("inbox: conversation tag save failed")
         setConversations((prev) => prev.map((c) => (convoKey(c) === key ? { ...c, conversationTags: previous } : c)))
       }
     } catch (err) {
@@ -1489,13 +1562,9 @@ export default function InboxV2Page() {
     if (!scid) return
     setStatusSaving(true)
     try {
-      const res = await fetch(`/api/v1/inbox/conversations/${scid}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ status }),
-      })
-      if (!res.ok) {
-        console.error("inbox: conversation status save failed", res.status)
+      const ok = await patchThreadConversations({ status })
+      if (!ok) {
+        console.error("inbox: conversation status save failed")
       } else {
         await fetchInbox()
         setSelected(null)
@@ -1583,13 +1652,9 @@ export default function InboxV2Page() {
     if (!scid) return
     setStatusSaving(true)
     try {
-      const res = await fetch(`/api/v1/inbox/conversations/${scid}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ snoozedUntil: untilMs === null ? null : new Date(untilMs).toISOString() }),
-      })
-      if (!res.ok) {
-        console.error("inbox: snooze save failed", res.status)
+      const ok = await patchThreadConversations({ snoozedUntil: untilMs === null ? null : new Date(untilMs).toISOString() })
+      if (!ok) {
+        console.error("inbox: snooze save failed")
       } else {
         await fetchInbox()
         setSelected(null)
@@ -1609,13 +1674,9 @@ export default function InboxV2Page() {
     setShowAssign(false)
     setStatusSaving(true)
     try {
-      const res = await fetch(`/api/v1/inbox/conversations/${scid}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ assignedTo: userId }),
-      })
-      if (!res.ok) {
-        console.error("inbox: assign save failed", res.status)
+      const ok = await patchThreadConversations({ assignedTo: userId })
+      if (!ok) {
+        console.error("inbox: assign save failed")
       } else {
         await fetchInbox()
         setSelected(null)
@@ -1681,11 +1742,11 @@ export default function InboxV2Page() {
     // Clear the sidebar Inbox badge for THIS conversation — mark its inbox_message notifications read.
     // The badge counts unread NOTIFICATIONS, which marking messages read never touched (the bug). Runs
     // even when message-unread is 0, since a note/@-mention notification can be unread on an all-read thread.
-    if (c.socialConversationId) {
+    for (const conversationId of threadConversationIds(c)) {
       fetch("/api/v1/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ entityType: "inbox_message", entityId: c.socialConversationId }),
+        body: JSON.stringify({ entityType: "inbox_message", entityId: conversationId }),
       }).then(() => { try { window.dispatchEvent(new Event("inbox-notifs-read")) } catch {} }).catch(() => {})
     }
     if (!c.unreadCount) return
@@ -1764,7 +1825,7 @@ export default function InboxV2Page() {
       : convo.contactName
 
     const deliveryPayload = JSON.stringify({
-      conversationId: convo.socialConversationId,
+      conversationId: replyConversationId,
       channel: replyChannel,
       to,
       body: replyText,
@@ -1786,7 +1847,7 @@ export default function InboxV2Page() {
           to,
           body: replyText,
           contactId: convo.contactId,
-          conversationId: convo.socialConversationId,
+          conversationId: replyConversationId,
           channel: replyChannel,
           attachmentUrl: attachment?.url,
           deliveryIdempotencyKey,
@@ -2925,28 +2986,23 @@ export default function InboxV2Page() {
 
             <ConversationLearningBanner data={learning} />
 
-            <div className="px-4 py-1.5">
-              <div className="inline-flex gap-0.5 text-xs">
-                {(["chats", "calls"] as const).map((tab) => {
-                  const active = threadTab === tab
-                  const count = tab === "calls" ? selectedCallLogs.length : selectedConvo.messages.length
-                  return (
-                    <button
-                      key={tab}
-                      type="button"
-                      onClick={() => setThreadTab(tab)}
-                      className={cn(
-                        "rounded-md px-2.5 py-1 font-medium transition-colors",
-                        active ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {tab === "calls" ? callText.calls : callText.chats}
-                      <span className="ml-1 text-[10px] tabular-nums opacity-60">{count}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+            {/* The customer's channels — «Instagram 4 · WhatsApp 4 · Zəng 1 · Bütün kanallar bir lentdə». */}
+            <ThreadChannelSwitcher
+              messages={customerThread.messages}
+              callCount={selectedCallLogs.length}
+              value={threadTab}
+              onChange={setThreadTab}
+              locale={locale}
+            />
+            <ContactLinkBar
+              conversations={customerThread.conversations}
+              filter={threadTab}
+              locale={locale}
+              onChanged={({ conversationId }) => {
+                setPendingThreadConversation(conversationId)
+                void fetchInbox()
+              }}
+            />
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/20">
               {callError && (
@@ -2965,10 +3021,13 @@ export default function InboxV2Page() {
                 // Weave internal notes INTO the thread, interleaved by time, so «Команда» reads like a
                 // team chat woven into the conversation. Notes stay internal (same conversation_notes,
                 // also still listed in the right panel) — the customer never sees them.
+                // The customer's whole feed (his history on every channel), narrowed by the channel switcher.
                 const timeline = [
-                  ...(threadTab === "calls" ? [] : selectedConvo.messages.map((m) => ({ kind: "msg" as const, at: new Date(m.createdAt).getTime(), m }))),
-                  ...(threadTab === "calls" ? [] : notes.map((n) => ({ kind: "note" as const, at: new Date(n.createdAt).getTime(), n }))),
-                  ...selectedCallLogs.map((call) => ({ kind: "call" as const, at: new Date(call.createdAt).getTime(), call })),
+                  ...customerThread.messages
+                    .filter((m) => inThreadFeed(threadTab, { kind: "message", channel: m.channelType || "email" }))
+                    .map((m) => ({ kind: "msg" as const, at: new Date(m.createdAt).getTime(), m })),
+                  ...(inThreadFeed(threadTab, { kind: "note" }) && threadTab !== "calls" ? notes.map((n) => ({ kind: "note" as const, at: new Date(n.createdAt).getTime(), n })) : []),
+                  ...(inThreadFeed(threadTab, { kind: "call" }) ? selectedCallLogs.map((call) => ({ kind: "call" as const, at: new Date(call.createdAt).getTime(), call })) : []),
                 ].sort((a, b) => a.at - b.at)
                 if (timeline.length === 0 && threadTab === "calls") {
                   return (
@@ -3237,7 +3296,7 @@ export default function InboxV2Page() {
 
             {/* A2 — pending AI draft review (renders only when the conversation has one). */}
             <AiDraftPanel
-              scid={selectedConvo?.socialConversationId ?? null}
+              scid={replyConversationId ?? selectedConvo?.socialConversationId ?? null}
               headers={headers}
               refreshKey={selectedConvo?.messages.length}
               onResolved={() => fetchInboxRef.current()}
@@ -3411,14 +3470,29 @@ export default function InboxV2Page() {
                     {composerTab !== "note" && (
                       // The channel gives way before the send button does: on a 360 px
                       // phone the row is 28 px short, and the button went past the edge.
+                      // Only this customer's own channels; a reply goes through that channel's conversation.
                       <select
-                        value={replyChannel}
-                        onChange={(e) => setReplyChannel(e.target.value)}
+                        data-testid="inbox-reply-target"
+                        value={customerThread.replyTarget?.key ?? ""}
+                        onChange={(e) => {
+                          const target = customerThread.replyTargets.find((x) => x.key === e.target.value)
+                          if (!target) return
+                          customerThread.setReplyTargetKey(target.key)
+                          setReplyChannel(target.channel)
+                        }}
                         className="h-9 min-w-0 rounded-md border bg-background px-2 text-xs"
                       >
-                        {REPLY_CHANNELS.map((ch) => (
-                          <option key={ch} value={ch}>{channelLabel(ch)}</option>
-                        ))}
+                        {customerThread.replyTargets.map((target) => {
+                          // Two accounts of one platform (two Instagram pages): say which one.
+                          const twin = customerThread.replyTargets.filter((x) => x.channel === target.channel).length > 1
+                          const account = twin ? channelAccounts.find((a) => a.id === target.channelConfigId) : undefined
+                          const detail = twin ? (account?.name || account?.number || target.customerHandle) : null
+                          return (
+                            <option key={target.key} value={target.key}>
+                              {detail ? `${channelLabel(target.channel)} · ${detail}` : channelLabel(target.channel)}
+                            </option>
+                          )
+                        })}
                       </select>
                     )}
                     {/* Media SEND (Slice 3c) — attach a file (WhatsApp, Telegram, Instagram, Facebook) → upload → chip → send. */}
@@ -3501,6 +3575,7 @@ export default function InboxV2Page() {
                     <Button
                       size="icon"
                       className="h-9 w-9 shrink-0"
+                      data-testid="inbox-send"
                       onClick={() => (composerTab === "note" ? addNote(replyText) : handleSend())}
                       disabled={composerTab === "note" ? (noteSaving || !replyText.trim()) : (sending || sendDeliveryUnknown || (replyChannel === "whatsapp" && selectedConvo.whatsappReplyBlocked) || (!replyText.trim() && !attachment))}
                     >
