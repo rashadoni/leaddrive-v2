@@ -1726,6 +1726,7 @@ export function ChannelConfigForm({
                     offboardingHint: c.whatsappEsOffboardingHint,
                   }}
                   onConnected={() => onSaved()}
+                  locale={locale}
                 />
                 {whatsappEmbeddedNumber !== null && (
                   <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800" data-testid="whatsapp-embedded-managed">

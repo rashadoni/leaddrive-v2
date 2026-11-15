@@ -65,6 +65,10 @@ export function describeWaMessage(msg: WaMessageTextPayload): { text: string; me
       }
     case "sticker":
       return { text: "[Стикер]", messageType }
+    // The imported history of a coexistence number (lib/whatsapp-history-import) carries no file,
+    // only the fact that there was one; the real file follows for the last two weeks only.
+    case "media_placeholder":
+      return { text: "[Медиафайл]", messageType }
     case "location":
       return { text: `[Локация: ${msg.location?.latitude}, ${msg.location?.longitude}]`, messageType }
     case "contacts":

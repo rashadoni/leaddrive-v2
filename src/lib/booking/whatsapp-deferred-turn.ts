@@ -92,6 +92,8 @@ async function pendingFor(channel: { id: string; organizationId: string }, now: 
       channelType: "whatsapp",
       direction: "inbound",
       deferredTurnAt: null,
+      // Imported history is stamped `deferredTurnAt` on arrival already; this says it twice on purpose.
+      historyImportedAt: null,
       createdAt: { lt: new Date(now.getTime() - DEFERRED_TURN_GRACE_MS), gt: new Date(now.getTime() - DEFERRED_TURN_CAP_MS) },
       conversationId: { not: null },
       NOT: { body: "" },

@@ -5,6 +5,7 @@ import { encryptToken } from "@/lib/secure-token"
 import { redactOAuthProviderText } from "@/lib/oauth-redaction"
 import { decideNumberOnboarding, type NumberPlatformFacts } from "@/lib/whatsapp-number-onboarding"
 import { syncTemplatesFromMeta } from "@/lib/whatsapp"
+import { requestCoexistenceSync, type HistoryImportSetting } from "@/lib/whatsapp-history-import/request"
 
 /**
  * WhatsApp Embedded Signup — a business connects its own WhatsApp number to LeadDrive through Meta's
@@ -21,7 +22,9 @@ import { syncTemplatesFromMeta } from "@/lib/whatsapp"
  *   4. register the number for Cloud API messaging (POST /<PHONE_NUMBER_ID>/register) unless Meta
  *      already reports it CONNECTED;
  *   5. save the channel for this workspace;
- *   6. pull the account's approved message templates, so the workspace can write first without
+ *   6. for a number that stays in the WhatsApp Business app, ask Meta for its contacts and chat
+ *      history (lib/whatsapp-history-import/request) — allowed once, within 24 hours;
+ *   7. pull the account's approved message templates, so the workspace can write first without
  *      anyone first finding the "Load templates" button in settings.
  * The remaining step of Meta's list — the customer adds a payment method in WhatsApp Manager — is the
  * customer's and is shown to them, not done here.
@@ -87,6 +90,8 @@ export type EmbeddedSignupResult =
        * failed. Connecting succeeds either way — this is what the screen reports, not a gate.
        */
       templatesSynced: number | null
+      /** What Meta answered to the contacts and history requests of a coexistence number. */
+      historyImport?: HistoryImportSetting | null
     }
   | { ok: false; step: "config" | "exchange" | "phone" | "ownership" | "conflict" | "subscribe" | "register" | "platform"; error: string }
 
@@ -320,7 +325,27 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
     channelId = row.id
   }
 
-  // 6. the account's templates. A connected number that cannot write first is half a connection, and
+  // 6. a number that stays in the WhatsApp Business app: ask Meta for its contacts and its last six
+  //    months of chats now. Meta allows it only within 24 hours of onboarding and only once, so this
+  //    is the moment; the answer arrives as webhooks (lib/whatsapp-history-import). Best effort like
+  //    the templates below — the number is connected either way, and a refused request is shown on
+  //    the channel and may be asked again inside the 24 hours.
+  let historyImport: HistoryImportSetting | null = null
+  if (decision.mode === "coexistence") {
+    try {
+      historyImport = await requestCoexistenceSync({
+        organizationId: input.organizationId,
+        channelConfigId: channelId,
+        phoneNumberId,
+        token,
+        fresh: true,
+      })
+    } catch (err) {
+      console.warn(`[WA Signup] channel ${channelId}: history request threw — ${redactOAuthProviderText(String((err as Error)?.message || err))}`)
+    }
+  }
+
+  // 7. the account's templates. A connected number that cannot write first is half a connection, and
   //    nothing about "Load templates from Meta" in settings says it is part of connecting. Best
   //    effort on purpose: the channel is already saved and usable, so a Graph hiccup here must not
   //    undo it — it is reported instead.
@@ -342,5 +367,6 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
     registration,
     coexistence: decision.mode === "coexistence",
     templatesSynced,
+    historyImport,
   }
 }

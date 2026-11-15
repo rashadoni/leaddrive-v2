@@ -61,6 +61,7 @@ model Organization {
   aiUsage               AiUsage[]
   inboxLearnedItems     InboxLearnedItem[]
   inboxLearningSamples  InboxLearningSample[]
+  whatsappHistoryChunks WhatsAppHistoryChunk[]
   companies             Company[]
   contacts              Contact[]
   deals                 Deal[]
@@ -3967,6 +3968,7 @@ model ChannelConfig {
   channelConnections ChannelConnection[]
   learnedItems       InboxLearnedItem[]
   learningSamples    InboxLearningSample[]
+  historyChunks      WhatsAppHistoryChunk[]
 
   @@index([organizationId])
   @@map("channel_configs")
@@ -4131,6 +4133,12 @@ model ChannelMessage {
   /// answer however many runs overlap. Null means "nobody has decided yet", which for every message
   /// outside a held channel is simply forever.
   deferredTurnAt  DateTime?
+  /// Stamped when the row came from the one-shot history import of a coexistence number
+  /// (lib/whatsapp-history-import), never by a live message. `createdAt` of such a row is the
+  /// message's own time on the phone, and the readers that decide whether a customer may be written
+  /// to freely (Meta's 24-hour window) skip these rows: a message the customer sent to the WhatsApp
+  /// Business app before the number joined the Cloud API opens no Cloud API window.
+  historyImportedAt DateTime?
   createdAt       DateTime @default(now())
 
   channelConfig ChannelConfig?      @relation(fields: [channelConfigId], references: [id])
@@ -4164,6 +4172,46 @@ model ChannelMessage {
   //     WHERE direction='inbound' AND channelType='whatsapp' AND "deferredTurnAt" IS NULL
   //     — migration 20261109160000_whatsapp_deferred_turn.
   @@map("channel_messages")
+}
+
+/// One webhook of a coexistence number's one-shot sync (lib/whatsapp-history-import): the WhatsApp
+/// Business app's contacts (`smb_app_state_sync`), its messaging history (`history`) or a history
+/// media follow-up. Meta: «a single webhook could potentially describe thousands of messages.
+/// Capture the webhook contents first, then process the contents asynchronously» — so the webhook
+/// only stores the row and the importer works through it after the response. The sync cannot be
+/// requested twice, which is why a chunk is kept until it is imported rather than retried by Meta;
+/// the payload is dropped once it is, and the row stays as the progress record.
+model WhatsAppHistoryChunk {
+  id              String        @id @default(cuid())
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  channelConfigId String
+  channelConfig   ChannelConfig @relation(fields: [channelConfigId], references: [id], onDelete: Cascade)
+  /// contacts | history | media
+  kind            String
+  /// sha256 of the change value: Meta's redelivery of the same webhook is the same row.
+  fingerprint     String
+  /// Meta's sync metadata: phase 0 = last day, 1 = days 1–90, 2 = days 90–180; progress 0–100 overall.
+  phase           Int?
+  chunkOrder      Int?
+  progress        Int?
+  /// Meta's refusal inside the webhook, e.g. 2593109 — the business turned history sharing off.
+  errorCode       Int?
+  payload         Json?
+  /// pending | processing | done | failed
+  status          String        @default("pending")
+  attempts        Int           @default(0)
+  leaseUntil      DateTime?
+  /// What the chunk carried (messages or contacts) and what it became.
+  items           Int           @default(0)
+  result          Json?
+  lastError       String?
+  receivedAt      DateTime      @default(now())
+  processedAt     DateTime?
+
+  @@unique([channelConfigId, fingerprint])
+  @@index([organizationId, channelConfigId, status])
+  @@map("whatsapp_history_chunks")
 }
 
 model EmailLog {

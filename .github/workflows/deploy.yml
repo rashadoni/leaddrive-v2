@@ -838,6 +838,17 @@ jobs:
           INBOX_LEARNING_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           INBOX_LEARNING_DB_GATE: required
 
+      - name: WhatsApp history import database gate
+        # WhatsApp coexistence import (src/lib/whatsapp-history-import): the contacts and six months
+        # of chats of a number that stays in the WhatsApp Business app come in through the real
+        # webhook and set nothing in motion — the real deferred booking turn and autonomous inbox
+        # sweep answer only a live control, Meta's 24-hour window stays shut, no other table gains
+        # a row, a redelivery adds nothing. A real Postgres, an app role without BYPASSRLS.
+        run: npx vitest run src/__tests__/whatsapp-history-import-postgres.test.ts
+        env:
+          WHATSAPP_HISTORY_IMPORT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          WHATSAPP_HISTORY_IMPORT_DB_GATE: required
+
       - name: Inbox customer feed database gate
         # One customer, one feed (src/lib/inbox/contact-link, thread-history): an
         # Instagram conversation joins a customer only when a manager links it, and

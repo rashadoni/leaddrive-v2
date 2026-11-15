@@ -208,6 +208,8 @@ export interface InboxConversation {
   snoozedUntil?: string | null
   folderId?: string | null
   conversationTags?: string[]
+  /** Came over with a WhatsApp Business app's history (lib/whatsapp-history-import). */
+  historyImport?: boolean
   // Close disposition ("won" | "lost" | null) — surfaced in the context panel Details.
   closeOutcome?: string | null
   customerStage?: string | null

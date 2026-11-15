@@ -576,6 +576,9 @@ async function insideSessionWindow(
         channelConfigId,
         direction: "inbound",
         channelType: "whatsapp",
+        // A message from the imported history reached the WhatsApp Business app before the number
+        // joined the Cloud API, and Meta opens the window only for messages to a number already on it.
+        historyImportedAt: null,
         OR: [
           { from: { in: [clean, `+${clean}`] } },
           { metadata: { path: ["waPhone"], equals: clean } },
