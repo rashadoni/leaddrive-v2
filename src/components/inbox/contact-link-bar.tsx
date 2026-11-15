@@ -19,7 +19,7 @@ type Suggestion = Candidate & { matchedBy: "phone" | "email"; matchedValue: stri
 const TEXT = {
   en: {
     unlinked: (who: string) => `${who} is not tied to a customer yet.`,
-    suggest: (value: string, name: string) => `${value} was written in this chat — is this ${name}?`,
+    suggest: (value: string, name: string) => `${value} is written in this chat. In the CRM: ${name}. The same customer?`,
     yes: "Yes, the same customer",
     same: "This is the same customer…",
     search: "Name, phone or e-mail",
@@ -31,7 +31,7 @@ const TEXT = {
   },
   ru: {
     unlinked: (who: string) => `${who} ещё не привязан к клиенту.`,
-    suggest: (value: string, name: string) => `В переписке есть ${value} — это ${name}?`,
+    suggest: (value: string, name: string) => `В переписке есть ${value}. В CRM: ${name}. Это тот же клиент?`,
     yes: "Да, это тот же клиент",
     same: "Это тот же клиент…",
     search: "Имя, телефон или почта",
@@ -43,7 +43,8 @@ const TEXT = {
   },
   az: {
     unlinked: (who: string) => `${who} hələ müştəriyə bağlanmayıb.`,
-    suggest: (value: string, name: string) => `Yazışmada ${value} var — bu ${name}-dir?`,
+    // The name gets no suffix: Azerbaijani harmony would need the name's last vowel.
+    suggest: (value: string, name: string) => `Yazışmada ${value} var. CRM-də: ${name}. Eyni müştəridir?`,
     yes: "Bəli, eyni müştəridir",
     same: "Bu eyni müştəridir…",
     search: "Ad, nömrə və ya e-poçt",

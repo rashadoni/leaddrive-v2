@@ -91,7 +91,11 @@ export function ThreadChannelSwitcher({
         type="button"
         role="tab"
         aria-selected={value === "all"}
-        className={`ml-auto ${chip(value === "all")} ${value === "all" ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300" : ""}`}
+        className={`ml-auto inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition-colors ${
+          value === "all"
+            ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+            : "border-border bg-background text-muted-foreground hover:bg-muted"
+        }`}
         onClick={() => onChange("all")}
       >
         <Layers className="h-3.5 w-3.5" />

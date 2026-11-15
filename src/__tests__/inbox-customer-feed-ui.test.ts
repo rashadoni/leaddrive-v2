@@ -272,7 +272,7 @@ describe("one customer, one feed on the inbox screen", () => {
     await renderInbox()
     expect(feed()).toContain("Nömrəm 055 123 45 67")
     expect(words(container)).toContain("Instagram · rena.h hələ müştəriyə bağlanmayıb.")
-    expect(words(container)).toContain("Yazışmada +994 55 123 45 67 var — bu Rəna Hüseynova-dir?")
+    expect(words(container)).toContain("Yazışmada +994 55 123 45 67 var. CRM-də: Rəna Hüseynova. Eyni müştəridir?")
     await press([...container.querySelectorAll("button")].find((b) => words(b) === "Bəli, eyni müştəridir")!)
     const link = requests.find((r) => r.url === "/api/v1/inbox/conversations/conv-rena/contact-link")!
     expect(link).toMatchObject({ method: "POST", body: { contactId: "c-rena", via: "suggestion" } })
