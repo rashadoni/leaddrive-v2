@@ -15,7 +15,7 @@
  * parity and is verified.
  */
 import { nativeTikTokReplyTarget } from "@/lib/tiktok-messaging/identity"
-import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, type ReactNode } from "react"
+import { Fragment, useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useLocale, useTranslations } from "next-intl"
@@ -47,6 +47,12 @@ import { InboxChannelAccounts } from "@/components/inbox/inbox-channel-accounts"
 import { AiDraftPanel } from "@/components/inbox/ai-draft-panel"
 import { AiDebugDrawer } from "@/components/inbox/ai-debug-drawer"
 import { MessageDeliveryStatus } from "@/components/inbox/message-delivery-status"
+import { ChannelLogo } from "@/components/inbox/channel-logo"
+import { InboxTodayCard } from "@/components/inbox/inbox-today-card"
+import {
+  CHIP_TONE_CLASS, TAG_DOT_CLASS, conversationResponder, conversationRowChips, labelCounts,
+  separatorDayLabel, tagTone, threadChannelCounts, threadSeparators,
+} from "@/lib/inbox/dense-inbox"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
 import {
@@ -59,7 +65,7 @@ import {
 } from "@/components/ui/dialog"
 import {
   Search, Send, Plus, Loader2, Inbox as InboxIcon, ArrowLeft,
-  User, Users, UserX, UserPlus, Bot, Ban, Hash, Folder, Check, Clock,
+  User, Users, UserX, UserPlus, Ban, Hash, Folder, Check, Clock,
   Paperclip, Smile, Sparkles, Zap, SlidersHorizontal,
   Mail, Phone, Eye, CalendarClock, ChevronDown, ChevronRight, X, RotateCcw, CheckCircle2,
   Trash2, Megaphone, AtSign, Smartphone, PanelRight, Menu,
@@ -87,13 +93,16 @@ import {
 } from "@/lib/inbox-channels"
 
 /* ── Folder rail definitions ── */
-type ViewKey = "all" | "me" | "unassigned" | "others" | "chatbot" | "participating" | "spam" | "trash"
+type ViewKey = "all" | "me" | "unassigned" | "others" | "chatbot" | "awaiting" | "participating" | "spam" | "trash"
+// The dense inbox's order (owner-approved mock-up, 2026-11-15): Hamısı, Mənim, Təyin edilməyib,
+// AI cavablayır, Cavab gözləyir — then the views the mock-up did not draw, as they were.
 const VIEWS: { key: ViewKey; icon: typeof User; later?: boolean }[] = [
   { key: "all", icon: InboxIcon },
   { key: "me", icon: User },
   { key: "unassigned", icon: UserX },
+  { key: "chatbot", icon: Sparkles },
+  { key: "awaiting", icon: Clock },
   { key: "others", icon: Users },
-  { key: "chatbot", icon: Bot },
   { key: "participating", icon: UserPlus },
   { key: "spam", icon: Ban, later: true },
   // Last in the rail: it is where things go, not somewhere you work.
@@ -101,6 +110,29 @@ const VIEWS: { key: ViewKey; icon: typeof User; later?: boolean }[] = [
 ]
 
 type StatusTab = "opened" | "closed" | "snoozed"
+
+// The rail lists the messengers first, in the mock-up's order, then calls, mail and the website
+// chat, and last the channels few workspaces connect. Every channel the API knows is still listed.
+const RAIL_CHANNEL_FIRST: string[] = ["whatsapp", "instagram", "telegram", "facebook", "tiktok", "voip", "email", "web-chat", "sms", "vkontakte"]
+const RAIL_CHANNEL_ORDER: string[] = [
+  ...RAIL_CHANNEL_FIRST,
+  ...CHANNELS.filter((c) => c !== "all" && !RAIL_CHANNEL_FIRST.includes(c)),
+]
+
+// The channel names the rail, the thread's chips and its day lines say, in the screen's language
+// («Zənglər», «E-poçt», «Sayt çatı», «Messenger» — the mock-up's words; brands stay brands).
+const CHANNEL_NAME_KEY: Record<string, string> = {
+  email: "channelName_email",
+  telegram: "channelName_telegram",
+  sms: "channelName_sms",
+  whatsapp: "channelName_whatsapp",
+  facebook: "channelName_facebook",
+  instagram: "channelName_instagram",
+  vkontakte: "channelName_vkontakte",
+  tiktok: "channelName_tiktok",
+  voip: "channelName_voip",
+  "web-chat": "channelName_webChat",
+}
 
 // Phase 4 — composer emoji set. Module-level: it never changes, no per-render alloc.
 const EMOJI = ["👍", "🙏", "😊", "🎉", "✅", "❤️", "🔥", "👏", "🙌", "💯", "🤝", "👌", "💪", "⭐", "✨", "🚀", "💡", "📌", "⏰", "📞", "📧", "🎯", "😍", "🤔", "🆗", "❓"]
@@ -446,6 +478,7 @@ export default function InboxV2Page() {
   }, [tVoip])
   // The reader's own clock, 24-hour: the summary line says when the customer picked up.
   const callTime = useCallback((at: Date) => at.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }), [locale])
+  const channelName = (ch: string) => (CHANNEL_NAME_KEY[ch] ? t(CHANNEL_NAME_KEY[ch]) : channelLabel(ch))
   const router = useRouter()
   const n3Text = N3_UI_COPY[localeKey(locale)]
   const callText = CALL_UI_COPY[localeKey(locale)]
@@ -479,6 +512,8 @@ export default function InboxV2Page() {
   const [unrepliedOnly, setUnrepliedOnly] = useState(false)
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest")
   const [threadTab, setThreadTab] = useState<"chats" | "calls">("chats")
+  // A channel chip over the thread: only that channel's messages (null — every channel, notes and calls).
+  const [threadChannelFilter, setThreadChannelFilter] = useState<string | null>(null)
 
   // Slice 4 — analytics drill-down deep-link: /inbox?conversation=<socialConversationId> selects
   // that thread once after the first data load. One-shot (ref) so it never overrides a later manual
@@ -932,9 +967,16 @@ export default function InboxV2Page() {
       unassigned: inTab.filter((c) => convMatchesView(c, "unassigned", myUserId)).length,
       others: inTab.filter((c) => convMatchesView(c, "others", myUserId)).length,
       chatbot: inTab.filter((c) => convMatchesView(c, "chatbot", myUserId)).length,
+      awaiting: inTab.filter((c) => convMatchesView(c, "awaiting", myUserId)).length,
       participating: inTab.filter((c) => convMatchesView(c, "participating", myUserId)).length,
     } as Record<string, number>
   }, [conversations, myUserId, statusTab])
+
+  // «Etiketlər» in the rail: each label with how many conversations of this status tab carry it.
+  const railLabels = useMemo(() => {
+    const now = Date.now()
+    return labelCounts(conversations.filter((c) => convStatusTab(c, now) === statusTab)).slice(0, 8)
+  }, [conversations, statusTab])
 
   // Phase 2 — count badges for the status tabs (opened/closed/snoozed), within the CURRENT view +
   // folder + search so each badge matches what the list shows when that tab is selected. Mirrors the
@@ -982,6 +1024,8 @@ export default function InboxV2Page() {
   const selectedConvo = selected !== null ? (filtered.find((c) => convoKey(c) === selected) ?? null) : null
   // AI training on this conversation's channel (lib/inbox/learning): the strip and the marks under answers.
   const learning = useConversationLearning(selectedConvo?.socialConversationId, selectedConvo?.messages.length)
+  // Another conversation opens on all its channels, whatever chip the previous one had pressed.
+  useEffect(() => { setThreadChannelFilter(null) }, [selected])
 
   /* ── Bulk selection & actions ── */
   const BULK_LIMIT = 50
@@ -1979,6 +2023,7 @@ export default function InboxV2Page() {
             return (
               <button
                 key={v.key}
+                data-view={v.key}
                 disabled={v.later}
                 onClick={() => { if (!v.later) { setView(v.key); setSelected(null); setRailOpen(false); if (v.key === "all") { setChannelFilter("all"); setAccountFilter(null) } } }}
                 title={v.later ? t("comingLater") : undefined}
@@ -1997,7 +2042,7 @@ export default function InboxV2Page() {
           })}
 
           <div className="px-2.5 pt-5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">{t("channels")}</div>
-          {CHANNELS.filter((c) => c !== "all").map((ch) => {
+          {RAIL_CHANNEL_ORDER.map((ch) => {
             const active = channelFilter === ch
             const count = channelCounts[ch] || 0
             const accounts = accountsByChannel[ch] ?? []
@@ -2016,8 +2061,8 @@ export default function InboxV2Page() {
                     active && !accountFilter ? "bg-muted text-foreground font-medium" : active ? "text-foreground font-medium hover:bg-muted/60" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                   )}
                 >
-                  <ChannelIcon channel={ch} className="h-4 w-4 shrink-0 text-muted-foreground/70" />
-                  <span className="flex-1 text-left truncate">{channelLabel(ch)}</span>
+                  <ChannelLogo channel={ch} className="h-[18px] w-[18px]" />
+                  <span className="flex-1 text-left truncate">{channelName(ch)}</span>
                   {count > 0 && <span className="text-[11px] tabular-nums text-muted-foreground/70">{count}</span>}
                 </button>
                 <InboxChannelAccounts
@@ -2025,12 +2070,39 @@ export default function InboxV2Page() {
                   accounts={accounts}
                   counts={accountCounts}
                   activeId={accountFilter}
-                  fallbackLabel={channelLabel(ch)}
+                  fallbackLabel={channelName(ch)}
                   onSelect={(accountId) => { setChannelFilter(ch); setAccountFilter(accountId); setSelected(null); setRailOpen(false) }}
                 />
               </div>
             )
           })}
+
+          {/* «Etiketlər» — the conversation labels in use, each with its count; a press filters the list
+              by it (the same filter as in the list's filter popover), a second press clears it. */}
+          {railLabels.length > 0 && (
+            <div data-testid="inbox-rail-labels">
+              <div className="px-2.5 pt-5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">{t("railLabels")}</div>
+              {railLabels.map(({ tag, count }) => {
+                const active = conversationTagFilter === tag
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => { setConversationTagFilter(active ? "all" : tag); setSelected(null); setRailOpen(false) }}
+                    className={cn(
+                      "w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors",
+                      active ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                    )}
+                  >
+                    <span className={cn("ml-1 h-2 w-2 shrink-0 rounded-full", TAG_DOT_CLASS[tagTone(tag)])} aria-hidden="true" />
+                    <span className="flex-1 text-left truncate">{tag}</span>
+                    <span className="text-[11px] tabular-nums text-muted-foreground/70">{count}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
           <div className="px-2.5 pt-5 pb-1 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
             <span>{t("folders")}</span>
@@ -2092,6 +2164,7 @@ export default function InboxV2Page() {
             </div>
           )}
         </nav>
+        <InboxTodayCard headers={headers} />
       </aside>
 
       {/* ─────────── ZONE 2 · Conversation list ───────────
@@ -2263,9 +2336,10 @@ export default function InboxV2Page() {
             side instead of 10, so the three Azerbaijani tabs keep one line at 360. */}
         <div className="flex items-start gap-1 px-3 pb-2 border-b border-border/60 shrink-0">
           <div className="flex min-w-0 flex-wrap items-center gap-0.5 gap-y-1">
-            {(["opened", "closed", "snoozed"] as StatusTab[]).map((s) => (
+            {(["opened", "snoozed", "closed"] as StatusTab[]).map((s) => (
               <button
                 key={s}
+                data-status-tab={s}
                 onClick={() => { setStatusTab(s); setSelected(null) }}
                 className={cn(
                   "whitespace-nowrap py-1 rounded-md text-xs font-medium transition-colors",
@@ -2278,13 +2352,20 @@ export default function InboxV2Page() {
               </button>
             ))}
           </div>
-          {/* Phase 6 — realtime status: dot only; the tooltip explains live SSE vs poll-fallback. */}
-          <span
-            className="ml-auto flex h-6 shrink-0 items-center px-1"
-            title={streamLive ? t("liveTooltip") : t("pollingTooltip")}
-          >
-            <span className={cn("h-1.5 w-1.5 rounded-full", streamLive ? "bg-emerald-500" : "bg-muted-foreground/40")} />
-          </span>
+          {/* Phase 6 — realtime status. The dot says it in a word too («canlı»): the owner does not
+              read icons; the hint explains live SSE vs the 15 s poll fallback. */}
+          <Hint text={streamLive ? t("liveTooltip") : t("pollingTooltip")} side="bottom" align="end">
+            <span
+              data-testid="inbox-live-status"
+              className={cn(
+                "ml-auto flex h-6 shrink-0 items-center gap-1 px-1 text-[11px] font-medium",
+                streamLive ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
+              )}
+            >
+              <span className={cn("h-1.5 w-1.5 rounded-full", streamLive ? "bg-emerald-500" : "bg-muted-foreground/40")} />
+              {streamLive ? t("liveWord") : t("pollingWord")}
+            </span>
+          </Hint>
         </div>
 
         {/* Select-all appears once a selection exists (rows are the entry point via the
@@ -2345,20 +2426,19 @@ export default function InboxV2Page() {
             </div>
           ) : (
             filtered.map((c) => {
-              // Calm mail-style row: ONE metadata line, at most ONE pill (unreplied wins, then
-              // customer segment, then first label) — everything else lives in the context panel.
-              const tags = c.conversationTags ?? []
-              const unreplied = c.lastDirection === "inbound"
-              const pill = unreplied
-                ? { text: n3Text.unreplied, cls: "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400" }
-                : c.customerStage
-                  ? { text: formatCustomerStage(c.customerStage, locale), cls: "bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-300" }
-                  : tags.length > 0
-                  ? { text: tags[0], cls: "bg-muted text-muted-foreground" }
+              // The dense inbox's row (owner-approved mock-up, 2026-11-15): the channel's logo on the
+              // avatar, several coloured labels on one line, and on the right either the unread count
+              // or who answers — a colleague's initials or the AI (lib/inbox/dense-inbox).
+              const rowChips = conversationRowChips(c, {
+                awaiting: t("view_awaiting"),
+                stage: c.customerStage
+                  ? formatCustomerStage(c.customerStage, locale)
                   : c.contactLifecycleStage
-                    ? { text: formatLifecycleStage(c.contactLifecycleStage, locale), cls: "bg-muted text-muted-foreground" }
-                    : null
-              const extraTags = tags.length - (pill && !unreplied && tags.length > 0 ? 1 : 0)
+                    ? formatLifecycleStage(c.contactLifecycleStage, locale)
+                    : null,
+                aiAnswered: t("rowAiAnswered"),
+              })
+              const responder = conversationResponder(c, agents)
               const key = convoKey(c)
               const isChecked = bulkSelected.has(key)
               const openConversation = () => { setSelected(key); setReplyChannel(c.lastChannel || "email"); setSendError(null); setSendDeliveryUnknown(false); setAttachment(null); setReplyText(""); setMentionedUserIds([]); setMentionQuery(null); setShowAddConvLabel(false); setShowAddContactTag(false); markConversationRead(c) }
@@ -2374,10 +2454,16 @@ export default function InboxV2Page() {
                   selected === key ? "bg-muted/60" : "hover:bg-muted/40",
                 )}
               >
-                <div className="relative h-9 w-9 shrink-0">
-                  <div className={cn("h-9 w-9 rounded-full flex items-center justify-center text-xs font-semibold text-white", avatarTint(c.contactName))}>
+                <div className="relative h-10 w-10 shrink-0">
+                  <div className={cn("h-10 w-10 rounded-full flex items-center justify-center text-xs font-semibold text-white", avatarTint(c.contactName))}>
                     {initials(c.contactName)}
                   </div>
+                  {/* Where the customer wrote last, as that channel's own logo on the avatar. */}
+                  {c.lastChannel && (
+                    <span className="absolute -bottom-0.5 -right-0.5 z-[5] rounded-full bg-card p-px" data-testid="inbox-row-channel">
+                      <ChannelLogo channel={c.lastChannel} title={channelName(c.lastChannel)} className="h-4 w-4" />
+                    </span>
+                  )}
                   {/* Whelp-style bulk select: the avatar turns into a check circle on hover /
                       while a selection is active. stopPropagation keeps the row from opening. */}
                   <button data-crm-color-role="toggle"
@@ -2405,7 +2491,7 @@ export default function InboxV2Page() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <span className={cn("truncate text-[13px]", c.unreadCount > 0 ? "font-semibold" : "font-medium")}>{c.contactName}</span>
-                    <span className="text-[11px] text-muted-foreground shrink-0">{formatListTime(c.lastMessageAt)}</span>
+                    <span className={cn("text-[11px] shrink-0", c.unreadCount > 0 ? "font-semibold text-primary" : "text-muted-foreground")}>{formatListTime(c.lastMessageAt)}</span>
                   </div>
                   <p className="text-xs text-muted-foreground truncate mt-0.5" data-testid="inbox-conversation-preview">{(() => {
                     // «[media]», «[Видео]», «[template:…]» are stored words, not for a person (lib/inbox/media-placeholder).
@@ -2414,10 +2500,7 @@ export default function InboxV2Page() {
                     const spoken = voiceTranscript(c.lastMessage)
                     return spoken ? `${t("placeholderVoice")}: ${spoken}` : c.lastMessage
                   })()}</p>
-                  <div className="mt-1.5 flex items-center gap-1.5 min-h-4">
-                    {c.channels.slice(0, 2).map((ch) => (
-                      <ChannelIcon key={ch} channel={ch} className="h-3 w-3 shrink-0 text-muted-foreground/70" />
-                    ))}
+                  <div className="mt-1.5 flex items-center gap-1.5 min-h-5">
                     {/* Which of the workspace's numbers or pages the thread reached — only where there is a choice. */}
                     {(() => {
                       const account = c.channelAccount
@@ -2433,14 +2516,23 @@ export default function InboxV2Page() {
                         </span>
                       )
                     })()}
-                    {pill && (
-                      <span className={cn("truncate rounded-full px-1.5 py-0.5 text-[10px] font-medium", pill.cls)}>
-                        {pill.text}
+                    {rowChips.chips.map((chip) => (
+                      <span
+                        key={chip.key}
+                        data-row-chip={chip.key}
+                        className={cn(
+                          "inline-flex min-w-0 items-center gap-0.5 truncate rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                          chip.ai ? "shrink-0" : "max-w-[7rem]",
+                          CHIP_TONE_CLASS[chip.tone],
+                        )}
+                      >
+                        {chip.ai && <Sparkles className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />}
+                        <span className="truncate">{chip.text}</span>
                       </span>
-                    )}
-                    {extraTags > 0 && (
+                    ))}
+                    {rowChips.more > 0 && (
                       <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                        +{extraTags}
+                        +{rowChips.more}
                       </span>
                     )}
                     {/* Collaborators visibility — icon-only when I'm a participant; tooltip carries the label. */}
@@ -2449,11 +2541,25 @@ export default function InboxV2Page() {
                         <UserPlus className="h-3 w-3" />
                       </span>
                     )}
-                    {c.unreadCount > 0 && (
-                      <span className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                    {c.unreadCount > 0 ? (
+                      <span className="ml-auto inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
                         {c.unreadCount}
                       </span>
-                    )}
+                    ) : responder ? (
+                      // Who answers this conversation: the colleague it is assigned to, else the AI.
+                      <span
+                        data-testid="inbox-row-responder"
+                        data-responder={responder.kind}
+                        title={responder.kind === "ai" ? t("responderAi") : t("responderAgent", { name: responder.name })}
+                        aria-label={responder.kind === "ai" ? t("responderAi") : t("responderAgent", { name: responder.name })}
+                        className={cn(
+                          "ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold text-white",
+                          responder.kind === "ai" ? "bg-gradient-to-br from-orange-400 to-orange-600" : avatarTint(responder.name),
+                        )}
+                      >
+                        {responder.kind === "ai" ? <Sparkles className="h-3 w-3" aria-hidden="true" /> : initials(responder.name)}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -2517,7 +2623,17 @@ export default function InboxV2Page() {
                     {initials(selectedConvo.contactName)}
                   </span>
                   <span className="min-w-0">
-                    <span className="block font-semibold truncate">{selectedConvo.contactName}</span>
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <span className="font-semibold truncate">{selectedConvo.contactName}</span>
+                      {/* The customer's stage beside the name («Lid»), as the mock-up shows it. */}
+                      {(selectedConvo.customerStage || selectedConvo.contactLifecycleStage) && (
+                        <span data-testid="inbox-thread-stage" className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold", CHIP_TONE_CLASS.orange)}>
+                          {selectedConvo.customerStage
+                            ? formatCustomerStage(selectedConvo.customerStage, locale)
+                            : formatLifecycleStage(selectedConvo.contactLifecycleStage, locale)}
+                        </span>
+                      )}
+                    </span>
                     <span className="flex items-center gap-1 text-[11px] font-medium text-primary">
                       <PanelRight className="h-3 w-3 shrink-0" aria-hidden="true" />
                       <span className="truncate">{contactPanelVisible ? t("contactPanelClose") : t("contactPanelOpen")}</span>
@@ -2953,27 +3069,49 @@ export default function InboxV2Page() {
 
             <ConversationLearningBanner data={learning} />
 
-            <div className="px-4 py-1.5">
-              <div className="inline-flex gap-0.5 text-xs">
-                {(["chats", "calls"] as const).map((tab) => {
-                  const active = threadTab === tab
-                  const count = tab === "calls" ? selectedCallLogs.length : selectedConvo.messages.length
-                  return (
-                    <button
-                      key={tab}
-                      type="button"
-                      onClick={() => setThreadTab(tab)}
-                      className={cn(
-                        "rounded-md px-2.5 py-1 font-medium transition-colors",
-                        active ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {tab === "calls" ? callText.calls : callText.chats}
-                      <span className="ml-1 text-[10px] tabular-nums opacity-60">{count}</span>
-                    </button>
-                  )
-                })}
-              </div>
+            {/* The customer's channels in this thread, each with how many messages it holds
+                (dense inbox, 2026-11-15): a chip shows only that channel, «Zənglər» only the calls,
+                «Bütün kanallar bir lentdə» everything woven together by time. */}
+            <div className="flex flex-wrap items-center gap-1.5 border-b border-border/40 px-4 py-2" data-testid="inbox-thread-channels">
+              {threadChannelCounts(selectedConvo.messages, selectedCallLogs.length).map(({ channel, count }) => {
+                const isCalls = channel === "voip"
+                const active = isCalls ? threadTab === "calls" : threadTab === "chats" && threadChannelFilter === channel
+                return (
+                  <button
+                    key={channel}
+                    type="button"
+                    data-thread-channel={channel}
+                    aria-pressed={active}
+                    onClick={() => {
+                      if (isCalls) { setThreadTab(active ? "chats" : "calls"); setThreadChannelFilter(null); return }
+                      setThreadTab("chats")
+                      setThreadChannelFilter(active ? null : channel)
+                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                      active ? "border-primary/50 bg-primary/10 text-foreground" : "border-border/70 text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <ChannelLogo channel={channel} className="h-4 w-4" />
+                    {channelName(channel)}
+                    <span className="tabular-nums text-[10px] opacity-60">{count}</span>
+                  </button>
+                )
+              })}
+              <button
+                type="button"
+                data-thread-channel="all"
+                aria-pressed={threadTab === "chats" && threadChannelFilter === null}
+                onClick={() => { setThreadTab("chats"); setThreadChannelFilter(null) }}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                  threadTab === "chats" && threadChannelFilter === null
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                {t("threadAllChannels")}
+              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/20">
@@ -2993,11 +3131,40 @@ export default function InboxV2Page() {
                 // Weave internal notes INTO the thread, interleaved by time, so «Команда» reads like a
                 // team chat woven into the conversation. Notes stay internal (same conversation_notes,
                 // also still listed in the right panel) — the customer never sees them.
+                // A channel chip narrows the thread to that channel's messages alone.
+                const onlyChannel = threadTab === "chats" ? threadChannelFilter : null
                 const timeline = [
-                  ...(threadTab === "calls" ? [] : selectedConvo.messages.map((m) => ({ kind: "msg" as const, at: new Date(m.createdAt).getTime(), m }))),
-                  ...(threadTab === "calls" ? [] : notes.map((n) => ({ kind: "note" as const, at: new Date(n.createdAt).getTime(), n }))),
-                  ...selectedCallLogs.map((call) => ({ kind: "call" as const, at: new Date(call.createdAt).getTime(), call })),
+                  ...(threadTab === "calls" ? [] : selectedConvo.messages
+                    .filter((m) => !onlyChannel || m.channelType === onlyChannel)
+                    .map((m) => ({ kind: "msg" as const, at: new Date(m.createdAt).getTime(), m }))),
+                  ...(threadTab === "calls" || onlyChannel ? [] : notes.map((n) => ({ kind: "note" as const, at: new Date(n.createdAt).getTime(), n }))),
+                  ...(onlyChannel ? [] : selectedCallLogs.map((call) => ({ kind: "call" as const, at: new Date(call.createdAt).getTime(), call }))),
                 ].sort((a, b) => a.at - b.at)
+                // «12 noyabr · Instagram» before the first item and wherever the day or the channel changes.
+                const separators = threadSeparators(timeline.map((item) => ({
+                  at: item.at,
+                  channel: item.kind === "msg" ? (item.m.channelType || null) : item.kind === "call" ? "voip" : null,
+                })))
+                const nowMs = Date.now()
+                const separatorLine = (index: number) => {
+                  const sep = separators[index]
+                  if (!sep) return null
+                  const day = separatorDayLabel(
+                    sep.day,
+                    nowMs,
+                    { today: t("dayToday"), yesterday: t("dayYesterday") },
+                    (date, withYear) => formatDate(date, locale, withYear ? { day: "numeric", month: "long", year: "numeric" } : { day: "numeric", month: "long" }),
+                  )
+                  return (
+                    <div key={`sep-${index}`} className="flex justify-center py-1" data-testid="inbox-thread-separator">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm">
+                        {sep.channel && <ChannelLogo channel={sep.channel} className="h-3.5 w-3.5" />}
+                        {day}
+                        {sep.channel && <span className="font-normal text-muted-foreground">· {channelName(sep.channel)}</span>}
+                      </span>
+                    </div>
+                  )
+                }
                 if (timeline.length === 0 && threadTab === "calls") {
                   return (
                     <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
@@ -3009,7 +3176,7 @@ export default function InboxV2Page() {
                     </div>
                   )
                 }
-                return timeline.map((item) => {
+                const renderItem = (item: (typeof timeline)[number]) => {
                   if (item.kind === "note") {
                     const n = item.n
                     return (
@@ -3258,7 +3425,13 @@ export default function InboxV2Page() {
                     </div>
                   </div>
                 )
-                })
+                }
+                return timeline.map((item, index) => (
+                  <Fragment key={item.kind === "msg" ? `msg-${item.m.id}` : item.kind === "note" ? `note-${item.n.id}` : `call-${item.call.id}`}>
+                    {separatorLine(index)}
+                    {renderItem(item)}
+                  </Fragment>
+                ))
               })()}
               <div ref={messagesEndRef} />
             </div>
