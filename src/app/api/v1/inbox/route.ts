@@ -4,7 +4,10 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { withInboxSessionWrite } from "@/lib/inbox/route-auth"
-import { exposeCallForClient } from "@/lib/calls/access"
+import { accessibleCallWhere, exposeCallForClient } from "@/lib/calls/access"
+import type { Role } from "@/lib/permissions"
+import { isContactLinkablePlatform } from "@/lib/inbox/contact-link"
+import { summarizeThreadConversations, type ThreadConversationSummary } from "@/lib/inbox/thread-conversations"
 import { readInboxAttachment } from "@/lib/inbox-attachment"
 import { sanitizeOwnedRefs } from "@/lib/verify-owned-refs"
 import { sendConversationReply } from "@/lib/inbox/send-conversation-reply"
@@ -70,6 +73,35 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
       }
     }
 
+    // Conversations in the trash. Their messages leave the listing BEFORE grouping, so a customer whose
+    // WhatsApp was deleted keeps his live Instagram in the list (and the reverse) instead of the whole
+    // merged thread following whichever channel wrote last. The trash holds only the deleted ones.
+    const messageConversationIds = [...new Set(messages.map((m: { conversationId: string | null }) => m.conversationId).filter((id: string | null): id is string => Boolean(id)))]
+    const messageConversationRows: Array<{ id: string; platform: string; contactId: string | null; deletedAt: Date | null }> =
+      messageConversationIds.length
+        ? (await prisma.socialConversation.findMany({
+            where: { id: { in: messageConversationIds }, organizationId: orgId },
+            select: { id: true, platform: true, contactId: true, deletedAt: true },
+          })) ?? []
+        : []
+    const deletedMessageConversationIds = new Set<string>(
+      messageConversationRows.filter((row) => row.deletedAt).map((row) => row.id),
+    )
+
+    // Instagram and Messenger carry no customer identity of their own, so their conversation says whose
+    // they are: a manager tied it to a customer («Bu eyni müştəridir», lib/inbox/contact-link) or nobody.
+    // That decides the thread for every message of the conversation, whatever a single row says — so
+    // «Ayır» puts back exactly what was there before. Only a customer of this org counts.
+    const conversationContact = new Map<string, string | null>()
+    for (const row of messageConversationRows) {
+      if (!isContactLinkablePlatform(row.platform)) continue
+      conversationContact.set(row.id, row.contactId && contactById[row.contactId] ? row.contactId : null)
+    }
+    const messageContactId = (msg: typeof messages[0]): string | null =>
+      msg.conversationId && conversationContact.has(msg.conversationId)
+        ? conversationContact.get(msg.conversationId) ?? null
+        : msg.contactId
+
     // 3. Build telegram chatId maps from existing messages
     const chatIdToContact: Record<string, string> = {}
     // Also map chatId → email address for grouping when no contactId exists
@@ -100,8 +132,9 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
         return `tiktok_native_${msg.conversationId}`
       }
 
-      // If message already has contactId, use it
-      if (msg.contactId) return `contact_${msg.contactId}`
+      // If message already has contactId, use it (an Instagram/Messenger message: its conversation's)
+      const contactId = messageContactId(msg)
+      if (contactId) return `contact_${contactId}`
 
       // Try to match by email
       if (msg.channelType === "email" || !msg.channelType) {
@@ -188,11 +221,20 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
 
     // 5. Group messages into threads
     const threads: Record<string, any> = {}
+    // Threads that lost messages to the trash above (see deletedMessageConversationIds).
+    const strippedThreadKeys = new Set<string>()
 
     for (const msg of messages) {
       const key = resolveKey(msg)
       const meta = msg.metadata as any
       const tgChatId = meta?.chatId as string | undefined
+
+      if (!trashView && msg.conversationId && deletedMessageConversationIds.has(msg.conversationId)) {
+        strippedThreadKeys.add(key)
+        continue
+      }
+      // The trash is the deleted half: a customer's live channel stays in the list, not in here.
+      if (trashView && msg.conversationId && !deletedMessageConversationIds.has(msg.conversationId)) continue
 
       if (!threads[key]) {
         // Resolve contact info from key
@@ -214,6 +256,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
         }
 
         threads[key] = {
+          threadKey: key,
           contactId,
           contactName,
           contactEmail,
@@ -260,28 +303,44 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
     }
 
     let conversations = Object.values(threads)
-      .map((t: any) => ({
-        ...t,
-        channels: Array.from(t.channels),
-        ...whatsappThreadReplyBinding(t.messages),
-        // Messages are newest-first. A WhatsApp thread may contain an unbound
-        // message from B followed by a canonical conversation from A; do not
-        // expose A as the reply target for that merged contact thread.
-        socialConversationId: t.lastChannel === "whatsapp" && whatsappThreadReplyBinding(t.messages).whatsappReplyBlocked
-          ? null : t.messages.find((m: any) => m.conversationId)?.conversationId ?? null,
-      }))
+      // A thread made only of what was left of a deleted conversation (old rows without a conversation)
+      // stays deleted, as it was before the trash was filtered per conversation.
+      .filter((t: any) => !strippedThreadKeys.has(t.threadKey) || t.messages.some((m: any) => m.conversationId))
+      .map((t: any) => {
+        // Every stored conversation of this customer's thread — one per channel — so the screen can
+        // reply through the right one and act on all of them (lib/inbox/thread-conversations).
+        const threadConversations = summarizeThreadConversations(t.messages)
+        return {
+          ...t,
+          channels: Array.from(t.channels),
+          ...whatsappThreadReplyBinding(t.messages),
+          // Messages are newest-first. A WhatsApp thread may contain an unbound
+          // message from B followed by a canonical conversation from A; do not
+          // expose A as the reply target for that merged contact thread.
+          socialConversationId: t.lastChannel === "whatsapp" && whatsappThreadReplyBinding(t.messages).whatsappReplyBlocked
+            ? null : t.messages.find((m: any) => m.conversationId)?.conversationId ?? null,
+          threadConversations,
+        }
+      })
       .sort((a: any, b: any) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())
 
     // Surface persisted status / assignment / snooze for threads backed by a
     // SocialConversation row. Additive: threads with no conversationId
     // (whatsapp/sms/email until Phase D-2) keep these undefined, and the legacy
     // /inbox simply ignores the extras.
-    const convIds = conversations.map((c: any) => c.socialConversationId).filter(Boolean) as string[]
+    // Every conversation of every thread: the thread shows its primary one's state, and each channel
+    // of a merged customer thread carries its own (status, assignee, link) for the channel switcher.
+    const convIds = [...new Set(conversations.flatMap((c: any) => [
+      c.socialConversationId,
+      ...((c.threadConversations ?? []) as ThreadConversationSummary[]).map((tc) => tc.id),
+    ]).filter(Boolean))] as string[]
     if (convIds.length > 0) {
       const socialRows = await prisma.socialConversation.findMany({
         where: { id: { in: convIds }, organizationId: orgId },
         select: {
           id: true,
+          platform: true,
+          contactId: true,
           contactName: true,
           status: true,
           assignedTo: true,
@@ -306,6 +365,8 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
       })
       type SocialState = {
         id: string
+        platform: string
+        contactId: string | null
         contactName: string | null
         status: string
         assignedTo: string | null
@@ -368,8 +429,25 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
         const storedName = s?.contactName?.trim()
         const showStoredName = !c.contactId && typeof c.contactName === "string"
           && /^-?\d+$/.test(c.contactName) && !!storedName && !/^-?\d+$/.test(storedName)
-        return s ? {
+        const threadConversations = ((c.threadConversations ?? []) as ThreadConversationSummary[]).map((tc) => {
+          const row = byId.get(tc.id)
+          if (!row) return tc
+          const name = row.contactName?.trim()
+          return {
+            ...tc,
+            status: row.status,
+            assignedTo: row.assignedTo,
+            snoozedUntil: row.snoozedUntil,
+            // The @username / page name of an Instagram or Messenger sender, for the channel switcher.
+            customerHandle: name && !/^-?\d+$/.test(name) ? name : null,
+            // Tied to a CRM customer by a manager («Bu eyni müştəridir») — the screen offers «Ayır».
+            contactLinked: isContactLinkablePlatform(row.platform) && !!row.contactId,
+          }
+        })
+        if (!s) return { ...c, threadConversations }
+        return {
           ...c,
+          threadConversations,
           ...(showStoredName ? { contactName: storedName } : {}),
           status: s.status,
           assignedTo: s.assignedTo,
@@ -393,7 +471,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
           linkedLead: qualificationLeadId ? linkedLeadById.get(qualificationLeadId) ?? null : null,
           // Came over with the WhatsApp Business app's history (lib/whatsapp-history-import).
           historyImport: metadata.historyImport === true,
-        } : c
+        }
       })
 
       // Collaborators (model B): attach participant userIds so the client can render avatars + the
@@ -580,6 +658,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
           aiCustomerStageReason: string | null
           lastMessage: string | null
           lastMessageAt: Date | null
+          deletedAt: Date | null
         } | null
       }
       type CallOnlyConversationStub = {
@@ -615,11 +694,15 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
         snoozedUntil: Date | null
         folderId: string | null
       }
-      const existingConversationIds = new Set<string>(
-        conversations
-          .map((c: { socialConversationId?: string | null }) => c.socialConversationId)
-          .filter((id: string | null | undefined): id is string => Boolean(id)),
-      )
+      // Every conversation a thread already holds — not only its primary one — and those whose messages
+      // went to the trash, so neither comes back here as a separate call-only row.
+      const existingConversationIds = new Set<string>([
+        ...conversations.flatMap((c: { socialConversationId?: string | null; threadConversations?: ThreadConversationSummary[] }) => [
+          c.socialConversationId,
+          ...(c.threadConversations ?? []).map((tc) => tc.id),
+        ]).filter((id: string | null | undefined): id is string => Boolean(id)),
+        ...deletedMessageConversationIds,
+      ])
       const callOnlyRows = await prisma.callLog.findMany({
         where: {
           organizationId: orgId,
@@ -666,10 +749,14 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
               aiCustomerStageReason: true,
               lastMessage: true,
               lastMessageAt: true,
+              deletedAt: true,
             },
           },
         },
       }) as CallOnlyConversationRow[]
+      const deletedCallOnlyIds = new Set(callOnlyRows
+        .filter((row) => row.conversation?.deletedAt && row.conversationId)
+        .map((row) => row.conversationId as string))
 
       const callOnlyByConversation = new Map<string, CallOnlyConversationStub>()
       for (const call of callOnlyRows) {
@@ -718,6 +805,37 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
         })
       }
 
+      // A call-only conversation of a customer who already has a thread (he wrote on Instagram, then
+      // called on WhatsApp) joins that thread: its calls belong in his one feed, not in a second row.
+      const threadByContact = new Map<string, { threadConversations?: unknown[] }>()
+      for (const c of conversations as Array<{ contactId?: string | null; webChatSessionId?: string; threadConversations?: unknown[] }>) {
+        if (c.contactId && !c.webChatSessionId && Array.isArray(c.threadConversations) && !threadByContact.has(c.contactId)) {
+          threadByContact.set(c.contactId, c)
+        }
+      }
+      for (const [conversationId, stub] of [...callOnlyByConversation.entries()]) {
+        const thread = stub.contactId ? threadByContact.get(stub.contactId) : undefined
+        // A deleted one stays a row of its own, for the trash filter below to judge.
+        if (!thread || trashView || deletedCallOnlyIds.has(conversationId)) continue
+        const at = new Date(stub.lastMessageAt).toISOString()
+        thread.threadConversations = [...(thread.threadConversations ?? []), {
+          key: `${conversationId}|${stub.lastChannel}`,
+          id: conversationId,
+          platform: stub.lastChannel,
+          channelConfigId: stub.channelConfigId,
+          lastMessageAt: at,
+          lastInboundAt: null,
+          messageCount: 0,
+          unreadCount: 0,
+          status: stub.status,
+          assignedTo: stub.assignedTo,
+          snoozedUntil: stub.snoozedUntil,
+          customerHandle: null,
+          contactLinked: false,
+        }]
+        callOnlyByConversation.delete(conversationId)
+      }
+
       if (callOnlyByConversation.size > 0) {
         conversations = [...conversations, ...Array.from(callOnlyByConversation.values())].sort(
           (a: { lastMessageAt: Date | string }, b: { lastMessageAt: Date | string }) =>
@@ -731,9 +849,10 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
     // E4.2 — bridge VoIP call logs into the inbox payload so the thread can render
     // call events inline without introducing a new ChannelEvent table yet. This is
     // org-scoped and read-only; calls are only created by the explicit click-to-call route.
-    const callConvIds = Array.from(new Set(
-      conversations.map((c: { socialConversationId?: string | null }) => c.socialConversationId).filter(Boolean) as string[],
-    ))
+    type ThreadCallTarget = { socialConversationId?: string | null; threadConversations?: Array<{ id: string }>; contactId?: string | null; webChatSessionId?: string }
+    const threadCallConversationIds = (c: ThreadCallTarget): string[] =>
+      [...new Set([c.socialConversationId, ...(c.threadConversations ?? []).map((tc) => tc.id)].filter((id): id is string => Boolean(id)))]
+    const callConvIds = Array.from(new Set(conversations.flatMap((c: ThreadCallTarget) => threadCallConversationIds(c))))
     if (callConvIds.length > 0) {
       const callRows = await prisma.callLog.findMany({
         where: { organizationId: orgId, conversationId: { in: callConvIds } },
@@ -769,11 +888,69 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
         arr.push(call)
         callsByConversation.set(call.conversationId, arr)
       }
-      conversations = conversations.map((c: ConversationWithCalls) => (
-        c.socialConversationId
-          ? { ...c, callLogs: callsByConversation.get(c.socialConversationId) ?? [] }
+      conversations = conversations.map((c: ConversationWithCalls & ThreadCallTarget) => (
+        c.socialConversationId || c.threadConversations?.length
+          ? { ...c, callLogs: threadCallConversationIds(c).flatMap((id) => callsByConversation.get(id) ?? []) }
           : c
       ))
+    }
+
+    // Calls to and from the customer that belong to no conversation (a phone line, click-to-call from
+    // his card) are part of his one feed too. Read under the same rule as the calls screen
+    // (accessibleCallWhere) and the person's hidden numbers, so the inbox shows no call it would not.
+    try {
+      const customerThreads = conversations.filter((c: ThreadCallTarget) => c.contactId && !c.webChatSessionId)
+      const customerIds = [...new Set(customerThreads.map((c: ThreadCallTarget) => c.contactId as string))]
+      if (customerIds.length > 0) {
+        const visibleCalls = visibleChannelWhere(hiddenChannels)
+        const contactCallRows = await prisma.callLog.findMany({
+          where: {
+            AND: [
+              { organizationId: orgId, contactId: { in: customerIds }, conversationId: null },
+              accessibleCallWhere(auth.role as Role, auth.userId),
+              ...(visibleCalls ? [visibleCalls] : []),
+            ],
+          },
+          orderBy: { createdAt: "desc" },
+          take: PAGE_SIZE.INBOX,
+          select: {
+            id: true,
+            conversationId: true,
+            contactId: true,
+            direction: true,
+            fromNumber: true,
+            toNumber: true,
+            status: true,
+            duration: true,
+            provider: true,
+            recordingUrl: true,
+            transcription: true,
+            insightsAt: true,
+            notes: true,
+            providerOutcome: true,
+            providerDialStatus: true,
+            providerHangupCause: true,
+            startedAt: true,
+            endedAt: true,
+            createdAt: true,
+          },
+        })
+        const callsByContact = new Map<string, Array<ReturnType<typeof exposeCallForClient>>>()
+        for (const row of contactCallRows ?? []) {
+          const arr = callsByContact.get(row.contactId as string) ?? []
+          arr.push(exposeCallForClient(row))
+          callsByContact.set(row.contactId as string, arr)
+        }
+        if (callsByContact.size > 0) {
+          conversations = conversations.map((c: ThreadCallTarget & { callLogs?: unknown[] }) => {
+            const extra = c.contactId && !c.webChatSessionId ? callsByContact.get(c.contactId) : undefined
+            return extra?.length ? { ...c, callLogs: [...(c.callLogs ?? []), ...extra] } : c
+          })
+        }
+      }
+    } catch (e) {
+      // Additive: a customer thread without these calls is the feed as it was.
+      console.error("[inbox GET customer calls]", e)
     }
 
     // Deleted conversations. This listing is built from MESSAGES and only
