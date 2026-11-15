@@ -378,7 +378,7 @@ export async function changeItem(params: {
   return { ok: true, item: itemView(saved!, new Map()) }
 }
 
-export type SampleChange = { action: "accept" } | { action: "teach" }
+export type SampleChange = { action: "accept" } | { action: "teach" } | { action: "dismiss" }
 
 export async function changeSample(params: {
   organizationId: string; channelConfigId: string; sampleId: string; userId: string | null; change: SampleChange
@@ -420,7 +420,11 @@ export async function changeSample(params: {
   }
   await prisma.inboxLearningSample.updateMany({
     where: { id: sample.id, organizationId: params.organizationId, resolution: null },
-    data: { resolution: params.change.action === "teach" ? "taught" : "accepted", resolvedById: params.userId, resolvedAt: now },
+    data: {
+      resolution: params.change.action === "teach" ? "taught" : params.change.action === "dismiss" ? "dismissed" : "accepted",
+      resolvedById: params.userId,
+      resolvedAt: now,
+    },
   })
   return { ok: true, item }
 }
@@ -449,7 +453,8 @@ export async function conversationLearning(organizationId: string, conversationI
   const mode = channelMode(channel.settings, channel.channelType)
   const [samples, channelSamples, learned] = await Promise.all([
     prisma.inboxLearningSample.findMany({
-      where: { organizationId, conversationId, verdict: { in: [...COMPARED_VERDICTS] } },
+      // A dismissed answer was no yardstick: the thread does not judge it either.
+      where: { organizationId, conversationId, verdict: { in: [...COMPARED_VERDICTS] }, OR: [{ resolution: null }, { resolution: { not: "dismissed" } }] },
       select: { id: true, answerMessageId: true, verdict: true, resolution: true, draftLogId: true },
     }),
     samplesOf(organizationId, channel.id),

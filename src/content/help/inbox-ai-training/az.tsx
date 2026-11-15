@@ -69,7 +69,8 @@ export default function InboxAiTrainingHelpAz() {
               Hazırlığın yanında — AI-ın əməkdaşdan fərqli cavab verəcəyi suallar: sual, əməkdaşın və AI-ın cavabı
               yan-yana. <HelpKey>Əməkdaşın cavabını yadda saxla</HelpKey> — cavab biliyə çevrilir;{" "}
               <HelpKey>AI-ın cavabı da uyğundur</HelpKey> — «eyni» kimi sayılır; <HelpKey>Yazışmanı aç</HelpKey> — inboksda
-              həmin mesaja keçid. Hazırlıq yenidən hesablanır.
+              həmin mesaja keçid; <HelpKey>Keç — öyrənmə</HelpKey> — əməkdaşın cavabı şirkətin biliyi deyilsə (zarafat,
+              birdəfəlik hal): AI bunu öyrənmir və sual hazırlığa daxil olmur. Hazırlıq yenidən hesablanır.
             </p>
           ),
         },

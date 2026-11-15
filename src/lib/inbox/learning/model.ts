@@ -155,12 +155,18 @@ export type Readiness = {
   topicPercent: number | null
 }
 
-/** A person's «Ответ ИИ тоже подходит» or «Запомнить ответ сотрудника» makes the answer count as the same. */
+/**
+ * A person's «Ответ ИИ тоже подходит» or «Запомнить ответ сотрудника» makes the answer count as the same.
+ * «Пропустить — не учить» (dismissed) takes it out of the figure altogether: the person's answer was no
+ * yardstick (a joke, a one-off), so neither «the same» nor «differently» would be true.
+ */
 export function effectiveVerdict(sample: Pick<ReadinessSample, "verdict" | "resolution">): string {
   return sample.resolution === "accepted" || sample.resolution === "taught" ? "same" : sample.verdict
 }
 
 const isCompared = (verdict: string) => (COMPARED_VERDICTS as readonly string[]).includes(verdict)
+/** A sample the readiness figure and its topics count. */
+export const countsForReadiness = (s: Pick<ReadinessSample, "verdict" | "resolution">) => isCompared(s.verdict) && s.resolution !== "dismissed"
 
 function tally(window: readonly ReadinessSample[]) {
   const counts = { same: 0, almost: 0, different: 0, handoff: 0 }
@@ -182,7 +188,7 @@ const dayKey = (d: Date, timeZone: string) =>
 export function computeReadiness(samples: readonly ReadinessSample[], opts: { timeZone?: string; trendDays?: number } = {}): Readiness {
   const timeZone = opts.timeZone || "Asia/Baku"
   const compared = samples
-    .filter((s) => isCompared(s.verdict))
+    .filter(countsForReadiness)
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
   const window = compared.slice(0, READINESS_WINDOW)
   const counts = tally(window)

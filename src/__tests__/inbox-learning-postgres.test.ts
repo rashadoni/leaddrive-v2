@@ -84,6 +84,7 @@ vi.mock("@/lib/ai/anthropic-client", () => ({
 const ROOT = process.cwd()
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
 const MIGRATION = path.join(ROOT, "prisma/migrations/20261219090000_inbox_ai_training/migration.sql")
+const MIGRATION_SKIP = path.join(ROOT, "prisma/migrations/20261219100000_inbox_ai_training_skip/migration.sql")
 const ORG = "org-learning"
 const OTHER = "org-learning-other"
 const CHANNEL = "cfg-ig-learning"
@@ -124,7 +125,7 @@ function schemaWithoutEmbeddings(): string {
     createdDb = true
     cli(["db", "push", "--schema", schemaWithoutEmbeddings(), "--skip-generate", "--accept-data-loss"], { ...process.env, DATABASE_URL: scratch!.adminDb })
     // Both tables as production gets them: from their migration, with RLS.
-    sql(scratch!.adminDb, `DROP TABLE "inbox_learning_samples"; DROP TABLE "inbox_learned_items";\n${readFileSync(MIGRATION, "utf8")}`)
+    sql(scratch!.adminDb, `DROP TABLE "inbox_learning_samples"; DROP TABLE "inbox_learned_items";\n${readFileSync(MIGRATION, "utf8")}\n${readFileSync(MIGRATION_SKIP, "utf8")}`)
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
 
     prisma = (await import("@/lib/prisma")).prisma
@@ -294,8 +295,20 @@ function schemaWithoutEmbeddings(): string {
     const marks = await inOrg(() => service.conversationLearning(ORG, CONVO))
     expect(marks).toMatchObject({ mode: "learning", answers: { m2: { verdict: "different" }, m6: { verdict: "same" } } })
 
-    // «Ответ ИИ тоже подходит» counts it as the same.
+    // «Пропустить — не учить»: gone from the list and from the figure, and the thread no longer judges it.
     const sample = detail!.differences[0]
+    const skipped = await inOrg(() => service.changeSample({ organizationId: ORG, channelConfigId: CHANNEL, sampleId: sample.id, userId: null, change: { action: "dismiss" } }))
+    expect(skipped).toEqual({ ok: true, item: undefined })
+    const afterSkip = await inOrg(() => service.channelLearningDetail(ORG, CHANNEL))
+    expect(afterSkip!.differences).toEqual([])
+    expect(afterSkip!.readiness).toMatchObject({ compared: 1, same: 1, different: 0 })
+    expect(await inOrg(() => prisma.inboxLearnedItem.count({ where: { sourceMessageId: "m2", kind: "knowledge", title: "Цена маникюра" } }))).toBe(0)
+    expect((await inOrg(() => service.conversationLearning(ORG, CONVO)))!.answers.m2).toBeUndefined()
+
+    // A decided answer is not decided again; «Ответ ИИ тоже подходит» on a fresh one counts it as the same.
+    expect(await inOrg(() => service.changeSample({ organizationId: ORG, channelConfigId: CHANNEL, sampleId: sample.id, userId: null, change: { action: "accept" } })))
+      .toEqual({ ok: false, status: 409, error: "already_resolved" })
+    await bypass(() => prisma.inboxLearningSample.update({ where: { id: sample.id }, data: { resolution: null } }))
     await inOrg(() => service.changeSample({ organizationId: ORG, channelConfigId: CHANNEL, sampleId: sample.id, userId: null, change: { action: "accept" } }))
     const marksAfter = await inOrg(() => service.conversationLearning(ORG, CONVO))
     expect(marksAfter!.answers.m2.verdict).toBe("same")
