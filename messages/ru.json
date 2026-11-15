@@ -28777,6 +28777,8 @@
     "contactPanelHint": "Нажмите — справа откроется карточка клиента. Нажатие в другом месте или Esc её закроет.",
     "contactPanelHintOpen": "Нажмите ещё раз, в любом другом месте или Esc — карточка закроется.",
     "contactPanelLabel": "Карточка клиента",
+    "backToConversations": "Диалоги",
+    "backToConversationsHint": "Вернуться к списку диалогов",
     "viewCrmContact": "Открыть контакт CRM →",
     "details": "Детали",
     "email": "Email",

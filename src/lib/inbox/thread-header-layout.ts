@@ -7,6 +7,12 @@
  * clips its overflow, so the right ~140 px — the «…» and the snooze/folder
  * icons — were simply gone. At 1024 the column is ~155 px.
  *
+ * Since then the list steps aside for an open conversation where the inbox is
+ * too narrow for three columns (inbox-columns.ts), and «Söhbətlər» at the start
+ * of this row brings it back. The page measures the room the name and the
+ * actions get beside it: 370 px at 1024, 626 px at 1280, 428–572 px with the
+ * list beside the conversation.
+ *
  * The owner does not read icons, so nothing that had words loses them: what
  * does not fit moves into «Daha çox», where every action is written out. The
  * rare actions (snooze, folder, trash) stand there at every width, with words
@@ -38,7 +44,8 @@ export const THREAD_HEADER_WIDE_MIN_PX = 760
  * below it only the call and «Daha çox» do. The widest row is Azerbaijani:
  * 299 px with a long assignee, 317 px snoozed, plus 32 px padding, an 8 px gap
  * and the 44 px avatar = 401 px, and a few pixels for another platform's font.
- * The 1280 px window with the full CRM menu gives the column 412 px.
+ * The 1280 px window with the full CRM menu gave the column 412 px; the
+ * three columns now stand only where it gets at least 428 px.
  */
 export const THREAD_HEADER_MEDIUM_MIN_PX = 408
 

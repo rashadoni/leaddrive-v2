@@ -68,6 +68,7 @@ import { messageAuthor } from "@/lib/inbox/message-author"
 import { ConversationLearningBanner, LearningAnswerMark, useConversationLearning } from "@/components/inbox-learning/conversation-learning"
 import { isMediaPlaceholder, placeholderView } from "@/lib/inbox/media-placeholder"
 import { threadHeaderActionInline, threadHeaderTier, type ThreadHeaderAction } from "@/lib/inbox/thread-header-layout"
+import { inboxListBesideThread } from "@/lib/inbox/inbox-columns"
 import {
   CHANNELS, REPLY_CHANNELS, ChannelIcon, channelColor, channelLabel,
   avatarTint, initials, extractQuickReplies, appendTag, dropTag, convStatusTab, convMatchesView, extractAttachments,
@@ -567,6 +568,12 @@ export default function InboxV2Page() {
   const moreRef = useRef<HTMLDivElement>(null)
   const [threadHeaderEl, setThreadHeaderEl] = useState<HTMLElement | null>(null)
   const [threadHeaderWidth, setThreadHeaderWidth] = useState(0)
+  // The inbox's own width decides whether the list stands beside an open
+  // conversation or steps aside for it (inbox-columns.ts); «Söhbətlər» in the
+  // thread header brings it back.
+  const [inboxRootEl, setInboxRootEl] = useState<HTMLDivElement | null>(null)
+  const [inboxWidth, setInboxWidth] = useState(0)
+  const threadBackRef = useRef<HTMLButtonElement>(null)
   // The customer card on the right is closed until the person opens it from the
   // avatar in the thread header (owner, 2026-11-15: it stood open for good and
   // squeezed the conversation). It closes on any press outside it or Escape.
@@ -1189,18 +1196,36 @@ export default function InboxV2Page() {
     }
   }, [showEmoji, showQuickReplies, showAiAssist, showAssign, showParticipants, showMore])
 
+  // The inbox's width, measured before paint and on every resize: the window,
+  // the CRM menu collapsed or not.
+  useLayoutEffect(() => {
+    if (!inboxRootEl) return
+    const measure = () => setInboxWidth(Math.round(inboxRootEl.getBoundingClientRect().width))
+    measure()
+    if (typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver(measure)
+    observer.observe(inboxRootEl)
+    return () => observer.disconnect()
+  }, [inboxRootEl])
+  const listBesideThread = inboxListBesideThread(inboxWidth)
+
   // The thread header's width decides which actions stand in it (see
   // thread-header-layout.ts). Measured before paint, then on every resize: the
-  // column changes with the window, the CRM menu and the list beside it.
+  // column changes with the window, the CRM menu and the list beside it. When
+  // the list has stepped aside, «Söhbətlər» stands at the start of the same row,
+  // so the name and the actions get what is left beside it (and the 12 px gap).
   useLayoutEffect(() => {
     if (!threadHeaderEl) return
-    const measure = () => setThreadHeaderWidth(Math.round(threadHeaderEl.getBoundingClientRect().width))
+    const measure = () => {
+      const back = threadBackRef.current?.getBoundingClientRect().width ?? 0
+      setThreadHeaderWidth(Math.round(threadHeaderEl.getBoundingClientRect().width - (back > 0 ? back + 12 : 0)))
+    }
     measure()
     if (typeof ResizeObserver === "undefined") return
     const observer = new ResizeObserver(measure)
     observer.observe(threadHeaderEl)
     return () => observer.disconnect()
-  }, [threadHeaderEl])
+  }, [threadHeaderEl, listBesideThread])
   const threadHeaderLayout = threadHeaderTier(threadHeaderWidth)
 
   // «Daha çox» opens on its list of actions, never on a list left from last time,
@@ -1829,7 +1854,12 @@ export default function InboxV2Page() {
   }
 
   return (
-    <div className="relative flex h-[calc(100vh-7rem)] gap-px rounded-xl border border-border/60 bg-border/60 overflow-hidden text-sm">
+    <div
+      ref={setInboxRootEl}
+      data-testid="inbox-root"
+      data-list-beside-thread={listBesideThread ? "true" : "false"}
+      className="relative flex h-[calc(100vh-7rem)] gap-px rounded-xl border border-border/60 bg-border/60 overflow-hidden text-sm"
+    >
       {/* ─────────── ZONE 1 · Folders rail ─────────── */}
       <aside className="w-56 shrink-0 bg-card flex flex-col">
         <div className="flex items-center justify-between px-4 h-14 shrink-0">
@@ -1957,8 +1987,13 @@ export default function InboxV2Page() {
         </nav>
       </aside>
 
-      {/* ─────────── ZONE 2 · Conversation list ─────────── */}
-      <section className={cn("w-80 shrink-0 bg-card flex flex-col", selected !== null && "hidden lg:flex")}>
+      {/* ─────────── ZONE 2 · Conversation list ───────────
+          Where the inbox is too narrow for three columns, an open conversation
+          takes the list's place (inbox-columns.ts). */}
+      <section
+        data-testid="inbox-conversation-list"
+        className={cn("w-80 shrink-0 bg-card flex flex-col", selectedConvo && !listBesideThread && "hidden")}
+      >
         <div className="h-14 flex items-center gap-1.5 px-3 shrink-0">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -2299,8 +2334,23 @@ export default function InboxV2Page() {
                   takes the room the actions leave; should the avatar and the actions
                   ever not fit side by side, the actions go to a second line instead
                   of past the column's edge, where the inbox clips them. */}
-              <div className="flex flex-1 items-center gap-3 min-w-[4.5rem] lg:min-w-11">
-                <button onClick={() => setSelected(null)} className="lg:hidden p-1 hover:bg-muted rounded"><ArrowLeft className="h-4 w-4" /></button>
+              <div className={cn("flex flex-1 items-center gap-3", listBesideThread ? "min-w-11" : "min-w-[11rem]")}>
+                {/* The list has stepped aside for the conversation: this brings it
+                    back, in words (the owner does not read icons). */}
+                {!listBesideThread && (
+                  <Hint text={t("backToConversationsHint")} side="bottom" align="start">
+                    <button
+                      ref={threadBackRef}
+                      type="button"
+                      onClick={() => setSelected(null)}
+                      data-testid="inbox-thread-back"
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border/70 px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{t("backToConversations")}</span>
+                    </button>
+                  </Hint>
+                )}
                 {/* The avatar opens the customer card; the line under the name says so in words. */}
                 <Hint text={contactPanelVisible ? t("contactPanelHintOpen") : t("contactPanelHint")} side="bottom" align="start">
                 <button

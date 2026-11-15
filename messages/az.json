@@ -28773,6 +28773,8 @@
     "contactPanelHint": "Klikləyin — sağda müştəri kartı açılacaq. Başqa yerə klikləmək və ya Esc onu bağlayır.",
     "contactPanelHintOpen": "Yenidən klikləyin, başqa yerə klikləyin və ya Esc basın — kart bağlanacaq.",
     "contactPanelLabel": "Müştəri kartı",
+    "backToConversations": "Söhbətlər",
+    "backToConversationsHint": "Söhbətlərin siyahısına qayıdın",
     "viewCrmContact": "CRM kontaktına bax →",
     "details": "Təfərrüatlar",
     "email": "E-poçt",

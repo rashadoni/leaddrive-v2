@@ -28777,6 +28777,8 @@
     "contactPanelHint": "Click to open the customer card on the right. Clicking anywhere else or pressing Esc closes it.",
     "contactPanelHintOpen": "Click again, click anywhere else or press Esc to close the card.",
     "contactPanelLabel": "Customer card",
+    "backToConversations": "Conversations",
+    "backToConversationsHint": "Back to the conversation list",
     "viewCrmContact": "View CRM contact →",
     "details": "Details",
     "email": "Email",
