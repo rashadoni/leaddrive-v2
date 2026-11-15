@@ -32,7 +32,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
-import { PrismaClient, type Prisma as PrismaTypes } from "@prisma/client"
+import { PrismaClient, type Prisma } from "@prisma/client"
 
 const adminUrl = process.env.WHATSAPP_HISTORY_IMPORT_TEST_DATABASE_URL
 if (!adminUrl && process.env.WHATSAPP_HISTORY_IMPORT_DB_GATE === "required") {
@@ -167,8 +167,8 @@ const DECLINED = envelope("history", {
 })
 
 ;(scratch ? describe : describe.skip)("WhatsApp coexistence import on a real Postgres", () => {
-  type Prisma = typeof import("@/lib/prisma").prisma
-  let prisma!: Prisma
+  type AppPrisma = typeof import("@/lib/prisma").prisma
+  let prisma!: AppPrisma
   let admin!: PrismaClient
   let rls!: typeof import("@/lib/rls-context")
   let route!: typeof import("@/app/api/v1/webhooks/whatsapp/route")
@@ -218,7 +218,7 @@ const DECLINED = envelope("history", {
       `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}";`,
     ].join("\n"))
 
-    admin = new PrismaClient<PrismaTypes.PrismaClientOptions>({ datasources: { db: { url: scratch!.adminDb } } })
+    admin = new PrismaClient<Prisma.PrismaClientOptions>({ datasources: { db: { url: scratch!.adminDb } } })
     prisma = (await import("@/lib/prisma")).prisma
     rls = await import("@/lib/rls-context")
     route = await import("@/app/api/v1/webhooks/whatsapp/route")
