@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import { dealIdsWhere, withDealEvents } from "@/lib/deals/deal-events"
+import { CLOSED_CONVERSATION_STATUSES } from "@/lib/inbox/assignee-filter"
 
 /**
  * Передача незакрытой работы при обезличивании пользователя.
@@ -14,12 +15,25 @@ import { dealIdsWhere, withDealEvents } from "@/lib/deals/deal-events"
  * — на отключённых сотрудниках, и 86 задач вовсе без исполнителя. То есть
  * потеря ответственного — не гипотеза, она уже происходила.
  *
+ * Беседы инбокса (2026-11-16) идут тем же путём. До этого дня они оставались
+ * за обезличенным пользователем: в инбоксе их видно только под «Другие», на
+ * новое сообщение клиента уведомление уходит единственному получателю —
+ * тому, кого уже нет (`notifyConversationRecipients`, пуш чата сайта), — то
+ * есть клиент пишет, и об этом не узнаёт никто.
+ *
  * Кому передаём. В модели НЕТ линии подчинения: у `User` нет ни `managerId`,
  * ни `divisionId`; иерархия есть только у полевых агентов (`MtmAgent.managerId`)
  * и у проектов (`Project.managerId`). Поэтому «руководителя» вычислить не из
  * чего, и придумывать его — гадание. Работа переходит к АДМИНИСТРАТОРУ,
  * который выполняет удаление: он живой, он принимает решение, он сразу видит
  * пришедшее у себя и может раздать дальше.
+ *
+ * Беседу нельзя вместо этого оставить «без ответственного». Открытая беседа с
+ * `assignedTo: null` — это сигнал ИИ-автоответу, что отвечать можно ему
+ * (`autonomous-agent-cron`, `whatsapp-ai-reply-guard`, `ai-autoreply`): снятие
+ * ответственного молча отдало бы роботу переписку, которую вёл человек. Смена
+ * ответственного на живого администратора состояние не меняет — отвечает
+ * по-прежнему человек.
  *
  * Что НЕ передаём:
  *   • закрытое — у него нет будущего, а перенос исказил бы отчёты по
@@ -44,6 +58,13 @@ const LEAD_TERMINAL_STATUSES = ["converted", "lost"]
  */
 const PROJECT_TERMINAL_STATUSES = ["completed", "cancelled"]
 
+/**
+ * Закрытый статус чата сайта (`WebChatSession.status`: open, closed, escalated).
+ * Закрытые статусы беседы — `CLOSED_CONVERSATION_STATUSES`, одни на передачу и
+ * на отбор в инбоксе.
+ */
+const WEB_CHAT_CLOSED_STATUS = "closed"
+
 export interface HandoverCounts {
   deals: number
   leads: number
@@ -52,6 +73,8 @@ export interface HandoverCounts {
   projectTasks: number
   projects: number
   divisions: number
+  /** Беседы инбокса: мессенджеры, почта, звонки — и чаты сайта, они на экране одним списком. */
+  conversations: number
 }
 
 export function isEmptyHandover(counts: HandoverCounts): boolean {
@@ -146,6 +169,35 @@ export async function handOverOpenWork(
     data: { headUserId: toUserId },
   })
 
+  // Беседы инбокса. Закрытые остаются за прежним ответственным — как закрытые
+  // сделки; корзина (`deletedAt`) тоже: её содержимое не работа, а то, что
+  // убрали с глаз. Отдельного состояния «спам» у беседы в модели нет.
+  // Меняется только ответственный: статус, папка, метки, отложенность и
+  // участники беседы остаются как были.
+  const conversations = await tx.socialConversation.updateMany({
+    where: {
+      ...scope,
+      assignedTo: fromUserId,
+      deletedAt: null,
+      NOT: CLOSED_CONVERSATION_STATUSES.map((s) => ({
+        status: { equals: s, mode: "insensitive" as const },
+      })),
+    },
+    data: { assignedTo: toUserId },
+  })
+
+  // Чат сайта живёт в своей таблице (`WebChatSession.assignedUserId`), а в
+  // инбоксе стоит в том же списке. `aiPaused` не трогаем: чат, который вёл
+  // человек, остаётся за человеком, а включённый вручную ИИ — включённым.
+  const webChats = await tx.webChatSession.updateMany({
+    where: {
+      ...scope,
+      assignedUserId: fromUserId,
+      NOT: { status: { equals: WEB_CHAT_CLOSED_STATUS, mode: "insensitive" as const } },
+    },
+    data: { assignedUserId: toUserId },
+  })
+
   return {
     deals: deals.count,
     leads: leads.count,
@@ -154,5 +206,6 @@ export async function handOverOpenWork(
     projectTasks: projectTasks.count,
     projects: projects.count,
     divisions: divisions.count,
+    conversations: conversations.count + webChats.count,
   }
 }

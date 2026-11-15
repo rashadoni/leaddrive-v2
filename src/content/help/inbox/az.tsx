@@ -65,6 +65,7 @@ export default function InboxHelpAz() {
           <HelpDef term="Kanal">Mesajın gəldiyi yer — E-poçt, Telegram, WhatsApp, SMS, sosial. Panel hər kanalın yanında sayını göstərir.</HelpDef>
           <HelpDef term="Qovluq">Komanda üçün ümumi qovluq; söhbətləri ora yığa və ona görə süzə bilərsiniz.</HelpDef>
           <HelpDef term="Status tabı">Açıq / Gözləyir / Bağlı — söhbətin iş vəziyyəti. «Gözləyir» — təxirə salınmış söhbətlər.</HelpDef>
+          <HelpDef term="Məsul əməkdaş">Siyahının filtrlərində (axtarışın yanındakı sürgülü düymə): bir əməkdaşın bütün söhbətləri — çoxdan yazılmayan açıq söhbətlər də daxil olmaqla. Artıq işləməyənlər də siyahıdadır. «Bütün görünənləri seç» və «Məsul əməkdaş seçin» onları başqa əməkdaşa ötürür — bir dəfəyə 50 söhbət.</HelpDef>
           <HelpDef term="Cavab">Müştəriyə gedən mesaj. «Komanda» isə yalnız daxili qeyddir — müştəri görmür.</HelpDef>
           <HelpDef term="İştirakçı">Söhbətə əlavə edilmiş daxili həmkar (yalnız komanda görür, müştəri yox).</HelpDef>
         </dl>

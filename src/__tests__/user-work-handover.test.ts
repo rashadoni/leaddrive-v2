@@ -70,6 +70,8 @@ function makeTx(data: Record<string, Row[]> = {}) {
     projectTask: model("projectTask"),
     project: model("project"),
     division: model("division"),
+    socialConversation: model("socialConversation"),
+    webChatSession: model("webChatSession"),
   }
   return { tx, calls, survivors }
 }
@@ -87,10 +89,12 @@ describe("передача незакрытой работы", () => {
   it("переносит всё перечисленное на администратора, а не на кого попало", async () => {
     const { tx } = makeTx()
     const counts = await handOverOpenWork(tx as never, ARGS)
-    for (const model of ["deal", "lead", "ticket", "task", "projectTask", "project", "division"] as const) {
+    for (const model of ["deal", "lead", "ticket", "task", "projectTask", "project", "division", "socialConversation", "webChatSession"] as const) {
       expect(tx[model].updateMany).toHaveBeenCalledOnce()
     }
     expect(counts.deals).toBe(1)
+    // Беседа мессенджера и чат сайта для человека — один список, и счётчик один.
+    expect(counts.conversations).toBe(2)
     expect(isEmptyHandover(counts)).toBe(false)
   })
 
@@ -169,9 +173,46 @@ describe("передача незакрытой работы", () => {
     expect(survivors.project.map((r) => r.status)).toEqual(["completed", "Cancelled"])
   })
 
+  it("передаёт открытые беседы инбокса, а закрытые и корзину оставляет прежнему ответственному", async () => {
+    // Закрытая беседа — история: её перенос изменил бы отчёт по сотрудникам за
+    // прошлое. Корзина — то, что убрали с глаз, а не работа. Отложенная беседа
+    // открыта: она вернётся, и встретить её должен живой человек.
+    const live = { ...base, deletedAt: null }
+    const { tx, survivors, calls } = makeTx({
+      socialConversation: [
+        { ...live, id: "open", status: "open" },
+        { ...live, id: "snoozed", status: "open", snoozedUntil: new Date("2099-01-01") },
+        { ...live, id: "resolved", status: "resolved" },
+        { ...live, id: "archived", status: "Archived" },
+        { ...base, id: "trash", status: "open", deletedAt: new Date("2026-11-01") },
+      ],
+      webChatSession: [
+        { organizationId: "org-1", assignedUserId: "leaving", id: "chat-open", status: "open" },
+        { organizationId: "org-1", assignedUserId: "leaving", id: "chat-escalated", status: "escalated" },
+        { organizationId: "org-1", assignedUserId: "leaving", id: "chat-closed", status: "closed" },
+      ],
+    })
+    const counts = await handOverOpenWork(tx as never, ARGS)
+    expect(counts.conversations, "две беседы и два чата сайта").toBe(4)
+    expect(survivors.socialConversation.map((r) => r.id)).toEqual(["resolved", "archived", "trash"])
+    expect(survivors.webChatSession.map((r) => r.id)).toEqual(["chat-closed"])
+    // Меняется только ответственный: ни статус, ни отложенность, ни пауза ИИ.
+    expect((calls.socialConversation[0] as { data: Record<string, unknown> }).data).toEqual({ assignedTo: "admin-1" })
+    expect((calls.webChatSession[0] as { data: Record<string, unknown> }).data).toEqual({ assignedUserId: "admin-1" })
+  })
+
+  it("не снимает ответственного с беседы — иначе её забрал бы ИИ-автоответ", async () => {
+    // Открытая беседа с `assignedTo: null` — сигнал автоответу, что отвечать
+    // можно ему. Передача обязана назвать живого человека, а не «никого».
+    const { tx, calls } = makeTx()
+    await handOverOpenWork(tx as never, ARGS)
+    expect((calls.socialConversation[0] as { data: Record<string, unknown> }).data.assignedTo).toBe("admin-1")
+    expect((calls.webChatSession[0] as { data: Record<string, unknown> }).data.assignedUserId).toBe("admin-1")
+  })
+
   it("считает пустую передачу пустой", () => {
     expect(isEmptyHandover({
-      deals: 0, leads: 0, tickets: 0, tasks: 0, projectTasks: 0, projects: 0, divisions: 0,
+      deals: 0, leads: 0, tickets: 0, tasks: 0, projectTasks: 0, projects: 0, divisions: 0, conversations: 0,
     })).toBe(true)
   })
 })

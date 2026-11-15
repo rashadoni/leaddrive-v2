@@ -26835,9 +26835,10 @@
     "statusDeactivateHint": "Нажмите, чтобы отключить",
     "statusActivateHint": "Нажмите, чтобы включить",
     "availableTooltip": "Получает новые тикеты и обращения автоматически",
-    "deleteDescription": "Удалить {name}? Вход будет закрыт, имя и контакты стёрты — это нельзя отменить. Открытые сделки, лиды, тикеты и задачи перейдут к вам.",
+    "deleteDescription": "Удалить {name}? Вход будет закрыт, имя и контакты стёрты — это нельзя отменить. Открытые сделки, лиды, тикеты, задачи и диалоги инбокса перейдут к вам.",
     "deletedDone": "{name} удалён",
-    "deletedWithHandover": "{name} удалён. К вам перешло открытых записей: {count}"
+    "deletedWithHandover": "{name} удалён. К вам перешло открытых записей: {count}",
+    "deletedWithHandoverChats": "{name} удалён. К вам перешло открытых записей: {count}, из них диалогов инбокса: {conversations}"
   },
   "apiKeys": {
     "title": "API Ключи",
@@ -28905,6 +28906,14 @@
     "bulkAssign": "Назначить",
     "bulkAssignPlaceholder": "Выберите ответственного",
     "bulkUnassign": "Снять назначение",
+    "assigneeFilter": "Ответственный",
+    "assigneeFilterAll": "Все сотрудники",
+    "assigneeFilterInactive": "{name} (отключён)",
+    "assigneeFilterRemoved": "Удалённый сотрудник",
+    "assigneeFilterActive": "Диалоги сотрудника: {name}",
+    "assigneeFilterClear": "Показать всех",
+    "assigneeFilterMore": "Здесь не все открытые диалоги этого сотрудника. Передайте показанные — появятся следующие.",
+    "assigneeFilterSelectHint": "Отметит диалоги в списке. Затем выберите, кому их передать, в «Выберите ответственного».",
     "bulkMoveToFolder": "В папку",
     "bulkNoFolder": "Без папки",
     "bulkAddTags": "Теги (через запятую, Enter)",

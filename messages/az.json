@@ -26831,9 +26831,10 @@
     "statusDeactivateHint": "Deaktiv etmək üçün klikləyin",
     "statusActivateHint": "Aktiv etmək üçün klikləyin",
     "availableTooltip": "Yeni tiketlər və müraciətlər ona avtomatik təyin olunur",
-    "deleteDescription": "{name} silinsin? Giriş bağlanacaq, ad və əlaqə məlumatları silinəcək — bunu geri qaytarmaq olmur. Açıq sövdələşmələr, lidlər, tiketlər və tapşırıqlar sizə keçəcək.",
+    "deleteDescription": "{name} silinsin? Giriş bağlanacaq, ad və əlaqə məlumatları silinəcək — bunu geri qaytarmaq olmur. Açıq sövdələşmələr, lidlər, tiketlər, tapşırıqlar və gələnlərdəki söhbətlər sizə keçəcək.",
     "deletedDone": "{name} silindi",
-    "deletedWithHandover": "{name} silindi. Sizə keçən açıq qeydlər: {count}"
+    "deletedWithHandover": "{name} silindi. Sizə keçən açıq qeydlər: {count}",
+    "deletedWithHandoverChats": "{name} silindi. Sizə keçən açıq qeydlər: {count}, onlardan gələnlərdəki söhbətlər: {conversations}"
   },
   "apiKeys": {
     "title": "API Açarları",
@@ -28901,6 +28902,14 @@
     "bulkAssign": "Təyin et",
     "bulkAssignPlaceholder": "Məsul əməkdaş seçin",
     "bulkUnassign": "Təyinatı götür",
+    "assigneeFilter": "Məsul əməkdaş",
+    "assigneeFilterAll": "Bütün əməkdaşlar",
+    "assigneeFilterInactive": "{name} (deaktiv)",
+    "assigneeFilterRemoved": "Silinmiş əməkdaş",
+    "assigneeFilterActive": "Əməkdaşın söhbətləri: {name}",
+    "assigneeFilterClear": "Hamısını göstər",
+    "assigneeFilterMore": "Bu əməkdaşın bütün açıq söhbətləri burada deyil. Göstərilənləri ötürün — növbətilər görünəcək.",
+    "assigneeFilterSelectHint": "Siyahıdakı söhbətləri işarələyir. Sonra «Məsul əməkdaş seçin» ilə kimə ötürüləcəyini seçin.",
     "bulkMoveToFolder": "Qovluğa köçür",
     "bulkNoFolder": "Qovluqsuz",
     "bulkAddTags": "Teqlər (vergüllə, Enter)",

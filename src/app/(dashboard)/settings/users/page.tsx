@@ -1151,12 +1151,16 @@ export default function UsersSettingsPage() {
     if (!res.ok) throw new Error(apiErrorText(tu, json, tc("errorDeleteFailed")))
     // The route hands the person's open work to whoever deleted them. Say how
     // much, so dozens of deals turning up in one's own list is not a surprise.
-    const handover = json?.handover && typeof json.handover === "object"
-      ? Object.values(json.handover as Record<string, unknown>).reduce<number>((sum, n) => sum + (typeof n === "number" ? n : 0), 0)
-      : 0
-    toast.success(handover > 0
-      ? tu("deletedWithHandover", { name: deleteName, count: handover })
-      : tu("deletedDone", { name: deleteName }))
+    const counts = (json?.handover && typeof json.handover === "object" ? json.handover : {}) as Record<string, unknown>
+    const handover = Object.values(counts).reduce<number>((sum, n) => sum + (typeof n === "number" ? n : 0), 0)
+    // Inbox conversations are named apart: they turn up in another place than the
+    // deals and tasks — in the inbox, under «mine».
+    const conversations = typeof counts.conversations === "number" ? counts.conversations : 0
+    toast.success(handover === 0
+      ? tu("deletedDone", { name: deleteName })
+      : conversations > 0
+        ? tu("deletedWithHandoverChats", { name: deleteName, count: handover, conversations })
+        : tu("deletedWithHandover", { name: deleteName, count: handover }))
     fetchUsers()
   }
 

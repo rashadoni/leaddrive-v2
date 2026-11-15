@@ -209,8 +209,10 @@ export default function UsersHelpAz() {
             Silinməni təsdiqləyin və ya pəncərəni bağlayıb imtina edin.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Təsdiqlədikdən sonra istifadəçi cədvəldən çıxır və statistika kartları yenilənir. Silmə
-            alınmasa (məs. son admini silmək cəhdi) qırmızı xəta mesajı göstərilir.
+            Təsdiqlədikdən sonra istifadəçi cədvəldən çıxır və statistika kartları yenilənir. Onun açıq
+            sövdələşmələri, lidləri, tiketləri, tapşırıqları və gələnlərdəki söhbətləri sizə keçir —
+            mesaj neçə olduğunu deyir; bağlı olanlar onda qalır. Silmə alınmasa (məs. son admini silmək
+            cəhdi) qırmızı xəta mesajı göstərilir.
           </HelpCallout>
         </HelpStep>
         <HelpCallout kind="warning">
