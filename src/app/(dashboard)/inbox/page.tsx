@@ -2488,21 +2488,6 @@ export default function InboxV2Page() {
           </Hint>
         </div>
 
-        {/* Select-all appears once a selection exists (rows are the entry point via the
-            avatar hover checkbox) — the always-on row was visual noise. */}
-        {bulkSelected.size > 0 && allVisibleSelectable.length > 0 && (
-          <div className="flex items-center gap-2 border-b border-border/40 px-3 py-1.5 text-[11px] text-muted-foreground">
-            <label className="flex cursor-pointer items-center gap-1.5">
-              <input
-                type="checkbox"
-                className="rounded"
-                checked={allVisibleSelectable.slice(0, BULK_LIMIT).every((c) => bulkSelected.has(convoKey(c)))}
-                onChange={selectAllVisible}
-              />
-              {t("bulkSelectAllVisible", { count: Math.min(allVisibleSelectable.length, BULK_LIMIT) })}
-            </label>
-          </div>
-        )}
         {/* Whose conversations the list holds while «Ответственный» is set — the filter itself sits in
             a popover, and a narrowed list must say so. The button under it is the way on to handing
             them over: it ticks the visible ones, and the card below then offers the new owner. */}
@@ -2534,6 +2519,21 @@ export default function InboxV2Page() {
                 </button>
               </Hint>
             )}
+          </div>
+        )}
+        {/* Select-all appears once a selection exists (rows are the entry point via the
+            avatar hover checkbox) — the always-on row was visual noise. */}
+        {bulkSelected.size > 0 && allVisibleSelectable.length > 0 && (
+          <div className="flex items-center gap-2 border-b border-border/40 px-3 py-1.5 text-[11px] text-muted-foreground">
+            <label className="flex cursor-pointer items-center gap-1.5">
+              <input
+                type="checkbox"
+                className="rounded"
+                checked={allVisibleSelectable.slice(0, BULK_LIMIT).every((c) => bulkSelected.has(convoKey(c)))}
+                onChange={selectAllVisible}
+              />
+              {t("bulkSelectAllVisible", { count: Math.min(allVisibleSelectable.length, BULK_LIMIT) })}
+            </label>
           </div>
         )}
         {bulkNotice && (
