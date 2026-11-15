@@ -43,14 +43,13 @@ vi.mock("next/navigation", () => ({
 }))
 vi.mock("next-intl", async (importOriginal) => {
   const actual = await importOriginal<typeof import("next-intl")>()
-  const translators = new Map<string, ReturnType<typeof actual.createTranslator>>()
+  const translate = (namespace: string) => actual.createTranslator({
+    locale: "az", messages: az as never, namespace: (namespace || undefined) as never, onError: () => {},
+  })
+  const translators = new Map<string, ReturnType<typeof translate>>()
   return {
     useTranslations: (namespace = "") => {
-      if (!translators.has(namespace)) {
-        translators.set(namespace, actual.createTranslator({
-          locale: "az", messages: az as never, namespace: (namespace || undefined) as never, onError: () => {},
-        }))
-      }
+      if (!translators.has(namespace)) translators.set(namespace, translate(namespace))
       return translators.get(namespace)!
     },
     useLocale: () => "az",
