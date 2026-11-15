@@ -65,7 +65,7 @@ import {
   Trash2, Megaphone, AtSign, Smartphone, PanelRight,
 } from "lucide-react"
 import { messageAuthor } from "@/lib/inbox/message-author"
-import { isMediaPlaceholder, placeholderView } from "@/lib/inbox/media-placeholder"
+import { placeholderPreview, placeholderView, voiceTranscript } from "@/lib/inbox/media-placeholder"
 import {
   CHANNELS, REPLY_CHANNELS, ChannelIcon, channelColor, channelLabel,
   avatarTint, initials, extractQuickReplies, appendTag, dropTag, convStatusTab, convMatchesView, extractAttachments,
@@ -2188,7 +2188,13 @@ export default function InboxV2Page() {
                     <span className={cn("truncate text-[13px]", c.unreadCount > 0 ? "font-semibold" : "font-medium")}>{c.contactName}</span>
                     <span className="text-[11px] text-muted-foreground shrink-0">{formatListTime(c.lastMessageAt)}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">{isMediaPlaceholder(c.lastMessage) ? t("mediaPreview") : c.lastMessage}</p>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5" data-testid="inbox-conversation-preview">{(() => {
+                    // «[media]», «[Видео]», «[template:…]» are stored words, not for a person (lib/inbox/media-placeholder).
+                    const label = placeholderPreview(c.lastMessage)
+                    if (label) return t(label.key, label.values)
+                    const spoken = voiceTranscript(c.lastMessage)
+                    return spoken ? `${t("placeholderVoice")}: ${spoken}` : c.lastMessage
+                  })()}</p>
                   <div className="mt-1.5 flex items-center gap-1.5 min-h-4">
                     {c.channels.slice(0, 2).map((ch) => (
                       <ChannelIcon key={ch} channel={ch} className="h-3 w-3 shrink-0 text-muted-foreground/70" />
@@ -2751,6 +2757,9 @@ export default function InboxV2Page() {
                   const m = item.m
                   const out = m.direction === "outbound"
                   const deliveryUnknown = m.metadata?.deliveryUnknown === true
+                  // A message with no words is stored as «[media]», «[Видео]», «[Документ: x]» — words for
+                  // the database and the AI, not for a person (lib/inbox/media-placeholder).
+                  const view = placeholderView(m)
                   return (
                   <div key={m.id} className={cn("flex", out ? "justify-end" : "justify-start")}>
                     <div className="max-w-[72%]">
@@ -2767,16 +2776,28 @@ export default function InboxV2Page() {
                             <video controls preload="metadata" src={m.mediaUrl} className="mb-1 max-h-60 max-w-full rounded-lg" data-testid="inbox-video-player" />
                           ) : (
                             <a href={m.mediaUrl} target="_blank" rel="noopener noreferrer" className="mb-1 flex items-center gap-1.5 text-xs underline">
-                              <Paperclip className="h-3.5 w-3.5" /> {sharedPostLabel(m.mediaUrl) ?? t("mediaPreview")}
+                              <Paperclip className="h-3.5 w-3.5" /> {sharedPostLabel(m.mediaUrl) ?? (view.kind === "hide" && view.fileName ? view.fileName : t("mediaPreview"))}
                             </a>
                           )
                         )}
-                        {/* A message with no words is stored as "[media]" — a word for the database, not
-                            for a person (lib/inbox/media-placeholder). */}
                         {(() => {
-                          const view = placeholderView(m)
                           if (view.kind === "hide") return null
-                          if (view.kind === "body") return <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                          if (view.kind === "body") {
+                            // «[Səsli mesaj] …» — a voice note's transcript; the prefix is named in the screen's language.
+                            const spoken = voiceTranscript(m.body)
+                            return (
+                              <p className="text-sm whitespace-pre-wrap break-words">
+                                {spoken ? <><span className="text-xs text-muted-foreground">{t("placeholderVoice")}: </span>{spoken}</> : m.body}
+                              </p>
+                            )
+                          }
+                          if (view.kind === "label") {
+                            return (
+                              <p className="text-sm italic text-muted-foreground" data-testid="inbox-message-placeholder">
+                                {t(view.label.key, view.label.values)}{view.noFile ? ` — ${t("placeholderNoFile")}` : ""}
+                              </p>
+                            )
+                          }
                           return (
                             <p className="flex items-start gap-1.5 text-xs italic text-muted-foreground" data-testid="inbox-media-withheld">
                               <Paperclip className="mt-0.5 h-3.5 w-3.5 shrink-0" />
