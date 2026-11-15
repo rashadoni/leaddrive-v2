@@ -125,8 +125,10 @@ type ClaimedChunk = {
   attempts: number
 }
 
+type ChunkCandidate = { id: string; kind: string; phase: number | null; chunkOrder: number | null; status: string; leaseUntil: Date | null; receivedAt: Date }
+
 async function claimNext(channel: HistoryChannel, now: Date): Promise<ClaimedChunk | null> {
-  const candidates = await prisma.whatsAppHistoryChunk.findMany({
+  const candidates: ChunkCandidate[] = await prisma.whatsAppHistoryChunk.findMany({
     where: {
       organizationId: channel.organizationId,
       channelConfigId: channel.id,
@@ -258,7 +260,7 @@ async function findContactByPhone(organizationId: string, phone: string): Promis
 /** Point the conversation with this phone, and its rows, at the contact — where nothing else does. */
 async function linkThreadToContact(organizationId: string, phone: string, contactId: string, fullName: string | null): Promise<void> {
   const keys = [phone, `+${phone}`]
-  const conversations = await prisma.socialConversation.findMany({
+  const conversations: Array<{ id: string; contactId: string | null; contactName: string }> = await prisma.socialConversation.findMany({
     where: { organizationId, platform: "whatsapp", externalId: { in: keys } },
     select: { id: true, contactId: true, contactName: true },
   })
@@ -363,7 +365,7 @@ async function ensureThreadConversation(
   const organizationId = channel.organizationId
   const keys = thread.phone ? Array.from(new Set([thread.phone, `+${thread.phone}`])) : [thread.threadKey]
   const last = thread.messages.reduce((a, b) => (b.at > a.at ? b : a))
-  const candidates = await prisma.socialConversation.findMany({
+  const candidates: Array<{ id: string; externalId: string; contactId: string | null }> = await prisma.socialConversation.findMany({
     where: { organizationId, platform: "whatsapp", externalId: { in: keys } },
     select: { id: true, externalId: true, contactId: true },
   })

@@ -282,17 +282,18 @@ const DECLINED = envelope("history", {
     await deliver(HISTORY_RECENT)
 
     await tenant(async () => {
-      const chunks = await prisma.whatsAppHistoryChunk.findMany({ where: { channelConfigId: CHANNEL } })
+      const chunks: Array<{ kind: string; status: string; payload: unknown }> = await prisma.whatsAppHistoryChunk.findMany({ where: { channelConfigId: CHANNEL } })
       expect(chunks.map((c) => [c.kind, c.status, c.payload]).sort()).toEqual([["contacts", "done", null], ["history", "done", null], ["history", "done", null]])
 
       // Contacts: Aysel matched (and given her name), Leyla created, the removal ignored.
-      const contacts = await prisma.contact.findMany({ where: { organizationId: ORG }, orderBy: { phone: "asc" } })
+      const contacts: Array<{ phone: string | null; fullName: string; createdAt: Date; id: string }> = await prisma.contact.findMany({ where: { organizationId: ORG }, orderBy: { phone: "asc" } })
       expect(contacts.map((c) => [c.phone, c.fullName])).toEqual([[`+${AYSEL}`, "Aysel Məmmədova"], [`+${LEYLA}`, "Leyla Həsənova"]])
       const leyla = contacts.find((c) => c.phone === `+${LEYLA}`)!
       expect(leyla.createdAt.getTime()).toBeLessThan(ago(30 * DAY).getTime())
 
       // Chats: one new conversation per new thread, the existing one reused, nothing unread.
-      const conversations = await prisma.socialConversation.findMany({ where: { organizationId: ORG }, orderBy: { externalId: "asc" } })
+      type Conversation = { id: string; externalId: string; lastMessage: string | null; lastMessageAt: Date; unreadCount: number; contactId: string | null; contactName: string }
+      const conversations: Conversation[] = await prisma.socialConversation.findMany({ where: { organizationId: ORG }, orderBy: { externalId: "asc" } })
       expect(conversations.map((c) => c.externalId)).toEqual([AYSEL, LEYLA, KAMAL, CONTROL].sort())
       const byKey = new Map(conversations.map((c) => [c.externalId, c]))
       expect(byKey.get(AYSEL)!.id).toBe("conv-aysel")
@@ -302,7 +303,7 @@ const DECLINED = envelope("history", {
       expect(byKey.get(LEYLA)!.lastMessageAt.getTime()).toBe(ago(5 * MIN).getTime())
       expect(byKey.get(KAMAL)!).toMatchObject({ unreadCount: 0, contactId: null, contactName: "kamal.az" })
 
-      const imported = await prisma.channelMessage.findMany({ where: { organizationId: ORG, historyImportedAt: { not: null } }, orderBy: { createdAt: "asc" } })
+      const imported: Array<{ externalId: string | null; direction: string; status: string; createdAt: Date; body: string; deferredTurnAt: Date | null }> = await prisma.channelMessage.findMany({ where: { organizationId: ORG, historyImportedAt: { not: null } }, orderBy: { createdAt: "asc" } })
       expect(imported.map((m) => [m.externalId, m.direction, m.status])).toEqual([
         ["wamid.A1", "inbound", "read"],
         ["wamid.A2", "outbound", "delivered"],
@@ -368,10 +369,10 @@ const DECLINED = envelope("history", {
 
   it("leaves the deferred booking turn nothing to answer but the live control", async () => {
     const { runWhatsAppDeferredTurns } = await import("@/lib/booking/whatsapp-deferred-turn")
-    const answer = vi.fn(async () => ({ handled: true }))
+    const answer = vi.fn(async (_input: { conversationId: string }) => ({ handled: true }))
     const outcome = await runWhatsAppDeferredTurns({ now: NOW, answer })
     // Leyla asked five minutes ago — inside the turn's window — and stays the phone's to answer.
-    expect(answer.mock.calls.map(([input]) => (input as { conversationId: string }).conversationId)).toEqual(["conv-control"])
+    expect(answer.mock.calls.map(([input]) => input.conversationId)).toEqual(["conv-control"])
     expect(outcome).toMatchObject({ channels: 1, candidates: 1, answered: 1 })
   })
 
@@ -382,10 +383,10 @@ const DECLINED = envelope("history", {
       where: { id: CHANNEL },
       data: { settings: { embeddedSignup: true, coexistence: true, displayPhoneNumber: "+994 51 206 08 38", onboardedAt: ago(2 * MIN).toISOString(), replyMode: "ai", replyHold: "never" } },
     }))
-    const reply = vi.fn(async () => ({ replied: true, escalated: false }))
+    const reply = vi.fn(async (_input: { conversationId: string }) => ({ replied: true, escalated: false }))
     const outcome = await rls.runWithRlsBypass(() =>
       runAutonomousInboxAgent(prisma as never, { now: NOW, reply, businessOpen: async () => true }))
-    expect(reply.mock.calls.map(([input]) => (input as { conversationId: string }).conversationId)).toEqual(["conv-control"])
+    expect(reply.mock.calls.map(([input]) => input.conversationId)).toEqual(["conv-control"])
     expect(outcome.replied).toBe(1)
     expect(outcome.candidates).toBe(4)
   })
@@ -414,7 +415,7 @@ const DECLINED = envelope("history", {
     // The same messages in another chunk (a resent chunk under another order number) are a new
     // chunk — and every message in it is one the inbox already has.
     const resent = structuredClone(HISTORY_RECENT) as typeof HISTORY_RECENT
-    ;(resent.entry[0].changes[0].value as { history: Array<{ metadata: { chunk_order: number } }> }).history[0].metadata.chunk_order = 2
+    ;(resent.entry[0].changes[0].value as unknown as { history: Array<{ metadata: { chunk_order: number } }> }).history[0].metadata.chunk_order = 2
     await deliver(resent)
     const again = await tableCounts()
     for (const table of ["channel_messages", "contacts", "social_conversations"]) {

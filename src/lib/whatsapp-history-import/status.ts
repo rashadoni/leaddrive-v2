@@ -62,7 +62,7 @@ export async function historyImportStatus(organizationId: string, channelConfigI
   const requests = readHistoryImportSetting(settings)
   const onboardedAt = typeof settings.onboardedAt === "string" ? settings.onboardedAt : null
   const onboardedMs = onboardedAt ? Date.parse(onboardedAt) : NaN
-  const chunks = await prisma.whatsAppHistoryChunk.findMany({
+  const chunks: Array<{ kind: string; status: string; progress: number | null; errorCode: number | null; items: number; result: unknown }> = await prisma.whatsAppHistoryChunk.findMany({
     where: { organizationId, channelConfigId },
     select: { kind: true, status: true, progress: true, errorCode: true, items: true, result: true },
   })
@@ -183,18 +183,18 @@ export async function historyImportDetail(organizationId: string, channelConfigI
     }),
   ])
 
-  const createdIds = chunkResults.flatMap((row) => {
+  const createdIds = (chunkResults as Array<{ result: unknown }>).flatMap((row) => {
     const ids = rec(row.result).createdContactIds
     return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : []
   })
-  const shownContacts = createdIds.length > 0
+  const shownContacts: Array<{ id: string; fullName: string }> = createdIds.length > 0
     ? await prisma.contact.findMany({ where: { organizationId, id: { in: createdIds.slice(0, 15) } }, select: { id: true, fullName: true } })
     : []
   const order = new Map(createdIds.map((id, i) => [id, i]))
   shownContacts.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
 
-  const recentIds = recent.map((row) => row.conversationId).filter((id): id is string => !!id)
-  const conversations = recentIds.length > 0
+  const recentIds = (recent as Array<{ conversationId: string | null }>).map((row) => row.conversationId).filter((id): id is string => !!id)
+  const conversations: Array<{ id: string; contactName: string; externalId: string; lastMessage: string | null; lastMessageAt: Date }> = recentIds.length > 0
     ? await prisma.socialConversation.findMany({
       where: { organizationId, id: { in: recentIds } },
       select: { id: true, contactName: true, externalId: true, lastMessage: true, lastMessageAt: true },
@@ -209,7 +209,7 @@ export async function historyImportDetail(organizationId: string, channelConfigI
     displayPhoneNumber: typeof settings.displayPhoneNumber === "string" ? settings.displayPhoneNumber : null,
     phone: !channel?.isActive || settings.disconnected ? "disconnected" : settings.cloudApiPaused ? "paused" : "connected",
     counts: { conversations: view.history.conversations, messages: view.history.messages, media, mediaFiles },
-    months: monthRows.map((row) => ({ month: row.month, messages: Number(row.messages) })),
+    months: (monthRows as Array<{ month: string; messages: number }>).map((row) => ({ month: row.month, messages: Number(row.messages) })),
     newContacts: { total: view.contacts.created, shown: shownContacts.map((c) => ({ id: c.id, name: c.fullName })) },
     feed: recentIds.flatMap((id) => {
       const c = byId.get(id)
