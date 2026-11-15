@@ -86,6 +86,26 @@ export function validateUploadBytes(mimeType: string, bytes: Uint8Array): string
   if (normalized === "text/plain" || normalized === "text/csv") {
     return looksLikeText(bytes) ? null : "Text documents cannot contain binary data"
   }
+  // Task files since 2026-11-15: a brand's logo and promo folder.
+  if (normalized === "application/illustrator" || normalized === "application/postscript") {
+    // Illustrator saves a PDF-compatible file (or, before CS, PostScript); EPS is
+    // PostScript text or the DOS binary EPS with its preview (C5 D0 D3 C6).
+    return startsWith(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d])
+      || startsWith(bytes, [0x25, 0x21, 0x50, 0x53])
+      || startsWith(bytes, [0xc5, 0xd0, 0xd3, 0xc6])
+      ? null
+      : "File content is not a valid Illustrator or EPS file"
+  }
+  if (normalized === "image/tiff") {
+    // «II*\0» / «MM\0*», and BigTIFF's 43 in place of 42.
+    return startsWith(bytes, [0x49, 0x49, 0x2a, 0x00]) || startsWith(bytes, [0x4d, 0x4d, 0x00, 0x2a])
+      || startsWith(bytes, [0x49, 0x49, 0x2b, 0x00]) || startsWith(bytes, [0x4d, 0x4d, 0x00, 0x2b])
+      ? null
+      : "File content is not a valid TIFF image"
+  }
+  if (normalized === "application/vnd.rar") {
+    return startsWith(bytes, [0x52, 0x61, 0x72, 0x21, 0x1a, 0x07]) ? null : "File content is not a valid RAR archive"
+  }
 
   return "File content type is not supported"
 }

@@ -33,6 +33,8 @@ import { InlineCustomFieldCell, type CustomFieldDef } from "@/components/tasks/i
 import { useTaskTypes, useEventTypes } from "@/components/tasks/use-task-types"
 import { toast } from "sonner"
 import { TaskMeetingNotice } from "./task-meeting-notice"
+import { filesFromPicker, sendTaskFiles, type TaskFileToSend } from "@/lib/tasks/task-file-upload"
+import { TASK_FILE_EXTENSIONS } from "@/lib/tasks/task-file-rules"
 
 interface ChecklistItem {
   id: string
@@ -511,20 +513,16 @@ function TaskAttachmentsSection({ taskId, orgId, attachments, canEdit, onRefresh
   const fileRef = useRef<HTMLInputElement | null>(null)
   const [uploading, setUploading] = useState(false)
 
-  async function upload(file: File) {
-    if (file.size > 10 * 1024 * 1024) { toast.error(t("attachTooLarge")); return }
+  // Several at once and up to 100 MB each, in parts — the same way as the board's card (task-file-upload.ts).
+  async function upload(items: TaskFileToSend[]) {
+    if (items.length === 0) return
     setUploading(true)
     try {
-      const fd = new FormData()
-      fd.append("file", file)
-      const res = await fetch(`/api/v1/tasks/${taskId}/files`, {
-        method: "POST",
-        headers: { ...(orgId ? { "x-organization-id": String(orgId) } : {}) },
-        body: fd,
-      })
-      const json = await res.json().catch(() => null)
-      if (!res.ok || !json?.success) { toast.error(json?.error || t("attachError")); return }
-      onRefresh()
+      const { added, failed } = await sendTaskFiles(taskId, items, { onFileDone: () => onRefresh() })
+      for (const failure of failed) {
+        toast.error(`${failure.name}: ${failure.refusal === "too_big" ? t("attachTooLarge") : failure.message || t("attachError")}`)
+      }
+      if (added.length > 0) onRefresh()
     } catch { toast.error(t("attachError")) }
     finally { setUploading(false) }
   }
@@ -557,9 +555,10 @@ function TaskAttachmentsSection({ taskId, orgId, attachments, canEdit, onRefresh
             <input
               ref={fileRef}
               type="file"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv,.zip,.rar"
+              multiple
+              accept={[...TASK_FILE_EXTENSIONS].join(",")}
               className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f) }}
+              onChange={(e) => { const chosen = filesFromPicker(e.target.files); e.target.value = ""; void upload(chosen) }}
             />
             <Button size="sm" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()}>
               {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
