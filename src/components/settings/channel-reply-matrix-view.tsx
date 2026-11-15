@@ -1,12 +1,13 @@
 "use client"
 
+import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { Select } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Sparkles } from "lucide-react"
 
-export type Mode = "agent" | "ai" | "rules" | "off"
+export type Mode = "agent" | "ai" | "rules" | "off" | "learning"
 export type ModeSource = "explicit" | "default_agent" | "whatsapp_default_ai"
 
 export interface ChannelReplyRow {
@@ -26,8 +27,11 @@ export interface ChannelReplyRow {
   }
 }
 
-/** UI-facing mode: collapses mode+draftMode into one 3-way choice. */
-export type UiMode = "agent" | "ai_draft" | "ai"
+/**
+ * UI-facing mode: collapses mode+draftMode into one choice. «Обучение» (owner 2026-11-15) sits between
+ * a person and the AI: people answer, the AI reads how and stays silent (lib/inbox/learning).
+ */
+export type UiMode = "agent" | "learning" | "ai_draft" | "ai"
 
 /**
  * Per-channel "who replies" matrix. Only the channels in ENFORCED actually honor the setting
@@ -54,7 +58,7 @@ const CHANNEL_LABEL: Record<string, string> = {
   email: "Email", sms: "SMS", "web-chat": "Web Chat",
 }
 
-const UI_MODES: UiMode[] = ["agent", "ai_draft", "ai"]
+const UI_MODES: UiMode[] = ["agent", "learning", "ai_draft", "ai"]
 
 export interface ChannelReplyMatrixViewProps {
   rows: readonly ChannelReplyRow[]
@@ -78,7 +82,7 @@ export function ChannelReplyMatrixView({
 }: ChannelReplyMatrixViewProps) {
   const t = useTranslations("settings")
   const modeLabel = (m: UiMode) =>
-    m === "agent" ? t("aiModeHuman") : m === "ai_draft" ? t("aiModeDraft") : t("aiModeAuto")
+    m === "agent" ? t("aiModeHuman") : m === "learning" ? t("aiModeLearning") : m === "ai_draft" ? t("aiModeDraft") : t("aiModeAuto")
 
   return (
     <div className="border border-border rounded-lg bg-card p-4 space-y-4">
@@ -103,7 +107,7 @@ export function ChannelReplyMatrixView({
             const label = CHANNEL_LABEL[row.channelType] ?? row.channelType
             const isWhatsappDefaultAi = row.reply.modeSource === "whatsapp_default_ai"
             const value: UiMode =
-              row.reply.mode === "ai" ? (row.reply.draftMode ? "ai_draft" : "ai") : "agent"
+              row.reply.mode === "learning" ? "learning" : row.reply.mode === "ai" ? (row.reply.draftMode ? "ai_draft" : "ai") : "agent"
             const thresholdValue =
               typeof row.reply.aiThreshold === "number" ? String(row.reply.aiThreshold) : ""
             const rolloutValue =
@@ -124,7 +128,7 @@ export function ChannelReplyMatrixView({
                     <p className="text-xs text-muted-foreground truncate">{row.configName}</p>
                   </div>
 
-                  {/* 3-way segmented control: Human / Draft / Auto */}
+                  {/* Segmented control: Human / Training / Draft / Auto */}
                   <div className="inline-flex shrink-0 rounded-md border border-border p-0.5">
                     {UI_MODES.map((m) => (
                       <button
@@ -138,7 +142,9 @@ export function ChannelReplyMatrixView({
                           value === m
                             ? m === "agent"
                               ? "bg-zinc-200 text-foreground dark:bg-zinc-700"
-                              : "crm-choice-selected"
+                              : m === "learning"
+                                ? "bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-200"
+                                : "crm-choice-selected"
                             : "text-muted-foreground hover:bg-muted",
                         )}
                       >
@@ -148,8 +154,17 @@ export function ChannelReplyMatrixView({
                   </div>
                 </div>
 
+                {value === "learning" && enforced && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {t("aiModeLearningHint")}{" "}
+                    <Link href={`/inbox/ai-training?channel=${encodeURIComponent(row.id)}`} className="font-medium text-violet-700 hover:underline dark:text-violet-300">
+                      {t("aiModeLearningOpen")} →
+                    </Link>
+                  </p>
+                )}
+
                 {/* Fine-tune line — muted, only when the AI is on for an enforced channel. */}
-                {value !== "agent" && enforced && (
+                {value !== "agent" && value !== "learning" && enforced && (
                   <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 pl-0 text-xs text-muted-foreground">
                     <label className="flex items-center gap-1.5" title={t("aiRolloutHint")}>
                       {t("aiTuneRollout")}

@@ -10,5 +10,16 @@
  * "unset" from "explicitly agent".
  */
 export function aiReplyEnabled(replyMode: string | null | undefined, defaultOn = false): boolean {
+  // Training (lib/inbox/learning): the people answer and the AI only watches — on every channel,
+  // WhatsApp's default-on included, where anything but "agent" used to mean "the AI answers".
+  if (replyMode === LEARNING_REPLY_MODE) return false
   return defaultOn ? replyMode !== "agent" : replyMode === "ai"
+}
+
+/** The reply mode of a channel in training: the AI reads how people answer and stays silent. */
+export const LEARNING_REPLY_MODE = "learning"
+
+/** Whether a channel's stored settings put it in training. */
+export function isLearningChannel(settings: unknown): boolean {
+  return Boolean(settings && typeof settings === "object" && (settings as Record<string, unknown>).replyMode === LEARNING_REPLY_MODE)
 }

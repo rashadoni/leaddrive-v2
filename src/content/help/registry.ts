@@ -77,6 +77,7 @@ export type HelpSlug =
   | "chatbot-rules"
   | "inbox-analytics"
   | "inbox-ai-agent"
+  | "inbox-ai-training"
   | "loyalty-builder"
   | "invoices"
   | "subscriptions"
@@ -519,6 +520,19 @@ export const HELP_REGISTRY: Record<HelpSlug, ArticleEntry> = {
       en: lazy(() => import("./inbox-ai-agent/en")),
       ru: lazy(() => import("./inbox-ai-agent/ru")),
       az: lazy(() => import("./inbox-ai-agent/az")),
+    },
+  },
+  "inbox-ai-training": {
+    title: { en: "AI training", ru: "Обучение ИИ", az: "AI-ın öyrədilməsi" },
+    subtitle: {
+      en: "The AI learns from how your team answers; readiness, character, knowledge and handing the channel over.",
+      ru: "ИИ учится на ответах сотрудников: готовность, характер, знания и передача канала ИИ.",
+      az: "AI əməkdaşların cavablarından öyrənir: hazırlıq, xarakter, biliklər və kanalın AI-a ötürülməsi.",
+    },
+    content: {
+      en: lazy(() => import("./inbox-ai-training/en")),
+      ru: lazy(() => import("./inbox-ai-training/ru")),
+      az: lazy(() => import("./inbox-ai-training/az")),
     },
   },
   "loyalty-builder": {
