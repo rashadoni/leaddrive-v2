@@ -62,13 +62,13 @@ import {
   User, Users, UserX, UserPlus, Bot, Ban, Hash, Folder, Check, Clock,
   Paperclip, Smile, Sparkles, Zap, SlidersHorizontal,
   Mail, Phone, Eye, CalendarClock, ChevronDown, ChevronRight, X, RotateCcw, CheckCircle2,
-  Trash2, Megaphone, AtSign, Smartphone, PanelRight,
+  Trash2, Megaphone, AtSign, Smartphone, PanelRight, Menu,
 } from "lucide-react"
 import { messageAuthor } from "@/lib/inbox/message-author"
 import { ConversationLearningBanner, LearningAnswerMark, useConversationLearning } from "@/components/inbox-learning/conversation-learning"
 import { placeholderPreview, placeholderView, voiceTranscript } from "@/lib/inbox/media-placeholder"
 import { threadHeaderActionInline, threadHeaderTier, type ThreadHeaderAction } from "@/lib/inbox/thread-header-layout"
-import { inboxListBesideThread } from "@/lib/inbox/inbox-columns"
+import { inboxListBesideThread, inboxRailFolded } from "@/lib/inbox/inbox-columns"
 import {
   CHANNELS, REPLY_CHANNELS, ChannelIcon, channelColor, channelLabel,
   avatarTint, initials, extractQuickReplies, appendTag, dropTag, convStatusTab, convMatchesView, extractAttachments,
@@ -574,6 +574,12 @@ export default function InboxV2Page() {
   const [inboxRootEl, setInboxRootEl] = useState<HTMLDivElement | null>(null)
   const [inboxWidth, setInboxWidth] = useState(0)
   const threadBackRef = useRef<HTMLButtonElement>(null)
+  // On a phone the folder rail folds behind «Qovluqlar» in the list's header and
+  // opens over the list (inbox-columns.ts); «Bağla», a press beside it, Escape or
+  // a choice in it closes it.
+  const [railOpen, setRailOpen] = useState(false)
+  const railRef = useRef<HTMLElement>(null)
+  const railToggleRef = useRef<HTMLButtonElement>(null)
   // The customer card on the right is closed until the person opens it from the
   // avatar in the thread header (owner, 2026-11-15: it stood open for good and
   // squeezed the conversation). It closes on any press outside it or Escape.
@@ -1208,6 +1214,41 @@ export default function InboxV2Page() {
     return () => observer.disconnect()
   }, [inboxRootEl])
   const listBesideThread = inboxListBesideThread(inboxWidth)
+  const railFolded = inboxRailFolded(inboxWidth)
+  const railDrawerOpen = railFolded && railOpen
+
+  // A rail that stands again (the window grew) is not left open for the next phone width.
+  useEffect(() => {
+    if (!railFolded) setRailOpen(false)
+  }, [railFolded])
+
+  // The open rail takes the keyboard, and Escape closes it back onto «Qovluqlar».
+  // Focus goes to the rail itself, not to a button in it: a focused button opens
+  // its hint, and on a phone that bubble would stand over the list after every
+  // tap. For the same reason a tap that closes the rail leaves focus alone.
+  useEffect(() => {
+    if (!railDrawerOpen) return
+    railRef.current?.focus({ preventScroll: true })
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      setRailOpen(false)
+      railToggleRef.current?.focus()
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [railDrawerOpen])
+
+  // Where the list stands, in words, beside «Qovluqlar»: the rail that says it is folded.
+  const railFolder = folderFilter ? folders.find((f) => f.id === folderFilter)?.name ?? null : null
+  const railAccount = accountFilter ? (accountsByChannel[channelFilter] ?? []).find((a) => a.id === accountFilter) ?? null : null
+  const railChannel = channelFilter !== "all"
+    ? (railAccount ? channelAccountShortLabel(railAccount) ?? channelLabel(channelFilter) : channelLabel(channelFilter))
+    : null
+  const railPlace = [
+    view !== "all" || (!railChannel && !railFolder) ? t(`view_${view}`) : null,
+    railChannel,
+    railFolder,
+  ].filter(Boolean).join(" · ")
 
   // The thread header's width decides which actions stand in it (see
   // thread-header-layout.ts). Measured before paint, then on every resize: the
@@ -1860,11 +1901,48 @@ export default function InboxV2Page() {
       data-list-beside-thread={listBesideThread ? "true" : "false"}
       className="relative flex h-[calc(100vh-7rem)] gap-px rounded-xl border border-border/60 bg-border/60 overflow-hidden text-sm"
     >
-      {/* ─────────── ZONE 1 · Folders rail ─────────── */}
-      <aside className="w-56 shrink-0 bg-card flex flex-col">
-        <div className="flex items-center justify-between px-4 h-14 shrink-0">
-          <span className="text-base font-semibold tracking-tight">{t("inbox")}</span>
-          <HelpButton slug="inbox" />
+      {/* ─────────── ZONE 1 · Folders rail ───────────
+          On a phone it folds behind «Qovluqlar» and opens over the list
+          (inbox-columns.ts): the same rail, nothing in it moves. */}
+      {railDrawerOpen && (
+        <div
+          aria-hidden="true"
+          data-testid="inbox-rail-backdrop"
+          onClick={() => setRailOpen(false)}
+          className="absolute inset-0 z-30 bg-black/30"
+        />
+      )}
+      <aside
+        ref={railRef}
+        id="inbox-folder-rail"
+        data-testid="inbox-folder-rail"
+        aria-label={railFolded ? t("railOpenHint") : undefined}
+        tabIndex={railFolded ? -1 : undefined}
+        className={cn(
+          "w-56 shrink-0 bg-card flex flex-col outline-none",
+          railFolded && (railDrawerOpen
+            ? "absolute inset-y-0 left-0 z-40 max-w-[calc(100%-3rem)] border-r border-border/60 shadow-2xl"
+            : "hidden"),
+        )}
+      >
+        <div className="flex items-center justify-between gap-1 px-4 h-14 shrink-0">
+          <span className="min-w-0 truncate text-base font-semibold tracking-tight">{t("inbox")}</span>
+          <div className="flex shrink-0 items-center gap-1">
+            <HelpButton slug="inbox" />
+            {railFolded && (
+              <Hint text={t("railCloseHint")} side="bottom" align="end">
+                <button
+                  type="button"
+                  onClick={() => setRailOpen(false)}
+                  data-testid="inbox-rail-close"
+                  className="inline-flex min-h-9 items-center gap-1 rounded-md border border-border/70 px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>{t("railClose")}</span>
+                </button>
+              </Hint>
+            )}
+          </div>
         </div>
         <nav className="flex-1 overflow-y-auto p-2 space-y-0.5">
           {VIEWS.map((v) => {
@@ -1874,7 +1952,7 @@ export default function InboxV2Page() {
               <button
                 key={v.key}
                 disabled={v.later}
-                onClick={() => { if (!v.later) { setView(v.key); setSelected(null); if (v.key === "all") { setChannelFilter("all"); setAccountFilter(null) } } }}
+                onClick={() => { if (!v.later) { setView(v.key); setSelected(null); setRailOpen(false); if (v.key === "all") { setChannelFilter("all"); setAccountFilter(null) } } }}
                 title={v.later ? t("comingLater") : undefined}
                 className={cn(
                   "w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors",
@@ -1903,6 +1981,7 @@ export default function InboxV2Page() {
                     setChannelFilter(active && !accountFilter ? "all" : ch)
                     setAccountFilter(null)
                     setSelected(null)
+                    setRailOpen(false)
                   }}
                   className={cn(
                     "w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors",
@@ -1919,7 +1998,7 @@ export default function InboxV2Page() {
                   counts={accountCounts}
                   activeId={accountFilter}
                   fallbackLabel={channelLabel(ch)}
-                  onSelect={(accountId) => { setChannelFilter(ch); setAccountFilter(accountId); setSelected(null) }}
+                  onSelect={(accountId) => { setChannelFilter(ch); setAccountFilter(accountId); setSelected(null); setRailOpen(false) }}
                 />
               </div>
             )
@@ -1949,7 +2028,7 @@ export default function InboxV2Page() {
               >
                 {f.name !== "Gözləmədə" && <button
                   type="button"
-                  onClick={() => { setFolderFilter(active ? null : f.id); setSelected(null) }}
+                  onClick={() => { setFolderFilter(active ? null : f.id); setSelected(null); setRailOpen(false) }}
                   className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
                 >
                   <Folder className="h-4 w-4 shrink-0" style={f.color ? { color: f.color } : undefined} />
@@ -1989,11 +2068,35 @@ export default function InboxV2Page() {
 
       {/* ─────────── ZONE 2 · Conversation list ───────────
           Where the inbox is too narrow for three columns, an open conversation
-          takes the list's place (inbox-columns.ts). */}
+          takes the list's place (inbox-columns.ts). On a phone the list takes
+          the whole inbox, and «Qovluqlar» at its top opens the folded rail. */}
       <section
         data-testid="inbox-conversation-list"
-        className={cn("w-80 shrink-0 bg-card flex flex-col", selectedConvo && !listBesideThread && "hidden")}
+        className={cn(
+          railFolded ? "min-w-0 flex-1" : "w-80 shrink-0",
+          "bg-card flex flex-col",
+          selectedConvo && !listBesideThread && "hidden",
+        )}
       >
+        {railFolded && (
+          <div className="flex h-12 items-center gap-2 px-3 shrink-0">
+            <Hint text={t("railOpenHint")} side="bottom" align="start">
+              <button
+                ref={railToggleRef}
+                type="button"
+                onClick={() => setRailOpen(true)}
+                aria-expanded={railDrawerOpen}
+                aria-controls="inbox-folder-rail"
+                data-testid="inbox-rail-toggle"
+                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-md border border-border/70 px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+              >
+                <Menu className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>{t("railOpen")}</span>
+              </button>
+            </Hint>
+            <span data-testid="inbox-rail-place" className="min-w-0 truncate text-sm font-semibold tracking-tight">{railPlace}</span>
+          </div>
+        )}
         <div className="h-14 flex items-center gap-1.5 px-3 shrink-0">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -2125,24 +2228,31 @@ export default function InboxV2Page() {
           </Popover>
         </div>
 
-        {/* Status tabs — quiet segments, not filled pills */}
-        <div className="flex items-center gap-0.5 px-3 pb-2 border-b border-border/60 shrink-0">
-          {(["opened", "closed", "snoozed"] as StatusTab[]).map((s) => (
-            <button
-              key={s}
-              onClick={() => { setStatusTab(s); setSelected(null) }}
-              className={cn(
-                "px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
-                statusTab === s ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t(`tab_${s}`)}
-              <span className="ml-1 tabular-nums text-[10px] opacity-60">{statusCounts[s]}</span>
-            </button>
-          ))}
+        {/* Status tabs — quiet segments, not filled pills. A tab that does not fit
+            beside the others (a 360 px phone, Russian) moves to the next line
+            whole, never breaking «Təxirə salınmış» or its count; the live dot
+            stays at the end of the first line. On a phone the tabs pad 8 px a
+            side instead of 10, so the three Azerbaijani tabs keep one line at 360. */}
+        <div className="flex items-start gap-1 px-3 pb-2 border-b border-border/60 shrink-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-0.5 gap-y-1">
+            {(["opened", "closed", "snoozed"] as StatusTab[]).map((s) => (
+              <button
+                key={s}
+                onClick={() => { setStatusTab(s); setSelected(null) }}
+                className={cn(
+                  "whitespace-nowrap py-1 rounded-md text-xs font-medium transition-colors",
+                  railFolded ? "px-2" : "px-2.5",
+                  statusTab === s ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {t(`tab_${s}`)}
+                <span className="ml-1 tabular-nums text-[10px] opacity-60">{statusCounts[s]}</span>
+              </button>
+            ))}
+          </div>
           {/* Phase 6 — realtime status: dot only; the tooltip explains live SSE vs poll-fallback. */}
           <span
-            className="ml-auto flex items-center px-1"
+            className="ml-auto flex h-6 shrink-0 items-center px-1"
             title={streamLive ? t("liveTooltip") : t("pollingTooltip")}
           >
             <span className={cn("h-1.5 w-1.5 rounded-full", streamLive ? "bg-emerald-500" : "bg-muted-foreground/40")} />
@@ -2325,8 +2435,9 @@ export default function InboxV2Page() {
         </div>
       </section>
 
-      {/* ─────────── ZONE 3 · Message thread ─────────── */}
-      <section className="flex-1 min-w-0 bg-card flex flex-col">
+      {/* ─────────── ZONE 3 · Message thread ───────────
+          On a phone the list takes the whole inbox: no empty column beside it. */}
+      <section className={cn("flex-1 min-w-0 bg-card flex flex-col", railFolded && !selectedConvo && "hidden")}>
         {selectedConvo ? (
           <>
             <header
@@ -3298,10 +3409,12 @@ export default function InboxV2Page() {
                   })()}
                   <div className="mt-2 flex items-center gap-1">
                     {composerTab !== "note" && (
+                      // The channel gives way before the send button does: on a 360 px
+                      // phone the row is 28 px short, and the button went past the edge.
                       <select
                         value={replyChannel}
                         onChange={(e) => setReplyChannel(e.target.value)}
-                        className="h-9 rounded-md border bg-background px-2 text-xs shrink-0"
+                        className="h-9 min-w-0 rounded-md border bg-background px-2 text-xs"
                       >
                         {REPLY_CHANNELS.map((ch) => (
                           <option key={ch} value={ch}>{channelLabel(ch)}</option>
