@@ -28891,6 +28891,7 @@
     "messageAuthorAppHint": "Bu cavab CRM-də yox, {app} tətbiqinin özündə yazılıb. Onu hansı əməkdaşın göndərdiyini Meta bildirmir. Cavabın altında ad görünsün deyə CRM-dən cavab verin.",
     "mediaPreview": "Qoşma",
     "mediaWithheld": "{app} bu mesajın məzmununu CRM-ə ötürmədi. Ona {app} tətbiqində baxın.",
+    "mediaWithheldButtons": "{app} bu mesajın məzmununu CRM-ə ötürmədi — belə gəlir avtocavabların düymələri və bəzi stikerlər. Ona {app} tətbiqində baxın.",
     "mediaUnavailable": "Qoşmanı almaq mümkün olmadı.",
     "placeholderImage": "Şəkil",
     "placeholderVideo": "Video",
