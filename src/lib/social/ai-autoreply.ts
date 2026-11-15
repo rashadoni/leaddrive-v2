@@ -1,4 +1,5 @@
 import { pageAiScheduleAllowsNow, resolveInboxAgent } from "@/lib/inbox/page-agent"
+import { learnedPromptBlocks } from "@/lib/inbox/learning/prompt-blocks"
 import { prisma } from "@/lib/prisma"
 import { anthropicAvailable, anthropicFor } from "@/lib/ai/gateway"
 import { PiiMasker } from "@/lib/ai/pii-masker"
@@ -288,6 +289,8 @@ export type AiReplyResult = {
   quality?: AiQualityMetadata
   /** A5 — the reply's AiInteractionLog id; callers persist it as metadata.aiLogId (debug view lookup). */
   logId?: string
+  /** The price rule (lib/ai/offer-grounding) removed a promise the facts do not back and handed off. */
+  guardForcedHandoff?: boolean
 }
 export type AiReplyClaimResult =
   | { claimed: true; token: string; claimedUntil: Date }
@@ -448,9 +451,17 @@ export async function generateChannelAiReply(opts: {
    *  confirmed send (flow `ai_reply`), so a failed delivery never pollutes history with a reply the
    *  customer never received (Codex review #4). Default true = webhook behavior (persist in-generate). */
   persistAssistant?: boolean
+  /**
+   * Training mode (lib/inbox/learning): answer silently. The reply is built exactly as a live one —
+   * the same agent, prompt, learned knowledge and guards — so the readiness figure measures what a
+   * customer would get. Nothing is written to the AI chat session, the reply is not scored, and the
+   * caller sends nothing. `history` is the conversation as it stood when the person answered.
+   */
+  shadow?: { history: Array<{ role: "user" | "assistant"; content: string }>; asOf: Date }
 }): Promise<AiReplyResult> {
   const { orgId, channel, externalId, userMessage, senderName, contactId, conversationId } = opts
-  const persistAssistant = opts.persistAssistant !== false
+  const shadow = opts.shadow ?? null
+  const persistAssistant = opts.persistAssistant !== false && !shadow
   if (!orgId || !externalId || !userMessage?.trim()) return { reply: null, escalate: false, skipped: "missing_input" }
   if (!(await anthropicAvailable(orgId))) return { reply: null, escalate: false, skipped: "no_api_key" }
 
@@ -462,33 +473,42 @@ export async function generateChannelAiReply(opts: {
     return { reply: null, escalate: false, skipped: "budget_unavailable" }
   }
 
-  const sessionKey = `${channel}:${externalId}`
-  let session = await prisma.aiChatSession.findFirst({
-    where: { organizationId: orgId, status: { in: ["active", "escalated"] }, companyId: sessionKey },
-    orderBy: { updatedAt: "desc" },
-  })
-  // Reset after 1h of silence (a fresh conversation), like the WhatsApp Da Vinci flow.
-  if (session && session.updatedAt < new Date(Date.now() - 60 * 60 * 1000)) {
-    await prisma.aiChatSession.update({ where: { id: session.id }, data: { status: "closed" } }).catch(() => {})
-    session = null
-  }
-  if (!session) {
-    session = await prisma.aiChatSession.create({
-      data: { organizationId: orgId, portalUserId: contactId || null, companyId: sessionKey, status: "active" },
+  // A training draft has no AI chat session of its own: its history is the conversation the person
+  // answered, and nothing it produces may become the next live turn's context.
+  let session: { id: string } | null = null
+  let msgs: Array<{ role: "user" | "assistant"; content: string }>
+  if (shadow) {
+    msgs = shadow.history
+  } else {
+    const sessionKey = `${channel}:${externalId}`
+    let live = await prisma.aiChatSession.findFirst({
+      where: { organizationId: orgId, status: { in: ["active", "escalated"] }, companyId: sessionKey },
+      orderBy: { updatedAt: "desc" },
     })
-  }
-  await prisma.aiChatMessage.create({ data: { sessionId: session.id, role: "user", content: userMessage } })
+    // Reset after 1h of silence (a fresh conversation), like the WhatsApp Da Vinci flow.
+    if (live && live.updatedAt < new Date(Date.now() - 60 * 60 * 1000)) {
+      await prisma.aiChatSession.update({ where: { id: live.id }, data: { status: "closed" } }).catch(() => {})
+      live = null
+    }
+    if (!live) {
+      live = await prisma.aiChatSession.create({
+        data: { organizationId: orgId, portalUserId: contactId || null, companyId: sessionKey, status: "active" },
+      })
+    }
+    session = live
+    await prisma.aiChatMessage.create({ data: { sessionId: live.id, role: "user", content: userMessage } })
 
-  const history = await prisma.aiChatMessage.findMany({
-    where: { sessionId: session.id },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-    select: { role: true, content: true },
-  })
-  const msgs = [...history]
-    .reverse()
-    .filter((m: { role: string }) => m.role === "user" || m.role === "assistant")
-    .map((m: { role: string; content: string }) => ({ role: m.role as "user" | "assistant", content: m.content }))
+    const history = await prisma.aiChatMessage.findMany({
+      where: { sessionId: live.id },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: { role: true, content: true },
+    })
+    msgs = [...history]
+      .reverse()
+      .filter((m: { role: string }) => m.role === "user" || m.role === "assistant")
+      .map((m: { role: string; content: string }) => ({ role: m.role as "user" | "assistant", content: m.content }))
+  }
   // Anthropic requires alternating user/assistant starting with user. When a
   // send failed, the recovery turn may add a second consecutive user message;
   // keep the LATEST/coalesced content rather than the stale first attempt.
@@ -503,7 +523,7 @@ export async function generateChannelAiReply(opts: {
   // An attack in what the model would read: no AI reply, the conversation stays a person's (inbound-screen.ts).
   const inboundScreen = screenInboundCustomerTexts([userMessage, ...clean.filter((m) => m.role === "user").map((m) => m.content)])
   if (!inboundScreen.allowed) {
-    recordInboundAttack(orgId, channel, conversationId ?? sessionKey, inboundScreen)
+    if (!shadow) recordInboundAttack(orgId, channel, conversationId ?? `${channel}:${externalId}`, inboundScreen)
     return { reply: null, escalate: false, skipped: "prompt_attack" }
   }
 
@@ -522,6 +542,12 @@ export async function generateChannelAiReply(opts: {
   // without one this is the organisation's common inbox agent, as before.
   const agent = await resolveInboxAgent({
     organizationId: orgId, channelConfigId: opts.channelConfigId, conversationId,
+  })
+  // What the page learned from its own people (lib/inbox/learning): character joins the rules,
+  // confirmed knowledge joins the facts. A price still waiting for «Подтвердить» is in neither, so
+  // the price rule below keeps the AI from naming it.
+  const learned = await learnedPromptBlocks({
+    organizationId: orgId, channelConfigId: opts.channelConfigId ?? agent?.channelConfigId ?? null, conversationId,
   })
   const approvedCompanyPhone = approvedCompanyPhoneFromKnowledge(agent?.knowledgeBase)
   const approvedCompanyAddress = approvedCompanyAddressFromKnowledge(agent?.knowledgeBase)
@@ -548,6 +574,7 @@ export async function generateChannelAiReply(opts: {
   })
   const effectiveRules =
     configuredRules +
+    learned.character +
     (agent?.autoLeadEnabled ? AUTONOMOUS_SALES_RULES : "")
   const basePrompt =
     composeInboxAgentInstruction({
@@ -555,7 +582,9 @@ export async function generateChannelAiReply(opts: {
       // Contacts remain facts in the second prompt's stored value, but their
       // control markers and values never enter model context. Only the final
       // deterministic policy below may disclose them.
-      knowledge: knowledgeWithoutApprovedCompanyContacts(agent?.knowledgeBase),
+      knowledge: [knowledgeWithoutApprovedCompanyContacts(agent?.knowledgeBase), learned.knowledge]
+        .filter((part) => part && part.trim())
+        .join("\n\n"),
     }) + greetingRule
   const model = agent?.model || MODEL
   const temperature = typeof agent?.temperature === "number" ? agent.temperature : 0.7
@@ -577,6 +606,8 @@ export async function generateChannelAiReply(opts: {
             organizationId: orgId,
             conversationId,
             direction: "inbound",
+            // A training draft answers the conversation as it was, not as it went on.
+            ...(shadow ? { createdAt: { lte: shadow.asOf } } : {}),
           },
           orderBy: { createdAt: "desc" },
           take: 20,
@@ -679,7 +710,7 @@ export async function generateChannelAiReply(opts: {
   const maskedSystemPrompt = pii.mask(systemPrompt)
 
   try {
-    const client = await anthropicFor(opts.orgId, "inbox-reply", { agentId: agent?.id })
+    const client = await anthropicFor(opts.orgId, shadow ? "inbox-learning" : "inbox-reply", { agentId: agent?.id })
     const masked = clean.map((m: { role: "user" | "assistant"; content: string }) => ({ ...m, content: pii.mask(m.content) }))
     const startTime = Date.now()
     const res = await client.messages.create({
@@ -753,6 +784,7 @@ export async function generateChannelAiReply(opts: {
       // контекста клиента.
       facts: basePrompt + kbContext,
     })
+    const guardForcedHandoff = commitmentGuard.forceHandoff
     if (commitmentGuard.forceHandoff) {
       raw = commitmentGuard.text
       escalate = true
@@ -815,8 +847,8 @@ export async function generateChannelAiReply(opts: {
     // A1 quality scoring — judge the FINAL customer-facing text (markers/markdown already
     // stripped) before it's returned, so A2 can gate auto-send on the score. Fail-soft:
     // a scoring failure is recorded in metadata and the reply still goes out.
-    const scored = raw
-      ? await scoreAiResponse({ organizationId: orgId, question: userMessage, context: kbContext, response: raw, sessionId: session.id })
+    const scored = raw && !shadow
+      ? await scoreAiResponse({ organizationId: orgId, question: userMessage, context: kbContext, response: raw, sessionId: session?.id })
       : null
     // Budget accounting — without this AiInteractionLog write, checkAiBudget is blind to this feature
     // and the daily cap never engages (adversarial review #3b). Log every call regardless of outcome.
@@ -825,7 +857,7 @@ export async function generateChannelAiReply(opts: {
       .create({
         data: {
           organizationId: orgId,
-          sessionId: session.id,
+          sessionId: session?.id,
           userMessage: userMessage.slice(0, 500),
           aiResponse: raw.slice(0, 1000) || "[empty]",
           latencyMs: Date.now() - startTime,
@@ -833,23 +865,24 @@ export async function generateChannelAiReply(opts: {
           completionTokens: usage?.output_tokens ?? 0,
           costUsd: calculateAiCost(model, usage?.input_tokens ?? 0, usage?.output_tokens ?? 0),
           model,
-          agentType: "social_monitoring",
+          // A training draft is nobody's reply: its own type keeps it out of every count of AI replies.
+          agentType: shadow ? "inbox_learning" : "social_monitoring",
           qualityScore: scored?.ok ? scored.score.total : undefined,
           kbArticlesUsed: kbSources, // A5 — which KB articles fed the reply
         },
       })
       .catch(() => null)
-    if (!raw) return { reply: null, escalate, skipped: "empty_reply", sessionId: session.id }
+    if (!raw) return { reply: null, escalate, skipped: "empty_reply", sessionId: session?.id, logId: logRow?.id }
     const quality = scored ? qualityMetadata(scored) : undefined
     // persistAssistant=false → the caller persists after a confirmed send (flow ai_reply); it needs
     // the sessionId, which we always return.
-    if (persistAssistant) {
+    if (persistAssistant && session) {
       await prisma.aiChatMessage.create({ data: { sessionId: session.id, role: "assistant", content: raw } })
     }
-    if (escalate) {
+    if (escalate && session) {
       await prisma.aiChatSession.update({ where: { id: session.id }, data: { status: "escalated" } }).catch(() => {})
     }
-    return { reply: raw, escalate, sessionId: session.id, quality, logId: logRow?.id }
+    return { reply: raw, escalate, sessionId: session?.id, quality, logId: logRow?.id, guardForcedHandoff }
   } catch (e) {
     console.error(`[ai-autoreply ${channel}]`, e instanceof Error ? e.message : e)
     return { reply: null, escalate: false, skipped: "error" }

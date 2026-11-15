@@ -59,6 +59,8 @@ model Organization {
   users                 User[]
   aiCredentials         TenantAiCredential[]
   aiUsage               AiUsage[]
+  inboxLearnedItems     InboxLearnedItem[]
+  inboxLearningSamples  InboxLearningSample[]
   companies             Company[]
   contacts              Contact[]
   deals                 Deal[]
@@ -3654,6 +3656,82 @@ model AiUsage {
   @@map("ai_usage")
 }
 
+/// Inbox AI training (owner 2026-11-15): what the AI learned on ONE channel from how the company's
+/// people answer customers. Knowledge (a question and its answer, a price, an address, hours) and
+/// character (tone, length, phrases). It is extracted knowledge, never a copy of a conversation —
+/// the source is a pointer to the message it came from (lib/inbox/learning).
+model InboxLearnedItem {
+  id                   String        @id @default(cuid())
+  organizationId       String
+  organization         Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  channelConfigId      String
+  channelConfig        ChannelConfig @relation(fields: [channelConfigId], references: [id], onDelete: Cascade)
+  /// "knowledge" | "trait"
+  kind                 String
+  /// knowledge: price | discount | service | qa | place | hours | rule | other;
+  /// trait: tone | address | length | language | emoji | phrases | avoid
+  type                 String
+  title                String
+  body                 String
+  /// active | pending (a price or a discount waits for «Подтвердить») | conflict (people named different ones)
+  status               String        @default("active")
+  /// conflict only: the answers people gave, [{ body, seen, lastSeenAt }]
+  alternatives         Json?
+  /// learned | manual
+  source               String        @default("learned")
+  seenCount            Int           @default(1)
+  lastSeenAt           DateTime      @default(now())
+  sourceConversationId String?
+  sourceMessageId      String?
+  /// A person's edit; learning never rewrites such a row.
+  editedById           String?
+  editedAt             DateTime?
+  approvedById         String?
+  approvedAt           DateTime?
+  /// Removed by a person: kept so learning does not bring it back, and so «Вернуть» can.
+  removedAt            DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  @@index([organizationId, channelConfigId, kind])
+  @@map("inbox_learned_items")
+}
+
+/// One per answer a person gave on a channel in training: whether the AI, answering the same
+/// question silently, would have said the same. The readiness figure is read from these rows. The
+/// AI's own answer is not copied here — it stays in the AiInteractionLog row named by draftLogId.
+model InboxLearningSample {
+  id                String        @id @default(cuid())
+  organizationId    String
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  channelConfigId   String
+  channelConfig     ChannelConfig @relation(fields: [channelConfigId], references: [id], onDelete: Cascade)
+  conversationId    String
+  /// The person's answer (channel_messages.id). One sample per answer.
+  answerMessageId   String        @unique
+  /// The customer's last message that answer replied to.
+  questionMessageId String?
+  /// same | almost | different | handoff — or, without a model call: skipped (owner: «через один»),
+  /// no_question (the person wrote first), failed (the model did not answer)
+  verdict           String
+  /// The question's topic in the company's words ("Цена педикюра"), never a name.
+  topic             String?
+  /// Why the AI differed: no_knowledge | pending_price | wrong_fact | promise | tone | other
+  reason            String?
+  draftLogId        String?
+  /// A person's decision on a «different» answer: accepted (the AI's answer is fine too) | taught
+  resolution        String?
+  resolvedById      String?
+  resolvedAt        DateTime?
+  /// When the answer was read for knowledge and character.
+  extractedAt       DateTime?
+  createdAt         DateTime      @default(now())
+
+  @@index([organizationId, channelConfigId, createdAt])
+  @@index([organizationId, conversationId])
+  @@map("inbox_learning_samples")
+}
+
 model AiGuardrail {
   id              String   @id @default(cuid())
   organizationId  String
@@ -3886,6 +3964,8 @@ model ChannelConfig {
   conversations      SocialConversation[]
   waTemplates        WhatsAppTemplate[]
   channelConnections ChannelConnection[]
+  learnedItems       InboxLearnedItem[]
+  learningSamples    InboxLearningSample[]
 
   @@index([organizationId])
   @@map("channel_configs")

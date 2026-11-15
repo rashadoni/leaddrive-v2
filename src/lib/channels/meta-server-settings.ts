@@ -43,6 +43,7 @@ export const META_SERVER_OWNED_SETTING_KEYS = [
   "escalateKeywords",
   "aiThreshold",
   "aiRolloutPercent",
+  "learningStartedAt",
 ] as const
 
 const META_TYPES: ReadonlySet<string> = new Set<string>(META_INBOX_CHANNEL_TYPES)

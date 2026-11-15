@@ -70,7 +70,7 @@ export function ChannelReplyMatrix() {
   }
 
   const setUiMode = (row: ChannelReplyRow, ui: UiMode) => {
-    const mode: Mode = ui === "agent" ? "agent" : "ai"
+    const mode: Mode = ui === "agent" ? "agent" : ui === "learning" ? "learning" : "ai"
     const draftMode = ui === "ai_draft"
     return patchRow(
       row,

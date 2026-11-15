@@ -5,12 +5,16 @@ import { withRlsSessionAuth } from "@/lib/with-rls"
 import { isAdmin } from "@/lib/constants"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
 import { dedicatedChannelTypeError, isDedicatedChannelType } from "@/lib/channels/dedicated-channel-types"
+import { LEARNING_REPLY_MODE } from "@/lib/inbox/reply-mode"
+import { LEARNING_STARTED_KEY } from "@/lib/inbox/learning/settings"
 
 /**
  * Per-channel reply routing settings — the data layer behind the "AI vs agent"
  * settings matrix. Each ChannelConfig carries its reply policy inside its existing
  * `settings` JSON (no schema change):
- *   replyMode        "agent" | "ai" | "rules" | "off"   (default "agent"; unset WhatsApp defaults to "ai")
+ *   replyMode        "agent" | "ai" | "rules" | "off" | "learning"   (default "agent"; unset WhatsApp defaults to "ai")
+ *                    "learning" — people answer, the AI reads how and stays silent (lib/inbox/learning);
+ *                    choosing it stamps `learningStartedAt` once.
  *   afterHoursAi     boolean   — AI only outside business hours (agent in-hours)
  *   outOfOffice      { enabled, message }                — auto-reply outside hours
  *   draftMode        boolean   — AI drafts a suggestion, agent sends (no auto-send)
@@ -38,7 +42,7 @@ import { dedicatedChannelTypeError, isDedicatedChannelType } from "@/lib/channel
  * PATCH /api/v1/settings/channel-reply — update one channel's reply policy (by configId)
  */
 
-const REPLY_MODES = ["agent", "ai", "rules", "off"] as const
+const REPLY_MODES = ["agent", "ai", "rules", "off", LEARNING_REPLY_MODE] as const
 const MAX_REPLY_POLICY_BODY_BYTES = 16 * 1024
 
 function requireReplyPolicyAdmin(role: string): Response | null {
@@ -145,6 +149,8 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
   const current = (cfg.settings && typeof cfg.settings === "object" ? cfg.settings : {}) as Record<string, unknown>
   const next: Record<string, unknown> = { ...current }
   if (mode !== undefined) next.replyMode = mode
+  // The first time a channel goes into training, remember when: training reads the week before it.
+  if (mode === LEARNING_REPLY_MODE && typeof current[LEARNING_STARTED_KEY] !== "string") next.learningStartedAt = new Date().toISOString()
   if (afterHoursAi !== undefined) next.afterHoursAi = afterHoursAi
   if (draftMode !== undefined) next.draftMode = draftMode
   if (aiThreshold !== undefined) {

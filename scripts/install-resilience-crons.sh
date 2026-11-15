@@ -111,6 +111,9 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # post-commit delivery latency; it does not duplicate notifications.
   printf '%s\n' "* * * * * $TRIGGER mtm-route-notification-outbox >> $LOG 2>&1"
   printf '%s\n' "1-59/5 * * * * $TRIGGER /api/cron/inbox-autonomous-agent >> $LOG 2>&1"
+  # Inbox AI training (lib/inbox/learning): reads how people answered on channels in «Обучение»,
+  # drafts every second answer silently and compares. Bounded per run, per day and by the AI budget.
+  printf '%s\n' "4-59/5 * * * * $TRIGGER /api/cron/inbox-learning >> $LOG 2>&1"
   # Backstop delayed/missed Chatwoot message_created webhooks. The endpoint is
   # bounded, exact-id idempotent and pinned to one configured TikTok inbox.
   printf '%s\n' "* * * * * $TRIGGER /api/cron/chatwoot-inbound-poll >> $LOG 2>&1"

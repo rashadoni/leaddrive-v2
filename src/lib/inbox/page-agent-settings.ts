@@ -133,7 +133,7 @@ export async function updatePageAgent(params: {
   const { organizationId, channelConfigId, update } = params
   const channel = await prisma.channelConfig.findFirst({
     where: { id: channelConfigId, organizationId, channelType: { in: [...PAGE_AGENT_CHANNEL_TYPES] } },
-    select: { id: true, configName: true, settings: true },
+    select: { id: true, configName: true, channelType: true, settings: true },
   })
   // Another organisation's page, a page of a kind the inbox agent does not answer, or none at all.
   if (!channel) return { ok: false, status: 404, error: "Page not found" }
@@ -198,7 +198,11 @@ export async function updatePageAgent(params: {
     // MERGE into the channel's settings: the same blob holds the page's tokens and ids.
     const current = (channel.settings && typeof channel.settings === "object" ? channel.settings : {}) as Record<string, unknown>
     const next: Record<string, unknown> = { ...current }
-    if (update.aiOn !== undefined) next.replyMode = update.aiOn ? "ai" : "agent"
+    // The screen sends its switch on every save. Only a CHANGE moves the mode: a page in training
+    // (lib/inbox/learning) reads as «AI off», and saving its hours must not end its training.
+    if (update.aiOn !== undefined && update.aiOn !== aiIsOn(current, channel.channelType)) {
+      next.replyMode = update.aiOn ? "ai" : "agent"
+    }
     if (update.aiSchedule !== undefined) next.aiSchedule = update.aiSchedule
     await prisma.channelConfig.updateMany({
       where: { id: channel.id, organizationId },

@@ -828,6 +828,16 @@ jobs:
           AI_GATEWAY_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           AI_GATEWAY_DB_GATE: required
 
+      - name: Inbox AI training database gate
+        # Omni-Channel «Обучение ИИ» (src/lib/inbox/learning): on a channel in training
+        # the AI drafts every second answer silently and nothing reaches the customer;
+        # a learned price stays out of the AI's facts until a person confirms it; both
+        # tables under FORCE RLS. A real Postgres, an app role without BYPASSRLS.
+        run: npx vitest run src/__tests__/inbox-learning-postgres.test.ts
+        env:
+          INBOX_LEARNING_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          INBOX_LEARNING_DB_GATE: required
+
       - name: AI voice assistant database gate
         # Same gate as in pr-checks: the whole voice assistant replayed without
         # a microphone over real routes, real CRM commands and a real Postgres
