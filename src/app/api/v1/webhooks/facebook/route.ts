@@ -7,6 +7,7 @@ import { notifyConversationRecipients } from "@/lib/social/notify-recipients"
 import { isIgLogin } from "@/lib/social/tenant-meta-app"
 import { isDuplicateInsert } from "@/lib/social/meta-inbound-idempotency"
 import { sanitizeLog } from "@/lib/sanitize"
+import { describeMetaMessageShape } from "@/lib/social/meta-message-shape"
 import { resolveMetaSenderName } from "@/lib/social/meta-sender-profile"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
 import type { ChannelConfig } from "@prisma/client"
@@ -250,6 +251,11 @@ export async function POST(req: NextRequest) {
         const text = event.message?.text || "[media]"
         // Both are replaced below when the file is kept.
         let { mediaUrl, messageType } = parseInstagramAttachment(event.message?.attachments) as { mediaUrl: string | null; messageType: string | null }
+        // Neither words nor a file Meta hands over: the row is stored as "[media]" and the inbox says
+        // the content is only in the app. Its shape (no content) is logged so the form can be learned.
+        if (!event.message?.text && !mediaUrl) {
+          console.log(`[FB Webhook] message without text or file (org=${sanitizeLog(channel.organizationId)}, ${describeMetaMessageShape(event.message)})`)
+        }
         const externalMessageId =
           typeof event.message?.mid === "string" && event.message.mid.trim()
             ? event.message.mid.trim()
