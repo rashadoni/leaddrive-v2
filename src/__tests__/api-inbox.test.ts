@@ -246,6 +246,7 @@ describe("GET /api/v1/inbox", () => {
     ] as any)
     vi.mocked(prisma.contact.findMany).mockResolvedValue([])
     vi.mocked(prisma.socialConversation.findMany)
+      .mockResolvedValueOnce([] as any) // the listed messages' conversations: none deleted, none linked
       .mockResolvedValueOnce([
         { id: "sc-1", status: "resolved", assignedTo: "user-9", snoozedUntil: new Date("2025-02-01"), folderId: "fold-1", tags: ["VIP", "needs-manager"] },
       ] as any)
@@ -289,6 +290,7 @@ describe("GET /api/v1/inbox", () => {
     ] as any)
     vi.mocked(prisma.contact.findMany).mockResolvedValue([])
     vi.mocked(prisma.socialConversation.findMany)
+      .mockResolvedValueOnce([] as any) // the listed messages' conversations: none deleted, none linked
       .mockResolvedValueOnce([
         { id: "sc-ig", contactName: "@zeytun.client", status: "open", tags: [] },
         // Profile lookup failed at the webhook: the stored name is the id itself — keep the id.
@@ -315,6 +317,7 @@ describe("GET /api/v1/inbox", () => {
     ] as any)
     vi.mocked(prisma.contact.findMany).mockResolvedValue([])
     vi.mocked(prisma.socialConversation.findMany)
+      .mockResolvedValueOnce([] as any) // the listed messages' conversations: none deleted, none linked
       .mockResolvedValueOnce([
         { id: "sc-call", status: "open", assignedTo: null, snoozedUntil: null, folderId: null, tags: [] },
       ] as any)
@@ -483,6 +486,7 @@ describe("GET /api/v1/inbox", () => {
       { id: "c1", fullName: "Jane", email: "jane@test.com", phone: null, phones: [], lifecycleStage: "customer" },
     ] as any)
     vi.mocked(prisma.socialConversation.findMany)
+      .mockResolvedValueOnce([] as any) // the listed messages' conversations: none deleted, none linked
       .mockResolvedValueOnce([
         { id: "sc-1", status: "open", assignedTo: null, snoozedUntil: null, folderId: null, tags: ["retention"] },
       ] as any)
