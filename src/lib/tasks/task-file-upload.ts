@@ -83,9 +83,15 @@ async function walk(entry: Entry, prefix: string, out: TaskFileToSend[]): Promis
  * several folders are dropped together, each keeps its own name in front.
  */
 export async function filesFromDrop(data: DataTransfer): Promise<TaskFileToSend[]> {
-  const entries = [...(data.items ?? [])]
-    .map((item) => (item.kind === "file" ? ((item as DataTransferItem & { webkitGetAsEntry?: () => Entry | null }).webkitGetAsEntry?.() ?? null) : null))
-    .filter((entry): entry is Entry => entry !== null)
+  // Read through our own shape of an entry: the DOM's FileSystemEntry types its
+  // callbacks loosely, and a test hands over plain objects.
+  const entryOf = (item: DataTransferItem): Entry | null =>
+    item.kind === "file" ? ((item.webkitGetAsEntry?.() ?? null) as unknown as Entry | null) : null
+  const entries: Entry[] = []
+  for (const item of [...(data.items ?? [])]) {
+    const entry = entryOf(item)
+    if (entry) entries.push(entry)
+  }
   if (entries.length === 0) return [...(data.files ?? [])].map((file) => ({ file, name: file.name }))
   const keepFolderName = entries.filter((entry) => entry.isDirectory).length > 1
   const out: TaskFileToSend[] = []
