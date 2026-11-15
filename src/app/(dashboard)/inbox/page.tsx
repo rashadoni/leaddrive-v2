@@ -39,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { InboxBulkBar } from "@/components/inbox/inbox-bulk-bar"
 import { BulkCloseDialog } from "@/components/inbox/bulk-close-dialog"
 import { HelpButton } from "@/components/help/help-button"
+import { Hint } from "@/components/hint"
 import { ClickToCallButton } from "@/components/call-widget"
 import { WhatsAppCallControls } from "@/components/inbox/whatsapp-call-controls"
 import { WhatsAppOutboundCallControl } from "@/components/inbox/whatsapp-outbound-call-control"
@@ -61,7 +62,7 @@ import {
   User, Users, UserX, UserPlus, Bot, Ban, Hash, Folder, Check, Clock,
   MoreHorizontal, Paperclip, Smile, Sparkles, Zap, SlidersHorizontal,
   Mail, Phone, Eye, CalendarClock, ChevronDown, X, RotateCcw, CheckCircle2,
-  Trash2, Megaphone, AtSign, Smartphone,
+  Trash2, Megaphone, AtSign, Smartphone, PanelRight,
 } from "lucide-react"
 import { messageAuthor } from "@/lib/inbox/message-author"
 import {
@@ -558,6 +559,12 @@ export default function InboxV2Page() {
   const snoozeRef = useRef<HTMLDivElement>(null)
   const assignRef = useRef<HTMLDivElement>(null)
   const participantsRef = useRef<HTMLDivElement>(null)
+  // The customer card on the right is closed until the person opens it from the
+  // avatar in the thread header (owner, 2026-11-15: it stood open for good and
+  // squeezed the conversation). It closes on any press outside it or Escape.
+  const [contactPanelOpen, setContactPanelOpen] = useState(false)
+  const contactPanelRef = useRef<HTMLElement>(null)
+  const contactPanelToggleRef = useRef<HTMLButtonElement>(null)
   const folderAssignRef = useRef<HTMLDivElement>(null)
   const selectedContactIdRef = useRef<string | null>(null)
   const selectedScidRef = useRef<string | null>(null)
@@ -1174,6 +1181,32 @@ export default function InboxV2Page() {
     }
   }, [showEmoji, showQuickReplies, showAiAssist, showSnooze, showAssign, showFolderAssign, showParticipants])
 
+  // The customer card: a press anywhere outside it closes it, and so does Escape.
+  // Inside means the card itself, the avatar that toggles it (its own click does
+  // that), and a dialog or popover: the lead handoff dialog is opened from the
+  // card but renders beside it, and a press there must not take the card away.
+  // A dialog swallows its own Escape in the capture phase, so Escape there
+  // closes the dialog and leaves the card. A target already gone from the page
+  // was removed by the press itself — never read that as «outside».
+  const contactPanelVisible = contactPanelOpen && selectedConvo !== null
+  useEffect(() => {
+    if (!contactPanelVisible) return
+    const onDown = (e: MouseEvent) => {
+      const target = e.target
+      if (!(target instanceof Element) || !target.isConnected) return
+      if (contactPanelRef.current?.contains(target) || contactPanelToggleRef.current?.contains(target)) return
+      if (target.closest("[data-dialog-root], [role='dialog'], [data-radix-popper-content-wrapper], [data-sonner-toaster]")) return
+      setContactPanelOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setContactPanelOpen(false) }
+    document.addEventListener("mousedown", onDown)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("mousedown", onDown)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [contactPanelVisible])
+
   // Phase 3 — load the selected conversation's contact tags (contact-level).
   // `selectedContactIdRef` + the `ignore` flag guard against a stale write when
   // the user switches conversations while a GET/PATCH is still in flight.
@@ -1744,13 +1777,12 @@ export default function InboxV2Page() {
         <div className="w-56 bg-card animate-pulse" />
         <div className="w-80 bg-card animate-pulse" />
         <div className="flex-1 bg-card animate-pulse" />
-        <div className="w-72 bg-card animate-pulse hidden xl:block" />
       </div>
     )
   }
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] gap-px rounded-xl border border-border/60 bg-border/60 overflow-hidden text-sm">
+    <div className="relative flex h-[calc(100vh-7rem)] gap-px rounded-xl border border-border/60 bg-border/60 overflow-hidden text-sm">
       {/* ─────────── ZONE 1 · Folders rail ─────────── */}
       <aside className="w-56 shrink-0 bg-card flex flex-col">
         <div className="flex items-center justify-between px-4 h-14 shrink-0">
@@ -2209,16 +2241,40 @@ export default function InboxV2Page() {
       <section className="flex-1 min-w-0 bg-card flex flex-col">
         {selectedConvo ? (
           <>
-            <header className="h-14 border-b border-border/60 flex items-center justify-between px-4 shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
+            <header className="h-14 border-b border-border/60 flex items-center justify-between gap-2 px-4 shrink-0">
+              {/* Never narrower than the avatar: it opens the customer card, and the
+                  actions on the right used to slide over it in a narrow thread. */}
+              <div className="flex items-center gap-3 min-w-[4.5rem] lg:min-w-11">
                 <button onClick={() => setSelected(null)} className="lg:hidden p-1 hover:bg-muted rounded"><ArrowLeft className="h-4 w-4" /></button>
-                <div className={cn("h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0", avatarTint(selectedConvo.contactName))}>
-                  {initials(selectedConvo.contactName)}
-                </div>
-                <div className="min-w-0">
-                  <div className="font-semibold truncate">{selectedConvo.contactName}</div>
-                  <div className="text-[11px] text-muted-foreground truncate">{selectedConvo.messageCount} messages</div>
-                </div>
+                {/* The avatar opens the customer card; the line under the name says so in words. */}
+                <Hint text={contactPanelVisible ? t("contactPanelHintOpen") : t("contactPanelHint")} side="bottom" align="start">
+                <button
+                  ref={contactPanelToggleRef}
+                  type="button"
+                  onClick={() => setContactPanelOpen((open) => !open)}
+                  aria-expanded={contactPanelVisible}
+                  aria-controls="inbox-contact-panel"
+                  data-testid="inbox-contact-panel-toggle"
+                  className="group -ml-1 flex min-w-0 cursor-pointer items-center gap-3 rounded-lg py-1 pl-1 pr-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+                >
+                  <span
+                    className={cn(
+                      "h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0 ring-2 ring-offset-2 ring-offset-card transition-shadow motion-reduce:transition-none",
+                      contactPanelVisible ? "ring-primary" : "ring-transparent group-hover:ring-primary/40",
+                      avatarTint(selectedConvo.contactName),
+                    )}
+                  >
+                    {initials(selectedConvo.contactName)}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-semibold truncate">{selectedConvo.contactName}</span>
+                    <span className="flex items-center gap-1 text-[11px] font-medium text-primary">
+                      <PanelRight className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{contactPanelVisible ? t("contactPanelClose") : t("contactPanelOpen")}</span>
+                    </span>
+                  </span>
+                </button>
+                </Hint>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 {(() => {
@@ -3123,9 +3179,17 @@ export default function InboxV2Page() {
         )}
       </section>
 
-      {/* ─────────── ZONE 4 · Customer context panel ─────────── */}
-      <aside className="w-72 shrink-0 bg-card hidden xl:flex flex-col">
-        {selectedConvo ? (
+      {/* ─────────── ZONE 4 · Customer context panel ───────────
+          Closed by default; the avatar in the thread header opens it over the
+          right edge of the conversation, so the thread keeps its full width. */}
+      {contactPanelVisible && selectedConvo && (
+      <aside
+        ref={contactPanelRef}
+        id="inbox-contact-panel"
+        aria-label={t("contactPanelLabel")}
+        data-testid="inbox-contact-panel"
+        className="absolute inset-y-0 right-0 z-30 flex w-72 max-w-[calc(100%-2.5rem)] flex-col border-l border-border/60 bg-card shadow-2xl"
+      >
           <div className="flex-1 overflow-y-auto">
             <div className="flex flex-col items-center text-center px-4 py-5 border-b border-border/40">
               <div className={cn("h-14 w-14 rounded-full flex items-center justify-center text-lg font-semibold text-white", avatarTint(selectedConvo.contactName))}>
@@ -3506,12 +3570,8 @@ export default function InboxV2Page() {
               )
             })()}
           </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-center text-muted-foreground px-6">
-            <p className="text-xs">{t("customerDetailsEmpty")}</p>
-          </div>
-        )}
       </aside>
+      )}
       <Dialog
         open={leadAssignmentOpen}
         onOpenChange={(open) => !statusSaving && setLeadAssignmentOpen(open)}
