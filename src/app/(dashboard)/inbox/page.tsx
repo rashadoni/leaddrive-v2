@@ -64,6 +64,7 @@ import {
   Trash2, Megaphone, AtSign, Smartphone,
 } from "lucide-react"
 import { messageAuthor } from "@/lib/inbox/message-author"
+import { isMediaPlaceholder, placeholderView } from "@/lib/inbox/media-placeholder"
 import {
   CHANNELS, REPLY_CHANNELS, ChannelIcon, channelColor, channelLabel,
   avatarTint, initials, extractQuickReplies, appendTag, dropTag, convStatusTab, convMatchesView, extractAttachments,
@@ -2155,7 +2156,7 @@ export default function InboxV2Page() {
                     <span className={cn("truncate text-[13px]", c.unreadCount > 0 ? "font-semibold" : "font-medium")}>{c.contactName}</span>
                     <span className="text-[11px] text-muted-foreground shrink-0">{formatListTime(c.lastMessageAt)}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">{c.lastMessage}</p>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{isMediaPlaceholder(c.lastMessage) ? t("mediaPreview") : c.lastMessage}</p>
                   <div className="mt-1.5 flex items-center gap-1.5 min-h-4">
                     {c.channels.slice(0, 2).map((ch) => (
                       <ChannelIcon key={ch} channel={ch} className="h-3 w-3 shrink-0 text-muted-foreground/70" />
@@ -2710,15 +2711,23 @@ export default function InboxV2Page() {
                             <video controls preload="metadata" src={m.mediaUrl} className="mb-1 max-h-60 max-w-full rounded-lg" data-testid="inbox-video-player" />
                           ) : (
                             <a href={m.mediaUrl} target="_blank" rel="noopener noreferrer" className="mb-1 flex items-center gap-1.5 text-xs underline">
-                              <Paperclip className="h-3.5 w-3.5" /> {sharedPostLabel(m.mediaUrl) ?? "Attachment"}
+                              <Paperclip className="h-3.5 w-3.5" /> {sharedPostLabel(m.mediaUrl) ?? t("mediaPreview")}
                             </a>
                           )
                         )}
-                        {/* A message with no words is stored as "[media]"; under the picture or the video
-                            itself that placeholder says nothing. It stays when the file was not kept. */}
-                        {!(typeof m.mediaUrl === "string" && m.mediaUrl && /^\[(media|attachment|вложение)\]$/i.test((m.body ?? "").trim())) && (
-                          <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
-                        )}
+                        {/* A message with no words is stored as "[media]" — a word for the database, not
+                            for a person (lib/inbox/media-placeholder). */}
+                        {(() => {
+                          const view = placeholderView(m)
+                          if (view.kind === "hide") return null
+                          if (view.kind === "body") return <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                          return (
+                            <p className="flex items-start gap-1.5 text-xs italic text-muted-foreground" data-testid="inbox-media-withheld">
+                              <Paperclip className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                              <span>{view.kind === "withheld" ? t("mediaWithheld", { app: view.app }) : t("mediaUnavailable")}</span>
+                            </p>
+                          )
+                        })()}
                       </div>
                       <div className={cn("flex flex-wrap items-center gap-x-1 gap-y-0.5 mt-1 text-[10px] text-muted-foreground", out ? "justify-end" : "justify-start")}>
                         <ChannelIcon channel={m.channelType || "email"} className="h-2.5 w-2.5" />
