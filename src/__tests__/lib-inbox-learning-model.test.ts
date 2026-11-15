@@ -132,6 +132,16 @@ describe("readiness — option «В»", () => {
     expect(computeReadiness(rows).percent).toBe(67)
   })
 
+  it("leaves a skipped answer out of the figure and its topics — neither «the same» nor «differently»", () => {
+    const rows = [
+      ...Array.from({ length: 30 }, (_, i) => sample("same", i, { topic: "Адрес" })),
+      ...Array.from({ length: 5 }, (_, i) => sample("different", 40 + i, { topic: "Шутка", resolution: "dismissed" })),
+    ]
+    const r = computeReadiness(rows)
+    expect(r).toMatchObject({ compared: 30, same: 30, different: 0, percent: 100 })
+    expect(r.topics.map((t) => t.name)).toEqual(["Адрес"])
+  })
+
   it("names the frequent topics: known, waiting for a price, not known", () => {
     const rows = [
       ...Array.from({ length: 30 }, (_, i) => sample("same", i, { topic: i % 2 ? "Адрес салона" : "адрес салона" })),

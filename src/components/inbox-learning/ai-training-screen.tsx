@@ -182,13 +182,17 @@ export function AiTrainingScreen() {
     await refresh()
   }
 
-  const resolveSample = async (d: DifferenceView, action: "accept" | "teach") => {
+  const resolveSample = async (d: DifferenceView, action: "accept" | "teach" | "dismiss") => {
     const json = await call<{ data: { item: LearnedItemView | null } }>(
       `/api/v1/settings/inbox-learning/${encodeURIComponent(selected!)}/samples/${encodeURIComponent(d.id)}`,
       { method: "PATCH", body: JSON.stringify({ action }) },
     )
     if (!json) { toast.error(t("saveFailed")); return }
-    toast.success(action === "accept" ? t("toastAccepted") : json.data.item?.status === "pending" ? t("toastTaughtPrice") : t("toastTaught"))
+    toast.success(
+      action === "accept" ? t("toastAccepted")
+        : action === "dismiss" ? t("toastSkipped")
+          : json.data.item?.status === "pending" ? t("toastTaughtPrice") : t("toastTaught"),
+    )
     await refresh()
   }
 
@@ -706,7 +710,7 @@ function StartCard({ channel, busy, onStart }: { channel: ChannelSummary; busy: 
 
 function DifferencesCard({ differences, onResolve, onJumpWaiting }: {
   differences: DifferenceView[]
-  onResolve: (d: DifferenceView, action: "accept" | "teach") => void
+  onResolve: (d: DifferenceView, action: "accept" | "teach" | "dismiss") => void
   onJumpWaiting: () => void
 }) {
   const t = useTranslations("aiTraining")
@@ -740,6 +744,9 @@ function DifferencesCard({ differences, onResolve, onJumpWaiting }: {
                 <Button size="sm" onClick={() => onResolve(d, "teach")}><Plus className="mr-1 h-3.5 w-3.5" />{t("diffTeach")}</Button>
               )}
               <Button size="sm" variant="outline" onClick={() => onResolve(d, "accept")}>{d.verdict === "handoff" ? t("diffHandoffRight") : t("diffAccept")}</Button>
+              <Hint text={t("diffSkipHint")}>
+                <Button size="sm" variant="outline" onClick={() => onResolve(d, "dismiss")}>{t("diffSkip")}</Button>
+              </Hint>
               <Button size="sm" variant="ghost" asChild>
                 <Link href={`/inbox?conversation=${encodeURIComponent(d.conversationId)}&message=${encodeURIComponent(d.answerMessageId)}`}>
                   {t("openConversation")}<ArrowRight className="ml-1 h-3.5 w-3.5" />

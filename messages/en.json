@@ -33578,6 +33578,9 @@
     "noMembers": "Nobody is in the team yet — tasks appear once members are added."
   },
   "aiTraining": {
+    "diffSkip": "Skip — don't learn",
+    "diffSkipHint": "For an answer that is not the company's knowledge — a joke, a one-off. The AI does not learn it, and it does not count in readiness.",
+    "toastSkipped": "Skipped: the AI does not learn this, and readiness does not count it.",
     "progress_waiting_first_run": "Getting ready for the first pass",
     "progress_waiting_first_runText": "Training goes over the channels every 5 minutes and first reads the last 7 days of conversations. This page updates by itself.",
     "progress_reading": "Reading conversations",

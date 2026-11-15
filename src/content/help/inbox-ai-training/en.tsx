@@ -69,7 +69,9 @@ export default function InboxAiTrainingHelpEn() {
               Next to readiness: questions where the AI would have answered differently — the question, your team&apos;s
               answer and the AI&apos;s side by side. <HelpKey>Remember the team&apos;s answer</HelpKey> makes it knowledge;{" "}
               <HelpKey>The AI&apos;s answer is fine too</HelpKey> counts it as the same; <HelpKey>Open the conversation</HelpKey>{" "}
-              jumps to that message in the inbox. Readiness is recalculated.
+              jumps to that message in the inbox; <HelpKey>Skip — don&apos;t learn</HelpKey> is for an answer that is not
+              the company&apos;s knowledge (a joke, a one-off): the AI does not learn it and readiness does not count it.
+              Readiness is recalculated.
             </p>
           ),
         },

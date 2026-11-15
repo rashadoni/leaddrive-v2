@@ -3719,7 +3719,8 @@ model InboxLearningSample {
   /// Why the AI differed: no_knowledge | pending_price | wrong_fact | promise | tone | other
   reason            String?
   draftLogId        String?
-  /// A person's decision on a «different» answer: accepted (the AI's answer is fine too) | taught
+  /// A person's decision on a «different» answer: accepted (the AI's answer is fine too) | taught |
+  /// dismissed («Пропустить — не учить»: not knowledge, and left out of the readiness figure)
   resolution        String?
   resolvedById      String?
   resolvedAt        DateTime?

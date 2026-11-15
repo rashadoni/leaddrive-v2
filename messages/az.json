@@ -33574,6 +33574,9 @@
     "noMembers": "Komandada hələ heç kim yoxdur — tapşırıqlar üzvlər əlavə olunandan sonra görünəcək."
   },
   "aiTraining": {
+    "diffSkip": "Keç — öyrənmə",
+    "diffSkipHint": "Şirkətin biliyi olmayan cavab üçün — zarafat, birdəfəlik hal. AI bunu öyrənmir və sual hazırlığa daxil olmur.",
+    "toastSkipped": "Keçildi: AI bunu öyrənmir, hazırlığa təsir etmir.",
     "progress_waiting_first_run": "İlk keçidə hazırlaşır",
     "progress_waiting_first_runText": "Öyrənmə kanalları 5 dəqiqədən bir keçir və əvvəlcə son 7 günün yazışmalarını oxuyur. Səhifə özü yenilənir.",
     "progress_reading": "Yazışmaları oxuyur",
