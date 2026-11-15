@@ -44,6 +44,7 @@ export const REPLY_POLICY_SETTING_KEYS = [
   "aiRolloutPercent",
   // When «Обучение» started on the channel (lib/inbox/learning/settings).
   "learningStartedAt",
+  "learningRun",
 ] as const
 
 /**

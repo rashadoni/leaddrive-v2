@@ -50,6 +50,11 @@ export default function InboxAiTrainingHelpEn() {
                 second figure — how many frequent customer topics the AI already knows. Green — knows, yellow — waits
                 for your confirmation, dashed — does not know yet.
               </p>
+              <p>
+                The same card shows <HelpKey>progress</HelpKey>: how many team answers and conversations of the week
+                the AI found and has read, how many silent tries count towards the figure, and when the last and next
+                passes are. While the AI reads, the page updates by itself.
+              </p>
               <HelpCallout kind="tip" label="When to hand over">
                 The figure appears after 30 comparisons, usually in 4–8 days. We recommend handing over from 80%.
               </HelpCallout>

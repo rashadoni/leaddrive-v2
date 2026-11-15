@@ -8,11 +8,12 @@ import { prisma } from "@/lib/prisma"
 import { aiReplyEnabled, LEARNING_REPLY_MODE } from "@/lib/inbox/reply-mode"
 import { isDedicatedChannelType } from "@/lib/channels/dedicated-channel-types"
 import {
-  COMPARED_VERDICTS, KNOWLEDGE_TYPES, TRAIT_TYPES, answerText, computeReadiness, effectiveVerdict,
+  COMPARED_VERDICTS, KNOWLEDGE_TYPES, LEARNING_BACKFILL_DAYS, READINESS_MIN_QUESTIONS, TRAIT_TYPES, answerText,
+  computeReadiness, effectiveVerdict, isPersonAnswer,
   type Readiness, type ThreadMessage,
 } from "@/lib/inbox/learning/model"
 import { needsConfirmation, readAlternatives } from "@/lib/inbox/learning/merge"
-import { readLearningStart } from "@/lib/inbox/learning/settings"
+import { readLearningRun, readLearningStart } from "@/lib/inbox/learning/settings"
 
 /** The channel types whose webhooks honour the reply mode — the only ones training can run on. */
 export const LEARNING_CHANNEL_TYPES = ["instagram", "facebook", "whatsapp", "telegram", "vkontakte", "chatwoot"] as const
@@ -115,12 +116,86 @@ export type DifferenceView = {
   at: string
 }
 
+/**
+ * «Ход обучения» (owner 2026-11-15, looking at a fresh channel showing 0 everywhere: «сделай так,
+ * чтоб как-то показывался прогресс обучения»): what training found on the channel since it started
+ * reading, what it has read so far, and when it last went over the channel.
+ */
+export type LearningProgress = {
+  since: string | null
+  answersTotal: number
+  answersRead: number
+  conversationsTotal: number
+  conversationsRead: number
+  compared: number
+  minQuestions: number
+  lastRunAt: string | null
+  stopped: string | null
+  state: "waiting_first_run" | "nothing_found" | "reading" | "listening"
+}
+
 export type ChannelDetail = {
   channel: ChannelSummary
   readiness: Readiness
+  progress: LearningProgress
   differences: DifferenceView[]
   items: LearnedItemView[]
   conversations: number
+}
+
+/** How many of a channel's people's answers a progress count reads at most. */
+const PROGRESS_ANSWERS_READ = 5000
+
+export async function learningProgress(organizationId: string, channel: { id: string; settings: unknown }, compared: number, now = new Date()): Promise<LearningProgress> {
+  const started = readLearningStart(channel.settings)
+  const run = readLearningRun(channel.settings)
+  const since = started ? new Date(Math.max(started.getTime() - LEARNING_BACKFILL_DAYS * 86_400_000, now.getTime() - 21 * 86_400_000)) : null
+  let answersTotal = 0
+  let answersRead = 0
+  let conversationsTotal = 0
+  let conversationsRead = 0
+  if (since) {
+    const [outbound, samples] = await Promise.all([
+      prisma.channelMessage.findMany({
+        where: { organizationId, direction: "outbound", createdAt: { gte: since }, conversation: { channelConfigId: channel.id } },
+        select: { id: true, conversationId: true, direction: true, body: true, metadata: true },
+        orderBy: { createdAt: "desc" },
+        take: PROGRESS_ANSWERS_READ,
+      }),
+      prisma.inboxLearningSample.findMany({
+        where: { organizationId, channelConfigId: channel.id, createdAt: { gte: since } },
+        select: { answerMessageId: true, conversationId: true, extractedAt: true },
+      }),
+    ])
+    const answers = outbound.filter((m: { direction: string; body: string; metadata: unknown; conversationId: string | null }) => m.conversationId && isPersonAnswer(m))
+    const read = new Set(samples.map((s: { answerMessageId: string }) => s.answerMessageId))
+    answersTotal = answers.length
+    answersRead = answers.filter((a: { id: string }) => read.has(a.id)).length
+    conversationsTotal = new Set(answers.map((a: { conversationId: string | null }) => a.conversationId)).size
+    conversationsRead = new Set(
+      samples.filter((s: { extractedAt: Date | null }) => s.extractedAt).map((s: { conversationId: string }) => s.conversationId),
+    ).size
+  }
+  const ranSinceStart = Boolean(run && (!started || run.at >= started))
+  const state: LearningProgress["state"] = !ranSinceStart
+    ? "waiting_first_run"
+    : answersTotal === 0
+      ? "nothing_found"
+      : answersRead < answersTotal || conversationsRead < conversationsTotal
+        ? "reading"
+        : "listening"
+  return {
+    since: since?.toISOString() ?? null,
+    answersTotal,
+    answersRead,
+    conversationsTotal,
+    conversationsRead: Math.min(conversationsRead, conversationsTotal),
+    compared,
+    minQuestions: READINESS_MIN_QUESTIONS,
+    lastRunAt: run?.at.toISOString() ?? null,
+    stopped: run?.stopped ?? null,
+    state,
+  }
 }
 
 export async function channelLearningDetail(organizationId: string, channelConfigId: string): Promise<ChannelDetail | null> {
@@ -128,6 +203,8 @@ export async function channelLearningDetail(organizationId: string, channelConfi
   if (!summary) return null
   const samples = await samplesOf(organizationId, channelConfigId)
   const readiness = computeReadiness(samples)
+  const channelRow = await prisma.channelConfig.findFirst({ where: { id: channelConfigId, organizationId }, select: { id: true, settings: true } })
+  const progress = await learningProgress(organizationId, { id: channelConfigId, settings: channelRow?.settings ?? null }, readiness.compared)
 
   const open = samples
     .filter((s: { verdict: string; resolution: string | null }) => (s.verdict === "different" || s.verdict === "handoff") && !s.resolution)
@@ -192,6 +269,7 @@ export async function channelLearningDetail(organizationId: string, channelConfi
   return {
     channel: summary,
     readiness,
+    progress,
     differences,
     items: rows.map((r: Parameters<typeof itemView>[0]) => itemView(r, sourceNames)),
     conversations: readConversations.length,

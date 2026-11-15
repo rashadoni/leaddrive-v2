@@ -64,14 +64,34 @@ export async function runInboxLearning(options: { now?: Date } = {}): Promise<Le
   const summary: LearningRunSummary = { channels: channels.length, samples: 0, drafts: 0, extracted: 0, character: 0, stopped: [] }
   const draftsToday = new Map<string, number>()
   for (const channel of channels) {
+    let stopped: string | null = null
     try {
       await runWithTenant(channel.organizationId, () => learnChannel(channel, now, summary, draftsToday))
+      stopped = summary.stopped.find((s) => s.startsWith(`${channel.id}:`))?.slice(channel.id.length + 1) ?? null
     } catch (error) {
       console.error("[inbox-learning]", channel.id, error instanceof Error ? error.message : error)
       summary.stopped.push(`${channel.id}:error`)
+      stopped = "error"
     }
+    await runWithTenant(channel.organizationId, () => markRun(channel, now, stopped)).catch((error: unknown) => {
+      console.error("[inbox-learning mark]", channel.id, error instanceof Error ? error.message : error)
+    })
   }
   return summary
+}
+
+/**
+ * When training last went over a channel, and what stopped it — for «Ход обучения» on the screen.
+ * One key of the channel's settings, set in place: a run lasts minutes, and writing back settings it
+ * read at the start would undo whatever an admin changed meanwhile (the reply mode itself).
+ * The time is the run's own, as an ISO string: the database's clock runs in Europe/Berlin.
+ */
+async function markRun(channel: Channel, now: Date, stopped: string | null) {
+  const run = JSON.stringify({ at: now.toISOString(), stopped })
+  await prisma.$executeRaw`
+    UPDATE "channel_configs"
+       SET "settings" = jsonb_set(COALESCE("settings", '{}'::jsonb), '{learningRun}', ${run}::jsonb, true)
+     WHERE "id" = ${channel.id} AND "organizationId" = ${channel.organizationId}`
 }
 
 async function budgetAllows(organizationId: string): Promise<boolean> {
@@ -306,7 +326,7 @@ async function learnChannel(channel: Channel, now: Date, summary: LearningRunSum
     where: { organizationId, channelConfigId: channel.id, ...(learnedAt ? { createdAt: { gt: learnedAt } } : {}) },
   })
   if (fresh < (learnedAt ? CHARACTER_EVERY : CHARACTER_FIRST_AFTER)) return
-  if (!(await budgetAllows(organizationId))) return
+  if (!(await budgetAllows(organizationId))) { summary.stopped.push(`${channel.id}:budget`); return }
   const recent = await prisma.inboxLearningSample.findMany({
     where: { organizationId, channelConfigId: channel.id },
     orderBy: { createdAt: "desc" },

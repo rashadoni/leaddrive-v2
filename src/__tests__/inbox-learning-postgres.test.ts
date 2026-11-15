@@ -219,6 +219,29 @@ function schemaWithoutEmbeddings(): string {
     expect(claude.calls).toEqual([])
   })
 
+  it("says how far training has got — waiting, then everything read — and stamps each pass on the channel", async () => {
+    const before = await inOrg(() => service.learningProgress(ORG, { id: CHANNEL, settings: { replyMode: "learning", learningStartedAt: min(0).toISOString() } }, 0))
+    expect(before.state).toBe("waiting_first_run")
+
+    const channel = await bypass(() => prisma.channelConfig.findUniqueOrThrow({ where: { id: CHANNEL } }))
+    const settings = channel.settings as Record<string, unknown>
+    // The pass left its own stamp and nothing else changed: the mode is still the admin's.
+    expect(settings).toMatchObject({ replyMode: "learning", username: "gozellik.studio", learningRun: { at: NOW.toISOString(), stopped: null } })
+
+    const detail = await inOrg(() => service.channelLearningDetail(ORG, CHANNEL))
+    expect(detail!.progress).toMatchObject({
+      answersTotal: 4, // m2, m4, m6, m9 — not the bot's m7
+      answersRead: 4,
+      conversationsTotal: 1,
+      conversationsRead: 1,
+      compared: 2,
+      minQuestions: 30,
+      lastRunAt: NOW.toISOString(),
+      stopped: null,
+      state: "listening",
+    })
+  })
+
   it("keeps an unconfirmed price out of the AI's facts until a person confirms it", async () => {
     const items = await inOrg(() => prisma.inboxLearnedItem.findMany({ where: { kind: "knowledge" }, orderBy: { title: "asc" } }))
     expect(items.map((i) => [i.title, i.status, i.sourceConversationId])).toEqual([
