@@ -49,8 +49,16 @@ export function readPanelData(raw: unknown): ConversationPanelData | null {
  * What the inbox panel reads about one conversation (GET …/conversations/[id]/panel) and its
  * «AI rejimi» switch (PUT …/auto-reply). A switch answers on the screen at once and goes back if
  * the server refuses.
+ *
+ * `threadConversationIds`: every stored conversation of the open customer's feed — his Instagram,
+ * his WhatsApp (lib/inbox/thread-conversations). The switch acts on all of them, as assign and close
+ * do: the manager switched the AI off for this customer's correspondence, not for one of its channels.
  */
-export function useConversationPanel(conversationId: string | null | undefined, headers: Record<string, string>) {
+export function useConversationPanel(
+  conversationId: string | null | undefined,
+  headers: Record<string, string>,
+  threadConversationIds: readonly string[] = [],
+) {
   const [data, setData] = useState<ConversationPanelData | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -88,13 +96,17 @@ export function useConversationPanel(conversationId: string | null | undefined, 
     setSaving(true)
     setData((prev) => prev ? { ...prev, autoReply: { ...prev.autoReply, off: !on } } : prev)
     try {
-      const res = await fetch(`/api/v1/inbox/conversations/${encodeURIComponent(id)}/auto-reply`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ on }),
-      })
-      const json = await readJsonSafely<{ data?: { off: boolean; offAt: string | null } }>(res)
-      if (!res.ok || !json?.data) throw new Error(String(res.status))
+      const ids = [...new Set([id, ...threadConversationIds])]
+      const results = await Promise.all(ids.map(async (target) => {
+        const res = await fetch(`/api/v1/inbox/conversations/${encodeURIComponent(target)}/auto-reply`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", ...headers },
+          body: JSON.stringify({ on }),
+        })
+        const json = await readJsonSafely<{ data?: { off: boolean; offAt: string | null } }>(res)
+        return res.ok && Boolean(json?.data)
+      }))
+      if (results.some((ok) => !ok)) throw new Error("auto-reply switch failed")
       if (current.current === id) await load()
       return true
     } catch {
@@ -103,7 +115,7 @@ export function useConversationPanel(conversationId: string | null | undefined, 
     } finally {
       setSaving(false)
     }
-  }, [conversationId, data, headers, load])
+  }, [conversationId, data, headers, load, threadConversationIds])
 
   return { data, loading, saving, reload: load, setAutoReply }
 }

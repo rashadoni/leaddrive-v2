@@ -1430,7 +1430,11 @@ export default function InboxV2Page() {
   // was removed by the press itself — never read that as «outside».
   const contactPanelVisible = contactPanelOpen && selectedConvo !== null
   // Read only while the card is open: a closed card costs the conversation nothing.
-  const conversationPanel = useConversationPanel(contactPanelVisible ? selectedConvo?.socialConversationId : null, headers)
+  const conversationPanel = useConversationPanel(
+    contactPanelVisible ? selectedConvo?.socialConversationId : null,
+    headers,
+    customerThread.conversationIds,
+  )
   useEffect(() => {
     if (!contactPanelVisible) return
     const onDown = (e: MouseEvent) => {

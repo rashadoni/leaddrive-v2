@@ -69,7 +69,15 @@ const conversation = (id: string, name: string, contactId: string | null, body: 
   messages: [{ id: `${id}-m1`, direction: "inbound", channelType: "instagram", from: name, to: "dukan", body, status: "received", createdAt: iso(-5) }],
 })
 const CONVERSATIONS = [
-  conversation("sc-anar", "Anar Məmmədov", "ct-anar", "Sabah gələrəm 😊"),
+  {
+    ...conversation("sc-anar", "Anar Məmmədov", "ct-anar", "Sabah gələrəm 😊"),
+    // One customer, one feed (#1650): his Instagram and his WhatsApp are one thread.
+    threadKey: "contact:ct-anar",
+    threadConversations: [
+      { key: "sc-anar:instagram", id: "sc-anar", platform: "instagram", channelConfigId: null, lastMessageAt: iso(0), lastInboundAt: iso(-5), messageCount: 1, unreadCount: 0 },
+      { key: "sc-anar-wa:whatsapp", id: "sc-anar-wa", platform: "whatsapp", channelConfigId: null, lastMessageAt: iso(-1490), lastInboundAt: iso(-1500), messageCount: 3, unreadCount: 0 },
+    ],
+  },
   conversation("sc-guest", "@qonaq", null, "Salam"),
 ]
 
@@ -203,15 +211,18 @@ describe("inbox customer panel", () => {
     expect(inPanel("inbox-panel-customer")!.textContent).toContain("+994503112400")
   })
 
-  it("switches the AI off for this conversation only, and says who did it", async () => {
+  it("switches the AI off for this customer's correspondence on all his channels, and says who did it", async () => {
     await openCard()
     const ai = () => inPanel("inbox-panel-action-ai")!
     expect(ai().getAttribute("aria-pressed")).toBe("true")
     expect(ai().textContent).toContain(panelCopy.aiStateOn)
 
     await press(ai())
-    const put = calls.find((call) => call.method === "PUT")
-    expect(put).toEqual({ url: "/api/v1/inbox/conversations/sc-anar/auto-reply", method: "PUT", body: { on: false } })
+    const puts = calls.filter((call) => call.method === "PUT").sort((a, b) => a.url.localeCompare(b.url))
+    expect(puts).toEqual([
+      { url: "/api/v1/inbox/conversations/sc-anar-wa/auto-reply", method: "PUT", body: { on: false } },
+      { url: "/api/v1/inbox/conversations/sc-anar/auto-reply", method: "PUT", body: { on: false } },
+    ])
     expect(ai().getAttribute("aria-pressed")).toBe("false")
     expect(ai().textContent).toContain(panelCopy.aiStateOff)
     expect(await readHint(ai())).toContain("Günel")
