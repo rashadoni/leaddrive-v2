@@ -2,21 +2,19 @@
 
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { Phone, Route } from "lucide-react"
-import { ChannelIcon, channelColor, channelLabel } from "@/lib/inbox-channels"
+import { Route } from "lucide-react"
+import { ChannelLogo } from "@/components/inbox/channel-logo"
+import { channelLabel } from "@/lib/inbox-channels"
 import { formatDate } from "@/lib/format-date"
 import { callStatusWord } from "@/lib/inbox/call-summary"
 import type { JourneyResult, JourneyStep } from "@/lib/inbox/customer-journey"
 import { cn } from "@/lib/utils"
 import { PanelCard } from "./panel-card"
 
+/** The channel's own mark, as the list beside it draws it (components/inbox/channel-logo). A call is a phone. */
 export function ChannelBadge({ channel, className }: { channel: string; className?: string }) {
   const call = channel === "voip" || channel === "whatsapp-call"
-  return (
-    <span className={cn("flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full", channelColor(call ? "voip" : channel), className)}>
-      {call ? <Phone className="h-3 w-3" /> : <ChannelIcon channel={channel} className="h-3 w-3" />}
-    </span>
-  )
+  return <ChannelLogo channel={call ? "voip" : channel} className={cn("h-[22px] w-[22px]", className)} />
 }
 
 const MEDIA_KINDS = new Set(["image", "audio", "video", "document", "sticker"])
