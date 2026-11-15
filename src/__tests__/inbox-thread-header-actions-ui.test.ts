@@ -62,8 +62,13 @@ import InboxV2Page from "@/app/(dashboard)/inbox/page"
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-/** Widths of the conversation column the real screen gives, measured in Chromium with the full CRM menu. */
-const COLUMN = { at1024: 156, at1280: 412, at1440: 572, at1920: 1052 }
+/**
+ * The room the real screen gives the header's name and actions, measured in
+ * Chromium with the full CRM menu. Below 976 px of inbox (1024 and 1280 here)
+ * the list steps aside and «Söhbətlər» takes 95 + 12 px of the row
+ * (inbox-list-beside-thread-ui.test.ts); at 1440 and 1920 the list stands beside.
+ */
+const COLUMN = { at1024: 370, at1280: 626, at1440: 572, at1920: 1052 }
 
 const now = new Date().toISOString()
 const conversation = (id: string, name: string, body: string, extra: Record<string, unknown> = {}) => ({
