@@ -173,10 +173,12 @@ function schemaWithoutEmbeddings(): string {
     if (createdRole) sql(adminUrl!, `DROP ROLE "${scratch!.role}"`)
   }, 60_000)
 
-  const inOrg = <T>(fn: () => Promise<T>) => rls.runWithTenant(ORG, fn)
+  // Typed wrappers: the RLS helpers return Promise<Awaited<T>>, which loses Prisma's row types here.
+  const inOrg = <T,>(fn: () => Promise<T>): Promise<T> => rls.runWithTenant(ORG, fn) as Promise<T>
+  const bypass = <T,>(fn: () => Promise<T>): Promise<T> => rls.runWithRlsBypass(fn) as Promise<T>
 
   it("keeps both tables under FORCE RLS with the standard tenant policy", async () => {
-    const tables = await rls.runWithRlsBypass(() => prisma.$queryRaw<Array<{ relname: string; enabled: boolean; forced: boolean }>>`
+    const tables = await bypass(() => prisma.$queryRaw<Array<{ relname: string; enabled: boolean; forced: boolean }>>`
       SELECT relname, relrowsecurity AS enabled, relforcerowsecurity AS forced FROM pg_class
        WHERE relname IN ('inbox_learned_items', 'inbox_learning_samples') ORDER BY relname`)
     expect(tables).toEqual([
@@ -186,7 +188,7 @@ function schemaWithoutEmbeddings(): string {
   })
 
   it("reads the people's answers in order, tries every second question, and sends nothing", async () => {
-    const before = await rls.runWithRlsBypass(() => prisma.channelMessage.count({ where: { organizationId: ORG } }))
+    const before = await bypass(() => prisma.channelMessage.count({ where: { organizationId: ORG } }))
     const summary = await learning.runInboxLearning({ now: NOW })
     expect(summary).toMatchObject({ channels: 1, drafts: 2, extracted: 1, character: 1, stopped: [] })
 
@@ -202,11 +204,11 @@ function schemaWithoutEmbeddings(): string {
     expect(samples.some((s) => s.answerMessageId === "m7")).toBe(false)
 
     // Nothing reached the customer, and the AI kept no chat session of its own.
-    expect(await rls.runWithRlsBypass(() => prisma.channelMessage.count({ where: { organizationId: ORG } }))).toBe(before)
-    expect(await rls.runWithRlsBypass(() => prisma.aiChatSession.count({ where: { organizationId: ORG } }))).toBe(0)
-    expect(await rls.runWithRlsBypass(() => prisma.aiChatMessage.count())).toBe(0)
+    expect(await bypass(() => prisma.channelMessage.count({ where: { organizationId: ORG } }))).toBe(before)
+    expect(await bypass(() => prisma.aiChatSession.count({ where: { organizationId: ORG } }))).toBe(0)
+    expect(await bypass(() => prisma.aiChatMessage.count())).toBe(0)
     // Each silent draft is logged as training, not as a reply, and its text is kept there.
-    const logs = await rls.runWithRlsBypass(() => prisma.aiInteractionLog.findMany({ where: { organizationId: ORG }, select: { id: true, agentType: true, aiResponse: true } }))
+    const logs = await bypass(() => prisma.aiInteractionLog.findMany({ where: { organizationId: ORG }, select: { id: true, agentType: true, aiResponse: true } }))
     expect(logs.map((l) => l.agentType)).toEqual(["inbox_learning", "inbox_learning"])
     expect(logs.find((l) => l.id === samples[0].draftLogId)?.aiResponse).not.toContain("20 ₼")
 
@@ -244,7 +246,7 @@ function schemaWithoutEmbeddings(): string {
     expect((await inOrg(() => blocks.learnedPromptBlocks({ organizationId: ORG, channelConfigId: CHANNEL }))).knowledge).not.toContain("Низами")
 
     // The same conversation read again does not bring it back.
-    await rls.runWithRlsBypass(() => prisma.inboxLearningSample.updateMany({ where: { organizationId: ORG }, data: { extractedAt: null } }))
+    await bypass(() => prisma.inboxLearningSample.updateMany({ where: { organizationId: ORG }, data: { extractedAt: null } }))
     await learning.runInboxLearning({ now: NOW })
     const rows = await inOrg(() => prisma.inboxLearnedItem.findMany({ where: { title: "Адрес" } }))
     expect(rows).toHaveLength(1)

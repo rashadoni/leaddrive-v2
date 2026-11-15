@@ -153,9 +153,9 @@ export async function channelLearningDetail(organizationId: string, channelConfi
       distinct: ["conversationId"],
     }),
   ])
-  const byId = new Map(messages.map((m: { id: string; body: string }) => [m.id, m]))
-  const logById = new Map(logs.map((l: { id: string; aiResponse: string }) => [l.id, l.aiResponse]))
-  const nameOf = new Map(conversations.map((c: { id: string; contactName: string }) => [c.id, c.contactName]))
+  const byId = new Map(messages.map((m: { id: string; body: string; createdAt: Date }) => [m.id, m] as const))
+  const logById = new Map(logs.map((l: { id: string; aiResponse: string }) => [l.id, l.aiResponse] as const))
+  const nameOf = new Map(conversations.map((c: { id: string; contactName: string }) => [c.id, c.contactName] as const))
 
   // The person's whole answer may run over several messages; read the thread around each.
   const differences: DifferenceView[] = []
@@ -183,11 +183,11 @@ export async function channelLearningDetail(organizationId: string, channelConfi
     })
   }
 
-  const sourceNames = new Map(
+  const sourceNames = new Map<string, string>(
     (await prisma.socialConversation.findMany({
       where: { organizationId, id: { in: [...new Set(rows.map((r: { sourceConversationId: string | null }) => r.sourceConversationId).filter(Boolean) as string[])] } },
       select: { id: true, contactName: true },
-    })).map((c: { id: string; contactName: string }) => [c.id, c.contactName]),
+    })).map((c: { id: string; contactName: string }): [string, string] => [c.id, c.contactName]),
   )
   return {
     channel: summary,
@@ -388,7 +388,7 @@ export async function conversationLearning(organizationId: string, conversationI
     .filter((s: { verdict: string; resolution: string | null; draftLogId: string | null }) => effectiveVerdict(s) !== "same" && s.draftLogId)
     .map((s: { draftLogId: string | null }) => s.draftLogId as string)
   const logs = await prisma.aiInteractionLog.findMany({ where: { organizationId, id: { in: draftIds } }, select: { id: true, aiResponse: true } })
-  const logById = new Map(logs.map((l: { id: string; aiResponse: string }) => [l.id, l.aiResponse]))
+  const logById = new Map(logs.map((l: { id: string; aiResponse: string }) => [l.id, l.aiResponse] as const))
   const answers: ConversationLearning["answers"] = {}
   for (const s of samples) {
     const verdict = effectiveVerdict(s)
