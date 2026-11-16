@@ -34,7 +34,7 @@ export type HistoryImportView = {
   canRetry: boolean
   requests: { contacts: SyncRequestRecord | null; history: SyncRequestRecord | null }
   contacts: { received: number; created: number; matched: number; overPlanLimit: number; pending: number }
-  /** The real files Meta sends after the history, for the last two weeks only. */
+  /** The real files of the last two weeks, which Meta sends interleaved with the history; a chunk whose messages are still to come waits (`pending`). */
   media: { received: number; stored: number; pending: number }
   history: {
     /** Meta's own figure, 0–100; 100 means it has sent everything. */

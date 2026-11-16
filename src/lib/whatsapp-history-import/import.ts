@@ -57,6 +57,13 @@ const MAX_ATTEMPTS = 5
 /** Long enough for a chunk of thousands of messages; a crashed run is taken over after it. */
 const LEASE_MS = 5 * 60_000
 const INSERT_BATCH = 400
+/**
+ * How long a media chunk waits for the history it belongs to. Meta sends the files of the last two
+ * weeks interleaved with the history, not after it: on 16.11.2026 127 files arrived while the history
+ * stood at 36 %, and a file whose message was not in the inbox yet was dropped for good — 31 of 127
+ * kept. The history finishes within minutes; past this the chunk is settled with what it can.
+ */
+const MEDIA_WAIT_MS = 60 * 60_000
 
 const KIND_ORDER: Record<string, number> = { contacts: 0, history: 1, media: 2 }
 
@@ -123,17 +130,42 @@ type ClaimedChunk = {
   kind: string
   payload: Prisma.JsonValue | null
   attempts: number
+  receivedAt: Date
+}
+
+/**
+ * Meta has sent the whole history and all of it is in the inbox: its last chunk (progress 100, or a
+ * refusal to share it) is here and no history chunk is still waiting to be imported.
+ */
+async function historyFinished(channel: HistoryChannel): Promise<boolean> {
+  const scope = { organizationId: channel.organizationId, channelConfigId: channel.id, kind: "history" }
+  const last = await prisma.whatsAppHistoryChunk.findFirst({
+    where: { ...scope, OR: [{ progress: 100 }, { errorCode: { not: null } }] },
+    select: { id: true },
+  })
+  if (!last) return false
+  const open = await prisma.whatsAppHistoryChunk.count({
+    where: { ...scope, status: { in: ["pending", "processing"] }, attempts: { lt: MAX_ATTEMPTS } },
+  })
+  return open === 0
 }
 
 type ChunkCandidate = { id: string; kind: string; phase: number | null; chunkOrder: number | null; status: string; leaseUntil: Date | null; receivedAt: Date }
 
 async function claimNext(channel: HistoryChannel, now: Date): Promise<ClaimedChunk | null> {
+  // A pending chunk with a lease in the future is a media chunk waiting for its history; the end of
+  // the history lets it in early.
+  const finished = await historyFinished(channel)
   const candidates: ChunkCandidate[] = await prisma.whatsAppHistoryChunk.findMany({
     where: {
       organizationId: channel.organizationId,
       channelConfigId: channel.id,
       attempts: { lt: MAX_ATTEMPTS },
-      OR: [{ status: "pending" }, { status: "processing", leaseUntil: { lt: now } }],
+      OR: [
+        { status: "pending", OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }] },
+        { status: "processing", leaseUntil: { lt: now } },
+        ...(finished ? [{ status: "pending", kind: "media" }] : []),
+      ],
     },
     select: { id: true, kind: true, phase: true, chunkOrder: true, status: true, leaseUntil: true, receivedAt: true },
     take: 500,
@@ -158,7 +190,7 @@ async function claimNext(channel: HistoryChannel, now: Date): Promise<ClaimedChu
     if (taken.count !== 1) continue
     const row = await prisma.whatsAppHistoryChunk.findFirst({
       where: { id: candidate.id, organizationId: channel.organizationId },
-      select: { id: true, kind: true, payload: true, attempts: true },
+      select: { id: true, kind: true, payload: true, attempts: true, receivedAt: true },
     })
     if (row) return row
   }
@@ -182,11 +214,31 @@ export async function processHistoryChunks(channel: HistoryChannel, opts: { budg
     if (!chunk) return { processed, failed, remaining: false }
     try {
       const payload = rec(chunk.payload)
-      const result = chunk.kind === "contacts"
+      let result = chunk.kind === "contacts"
         ? await importAddressBook(channel, payload, clock())
         : chunk.kind === "media"
           ? await importMedia(channel, payload)
           : await importHistory(channel, payload, clock())
+      // Files whose messages are not in the inbox yet: they come with a later history chunk.
+      if (chunk.kind === "media" && "notFound" in result && result.notFound > 0) {
+        if (await historyFinished(channel)) {
+          // The history may have landed while this chunk was being read — one more pass finds it.
+          result = await importMedia(channel, payload)
+        } else if (clock().getTime() - chunk.receivedAt.getTime() < MEDIA_WAIT_MS) {
+          // Wait, payload kept, without counting against the attempts the claim took.
+          await prisma.whatsAppHistoryChunk.updateMany({
+            where: { id: chunk.id, organizationId: channel.organizationId },
+            data: {
+              status: "pending",
+              leaseUntil: new Date(chunk.receivedAt.getTime() + MEDIA_WAIT_MS),
+              attempts: { decrement: 1 },
+              result: result as Prisma.InputJsonValue,
+              lastError: null,
+            },
+          })
+          continue
+        }
+      }
       await prisma.whatsAppHistoryChunk.updateMany({
         where: { id: chunk.id, organizationId: channel.organizationId },
         // The copy of the chats is not kept once they are in the inbox: the row stays as the record.
@@ -505,7 +557,11 @@ async function importMedia(channel: HistoryChannel, payload: Rec) {
       out.notFound += 1
       continue
     }
-    if (row.mediaUrl) continue
+    // Stored by an earlier pass of this same chunk (it waited for its history): counted, not fetched again.
+    if (row.mediaUrl) {
+      out.stored += 1
+      continue
+    }
     const stored = item.mediaId && token ? await fetchAndStoreWaMedia(item.mediaId, token, organizationId) : null
     const described = describeWaMessage({ type: item.type, [item.type]: { caption: item.caption } } as WaMessageTextPayload)
     await prisma.channelMessage.updateMany({

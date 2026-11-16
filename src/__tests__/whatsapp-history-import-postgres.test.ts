@@ -56,6 +56,20 @@ const scratch = vi.hoisted(() => {
   return { name, role, adminDb: db.toString() }
 })
 
+// The files of the last two weeks: no network here, so the fetch is the one thing stubbed — and
+// recorded, to prove a file is fetched once.
+const media = vi.hoisted(() => ({ fetched: [] as string[] }))
+vi.mock("@/lib/whatsapp-media", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/whatsapp-media")>()
+  return {
+    ...actual,
+    fetchAndStoreWaMedia: vi.fn(async (mediaId: string) => {
+      media.fetched.push(mediaId)
+      return { url: `/uploads/inbox/test/${mediaId}.jpg`, mime: "image/jpeg", bytes: Buffer.from("jpeg") }
+    }),
+  }
+})
+
 const ROOT = process.cwd()
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
 const MIGRATION = path.join(ROOT, "prisma/migrations/20261220090000_whatsapp_history_import/migration.sql")
@@ -432,6 +446,84 @@ const DECLINED = envelope("history", {
     await deliver(DECLINED)
     const view = await tenant(() => status.historyImportStatus(ORG, CHANNEL))
     expect(view).toMatchObject({ state: "declined", history: { declined: true } })
+  })
+
+  // Meta sends the files of the last two weeks interleaved with the history, not after it: on
+  // 16.11.2026 127 files came while the history stood at 36 %, and every file whose message was not in
+  // the inbox yet was dropped for good — 31 of 127 kept. Another number of the same organization here,
+  // so this history is its own.
+  const filesNumber = (channelId: string, phoneNumberId: string, waba: string) => {
+    const send = (field: string, value: Record<string, unknown>) => ({
+      object: "whatsapp_business_account",
+      entry: [{ id: waba, changes: [{ field, value: { messaging_product: "whatsapp", metadata: { display_phone_number: "+994 50 000 00 01", phone_number_id: phoneNumberId }, ...value } }] }],
+    })
+    const create = () => rls.runWithRlsBypass(() => prisma.channelConfig.create({
+      data: {
+        id: channelId, organizationId: ORG, channelType: "whatsapp", configName: channelId, isActive: true,
+        phoneNumberId, accessToken: "token-not-used", businessAccountId: waba,
+        settings: { embeddedSignup: true, coexistence: true, displayPhoneNumber: "+994 50 000 00 01", onboardedAt: ago(2 * MIN).toISOString() },
+      },
+    }))
+    type MediaChunk = { status: string; payload: unknown; result: unknown; attempts: number; leaseUntil: Date | null }
+    const chunk = (): Promise<MediaChunk> => tenant<MediaChunk>(() => prisma.whatsAppHistoryChunk.findFirstOrThrow({
+      where: { channelConfigId: channelId, kind: "media" },
+      select: { status: true, payload: true, result: true, attempts: true, leaseUntil: true },
+    }))
+    return { send, create, chunk }
+  }
+  const NAZ = "994507776655"
+  const placeholder = (id: string, at: Date) => ({ from: NAZ, from_user_id: `AZ.${NAZ}`, id, timestamp: unix(at), type: "media_placeholder" })
+  const photo = (id: string, at: Date, mediaId: string, caption?: string) =>
+    ({ from: NAZ, id, timestamp: unix(at), type: "image", image: { id: mediaId, mime_type: "image/jpeg", ...(caption ? { caption } : {}) } })
+
+  it("keeps a file whose message has not come yet until the history brings it", async () => {
+    const number = filesNumber("cfg-wa-files", "209876543210988", "waba-files")
+    await number.create()
+    const thread = (messages: unknown[], progress: number, phase: number) =>
+      number.send("history", { history: [{ metadata: { phase, chunk_order: 1, progress }, threads: [{ id: NAZ, context: { wa_id: NAZ }, messages }] }] })
+    media.fetched.length = 0
+
+    // The first part of the history, then the files — one of them for a message still to come.
+    await deliver(thread([placeholder("wamid.F1", ago(10 * DAY))], 40, 1))
+    await deliver(number.send("history", { messages: [photo("wamid.F1", ago(10 * DAY), "media-f1"), photo("wamid.F2", ago(2 * HOUR), "media-f2", "Bu rəng var?")] }))
+
+    // The one whose message is here is kept at once; the other waits, the chunk and its files kept.
+    let chunk = await number.chunk()
+    expect(chunk).toMatchObject({ status: "pending", attempts: 0, result: { media: 2, stored: 1, notFound: 1 } })
+    expect(chunk.payload).not.toBeNull()
+    expect(chunk.leaseUntil!.getTime()).toBeGreaterThan(Date.now())
+    expect(media.fetched).toEqual(["media-f1"])
+    const waiting = await tenant(() => status.historyImportStatus(ORG, "cfg-wa-files"))
+    expect(waiting).toMatchObject({ state: "importing", media: { received: 2, stored: 1, pending: 2 } })
+
+    // The rest of the history brings the message — and its file is fetched, the first one not again.
+    await deliver(thread([placeholder("wamid.F2", ago(2 * HOUR))], 100, 0))
+    chunk = await number.chunk()
+    expect(chunk).toMatchObject({ status: "done", payload: null, result: { media: 2, stored: 2, notFound: 0, failed: 0 } })
+    expect(media.fetched).toEqual(["media-f1", "media-f2"])
+    const rows: Array<{ externalId: string | null; messageType: string; mediaUrl: string | null; body: string }> = await tenant(() =>
+      prisma.channelMessage.findMany({ where: { channelConfigId: "cfg-wa-files" }, orderBy: { externalId: "asc" }, select: { externalId: true, messageType: true, mediaUrl: true, body: true } }))
+    expect(rows).toEqual([
+      { externalId: "wamid.F1", messageType: "image", mediaUrl: "/uploads/inbox/test/media-f1.jpg", body: "[Изображение]" },
+      { externalId: "wamid.F2", messageType: "image", mediaUrl: "/uploads/inbox/test/media-f2.jpg", body: "Bu rəng var?" },
+    ])
+    const done = await tenant(() => status.historyImportStatus(ORG, "cfg-wa-files"))
+    expect(done).toMatchObject({ state: "done", media: { received: 2, stored: 2, pending: 0 } })
+  })
+
+  it("settles files whose history never finishes after the wait, and leaves nothing waiting for ever", async () => {
+    const number = filesNumber("cfg-wa-files-stuck", "209876543210989", "waba-files-stuck")
+    await number.create()
+    media.fetched.length = 0
+    await deliver(number.send("history", { messages: [photo("wamid.S1", ago(DAY), "media-s1")] }))
+    expect(await number.chunk()).toMatchObject({ status: "pending", result: { notFound: 1 } })
+
+    // An hour on, with no history after it: the chunk is settled with what it has — nothing to keep.
+    const { processHistoryChunks } = await import("@/lib/whatsapp-history-import/import")
+    const later = new Date(Date.now() + 2 * HOUR)
+    await tenant(() => processHistoryChunks({ id: "cfg-wa-files-stuck", organizationId: ORG }, { now: () => later }))
+    expect(await number.chunk()).toMatchObject({ status: "done", payload: null, result: { media: 1, stored: 0, notFound: 1 } })
+    expect(media.fetched).toEqual([])
   })
 
   it("shows another organization none of it", async () => {
