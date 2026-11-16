@@ -28802,6 +28802,8 @@
     "contactPanelClose": "Müştəri kartını bağla",
     "contactPanelHint": "Klikləyin — sağda müştəri kartı açılacaq. Başqa yerə klikləmək və ya Esc onu bağlayır.",
     "contactPanelHintOpen": "Yenidən klikləyin, başqa yerə klikləyin və ya Esc basın — kart bağlanacaq.",
+    "contactPanelHintColumn": "Klikləyin — müştəri kartı gizlənəcək, söhbət genişlənəcək.",
+    "contactPanelHintColumnHidden": "Klikləyin — müştəri kartı yenidən sağda görünəcək.",
     "contactPanelLabel": "Müştəri kartı",
     "backToConversations": "Söhbətlər",
     "backToConversationsHint": "Söhbətlərin siyahısına qayıdın",

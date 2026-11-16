@@ -87,7 +87,7 @@ import { useConversationPanel } from "@/components/inbox/customer-panel/use-conv
 import { ConversationLearningBanner, LearningAnswerMark, useConversationLearning } from "@/components/inbox-learning/conversation-learning"
 import { placeholderPreview, placeholderView, voiceTranscript } from "@/lib/inbox/media-placeholder"
 import { threadHeaderActionInline, threadHeaderTier, type ThreadHeaderAction } from "@/lib/inbox/thread-header-layout"
-import { inboxListBesideThread, inboxRailFolded } from "@/lib/inbox/inbox-columns"
+import { inboxListBesideThread, inboxPanelBesideThread, inboxRailFolded } from "@/lib/inbox/inbox-columns"
 import { importChipLabel, WhatsAppImportBanner, WhatsAppImportPanel } from "@/components/inbox/whatsapp-import-screen"
 import { convMatchesAssignee, inboxAssigneeOptions, type InboxAssigneeHolder, type InboxAssigneeOption } from "@/lib/inbox/assignee-filter"
 import {
@@ -669,10 +669,14 @@ export default function InboxV2Page() {
   const [railOpen, setRailOpen] = useState(false)
   const railRef = useRef<HTMLElement>(null)
   const railToggleRef = useRef<HTMLButtonElement>(null)
-  // The customer card on the right is closed until the person opens it from the
-  // avatar in the thread header (owner, 2026-11-15: it stood open for good and
-  // squeezed the conversation). It closes on any press outside it or Escape.
+  // The customer card on the right. Where the inbox has room for a fourth column
+  // (inbox-columns.ts) it stands open beside the conversation, as the mock-up
+  // draws it (owner, 2026-11-16), and the avatar hides it and brings it back —
+  // that choice holds from one conversation to the next. Narrower, it is closed
+  // until the avatar opens it over the conversation (owner, 2026-11-15: open for
+  // good it squeezed the conversation), and any press outside it or Escape closes it.
   const [contactPanelOpen, setContactPanelOpen] = useState(false)
+  const [contactPanelHidden, setContactPanelHidden] = useState(false)
   const contactPanelRef = useRef<HTMLElement>(null)
   const contactPanelToggleRef = useRef<HTMLButtonElement>(null)
   const selectedContactIdRef = useRef<string | null>(null)
@@ -1390,6 +1394,13 @@ export default function InboxV2Page() {
   }, [inboxRootEl])
   const listBesideThread = inboxListBesideThread(inboxWidth)
   const railFolded = inboxRailFolded(inboxWidth)
+  const contactPanelBeside = inboxPanelBesideThread(inboxWidth)
+
+  // A card opened over the conversation is not left open for when the window
+  // narrows again past the column: there it would cover the conversation.
+  useEffect(() => {
+    if (contactPanelBeside) setContactPanelOpen(false)
+  }, [contactPanelBeside])
   const railDrawerOpen = railFolded && railOpen
 
   // A rail that stands again (the window grew) is not left open for the next phone width.
@@ -1470,22 +1481,23 @@ export default function InboxV2Page() {
     return () => window.removeEventListener("resize", fitReplyBox)
   }, [fitReplyBox])
 
-  // The customer card: a press anywhere outside it closes it, and so does Escape.
-  // Inside means the card itself, the avatar that toggles it (its own click does
+  // The customer card over the conversation: a press anywhere outside it closes
+  // it, and so does Escape. The column beside it stays put. Inside means the card itself, the avatar that toggles it (its own click does
   // that), and a dialog or popover: the lead handoff dialog is opened from the
   // card but renders beside it, and a press there must not take the card away.
   // A dialog swallows its own Escape in the capture phase, so Escape there
   // closes the dialog and leaves the card. A target already gone from the page
   // was removed by the press itself — never read that as «outside».
-  const contactPanelVisible = contactPanelOpen && selectedConvo !== null
+  const contactPanelVisible = selectedConvo !== null && (contactPanelBeside ? !contactPanelHidden : contactPanelOpen)
   // Read only while the card is open: a closed card costs the conversation nothing.
   const conversationPanel = useConversationPanel(
     contactPanelVisible ? selectedConvo?.socialConversationId : null,
     headers,
     customerThread.conversationIds,
   )
+  const contactPanelOverlay = contactPanelVisible && !contactPanelBeside
   useEffect(() => {
-    if (!contactPanelVisible) return
+    if (!contactPanelOverlay) return
     const onDown = (e: MouseEvent) => {
       const target = e.target
       if (!(target instanceof Element) || !target.isConnected) return
@@ -1500,7 +1512,7 @@ export default function InboxV2Page() {
       document.removeEventListener("mousedown", onDown)
       document.removeEventListener("keydown", onKey)
     }
-  }, [contactPanelVisible])
+  }, [contactPanelOverlay])
 
   // Phase 3 — load the selected conversation's contact tags (contact-level).
   // `selectedContactIdRef` + the `ignore` flag guard against a stale write when
@@ -2801,11 +2813,17 @@ export default function InboxV2Page() {
                   </Hint>
                 )}
                 {/* The avatar opens the customer card; the line under the name says so in words. */}
-                <Hint text={contactPanelVisible ? t("contactPanelHintOpen") : t("contactPanelHint")} side="bottom" align="start">
+                <Hint
+                  text={contactPanelBeside
+                    ? (contactPanelVisible ? t("contactPanelHintColumn") : t("contactPanelHintColumnHidden"))
+                    : (contactPanelVisible ? t("contactPanelHintOpen") : t("contactPanelHint"))}
+                  side="bottom"
+                  align="start"
+                >
                 <button
                   ref={contactPanelToggleRef}
                   type="button"
-                  onClick={() => setContactPanelOpen((open) => !open)}
+                  onClick={() => (contactPanelBeside ? setContactPanelHidden((hidden) => !hidden) : setContactPanelOpen((open) => !open))}
                   aria-expanded={contactPanelVisible}
                   aria-controls="inbox-contact-panel"
                   data-testid="inbox-contact-panel-toggle"
@@ -3974,15 +3992,22 @@ export default function InboxV2Page() {
       </section>
 
       {/* ─────────── ZONE 4 · Customer context panel ───────────
-          Closed by default; the avatar in the thread header opens it over the
-          right edge of the conversation, so the thread keeps its full width. */}
+          A column beside the conversation where the inbox has room for it
+          (inbox-columns.ts); narrower, closed by default, and the avatar in the
+          thread header opens it over the right edge of the conversation. */}
       {contactPanelVisible && selectedConvo && (
       <aside
         ref={contactPanelRef}
         id="inbox-contact-panel"
         aria-label={t("contactPanelLabel")}
         data-testid="inbox-contact-panel"
-        className="absolute inset-y-0 right-0 z-30 flex w-72 max-w-[calc(100%-2.5rem)] flex-col border-l border-border/60 bg-card shadow-2xl"
+        data-panel-mode={contactPanelBeside ? "column" : "overlay"}
+        className={cn(
+          "flex w-72 flex-col bg-card",
+          contactPanelBeside
+            ? "shrink-0"
+            : "absolute inset-y-0 right-0 z-30 max-w-[calc(100%-2.5rem)] border-l border-border/60 shadow-2xl",
+        )}
       >
           <div className="flex-1 space-y-2.5 overflow-y-auto bg-muted/30 p-3" data-testid="inbox-customer-panel-cards">
             {(() => {

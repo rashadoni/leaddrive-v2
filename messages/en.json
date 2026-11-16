@@ -28806,6 +28806,8 @@
     "contactPanelClose": "Close customer card",
     "contactPanelHint": "Click to open the customer card on the right. Clicking anywhere else or pressing Esc closes it.",
     "contactPanelHintOpen": "Click again, click anywhere else or press Esc to close the card.",
+    "contactPanelHintColumn": "Click to hide the customer card; the conversation gets its width.",
+    "contactPanelHintColumnHidden": "Click to show the customer card on the right again.",
     "contactPanelLabel": "Customer card",
     "backToConversations": "Conversations",
     "backToConversationsHint": "Back to the conversation list",

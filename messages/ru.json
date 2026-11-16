@@ -28806,6 +28806,8 @@
     "contactPanelClose": "Закрыть карточку клиента",
     "contactPanelHint": "Нажмите — справа откроется карточка клиента. Нажатие в другом месте или Esc её закроет.",
     "contactPanelHintOpen": "Нажмите ещё раз, в любом другом месте или Esc — карточка закроется.",
+    "contactPanelHintColumn": "Нажмите — карточка клиента уберётся, разговор станет шире.",
+    "contactPanelHintColumnHidden": "Нажмите — справа снова встанет карточка клиента.",
     "contactPanelLabel": "Карточка клиента",
     "backToConversations": "Диалоги",
     "backToConversationsHint": "Вернуться к списку диалогов",

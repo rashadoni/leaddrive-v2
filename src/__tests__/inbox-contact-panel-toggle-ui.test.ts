@@ -9,12 +9,20 @@
  * reads and the network stubbed: the card is closed until the avatar in the
  * thread header opens it; a press anywhere else or Escape closes it; presses
  * inside the card, and inside the lead dialog opened from it, do not.
+ *
+ * Where the inbox has room for a fourth column (owner, 2026-11-16, «Да, делай»
+ * to the card standing beside the conversation as in the mock-up), the card
+ * stands open by itself, presses elsewhere leave it, and the avatar hides it.
+ * jsdom has no layout, so the inbox is told the width Chromium gives it: a
+ * 1440 px window with the full CRM menu is 1120 px of inbox (as in
+ * inbox-list-beside-thread-ui.test.ts).
  */
 import { act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { readFileSync } from "node:fs"
 import { readHint } from "./helpers/hint"
+import { INBOX_PANEL_BESIDE_THREAD_MIN_PX, inboxListBesideThread } from "@/lib/inbox/inbox-columns"
 
 type Messages = { [key: string]: string | Messages }
 const az = JSON.parse(readFileSync("messages/az.json", "utf8")) as Messages
@@ -74,11 +82,32 @@ const CONVERSATIONS = [
 
 let container: HTMLDivElement
 let root: Root
+/** The inbox's width as the page measures it; 1120 px is a 1440 px window with the full CRM menu. */
+const width = { inbox: 1120 }
+let observed: Array<{ target: Element; report: () => void }> = []
 
 const json = (data: unknown) => new Response(JSON.stringify({ success: true, data }), { headers: { "content-type": "application/json" } })
 
 beforeEach(() => {
   Element.prototype.scrollIntoView = () => {}
+  width.inbox = 1120
+  observed = []
+  const original = Element.prototype.getBoundingClientRect
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+    if (this.getAttribute("data-testid") !== "inbox-root") return original.call(this)
+    const w = width.inbox
+    return { width: w, height: 600, top: 0, left: 0, right: w, bottom: 600, x: 0, y: 0, toJSON() {} } as DOMRect
+  })
+  vi.stubGlobal("ResizeObserver", class {
+    private targets: Element[] = []
+    constructor(private readonly callback: () => void) {}
+    observe(target: Element) {
+      this.targets.push(target)
+      observed.push({ target, report: () => this.callback() })
+    }
+    unobserve() {}
+    disconnect() { observed = observed.filter((o) => !this.targets.includes(o.target)) }
+  })
   // The thread opens the way a link from analytics opens it.
   window.history.replaceState(null, "", "/inbox?conversation=sc-mirvari")
   vi.stubGlobal("fetch", vi.fn(async (input: string) => {
@@ -98,6 +127,7 @@ afterEach(() => {
   act(() => root.unmount())
   container.remove()
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
   window.history.replaceState(null, "", "/")
 })
 
@@ -133,6 +163,15 @@ const panel = () => container.querySelector<HTMLElement>('[data-testid="inbox-co
 const byText = (text: string, scope: ParentNode = container) =>
   [...scope.querySelectorAll<HTMLElement>("*")].find((el) =>
     el.textContent?.trim() === text && ![...el.children].some((child) => child.textContent?.trim() === text)) ?? null
+
+/** The window resized: the inbox reports its new width the way ResizeObserver does. */
+async function resizeInbox(inbox: number) {
+  width.inbox = inbox
+  await act(async () => {
+    for (const o of observed) if (o.target.getAttribute("data-testid") === "inbox-root") o.report()
+  })
+  await flush()
+}
 
 async function openCard() {
   await press(toggle()!)
@@ -209,5 +248,86 @@ describe("inbox customer card — opened from the avatar, closed by a press else
 
     await escape()
     expect(panel()).toBeNull()
+  })
+})
+
+describe("inbox customer card — a column beside the conversation where the inbox has room", () => {
+  // A 1585 px window with the full CRM menu (~1393 px with the menu collapsed).
+  const WIDE = 1265
+
+  it("starts at the width where the conversation keeps 428 px beside the rail, the list and the card", () => {
+    expect(INBOX_PANEL_BESIDE_THREAD_MIN_PX).toBe(WIDE)
+    expect(WIDE - (2 + 224 + 320 + 288 + 3), "the conversation's share at that width").toBe(428)
+    expect(inboxListBesideThread(WIDE), "the list stands beside it too").toBe(true)
+  })
+
+  it("stands open without a click, and the avatar says in words that it hides it", async () => {
+    width.inbox = WIDE
+    await renderInbox()
+    expect(panel(), "the card stands without a click").not.toBeNull()
+    expect(panel()!.getAttribute("data-panel-mode")).toBe("column")
+    expect(panel()!.className, "a column, not a sheet over the conversation").not.toContain("absolute")
+    expect(panel()!.textContent).toContain("@mirvari.decor")
+    expect(toggle()!.getAttribute("aria-expanded")).toBe("true")
+    expect(toggle()!.textContent).toContain(copy.contactPanelClose)
+    expect(await readHint(toggle())).toBe(copy.contactPanelHintColumn)
+  })
+
+  it("stays for presses in the conversation and Escape, and follows to another conversation", async () => {
+    width.inbox = WIDE
+    await renderInbox()
+    await press(byText("Nişan dekoru neçəyədir?")!)
+    expect(panel(), "a press on the messages leaves the column").not.toBeNull()
+    await escape()
+    expect(panel(), "Escape leaves the column").not.toBeNull()
+
+    await press(byText("@parviz.aliyev")!)
+    expect(toggle()!.textContent, "the other conversation is open").toContain("@parviz.aliyev")
+    expect(panel(), "and the card stands for it").not.toBeNull()
+    expect(panel()!.textContent).toContain("@parviz.aliyev")
+  })
+
+  it("hides on the avatar, stays hidden for the next conversation, and comes back on the avatar", async () => {
+    width.inbox = WIDE
+    await renderInbox()
+    await press(toggle()!)
+    expect(panel(), "the avatar hid the card").toBeNull()
+    expect(toggle()!.getAttribute("aria-expanded")).toBe("false")
+    expect(toggle()!.textContent).toContain(copy.contactPanelOpen)
+    expect(await readHint(toggle())).toBe(copy.contactPanelHintColumnHidden)
+
+    await press(byText("@parviz.aliyev")!)
+    expect(toggle()!.textContent).toContain("@parviz.aliyev")
+    expect(panel(), "the person's choice holds for the next conversation").toBeNull()
+
+    await press(toggle()!)
+    expect(panel(), "the avatar brought it back").not.toBeNull()
+    expect(panel()!.getAttribute("data-panel-mode")).toBe("column")
+  })
+
+  it("one pixel narrower is the card over the conversation, closed until the avatar opens it", async () => {
+    width.inbox = WIDE - 1
+    await renderInbox()
+    expect(panel()).toBeNull()
+    expect(await readHint(toggle())).toBe(copy.contactPanelHint)
+    await openCard()
+    expect(panel()!.getAttribute("data-panel-mode")).toBe("overlay")
+    expect(panel()!.className).toContain("absolute")
+  })
+
+  it("goes when the window narrows past it instead of covering the conversation, and stands again when it widens", async () => {
+    width.inbox = WIDE
+    await renderInbox()
+    expect(panel()!.getAttribute("data-panel-mode")).toBe("column")
+
+    await resizeInbox(1120)
+    expect(panel(), "narrower, the card does not open over the conversation by itself").toBeNull()
+
+    await openCard()
+    await resizeInbox(WIDE)
+    expect(panel()!.getAttribute("data-panel-mode"), "wider again, the column").toBe("column")
+
+    await resizeInbox(1120)
+    expect(panel(), "the card opened over the conversation earlier is not opened again").toBeNull()
   })
 })
