@@ -18,6 +18,7 @@ import { whatsappThreadReplyBinding } from "@/lib/inbox/whatsapp-reply-channel"
 import { attachInboxChannelAccounts, channelAccountOf, INBOX_ACCOUNT_CHANNEL_TYPES, type InboxChannelAccount } from "@/lib/inbox/conversation-channel"
 import { channelVisible, conversationAccessDenial, hiddenChannelIdsFor, visibleChannelWhere } from "@/lib/inbox/channel-access"
 import { loadQuietThreads, type QuietThreadScope } from "@/lib/inbox/assignee-conversations"
+import { NOT_HANDED_OVER_MESSAGE_TYPES } from "@/lib/whatsapp-message-text"
 
 export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
   const { orgId } = auth
@@ -271,6 +272,8 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
           lastMessage: msg.body?.slice(0, 100) || "",
           lastMessageAt: msg.createdAt,
           lastDirection: msg.direction,
+          // The newest message came with the WhatsApp Business app's history — not one that waits for us.
+          lastFromHistory: Boolean(msg.historyImportedAt),
           lastChannel: msg.channelType || "email",
           unreadCount: 0,
           messageCount: 0,
@@ -303,6 +306,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
         threads[key].lastMessage = msg.body?.slice(0, 100) || ""
         threads[key].lastMessageAt = msg.createdAt
         threads[key].lastDirection = msg.direction
+        threads[key].lastFromHistory = Boolean(msg.historyImportedAt)
         threads[key].lastChannel = msg.channelType || "email"
       }
     }
@@ -928,6 +932,30 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
         // Additive: without these rows the list is what it was, never a failed inbox.
         console.error("[inbox GET quiet conversations]", e)
       }
+    }
+
+    // A conversation the WhatsApp history import made that holds nothing but what WhatsApp did not hand
+    // over («Kanalın ötürmədiyi mesaj» — calls, polls, view-once photos) is not shown: on 16.11.2026 that
+    // was half of the 348 imported, a list of rows that say nothing (owner: «Да, убери»). One real
+    // message in it — imported or live — and it is a conversation again. Opening the customer still
+    // reads all of it; the address book keeps the contact.
+    try {
+      type ImportedRow = { historyImport?: boolean; socialConversationId?: string | null; threadConversations?: unknown[] }
+      const importedIds = [...new Set((conversations as ImportedRow[])
+        .filter((c) => c.historyImport && c.socialConversationId)
+        .map((c) => c.socialConversationId as string))]
+      if (importedIds.length > 0) {
+        const readable: Array<{ conversationId: string | null }> = await prisma.channelMessage.groupBy({
+          by: ["conversationId"],
+          where: { organizationId: orgId, conversationId: { in: importedIds }, messageType: { notIn: NOT_HANDED_OVER_MESSAGE_TYPES } },
+        })
+        const withWords = new Set(readable.map((row) => row.conversationId))
+        conversations = conversations.filter((c: ImportedRow) =>
+          !(c.historyImport && c.socialConversationId && !withWords.has(c.socialConversationId) && (c.threadConversations?.length ?? 0) <= 1))
+      }
+    } catch (e) {
+      // Additive: without it the list shows those rows too, never a failed inbox.
+      console.error("[inbox GET imported without words]", e)
     }
 
     // E4.2 — bridge VoIP call logs into the inbox payload so the thread can render

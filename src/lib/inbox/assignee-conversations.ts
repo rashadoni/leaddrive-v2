@@ -190,6 +190,8 @@ export type AssigneeQuietThread = {
   lastMessage: string
   lastMessageAt: Date
   lastDirection: string | null
+  /** The newest message came with the WhatsApp Business app's history (lib/inbox/dense-inbox). */
+  lastFromHistory: boolean
   lastChannel: string
   unreadCount: number
   messageCount: number
@@ -249,6 +251,7 @@ type NewestMessage = {
   createdAt: Date
   channelType: string
   channelConfigId: string | null
+  historyImportedAt: Date | null
 }
 
 function metadataFlag(metadata: unknown, key: string): boolean {
@@ -339,7 +342,7 @@ export async function loadQuietThreads(input: {
     where: { organizationId, conversationId: { in: pageIds } },
     orderBy: { createdAt: "desc" },
     take: Math.min(pageIds.length * 4, 1000),
-    select: { conversationId: true, body: true, direction: true, createdAt: true, channelType: true, channelConfigId: true },
+    select: { conversationId: true, body: true, direction: true, createdAt: true, channelType: true, channelConfigId: true, historyImportedAt: true },
   })
   const lastByConversation = new Map<string, NewestMessage>()
   for (const message of newest) {
@@ -376,6 +379,8 @@ export async function loadQuietThreads(input: {
       lastMessage: (last?.body || row.lastMessage || "").slice(0, 100),
       lastMessageAt: last?.createdAt ?? row.lastMessageAt,
       lastDirection: last?.direction ?? null,
+      // Without its newest message at hand, a conversation the import made is taken as the import left it.
+      lastFromHistory: last ? last.historyImportedAt != null : metadataFlag(row.metadata, "historyImport"),
       lastChannel,
       // The list counts unread from the messages it holds; this row holds none.
       unreadCount: 0,

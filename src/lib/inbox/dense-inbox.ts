@@ -20,9 +20,15 @@
 /**
  * A conversation waits for our answer when the customer wrote last. Status is
  * the tab's business (an answered-by-nobody closed thread is still «closed»).
+ *
+ * Not when that last message came with the WhatsApp Business app's history
+ * (`lastFromHistory`, lib/whatsapp-history-import): months of conversations the
+ * business answered on the phone, by a call or in person arrive at once, and on
+ * 16.11.2026 they put 203 into «Cavab gözləyir» (owner: «Да, убери»). A new
+ * message from the customer is a live one, and the conversation waits again.
  */
-export function isAwaitingReply(c: { lastDirection?: string | null }): boolean {
-  return c.lastDirection === "inbound"
+export function isAwaitingReply(c: { lastDirection?: string | null; lastFromHistory?: boolean }): boolean {
+  return c.lastDirection === "inbound" && c.lastFromHistory !== true
 }
 
 /* ── Who answers ── */
@@ -110,6 +116,7 @@ export interface RowChip {
 export function conversationRowChips(
   c: {
     lastDirection?: string | null
+    lastFromHistory?: boolean
     unreadCount?: number
     conversationTags?: string[]
     botHandled?: boolean
