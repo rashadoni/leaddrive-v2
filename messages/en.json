@@ -28962,6 +28962,7 @@
     "placeholderTemplate": "WhatsApp template",
     "placeholderTemplateNamed": "Template: {name}",
     "placeholderUnsupported": "Message the channel does not pass on",
+    "messageUnsent": "The customer deleted this message",
     "placeholderNoFile": "file not received",
     "messageSentViaInbox": "via LeadDrive Inbox → {channel}",
     "messageSentViaChannel": "channel: {channel}",

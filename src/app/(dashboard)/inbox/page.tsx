@@ -3515,7 +3515,7 @@ export default function InboxV2Page() {
                     <div className="max-w-[72%]">
                       <div className={cn("rounded-2xl px-3.5 py-2", out ? "bg-primary/10 rounded-br-md" : "bg-card border border-border/60 rounded-bl-md")}>
                         {m.subject && <div className="text-xs font-semibold mb-0.5">{m.subject}</div>}
-                        {typeof m.mediaUrl === "string" && m.mediaUrl && (
+                        {typeof m.mediaUrl === "string" && m.mediaUrl && view.kind !== "unsent" && (
                           isImagePreview(m.messageType, m.mediaUrl) ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img loading="lazy" decoding="async" src={m.mediaUrl} alt="attachment" className="mb-1 max-h-48 rounded-lg object-cover" />
@@ -3532,6 +3532,13 @@ export default function InboxV2Page() {
                         )}
                         {(() => {
                           if (view.kind === "hide") return null
+                          if (view.kind === "unsent") {
+                            return (
+                              <p className="text-sm italic text-muted-foreground" data-testid="inbox-message-unsent">
+                                {t("messageUnsent")}
+                              </p>
+                            )
+                          }
                           if (view.kind === "body") {
                             // «[Səsli mesaj] …» — a voice note's transcript; the prefix is named in the screen's language.
                             const spoken = voiceTranscript(m.body)
