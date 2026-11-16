@@ -15,6 +15,12 @@
  * filter therefore holds what the list's window holds, as it does without the filter.
  *
  * And the handing over itself, when it is everything at once: `transferOpenConversations`.
+ *
+ * Without the filter the same rows are added for one more case: the conversations a WhatsApp
+ * history import wrote (`lib/whatsapp-history-import`). An import brings months of conversations at
+ * once, each with its own old date, so all but the newest few fall below the window — on 16.11.2026
+ * the import screen counted 348 conversations and the list showed about fifty of them (owner: «тут
+ * не все диалоги»).
  */
 
 import type { Prisma } from "@prisma/client"
@@ -23,6 +29,18 @@ import { CLOSED_CONVERSATION_STATUSES, type InboxAssigneeHolder } from "@/lib/in
 
 /** How many conversations outside the window one request adds, newest first. */
 export const ASSIGNEE_QUIET_LIMIT = 300
+
+/** The same for the conversations a WhatsApp history import wrote: six months of a busy number. */
+export const HISTORY_IMPORT_QUIET_LIMIT = 500
+
+/**
+ * Whose conversations outside the window are added: one person's (the «Ответственный» filter), or
+ * the ones a WhatsApp history import wrote on these numbers (`metadata.historyImport`, set only on a
+ * conversation the import itself created).
+ */
+export type QuietThreadScope =
+  | { assigneeId: string }
+  | { historyImportChannelIds: readonly string[] }
 
 const NOT_CLOSED = CLOSED_CONVERSATION_STATUSES.map((status) => ({
   status: { equals: status, mode: "insensitive" as const },
@@ -194,6 +212,8 @@ export type AssigneeQuietThread = {
   assignedTo: string | null
   snoozedUntil: Date | null
   folderId: string | null
+  /** Came over with the WhatsApp Business app's history — the list marks it «idxal». */
+  historyImport: boolean
 }
 
 type QuietRow = {
@@ -231,6 +251,11 @@ type NewestMessage = {
   channelConfigId: string | null
 }
 
+function metadataFlag(metadata: unknown, key: string): boolean {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return false
+  return (metadata as Record<string, unknown>)[key] === true
+}
+
 function metadataChannel(metadata: unknown): string | null {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null
   const channel = (metadata as Record<string, unknown>).channel
@@ -238,12 +263,12 @@ function metadataChannel(metadata: unknown): string | null {
 }
 
 /**
- * The person's open conversations that are not in the list already, newest first.
- * `more` — there are further ones beyond `ASSIGNEE_QUIET_LIMIT`.
+ * The open conversations of `scope` that are not in the list already, newest first.
+ * `more` — there are further ones beyond the scope's limit.
  */
-export async function loadAssigneeQuietThreads(input: {
+export async function loadQuietThreads(input: {
   organizationId: string
-  assigneeId: string
+  scope: QuietThreadScope
   /** The list's own channel filter ("whatsapp", …), or null for every channel. */
   channel: string | null
   visibleChannels: VisibleChannels
@@ -251,7 +276,16 @@ export async function loadAssigneeQuietThreads(input: {
   knownConversationIds: ReadonlySet<string>
   contactById: Readonly<Record<string, ContactLike | undefined>>
 }): Promise<{ threads: AssigneeQuietThread[]; more: boolean }> {
-  const { organizationId, assigneeId, visibleChannels, knownConversationIds, contactById } = input
+  const { organizationId, scope, visibleChannels, knownConversationIds, contactById } = input
+  const byPerson = "assigneeId" in scope
+  if (!byPerson && scope.historyImportChannelIds.length === 0) return { threads: [], more: false }
+  const limit = byPerson ? ASSIGNEE_QUIET_LIMIT : HISTORY_IMPORT_QUIET_LIMIT
+  const scoped = byPerson
+    ? { assignedTo: scope.assigneeId }
+    : {
+        channelConfigId: { in: [...scope.historyImportChannelIds] },
+        metadata: { path: ["historyImport"], equals: true },
+      }
   const channel = input.channel && input.channel !== "all" ? input.channel : null
   // A website chat is read from its session, never from here.
   if (channel === "web-chat") return { threads: [], more: false }
@@ -262,12 +296,11 @@ export async function loadAssigneeQuietThreads(input: {
     : null
   const rows: QuietRow[] = await prisma.socialConversation.findMany({
     where: {
-      ...openConversationsWhere(organizationId, visibleChannels, onChannel ? [onChannel] : []),
-      assignedTo: assigneeId,
+      ...openConversationsWhere(organizationId, visibleChannels, [...(onChannel ? [onChannel] : []), scoped]),
       ...(knownConversationIds.size > 0 ? { id: { notIn: [...knownConversationIds] } } : {}),
     },
     orderBy: { lastMessageAt: "desc" },
-    take: ASSIGNEE_QUIET_LIMIT + 1,
+    take: limit + 1,
     select: {
       id: true,
       channelConfigId: true,
@@ -294,8 +327,8 @@ export async function loadAssigneeQuietThreads(input: {
       metadata: true,
     },
   })
-  const more = rows.length > ASSIGNEE_QUIET_LIMIT
-  const page = rows.slice(0, ASSIGNEE_QUIET_LIMIT)
+  const more = rows.length > limit
+  const page = rows.slice(0, limit)
   if (page.length === 0) return { threads: [], more: false }
 
   // What was said last. An e-mail or SMS thread's row keeps no preview of its own; the newest
@@ -366,6 +399,7 @@ export async function loadAssigneeQuietThreads(input: {
       assignedTo: row.assignedTo,
       snoozedUntil: row.snoozedUntil,
       folderId: row.folderId,
+      historyImport: metadataFlag(row.metadata, "historyImport"),
     }
   })
   return { threads, more }

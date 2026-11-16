@@ -35,6 +35,8 @@ const SEEN_ON_PROD = [
   "[template:salon_visit_reminder]",
   "[template:hello_world]",
   "[Документ: leaddrive-mtm-v1.6.0.apk]",
+  // 2026-11-16: the first live WhatsApp history import (a message Meta did not hand over).
+  "[errors]",
 ]
 
 describe("placeholder vocabulary", () => {
@@ -53,7 +55,7 @@ describe("placeholder vocabulary", () => {
       { type: "button" }, { type: "interactive" },
       { type: "interactive", interactive: { nfm_reply: { response_json: JSON.stringify({ client: "Rəşad" }) } } },
       { type: "interactive", interactive: { nfm_reply: { response_json: "{}" } } },
-      { type: "unsupported" }, { type: "unknown" },
+      { type: "unsupported" }, { type: "unknown" }, { type: "errors" },
     ]
     for (const msg of wordless) {
       const { text } = describeWaMessage(msg)

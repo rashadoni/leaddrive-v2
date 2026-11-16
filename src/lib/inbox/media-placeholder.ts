@@ -63,6 +63,9 @@ const EXACT: Record<string, PlaceholderKind> = {
   unsupported: "unsupported",
   "unsupported attachment": "unsupported",
   unknown: "unsupported",
+  // A message of an imported WhatsApp history that Meta did not hand over: `type: "errors"`, only its
+  // code (lib/whatsapp-history-import). The inbox printed «[errors]», which read as our failure.
+  errors: "unsupported",
   // The conversation preview after the customer deleted their latest message (UNSENT_PREVIEW).
   unsent: "unsent",
 }
