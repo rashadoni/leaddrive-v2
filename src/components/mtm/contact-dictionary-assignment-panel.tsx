@@ -452,13 +452,12 @@ export function MtmContactDictionaryAssignmentPanel({
       ) : null}
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-          <form onSubmit={submit} className="grid gap-5">
-            <DialogHeader>
-              <DialogTitle>{canManage ? t("editTitle") : t("suggestTitle")}</DialogTitle>
-              <DialogDescription>{t("editDescription")}</DialogDescription>
-            </DialogHeader>
-
+        <form onSubmit={submit}>
+          <DialogHeader>
+            <DialogTitle>{canManage ? t("editTitle") : t("suggestTitle")}</DialogTitle>
+            <DialogDescription>{t("editDescription")}</DialogDescription>
+          </DialogHeader>
+          <DialogContent className="grid gap-5">
             {clientTypeDictionary ? <div className="grid gap-3 rounded-xl border border-border p-3">
               <div className="grid gap-2">
                 <Label htmlFor="contact-client-type">{t("clientType")}</Label>
@@ -523,32 +522,32 @@ export function MtmContactDictionaryAssignmentPanel({
               <Textarea id="contact-category-reason" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} required />
             </div> : null}
             {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>{t("cancel")}</Button>
-              <Hint wrap text={saving ? null : canManage ? t("hint.dictSave") : t("hint.dictSubmit")}><Button type="submit" disabled={saving}>{saving ? t("saving") : canManage ? t("save") : t("submit")}</Button></Hint>
-            </DialogFooter>
-          </form>
-        </DialogContent>
+          </DialogContent>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>{t("cancel")}</Button>
+            <Hint wrap text={saving ? null : canManage ? t("hint.dictSave") : t("hint.dictSubmit")}><Button type="submit" disabled={saving}>{saving ? t("saving") : canManage ? t("save") : t("submit")}</Button></Hint>
+          </DialogFooter>
+        </form>
       </Dialog>
 
       <Dialog open={reviewTarget !== null} onOpenChange={(open) => { if (!open) setReviewTarget(null) }}>
-        <DialogContent>
-          <form onSubmit={review} className="grid gap-4">
-            <DialogHeader>
-              <DialogTitle>{reviewTarget?.decision === "APPROVED" ? t("approveTitle") : t("rejectTitle")}</DialogTitle>
-              <DialogDescription>{t("reviewDescription")}</DialogDescription>
-            </DialogHeader>
+        <form onSubmit={review}>
+          <DialogHeader>
+            <DialogTitle>{reviewTarget?.decision === "APPROVED" ? t("approveTitle") : t("rejectTitle")}</DialogTitle>
+            <DialogDescription>{t("reviewDescription")}</DialogDescription>
+          </DialogHeader>
+          <DialogContent className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="dictionary-review-comment">{t("reviewComment")}</Label>
               <Textarea id="dictionary-review-comment" value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} required />
             </div>
             {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setReviewTarget(null)}>{t("cancel")}</Button>
-              <Button type="submit" disabled={saving}>{t("confirm")}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
+          </DialogContent>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setReviewTarget(null)}>{t("cancel")}</Button>
+            <Button type="submit" disabled={saving}>{t("confirm")}</Button>
+          </DialogFooter>
+        </form>
       </Dialog>
     </section>
   )

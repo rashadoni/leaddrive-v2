@@ -523,11 +523,11 @@ export default function RecurringInvoicesPage() {
 
       {/* Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t("newRecurring")}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
+        <DialogHeader>
+          <DialogTitle>{t("newRecurring")}</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-4">
             {/* Title */}
             <div className="space-y-1">
               <Label>{t("titleField")} *</Label>
@@ -853,30 +853,29 @@ export default function RecurringInvoicesPage() {
               </Button>
             </div>
           </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDialogOpen(false)}
-              disabled={saving}
-            >
-              {t("cancel")}
-            </Button>
-            <Button
-              onClick={handleCreate}
-              disabled={saving || !form.title.trim()}
-            >
-              {saving ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin mr-1" />
-                  {t("saving")}
-                </>
-              ) : (
-                t("create")
-              )}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setDialogOpen(false)}
+            disabled={saving}
+          >
+            {t("cancel")}
+          </Button>
+          <Button
+            onClick={handleCreate}
+            disabled={saving || !form.title.trim()}
+          >
+            {saving ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin mr-1" />
+                {t("saving")}
+              </>
+            ) : (
+              t("create")
+            )}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* Delete Confirmation */}

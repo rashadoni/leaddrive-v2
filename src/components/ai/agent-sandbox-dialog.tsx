@@ -80,13 +80,12 @@ export function AgentSandboxDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FlaskConical className="h-4 w-4 text-primary" /> {t("title", { name: agentName })}
-          </DialogTitle>
-        </DialogHeader>
-
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <FlaskConical className="h-4 w-4 text-primary" /> {t("title", { name: agentName })}
+        </DialogTitle>
+      </DialogHeader>
+      <DialogContent>
         <div className="rounded-md bg-amber-50 border border-amber-200 text-amber-700 text-xs px-3 py-2">
           {t("notice")}
           {tools.length > 0 && (

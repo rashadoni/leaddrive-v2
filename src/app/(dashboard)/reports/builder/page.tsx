@@ -1036,13 +1036,13 @@ export default function ReportBuilderPage() {
 
       {/* ============== SAVE DIALOG ============== */}
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DialogHeader>
+          <DialogTitle>
+            {editingReportId ? tr("updateReport") : tr("saveReport")}
+          </DialogTitle>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingReportId ? tr("updateReport") : tr("saveReport")}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-3">
             <div>
               <Label htmlFor="report-name">{tr("reportName")}</Label>
               <Input
@@ -1093,25 +1093,25 @@ export default function ReportBuilderPage() {
               )}
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
-              {tr("cancel")}
-            </Button>
-            <Button onClick={handleSave} disabled={saving || !reportName.trim()}>
-              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              {editingReportId ? tr("update") : tr("save")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
+            {tr("cancel")}
+          </Button>
+          <Button onClick={handleSave} disabled={saving || !reportName.trim()}>
+            {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+            {editingReportId ? tr("update") : tr("save")}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* ============== EXPORT DIALOG ============== */}
       <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogHeader>
+          <DialogTitle>{tr("exportReport")}</DialogTitle>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{tr("exportReport")}</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-3 py-4">
+          <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => handleExport("csv")}

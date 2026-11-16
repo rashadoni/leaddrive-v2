@@ -754,51 +754,51 @@ export default function ContractEditorPage() {
 
       {/* ── Import confirm dialog (replaces window.confirm) ── */}
       <Dialog open={pendingImport !== null} onOpenChange={(o: boolean) => { if (!o) setPendingImport(null) }} widthClassName="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t("importConfirmTitle")}</DialogTitle>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("importConfirmTitle")}</DialogTitle>
-            <DialogDescription>
-              {pendingImport && t("importConfirmDesc", { file: pendingImport.name })}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setPendingImport(null)}>{t("cancel")}</Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                const f = pendingImport
-                setPendingImport(null)
-                if (f) void handleImportDocx(f)
-              }}
-            >
-              {t("importConfirmGo")}
-            </Button>
-          </DialogFooter>
+          <DialogDescription>
+            {pendingImport && t("importConfirmDesc", { file: pendingImport.name })}
+          </DialogDescription>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => setPendingImport(null)}>{t("cancel")}</Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              const f = pendingImport
+              setPendingImport(null)
+              if (f) void handleImportDocx(f)
+            }}
+          >
+            {t("importConfirmGo")}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* ── Leave-despite-failed-save dialog ── */}
       <Dialog open={leaveTo !== null} onOpenChange={(o: boolean) => { if (!o) setLeaveTo(null) }} widthClassName="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t("leaveFailedTitle")}</DialogTitle>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("leaveFailedTitle")}</DialogTitle>
-            <DialogDescription>{t("leaveFailedDesc")}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setLeaveTo(null)}>{t("stay")}</Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                const path = leaveTo
-                setLeaveTo(null)
-                if (path) router.push(path)
-              }}
-            >
-              {t("leaveAnyway")}
-            </Button>
-          </DialogFooter>
+          <DialogDescription>{t("leaveFailedDesc")}</DialogDescription>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => setLeaveTo(null)}>{t("stay")}</Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => {
+              const path = leaveTo
+              setLeaveTo(null)
+              if (path) router.push(path)
+            }}
+          >
+            {t("leaveAnyway")}
+          </Button>
+        </DialogFooter>
       </Dialog>
     </div>
   )

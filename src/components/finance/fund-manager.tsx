@@ -229,8 +229,8 @@ function CreateFundDialog({ open, onClose, onCreate }: { open: boolean; onClose:
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
+      <DialogHeader><DialogTitle>{t("createTitle")}</DialogTitle></DialogHeader>
       <DialogContent>
-        <DialogHeader><DialogTitle>{t("createTitle")}</DialogTitle></DialogHeader>
         <div className="grid gap-3">
           <div><Label>{t("fundName")} *</Label><Input value={form.name} onChange={(e) => updateForm({ ...form, name: e.target.value })} placeholder={t("fundNamePlaceholder")} /></div>
           <div><Label>{t("description")}</Label><Input value={form.description} onChange={(e) => updateForm({ ...form, description: e.target.value })} /></div>
@@ -239,11 +239,11 @@ function CreateFundDialog({ open, onClose, onCreate }: { open: boolean; onClose:
             <div><Label>{t("color")}</Label><Input type="color" value={form.color} onChange={(e) => updateForm({ ...form, color: e.target.value })} /></div>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
-          <Button onClick={handleSubmit} disabled={onCreate.isPending}>{onCreate.isPending ? t("creating") : t("create")}</Button>
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
+        <Button onClick={handleSubmit} disabled={onCreate.isPending}>{onCreate.isPending ? t("creating") : t("create")}</Button>
+      </DialogFooter>
     </Dialog>
   )
 }
@@ -288,10 +288,9 @@ function TransactionDialog({ fundId, onClose }: { fundId: string; onClose: () =>
   }
 
   return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>{t("txTitle")}</DialogTitle></DialogHeader>
-
+    <Dialog open onOpenChange={onClose} widthClassName="max-w-md">
+      <DialogHeader><DialogTitle>{t("txTitle")}</DialogTitle></DialogHeader>
+      <DialogContent>
         {/* Add transaction form */}
         {canWrite && (
           <div className="grid gap-2 p-3 bg-muted/50 rounded-lg">
@@ -348,10 +347,10 @@ function TransactionDialog({ fundId, onClose }: { fundId: string; onClose: () =>
             !isLoading && <p className="text-sm text-muted-foreground text-center py-4">{t("txEmpty")}</p>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
+      </DialogFooter>
     </Dialog>
   )
 }
@@ -383,10 +382,9 @@ function RulesDialog({ fundId, onClose }: { fundId: string; onClose: () => void 
   }
 
   return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>{t("rulesTitle")}</DialogTitle></DialogHeader>
-
+    <Dialog open onOpenChange={onClose} widthClassName="max-w-md">
+      <DialogHeader><DialogTitle>{t("rulesTitle")}</DialogTitle></DialogHeader>
+      <DialogContent>
         {/* Add rule form */}
         {canWrite && (
           <div className="grid gap-2 p-3 bg-muted/50 rounded-lg">
@@ -436,10 +434,10 @@ function RulesDialog({ fundId, onClose }: { fundId: string; onClose: () => void 
             !isLoading && <p className="text-sm text-muted-foreground text-center py-4">{t("rulesEmpty")}</p>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
+      </DialogFooter>
     </Dialog>
   )
 }

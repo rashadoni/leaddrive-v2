@@ -3309,13 +3309,13 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
           setCancellationReasonCode("CUSTOMER_REQUEST")
         }
       }}>
+        <DialogHeader>
+          <DialogTitle>{t("cancellationDialogTitle")}</DialogTitle>
+          <DialogDescription>
+            {cancellationTarget?.point.organizationName || cancellationTarget?.point.contactName || t("unknownOrganization")}
+          </DialogDescription>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("cancellationDialogTitle")}</DialogTitle>
-            <DialogDescription>
-              {cancellationTarget?.point.organizationName || cancellationTarget?.point.contactName || t("unknownOrganization")}
-            </DialogDescription>
-          </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="operational-week-cancellation-reason">{t("cancellationReasonLabel")}</Label>
@@ -3339,27 +3339,27 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
             </div>
             <p className="bg-muted/60 px-3 py-2 text-xs leading-5 text-muted-foreground">{t("cancellationRequestEffect")}</p>
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" disabled={Boolean(planMutationId)} onClick={() => {
-              setCancellationTarget(null)
-              setCancellationDetails("")
-              setCancellationReasonCode("CUSTOMER_REQUEST")
-            }}>{t("cancelDialog")}</Button>
-            <Button type="button" disabled={Boolean(planMutationId)} onClick={() => void submitCancellationRequest()}>
-              {planMutationId?.startsWith("request:") ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
-              {t("sendCancellationRequest")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button type="button" variant="outline" disabled={Boolean(planMutationId)} onClick={() => {
+            setCancellationTarget(null)
+            setCancellationDetails("")
+            setCancellationReasonCode("CUSTOMER_REQUEST")
+          }}>{t("cancelDialog")}</Button>
+          <Button type="button" disabled={Boolean(planMutationId)} onClick={() => void submitCancellationRequest()}>
+            {planMutationId?.startsWith("request:") ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
+            {t("sendCancellationRequest")}
+          </Button>
+        </DialogFooter>
       </Dialog>
       <Dialog open={Boolean(managerWorkdayTarget)} onOpenChange={(open) => {
         if (!open) closeManagerWorkdayDialog()
       }}>
+        <DialogHeader>
+          <DialogTitle>{t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.undoTitle" : "managerWorkday.reopenTitle")}</DialogTitle>
+          <DialogDescription>{facts?.selectedAgent.name || "—"}</DialogDescription>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.undoTitle" : "managerWorkday.reopenTitle")}</DialogTitle>
-            <DialogDescription>{facts?.selectedAgent.name || "—"}</DialogDescription>
-          </DialogHeader>
           <div className="space-y-4" data-testid="mtm-week-workday-manager-dialog">
             <p className="bg-muted/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
               {t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.undoConsequence" : "managerWorkday.reopenConsequence")}
@@ -3397,18 +3397,18 @@ export function OperationalWeekHome({ organizationId, viewerId, agentHeader }: O
               <p className="text-sm text-red-700 dark:text-red-300" role="alert" data-testid="mtm-week-workday-manager-error">{managerWorkdayError.message}</p>
             ) : null}
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" disabled={managerWorkdayPending} onClick={closeManagerWorkdayDialog}>{t("cancelDialog")}</Button>
-            <Button
-              type="button"
-              disabled={managerWorkdayPending || !managerWorkdayReasonValid || Boolean(managerWorkdayError?.final)}
-              onClick={() => void submitManagerWorkdayAction()}
-            >
-              {managerWorkdayPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
-              {t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.confirmUndo" : "managerWorkday.confirmReopen")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button type="button" variant="outline" disabled={managerWorkdayPending} onClick={closeManagerWorkdayDialog}>{t("cancelDialog")}</Button>
+          <Button
+            type="button"
+            disabled={managerWorkdayPending || !managerWorkdayReasonValid || Boolean(managerWorkdayError?.final)}
+            onClick={() => void submitManagerWorkdayAction()}
+          >
+            {managerWorkdayPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
+            {t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.confirmUndo" : "managerWorkday.confirmReopen")}
+          </Button>
+        </DialogFooter>
       </Dialog>
     </section>
   )

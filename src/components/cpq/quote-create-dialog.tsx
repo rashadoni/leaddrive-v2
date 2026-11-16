@@ -144,12 +144,11 @@ export function QuoteCreateDialog({ open, onOpenChange, onCreated }: QuoteCreate
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} widthClassName="max-w-5xl">
+      <DialogHeader>
+        <DialogTitle>{t("dialog.title")}</DialogTitle>
+      </DialogHeader>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("dialog.title")}</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+        <div className="space-y-4">
           <div>
             <Label>{t("dialog.customer")}</Label>
             <DealCombobox
@@ -257,23 +256,22 @@ export function QuoteCreateDialog({ open, onOpenChange, onCreated }: QuoteCreate
             <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("dialog.notesPlaceholder")} />
           </div>
         </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            {t("dialog.cancel")}
-          </Button>
-          <Button onClick={handleSubmit} disabled={saving}>
-            {saving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                {t("dialog.creating")}
-              </>
-            ) : (
-              t("dialog.createDraft")
-            )}
-          </Button>
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          {t("dialog.cancel")}
+        </Button>
+        <Button onClick={handleSubmit} disabled={saving}>
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              {t("dialog.creating")}
+            </>
+          ) : (
+            t("dialog.createDraft")
+          )}
+        </Button>
+      </DialogFooter>
     </Dialog>
   )
 }

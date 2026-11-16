@@ -331,8 +331,8 @@ function CreateBillDialog({ open, onClose, onCreate }: { open: boolean; onClose:
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
+      <DialogHeader><DialogTitle>{t("newBillTitle")}</DialogTitle></DialogHeader>
       <DialogContent>
-        <DialogHeader><DialogTitle>{t("newBillTitle")}</DialogTitle></DialogHeader>
         <div className="grid gap-3">
           <div><Label>{t("billNumber")} *</Label><Input value={form.billNumber} onChange={(e) => setForm({ ...form, billNumber: e.target.value })} placeholder="BILL-001" /></div>
           <div><Label>{t("vendor")} *</Label><Input value={form.vendorName} onChange={(e) => setForm({ ...form, vendorName: e.target.value })} /></div>
@@ -343,11 +343,11 @@ function CreateBillDialog({ open, onClose, onCreate }: { open: boolean; onClose:
           </div>
           <div><Label>{t("category")}</Label><Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder={t("categoryPlaceholder")} /></div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
-          <Button onClick={handleSubmit} disabled={onCreate.isPending}>{onCreate.isPending ? t("creating") : t("createBill")}</Button>
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
+        <Button onClick={handleSubmit} disabled={onCreate.isPending}>{onCreate.isPending ? t("creating") : t("createBill")}</Button>
+      </DialogFooter>
     </Dialog>
   )
 }
@@ -367,17 +367,17 @@ function AddPaymentDialog({ billId, onClose, onPay }: { billId: string; onClose:
 
   return (
     <Dialog open onOpenChange={onClose}>
+      <DialogHeader><DialogTitle>{t("addPayment")}</DialogTitle></DialogHeader>
       <DialogContent>
-        <DialogHeader><DialogTitle>{t("addPayment")}</DialogTitle></DialogHeader>
         <div className="grid gap-3">
           <div><Label>{t("paymentAmount")} *</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="1000" /></div>
           <div><Label>{t("paymentReference")}</Label><Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder={t("paymentRefPlaceholder")} /></div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
-          <Button onClick={handleSubmit} disabled={onPay.isPending}>{onPay.isPending ? t("paying") : t("recordPayment")}</Button>
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
+        <Button onClick={handleSubmit} disabled={onPay.isPending}>{onPay.isPending ? t("paying") : t("recordPayment")}</Button>
+      </DialogFooter>
     </Dialog>
   )
 }

@@ -323,11 +323,11 @@ function Row({ row, money }: { row: EQaimeRowView; money: (v: string | number) =
 function InstallDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useTranslations("finance.eqaime")
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose() }}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{t("installTitle")}</DialogTitle>
-        </DialogHeader>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose() }} widthClassName="max-w-lg">
+      <DialogHeader>
+        <DialogTitle>{t("installTitle")}</DialogTitle>
+      </DialogHeader>
+      <DialogContent>
         {E_QAIME_STORE_URL ? (
           <ol className="list-decimal space-y-2 pl-5 text-sm">
             <li>{t("installStoreStep1")}</li>
@@ -342,19 +342,19 @@ function InstallDialog({ open, onClose }: { open: boolean; onClose: () => void }
           </ol>
         )}
         <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">{t("installNote")}</p>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose}>{t("close")}</Button>
-          {E_QAIME_STORE_URL ? (
-            <Button asChild className="gap-2">
-              <a href={E_QAIME_STORE_URL} target="_blank" rel="noopener noreferrer"><Puzzle className="h-4 w-4" />{t("installStore")}</a>
-            </Button>
-          ) : (
-            <Button asChild className="gap-2">
-              <a href={E_QAIME_EXTENSION_ZIP} download><Download className="h-4 w-4" />{t("installDownload")}</a>
-            </Button>
-          )}
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter className="gap-2">
+        <Button variant="outline" onClick={onClose}>{t("close")}</Button>
+        {E_QAIME_STORE_URL ? (
+          <Button asChild className="gap-2">
+            <a href={E_QAIME_STORE_URL} target="_blank" rel="noopener noreferrer"><Puzzle className="h-4 w-4" />{t("installStore")}</a>
+          </Button>
+        ) : (
+          <Button asChild className="gap-2">
+            <a href={E_QAIME_EXTENSION_ZIP} download><Download className="h-4 w-4" />{t("installDownload")}</a>
+          </Button>
+        )}
+      </DialogFooter>
     </Dialog>
   )
 }
