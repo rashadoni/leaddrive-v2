@@ -1772,13 +1772,13 @@ export default function InvoiceDetailPage() {
 
       {/* ===== Record Payment Dialog ===== */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            {t("recordPayment")}
+          </DialogTitle>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              {t("recordPayment")}
-            </DialogTitle>
-          </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t("amount")}</Label>
@@ -1864,37 +1864,37 @@ export default function InvoiceDetailPage() {
               </p>
             )}
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowPaymentDialog(false)}
-              disabled={paymentLoading}
-            >
-              {tc("cancel")}
-            </Button>
-            <Button onClick={handleRecordPayment} disabled={paymentLoading}>
-              {paymentLoading ? (
-                <span className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                  {tc("saving")}
-                </span>
-              ) : (
-                t("recordPayment")
-              )}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setShowPaymentDialog(false)}
+            disabled={paymentLoading}
+          >
+            {tc("cancel")}
+          </Button>
+          <Button onClick={handleRecordPayment} disabled={paymentLoading}>
+            {paymentLoading ? (
+              <span className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                {tc("saving")}
+              </span>
+            ) : (
+              t("recordPayment")
+            )}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* ===== Edit Invoice Dialog ===== */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-5 w-5" />
-              {tc("edit")}
-            </DialogTitle>
-          </DialogHeader>
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog} widthClassName="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-5 w-5" />
+            {tc("edit")}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t("title")}</Label>
@@ -1977,31 +1977,31 @@ export default function InvoiceDetailPage() {
               </p>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)} disabled={editLoading}>
-              {tc("cancel")}
-            </Button>
-            <Button onClick={handleSaveEdit} disabled={editLoading}>
-              {editLoading ? (
-                <span className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                  {tc("saving")}
-                </span>
-              ) : tc("save")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowEditDialog(false)} disabled={editLoading}>
+            {tc("cancel")}
+          </Button>
+          <Button onClick={handleSaveEdit} disabled={editLoading}>
+            {editLoading ? (
+              <span className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                {tc("saving")}
+              </span>
+            ) : tc("save")}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* ===== Send Invoice Dialog ===== */}
       <Dialog open={showSendDialog} onOpenChange={setShowSendDialog}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5" />
+            {t("sendInvoice")}
+          </DialogTitle>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Send className="h-5 w-5" />
-              {t("sendInvoice")}
-            </DialogTitle>
-          </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t("recipientEmail")}</Label>
@@ -2048,29 +2048,29 @@ export default function InvoiceDetailPage() {
               </p>
             )}
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowSendDialog(false)}
-              disabled={sendLoading}
-            >
-              {tc("cancel")}
-            </Button>
-            <Button onClick={handleSendInvoice} disabled={sendLoading}>
-              {sendLoading ? (
-                <span className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                  {t("sending")}
-                </span>
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-1" />
-                  {t("send")}
-                </>
-              )}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setShowSendDialog(false)}
+            disabled={sendLoading}
+          >
+            {tc("cancel")}
+          </Button>
+          <Button onClick={handleSendInvoice} disabled={sendLoading}>
+            {sendLoading ? (
+              <span className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                {t("sending")}
+              </span>
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-1" />
+                {t("send")}
+              </>
+            )}
+          </Button>
+        </DialogFooter>
       </Dialog>
     </div>
   )

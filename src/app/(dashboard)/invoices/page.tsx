@@ -567,14 +567,14 @@ export default function InvoicesPage() {
       />
 
       {/* Edit Dialog */}
-      <Dialog open={!!editInvoice} onOpenChange={(open) => { if (!open) setEditInvoice(null) }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-5 w-5" />
-              {tc("edit")} — {editInvoice?.invoiceNumber}
-            </DialogTitle>
-          </DialogHeader>
+      <Dialog open={!!editInvoice} onOpenChange={(open) => { if (!open) setEditInvoice(null) }} widthClassName="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-5 w-5" />
+            {tc("edit")} — {editInvoice?.invoiceNumber}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t("title")}</Label>
@@ -610,13 +610,13 @@ export default function InvoicesPage() {
               <Textarea value={editForm.notes} onChange={(e) => setEditForm(p => ({ ...p, notes: e.target.value }))} rows={3} />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditInvoice(null)} disabled={editLoading}>{tc("cancel")}</Button>
-            <Button onClick={handleSaveEdit} disabled={editLoading}>
-              {editLoading ? <span className="flex items-center gap-2"><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />{tc("saving")}</span> : tc("save")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setEditInvoice(null)} disabled={editLoading}>{tc("cancel")}</Button>
+          <Button onClick={handleSaveEdit} disabled={editLoading}>
+            {editLoading ? <span className="flex items-center gap-2"><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />{tc("saving")}</span> : tc("save")}
+          </Button>
+        </DialogFooter>
       </Dialog>
     </div>
   )

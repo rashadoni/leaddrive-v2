@@ -180,11 +180,11 @@ function BankAccountDialog({ open, onClose, onSave, isPending, isEdit, initial }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? t("editTitle") : t("newAccount")}</DialogTitle>
-        </DialogHeader>
+    <Dialog open={open} onOpenChange={onClose} widthClassName="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle>{isEdit ? t("editTitle") : t("newAccount")}</DialogTitle>
+      </DialogHeader>
+      <DialogContent>
         <div className="grid gap-3">
           <div>
             <Label className="text-xs">{t("accountName")} *</Label>
@@ -219,13 +219,13 @@ function BankAccountDialog({ open, onClose, onSave, isPending, isEdit, initial }
             <span className="text-sm">{t("isDefault")}</span>
           </label>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
-          <Button onClick={handleSubmit} disabled={isPending || !form.accountName || !form.bankName}>
-            {isPending ? t("saving") : t("save")}
-          </Button>
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
+        <Button onClick={handleSubmit} disabled={isPending || !form.accountName || !form.bankName}>
+          {isPending ? t("saving") : t("save")}
+        </Button>
+      </DialogFooter>
     </Dialog>
   )
 }

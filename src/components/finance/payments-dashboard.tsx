@@ -384,11 +384,11 @@ export function PaymentsDashboard() {
       })()}
 
       {/* Reject Dialog */}
-      <Dialog open={!!showReject} onOpenChange={() => setShowReject(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("rejectDialogTitle")}</DialogTitle>
-          </DialogHeader>
+      <Dialog open={!!showReject} onOpenChange={() => setShowReject(null)} widthClassName="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t("rejectDialogTitle")}</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
           <div className="space-y-3">
             <Label>{t("rejectReasonLabel")}</Label>
             <Textarea
@@ -398,21 +398,21 @@ export function PaymentsDashboard() {
               rows={3}
             />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowReject(null)}>{t("cancel")}</Button>
-            <Button
-              variant="destructive"
-              disabled={!rejectReason.trim() || rejectOrder.isPending}
-              onClick={() => {
-                if (showReject) {
-                  rejectOrder.mutate({ id: showReject, reason: rejectReason }, { onSuccess: () => setShowReject(null) })
-                }
-              }}
-            >
-              {rejectOrder.isPending ? t("rejecting") : t("rejectBtn")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowReject(null)}>{t("cancel")}</Button>
+          <Button
+            variant="destructive"
+            disabled={!rejectReason.trim() || rejectOrder.isPending}
+            onClick={() => {
+              if (showReject) {
+                rejectOrder.mutate({ id: showReject, reason: rejectReason }, { onSuccess: () => setShowReject(null) })
+              }
+            }}
+          >
+            {rejectOrder.isPending ? t("rejecting") : t("rejectBtn")}
+          </Button>
+        </DialogFooter>
       </Dialog>
     </div>
   )
@@ -482,11 +482,11 @@ function CreateOrderDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{initialData ? t("editTitle") : t("newTitle")}</DialogTitle>
-        </DialogHeader>
+    <Dialog open={open} onOpenChange={onClose} widthClassName="sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle>{initialData ? t("editTitle") : t("newTitle")}</DialogTitle>
+      </DialogHeader>
+      <DialogContent>
         <div className="space-y-4">
           {unpaidBills.length > 0 && (
             <div>
@@ -549,13 +549,13 @@ function CreateOrderDialog({
             <Textarea value={form.bankDetails} onChange={(e) => setForm((f) => ({ ...f, bankDetails: e.target.value }))} rows={2} placeholder={t("bankDetailsPlaceholder")} />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
-          <Button onClick={handleSubmit} disabled={isPending || !form.counterpartyName || !form.amount || !form.purpose}>
-            {isPending ? t("saving") : initialData ? t("save") : t("create")}
-          </Button>
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
+        <Button onClick={handleSubmit} disabled={isPending || !form.counterpartyName || !form.amount || !form.purpose}>
+          {isPending ? t("saving") : initialData ? t("save") : t("create")}
+        </Button>
+      </DialogFooter>
     </Dialog>
   )
 }
