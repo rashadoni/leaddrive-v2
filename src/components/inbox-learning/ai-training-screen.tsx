@@ -996,19 +996,21 @@ function HandoverDialog({ open, channel, readiness: r, waiting, busy, onClose, o
   const cautious = r.percent === null || r.percent < READINESS_TARGET
   const [choice, setChoice] = useState<"draft" | "ai">(cautious ? "draft" : "ai")
   return (
+    // The app's Dialog is the panel itself; header, content and footer are its three sections —
+    // nested inside `DialogContent`, the title and the buttons stood on white slabs in the grey.
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose() }}>
+      <DialogHeader>
+        <DialogTitle>{t("handoverTitle", { name: channel.name })}</DialogTitle>
+        <DialogDescription>
+          {r.percent === null
+            ? t("handoverUnknown", { count: r.compared, min: READINESS_MIN_QUESTIONS })
+            : cautious
+              ? t("handoverLow", { percent: r.percent, target: READINESS_TARGET })
+              : t("handoverReady", { percent: r.percent, same: r.same, total: r.compared })}
+        </DialogDescription>
+      </DialogHeader>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("handoverTitle", { name: channel.name })}</DialogTitle>
-          <DialogDescription>
-            {r.percent === null
-              ? t("handoverUnknown", { count: r.compared, min: READINESS_MIN_QUESTIONS })
-              : cautious
-                ? t("handoverLow", { percent: r.percent, target: READINESS_TARGET })
-                : t("handoverReady", { percent: r.percent, same: r.same, total: r.compared })}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
           {(["draft", "ai"] as const).map((option) => (
             <label key={option} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border-2 p-3", choice === option ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30" : "border-border")}>
               <input type="radio" name="handover" checked={choice === option} onChange={() => setChoice(option)} className="mt-1 accent-violet-600" />
@@ -1022,11 +1024,11 @@ function HandoverDialog({ open, channel, readiness: r, waiting, busy, onClose, o
         <p className="mt-3 text-xs text-muted-foreground">
           {t("handoverNote")} {waiting > 0 ? t("handoverWaiting", { count: waiting }) : ""}
         </p>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
-          <Button disabled={busy} onClick={() => onConfirm(choice)}>{t("handoverConfirm")}</Button>
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
+        <Button disabled={busy} onClick={() => onConfirm(choice)}>{t("handoverConfirm")}</Button>
+      </DialogFooter>
     </Dialog>
   )
 }

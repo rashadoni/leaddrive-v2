@@ -2,11 +2,19 @@
 
 /**
  * Inbox bulk-selection actions — Whelp-style compact card between the
- * conversation-list filters and the scroll list. The list column is ~380px
- * wide, so the shared EntityBulkBar chrome (flex-wrap + fixed-width selects)
- * collapses here into an accidental tower of misaligned controls. This
- * card lays the same four actions out deliberately instead:
- *   count + clear · Close (primary, full width) · Assign | Folder · Tags.
+ * conversation-list filters and the scroll list. The list column is 320px
+ * wide (lib/inbox/inbox-columns), so the shared EntityBulkBar chrome
+ * (flex-wrap + fixed-width selects) collapses here into an accidental tower
+ * of misaligned controls. This card lays the same four actions out
+ * deliberately instead, one to a row, each as wide as the card:
+ *   count + clear · Close (primary) · Assign · Folder · Tags.
+ *
+ * Assign and Folder stood side by side until 2026-11-16. Half of the card is
+ * 134px, and the assign list did not fit it in any language: «Выберите
+ * ответственного» needs 196 with the select's padding and arrow and read
+ * «Выберите отве…», «Məsul əməkdaş seçin» needs 174, «Choose an owner» 152.
+ * A row of its own is 274px — the wording stays whole instead of being
+ * shortened to fit.
  */
 
 import { useState } from "react"
@@ -60,40 +68,38 @@ export function InboxBulkBar({ selectedCount, busy, agents, folders, onClearSele
         <Check className="h-3.5 w-3.5" />
         {t("bulkClose")}
       </Button>
-      <div className="grid grid-cols-2 gap-1.5">
-        <Select
-          aria-label={t("bulkAssign")}
-          className="h-8 text-xs"
-          value=""
-          disabled={busy}
-          onChange={(e) => {
-            if (e.target.value === "") return
-            onAssign(e.target.value === "__unassign__" ? null : e.target.value)
-          }}
-        >
-          <option value="">{t("bulkAssignPlaceholder")}</option>
-          <option value="__unassign__">{t("bulkUnassign")}</option>
-          {agents.map((agent) => (
-            <option key={agent.id} value={agent.id}>{agent.name || agent.id}</option>
-          ))}
-        </Select>
-        <Select
-          aria-label={t("bulkMoveToFolder")}
-          className="h-8 text-xs"
-          value=""
-          disabled={busy}
-          onChange={(e) => {
-            if (e.target.value === "") return
-            onFolder(e.target.value === "__unfile__" ? null : e.target.value)
-          }}
-        >
-          <option value="">{t("bulkMoveToFolder")}</option>
-          <option value="__unfile__">{t("bulkNoFolder")}</option>
-          {folders.map((folder) => (
-            <option key={folder.id} value={folder.id}>{folder.name}</option>
-          ))}
-        </Select>
-      </div>
+      <Select
+        aria-label={t("bulkAssign")}
+        className="h-8 text-xs"
+        value=""
+        disabled={busy}
+        onChange={(e) => {
+          if (e.target.value === "") return
+          onAssign(e.target.value === "__unassign__" ? null : e.target.value)
+        }}
+      >
+        <option value="">{t("bulkAssignPlaceholder")}</option>
+        <option value="__unassign__">{t("bulkUnassign")}</option>
+        {agents.map((agent) => (
+          <option key={agent.id} value={agent.id}>{agent.name || agent.id}</option>
+        ))}
+      </Select>
+      <Select
+        aria-label={t("bulkMoveToFolder")}
+        className="h-8 text-xs"
+        value=""
+        disabled={busy}
+        onChange={(e) => {
+          if (e.target.value === "") return
+          onFolder(e.target.value === "__unfile__" ? null : e.target.value)
+        }}
+      >
+        <option value="">{t("bulkMoveToFolder")}</option>
+        <option value="__unfile__">{t("bulkNoFolder")}</option>
+        {folders.map((folder) => (
+          <option key={folder.id} value={folder.id}>{folder.name}</option>
+        ))}
+      </Select>
       <div className="relative">
         <Tag className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
