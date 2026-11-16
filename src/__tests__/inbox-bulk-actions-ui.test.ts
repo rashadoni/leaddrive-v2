@@ -144,6 +144,20 @@ describe("the bulk-close window", () => {
     expect(onConfirm).toHaveBeenLastCalledWith("Спасибо за покупку!", "lost", undefined)
   })
 
+  it("says the farewell hint once — under the field, not inside the field as well", async () => {
+    await open()
+    await press(outcomes().find((b) => words(b) === "Продано")!)
+    const field = panel().querySelector("textarea")!
+    const hint = (ru.inboxV2 as Record<string, string>).bulkCloseHint
+    // Until 2026-11-16 the same two sentences were the field's placeholder too, one above the other.
+    expect(field.getAttribute("placeholder")).toBeNull()
+    expect(panel().innerHTML.split(hint).length - 1).toBe(1)
+    // The one that stays is tied to the field, so it is still read out with it.
+    const said = [...panel().querySelectorAll("p")].filter((p) => words(p) === hint)
+    expect(said).toHaveLength(1)
+    expect(field.getAttribute("aria-describedby")).toBe(said[0].id)
+  })
+
   it("offers «Без исхода» only where the page allows it", async () => {
     await open()
     expect(outcomes().map(words)).not.toContain("Без исхода")

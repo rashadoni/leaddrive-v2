@@ -96,16 +96,18 @@ function BulkCloseDialogBody({ selectedCount, busy, allowNoResult, onOpenChange,
           )}
           {outcome !== "pending" && <div className="space-y-1.5">
             <label className="text-xs font-medium" htmlFor="bulk-close-message">{t("bulkCloseOptionalMessage")}</label>
+            {/* The hint is said once, under the field, where it stays while the person types. It used
+                to be the field's placeholder as well: the same two sentences twice, one above the other. */}
             <Textarea
               id="bulk-close-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={3}
               maxLength={4000}
-              placeholder={t("bulkCloseHint")}
+              aria-describedby="bulk-close-message-hint"
               disabled={busy}
             />
-            <p className="text-[11px] text-muted-foreground">{t("bulkCloseHint")}</p>
+            <p id="bulk-close-message-hint" className="text-[11px] text-muted-foreground">{t("bulkCloseHint")}</p>
           </div>}
         </div>
       </DialogContent>
