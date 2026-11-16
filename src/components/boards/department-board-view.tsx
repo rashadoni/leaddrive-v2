@@ -22,7 +22,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { Loader2, Columns3 } from "lucide-react"
 import { CANONICAL_STAGES, STAGE_LABELS, resolveLaneKey, type LaneColumn } from "@/lib/tasks/board-columns"
 import { BoardReports } from "@/components/boards/board-reports"
@@ -30,6 +30,7 @@ import { BoardProjectTabs } from "@/components/boards/board-project-tabs"
 import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
 import { InlineTasksTable, type InlineTask, type InlineUser } from "@/components/tasks/inline-tasks-table"
 import { fetchAllFolderTasks } from "@/lib/tasks/fetch-board-tasks"
+import { boardListOrder } from "@/lib/tasks/board-list-order"
 
 interface DeptDivision { id: string; key: string; name: string; color: string | null }
 interface SectionLite { id: string; key: string; name: string; color: string | null; parentDivisionId?: string | null; _count?: { tasks: number } }
@@ -44,6 +45,8 @@ interface DeptTask {
   eventType?: string | null
   category?: string | null
   dueDate?: string | null
+  completedAt?: string | null
+  updatedAt?: string | null
   division?: { id: string; name: string; key: string; color: string | null } | null
   assignee?: { id: string; name: string; avatar?: string | null } | null
   collaborators?: { user: { id: string; name: string } }[]
@@ -57,11 +60,13 @@ const PRIORITY_DOT: Record<string, string> = {
 }
 
 const LANE_COLS: LaneColumn[] = CANONICAL_STAGES.map((s) => ({ key: s, mapsToStatus: s }))
+const LIST_STATUS_OPTIONS: string[] = [...CANONICAL_STAGES, "cancelled"]
 
 export function DepartmentBoardView({ division }: { division: DeptDivision }) {
   const t = useTranslations("board")
   const tc = useTranslations("common")
   const tTask = useTranslations("tasks")
+  const locale = useLocale()
   const [sections, setSections] = useState<SectionLite[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set()) // empty = all sections
   const [tasks, setTasks] = useState<DeptTask[]>([])
@@ -155,6 +160,7 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
   }
   const priorityLabels: Record<string, string> = {
     urgent: tTask("priorityUrgent"), high: tTask("priorityHigh"), medium: tTask("priorityMedium"), low: tTask("priorityLow"),
+    critical: tc("priorityCritical"),
   }
   // Each section has its own lanes; the folder folds them onto the canonical
   // stages, as its combined board does. A stage nobody uses stays hidden.
@@ -167,7 +173,9 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
     if (tk.status === "cancelled") return "__cancelled__"
     return resolveLaneKey({ status: tk.status, boardColumnKey: tk.boardColumnKey }, LANE_COLS) ?? "backlog"
   }, [])
-  const listTasks: InlineTask[] = useMemo(() => tasks.map((x) => ({
+  // Open tasks as their boards have them, finished ones newest-closed first, or
+  // by the column picked in the header — src/lib/tasks/board-list-order.ts.
+  const listTasks: InlineTask[] = useMemo(() => boardListOrder(tasks, listSort, { locale, statusOrder: LIST_STATUS_OPTIONS }).map((x) => ({
     id: x.id, title: x.title, status: x.status, boardColumnKey: x.boardColumnKey ?? null, priority: x.priority ?? "medium",
     type: x.type ?? null, eventType: x.eventType ?? null, dueDate: x.dueDate ?? null,
     assignedTo: x.assignee?.id ?? null, assignee: x.assignee ?? null,
@@ -175,7 +183,7 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
     relatedType: x.category ?? null, relatedName: null,
     _count: x._count,
     board: x.division ? { key: x.division.key, name: x.division.name, color: x.division.color } : null,
-  })), [tasks])
+  })), [tasks, listSort, locale])
   // A status picked in the list moves the card to that stage: the section's
   // own lane is dropped, so the stage is read from the status.
   const listUpdate = useCallback(async (taskId: string, patch: Record<string, unknown>) => {
@@ -286,7 +294,7 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
             onDelete={listDelete}
             onEdit={(task) => setOpenTaskId(task.id)}
             onOpenDetail={(id) => setOpenTaskId(id)}
-            statusOptions={[...CANONICAL_STAGES, "cancelled"]}
+            statusOptions={LIST_STATUS_OPTIONS}
             statusLabels={statusLabels}
             priorityLabels={priorityLabels}
             customFieldDefs={[]}

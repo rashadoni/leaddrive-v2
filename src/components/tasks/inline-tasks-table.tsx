@@ -191,6 +191,8 @@ const PRIORITY_OPTIONS = ["low", "medium", "high", "urgent"] as const
 // the detail view + tasks page.
 
 const PRIORITY_BADGE_CLASSES: Record<string, string> = {
+  // A board's top priority is «critical» (Bordio's word); it reads as urgent.
+  critical: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   urgent: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   high:   "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
@@ -251,6 +253,7 @@ function StatusGlyph({ status }: { status: string }) {
 }
 
 const PRIORITY_ICONS: Record<string, { Icon: typeof ChevronUp; cls: string }> = {
+  critical: { Icon: ChevronsUp, cls: "text-red-600" },
   urgent: { Icon: ChevronsUp,  cls: "text-red-600" },
   high:   { Icon: ChevronUp,   cls: "text-orange-500" },
   medium: { Icon: Equal,       cls: "text-amber-500" },

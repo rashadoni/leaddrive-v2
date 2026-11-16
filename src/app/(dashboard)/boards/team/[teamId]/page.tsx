@@ -11,11 +11,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { Loader2 } from "lucide-react"
 import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
 import { InlineTasksTable, type InlineTask, type InlineUser } from "@/components/tasks/inline-tasks-table"
 import { BOARD_TASKS_PAGE } from "@/lib/tasks/fetch-board-tasks"
+import { boardListOrder } from "@/lib/tasks/board-list-order"
 import type { TeamDTO } from "@/lib/tasks/board-teams"
 
 interface TeamTask {
@@ -42,6 +43,7 @@ export default function TeamPage() {
   const t = useTranslations("boardTeams")
   const tTask = useTranslations("tasks")
   const tc = useTranslations("common")
+  const locale = useLocale()
   const [team, setTeam] = useState<TeamDTO | null | undefined>(undefined) // undefined = reading, null = no such team
   const [canManage, setCanManage] = useState(false)
   const [tasks, setTasks] = useState<TeamTask[]>([])
@@ -91,10 +93,12 @@ export default function TeamPage() {
   }
   const priorityLabels: Record<string, string> = {
     urgent: tTask("priorityUrgent"), high: tTask("priorityHigh"), medium: tTask("priorityMedium"), low: tTask("priorityLow"),
+    critical: tc("priorityCritical"),
   }
   const groups = useMemo(() => [{ ...OPEN_GROUP[0], label: t("openTasks") }], [t])
   const groupKeyOf = useCallback(() => "open", [])
-  const rows: InlineTask[] = useMemo(() => tasks.map((x) => ({
+  // The column picked in the header orders the list — src/lib/tasks/board-list-order.ts.
+  const rows: InlineTask[] = useMemo(() => boardListOrder(tasks, sort, { locale }).map((x) => ({
     id: x.id, title: x.title, status: x.status, boardColumnKey: x.boardColumnKey ?? null, priority: x.priority ?? "medium",
     type: x.type ?? null, eventType: x.eventType ?? null, dueDate: x.dueDate ?? null,
     assignedTo: x.assignee?.id ?? null, assignee: x.assignee ?? null,
@@ -102,7 +106,7 @@ export default function TeamPage() {
     relatedType: x.category ?? null, relatedName: null,
     _count: x._count,
     board: x.division ? { key: x.division.key, name: x.division.name, color: x.division.color } : null,
-  })), [tasks])
+  })), [tasks, sort, locale])
   const update = useCallback(async (taskId: string, patch: Record<string, unknown>) => {
     // The task's own board decides its lane: the status moves it there.
     if (typeof patch.status === "string") patch = { ...patch, boardColumnKey: null }
