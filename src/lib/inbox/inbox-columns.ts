@@ -63,3 +63,30 @@ export const INBOX_RAIL_BESIDE_MIN_PX = BORDERS_PX + RAIL_PX + SEAMS_PX / 2 + IN
 export function inboxRailFolded(inboxWidth: number): boolean {
   return inboxWidth > 0 && inboxWidth < INBOX_RAIL_BESIDE_MIN_PX
 }
+
+/** The customer card as a column (w-72). */
+const PANEL_PX = 288
+
+/**
+ * From this inbox width the customer card stands as a fourth column beside the
+ * conversation, open by itself, as the mock-up draws it (owner, 2026-11-16:
+ * «Да, делай»): the rail, the list, the conversation with the same 428 px it
+ * needs beside the list, and the card (1265 px). With the full CRM menu that is
+ * a window of ~1585 px, with the menu collapsed ~1393 px.
+ *
+ * Below it the card is what it was from 2026-11-15 (PR #1637, «закрыта по
+ * умолчанию»): closed, the avatar opens it over the right edge of the
+ * conversation, a press elsewhere or Escape closes it. Opened there it covered
+ * a conversation that had no room for a fourth column; here it takes nothing
+ * the conversation needs.
+ */
+export const INBOX_PANEL_BESIDE_THREAD_MIN_PX = INBOX_LIST_BESIDE_THREAD_MIN_PX + SEAMS_PX / 2 + PANEL_PX
+
+/**
+ * True when the customer card stands as a column at this inbox width.
+ * Zero means «not measured»: the card over the conversation, as before the
+ * column — a first paint must not squeeze a conversation it cannot measure.
+ */
+export function inboxPanelBesideThread(inboxWidth: number): boolean {
+  return inboxWidth > 0 && inboxWidth >= INBOX_PANEL_BESIDE_THREAD_MIN_PX
+}
