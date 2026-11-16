@@ -43,14 +43,18 @@ function BulkCloseDialogBody({ selectedCount, busy, allowNoResult, onOpenChange,
   const outcomes: DialogOutcome[] = ["won", "lost", "pending", ...(allowNoResult ? ["none" as const] : [])]
 
   return (
-    <Dialog open onOpenChange={(next) => { if (!busy && !next) onOpenChange(false) }}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{outcome === "pending"
-            ? t("bulkPendingTitle", { count: selectedCount })
-            : t("bulkCloseTitle", { count: selectedCount })}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
+    // The app's Dialog is the panel itself (its width is `widthClassName`); header, content and
+    // footer are the panel's three sections, side by side. Until 2026-11-16 the header and the
+    // footer were nested inside a `DialogContent` with a width of its own: a narrow card stood in
+    // a wide panel with an empty column on the right, the title and the buttons on white slabs.
+    <Dialog open onOpenChange={(next) => { if (!busy && !next) onOpenChange(false) }} widthClassName="max-w-md">
+      <DialogHeader>
+        <DialogTitle>{outcome === "pending"
+          ? t("bulkPendingTitle", { count: selectedCount })
+          : t("bulkCloseTitle", { count: selectedCount })}</DialogTitle>
+      </DialogHeader>
+      <DialogContent>
+        <div className="space-y-3" data-testid="inbox-bulk-close-dialog">
           <div className="space-y-1.5">
             <span className="text-xs font-medium">{t("closeOutcomeLabel")}</span>
             <div className="flex flex-wrap gap-2">
@@ -104,14 +108,14 @@ function BulkCloseDialogBody({ selectedCount, busy, allowNoResult, onOpenChange,
             <p className="text-[11px] text-muted-foreground">{t("bulkCloseHint")}</p>
           </div>}
         </div>
-        <DialogFooter>
-          <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>{tc("cancel")}</Button>
-          <Button disabled={busy} onClick={() => onConfirm(message.trim(), outcome, followUpAt || undefined)} className="gap-1.5">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            {outcome === "pending" ? t("moveToPending") : t("bulkClose")}
-          </Button>
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>{tc("cancel")}</Button>
+        <Button disabled={busy} onClick={() => onConfirm(message.trim(), outcome, followUpAt || undefined)} className="gap-1.5">
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+          {outcome === "pending" ? t("moveToPending") : t("bulkClose")}
+        </Button>
+      </DialogFooter>
     </Dialog>
   )
 }
