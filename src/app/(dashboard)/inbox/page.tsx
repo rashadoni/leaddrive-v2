@@ -2606,14 +2606,17 @@ export default function InboxV2Page() {
               <div className="flex flex-wrap gap-1.5 empty:hidden">
                 {assigneeOpenCount > 0 && transferTargets.length > 0 && (
                   <Hint text={t("assigneeTransferHint")} side="bottom" align="start">
-                    <button
+                    {/* The shared Button: the screen's one filled action takes the CRM's own action
+                        colour (crm-workspace.css), which a native button with `bg-primary` does not. */}
+                    <Button
                       type="button"
+                      size="sm"
                       onClick={openTransfer}
                       data-testid="inbox-assignee-transfer-all"
-                      className="inline-flex min-h-7 items-center rounded-md bg-primary px-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="h-7 px-2.5"
                     >
                       {t("assigneeTransferAll", { count: assigneeOpenCount })}
-                    </button>
+                    </Button>
                   </Hint>
                 )}
                 {allVisibleSelectable.length > 0 && (
