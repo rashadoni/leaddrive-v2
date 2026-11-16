@@ -16,7 +16,23 @@ const FB_GRAPH = "https://graph.facebook.com/v20.0"
 const SEND_TIMEOUT_MS = 45_000
 
 export type MetaDmAttachmentType = "image" | "video" | "audio" | "file"
-export type MetaDmSendResult = { ok: boolean; messageId: string | null; error: string | null }
+/**
+ * `outsideWindow` — Meta refused because the customer last wrote too long ago (code 10; subcode
+ * 2534022 on Instagram, 2018278 on Messenger). Its own text comes in the language of the token's
+ * owner — Zeytun got «Сообщение отправлено за пределами допустимого окна» on an Azerbaijani screen —
+ * so the caller decides from this flag, not from the words.
+ */
+export type MetaDmSendResult = { ok: boolean; messageId: string | null; error: string | null; outsideWindow?: true }
+
+const OUTSIDE_WINDOW_SUBCODES = new Set([2534022, 2018278])
+
+/**
+ * A message a person typed may go out up to 7 days after the customer's last one with Meta's
+ * HUMAN_AGENT tag — the only tag Instagram has. Never on an automated send: Meta allows it for a
+ * human answering a question only, and an app that tags robots loses messaging. It works only once
+ * Meta has approved the app's «Human Agent» feature; until then Meta refuses the tagged send too.
+ */
+const HUMAN_AGENT_TAG = { messaging_type: "MESSAGE_TAG", tag: "HUMAN_AGENT" } as const
 
 /**
  * How Meta wants this file named, or null when the platform does not carry it.
@@ -55,10 +71,18 @@ async function post(params: {
       const safe = redactOAuthProviderText(raw)
       console.error(`[meta-dm] send failed (${res.status}):`, safe)
       let reason: string | null = null
+      let outsideWindow = false
       try {
-        reason = (JSON.parse(raw) as { error?: { message?: string } })?.error?.message ?? null
+        const err = (JSON.parse(raw) as { error?: { message?: string; code?: unknown; error_subcode?: unknown } })?.error
+        reason = err?.message ?? null
+        outsideWindow = err?.code === 10 && typeof err.error_subcode === "number" && OUTSIDE_WINDOW_SUBCODES.has(err.error_subcode)
       } catch { /* not JSON */ }
-      return { ok: false, messageId: null, error: reason ? redactOAuthProviderText(reason) : `HTTP ${res.status}` }
+      return {
+        ok: false,
+        messageId: null,
+        error: reason ? redactOAuthProviderText(reason) : `HTTP ${res.status}`,
+        ...(outsideWindow ? { outsideWindow: true as const } : {}),
+      }
     }
     let messageId: string | null = null
     try {
@@ -80,14 +104,20 @@ export function sendMetaDmAttachment(params: {
   token: string
   type: MetaDmAttachmentType
   url: string
+  /** A person sends it: see HUMAN_AGENT_TAG. */
+  humanAgent?: boolean
 }): Promise<MetaDmSendResult> {
-  const { igLogin, recipientId, token, type, url } = params
+  const { igLogin, recipientId, token, type, url, humanAgent } = params
   if (!recipientId || !token || !url) return Promise.resolve({ ok: false, messageId: null, error: "not configured" })
   return post({
     igLogin,
     token,
     timeoutMs: SEND_TIMEOUT_MS,
-    payload: { recipient: { id: recipientId }, message: { attachment: { type, payload: { url } } } },
+    payload: {
+      recipient: { id: recipientId },
+      message: { attachment: { type, payload: { url } } },
+      ...(humanAgent ? HUMAN_AGENT_TAG : {}),
+    },
   })
 }
 
@@ -97,8 +127,32 @@ export function sendMetaDmText(params: {
   recipientId: string
   token: string
   text: string
+  /** A person sends it: see HUMAN_AGENT_TAG. */
+  humanAgent?: boolean
 }): Promise<MetaDmSendResult> {
-  const { igLogin, recipientId, token, text } = params
+  const { igLogin, recipientId, token, text, humanAgent } = params
   if (!recipientId || !token || !text) return Promise.resolve({ ok: false, messageId: null, error: "not configured" })
-  return post({ igLogin, token, timeoutMs: 15_000, payload: { recipient: { id: recipientId }, message: { text } } })
+  return post({
+    igLogin,
+    token,
+    timeoutMs: 15_000,
+    payload: { recipient: { id: recipientId }, message: { text }, ...(humanAgent ? HUMAN_AGENT_TAG : {}) },
+  })
+}
+
+/**
+ * Send as usual; if Meta says the customer's window has closed and a person wrote this, send it
+ * once more tagged HUMAN_AGENT. Inside the 24 hours nothing changes — no tag, one call. The result
+ * keeps `outsideWindow` when the second try did not go either, so the screen can say why.
+ */
+export async function sendMetaDmAsPerson(
+  send: (humanAgent: boolean) => Promise<MetaDmSendResult>,
+  byPerson: boolean,
+): Promise<MetaDmSendResult> {
+  const first = await send(false)
+  if (first.ok || !first.outsideWindow || !byPerson) return first
+  const tagged = await send(true)
+  if (tagged.ok) return tagged
+  console.error(`[meta-dm] HUMAN_AGENT send refused too: ${tagged.error ?? "no reason"}`)
+  return { ...tagged, outsideWindow: true }
 }
