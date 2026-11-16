@@ -216,6 +216,12 @@ export async function GET(req: NextRequest) {
   if (scopedId && scopedId !== userId) settings.igScopedId = scopedId
   if (grantedScopes) settings.grantedScopes = grantedScopes
   // A reconnect is a fresh grant: a revocation recorded for an earlier one no longer describes the row.
+  // A data deletion request also renamed the row and dropped its handle (lib/social/instagram-revoke);
+  // the account is back, so is its name — otherwise the inbox keeps calling it «Instagram account (data
+  // deletion requested)» (2026-11-16, @rentacarazerbaijan reconnected for the App Review video).
+  const revokedByMeta = prevSettings.revokedByMeta
+  const renamedByDeletion = !!revokedByMeta && typeof revokedByMeta === "object"
+    && (revokedByMeta as { reason?: unknown }).reason === "data_deletion"
   delete settings.revokedByMeta
   if (staged) {
     settings.appReviewOnly = true
@@ -237,7 +243,7 @@ export async function GET(req: NextRequest) {
   if (existing) {
     await prisma.channelConfig.update({
       where: { id: existing.id },
-      data: { apiKey: longToken, isActive: true, settings },
+      data: { apiKey: longToken, isActive: true, settings, ...(renamedByDeletion && !staged ? { configName: displayName } : {}) },
     })
     wiredChannelId = existing.id
   } else {
