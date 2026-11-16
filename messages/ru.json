@@ -28973,6 +28973,7 @@
     "placeholderTemplate": "Шаблон WhatsApp",
     "placeholderTemplateNamed": "Шаблон: {name}",
     "placeholderUnsupported": "Сообщение, которое канал не передаёт",
+    "messageUnsent": "Клиент удалил это сообщение",
     "placeholderNoFile": "файл не получен",
     "messageSentViaInbox": "через LeadDrive Inbox → {channel}",
     "messageSentViaChannel": "канал: {channel}",

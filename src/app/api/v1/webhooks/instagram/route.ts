@@ -8,6 +8,7 @@ import { isIgLogin } from "@/lib/social/tenant-meta-app"
 import { isDuplicateInsert } from "@/lib/social/meta-inbound-idempotency"
 import { sanitizeLog } from "@/lib/sanitize"
 import { describeMetaMessageShape } from "@/lib/social/meta-message-shape"
+import { isMetaUnsend, markMetaDmUnsent, metaInboundText } from "@/lib/social/meta-dm-inbound-content"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
 import { createHmac, timingSafeEqual } from "crypto"
 import type { ChannelConfig } from "@prisma/client"
@@ -180,14 +181,33 @@ export async function POST(req: NextRequest) {
         // no `message`. Recording them wrote a phantom "[media]" inbound (no mid, no attachment) a few
         // seconds after the customer's real text, and counted it as unread.
         if (!event.message) continue
+        // The customer deleted a message: not a new one — the one it names is marked
+        // (lib/social/meta-dm-inbound-content). Stored as «[media]» before 2026-11-16.
+        if (isMetaUnsend(event.message)) {
+          const unsentMid = typeof event.message.mid === "string" ? event.message.mid.trim() : ""
+          if (unsentMid) {
+            try {
+              const found = await markMetaDmUnsent({ organizationId: channel.organizationId, channelType: "instagram", mid: unsentMid })
+              console.log(`[IG Webhook] customer deleted a message (org=${sanitizeLog(channel.organizationId)}, found=${found})`)
+            } catch (e) {
+              console.error("[IG Webhook] unsend failed:", e)
+            }
+          }
+          continue
+        }
         const senderId = event.sender?.id
-        const text = event.message?.text || "[media]"
+        // Words, or the words of a card with buttons (another business's auto-reply, the card
+        // Instagram adds to a phone number) — lib/social/meta-dm-inbound-content.
+        const cardText = event.message?.text ? null : metaInboundText(event.message)
+        const text = event.message?.text || cardText || "[media]"
         // Both are replaced below when the file is kept.
         let { mediaUrl, messageType } = parseInstagramAttachment(event.message?.attachments) as { mediaUrl: string | null; messageType: string | null }
         // Neither words nor a file Meta hands over: the row is stored as "[media]" and the inbox says
         // the content is only in the app. Its shape (no content) is logged so the form can be learned.
-        if (!event.message?.text && !mediaUrl) {
+        if (!event.message?.text && !cardText && !mediaUrl) {
           console.log(`[IG Webhook] message without text or file (org=${sanitizeLog(channel.organizationId)}, ${describeMetaMessageShape(event.message)})`)
+        } else if (cardText) {
+          console.log(`[IG Webhook] card message (org=${sanitizeLog(channel.organizationId)}, lines=${cardText.split("\n").length})`)
         }
         const externalMessageId =
           typeof event.message?.mid === "string" && event.message.mid.trim()
