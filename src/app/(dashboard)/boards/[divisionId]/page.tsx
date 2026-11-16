@@ -57,6 +57,7 @@ import { BoardActionsCtx, CardQuickMenu, type BoardActions } from "@/components/
 import { HelpButton } from "@/components/help/help-button"
 import { CreateTaskDialog } from "@/components/boards/create-task-dialog"
 import { mayDeleteTask, mayManageTask } from "@/lib/tasks/task-ownership"
+import { boardListOrder } from "@/lib/tasks/board-list-order"
 
 // Shared CRM surfaces; stage and priority colors retain their meaning.
 const C = {
@@ -484,6 +485,8 @@ function BoardInner() {
   }
   const listPriorityLabels: Record<string, string> = {
     urgent: tTask("priorityUrgent"), high: tTask("priorityHigh"), medium: tTask("priorityMedium"), low: tTask("priorityLow"),
+    // Bordio's «critical» came over with the import (2026-11-12); the list showed the bare word.
+    critical: tc("priorityCritical"),
   }
   // Status vocabulary for the list's inline status editor = this board's real
   // columns (mapsToStatus, in column order, deduped) + cancelled (a legitimate
@@ -514,13 +517,15 @@ function BoardInner() {
     if (mineCreated && t2.creator?.id !== myId) return false
     return true
   }), [tasks, mine, mineCreated, myId])
-  const listTasks: InlineTask[] = useMemo(() => listSource.map((x) => ({
+  // Open tasks as the board has them, finished ones newest-closed first, or by
+  // the column picked in the header — src/lib/tasks/board-list-order.ts.
+  const listTasks: InlineTask[] = useMemo(() => boardListOrder(listSource, listSort, { locale, statusOrder: listStatusOptions }).map((x) => ({
     id: x.id, title: x.title, status: x.status, boardColumnKey: x.boardColumnKey ?? null, priority: x.priority,
     type: x.type, eventType: x.eventType, dueDate: x.dueDate,
     assignedTo: x.assignee?.id ?? null, assignee: x.assignee ?? null,
     collaborators: x.collaborators?.map((c) => c.user),
     relatedType: x.category, relatedName: null,
-  })), [listSource])
+  })), [listSource, listSort, locale, listStatusOptions])
   // List groups = the board's OWN kanban columns (same keys, same labels) so
   // Lövhə and Siyahı never disagree on stages or names. Bucketing reuses
   // resolveLaneKey — the exact lane fold the kanban uses. Cancelled (no lane)
