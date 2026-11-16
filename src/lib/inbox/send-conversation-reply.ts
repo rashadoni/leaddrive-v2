@@ -7,8 +7,9 @@ import { resolveTelegramSendTarget, sendTelegramText } from "@/lib/telegram"
 import { sendTelegramMedia } from "@/lib/telegram-media"
 import { sendChatwootMessage } from "@/lib/chatwoot"
 import { sendVkMessage } from "@/lib/vkontakte"
-import { metaDmAttachmentType, sendMetaDmAttachment, sendMetaDmText } from "@/lib/social/meta-dm-attachment"
+import { metaDmAttachmentType, sendMetaDmAsPerson, sendMetaDmAttachment, sendMetaDmText } from "@/lib/social/meta-dm-attachment"
 import { createOutboundMediaLink } from "@/lib/inbox/outbound-media-link"
+import { META_OUTSIDE_WINDOW } from "@/lib/inbox/meta-reply-window"
 import { isIgLogin } from "@/lib/social/tenant-meta-app"
 import { ensureConversation } from "@/lib/inbox-ensure-conversation"
 import { isImageMime } from "@/lib/inbox-attachment"
@@ -70,6 +71,11 @@ export interface SendConversationReplyOptions {
 export type SendConversationReplyResult =
   | { success: true; statusCode: 201; data: { id: string; status: string } & Record<string, unknown> }
   | { success: false; statusCode: 400 | 409 | 500; error: string; internal?: boolean; deliveryUnknown?: boolean; attemptId?: string; autoReplyCooldown?: boolean }
+
+/** Typed by a person in the inbox — the only send Meta's HUMAN_AGENT tag may carry. */
+function sentByPerson(extra: Record<string, unknown> | undefined): boolean {
+  return extra?.authorType === "operator" && extra.aiAutoReply !== true && extra.aiGenerated !== true
+}
 
 function escHtml(value: unknown): string {
   return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
@@ -324,6 +330,7 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
   // Chatwoot took the text; the provider behind the inbox still gets to refuse
   // it, and this id is how the poller later says which row that was.
   let chatwootMessageId: string | null = null
+  let metaOutsideWindow = false
   let recordedMessage: ({ id: string; status: string } & Record<string, unknown>) | null = null
 
   try {
@@ -530,7 +537,17 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
         if (!config?.apiKey) return { success: false, statusCode: 400, error: `${channel} не настроен` }
         // An Instagram-Login token only works against graph.instagram.com; a Facebook-Login page
         // token only against graph.facebook.com. The webhook's AI auto-reply already splits this way.
+        const token = config.apiKey
         const igLogin = channel === "instagram" && isIgLogin(config.settings)
+        // Past 24 hours after the customer's last message Meta refuses; a person's reply then goes
+        // once more with the HUMAN_AGENT tag (7 days, once Meta has approved the feature).
+        const byPerson = sentByPerson(opts.extraMetadata)
+        // Meta's own words for the refusal are in the token owner's language; the row keeps a fixed
+        // line and the caller gets a code.
+        const failure = (what: string, r: { error: string | null; outsideWindow?: true }) => {
+          if (r.outsideWindow) metaOutsideWindow = true
+          return `${what}${r.outsideWindow ? ": outside the customer's messaging window (Meta code 10)" : r.error ? `: ${r.error}` : ""}`
+        }
         // Meta echoes every send back to the webhook; the ids kept here are how the echo is known
         // to be ours and not a reply typed in the app (lib/inbox/meta-dm-app-echo).
         const sentIds: string[] = []
@@ -541,25 +558,34 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
           }
           const link = createOutboundMediaLink(attachment.url, orgId)
           if (!link) return { success: false, statusCode: 400, error: "Invalid or missing attachment" }
-          const file = await sendMetaDmAttachment({ igLogin, recipientId: to, token: config.apiKey, type, url: link })
+          const file = await sendMetaDmAsPerson(
+            (humanAgent) => sendMetaDmAttachment({ igLogin, recipientId: to, token, type, url: link, humanAgent }),
+            byPerson,
+          )
           if (file.messageId) sentIds.push(file.messageId)
           status = file.ok ? "delivered" : "failed"
           if (!file.ok) {
-            errorMsg = `${channel} send failed${file.error ? `: ${file.error}` : ""}`
+            errorMsg = failure(`${channel} send failed`, file)
             break
           }
           // Text cannot ride with an attachment in one call, so the caption follows it.
           if (body.trim()) {
-            const caption = await sendMetaDmText({ igLogin, recipientId: to, token: config.apiKey, text: body })
+            const caption = await sendMetaDmAsPerson(
+              (humanAgent) => sendMetaDmText({ igLogin, recipientId: to, token, text: body, humanAgent }),
+              byPerson,
+            )
             if (caption.messageId) sentIds.push(caption.messageId)
             // The file is with the customer; a lost caption is reported, not hidden.
-            if (!caption.ok) errorMsg = `${channel}: file sent, text failed${caption.error ? `: ${caption.error}` : ""}`
+            if (!caption.ok) errorMsg = failure(`${channel}: file sent, text failed`, caption)
           }
         } else {
-          const sent = await sendMetaDmText({ igLogin, recipientId: to, token: config.apiKey, text: body })
+          const sent = await sendMetaDmAsPerson(
+            (humanAgent) => sendMetaDmText({ igLogin, recipientId: to, token, text: body, humanAgent }),
+            byPerson,
+          )
           if (sent.messageId) sentIds.push(sent.messageId)
           status = sent.ok ? "delivered" : "failed"
-          if (!sent.ok) errorMsg = `${channel} send failed${sent.error ? `: ${sent.error}` : ""}`
+          if (!sent.ok) errorMsg = failure(`${channel} send failed`, sent)
         }
         if (sentIds.length) {
           metaMessageId = sentIds[0]
@@ -665,7 +691,9 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
           ...(recordedMessage?.id ? { attemptId: recordedMessage.id } : {}),
         }
       }
-      return { success: false, statusCode: 500, error: errorMsg || "Ошибка отправки" }
+      // A code, not Meta's words: the screen says it in its own language, with how long ago the
+      // customer wrote (lib/inbox/meta-reply-window).
+      return { success: false, statusCode: 500, error: metaOutsideWindow ? META_OUTSIDE_WINDOW : errorMsg || "Ошибка отправки" }
     }
     return { success: true, statusCode: 201, data: message as unknown as { id: string; status: string } & Record<string, unknown> }
   } catch (error) {

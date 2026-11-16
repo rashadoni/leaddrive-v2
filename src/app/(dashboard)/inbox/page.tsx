@@ -29,6 +29,7 @@ import { applySnippetVariables, type MessageSnippetLike } from "@/lib/inbox/snip
 import { whatsappCallAuditLines } from "@/lib/whatsapp-call-audit"
 import { channelAccountLine, channelAccountShortLabel, sameChannelAddress } from "@/lib/inbox/conversation-channel"
 import { callStatusWord, callSummaryLine } from "@/lib/inbox/call-summary"
+import { META_OUTSIDE_WINDOW, metaWindowNotice } from "@/lib/inbox/meta-reply-window"
 import { dialFailureDiagnostic, formatDialDiagnostic } from "@/lib/calls/dial-diagnostics"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -1994,8 +1995,10 @@ export default function InboxV2Page() {
         // Don't silently clear — surface WHY nothing sent. WhatsApp's 24h-window rule
         // returns "outside_window_no_template"; tokens/config errors come through too.
         const code = json.error || `HTTP ${res.status}`
+        const metaWindow = code === META_OUTSIDE_WINDOW ? metaWindowNotice(convo.messages, replyChannel) : null
         setSendError(code === "whatsapp_reply_channel_mismatch" ? t("whatsappChannelMismatch")
-          : code === "outside_window_no_template" ? t("sendWindowClosed") : t("sendFailed", { error: code }))
+          : code === "outside_window_no_template" ? t("sendWindowClosed")
+          : metaWindow ? t(metaWindow.key, metaWindow.values) : t("sendFailed", { error: code }))
         if (json.deliveryUnknown === false && nativeTikTokReplyTarget(convo.messages)) {
           sendOperationRef.current = null
         }
