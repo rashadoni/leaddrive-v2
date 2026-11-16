@@ -31,6 +31,7 @@ export type PlaceholderKind =
   | "form"
   | "template"
   | "unsupported"
+  | "unsent"
 
 export type Placeholder = { kind: PlaceholderKind; detail?: string }
 
@@ -62,6 +63,8 @@ const EXACT: Record<string, PlaceholderKind> = {
   unsupported: "unsupported",
   "unsupported attachment": "unsupported",
   unknown: "unsupported",
+  // The conversation preview after the customer deleted their latest message (UNSENT_PREVIEW).
+  unsent: "unsent",
 }
 
 /** «[Документ: x.pdf]», «[Локация: 40.4, 49.8]», «[Реакция: 👍]», «[Форма: Rəşad]», «[template:name]». */
@@ -132,6 +135,7 @@ export function placeholderLabel(p: Placeholder): PlaceholderLabel {
     case "form": return p.detail ? { key: "placeholderFormNamed", values: { name: p.detail } } : { key: "placeholderForm" }
     case "template": return p.detail ? { key: "placeholderTemplateNamed", values: { name: p.detail } } : { key: "placeholderTemplate" }
     case "unsupported": return { key: "placeholderUnsupported" }
+    case "unsent": return { key: "messageUnsent" }
   }
 }
 
@@ -149,9 +153,12 @@ export function placeholderLabel(p: Placeholder): PlaceholderLabel {
  *   - `unavailable` — a «[media]» on a channel without an app to point at.
  *   - `label` — a readable name for what the message was; `noFile` when a file was expected and
  *     did not reach the CRM.
+ *   - `unsent` — the customer deleted this message in Instagram (lib/social/meta-dm-inbound-content);
+ *     neither its words nor its file are shown, as in the app.
  */
 export type PlaceholderView =
   | { kind: "body" }
+  | { kind: "unsent" }
   | { kind: "hide"; fileName?: string }
   | { kind: "withheld"; app: string; buttons?: true }
   | { kind: "unavailable" }
@@ -161,7 +168,9 @@ export function placeholderView(message: {
   body: string | null | undefined
   mediaUrl?: string | null
   channelType?: string | null
+  metadata?: unknown
 }): PlaceholderView {
+  if (isUnsentByCustomer(message.metadata)) return { kind: "unsent" }
   const p = parsePlaceholder(message.body)
   if (!p) return { kind: "body" }
   const hasFile = typeof message.mediaUrl === "string" && message.mediaUrl.trim() !== ""
@@ -174,6 +183,14 @@ export function placeholderView(message: {
     return p.kind === "media" && META_APPS.has(app) ? { kind: "withheld", app, buttons: true } : { kind: "withheld", app }
   }
   return { kind: "label", label: placeholderLabel(p), noFile: !hasFile && FILE_KINDS.has(p.kind) }
+}
+
+/** The conversation preview when the customer deleted their latest message. */
+export const UNSENT_PREVIEW = "[unsent]"
+
+/** Set on an inbound message the customer deleted (lib/social/meta-dm-inbound-content). */
+export function isUnsentByCustomer(metadata: unknown): boolean {
+  return !!metadata && typeof metadata === "object" && (metadata as { unsentByCustomer?: unknown }).unsentByCustomer === true
 }
 
 /** The line under a conversation in the list. `null` — show the stored text as it is. */

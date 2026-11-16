@@ -19,6 +19,20 @@ function token(value: unknown): string {
   return typeof value === "string" ? value.replace(SAFE_TOKEN_RE, "").slice(0, 40) || "?" : "?"
 }
 
+/**
+ * The keys under a payload value, two levels down: `generic(elements[buttons+subtitle+title])`.
+ * Keys only — never a value — so a card Meta sends in a form we do not read yet names its layout.
+ */
+function nestedKeys(value: unknown, depth: number): string {
+  if (depth <= 0) return ""
+  if (Array.isArray(value)) {
+    const first = record(value[0])
+    return first ? `[${Object.keys(first).map((k) => token(k) + nestedKeys(first[k], depth - 1)).sort().join("+")}]` : ""
+  }
+  const r = record(value)
+  return r ? `(${Object.keys(r).map((k) => token(k) + nestedKeys(r[k], depth - 1)).sort().join("+")})` : ""
+}
+
 export function describeMetaMessageShape(message: unknown): string {
   const m = record(message)
   if (!m) return "message=none"
@@ -28,7 +42,7 @@ export function describeMetaMessageShape(message: unknown): string {
     const a = record(raw)
     if (!a) return "?"
     const payload = record(a.payload)
-    const payloadKeys = payload ? Object.keys(payload).map(token).sort().join("+") : ""
+    const payloadKeys = payload ? Object.keys(payload).map((k) => token(k) + nestedKeys(payload[k], 2)).sort().join("+") : ""
     return `${token(a.type)}{${payloadKeys}}`
   })
   const flags = ["is_unsupported", "is_deleted", "is_echo"].filter((flag) => m[flag] === true)

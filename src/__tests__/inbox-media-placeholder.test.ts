@@ -162,7 +162,7 @@ describe("shape of a Meta message without text or file", () => {
         { type: "share", payload: { url: "https://lookaside.fbsbx.com/secret?asset_id=1" } },
       ],
     })
-    expect(shape).toBe("keys=attachments,is_unsupported,mid,text attachments=template{generic};share{url} flags=is_unsupported")
+    expect(shape).toBe("keys=attachments,is_unsupported,mid,text attachments=template{generic(elements[title])};share{url} flags=is_unsupported")
     expect(shape).not.toMatch(/Rent a car|lookaside|aWdfZ/)
   })
 

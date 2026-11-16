@@ -28969,6 +28969,7 @@
     "placeholderTemplate": "WhatsApp şablonu",
     "placeholderTemplateNamed": "Şablon: {name}",
     "placeholderUnsupported": "Kanalın ötürmədiyi mesaj",
+    "messageUnsent": "Müştəri bu mesajı silib",
     "placeholderNoFile": "fayl alınmadı",
     "messageSentViaInbox": "LeadDrive Inbox vasitəsilə → {channel}",
     "messageSentViaChannel": "kanal: {channel}",
