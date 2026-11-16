@@ -274,8 +274,16 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
   const prev = existing?.settings && typeof existing.settings === "object" && !Array.isArray(existing.settings)
     ? (existing.settings as Record<string, unknown>)
     : {}
+  // What `account_update` wrote about the previous connection does not describe this one. A
+  // coexistence number is re-onboarded exactly this way — Disconnect in the WhatsApp Business app
+  // (PARTNER_REMOVED: row off, `disconnected` written), then Embedded Signup again, which is also
+  // the only road to a second history import — and Meta's documentation names no event that would
+  // lift those marks on that road. Kept, `cloudApiPaused` would hold every send of a working number
+  // and `disconnected` would show it as cut off.
+  const carried: Record<string, unknown> = { ...prev }
+  for (const key of ["disconnected", "cloudApiPaused", "cloudApiPausedAt", "cloudApiPausedEvent"]) delete carried[key]
   const settings: Record<string, unknown> = {
-    ...prev,
+    ...carried,
     embeddedSignup: true,
     businessId: input.businessId || prev.businessId || null,
     displayPhoneNumber,

@@ -192,6 +192,28 @@ describe("completeEmbeddedSignup", () => {
     expect(db.rows[0].settings).toMatchObject({ replyMode: "agent", embeddedSignup: true })
   })
 
+  it("clears what Meta said about the previous connection when the number connects again", async () => {
+    // Disconnect in the WhatsApp Business app → PARTNER_REMOVED → row off with `disconnected`; a
+    // pause may linger from an ACCOUNT_OFFBOARDED. A fresh signup is a working connection: a kept
+    // pause would hold every send (resolveWhatsAppConfig), a kept mark would show it cut off.
+    db.rows.push({
+      id: "ours", organizationId: "org_a", channelType: "whatsapp", isActive: false, phoneNumberId: "444555666", accessToken: "OLD",
+      settings: {
+        replyMode: "agent",
+        cloudApiPaused: true,
+        cloudApiPausedAt: "2026-11-16T05:00:00.000Z",
+        cloudApiPausedEvent: "ACCOUNT_OFFBOARDED",
+        disconnected: { at: "2026-11-16T05:01:00.000Z", event: "PARTNER_REMOVED", initiatedBy: "USER" },
+      },
+    })
+    expect(await completeEmbeddedSignup(input)).toMatchObject({ ok: true, created: false, channelId: "ours" })
+    expect(db.rows[0]).toMatchObject({ isActive: true })
+    expect(db.rows[0].settings).toMatchObject({ replyMode: "agent", embeddedSignup: true })
+    for (const key of ["cloudApiPaused", "cloudApiPausedAt", "cloudApiPausedEvent", "disconnected"]) {
+      expect(db.rows[0].settings).not.toHaveProperty(key)
+    }
+  })
+
   it("keeps a reconnected row's own App Secret and Verify Token", async () => {
     // LeadDrive's own number: its row's secret verifies the shared callback `?t=leaddrive` for every
     // workspace. Erasing it on a reconnect would reject every WhatsApp callback behind that URL.

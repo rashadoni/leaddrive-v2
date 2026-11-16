@@ -207,7 +207,10 @@ export async function historyImportDetail(organizationId: string, channelConfigI
     channelId: channelConfigId,
     configName: channel?.configName ?? "WhatsApp",
     displayPhoneNumber: typeof settings.displayPhoneNumber === "string" ? settings.displayPhoneNumber : null,
-    phone: !channel?.isActive || settings.disconnected ? "disconnected" : settings.cloudApiPaused ? "paused" : "connected",
+    // `isActive` alone says cut off: PARTNER_REMOVED switches the row off together with writing
+    // `disconnected`, and only a new Embedded Signup switches it on — so on an active row that mark
+    // is left over from the connection before.
+    phone: !channel?.isActive ? "disconnected" : settings.cloudApiPaused ? "paused" : "connected",
     counts: { conversations: view.history.conversations, messages: view.history.messages, media, mediaFiles },
     months: (monthRows as Array<{ month: string; messages: number }>).map((row) => ({ month: row.month, messages: Number(row.messages) })),
     newContacts: { total: view.contacts.created, shown: shownContacts.map((c) => ({ id: c.id, name: c.fullName })) },
