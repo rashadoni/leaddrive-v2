@@ -141,6 +141,27 @@ export function sendMetaDmText(params: {
 }
 
 /**
+ * A private reply to an Instagram comment: lands in the commenter's Direct, tied to the comment.
+ * Meta takes one per comment, within 7 days of it, whether or not the person ever wrote in Direct
+ * (lib/social/instagram-comments). Same transport and the same message id for the echo as a text.
+ */
+export function sendMetaCommentPrivateReply(params: {
+  igLogin: boolean
+  commentId: string
+  token: string
+  text: string
+}): Promise<MetaDmSendResult> {
+  const { igLogin, commentId, token, text } = params
+  if (!commentId || !token || !text) return Promise.resolve({ ok: false, messageId: null, error: "not configured" })
+  return post({
+    igLogin,
+    token,
+    timeoutMs: 15_000,
+    payload: { recipient: { comment_id: commentId }, message: { text } },
+  })
+}
+
+/**
  * Send as usual; if Meta says the customer's window has closed and a person wrote this, send it
  * once more tagged HUMAN_AGENT. Inside the 24 hours nothing changes — no tag, one call. The result
  * keeps `outsideWindow` when the second try did not go either, so the screen can say why.

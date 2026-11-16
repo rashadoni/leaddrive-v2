@@ -19,7 +19,14 @@ const HUMAN_AGENT_WINDOW_HOURS = 7 * 24
 
 const APP_BY_CHANNEL: Record<string, string> = { instagram: "Instagram", facebook: "Messenger" }
 
-type WindowMessage = { direction?: string | null; channelType?: string | null; createdAt?: string | Date | null }
+type WindowMessage = { direction?: string | null; channelType?: string | null; createdAt?: string | Date | null; metadata?: unknown }
+
+/** An Instagram comment row (lib/inbox/instagram-comment-ingest): a comment opens no Direct window. */
+function isCommentRow(metadata: unknown): boolean {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return false
+  const comment = (metadata as Record<string, unknown>).igComment
+  return !!comment && typeof comment === "object"
+}
 
 /** A translation key in the `inboxV2` namespace and its values. */
 export type MetaWindowNotice = { key: string; values: Record<string, string | number> }
@@ -28,7 +35,7 @@ export type MetaWindowNotice = { key: string; values: Record<string, string | nu
 export function hoursSinceCustomerWrote(messages: readonly WindowMessage[], channel: string, now: number = Date.now()): number | null {
   let last = -Infinity
   for (const m of messages) {
-    if (m.direction !== "inbound" || m.channelType !== channel || !m.createdAt) continue
+    if (m.direction !== "inbound" || m.channelType !== channel || !m.createdAt || isCommentRow(m.metadata)) continue
     const at = new Date(m.createdAt).getTime()
     if (Number.isFinite(at) && at > last) last = at
   }

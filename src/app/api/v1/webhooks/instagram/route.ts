@@ -18,6 +18,8 @@ import {
   parseInstagramAttachment,
 } from "@/lib/social/instagram-inbound-audio"
 import { transcribeAndStoreInboundVoice } from "@/lib/inbox/inbound-voice-transcript"
+import { instagramCommentEvents } from "@/lib/social/instagram-comments"
+import { ingestInstagramComment } from "@/lib/inbox/instagram-comment-ingest"
 
 /**
  * Instagram-Login webhook ("Path B" — "Instagram API with Instagram Login").
@@ -31,7 +33,8 @@ import { transcribeAndStoreInboundVoice } from "@/lib/inbox/inbound-voice-transc
  * Required env: INSTAGRAM_WEBHOOK_VERIFY_TOKEN, INSTAGRAM_APP_SECRET.
  * Dashboard: Use Cases > "Manage messages and content in Instagram" > Webhooks — set the callback URL
  * to /api/v1/webhooks/instagram and the verify token to INSTAGRAM_WEBHOOK_VERIFY_TOKEN, subscribe the
- * `messages` field. (Meta requires the app to be PUBLISHED for IG webhook delivery.)
+ * `messages` field. (Meta requires the app to be PUBLISHED for IG webhook delivery.) The `comments`
+ * field, once subscribed in the dashboard and granted by the account, lands here too.
  */
 const VERIFY_TOKEN = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN
 
@@ -368,6 +371,16 @@ export async function POST(req: NextRequest) {
             metadata: messageMetadata,
             source: "Instagram",
           })
+        }
+      }
+      // Comments under the account's posts (field `comments`, Business Login): into the author's
+      // conversation, never answered automatically (lib/inbox/instagram-comment-ingest). One that
+      // fails must not cost the others in this delivery.
+      for (const comment of instagramCommentEvents(entry)) {
+        try {
+          await ingestInstagramComment({ channel, accountId: String(igAccountId), comment })
+        } catch (e) {
+          console.error("[IG Webhook] comment ingest failed:", e)
         }
       }
       }) // end runWithTenant (per-entry tenant scope)

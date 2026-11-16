@@ -144,7 +144,7 @@ describe("Instagram-Login OAuth callback signed-state acceptance", () => {
  * the subscription "off" for the one connected account, and not one webhook POST had ever arrived).
  */
 describe("Instagram-Login OAuth callback turns on the account's message subscription", () => {
-  function connectWith(subscribeResponse: () => Response) {
+  function connectWith(subscribeResponse: () => Response, shortExtra: Record<string, unknown> = {}) {
     process.env.INSTAGRAM_APP_ID = "IG_APP_ID"
     process.env.INSTAGRAM_APP_SECRET = "IG_APP_SECRET"
     process.env.INSTAGRAM_REDIRECT_URI = "https://app.leaddrivecrm.org/api/v1/social/oauth/instagram/callback"
@@ -153,7 +153,7 @@ describe("Instagram-Login OAuth callback turns on the account's message subscrip
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === "https://api.instagram.com/oauth/access_token") {
-        return new Response(JSON.stringify({ access_token: "SHORT_IG_TOKEN", user_id: "1781" }), { status: 200 })
+        return new Response(JSON.stringify({ access_token: "SHORT_IG_TOKEN", user_id: "1781", ...shortExtra }), { status: 200 })
       }
       if (url.includes("/access_token?grant_type=ig_exchange_token")) {
         return new Response(JSON.stringify({ access_token: "LONG_IG_TOKEN", expires_in: 3600 }), { status: 200 })
@@ -185,6 +185,41 @@ describe("Instagram-Login OAuth callback turns on the account's message subscrip
     expect(subscribeRequests[0].init?.method).toBe("POST")
     expect(subscribeRequests[0].init?.headers).toMatchObject({ Authorization: "Bearer LONG_IG_TOKEN" })
     expect(storedSettings()).toMatchObject({ igLogin: true, username: "brand", inboxSubscribed: true })
+  })
+
+  // Comments under the account's posts (lib/social/instagram-comments) are subscribed only for an
+  // account that granted the comments permission; asked without it, Meta could refuse the whole call
+  // and the Direct subscription with it.
+  it("adds the `comments` field only when the account granted the comments permission", async () => {
+    const subscribeRequests = connectWith(
+      () => new Response(JSON.stringify({ success: true }), { status: 200 }),
+      { permissions: "instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments" },
+    )
+    const s = valid()
+
+    await GET(req(s, s))
+
+    expect(subscribeRequests.map((request) => request.url)).toEqual([
+      "https://graph.instagram.com/v21.0/me/subscribed_apps?subscribed_fields=messages,comments",
+    ])
+    expect(storedSettings()).toMatchObject({
+      inboxSubscribed: true,
+      grantedScopes: ["instagram_business_basic", "instagram_business_manage_messages", "instagram_business_manage_comments"],
+    })
+  })
+
+  it("keeps the subscription to `messages` when the account granted only Direct", async () => {
+    const subscribeRequests = connectWith(
+      () => new Response(JSON.stringify({ success: true }), { status: 200 }),
+      { permissions: ["instagram_business_basic", "instagram_business_manage_messages"] },
+    )
+    const s = valid()
+
+    await GET(req(s, s))
+
+    expect(subscribeRequests.map((request) => request.url)).toEqual([
+      "https://graph.instagram.com/v21.0/me/subscribed_apps?subscribed_fields=messages",
+    ])
   })
 
   it("stores a refusal as a refusal — the account is saved, but not as a delivering inbox", async () => {

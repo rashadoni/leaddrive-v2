@@ -190,6 +190,10 @@ export interface InboxConversation {
   lastMessage: string
   lastMessageAt: string
   lastDirection?: string | null
+  /** The newest message is an Instagram comment (lib/inbox/instagram-comment-ingest). */
+  lastIsComment?: boolean
+  /** The thread holds at least one Instagram comment — the «Şərhlər» view. */
+  hasComment?: boolean
   lastChannel: string
   unreadCount: number
   messageCount: number
@@ -464,7 +468,7 @@ export function convStatusTab(
 
 /* ── Phase 2c — folder views by assignment ── */
 
-export type InboxView = "all" | "me" | "unassigned" | "others" | "chatbot" | "awaiting" | "participating" | "spam" | "trash"
+export type InboxView = "all" | "me" | "unassigned" | "others" | "chatbot" | "awaiting" | "comments" | "participating" | "spam" | "trash"
 
 /**
  * Whether a conversation matches the selected folder view, by its surfaced
@@ -473,7 +477,7 @@ export type InboxView = "all" | "me" | "unassigned" | "others" | "chatbot" | "aw
  * match nothing here (callers keep those views disabled).
  */
 export function convMatchesView(
-  c: { assignedTo?: string | null; botHandled?: boolean; participants?: string[]; lastDirection?: string | null; lastFromHistory?: boolean },
+  c: { assignedTo?: string | null; botHandled?: boolean; participants?: string[]; lastDirection?: string | null; lastFromHistory?: boolean; hasComment?: boolean },
   view: InboxView,
   myUserId: string | null,
 ): boolean {
@@ -485,6 +489,8 @@ export function convMatchesView(
     case "chatbot": return c.botHandled === true // threads the auto-reply bot answered
     // «Cavab gözləyir» (dense inbox, 2026-11-15): the customer wrote last — the rule of lib/inbox/dense-inbox.
     case "awaiting": return isAwaitingReply(c)
+    // «Şərhlər» (2026-11-16): threads with an Instagram comment under one of the workspace's posts.
+    case "comments": return c.hasComment === true
     case "participating": return !!myUserId && (c.participants?.includes(myUserId) ?? false) // I'm a collaborator
     // The server already returned exactly the deleted threads for this view, so
     // filtering again here would be filtering twice. It did worse than that:

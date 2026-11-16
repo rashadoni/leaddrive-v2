@@ -1856,6 +1856,28 @@ Meta (её `request_id` или отказ) лежит в `settings.historyImport
 - Стерегут `meta-dm-app-echo.test.ts`, `inbox-outbound-media-link.test.ts`,
   `lib-send-conversation-reply-instagram.test.ts`.
 
+## Комментарии Instagram в инбоксе — `src/lib/social/instagram-comments.ts`
+
+Сабина (Зейтун) 2026-11-16: «omnichannel hissəyə instagram komentləri düşmür». Владелец по макету:
+комментарий — в диалог с его автором (тот же, где его Direct), карточкой с постом и «Postu aç»;
+отвечают по умолчанию в Direct, по кнопке — под постом; автоматически на комментарий не отвечает никто.
+
+- **Нужно право `instagram_business_manage_comments` с Advanced Access** — без App Review Meta не шлёт
+  вебхук `comments` вовсе. Пока его нет, подключение просит право только по `?comments=1` на
+  `oauth/instagram/start` (тестовый аккаунт для ролика); после одобрения — `COMMENTS_SCOPE_REQUESTED =
+  true`, и каждый аккаунт переподключают. Поле `comments` подписывается только аккаунту, выдавшему право
+  (`instagramSubscribedFields`), иначе Meta могла бы отказать во всей подписке вместе с Direct.
+- **Строка комментария — входящая с `metadata.igComment`** (`instagram-comment-ingest.ts`). Комментарий не
+  открывает окно Direct и не ход для ИИ: `hoursSinceCustomerWrote` и `selectUncoveredAiInboundBatch` его
+  пропускают. **Новый читатель входящих Instagram, решающий «можно ли писать» или «надо ли отвечать»,
+  обязан исключать `igComment`.**
+- Ответ «в Direct» — единственный личный ответ на комментарий (`recipient.comment_id`, раз, 7 дней;
+  отметка `igComment.privateReplyAt`), потом — обычный Direct. Ответ «под постом» — `/<comment>/replies`.
+  Свой ответ, пришедший эхом через вебхук, узнаётся по id (`externalId`); ответ, написанный в
+  приложении Instagram, ложится исходящей строкой `source: business_app`.
+- Комментарии только из @отметок и смайлов в инбокс не попадают (`isNoiseComment`): на розыгрыше их сотни.
+- Стерегут `instagram-comments-inbox.test.ts` (вебхук и отправка) и `inbox-instagram-comments-ui.test.ts`.
+
 ## ИИ-агент инбокса: свой на каждую страницу — `src/lib/inbox/page-agent.ts`
 
 Владелец 2026-11-13 (по макету, «Давай»): у клиента шесть Instagram-аккаунтов, а агент инбокса
