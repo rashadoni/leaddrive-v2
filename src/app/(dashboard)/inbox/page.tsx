@@ -89,6 +89,7 @@ import { placeholderPreview, placeholderView, voiceTranscript } from "@/lib/inbo
 import { threadHeaderActionInline, threadHeaderTier, type ThreadHeaderAction } from "@/lib/inbox/thread-header-layout"
 import { inboxListBesideThread, inboxRailFolded } from "@/lib/inbox/inbox-columns"
 import { importChipLabel, WhatsAppImportBanner, WhatsAppImportPanel } from "@/components/inbox/whatsapp-import-screen"
+import { convMatchesAssignee, inboxAssigneeOptions, type InboxAssigneeHolder, type InboxAssigneeOption } from "@/lib/inbox/assignee-filter"
 import {
   CHANNELS, ChannelIcon, channelColor, channelLabel,
   avatarTint, initials, extractQuickReplies, appendTag, dropTag, convStatusTab, convMatchesView, extractAttachments,
@@ -522,6 +523,21 @@ export default function InboxV2Page() {
   const [conversationTagFilter, setConversationTagFilter] = useState<string>("all")
   const [customerStageFilter, setCustomerStageFilter] = useState<string>("all")
   const [unrepliedOnly, setUnrepliedOnly] = useState(false)
+  // «Ответственный»: the conversations one person holds (lib/inbox/assignee-filter); null — everybody's.
+  // The label is kept with the id: someone whose last conversation was just handed over is no longer
+  // in the list of holders, and the strip above the list still has to say whose conversations these are.
+  const [assigneeChoice, setAssigneeChoice] = useState<{ id: string; label: string } | null>(null)
+  const assigneeId = assigneeChoice?.id ?? null
+  const [assigneeHolders, setAssigneeHolders] = useState<InboxAssigneeHolder[]>([])
+  const [assigneeMore, setAssigneeMore] = useState(false)
+  // What a read of the list asks for. An answer for the channel, the trash or the person chosen
+  // BEFORE must not replace the list of the one chosen after: with a person chosen, the answer
+  // carries her older conversations, and the other answer would silently drop them until the next
+  // refresh. Compared by what was asked, not by which read is newest — the stream may ask again
+  // before a slow answer arrives, and that answer is still the right list.
+  const inboxAsk = `${channelFilter}|${view === "trash" ? "trash" : "live"}|${assigneeId ?? ""}`
+  const inboxAskRef = useRef(inboxAsk)
+  inboxAskRef.current = inboxAsk
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest")
   const [threadTab, setThreadTab] = useState<"chats" | "calls">("chats")
   // A channel chip over the thread: only that channel's messages (null — every channel, notes and calls).
@@ -732,19 +748,24 @@ export default function InboxV2Page() {
   }
 
   const fetchInbox = async () => {
+    const asked = inboxAsk
     try {
       const query = new URLSearchParams()
       if (channelFilter !== "all") query.set("channel", channelFilter)
       // The trash is the same listing filtered the other way round, so the
       // request has to say which side of it is wanted.
       if (view === "trash") query.set("view", "trash")
+      // One person's conversations: the server adds her open ones that are older than the list's window.
+      else if (assigneeId) query.set("assignee", assigneeId)
       const params = query.toString() ? `?${query}` : ""
       const res = await fetch(`/api/v1/inbox${params}`, { headers })
-      const json = await readJsonSafely<ApiEnvelope<{ conversations?: InboxConversation[]; channels?: unknown; stats?: InboxStats }>>(res)
+      const json = await readJsonSafely<ApiEnvelope<{ conversations?: InboxConversation[]; channels?: unknown; stats?: InboxStats; assignee?: { id: string; more: boolean } }>>(res)
+      if (asked !== inboxAskRef.current) return
       if (json?.success && json.data) {
         setConversations(normalizeInboxConversations(json.data.conversations))
         setChannelAccounts(normalizeInboxChannelAccounts(json.data.channels))
         setStats(json.data.stats || { totalMessages: 0, inbound: 0, outbound: 0, conversations: 0 })
+        setAssigneeMore(json.data.assignee?.more === true)
       }
     } catch (err) {
       console.error(err)
@@ -756,9 +777,9 @@ export default function InboxV2Page() {
   // orgId, not `session`: the object is replaced on every session read
   // next-auth makes — including one per return to the tab — and this refetch
   // repopulates the whole list. `view` is here because the trash is fetched,
-  // not filtered client-side.
+  // not filtered client-side; the chosen person — because the server adds her older conversations.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchInbox() }, [orgId, channelFilter, view])
+  useEffect(() => { fetchInbox() }, [orgId, channelFilter, view, assigneeId])
 
   // Keep the ref pointing at the latest fetchInbox (captures the current channelFilter)
   // so the SSE refresh handler + fallback poll always re-fetch the active view.
@@ -824,6 +845,16 @@ export default function InboxV2Page() {
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id, session?.user?.organizationId])
+
+  // Who holds conversations, for the «Ответственный» filter — people who left included; the assign
+  // list above knows active accounts only. Read again whenever the filters are opened.
+  const loadAssigneeHolders = useCallback(() => {
+    fetch("/api/v1/inbox/assignees", { headers })
+      .then((r) => readJsonSafely<ApiEnvelope<InboxAssigneeHolder[]>>(r))
+      .then((j) => { if (j?.success) setAssigneeHolders(j.data || []) })
+      .catch(() => {})
+  }, [headers])
+  useEffect(() => { loadAssigneeHolders() }, [loadAssigneeHolders])
 
   // Phase 5 — load team folders once.
   useEffect(() => {
@@ -904,14 +935,21 @@ export default function InboxV2Page() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [selected])
 
+  // With a person chosen in «Ответственный», the list and every count beside it are her conversations
+  // only — the server's answer then also holds her older ones, which no other count should take in.
+  const scopedConversations = useMemo(
+    () => (assigneeId ? conversations.filter((c) => convMatchesAssignee(c, assigneeId)) : conversations),
+    [conversations, assigneeId],
+  )
+
   /* ── Per-channel counts for the rail ── */
   const channelCounts = useMemo(() => {
     const counts: Record<string, number> = {}
-    for (const c of conversations) {
+    for (const c of scopedConversations) {
       for (const ch of c.channels) counts[ch] = (counts[ch] || 0) + 1
     }
     return counts
-  }, [conversations])
+  }, [scopedConversations])
 
   // A platform with several live numbers or pages lists them under itself, always open (owner,
   // 2026-11-10: «если номеров несколько, то должно быть раскрытым всегда, не только ватсап»).
@@ -920,12 +958,12 @@ export default function InboxV2Page() {
 
   const accountCounts = useMemo(() => {
     const counts: Record<string, number> = {}
-    for (const c of conversations) {
+    for (const c of scopedConversations) {
       const id = c.channelAccount?.id
       if (id) counts[id] = (counts[id] || 0) + 1
     }
     return counts
-  }, [conversations])
+  }, [scopedConversations])
 
   const lifecycleOptions = useMemo(() => {
     const present = new Set(conversations.map((c) => c.contactLifecycleStage).filter(Boolean) as string[])
@@ -978,7 +1016,7 @@ export default function InboxV2Page() {
   // match the visible list (which is filtered by tab + view + search).
   const viewCounts = useMemo(() => {
     const now = Date.now()
-    const inTab = conversations.filter((c) => convStatusTab(c, now) === statusTab)
+    const inTab = scopedConversations.filter((c) => convStatusTab(c, now) === statusTab)
     return {
       all: inTab.length,
       me: inTab.filter((c) => convMatchesView(c, "me", myUserId)).length,
@@ -988,13 +1026,13 @@ export default function InboxV2Page() {
       awaiting: inTab.filter((c) => convMatchesView(c, "awaiting", myUserId)).length,
       participating: inTab.filter((c) => convMatchesView(c, "participating", myUserId)).length,
     } as Record<string, number>
-  }, [conversations, myUserId, statusTab])
+  }, [scopedConversations, myUserId, statusTab])
 
   // «Etiketlər» in the rail: each label with how many conversations of this status tab carry it.
   const railLabels = useMemo(() => {
     const now = Date.now()
-    return labelCounts(conversations.filter((c) => convStatusTab(c, now) === statusTab)).slice(0, 8)
-  }, [conversations, statusTab])
+    return labelCounts(scopedConversations.filter((c) => convStatusTab(c, now) === statusTab)).slice(0, 8)
+  }, [scopedConversations, statusTab])
 
   // Phase 2 — count badges for the status tabs (opened/closed/snoozed), within the CURRENT view +
   // folder + search so each badge matches what the list shows when that tab is selected. Mirrors the
@@ -1002,7 +1040,7 @@ export default function InboxV2Page() {
   const statusCounts = useMemo(() => {
     const now = Date.now()
     const q = search.toLowerCase()
-    const base = conversations.filter((c) => {
+    const base = scopedConversations.filter((c) => {
       if (!convMatchesView(c, view, myUserId)) return false
       if (folderFilter && c.folderId !== folderFilter) return false
       if (accountFilter && c.channelAccount?.id !== accountFilter) return false
@@ -1013,14 +1051,14 @@ export default function InboxV2Page() {
       closed: base.filter((c) => convStatusTab(c, now) === "closed").length,
       snoozed: base.filter((c) => convStatusTab(c, now) === "snoozed").length,
     } as Record<StatusTab, number>
-  }, [conversations, search, view, myUserId, folderFilter, accountFilter, matchesSearchAndN3Filters])
+  }, [scopedConversations, search, view, myUserId, folderFilter, accountFilter, matchesSearchAndN3Filters])
 
   /* ── Filtered list: status tab (Phase 2) + search ── */
   const pendingFolderActive = folders.find((folder) => folder.id === folderFilter)?.name === "Gözləmədə"
   const filtered = useMemo(() => {
     const now = Date.now()
     const q = search.toLowerCase()
-    return conversations.filter((c) => {
+    return scopedConversations.filter((c) => {
       // Gözləmədə is a workflow folder, so it must show both active and
       // date-snoozed pending conversations in one place.
       if (!pendingFolderActive && convStatusTab(c, now) !== statusTab) return false
@@ -1032,7 +1070,7 @@ export default function InboxV2Page() {
       const diff = new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
       return sortOrder === "newest" ? diff : -diff
     })
-  }, [conversations, search, statusTab, view, myUserId, folderFilter, accountFilter, matchesSearchAndN3Filters, sortOrder, pendingFolderActive])
+  }, [scopedConversations, search, statusTab, view, myUserId, folderFilter, accountFilter, matchesSearchAndN3Filters, sortOrder, pendingFolderActive])
 
   // Track the open conversation by a STABLE key (social-conversation / contact / first-message id),
   // NOT the list index — a re-sort after sending or a new inbound message would otherwise point the
@@ -1129,7 +1167,7 @@ export default function InboxV2Page() {
   }
   // Filter/view switches change what the keys refer to visually — never carry a
   // selection across them (mirrors every place the single `selected` resets).
-  useEffect(() => { setBulkSelected(new Set()) }, [view, statusTab, channelFilter, accountFilter, folderFilter, search, lifecycleFilter, customerStageFilter, conversationTagFilter, unrepliedOnly])
+  useEffect(() => { setBulkSelected(new Set()) }, [view, statusTab, channelFilter, accountFilter, folderFilter, search, lifecycleFilter, customerStageFilter, conversationTagFilter, unrepliedOnly, assigneeId])
 
   const runBulk = async (
     action: "close" | "pending" | "assign" | "folder" | "tags",
@@ -1195,6 +1233,8 @@ export default function InboxV2Page() {
       setBulkCloseOpen(false)
       clearBulk()
       await fetchInbox()
+      // Who holds conversations changed with an assignment.
+      if (action === "assign") loadAssigneeHolders()
     } catch {
       // Network-level rejection (offline/proxy reset) — surface it, keep state for retry.
       setBulkNotice({ tone: "error", text: t("bulkFailed") })
@@ -2020,7 +2060,27 @@ export default function InboxV2Page() {
     return formatDate(d, locale, { day: "numeric", month: "short" })
   }
 
+  // The people the «Ответственный» filter lists, and how each is written: a switched-off account by
+  // its name with a note, a deleted one — in words, because its row holds a placeholder, not a name.
+  const assigneeOptions = inboxAssigneeOptions(agents, assigneeHolders)
+  const assigneeOptionLabel = (option: InboxAssigneeOption): string =>
+    option.state === "removed"
+      ? t("assigneeFilterRemoved")
+      : option.state === "inactive"
+        ? t("assigneeFilterInactive", { name: option.name || option.id })
+        : option.name || option.id
+  const chooseAssignee = (id: string) => {
+    const option = assigneeOptions.find((x) => x.id === id)
+    setAssigneeChoice(option ? { id, label: assigneeOptionLabel(option) } : null)
+    setAssigneeMore(false)
+    setSelected(null)
+    // «Mine», «unassigned» and «other agents» each exclude most people outright: a person picked
+    // from inside one of them would open onto an empty list.
+    if (option && (view === "me" || view === "unassigned" || view === "others")) setView("all")
+  }
+
   const activeFilterCount = [
+    assigneeId !== null,
     lifecycleFilter !== "all",
     customerStageFilter !== "all",
     conversationTagFilter !== "all",
@@ -2282,7 +2342,7 @@ export default function InboxV2Page() {
             />
           </div>
           {/* All secondary filters live in ONE popover — the list header stays calm (Whelp-style). */}
-          <Popover>
+          <Popover onOpenChange={(open) => { if (open) loadAssigneeHolders() }}>
             <PopoverTrigger asChild>
               <button
                 type="button"
@@ -2303,6 +2363,24 @@ export default function InboxV2Page() {
             </PopoverTrigger>
             <PopoverContent align="end" sideOffset={6} className="w-64 p-3">
               <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-muted-foreground">{t("assigneeFilter")}</label>
+                  <select
+                    value={assigneeId ?? ""}
+                    onChange={(e) => chooseAssignee(e.target.value)}
+                    aria-label={t("assigneeFilter")}
+                    data-testid="inbox-assignee-filter"
+                    className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+                  >
+                    <option value="">{t("assigneeFilterAll")}</option>
+                    {assigneeOptions.map((option) => (
+                      <option key={option.id} value={option.id}>{assigneeOptionLabel(option)}</option>
+                    ))}
+                    {assigneeChoice && !assigneeOptions.some((option) => option.id === assigneeChoice.id) && (
+                      <option value={assigneeChoice.id}>{assigneeChoice.label}</option>
+                    )}
+                  </select>
+                </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-medium text-muted-foreground">{n3Text.lifecycle}</label>
                   <select
@@ -2383,6 +2461,7 @@ export default function InboxV2Page() {
                     <button
                       type="button"
                       onClick={() => {
+                        chooseAssignee("")
                         setLifecycleFilter("all")
                         setCustomerStageFilter("all")
                         setConversationTagFilter("all")
@@ -2441,6 +2520,39 @@ export default function InboxV2Page() {
           </Hint>
         </div>
 
+        {/* Whose conversations the list holds while «Ответственный» is set — the filter itself sits in
+            a popover, and a narrowed list must say so. The button under it is the way on to handing
+            them over: it ticks the visible ones, and the card below then offers the new owner. */}
+        {assigneeChoice && (
+          <div
+            data-testid="inbox-assignee-strip"
+            className="mx-3 mt-2 space-y-1.5 rounded-md border border-border/70 bg-muted/40 px-3 py-2 text-xs"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <span className="min-w-0 font-medium">{t("assigneeFilterActive", { name: assigneeChoice.label })}</span>
+              <button
+                type="button"
+                onClick={() => chooseAssignee("")}
+                className="shrink-0 font-medium text-primary hover:underline"
+              >
+                {t("assigneeFilterClear")}
+              </button>
+            </div>
+            {assigneeMore && <p className="text-muted-foreground">{t("assigneeFilterMore")}</p>}
+            {bulkSelected.size === 0 && allVisibleSelectable.length > 0 && (
+              <Hint text={t("assigneeFilterSelectHint")} side="bottom" align="start">
+                <button
+                  type="button"
+                  onClick={selectAllVisible}
+                  data-testid="inbox-assignee-select-all"
+                  className="inline-flex min-h-7 items-center rounded-md border border-border/70 bg-background px-2 font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {t("bulkSelectAllVisible", { count: Math.min(allVisibleSelectable.length, BULK_LIMIT) })}
+                </button>
+              </Hint>
+            )}
+          </div>
+        )}
         {/* Select-all appears once a selection exists (rows are the entry point via the
             avatar hover checkbox) — the always-on row was visual noise. */}
         {bulkSelected.size > 0 && allVisibleSelectable.length > 0 && (

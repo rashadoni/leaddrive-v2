@@ -27,7 +27,7 @@ vi.mock("@/lib/api-auth", () => {
 })
 vi.mock("@/lib/deal-stage-vocabulary", () => ({ orgStageVocabulary: vi.fn(async () => ({ closedStages: [] })) }))
 vi.mock("@/lib/user-work-handover", () => ({
-  handOverOpenWork: vi.fn(async () => ({ deals: 2, leads: 1, tickets: 0, tasks: 0, projectTasks: 0, projects: 0, divisions: 0 })),
+  handOverOpenWork: vi.fn(async () => ({ deals: 2, leads: 1, tickets: 0, tasks: 0, projectTasks: 0, projects: 0, divisions: 0, conversations: 0 })),
 }))
 vi.mock("@/lib/prisma", () => {
   const user = {

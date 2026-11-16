@@ -17,6 +17,7 @@ import { markMarketingContacted } from "@/lib/inbox/customer-stage"
 import { whatsappThreadReplyBinding } from "@/lib/inbox/whatsapp-reply-channel"
 import { attachInboxChannelAccounts, channelAccountOf, INBOX_ACCOUNT_CHANNEL_TYPES, type InboxChannelAccount } from "@/lib/inbox/conversation-channel"
 import { channelVisible, conversationAccessDenial, hiddenChannelIdsFor, visibleChannelWhere } from "@/lib/inbox/channel-access"
+import { loadAssigneeQuietThreads } from "@/lib/inbox/assignee-conversations"
 
 export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
   const { orgId } = auth
@@ -24,6 +25,10 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
   const channelFilter = searchParams.get("channel") // email, telegram, sms, whatsapp
   // The trash is a view over the same listing, not a separate store.
   const trashView = searchParams.get("view") === "trash"
+  // «Ответственный» in the filters: the list as it is, plus this person's open conversations that
+  // are older than the list's window (lib/inbox/assignee-conversations). The screen does the narrowing.
+  const assigneeId = searchParams.get("assignee")?.trim() || null
+  let assigneeMore = false
 
   try {
     const where: any = { organizationId: orgId }
@@ -846,6 +851,68 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
       console.error("[inbox GET call-only conversations]", e)
     }
 
+    // One person's conversations (the «Ответственный» filter). The listing above is the organization's
+    // newest messages, so a conversation nobody wrote in lately is not in it — and «all of Leyla's
+    // conversations» would silently be only her recent ones. Her open conversations the window missed
+    // are added from the conversation rows, without messages; opening one reads its history.
+    if (assigneeId && !trashView) {
+      try {
+        const known = new Set<string>([
+          ...conversations.flatMap((c: { socialConversationId?: string | null; threadConversations?: ThreadConversationSummary[] }) => [
+            c.socialConversationId,
+            ...(c.threadConversations ?? []).map((tc) => tc.id),
+          ]).filter((id: string | null | undefined): id is string => Boolean(id)),
+          ...deletedMessageConversationIds,
+        ])
+        const quiet = await loadAssigneeQuietThreads({
+          organizationId: orgId,
+          assigneeId,
+          channel: channelFilter,
+          visibleChannels,
+          knownConversationIds: known,
+          contactById,
+        })
+        assigneeMore = quiet.more
+        // A customer who already has a thread in the list keeps one row: his older conversation joins
+        // it as one more of his channels, the same way a call-only conversation does above.
+        const threadOfContact = new Map<string, { threadConversations?: unknown[] }>()
+        for (const c of conversations as Array<{ contactId?: string | null; webChatSessionId?: string; threadConversations?: unknown[] }>) {
+          if (c.contactId && !c.webChatSessionId && Array.isArray(c.threadConversations) && !threadOfContact.has(c.contactId)) {
+            threadOfContact.set(c.contactId, c)
+          }
+        }
+        const own: typeof quiet.threads = []
+        for (const stub of quiet.threads) {
+          const thread = stub.contactId ? threadOfContact.get(stub.contactId) : undefined
+          if (!thread) { own.push(stub); continue }
+          thread.threadConversations = [...(thread.threadConversations ?? []), {
+            key: `${stub.socialConversationId}|${stub.lastChannel}`,
+            id: stub.socialConversationId,
+            platform: stub.lastChannel,
+            channelConfigId: stub.channelConfigId,
+            lastMessageAt: new Date(stub.lastMessageAt).toISOString(),
+            lastInboundAt: null,
+            messageCount: 0,
+            unreadCount: 0,
+            status: stub.status,
+            assignedTo: stub.assignedTo,
+            snoozedUntil: stub.snoozedUntil,
+            customerHandle: null,
+            contactLinked: false,
+          }]
+        }
+        if (own.length > 0) {
+          conversations = [...conversations, ...own].sort(
+            (a: { lastMessageAt: Date | string }, b: { lastMessageAt: Date | string }) =>
+              new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime(),
+          )
+        }
+      } catch (e) {
+        // Additive: without these rows the list is what it was, never a failed inbox.
+        console.error("[inbox GET assignee conversations]", e)
+      }
+    }
+
     // E4.2 — bridge VoIP call logs into the inbox payload so the thread can render
     // call events inline without introducing a new ChannelEvent table yet. This is
     // org-scoped and read-only; calls are only created by the explicit click-to-call route.
@@ -1040,6 +1107,8 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
       data: {
         conversations,
         channels,
+        // The person asked about holds more open conversations than one listing adds.
+        ...(assigneeId ? { assignee: { id: assigneeId, more: assigneeMore } } : {}),
         stats: {
           totalMessages,
           inbound: inboundCount,

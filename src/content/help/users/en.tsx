@@ -207,8 +207,10 @@ export default function UsersHelpEn() {
             Confirm the deletion, or close the dialog to cancel.
           </p>
           <HelpCallout kind="see" label="What you'll see">
-            After confirming, the user disappears from the table and the stat cards update. If deletion
-            fails (e.g. trying to remove the last admin), a red error message is shown.
+            After confirming, the user disappears from the table and the stat cards update. Their open
+            deals, leads, tickets, tasks and inbox conversations move to you — the message says how
+            many; closed ones stay with them. If deletion fails (e.g. trying to remove the last admin),
+            a red error message is shown.
           </HelpCallout>
         </HelpStep>
         <HelpCallout kind="warning">

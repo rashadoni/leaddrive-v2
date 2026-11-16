@@ -65,6 +65,7 @@ export default function InboxHelpEn() {
           <HelpDef term="Channel">Where the message came from — Email, Telegram, WhatsApp, SMS, social. The rail shows a count next to each.</HelpDef>
           <HelpDef term="Folder">A team-shared folder; you can file conversations into it and filter by it.</HelpDef>
           <HelpDef term="Status tab">Opened / Snoozed / Closed — the conversation's work state.</HelpDef>
+          <HelpDef term="Assignee">In the list's filters (the sliders button next to the search): every conversation of one person, including open ones nobody has written in for a long time. People who no longer work here are listed too. «Select all visible» and «Choose an owner» hand them to someone else — 50 at a time.</HelpDef>
           <HelpDef term="Reply">A message that goes to the customer. «Team» is an internal note instead — the customer never sees it.</HelpDef>
           <HelpDef term="Participant">An internal colleague added to a conversation (team-only, never the customer).</HelpDef>
         </dl>

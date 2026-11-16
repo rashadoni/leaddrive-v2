@@ -26835,9 +26835,10 @@
     "statusDeactivateHint": "Click to deactivate",
     "statusActivateHint": "Click to activate",
     "availableTooltip": "Receives new tickets and conversations automatically",
-    "deleteDescription": "Delete {name}? Their login is closed and name and contacts are erased — this cannot be undone. Their open deals, leads, tickets and tasks move to you.",
+    "deleteDescription": "Delete {name}? Their login is closed and name and contacts are erased — this cannot be undone. Their open deals, leads, tickets, tasks and inbox conversations move to you.",
     "deletedDone": "{name} deleted",
-    "deletedWithHandover": "{name} deleted. Open records moved to you: {count}"
+    "deletedWithHandover": "{name} deleted. Open records moved to you: {count}",
+    "deletedWithHandoverChats": "{name} deleted. Open records moved to you: {count}, of them inbox conversations: {conversations}"
   },
   "apiKeys": {
     "title": "API Keys",
@@ -28905,6 +28906,14 @@
     "bulkAssign": "Assign",
     "bulkAssignPlaceholder": "Choose an owner",
     "bulkUnassign": "Unassign",
+    "assigneeFilter": "Assignee",
+    "assigneeFilterAll": "Everyone",
+    "assigneeFilterInactive": "{name} (deactivated)",
+    "assigneeFilterRemoved": "Deleted user",
+    "assigneeFilterActive": "Conversations of: {name}",
+    "assigneeFilterClear": "Show everyone",
+    "assigneeFilterMore": "These are not all of this person's open conversations. Hand over the ones shown and the next will appear.",
+    "assigneeFilterSelectHint": "Ticks the conversations in the list. Then choose who takes them in «Choose an owner».",
     "bulkMoveToFolder": "Move to folder",
     "bulkNoFolder": "No folder",
     "bulkAddTags": "Add tags (comma, Enter)",

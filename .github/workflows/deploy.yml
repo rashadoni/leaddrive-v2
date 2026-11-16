@@ -871,6 +871,16 @@ jobs:
           INBOX_CUSTOMER_FEED_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           INBOX_CUSTOMER_FEED_DB_GATE: required
 
+      - name: User handover inbox database gate
+        # Same gate as in pr-checks: a deleted user's open inbox conversations and
+        # website chats go to the administrator who deleted him, closed ones, the trash
+        # and another organization's stay; the «Ответственный» filter finds the
+        # conversations the list's window missed. Real routes, FORCE RLS, no BYPASSRLS.
+        run: npx vitest run src/__tests__/user-handover-inbox-postgres.test.ts
+        env:
+          USER_HANDOVER_INBOX_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          USER_HANDOVER_INBOX_DB_GATE: required
+
       - name: Inbox analytics website chat database gate
         # Same gate as in pr-checks: the website chat in analytics/temporal and
         # analytics/frt, other channels' figures unchanged. A real Postgres.
