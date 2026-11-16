@@ -26,6 +26,9 @@ vi.mock("@/lib/prisma", () => {
     projectTask: model(),
     project: model(),
     division: model(),
+    // Диалоги инбокса и чаты сайта уходят той же передачей (2026-11-16).
+    socialConversation: model(),
+    webChatSession: model(),
   }
   // Колбэк получает тот же мок-клиент: тесты продолжают видеть вызовы
   // update/updateMany там же, где и раньше, без отдельного tx-двойника.
