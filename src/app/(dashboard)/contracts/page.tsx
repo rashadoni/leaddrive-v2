@@ -1131,14 +1131,14 @@ export default function ContractsPage() {
       />
 
       {/* Submit-for-approval dialog */}
-      <Dialog open={approvalOpen} onOpenChange={setApprovalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckSquare className="h-5 w-5" /> {t("submitForApprovalTitle")}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
+      <Dialog open={approvalOpen} onOpenChange={setApprovalOpen} widthClassName="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CheckSquare className="h-5 w-5" /> {t("submitForApprovalTitle")}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-3">
             <p className="text-sm text-muted-foreground">{t("submitForApprovalDesc")}</p>
             {approvalStages.map((stage, idx) => (
               <div key={idx} className="flex items-start gap-2">
@@ -1168,26 +1168,26 @@ export default function ContractsPage() {
             )}
             {approvalError && <p className="text-sm text-destructive">{approvalError}</p>}
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setApprovalOpen(false)} disabled={approvalLoading}>
-              {tc("cancel")}
-            </Button>
-            <Button onClick={handleSubmitForApproval} disabled={approvalLoading}>
-              {approvalLoading ? t("approvalSubmitting") : t("submitForApprovalTitle")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => setApprovalOpen(false)} disabled={approvalLoading}>
+            {tc("cancel")}
+          </Button>
+          <Button onClick={handleSubmitForApproval} disabled={approvalLoading}>
+            {approvalLoading ? t("approvalSubmitting") : t("submitForApprovalTitle")}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* New from template dialog */}
-      <Dialog open={fromTemplateOpen} onOpenChange={setFromTemplateOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Layers className="h-5 w-5" /> {t("newFromTemplate")}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
+      <Dialog open={fromTemplateOpen} onOpenChange={setFromTemplateOpen} widthClassName="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Layers className="h-5 w-5" /> {t("newFromTemplate")}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-4">
             {/* Template picker */}
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">{t("fromTemplateSelectLabel")}</Label>
@@ -1337,15 +1337,15 @@ export default function ContractsPage() {
 
             {fromTemplateError && <p className="text-sm text-destructive">{fromTemplateError}</p>}
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setFromTemplateOpen(false)} disabled={fromTemplateGenerating}>
-              {tc("cancel")}
-            </Button>
-            <Button onClick={handleFromTemplateGenerate} disabled={fromTemplateGenerating || !selectedTemplate}>
-              {fromTemplateGenerating ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />{t("generating")}</> : t("generateContract")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => setFromTemplateOpen(false)} disabled={fromTemplateGenerating}>
+            {tc("cancel")}
+          </Button>
+          <Button onClick={handleFromTemplateGenerate} disabled={fromTemplateGenerating || !selectedTemplate}>
+            {fromTemplateGenerating ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />{t("generating")}</> : t("generateContract")}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* Detail Panel */}

@@ -208,12 +208,11 @@ function TemplateEditor({ open, onClose, initial, onSaved }: TemplateEditorProps
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()} widthClassName="max-w-[46rem]">
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{initial ? t("editTemplate") : t("newTemplate")}</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-5 py-2">
+      <DialogHeader>
+        <DialogTitle>{initial ? t("editTemplate") : t("newTemplate")}</DialogTitle>
+      </DialogHeader>
+      <DialogContent>
+        <div className="space-y-5">
           {/* Basic info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -399,17 +398,16 @@ function TemplateEditor({ open, onClose, initial, onSaved }: TemplateEditorProps
             </div>
           </div>
         </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>
-            {tc("cancel")}
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {tc("save")}
-          </Button>
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose} disabled={saving}>
+          {tc("cancel")}
+        </Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {tc("save")}
+        </Button>
+      </DialogFooter>
     </Dialog>
   )
 }
@@ -514,12 +512,11 @@ function ClauseEditor({ open, onClose, initial, onSaved }: ClauseEditorProps) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{initial ? t("editClause") : t("newClause")}</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
+      <DialogHeader>
+        <DialogTitle>{initial ? t("editClause") : t("newClause")}</DialogTitle>
+      </DialogHeader>
+      <DialogContent>
+        <div className="space-y-4">
           <div>
             <Label>{t("clauseTitle")}</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("clauseTitlePlaceholder")} />
@@ -601,17 +598,16 @@ function ClauseEditor({ open, onClose, initial, onSaved }: ClauseEditorProps) {
             </div>
           </div>
         </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>
-            {tc("cancel")}
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {tc("save")}
-          </Button>
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose} disabled={saving}>
+          {tc("cancel")}
+        </Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {tc("save")}
+        </Button>
+      </DialogFooter>
     </Dialog>
   )
 }
@@ -724,16 +720,15 @@ function AiDraftDialog({ open, onClose, onSaved }: AiDraftDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()} widthClassName="max-w-[50rem]">
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            {t("aiDraftTitle")}
-          </DialogTitle>
-          <p className="text-sm text-muted-foreground mt-1">{t("aiDraftSubtitle")}</p>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          {t("aiDraftTitle")}
+        </DialogTitle>
+        <p className="text-sm text-muted-foreground mt-1">{t("aiDraftSubtitle")}</p>
+      </DialogHeader>
+      <DialogContent>
+        <div className="space-y-4">
           {/* Instruction */}
           <div>
             <Label className="text-sm font-medium">{t("aiDraftInstruction")}</Label>
@@ -842,19 +837,18 @@ function AiDraftDialog({ open, onClose, onSaved }: AiDraftDialogProps) {
             </div>
           )}
         </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={generating || saving}>
-            {tc("cancel")}
-          </Button>
-          {draft && (
-            <Button onClick={handleSave} disabled={saving || generating}>
-              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {t("aiDraftSaveAsDraft")}
-            </Button>
-          )}
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose} disabled={generating || saving}>
+          {tc("cancel")}
+        </Button>
+        {draft && (
+          <Button onClick={handleSave} disabled={saving || generating}>
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {t("aiDraftSaveAsDraft")}
+          </Button>
+        )}
+      </DialogFooter>
     </Dialog>
   )
 }

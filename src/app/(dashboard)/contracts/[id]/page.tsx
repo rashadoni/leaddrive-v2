@@ -1830,15 +1830,14 @@ export default function ContractDetailPage() {
       })()}
 
       {/* Submit-for-approval dialog (parallel levels — Slice 3e-2) */}
-      <Dialog open={approvalOpen} onOpenChange={(open) => { if (!approvalLoading) { setApprovalOpen(open); if (!open) { setApprovalLevels([defaultLevel()]); setApprovalError(null) } } }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckSquare className="h-5 w-5" /> {t("submitForApprovalTitle")}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
+      <Dialog open={approvalOpen} onOpenChange={(open) => { if (!approvalLoading) { setApprovalOpen(open); if (!open) { setApprovalLevels([defaultLevel()]); setApprovalError(null) } } }} widthClassName="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CheckSquare className="h-5 w-5" /> {t("submitForApprovalTitle")}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               {t("submitForApprovalDesc")}
             </p>
@@ -1975,16 +1974,15 @@ export default function ContractDetailPage() {
               <p className="text-sm text-destructive">{approvalError}</p>
             )}
           </div>
-
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => { setApprovalOpen(false); setApprovalLevels([defaultLevel()]); setApprovalError(null) }} disabled={approvalLoading}>
-              {tc("cancel")}
-            </Button>
-            <Button onClick={handleSubmitForApproval} disabled={approvalLoading}>
-              {approvalLoading ? t("approvalSubmitting") : t("submitForApprovalTitle")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => { setApprovalOpen(false); setApprovalLevels([defaultLevel()]); setApprovalError(null) }} disabled={approvalLoading}>
+            {tc("cancel")}
+          </Button>
+          <Button onClick={handleSubmitForApproval} disabled={approvalLoading}>
+            {approvalLoading ? t("approvalSubmitting") : t("submitForApprovalTitle")}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       <ContractForm
@@ -2337,15 +2335,14 @@ export default function ContractDetailPage() {
       </Card>
 
       {/* ── Send for Signature Dialog ─────────────────────────────── */}
-      <Dialog open={esignDialogOpen} onOpenChange={(open) => { if (!esignLoading) setEsignDialogOpen(open) }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <PenLine className="h-5 w-5" /> {t("esignSendDialogTitle")}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
+      <Dialog open={esignDialogOpen} onOpenChange={(open) => { if (!esignLoading) setEsignDialogOpen(open) }} widthClassName="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <PenLine className="h-5 w-5" /> {t("esignSendDialogTitle")}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-4">
             {/* Subject */}
             <div className="space-y-1">
               <Label className="text-xs">{t("esignSubjectLabel")} *</Label>
@@ -2436,27 +2433,26 @@ export default function ContractDetailPage() {
               <p className="text-sm text-destructive">{esignError}</p>
             )}
           </div>
-
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setEsignDialogOpen(false)} disabled={esignLoading}>
-              {tc("cancel")}
-            </Button>
-            <Button onClick={handleSendForSignature} disabled={esignLoading}>
-              {esignLoading ? t("esignSending") : t("esignSendForSignature")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => setEsignDialogOpen(false)} disabled={esignLoading}>
+            {tc("cancel")}
+          </Button>
+          <Button onClick={handleSendForSignature} disabled={esignLoading}>
+            {esignLoading ? t("esignSending") : t("esignSendForSignature")}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* ── Signing Links Dialog (shown after successful send) ────── */}
-      <Dialog open={esignLinksDialogOpen} onOpenChange={setEsignLinksDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Check className="h-5 w-5 text-green-600" /> {t("esignLinksTitle")}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
+      <Dialog open={esignLinksDialogOpen} onOpenChange={setEsignLinksDialogOpen} widthClassName="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Check className="h-5 w-5 text-green-600" /> {t("esignLinksTitle")}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-3">
             <p className="text-sm text-muted-foreground">{t("esignLinksDesc")}</p>
             {esignLinks.map((link) => (
               <div key={link.signerId} className="border rounded-lg p-3 space-y-2">
@@ -2482,12 +2478,12 @@ export default function ContractDetailPage() {
               </div>
             ))}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEsignLinksDialogOpen(false)}>
-              {tc("close")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setEsignLinksDialogOpen(false)}>
+            {tc("close")}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* ── Deviations Section (Slice 4c) ────────────────────────── */}
@@ -3136,12 +3132,12 @@ export default function ContractDetailPage() {
       )}
 
       {/* ── Add Obligation Dialog (Slice 5b-2) ──────────────────────────── */}
-      <Dialog open={rrDialogOpen} onOpenChange={setRrDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t("rrAddObligationTitle")}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
+      <Dialog open={rrDialogOpen} onOpenChange={setRrDialogOpen} widthClassName="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{t("rrAddObligationTitle")}</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-3">
             <div>
               <Label className="text-xs">{t("rrPoDescription")} *</Label>
               <Input
@@ -3260,15 +3256,15 @@ export default function ContractDetailPage() {
               <p className="text-xs text-destructive">{rrDialogError}</p>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setRrDialogOpen(false)}>
-              {t("rrCancel")}
-            </Button>
-            <Button size="sm" onClick={handleRrSave} disabled={rrSaving}>
-              {rrSaving ? t("rrSaving") : t("rrSave")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => setRrDialogOpen(false)}>
+            {t("rrCancel")}
+          </Button>
+          <Button size="sm" onClick={handleRrSave} disabled={rrSaving}>
+            {rrSaving ? t("rrSaving") : t("rrSave")}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* ── Milestones Panel (Slice 5a) ──────────────────────────── */}
@@ -3418,15 +3414,16 @@ export default function ContractDetailPage() {
             if (!open) setMilestoneError(null)
           }
         }}
+        widthClassName="max-w-lg"
       >
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ListChecks className="h-5 w-5" />
-              {milestoneEditTarget ? t("milestonesEditTitle") : t("milestonesAddTitle")}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ListChecks className="h-5 w-5" />
+            {milestoneEditTarget ? t("milestonesEditTitle") : t("milestonesAddTitle")}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-4">
             <div className="space-y-1">
               <Label className="text-xs">{t("milestonesLabelLabel")} *</Label>
               <Input
@@ -3483,31 +3480,31 @@ export default function ContractDetailPage() {
               <p className="text-sm text-destructive">{milestoneError}</p>
             )}
           </div>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => { setMilestoneDialogOpen(false); setMilestoneError(null) }}
-              disabled={milestoneSaving}
-            >
-              {t("milestonesCancel")}
-            </Button>
-            <Button onClick={handleSaveMilestone} disabled={milestoneSaving}>
-              {milestoneSaving ? t("milestonesSaving") : t("milestonesSave")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter className="gap-2">
+          <Button
+            variant="outline"
+            onClick={() => { setMilestoneDialogOpen(false); setMilestoneError(null) }}
+            disabled={milestoneSaving}
+          >
+            {t("milestonesCancel")}
+          </Button>
+          <Button onClick={handleSaveMilestone} disabled={milestoneSaving}>
+            {milestoneSaving ? t("milestonesSaving") : t("milestonesSave")}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* ── Waive Reason Dialog ───────────────────────────────────── */}
-      <Dialog open={waiveOpen} onOpenChange={(open) => { if (!waiveLoading) setWaiveOpen(open) }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              {t("deviationsWaiveDialogTitle")}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
+      <Dialog open={waiveOpen} onOpenChange={(open) => { if (!waiveLoading) setWaiveOpen(open) }} widthClassName="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            {t("deviationsWaiveDialogTitle")}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">{t("deviationsWaiveReasonLabel")}</Label>
               <Textarea
@@ -3519,55 +3516,51 @@ export default function ContractDetailPage() {
               />
             </div>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setWaiveOpen(false)} disabled={waiveLoading}>
-              {tc("cancel")}
-            </Button>
-            <Button
-              onClick={handleWaiveConfirm}
-              disabled={waiveLoading}
-            >
-              {t("deviationsWaiveConfirm")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => setWaiveOpen(false)} disabled={waiveLoading}>
+            {tc("cancel")}
+          </Button>
+          <Button
+            onClick={handleWaiveConfirm}
+            disabled={waiveLoading}
+          >
+            {t("deviationsWaiveConfirm")}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* ── View Document Dialog ─────────────────────────────────── */}
       <Dialog open={docOpen} onOpenChange={setDocOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" /> {t("viewDocument")}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-auto min-h-0 py-2">
-            {contract?.renderedBody?.trim() ? (
-              <pre className="text-sm whitespace-pre-wrap break-words leading-relaxed max-h-[60vh] overflow-auto rounded-md bg-muted/50 p-4 border">
-                {contract.renderedBody}
-              </pre>
-            ) : (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                {t("viewDocumentEmpty")}
-              </p>
-            )}
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setDocOpen(false)}
-            >
-              {tc("cancel")}
-            </Button>
-            <Button
-              onClick={() => window.open(`/api/v1/contracts/${params.id}/pdf?download=1`, "_blank")}
-            >
-              {t("versionsDownloadPdf")}
-            </Button>
-          </DialogFooter>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" /> {t("viewDocument")}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          {contract?.renderedBody?.trim() ? (
+            <pre className="text-sm whitespace-pre-wrap break-words leading-relaxed max-h-[60vh] overflow-auto rounded-md bg-muted/50 p-4 border">
+              {contract.renderedBody}
+            </pre>
+          ) : (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              {t("viewDocumentEmpty")}
+            </p>
+          )}
         </DialogContent>
+        <DialogFooter className="gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setDocOpen(false)}
+          >
+            {tc("cancel")}
+          </Button>
+          <Button
+            onClick={() => window.open(`/api/v1/contracts/${params.id}/pdf?download=1`, "_blank")}
+          >
+            {t("versionsDownloadPdf")}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* ── Amendment Dialog (Slice 4a) ──────────────────────────── */}
@@ -3580,14 +3573,13 @@ export default function ContractDetailPage() {
           }
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FilePen className="h-5 w-5" /> {t("amendDialogTitle")}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FilePen className="h-5 w-5" /> {t("amendDialogTitle")}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-4">
             <p className="text-sm text-muted-foreground">{t("amendDialogDesc")}</p>
 
             {/* Optional: update title */}
@@ -3628,92 +3620,87 @@ export default function ContractDetailPage() {
               <p className="text-sm text-destructive">{amendError}</p>
             )}
           </div>
-
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => { setAmendOpen(false); setAmendError(null) }}
-              disabled={amendLoading}
-            >
-              {tc("cancel")}
-            </Button>
-            <Button onClick={handleAmend} disabled={amendLoading}>
-              {amendLoading ? t("amendSaving") : t("amendSave")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter className="gap-2">
+          <Button
+            variant="outline"
+            onClick={() => { setAmendOpen(false); setAmendError(null) }}
+            disabled={amendLoading}
+          >
+            {tc("cancel")}
+          </Button>
+          <Button onClick={handleAmend} disabled={amendLoading}>
+            {amendLoading ? t("amendSaving") : t("amendSave")}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* ── Diff Dialog ──────────────────────────────────────────── */}
-      <Dialog open={diffOpen} onOpenChange={(open) => { setDiffOpen(open); if (!open) setDiffTooLarge(false) }}>
-        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <GitBranch className="h-4 w-4" />
-              {(() => {
-                const from = versions.find((v) => v.id === diffFrom)
-                const to = versions.find((v) => v.id === diffTo)
-                return from && to
-                  ? t("versionsDiffTitle", { from: from.versionNo, to: to.versionNo })
-                  : t("versionsTitle")
-              })()}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-auto min-h-0">
-            {diffTooLarge ? (
-              <div className="py-6 text-center space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">
-                  {t("versionsDiffTooLarge")}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t("versionsDiffTooLargeHint")}
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => { window.open(`/api/v1/contracts/${params.id}/pdf?download=1`, "_blank") }}
-                >
-                  {t("versionsDownloadPdf")}
-                </Button>
-              </div>
-            ) : diffChunks.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                {t("versionsDiffEmpty")}
+      <Dialog open={diffOpen} onOpenChange={(open) => { setDiffOpen(open); if (!open) setDiffTooLarge(false) }} maxHeightClassName="max-h-[80vh]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <GitBranch className="h-4 w-4" />
+            {(() => {
+              const from = versions.find((v) => v.id === diffFrom)
+              const to = versions.find((v) => v.id === diffTo)
+              return from && to
+                ? t("versionsDiffTitle", { from: from.versionNo, to: to.versionNo })
+                : t("versionsTitle")
+            })()}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          {diffTooLarge ? (
+            <div className="py-6 text-center space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">
+                {t("versionsDiffTooLarge")}
               </p>
-            ) : (
-              <pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-words">
-                {diffChunks.map((chunk, idx) => {
-                  if (chunk.type === "removed") {
-                    return (
-                      <span key={idx} className="block bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 px-2">
-                        {"- "}{chunk.text}
-                      </span>
-                    )
-                  }
-                  if (chunk.type === "added") {
-                    return (
-                      <span key={idx} className="block bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 px-2">
-                        {"+ "}{chunk.text}
-                      </span>
-                    )
-                  }
+              <p className="text-xs text-muted-foreground">
+                {t("versionsDiffTooLargeHint")}
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => { window.open(`/api/v1/contracts/${params.id}/pdf?download=1`, "_blank") }}
+              >
+                {t("versionsDownloadPdf")}
+              </Button>
+            </div>
+          ) : diffChunks.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              {t("versionsDiffEmpty")}
+            </p>
+          ) : (
+            <pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-words">
+              {diffChunks.map((chunk, idx) => {
+                if (chunk.type === "removed") {
                   return (
-                    <span key={idx} className="block text-muted-foreground px-2">
-                      {"  "}{chunk.text}
+                    <span key={idx} className="block bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 px-2">
+                      {"- "}{chunk.text}
                     </span>
                   )
-                })}
-              </pre>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDiffOpen(false)}>
-              {tc("cancel")}
-            </Button>
-          </DialogFooter>
+                }
+                if (chunk.type === "added") {
+                  return (
+                    <span key={idx} className="block bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 px-2">
+                      {"+ "}{chunk.text}
+                    </span>
+                  )
+                }
+                return (
+                  <span key={idx} className="block text-muted-foreground px-2">
+                    {"  "}{chunk.text}
+                  </span>
+                )
+              })}
+            </pre>
+          )}
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setDiffOpen(false)}>
+            {tc("cancel")}
+          </Button>
+        </DialogFooter>
       </Dialog>
     </div>
   )

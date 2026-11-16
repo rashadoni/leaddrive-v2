@@ -506,17 +506,17 @@ export default function ContractLifecyclePage() {
 
       {/* Confirm approve/reject — a legal/financial gate never fires on one click */}
       <Dialog open={pending !== null} onOpenChange={(o: boolean) => { if (!o) setPending(null) }} widthClassName="max-w-md">
-        <DialogContent>
-          {pending && (() => {
-            const deciding = decidingStage[pending.stageId]
-            const isReject = pending.decision === "reject"
-            const reasonMissing = isReject && !rejectReason.trim()
-            return (
-              <>
-                <DialogHeader>
-                  <DialogTitle>{isReject ? t("confirmRejectTitle") : t("confirmApproveTitle")}</DialogTitle>
-                  <DialogDescription>{isReject ? t("confirmRejectDesc") : t("confirmApproveDesc")}</DialogDescription>
-                </DialogHeader>
+        {pending && (() => {
+          const deciding = decidingStage[pending.stageId]
+          const isReject = pending.decision === "reject"
+          const reasonMissing = isReject && !rejectReason.trim()
+          return (
+            <>
+              <DialogHeader>
+                <DialogTitle>{isReject ? t("confirmRejectTitle") : t("confirmApproveTitle")}</DialogTitle>
+                <DialogDescription>{isReject ? t("confirmRejectDesc") : t("confirmApproveDesc")}</DialogDescription>
+              </DialogHeader>
+              <DialogContent>
                 <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-0.5">
                   <p className="font-medium">{pending.companyName ?? t("noCompany")}</p>
                   <p className="text-xs text-muted-foreground">{pending.contractNumber} · {pending.contractTitle}</p>
@@ -538,25 +538,25 @@ export default function ContractLifecyclePage() {
                     className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   />
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" size="sm" onClick={() => setPending(null)}>{t("cancel")}</Button>
-                  <Button
-                    size="sm"
-                    variant={isReject ? "destructive" : "default"}
-                    disabled={!!deciding || reasonMissing}
-                    onClick={() => {
-                      const p = pending
-                      setPending(null)
-                      void handleDecide(p.contractId, p.stageOrder, p.stageId, p.decision, rejectReason)
-                    }}
-                  >
-                    {isReject ? t("confirmReject") : t("confirmApprove")}
-                  </Button>
-                </DialogFooter>
-              </>
-            )
-          })()}
-        </DialogContent>
+              </DialogContent>
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={() => setPending(null)}>{t("cancel")}</Button>
+                <Button
+                  size="sm"
+                  variant={isReject ? "destructive" : "default"}
+                  disabled={!!deciding || reasonMissing}
+                  onClick={() => {
+                    const p = pending
+                    setPending(null)
+                    void handleDecide(p.contractId, p.stageOrder, p.stageId, p.decision, rejectReason)
+                  }}
+                >
+                  {isReject ? t("confirmReject") : t("confirmApprove")}
+                </Button>
+              </DialogFooter>
+            </>
+          )
+        })()}
       </Dialog>
     </MotionPage>
   )
