@@ -116,15 +116,14 @@ export function EventForm({ open, onOpenChange, onSaved, orgId, initialData }: E
   const removeTag = (tag: string) => set("tags", form.tags.filter(t => t !== tag))
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-primary" />
-            {isEdit ? tf("editEvent") : tf("newEvent")}
-          </DialogTitle>
-        </DialogHeader>
-
+    <Dialog open={open} onOpenChange={onOpenChange} widthClassName="max-w-xl">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <CalendarDays className="h-5 w-5 text-primary" />
+          {isEdit ? tf("editEvent") : tf("newEvent")}
+        </DialogTitle>
+      </DialogHeader>
+      <DialogContent>
         {/* Step indicator */}
         <div className="flex gap-1 mb-2">
           {[

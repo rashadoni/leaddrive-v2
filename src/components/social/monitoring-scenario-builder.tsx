@@ -662,10 +662,10 @@ export function MonitoringScenarioBuilder({
       </details>
 
       <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>{editingScenario ? t("editDialogTitle") : t("dialogTitle")}</DialogTitle>
-          </DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{editingScenario ? t("editDialogTitle") : t("dialogTitle")}</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
           <div className="grid gap-4">
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-1.5 md:col-span-2">
@@ -959,14 +959,14 @@ export function MonitoringScenarioBuilder({
               <span>{t("safetyNote")}</span>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => handleDialogOpenChange(false)}>{t("cancel")}</Button>
-            <Button onClick={saveScenario} disabled={saving || !canSaveScenario} className="gap-1.5">
-              <CheckCircle2 className="h-4 w-4" />
-              {saving ? t("saving") : editingScenario ? t("update") : t("save")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => handleDialogOpenChange(false)}>{t("cancel")}</Button>
+          <Button onClick={saveScenario} disabled={saving || !canSaveScenario} className="gap-1.5">
+            <CheckCircle2 className="h-4 w-4" />
+            {saving ? t("saving") : editingScenario ? t("update") : t("save")}
+          </Button>
+        </DialogFooter>
       </Dialog>
     </div>
   )

@@ -72,12 +72,11 @@ export function SendOfferDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{t("sendTitle")} — {offer.offerNumber}</DialogTitle>
-        </DialogHeader>
-
+    <Dialog open={open} onOpenChange={onClose} widthClassName="max-w-lg">
+      <DialogHeader>
+        <DialogTitle>{t("sendTitle")} — {offer.offerNumber}</DialogTitle>
+      </DialogHeader>
+      <DialogContent>
         <div className="space-y-4">
           <div>
             <Label>{t("recipientEmail")}</Label>

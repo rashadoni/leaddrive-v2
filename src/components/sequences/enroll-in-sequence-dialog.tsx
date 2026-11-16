@@ -94,15 +94,15 @@ export function EnrollInSequenceDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
+      <DialogHeader>
+        <DialogTitle>
+          {entityIds.length > 1
+            ? t("enrollDialog.titleBulk", { count: entityIds.length })
+            : t("enroll.title", { name: entityName ?? "" })}
+        </DialogTitle>
+      </DialogHeader>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {entityIds.length > 1
-              ? t("enrollDialog.titleBulk", { count: entityIds.length })
-              : t("enroll.title", { name: entityName ?? "" })}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+        <div className="space-y-2">
           {message && <p className="text-sm text-muted-foreground">{message}</p>}
           {loading ? (
             <p className="text-sm text-muted-foreground text-center py-4">{t("loading")}</p>
@@ -129,10 +129,10 @@ export function EnrollInSequenceDialog({
             ))
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>{t("form.cancel")}</Button>
-        </DialogFooter>
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>{t("form.cancel")}</Button>
+      </DialogFooter>
     </Dialog>
   )
 }

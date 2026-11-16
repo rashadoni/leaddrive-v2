@@ -385,8 +385,8 @@ export function MonitoringSubjectManager({
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
-          <DialogHeader><DialogTitle>{editing ? t("editTitle") : t("createTitle")}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editing ? t("editTitle") : t("createTitle")}</DialogTitle></DialogHeader>
+        <DialogContent>
           <div className="grid gap-4">
             <div className="grid gap-3 sm:grid-cols-[180px_1fr]">
               <div className="space-y-1.5"><Label>{t("type")}</Label><Select value={form.type} onChange={event => setForm(previous => ({ ...previous, type: event.target.value }))}>{SUBJECT_TYPES.map(type => <option key={type} value={type}>{t(`types.${type}`)}</option>)}</Select></div>
@@ -530,11 +530,11 @@ export function MonitoringSubjectManager({
               </span>
             </label>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-            <Button onClick={save} disabled={!form.name.trim() || saving}>{saving ? t("saving") : t("save")}</Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
+          <Button onClick={save} disabled={!form.name.trim() || saving}>{saving ? t("saving") : t("save")}</Button>
+        </DialogFooter>
       </Dialog>
     </div>
   )

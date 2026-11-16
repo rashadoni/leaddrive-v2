@@ -240,11 +240,10 @@ export function OfferForm({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl">{offer?.id ? t("edit") : t("new")}</DialogTitle>
-        </DialogHeader>
-
+      <DialogHeader>
+        <DialogTitle className="text-xl">{offer?.id ? t("edit") : t("new")}</DialogTitle>
+      </DialogHeader>
+      <DialogContent>
         <div className="space-y-5">
 
           {/* ═══ SECTION 1: Type & Currency ═══ */}
