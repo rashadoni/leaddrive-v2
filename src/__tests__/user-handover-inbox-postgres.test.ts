@@ -17,6 +17,10 @@
  *    another in one press — a hundred and more, where a selection carries fifty. It moves exactly
  *    what the filter counted for the person; closed ones, the trash, a number hidden from the
  *    caller and another organization's stay, and the new owner must be somebody who can answer.
+ *  - Without the filter, the conversations a WhatsApp history import wrote are in the list too:
+ *    months of them arrive at once with their own old dates, and the window held a few dozen of the
+ *    hundreds the import screen counted (16.11.2026). Only open ones the import made, on numbers that
+ *    imported history, under the caller's own organization and hidden numbers.
  *
  * Set USER_HANDOVER_INBOX_TEST_DATABASE_URL to an admin connection, e.g.
  *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55498:5432 postgres:16
@@ -76,7 +80,7 @@ vi.mock("@/lib/api-auth", () => {
 
 const ROOT = process.cwd()
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
-const RLS_TABLES = ["social_conversations", "web_chat_sessions", "channel_messages", "conversation_participants", "leads", "tickets", "audit_logs"]
+const RLS_TABLES = ["social_conversations", "web_chat_sessions", "channel_messages", "conversation_participants", "leads", "tickets", "audit_logs", "whatsapp_history_chunks"]
 
 const ORG = "org-handover"
 const OTHER = "org-handover-other"
@@ -148,6 +152,9 @@ type Row = {
   lastChannel: string
   messages: Array<{ id: string }>
   threadConversations?: Array<{ id: string; assignedTo?: string | null }>
+  historyImport?: boolean
+  unreadCount?: number
+  lastMessageAt?: string
 }
 type Conv = { id: string; assignedTo: string | null; status: string; snoozedUntil: Date | null; folderId: string | null; tags: string[]; deletedAt: Date | null }
 type Chat = { id: string; assignedUserId: string | null; status: string; aiPaused: boolean }
@@ -666,5 +673,74 @@ type Chat = { id: string; assignedUserId: string | null; status: string; aiPause
     expect((await journal()).length).toBe(rows)
     // Nobody who left holds an open conversation now.
     expect(Object.keys(await openCounts()).sort()).toEqual([ADMIN, COLLEAGUE, SELLER].sort())
+  })
+
+  it("without the filter, the list holds every open conversation a WhatsApp history import wrote", async () => {
+    // A number connected with the WhatsApp Business app brings six months of conversations at once,
+    // each with its own old date — the window (the newest 500 messages) holds none of them here.
+    const OTHER_WA = "cfg-ho-other-wa"
+    const IMPORTED = ["conv-ho-imported-1", "conv-ho-imported-2"]
+    await bypass(async () => {
+      await prisma.channelConfig.create({ data: { id: OTHER_WA, organizationId: OTHER, channelType: "whatsapp", configName: "Başqa nömrə" } })
+      await prisma.whatsAppHistoryChunk.createMany({
+        data: [
+          { organizationId: ORG, channelConfigId: WA, kind: "contacts", fingerprint: "ho-contacts", status: "done", items: 2 },
+          { organizationId: ORG, channelConfigId: WA, kind: "history", fingerprint: "ho-history", status: "done", items: 6, progress: 100 },
+          { organizationId: OTHER, channelConfigId: OTHER_WA, kind: "history", fingerprint: "ho-other-history", status: "done", items: 1, progress: 100 },
+        ],
+      })
+      const imported = (id: string, externalId: string, lastMessageAt: Date, extra: Record<string, unknown> = {}) => ({
+        id, organizationId: ORG, platform: "whatsapp", externalId, channelConfigId: WA, assignedTo: null,
+        contactName: externalId, lastMessage: `Köhnə yazışma ${externalId}`, lastMessageAt, metadata: { historyImport: true }, ...extra,
+      })
+      await prisma.socialConversation.createMany({
+        data: [
+          imported(IMPORTED[0], "994700000001", hoursAgo(24 * 40)),
+          imported(IMPORTED[1], "994700000002", hoursAgo(24 * 150)),
+          // What the import made but is closed or in the trash, or what nobody imported, stays out.
+          imported("conv-ho-imported-resolved", "994700000003", hoursAgo(24 * 60), { status: "resolved", closedAt: MONTH_AGO }),
+          imported("conv-ho-imported-trash", "994700000004", hoursAgo(24 * 60), { deletedAt: MONTH_AGO, deletedBy: ADMIN }),
+          imported("conv-ho-live-quiet", "994700000005", hoursAgo(24 * 40), { metadata: {} }),
+          { ...imported("conv-ho-imported-other", "994700000006", hoursAgo(24 * 40)), organizationId: OTHER, channelConfigId: OTHER_WA },
+        ],
+      })
+      await prisma.channelMessage.createMany({
+        data: IMPORTED.map((conversationId, index) => ({
+          id: `m-ho-imported-${index}`, organizationId: ORG, conversationId, channelType: "whatsapp", channelConfigId: WA,
+          direction: "inbound", body: `Köhnə yazışma ${index}`, status: "read", from: `customer-${conversationId}`, to: "business",
+          createdAt: index === 0 ? hoursAgo(24 * 40) : hoursAgo(24 * 150), historyImportedAt: NOW, metadata: { historyImport: true },
+        })),
+      })
+    })
+
+    as(ORG, ADMIN)
+    const { rows, assignee } = await list()
+    const found = rows.filter((row) => row.socialConversationId && row.socialConversationId.startsWith("conv-ho-") && /imported|live-quiet/.test(row.socialConversationId))
+    expect(found.map((row) => row.socialConversationId).sort()).toEqual([...IMPORTED].sort())
+    for (const row of found) {
+      // A row without messages, read and marked «idxal»; opening it reads its history as usual.
+      expect(row).toMatchObject({ historyImport: true, unreadCount: 0, messages: [], lastChannel: "whatsapp", status: "open" })
+    }
+    // In the list by their own dates, below what was written today.
+    const at = (id: string) => rows.findIndex((row) => row.socialConversationId === id)
+    expect(at(C_OPEN)).toBeLessThan(at(IMPORTED[0]))
+    expect(at(IMPORTED[0])).toBeLessThan(at(IMPORTED[1]))
+    // Nothing else the window missed came with them — that is still the «Ответственный» filter's job.
+    expect(conversationIds(rows)).not.toContain(C_QUIET)
+    expect(assignee).toBeUndefined()
+
+    const opened = await history.GET(request(`/api/v1/inbox/thread?conversationId=${IMPORTED[1]}`), undefined as never)
+    expect(opened.status).toBe(200)
+    expect((await opened.json()).data.messages.map((m: { id: string }) => m.id)).toEqual(["m-ho-imported-1"])
+
+    // Another channel's list, a number hidden from the caller, the trash and another organization.
+    expect(conversationIds((await list("?channel=instagram")).rows).filter((id) => IMPORTED.includes(id))).toEqual([])
+    expect(conversationIds((await list("?view=trash")).rows).filter((id) => IMPORTED.includes(id))).toEqual([])
+    as(ORG, SELLER, "sales", [WA])
+    expect(conversationIds((await list()).rows).filter((id) => id.includes("imported"))).toEqual([])
+    as(OTHER, OTHER_ADMIN)
+    const other = conversationIds((await list()).rows)
+    expect(other).toContain("conv-ho-imported-other")
+    expect(other.filter((id) => IMPORTED.includes(id))).toEqual([])
   })
 })

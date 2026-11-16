@@ -17,7 +17,7 @@ import { markMarketingContacted } from "@/lib/inbox/customer-stage"
 import { whatsappThreadReplyBinding } from "@/lib/inbox/whatsapp-reply-channel"
 import { attachInboxChannelAccounts, channelAccountOf, INBOX_ACCOUNT_CHANNEL_TYPES, type InboxChannelAccount } from "@/lib/inbox/conversation-channel"
 import { channelVisible, conversationAccessDenial, hiddenChannelIdsFor, visibleChannelWhere } from "@/lib/inbox/channel-access"
-import { loadAssigneeQuietThreads } from "@/lib/inbox/assignee-conversations"
+import { loadQuietThreads, type QuietThreadScope } from "@/lib/inbox/assignee-conversations"
 
 export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
   const { orgId } = auth
@@ -855,7 +855,24 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
     // newest messages, so a conversation nobody wrote in lately is not in it — and «all of Leyla's
     // conversations» would silently be only her recent ones. Her open conversations the window missed
     // are added from the conversation rows, without messages; opening one reads its history.
-    if (assigneeId && !trashView) {
+    //
+    // Without that filter, the same for the conversations a WhatsApp history import wrote: months of
+    // them arrive at once with their own old dates, and the window would hold only the newest few of
+    // what the import screen counts. Read only where a number has imported history at all, so an
+    // organization without an import keeps the list exactly as it was.
+    let quietScope: QuietThreadScope | null = assigneeId && !trashView ? { assigneeId } : null
+    if (!assigneeId && !trashView) {
+      try {
+        const imported: Array<{ channelConfigId: string }> = await prisma.whatsAppHistoryChunk.groupBy({
+          by: ["channelConfigId"],
+          where: { organizationId: orgId, kind: "history" },
+        })
+        if (imported.length > 0) quietScope = { historyImportChannelIds: imported.map((row) => row.channelConfigId) }
+      } catch (e) {
+        console.error("[inbox GET imported conversations]", e)
+      }
+    }
+    if (quietScope) {
       try {
         const known = new Set<string>([
           ...conversations.flatMap((c: { socialConversationId?: string | null; threadConversations?: ThreadConversationSummary[] }) => [
@@ -864,15 +881,15 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
           ]).filter((id: string | null | undefined): id is string => Boolean(id)),
           ...deletedMessageConversationIds,
         ])
-        const quiet = await loadAssigneeQuietThreads({
+        const quiet = await loadQuietThreads({
           organizationId: orgId,
-          assigneeId,
+          scope: quietScope,
           channel: channelFilter,
           visibleChannels,
           knownConversationIds: known,
           contactById,
         })
-        assigneeMore = quiet.more
+        if (assigneeId) assigneeMore = quiet.more
         // A customer who already has a thread in the list keeps one row: his older conversation joins
         // it as one more of his channels, the same way a call-only conversation does above.
         const threadOfContact = new Map<string, { threadConversations?: unknown[] }>()
@@ -909,7 +926,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
         }
       } catch (e) {
         // Additive: without these rows the list is what it was, never a failed inbox.
-        console.error("[inbox GET assignee conversations]", e)
+        console.error("[inbox GET quiet conversations]", e)
       }
     }
 
