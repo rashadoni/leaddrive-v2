@@ -222,6 +222,38 @@ describe("Instagram-Login OAuth callback turns on the account's message subscrip
     ])
   })
 
+  // A data deletion request renames the row and drops its handle (lib/social/instagram-revoke). When
+  // the account connects again, its name comes back with it.
+  it("gives a row renamed by a data deletion request its name back on reconnect", async () => {
+    connectWith(() => new Response(JSON.stringify({ success: true }), { status: 200 }))
+    vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([{
+      id: "channel-ig",
+      settings: { igLogin: true, revokedByMeta: { reason: "data_deletion", at: "2026-11-16T19:13:41.706Z" } },
+    }] as never)
+    const s = valid()
+
+    await GET(req(s, s))
+
+    const update = vi.mocked(prisma.channelConfig.update).mock.calls[0]?.[0] as { where: { id: string }; data: Record<string, unknown> }
+    expect(update.where.id).toBe("channel-ig")
+    expect(update.data).toMatchObject({ configName: "@brand", isActive: true })
+    expect(update.data.settings).not.toHaveProperty("revokedByMeta")
+  })
+
+  it("keeps the name a person gave the row when it was only deauthorized", async () => {
+    connectWith(() => new Response(JSON.stringify({ success: true }), { status: 200 }))
+    vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([{
+      id: "channel-ig",
+      settings: { igLogin: true, revokedByMeta: { reason: "deauthorize", at: "2026-11-16T19:13:41.706Z" } },
+    }] as never)
+    const s = valid()
+
+    await GET(req(s, s))
+
+    const update = vi.mocked(prisma.channelConfig.update).mock.calls[0]?.[0] as { data: Record<string, unknown> }
+    expect(update.data).not.toHaveProperty("configName")
+  })
+
   it("stores a refusal as a refusal — the account is saved, but not as a delivering inbox", async () => {
     connectWith(() => new Response(JSON.stringify({ error: { message: "(#10) permission missing" } }), { status: 400 }))
     const s = valid()
