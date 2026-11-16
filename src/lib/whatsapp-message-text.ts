@@ -40,6 +40,13 @@ function str(value: unknown): string | null {
 }
 
 /**
+ * Meta's types for a message it did not hand over: `unsupported` live, `errors` in the imported history
+ * of a coexistence number. Such a row says that something happened in the chat — by the look of the
+ * first import (16.11.2026) calls, polls, view-once photos — not what.
+ */
+export const NOT_HANDED_OVER_MESSAGE_TYPES = ["unsupported", "errors"]
+
+/**
  * The thread text and the stored `messageType` for one message.
  *
  * `messageType` is Meta's own `type` (defaulting to `text` when absent), kept verbatim: it is what

@@ -20,7 +20,9 @@
  *  - Without the filter, the conversations a WhatsApp history import wrote are in the list too:
  *    months of them arrive at once with their own old dates, and the window held a few dozen of the
  *    hundreds the import screen counted (16.11.2026). Only open ones the import made, on numbers that
- *    imported history, under the caller's own organization and hidden numbers.
+ *    imported history, under the caller's own organization and hidden numbers. A conversation whose
+ *    last word came with the history does not wait for an answer, and one with nothing in it but
+ *    what WhatsApp did not hand over is not shown at all.
  *
  * Set USER_HANDOVER_INBOX_TEST_DATABASE_URL to an admin connection, e.g.
  *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55498:5432 postgres:16
@@ -36,6 +38,7 @@ import path from "node:path"
 import { NextRequest, NextResponse } from "next/server"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { convMatchesAssignee } from "@/lib/inbox/assignee-filter"
+import { convMatchesView } from "@/lib/inbox-channels"
 
 const adminUrl = process.env.USER_HANDOVER_INBOX_TEST_DATABASE_URL
 if (!adminUrl && process.env.USER_HANDOVER_INBOX_DB_GATE === "required") {
@@ -155,6 +158,8 @@ type Row = {
   historyImport?: boolean
   unreadCount?: number
   lastMessageAt?: string
+  lastDirection?: string | null
+  lastFromHistory?: boolean
 }
 type Conv = { id: string; assignedTo: string | null; status: string; snoozedUntil: Date | null; folderId: string | null; tags: string[]; deletedAt: Date | null }
 type Chat = { id: string; assignedUserId: string | null; status: string; aiPaused: boolean }
@@ -705,11 +710,18 @@ type Chat = { id: string; assignedUserId: string | null; status: string; aiPause
         ],
       })
       await prisma.channelMessage.createMany({
-        data: IMPORTED.map((conversationId, index) => ({
-          id: `m-ho-imported-${index}`, organizationId: ORG, conversationId, channelType: "whatsapp", channelConfigId: WA,
-          direction: "inbound", body: `Köhnə yazışma ${index}`, status: "read", from: `customer-${conversationId}`, to: "business",
-          createdAt: index === 0 ? hoursAgo(24 * 40) : hoursAgo(24 * 150), historyImportedAt: NOW, metadata: { historyImport: true },
-        })),
+        data: [
+          ...IMPORTED.map((conversationId, index) => ({
+            id: `m-ho-imported-${index}`, organizationId: ORG, conversationId, channelType: "whatsapp", channelConfigId: WA,
+            direction: "inbound", body: `Köhnə yazışma ${index}`, status: "read", from: `customer-${conversationId}`, to: "business",
+            createdAt: index === 0 ? hoursAgo(24 * 40) : hoursAgo(24 * 150), historyImportedAt: NOW, metadata: { historyImport: true },
+          })),
+          {
+            id: "m-ho-imported-other", organizationId: OTHER, conversationId: "conv-ho-imported-other", channelType: "whatsapp", channelConfigId: OTHER_WA,
+            direction: "inbound", body: "Başqa şirkətin yazışması", status: "read", from: "customer-other", to: "business",
+            createdAt: hoursAgo(24 * 40), historyImportedAt: NOW, metadata: { historyImport: true },
+          },
+        ],
       })
     })
 
@@ -742,5 +754,75 @@ type Chat = { id: string; assignedUserId: string | null; status: string; aiPause
     const other = conversationIds((await list()).rows)
     expect(other).toContain("conv-ho-imported-other")
     expect(other.filter((id) => IMPORTED.includes(id))).toEqual([])
+  })
+
+  it("an imported conversation does not wait for an answer, and one with nothing handed over is not shown", async () => {
+    // 16.11.2026: 203 imported conversations in «Cavab gözləyir», answered on the phone months ago, and
+    // half of the 348 holding nothing but «Kanalın ötürmədiyi mesaj» (owner: «Да, убери»).
+    const IMPORTED = ["conv-ho-imported-1", "conv-ho-imported-2"] // the case above: outside the window
+    const RECENT = "conv-ho-imported-recent" // last word from the history, inside the window
+    const LIVE = "conv-ho-imported-live" // the customer wrote again after the import
+    const CALLS = "conv-ho-imported-calls" // nothing handed over, outside the window
+    const CALLS_RECENT = "conv-ho-imported-calls-recent" // nothing handed over, inside the window
+    const CALLS_THEN_LIVE = "conv-ho-imported-calls-live" // nothing handed over — then a live message
+    await bypass(async () => {
+      const imported = (id: string, externalId: string, lastMessageAt: Date) => ({
+        id, organizationId: ORG, platform: "whatsapp", externalId, channelConfigId: WA, assignedTo: null,
+        contactName: externalId, lastMessage: "—", lastMessageAt, metadata: { historyImport: true },
+      })
+      await prisma.socialConversation.createMany({
+        data: [
+          imported(RECENT, "994700000011", hoursAgo(1)),
+          imported(LIVE, "994700000012", hoursAgo(0.5)),
+          imported(CALLS, "994700000013", hoursAgo(24 * 30)),
+          imported(CALLS_RECENT, "994700000014", hoursAgo(1)),
+          imported(CALLS_THEN_LIVE, "994700000015", hoursAgo(0.5)),
+        ],
+      })
+      const message = (id: string, conversationId: string, at: Date, extra: Record<string, unknown> = {}) => ({
+        id, organizationId: ORG, conversationId, channelType: "whatsapp", channelConfigId: WA, direction: "inbound",
+        body: "Salam", status: "read", from: `customer-${conversationId}`, to: "business", createdAt: at,
+        historyImportedAt: NOW, metadata: { historyImport: true }, ...extra,
+      })
+      const notHandedOver = { body: "[errors]", messageType: "errors" }
+      await prisma.channelMessage.createMany({
+        data: [
+          message("m-ho-recent", RECENT, hoursAgo(1)),
+          message("m-ho-live-old", LIVE, hoursAgo(24 * 20)),
+          message("m-ho-live-new", LIVE, hoursAgo(0.5), { historyImportedAt: null, metadata: {}, status: "delivered" }),
+          message("m-ho-calls-1", CALLS, hoursAgo(24 * 30), notHandedOver),
+          message("m-ho-calls-2", CALLS, hoursAgo(24 * 31), notHandedOver),
+          message("m-ho-calls-recent", CALLS_RECENT, hoursAgo(1), notHandedOver),
+          message("m-ho-calls-live-old", CALLS_THEN_LIVE, hoursAgo(24 * 30), notHandedOver),
+          message("m-ho-calls-live-new", CALLS_THEN_LIVE, hoursAgo(0.5), { historyImportedAt: null, metadata: {}, status: "delivered" }),
+        ],
+      })
+    })
+
+    as(ORG, ADMIN)
+    const { rows } = await list()
+    const ids = conversationIds(rows)
+    const row = (id: string) => rows.find((r) => r.socialConversationId === id)!
+    // Nothing handed over — not a row, whether the window holds it or not.
+    expect(ids).not.toContain(CALLS)
+    expect(ids).not.toContain(CALLS_RECENT)
+    // One real message, here a live one, and it is a conversation again.
+    expect(ids).toEqual(expect.arrayContaining([...IMPORTED, RECENT, LIVE, CALLS_THEN_LIVE]))
+
+    // The last word came with the history: read, not waiting — in the window and outside it.
+    for (const id of [RECENT, ...IMPORTED]) {
+      expect(row(id)).toMatchObject({ lastDirection: "inbound", lastFromHistory: true })
+      expect(convMatchesView(row(id), "awaiting", ADMIN), id).toBe(false)
+    }
+    // The customer wrote after the import: waiting again.
+    for (const id of [LIVE, CALLS_THEN_LIVE]) {
+      expect(row(id)).toMatchObject({ lastDirection: "inbound", lastFromHistory: false })
+      expect(convMatchesView(row(id), "awaiting", ADMIN), id).toBe(true)
+    }
+
+    // Not shown in the list is not gone: the customer's history still reads it.
+    const opened = await history.GET(request(`/api/v1/inbox/thread?conversationId=${CALLS}`), undefined as never)
+    expect(opened.status).toBe(200)
+    expect((await opened.json()).data.messages.map((m: { id: string }) => m.id).sort()).toEqual(["m-ho-calls-1", "m-ho-calls-2"])
   })
 })

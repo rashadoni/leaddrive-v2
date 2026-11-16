@@ -23,6 +23,15 @@ describe("Cavab gözləyir", () => {
     expect(convMatchesView({ lastDirection: "inbound" }, "awaiting", "me")).toBe(true)
     expect(convMatchesView({ lastDirection: "outbound" }, "awaiting", "me")).toBe(false)
   })
+
+  it("is not a conversation whose last word came with the WhatsApp history import — until the customer writes again", () => {
+    // 16.11.2026: six months answered on the phone put 203 conversations here at once.
+    expect(isAwaitingReply({ lastDirection: "inbound", lastFromHistory: true })).toBe(false)
+    expect(convMatchesView({ lastDirection: "inbound", lastFromHistory: true }, "awaiting", "me")).toBe(false)
+    expect(conversationRowChips({ lastDirection: "inbound", lastFromHistory: true }, text).chips).toEqual([])
+    expect(isAwaitingReply({ lastDirection: "inbound", lastFromHistory: false })).toBe(true)
+    expect(convMatchesView({ lastDirection: "inbound", lastFromHistory: false }, "awaiting", "me")).toBe(true)
+  })
 })
 
 describe("who answers a conversation", () => {

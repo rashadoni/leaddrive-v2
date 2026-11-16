@@ -8,6 +8,7 @@
  * copy is deleted with the legacy page.
  */
 import type { ElementType } from "react"
+import { isAwaitingReply } from "@/lib/inbox/dense-inbox"
 import {
   Mail, MessageCircle, MessageSquare, Phone, Globe,
 } from "lucide-react"
@@ -472,7 +473,7 @@ export type InboxView = "all" | "me" | "unassigned" | "others" | "chatbot" | "aw
  * match nothing here (callers keep those views disabled).
  */
 export function convMatchesView(
-  c: { assignedTo?: string | null; botHandled?: boolean; participants?: string[]; lastDirection?: string | null },
+  c: { assignedTo?: string | null; botHandled?: boolean; participants?: string[]; lastDirection?: string | null; lastFromHistory?: boolean },
   view: InboxView,
   myUserId: string | null,
 ): boolean {
@@ -482,8 +483,8 @@ export function convMatchesView(
     case "unassigned": return c.assignedTo == null
     case "others": return c.assignedTo != null && c.assignedTo !== myUserId
     case "chatbot": return c.botHandled === true // threads the auto-reply bot answered
-    // «Cavab gözləyir» (dense inbox, 2026-11-15): the customer wrote last — same rule as lib/inbox/dense-inbox.
-    case "awaiting": return c.lastDirection === "inbound"
+    // «Cavab gözləyir» (dense inbox, 2026-11-15): the customer wrote last — the rule of lib/inbox/dense-inbox.
+    case "awaiting": return isAwaitingReply(c)
     case "participating": return !!myUserId && (c.participants?.includes(myUserId) ?? false) // I'm a collaborator
     // The server already returned exactly the deleted threads for this view, so
     // filtering again here would be filtering twice. It did worse than that:
