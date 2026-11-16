@@ -13,9 +13,12 @@
  * Closed conversations are not added: there may be years of them, and the reason to look at one
  * person's conversations is to hand over what is still being worked on. The «closed» tab under the
  * filter therefore holds what the list's window holds, as it does without the filter.
+ *
+ * And the handing over itself, when it is everything at once: `transferOpenConversations`.
  */
 
-import { prisma } from "@/lib/prisma"
+import type { Prisma } from "@prisma/client"
+import { prisma, logAudit } from "@/lib/prisma"
 import { CLOSED_CONVERSATION_STATUSES, type InboxAssigneeHolder } from "@/lib/inbox/assignee-filter"
 
 /** How many conversations outside the window one request adds, newest first. */
@@ -34,6 +37,30 @@ const WEB_CHAT_SHELL = { platform: "inbox", externalId: { startsWith: "w:" } }
 type VisibleChannels = Record<string, unknown> | undefined
 
 /**
+ * The open conversations a caller may see — ONE condition for the three things that must agree: who
+ * the filter names and how many each holds, what the list adds for one person, and what «hand over
+ * all» moves. A count on the button that the press does not move would be a lie told in a number.
+ */
+function openConversationsWhere(
+  organizationId: string,
+  visibleChannels: VisibleChannels,
+  also: Array<Record<string, unknown>> = [],
+) {
+  const and = [...(visibleChannels ? [visibleChannels] : []), ...also]
+  return {
+    organizationId,
+    deletedAt: null,
+    NOT: [...NOT_CLOSED, WEB_CHAT_SHELL],
+    ...(and.length > 0 ? { AND: and } : {}),
+  }
+}
+
+/** The open website chats (`WebChatSession.status`: open, closed, escalated) — the same for all three. */
+function openWebChatsWhere(organizationId: string) {
+  return { organizationId, NOT: { status: { equals: "closed", mode: "insensitive" as const } } }
+}
+
+/**
  * Everyone who holds an open conversation the caller may see — including people who no longer work
  * here. Their conversations are the ones nobody answers, and the assign list (active accounts
  * only) cannot name them.
@@ -43,30 +70,26 @@ export async function loadInboxAssigneeHolders(input: {
   visibleChannels: VisibleChannels
 }): Promise<InboxAssigneeHolder[]> {
   const { organizationId, visibleChannels } = input
-  const conversationHolders: Array<{ assignedTo: string | null }> = await prisma.socialConversation.groupBy({
-    by: ["assignedTo"],
-    where: {
-      organizationId,
-      assignedTo: { not: null },
-      deletedAt: null,
-      NOT: [...NOT_CLOSED, WEB_CHAT_SHELL],
-      ...(visibleChannels ? { AND: [visibleChannels] } : {}),
-    },
-    _count: { _all: true },
-  })
-  const chatHolders: Array<{ assignedUserId: string | null }> = await prisma.webChatSession.groupBy({
-    by: ["assignedUserId"],
-    where: {
-      organizationId,
-      assignedUserId: { not: null },
-      NOT: { status: { equals: "closed", mode: "insensitive" } },
-    },
-    _count: { _all: true },
-  })
-  const ids = [...new Set([
-    ...conversationHolders.map((row) => row.assignedTo),
-    ...chatHolders.map((row) => row.assignedUserId),
-  ].filter((id): id is string => Boolean(id)))]
+  const conversationHolders: Array<{ assignedTo: string | null; _count: { _all: number } }> =
+    await prisma.socialConversation.groupBy({
+      by: ["assignedTo"],
+      where: { ...openConversationsWhere(organizationId, visibleChannels), assignedTo: { not: null } },
+      _count: { _all: true },
+    })
+  const chatHolders: Array<{ assignedUserId: string | null; _count: { _all: number } }> =
+    await prisma.webChatSession.groupBy({
+      by: ["assignedUserId"],
+      where: { ...openWebChatsWhere(organizationId), assignedUserId: { not: null } },
+      _count: { _all: true },
+    })
+  const open = new Map<string, number>()
+  for (const row of conversationHolders) {
+    if (row.assignedTo) open.set(row.assignedTo, (open.get(row.assignedTo) ?? 0) + row._count._all)
+  }
+  for (const row of chatHolders) {
+    if (row.assignedUserId) open.set(row.assignedUserId, (open.get(row.assignedUserId) ?? 0) + row._count._all)
+  }
+  const ids = [...open.keys()]
   if (ids.length === 0) return []
 
   const users: Array<{ id: string; name: string | null; isActive: boolean; anonymizedAt: Date | null }> =
@@ -78,8 +101,60 @@ export async function loadInboxAssigneeHolders(input: {
   return ids.map((id) => {
     const user = byId.get(id)
     // The column is a bare string: an id that is no user of this organization is held by nobody.
-    if (!user || user.anonymizedAt) return { id, name: null, active: false, removed: true }
-    return { id, name: user.name?.trim() || null, active: user.isActive, removed: false }
+    if (!user || user.anonymizedAt) return { id, name: null, active: false, removed: true, open: open.get(id) ?? 0 }
+    return { id, name: user.name?.trim() || null, active: user.isActive, removed: false, open: open.get(id) ?? 0 }
+  })
+}
+
+/**
+ * «Hand over all»: every open conversation and website chat one person holds goes to another, in
+ * one transaction — however many there are. The selection on the screen carries fifty at a time
+ * (`MAX_BULK_IDS`), and a manager who left with three hundred is not handed over in six careful
+ * rounds; the rounds are where conversations get forgotten.
+ *
+ * What moves is what the filter counts for the person (`openConversationsWhere`): closed ones and
+ * the trash stay with whoever held them, a number hidden from the caller is, to him, not there.
+ * Only the owner changes — status, folder, labels, snooze and a website chat's `aiPaused` stay, as
+ * in the handover on deleting a user (lib/user-work-handover): a chat the person answered herself
+ * stays a person's, and an AI somebody switched back on by hand stays on. (The bulk «assign»
+ * pauses the AI because there a person takes a chat from nobody; here she takes it from a person.)
+ *
+ * `fromUserId` is whatever the column holds — a deleted account's id or an id that is no user at
+ * all are exactly the conversations that most need a new owner. `toUserId` is the caller's to
+ * check: it must be somebody who can answer.
+ */
+export async function transferOpenConversations(input: {
+  organizationId: string
+  fromUserId: string
+  toUserId: string
+  actorUserId: string
+  visibleChannels: VisibleChannels
+}): Promise<{ conversations: number; webChats: number }> {
+  const { organizationId, fromUserId, toUserId, actorUserId, visibleChannels } = input
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const conversations = await tx.socialConversation.updateMany({
+      where: { ...openConversationsWhere(organizationId, visibleChannels), assignedTo: fromUserId },
+      data: { assignedTo: toUserId },
+    })
+    const webChats = await tx.webChatSession.updateMany({
+      where: { ...openWebChatsWhere(organizationId), assignedUserId: fromUserId },
+      data: { assignedUserId: toUserId },
+    })
+    const moved = { conversations: conversations.count, webChats: webChats.count }
+    // Nobody can list afterwards which conversations these were — the old owner is on none of them.
+    // The journal row is the only trace, so it is written with the move or the move does not happen.
+    if (moved.conversations + moved.webChats > 0) {
+      await logAudit(
+        organizationId,
+        "bulk_update",
+        "conversation",
+        fromUserId,
+        `Inbox handover: ${moved.conversations} conversations and ${moved.webChats} website chats`,
+        { userId: actorUserId, oldValue: { assignedTo: fromUserId }, newValue: { assignedTo: toUserId, ...moved } },
+        tx,
+      )
+    }
+    return moved
   })
 }
 
@@ -187,11 +262,8 @@ export async function loadAssigneeQuietThreads(input: {
     : null
   const rows: QuietRow[] = await prisma.socialConversation.findMany({
     where: {
-      organizationId,
+      ...openConversationsWhere(organizationId, visibleChannels, onChannel ? [onChannel] : []),
       assignedTo: assigneeId,
-      deletedAt: null,
-      NOT: [...NOT_CLOSED, WEB_CHAT_SHELL],
-      AND: [...(visibleChannels ? [visibleChannels] : []), ...(onChannel ? [onChannel] : [])],
       ...(knownConversationIds.size > 0 ? { id: { notIn: [...knownConversationIds] } } : {}),
     },
     orderBy: { lastMessageAt: "desc" },

@@ -13,6 +13,10 @@
  *    organization's newest messages, so a conversation nobody wrote in lately is not in it; asked for
  *    one person, the list also holds her open conversations the window missed. The people who hold
  *    conversations are named even when they no longer work here.
+ *  - «Hand over all» (`POST /api/v1/inbox/assignees/transfer`): everything one person holds goes to
+ *    another in one press — a hundred and more, where a selection carries fifty. It moves exactly
+ *    what the filter counted for the person; closed ones, the trash, a number hidden from the
+ *    caller and another organization's stay, and the new owner must be somebody who can answer.
  *
  * Set USER_HANDOVER_INBOX_TEST_DATABASE_URL to an admin connection, e.g.
  *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55498:5432 postgres:16
@@ -154,6 +158,7 @@ type Chat = { id: string; assignedUserId: string | null; status: string; aiPause
   let rls!: typeof import("@/lib/rls-context")
   let inbox!: typeof import("@/app/api/v1/inbox/route")
   let holders!: typeof import("@/app/api/v1/inbox/assignees/route")
+  let transfer!: typeof import("@/app/api/v1/inbox/assignees/transfer/route")
   let history!: typeof import("@/app/api/v1/inbox/thread/route")
   let bulk!: typeof import("@/app/api/v1/inbox/conversations/bulk/route")
   let users!: typeof import("@/app/api/v1/users/[id]/route")
@@ -214,6 +219,7 @@ type Chat = { id: string; assignedUserId: string | null; status: string; aiPause
     rls = await import("@/lib/rls-context")
     inbox = await import("@/app/api/v1/inbox/route")
     holders = await import("@/app/api/v1/inbox/assignees/route")
+    transfer = await import("@/app/api/v1/inbox/assignees/transfer/route")
     history = await import("@/app/api/v1/inbox/thread/route")
     bulk = await import("@/app/api/v1/inbox/conversations/bulk/route")
     users = await import("@/app/api/v1/users/[id]/route")
@@ -330,22 +336,25 @@ type Chat = { id: string; assignedUserId: string | null; status: string; aiPause
     as(ORG, ADMIN)
     const res = await holders.GET(request("/api/v1/inbox/assignees"), undefined as never)
     expect(res.status).toBe(200)
-    const data = ((await res.json()).data as Array<{ id: string; name: string | null; active: boolean; removed: boolean }>)
+    const data = ((await res.json()).data as Array<{ id: string; name: string | null; active: boolean; removed: boolean; open: number }>)
       .sort((a, b) => a.id.localeCompare(b.id))
     expect(data).toEqual([
-      { id: COLLEAGUE, name: "Aysel", active: true, removed: false },
+      // One conversation and one website chat.
+      { id: COLLEAGUE, name: "Aysel", active: true, removed: false, open: 2 },
       // Deleted before her conversations were handed over: no name, and it is not the placeholder.
-      { id: GHOST, name: null, active: false, removed: true },
-      { id: LEAVER, name: "Leyla", active: true, removed: false },
+      { id: GHOST, name: null, active: false, removed: true, open: 1 },
+      // Four open conversations (the snoozed one and the e-mail thread among them) and two website
+      // chats. The resolved, the archived, the one in the trash and the closed chat are not work.
+      { id: LEAVER, name: "Leyla", active: true, removed: false, open: 6 },
       // Switched off: her name is still hers.
-      { id: OFF, name: "Nigar", active: false, removed: false },
+      { id: OFF, name: "Nigar", active: false, removed: false, open: 1 },
     ])
 
     // Another organization sees its own holders only. Its conversation points at an id that is no
     // user of that organization — held by nobody, and named as such, never as this organization's Leyla.
     as(OTHER, OTHER_ADMIN)
     const other = await (await holders.GET(request("/api/v1/inbox/assignees"), undefined as never)).json()
-    expect(other.data).toEqual([{ id: LEAVER, name: null, active: false, removed: true }])
+    expect(other.data).toEqual([{ id: LEAVER, name: null, active: false, removed: true, open: 2 }])
   })
 
   it("asked for one person, the list also holds her open conversations the window missed", async () => {
@@ -477,5 +486,185 @@ type Chat = { id: string; assignedUserId: string | null; status: string; aiPause
     const res = await users.DELETE(request(`/api/v1/users/${LEAVER}`, "DELETE"), idCtx(LEAVER))
     expect(res.status).toBe(404)
     expect(await owners()).toEqual(owned)
+  })
+
+  // ── «Hand over all» ────────────────────────────────────────────────────────────────────────────
+  // By now: the administrator holds what the deleted manager held, Aysel a WhatsApp and an Instagram
+  // conversation and a website chat, the switched-off Nigar and the long-deleted account one each.
+
+  const handOver = (body: unknown) => transfer.POST(request("/api/v1/inbox/assignees/transfer", "POST", body), undefined as never)
+  const openCounts = async () => Object.fromEntries(
+    ((await (await holders.GET(request("/api/v1/inbox/assignees"), undefined as never)).json()).data as Array<{ id: string; open: number }>)
+      .map((holder) => [holder.id, holder.open]),
+  )
+  const journal = () => bypass<Array<{ organizationId: string; userId: string | null; entityId: string | null; newValue: unknown }>>(() =>
+    prisma.auditLog.findMany({
+      where: { action: "bulk_update", entityType: "conversation", entityName: { startsWith: "Inbox handover" } },
+      select: { organizationId: true, userId: true, entityId: true, newValue: true },
+      orderBy: { createdAt: "asc" },
+    }))
+
+  it("refuses a new owner who cannot answer — and moves nothing", async () => {
+    await bypass(() => prisma.user.create({
+      data: { id: "user-ho-reviewer", organizationId: ORG, email: "user-ho-reviewer@example.test", name: "Yoxlayıcı", role: "reviewer", passwordHash: "x" },
+    }))
+    const owned = await owners()
+    const chatsOwned = await chatOwners()
+    as(ORG, ADMIN)
+    const nobodyToAnswer: Array<[string, unknown]> = [
+      ["switched off", { from: GHOST, to: OFF }],
+      ["deleted", { from: GHOST, to: LEAVER }],
+      ["another organization's administrator", { from: GHOST, to: OTHER_ADMIN }],
+      ["an outside reviewer", { from: GHOST, to: "user-ho-reviewer" }],
+      ["an id that is no user", { from: GHOST, to: "user-ho-nobody" }],
+      ["the same person", { from: ADMIN, to: ADMIN }],
+      // «To nobody» does not exist: an open conversation without an owner is what the AI takes.
+      ["nobody", { from: GHOST, to: null }],
+      ["nobody named", { from: GHOST }],
+      ["nobody asked about", { to: COLLEAGUE }],
+    ]
+    for (const [who, body] of nobodyToAnswer) {
+      const res = await handOver(body)
+      expect(res.status, who).toBe(400)
+    }
+    expect(await owners()).toEqual(owned)
+    expect(await chatOwners()).toEqual(chatsOwned)
+    expect(await journal()).toEqual([])
+  })
+
+  it("is not for someone who may only read the inbox", async () => {
+    const owned = await owners()
+    as(ORG, SELLER, "viewer")
+    expect((await handOver({ from: GHOST, to: COLLEAGUE })).status).toBe(403)
+    expect(await owners()).toEqual(owned)
+  })
+
+  it("leaves a number hidden from the caller alone — to him those conversations are not there", async () => {
+    // The seller the admin hid the Instagram page from: he is told Aysel holds two, and two move.
+    as(ORG, SELLER, "sales", [IG])
+    expect((await openCounts())[COLLEAGUE]).toBe(2)
+    const owned = await owners()
+    const res = await handOver({ from: COLLEAGUE, to: SELLER })
+    expect(res.status).toBe(200)
+    expect((await res.json()).data).toEqual({ conversations: 1, webChats: 1, total: 2 })
+    expect(await owners()).toEqual({ ...owned, [C_COLLEAGUE]: SELLER })
+    // Her Instagram conversation is still hers.
+    expect((await owners())[C_QUIET]).toBe(COLLEAGUE)
+    expect((await chatOwners())[W_COLLEAGUE]).toBe(SELLER)
+  })
+
+  it("moves only the caller's own organization's conversations, whatever id is named", async () => {
+    const owned = await owners()
+    as(OTHER, OTHER_ADMIN)
+    // This organization's long-deleted account holds an open conversation; the other organization
+    // names the same id and finds nothing of its own under it.
+    const none = await handOver({ from: GHOST, to: OTHER_ADMIN })
+    expect(none.status).toBe(200)
+    expect((await none.json()).data).toEqual({ conversations: 0, webChats: 0, total: 0 })
+    expect(await owners()).toEqual(owned)
+
+    // The id both organizations use: only the other organization's conversation and chat move.
+    const theirs = await handOver({ from: LEAVER, to: OTHER_ADMIN })
+    expect((await theirs.json()).data).toEqual({ conversations: 1, webChats: 1, total: 2 })
+    expect(await owners()).toEqual({ ...owned, [C_OTHER]: OTHER_ADMIN })
+    expect(await chatOwners()).toMatchObject({ [W_OTHER]: OTHER_ADMIN, [W_CLOSED]: LEAVER })
+    // What was moved is in that organization's journal, by the one who pressed; a press that moved
+    // nothing left no row.
+    expect(await journal()).toEqual([
+      { organizationId: ORG, userId: SELLER, entityId: COLLEAGUE, newValue: { assignedTo: SELLER, conversations: 1, webChats: 1 } },
+      { organizationId: OTHER, userId: OTHER_ADMIN, entityId: LEAVER, newValue: { assignedTo: OTHER_ADMIN, conversations: 1, webChats: 1 } },
+    ])
+  })
+
+  it("hands over everything a person holds in one press — a hundred and twenty, where a selection carries fifty", async () => {
+    // Nigar was switched off with 120 more open conversations nobody wrote in for a month — none of
+    // them in the list's window — a snoozed one in a folder among them, one closed, one in the
+    // trash, a website chat with the AI switched back on, a closed chat; and another organization
+    // has a conversation that names her id.
+    const MANY = Array.from({ length: 120 }, (_, index) => `conv-ho-many-${String(index).padStart(3, "0")}`)
+    await bypass(async () => {
+      const folder = await prisma.inboxFolder.findFirstOrThrow({ where: { organizationId: ORG, name: "VIP" }, select: { id: true } })
+      const row = (id: string, index: number, extra: Record<string, unknown> = {}) => ({
+        id, organizationId: ORG, platform: "whatsapp", externalId: `99455${String(index).padStart(7, "0")}`, channelConfigId: WA,
+        assignedTo: OFF, contactName: id, lastMessageAt: MONTH_AGO, ...extra,
+      })
+      await prisma.socialConversation.createMany({
+        data: [
+          ...MANY.map((id, index) => row(id, index, index === 0 ? { snoozedUntil: NEXT_WEEK, folderId: folder.id, tags: ["vip"] } : {})),
+          row("conv-ho-many-resolved", 500, { status: "resolved", closedAt: MONTH_AGO }),
+          row("conv-ho-many-trash", 501, { deletedAt: MONTH_AGO, deletedBy: ADMIN }),
+          { ...row("conv-ho-many-other", 502), organizationId: OTHER, channelConfigId: null },
+        ],
+      })
+      await prisma.webChatSession.createMany({
+        data: [
+          { id: "chat-ho-many-open", organizationId: ORG, assignedUserId: OFF, status: "open", aiPaused: false, visitorName: "many", lastMessageAt: MONTH_AGO },
+          { id: "chat-ho-many-closed", organizationId: ORG, assignedUserId: OFF, status: "closed", aiPaused: true, visitorName: "many", lastMessageAt: MONTH_AGO },
+        ],
+      })
+    })
+    as(ORG, ADMIN)
+    // What the filter says she holds: the one from before, the 120, and the open website chat.
+    const counted = await openCounts()
+    expect(counted[OFF]).toBe(122)
+    // The selection cannot carry them: the bulk action takes fifty at most.
+    const tooMany = await bulk.POST(request("/api/v1/inbox/conversations/bulk", "POST", { action: "assign", ids: MANY, assignedTo: COLLEAGUE }), undefined as never)
+    expect(tooMany.status).toBe(400)
+
+    const before = await conversations()
+    const owned = await owners()
+    const chatsBefore = await chats()
+    const res = await handOver({ from: OFF, to: COLLEAGUE })
+    expect(res.status).toBe(200)
+    // Exactly what the filter counted — the number on the button is the number that moves.
+    expect((await res.json()).data).toEqual({ conversations: 121, webChats: 1, total: counted[OFF] })
+
+    expect(await owners()).toEqual({
+      ...owned,
+      [C_OFF]: COLLEAGUE,
+      ...Object.fromEntries(MANY.map((id) => [id, COLLEAGUE])),
+      // The closed one, the one in the trash and the other organization's are still under her id.
+    })
+    expect((await owners())["conv-ho-many-resolved"]).toBe(OFF)
+    expect((await owners())["conv-ho-many-trash"]).toBe(OFF)
+    expect((await owners())["conv-ho-many-other"]).toBe(OFF)
+    // Nothing about a conversation changed but who answers it: the snoozed one is still snoozed, in
+    // its folder, with its label.
+    const strip = (rows: Conv[]) => rows.map((row) => ({ ...row, assignedTo: "—" }))
+    expect(strip(await conversations())).toEqual(strip(before))
+    // The website chat moved with the AI as it was — somebody had switched it back on by hand; the
+    // closed chat stayed hers.
+    const moved = (rows: Chat[]) => rows.map((row) => (row.id === "chat-ho-many-open" ? { ...row, assignedUserId: COLLEAGUE } : row))
+    expect(await chats()).toEqual(moved(chatsBefore))
+    expect((await chats()).find((row) => row.id === "chat-ho-many-open")).toEqual({ id: "chat-ho-many-open", assignedUserId: COLLEAGUE, status: "open", aiPaused: false })
+
+    // She holds nothing open any more, and Aysel holds her own Instagram conversation and the 122.
+    const after = await openCounts()
+    expect(after[OFF]).toBeUndefined()
+    expect(after[COLLEAGUE]).toBe(123)
+    // Aysel finds them under her own name — the ones the list's window never held included.
+    const { rows, assignee } = await list(`?assignee=${COLLEAGUE}`)
+    expect(conversationIds(of(rows, COLLEAGUE))).toEqual([C_OFF, C_QUIET, ...MANY].sort())
+    expect(assignee).toEqual({ id: COLLEAGUE, more: false })
+    expect((await journal()).at(-1)).toEqual({
+      organizationId: ORG, userId: ADMIN, entityId: OFF, newValue: { assignedTo: COLLEAGUE, conversations: 121, webChats: 1 },
+    })
+  })
+
+  it("hands over what was stranded on an account deleted long ago, and a second press finds nothing", async () => {
+    as(ORG, ADMIN)
+    const first = await handOver({ from: GHOST, to: COLLEAGUE })
+    expect((await first.json()).data).toEqual({ conversations: 1, webChats: 0, total: 1 })
+    expect((await owners())[C_GHOST]).toBe(COLLEAGUE)
+
+    const owned = await owners()
+    const rows = (await journal()).length
+    const second = await handOver({ from: GHOST, to: ADMIN })
+    expect(second.status).toBe(200)
+    expect((await second.json()).data).toEqual({ conversations: 0, webChats: 0, total: 0 })
+    expect(await owners()).toEqual(owned)
+    expect((await journal()).length).toBe(rows)
+    // Nobody who left holds an open conversation now.
+    expect(Object.keys(await openCounts()).sort()).toEqual([ADMIN, COLLEAGUE, SELLER].sort())
   })
 })
