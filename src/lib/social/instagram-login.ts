@@ -63,10 +63,30 @@ export async function sendInstagramLoginMessage(
   }
 }
 
-// The one webhook field webhooks/instagram consumes. Deliberately not the app's whole dashboard list:
+// The webhook fields webhooks/instagram consumes. Deliberately not the app's whole dashboard list:
 // `message_reactions` / `messaging_seen` events carry no `message`, and that handler would store each
-// of them as a "[media]" inbound message.
+// of them as a "[media]" inbound message. `comments` only for an account that granted the comments
+// permission (lib/social/instagram-comments): asking without it could refuse the whole call, and the
+// Direct subscription with it.
 const IG_DM_SUBSCRIBED_FIELDS = "messages"
+const IG_COMMENTS_FIELD = "comments"
+
+/** The fields to subscribe for an account, from the permissions it granted. */
+export function instagramSubscribedFields(grantedScopes: readonly string[] | null | undefined): string {
+  return grantedScopes?.includes("instagram_business_manage_comments")
+    ? `${IG_DM_SUBSCRIBED_FIELDS},${IG_COMMENTS_FIELD}`
+    : IG_DM_SUBSCRIBED_FIELDS
+}
+
+/**
+ * The permissions Instagram's token exchange says were granted. Meta has returned them both as an
+ * array and as one comma-separated string; anything else is "not told" (null), not "none".
+ */
+export function grantedInstagramScopes(value: unknown): string[] | null {
+  const list = Array.isArray(value) ? value : typeof value === "string" ? value.split(",") : null
+  if (!list) return null
+  return list.map((x) => (typeof x === "string" ? x.trim() : "")).filter(Boolean)
+}
 
 /**
  * Turn on webhook delivery for ONE Instagram professional account connected through Instagram Login.
@@ -87,10 +107,11 @@ const IG_DM_SUBSCRIBED_FIELDS = "messages"
  */
 export async function subscribeInstagramLoginAccount(
   igToken: string,
+  grantedScopes?: readonly string[] | null,
 ): Promise<{ success: boolean; error?: string }> {
   if (!igToken) return { success: false, error: "missing token" }
   try {
-    const res = await fetch(`${IG_GRAPH}/me/subscribed_apps?subscribed_fields=${IG_DM_SUBSCRIBED_FIELDS}`, {
+    const res = await fetch(`${IG_GRAPH}/me/subscribed_apps?subscribed_fields=${instagramSubscribedFields(grantedScopes)}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${igToken}` },
       signal: AbortSignal.timeout(10_000),

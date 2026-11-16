@@ -1,3 +1,4 @@
+import { isInstagramCommentRow } from "@/lib/social/instagram-comments"
 import { pageAiScheduleAllowsNow, resolveInboxAgent } from "@/lib/inbox/page-agent"
 import { learnedPromptBlocks } from "@/lib/inbox/learning/prompt-blocks"
 import { AUTO_REPLY_ON } from "@/lib/inbox/conversation-auto-reply"
@@ -369,6 +370,9 @@ export function selectUncoveredAiInboundBatch(
         && !Array.isArray(message.metadata)
         && (message.metadata as Record<string, unknown>).historyImport === true
       )
+      // An Instagram comment (lib/inbox/instagram-comment-ingest) is public and is answered by a
+      // person — in Direct or under the post. No automatic writer takes it as a turn.
+      && !isInstagramCommentRow(message.metadata)
     )
     .slice(0, Math.max(1, limit))
 }

@@ -7,7 +7,8 @@ import { resolveTelegramSendTarget, sendTelegramText } from "@/lib/telegram"
 import { sendTelegramMedia } from "@/lib/telegram-media"
 import { sendChatwootMessage } from "@/lib/chatwoot"
 import { sendVkMessage } from "@/lib/vkontakte"
-import { metaDmAttachmentType, sendMetaDmAsPerson, sendMetaDmAttachment, sendMetaDmText } from "@/lib/social/meta-dm-attachment"
+import { metaDmAttachmentType, sendMetaCommentPrivateReply, sendMetaDmAsPerson, sendMetaDmAttachment, sendMetaDmText } from "@/lib/social/meta-dm-attachment"
+import { INSTAGRAM_COMMENT_TEXT_ONLY, replyToInstagramComment } from "@/lib/social/instagram-comments"
 import { createOutboundMediaLink } from "@/lib/inbox/outbound-media-link"
 import { META_OUTSIDE_WINDOW } from "@/lib/inbox/meta-reply-window"
 import { isIgLogin } from "@/lib/social/tenant-meta-app"
@@ -66,7 +67,20 @@ export interface SendConversationReplyOptions {
     cooldownMs: number
     nowMs?: number
   }
+  /**
+   * An answer to an Instagram comment (lib/social/instagram-comments). `public` goes under the post.
+   * `direct` goes as the comment's one private reply while Meta still allows it
+   * (`privateReplyAllowed`), otherwise as an ordinary Direct message — which Meta takes only inside
+   * the person's own 24-hour window. The caller resolves the comment row; nothing here trusts a client id.
+   */
+  instagramComment?: {
+    commentId: string
+    inboundMessageId: string
+    mode: "direct" | "public"
+    privateReplyAllowed: boolean
+  } | null
 }
+
 
 export type SendConversationReplyResult =
   | { success: true; statusCode: 201; data: { id: string; status: string } & Record<string, unknown> }
@@ -312,6 +326,29 @@ async function finalizeChatwootDelivery(
 }
 
 /** Shared outbound pipeline for the inbox composer and conversation automation actions. */
+/**
+ * Meta takes one private reply per comment. The comment row remembers it went, so the composer stops
+ * offering it and the next Direct answer goes as an ordinary message.
+ */
+async function markPrivateReplySent(organizationId: string, inboundMessageId: string): Promise<void> {
+  try {
+    const row = await prisma.channelMessage.findFirst({
+      where: { id: inboundMessageId, organizationId },
+      select: { metadata: true },
+    })
+    const metadata = objectMetadata(row?.metadata)
+    const igComment = objectMetadata(metadata.igComment)
+    if (!row || !igComment.commentId) return
+    await prisma.channelMessage.update({
+      where: { id: inboundMessageId },
+      data: { metadata: { ...metadata, igComment: { ...igComment, privateReplyAt: new Date().toISOString() } } },
+    })
+  } catch (error) {
+    // The reply is with the customer; a lost mark only means Meta refuses a second private reply.
+    console.error("[sendConversationReply] private reply mark failed:", error)
+  }
+}
+
 export async function sendConversationReply(opts: SendConversationReplyOptions): Promise<SendConversationReplyResult> {
   const { organizationId: orgId, channel, to, body, subject, contactId, leadId, conversationId, attachment } = opts
   let { channelConfigId } = opts
@@ -331,6 +368,7 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
   // it, and this id is how the poller later says which row that was.
   let chatwootMessageId: string | null = null
   let metaOutsideWindow = false
+  let commentReply: { commentId: string; mode: "public" | "private" | "direct"; replyId?: string } | null = null
   let recordedMessage: ({ id: string; status: string } & Record<string, unknown>) | null = null
 
   try {
@@ -551,6 +589,34 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
         // Meta echoes every send back to the webhook; the ids kept here are how the echo is known
         // to be ours and not a reply typed in the app (lib/inbox/meta-dm-app-echo).
         const sentIds: string[] = []
+        const igComment = channel === "instagram" ? opts.instagramComment ?? null : null
+        if (igComment && !igLogin) return { success: false, statusCode: 400, error: "Instagram comments need an Instagram-Login connection" }
+        if (igComment && attachment && (igComment.mode === "public" || igComment.privateReplyAllowed)) {
+          return { success: false, statusCode: 400, error: INSTAGRAM_COMMENT_TEXT_ONLY }
+        }
+        if (igComment?.mode === "public") {
+          const reply = await replyToInstagramComment({ commentId: igComment.commentId, text: body, token })
+          status = reply.ok ? "delivered" : "failed"
+          if (!reply.ok) errorMsg = `instagram comment reply failed${reply.error ? `: ${reply.error}` : ""}`
+          // Meta reports the reply back to the webhook as the account's own comment; this id is how
+          // that echo is known to be ours (lib/inbox/instagram-comment-ingest).
+          if (reply.replyId) metaMessageId = reply.replyId
+          commentReply = { commentId: igComment.commentId, mode: "public", ...(reply.replyId ? { replyId: reply.replyId } : {}) }
+          break
+        }
+        if (igComment?.mode === "direct" && igComment.privateReplyAllowed) {
+          const sent = await sendMetaCommentPrivateReply({ igLogin, commentId: igComment.commentId, token, text: body })
+          if (sent.messageId) {
+            metaMessageId = sent.messageId
+            metaMessageIds = [sent.messageId]
+          }
+          status = sent.ok ? "delivered" : "failed"
+          if (!sent.ok) errorMsg = `instagram private reply failed${sent.error ? `: ${sent.error}` : ""}`
+          commentReply = { commentId: igComment.commentId, mode: "private" }
+          if (sent.ok) await markPrivateReplySent(orgId, igComment.inboundMessageId)
+          break
+        }
+        if (igComment) commentReply = { commentId: igComment.commentId, mode: "direct" }
         if (attachment) {
           const type = metaDmAttachmentType(channel, attachment.mime)
           if (!type) {
@@ -621,6 +687,7 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
     if (deliveryUnknown) metadata.deliveryUnknown = true
     if (resolvedChatId) metadata.chatId = resolvedChatId
     if (metaMessageIds) metadata.metaMessageIds = metaMessageIds
+    if (commentReply) metadata.igCommentReply = commentReply
     if (channel === "tiktok") {
       metadata.chatwootConversationId = to
       metadata.deliveryAttempted = true

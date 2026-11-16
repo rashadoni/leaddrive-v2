@@ -5,7 +5,7 @@ import { getOrgId } from "@/lib/api-auth"
 import { runWithTenant } from "@/lib/rls-context"
 import { getTenantInstagramLoginApp, getPinnedMetaApp, isAppReviewOnly } from "@/lib/social/tenant-meta-app"
 import { redactOAuthProviderText } from "@/lib/oauth-redaction"
-import { subscribeInstagramLoginAccount } from "@/lib/social/instagram-login"
+import { grantedInstagramScopes, subscribeInstagramLoginAccount } from "@/lib/social/instagram-login"
 import {
   normalizeOAuthReturnKey,
   oauthReturnChannelType,
@@ -22,8 +22,8 @@ const IG_GRAPH = "https://graph.instagram.com"
 interface ShortTokenJson {
   access_token?: string
   user_id?: string | number
-  permissions?: string[]
-  data?: Array<{ access_token: string; user_id: string | number; permissions?: string[] }>
+  permissions?: string[] | string
+  data?: Array<{ access_token: string; user_id: string | number; permissions?: string[] | string }>
   error_type?: string
   error_message?: string
 }
@@ -144,6 +144,8 @@ export async function GET(req: NextRequest) {
   const shortJson = await shortRes.json() as ShortTokenJson
   const short = shortJson.access_token || shortJson.data?.[0]?.access_token
   const shortUserId = String(shortJson.user_id ?? shortJson.data?.[0]?.user_id ?? "")
+  // What the account actually granted — comments ride on it (lib/social/instagram-comments).
+  const grantedScopes = grantedInstagramScopes(shortJson.permissions ?? shortJson.data?.[0]?.permissions)
   if (!short) {
     console.error("[instagram-oauth] no short token in response:", JSON.stringify(shortJson))
     return redirectError(req, "token_exchange_failed", ret, originChannelId)
@@ -212,6 +214,7 @@ export async function GET(req: NextRequest) {
       : {}
   const settings: Record<string, unknown> = { ...prevSettings, igLogin: true, tokenExpiresAt: expiresAt, username }
   if (scopedId && scopedId !== userId) settings.igScopedId = scopedId
+  if (grantedScopes) settings.grantedScopes = grantedScopes
   // A reconnect is a fresh grant: a revocation recorded for an earlier one no longer describes the row.
   delete settings.revokedByMeta
   if (staged) {
@@ -224,7 +227,7 @@ export async function GET(req: NextRequest) {
     // inbox. A STAGED connect asks for nothing, for the same reason the Facebook one does not
     // (lib/social/inbox-channel): the account may be a live one claimed by another workspace, and
     // switching its delivery on is not something a staging run gets to do as a side effect.
-    const sub = await subscribeInstagramLoginAccount(longToken)
+    const sub = await subscribeInstagramLoginAccount(longToken, grantedScopes)
     if (!sub.success) console.warn(`[instagram-oauth] webhook subscribe failed for IG ${userId}: ${sub.error}`)
     settings.inboxSubscribed = sub.success
     delete settings.subscriptionPending

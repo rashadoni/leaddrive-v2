@@ -4,6 +4,7 @@ import { withSocialConnectAuth } from "@/lib/social/oauth-access"
 import { getTenantInstagramLoginApp, getPinnedMetaApp } from "@/lib/social/tenant-meta-app"
 import { normalizeOAuthReturnKey } from "@/lib/social/oauth-return"
 import { resolveOAuthReturnChannel } from "@/lib/social/oauth-return-channel"
+import { COMMENTS_SCOPE_REQUESTED, IG_COMMENTS_SCOPE } from "@/lib/social/instagram-comments"
 
 /**
  * Start the Instagram-Login OAuth flow ("Path B").
@@ -75,9 +76,14 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   // Instagram-Login scopes. These must be added under Use Cases > "Manage messages and content in
   // Instagram" > API setup with Instagram login > Permissions, else the consent dialog drops them.
   // instagram_business_basic = profile/account; instagram_business_manage_messages = read+reply DMs.
+  // instagram_business_manage_comments = comments under the account's posts into the inbox
+  // (lib/social/instagram-comments). Until Meta approves it for every account it is asked for only
+  // when the link says `?comments=1` — the tester account the App Review video is shot on.
+  const wantsComments = COMMENTS_SCOPE_REQUESTED || new URL(req.url).searchParams.get("comments") === "1"
   const scopes = [
     "instagram_business_basic",
     "instagram_business_manage_messages",
+    ...(wantsComments ? [IG_COMMENTS_SCOPE] : []),
   ].join(",")
 
   // Meta's documented Business Login endpoint (api.instagram.com/oauth/authorize only redirects here).

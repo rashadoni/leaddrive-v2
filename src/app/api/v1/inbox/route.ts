@@ -10,7 +10,8 @@ import { isContactLinkablePlatform } from "@/lib/inbox/contact-link"
 import { summarizeThreadConversations, type ThreadConversationSummary } from "@/lib/inbox/thread-conversations"
 import { readInboxAttachment } from "@/lib/inbox-attachment"
 import { sanitizeOwnedRefs } from "@/lib/verify-owned-refs"
-import { sendConversationReply } from "@/lib/inbox/send-conversation-reply"
+import { sendConversationReply, type SendConversationReplyOptions } from "@/lib/inbox/send-conversation-reply"
+import { privateReplyAvailable, storedInstagramComment } from "@/lib/social/instagram-comments"
 import { PAGE_SIZE } from "@/lib/constants"
 import { ensureConversation } from "@/lib/inbox-ensure-conversation"
 import { markMarketingContacted } from "@/lib/inbox/customer-stage"
@@ -275,6 +276,10 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
           // The newest message came with the WhatsApp Business app's history — not one that waits for us.
           lastFromHistory: Boolean(msg.historyImportedAt),
           lastChannel: msg.channelType || "email",
+          // An Instagram comment (lib/inbox/instagram-comment-ingest): the row's «Şərh» mark and the
+          // «Şərhlər» view.
+          lastIsComment: Boolean(meta?.igComment),
+          hasComment: false,
           unreadCount: 0,
           messageCount: 0,
           channels: new Set<string>(),
@@ -285,6 +290,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
 
       threads[key].messages.push(msg)
       threads[key].messageCount++
+      if (msg.direction === "inbound" && meta?.igComment) threads[key].hasComment = true
       // A thread the auto-reply bot answered (ChannelMessage.metadata.autoReply) → "Чат-бот" inbox view.
       if (meta?.autoReply === true) threads[key].botHandled = true
       if (msg.channelType) threads[key].channels.add(msg.channelType)
@@ -307,6 +313,7 @@ export const GET = withRlsAuth("inbox", "read", async (req, auth) => {
         threads[key].lastMessageAt = msg.createdAt
         threads[key].lastDirection = msg.direction
         threads[key].lastFromHistory = Boolean(msg.historyImportedAt)
+        threads[key].lastIsComment = Boolean(meta?.igComment)
         threads[key].lastChannel = msg.channelType || "email"
       }
     }
@@ -1182,6 +1189,12 @@ const sendMessageSchema = z.object({
   // Required only for Chatwoot/TikTok. The server fixes the namespace to
   // `manual`; callers may supply only a bounded RFC UUID.
   deliveryIdempotencyKey: z.string().uuid().optional(),
+  // An answer to an Instagram comment in this conversation: which comment, and where the answer goes
+  // (lib/social/instagram-comments). The comment row is re-read below; the client names only its id.
+  commentReply: z.object({
+    messageId: z.string().min(1),
+    mode: z.enum(["direct", "public"]),
+  }).optional(),
 }).refine((d) => d.body.trim().length > 0 || !!d.attachmentUrl, {
   message: "Message text or an attachment is required",
 })
@@ -1205,6 +1218,7 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
     attachmentUrl,
     conversationId: rawConversationId,
     deliveryIdempotencyKey,
+    commentReply,
   } = parsed.data
   if (channel === "tiktok" && !deliveryIdempotencyKey) {
     return NextResponse.json({ error: "A delivery idempotency key is required for TikTok replies" }, { status: 400 })
@@ -1367,6 +1381,25 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
     }
   }
 
+  let instagramComment: SendConversationReplyOptions["instagramComment"] = null
+  if (commentReply) {
+    if (channel !== "instagram" || !conversationId) {
+      return NextResponse.json({ error: "A comment reply needs its Instagram conversation" }, { status: 400 })
+    }
+    const commentRow = await prisma.channelMessage.findFirst({
+      where: { id: commentReply.messageId, organizationId: orgId, conversationId, channelType: "instagram", direction: "inbound" },
+      select: { id: true, createdAt: true, metadata: true },
+    })
+    const stored = commentRow ? storedInstagramComment(commentRow.metadata) : null
+    if (!commentRow || !stored) return NextResponse.json({ error: "Comment not found" }, { status: 404 })
+    instagramComment = {
+      commentId: stored.commentId,
+      inboundMessageId: commentRow.id,
+      mode: commentReply.mode,
+      privateReplyAllowed: privateReplyAvailable(commentRow),
+    }
+  }
+
   const result = await sendConversationReply({
     organizationId: orgId,
     channel,
@@ -1379,6 +1412,7 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
     channelConfigId: boundChannelConfigId,
     attachment: attachment ? { ...attachment, url: attachmentUrl! } : null,
     telegramParseMode: "HTML",
+    instagramComment,
     deliveryIdempotency: deliveryIdempotencyKey
       ? { source: "manual", key: deliveryIdempotencyKey }
       : undefined,

@@ -29,7 +29,8 @@ import { applySnippetVariables, type MessageSnippetLike } from "@/lib/inbox/snip
 import { whatsappCallAuditLines } from "@/lib/whatsapp-call-audit"
 import { channelAccountLine, channelAccountShortLabel, sameChannelAddress } from "@/lib/inbox/conversation-channel"
 import { callStatusWord, callSummaryLine } from "@/lib/inbox/call-summary"
-import { META_OUTSIDE_WINDOW, metaWindowNotice } from "@/lib/inbox/meta-reply-window"
+import { META_OUTSIDE_WINDOW, hoursSinceCustomerWrote, metaWindowNotice } from "@/lib/inbox/meta-reply-window"
+import { INSTAGRAM_COMMENT_TEXT_ONLY, privateReplyAvailable, storedInstagramComment } from "@/lib/social/instagram-comments"
 import { dialFailureDiagnostic, formatDialDiagnostic } from "@/lib/calls/dial-diagnostics"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -73,7 +74,7 @@ import {
   User, Users, UserX, UserPlus, Ban, Hash, Folder, Check, Clock,
   Paperclip, Smile, Sparkles, Zap, SlidersHorizontal,
   Mail, Phone, Eye, CalendarClock, ChevronDown, ChevronRight, X, RotateCcw, CheckCircle2,
-  Trash2, Megaphone, AtSign, Smartphone, PanelRight, Menu,
+  Trash2, Megaphone, AtSign, Smartphone, PanelRight, Menu, MessageCircle, Globe, Lock, ExternalLink,
 } from "lucide-react"
 import { messageAuthor } from "@/lib/inbox/message-author"
 import { checkPermission, type Role } from "@/lib/permissions"
@@ -100,7 +101,7 @@ import {
 } from "@/lib/inbox-channels"
 
 /* ── Folder rail definitions ── */
-type ViewKey = "all" | "me" | "unassigned" | "others" | "chatbot" | "awaiting" | "participating" | "spam" | "trash"
+type ViewKey = "all" | "me" | "unassigned" | "others" | "chatbot" | "awaiting" | "comments" | "participating" | "spam" | "trash"
 // The dense inbox's order (owner-approved mock-up, 2026-11-15): Hamısı, Mənim, Təyin edilməyib,
 // AI cavablayır, Cavab gözləyir — then the views the mock-up did not draw, as they were.
 const VIEWS: { key: ViewKey; icon: typeof User; later?: boolean }[] = [
@@ -109,6 +110,8 @@ const VIEWS: { key: ViewKey; icon: typeof User; later?: boolean }[] = [
   { key: "unassigned", icon: UserX },
   { key: "chatbot", icon: Sparkles },
   { key: "awaiting", icon: Clock },
+  // Instagram comments (2026-11-16) — shown only once the workspace has one (see the rail).
+  { key: "comments", icon: MessageCircle },
   { key: "others", icon: Users },
   { key: "participating", icon: UserPlus },
   { key: "spam", icon: Ban, later: true },
@@ -1034,6 +1037,7 @@ export default function InboxV2Page() {
       others: inTab.filter((c) => convMatchesView(c, "others", myUserId)).length,
       chatbot: inTab.filter((c) => convMatchesView(c, "chatbot", myUserId)).length,
       awaiting: inTab.filter((c) => convMatchesView(c, "awaiting", myUserId)).length,
+      comments: inTab.filter((c) => convMatchesView(c, "comments", myUserId)).length,
       participating: inTab.filter((c) => convMatchesView(c, "participating", myUserId)).length,
     } as Record<string, number>
   }, [scopedConversations, myUserId, statusTab])
@@ -1104,6 +1108,31 @@ export default function InboxV2Page() {
     if (customerThread.replyTarget) setReplyChannel(customerThread.replyTarget.channel)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerThread.replyTarget?.key])
+  // An answer to an Instagram comment (lib/social/instagram-comments): when the person's newest
+  // message on this Instagram conversation is a comment, the reply answers it — in Direct by default
+  // (owner, 2026-11-16), or publicly under the post. Direct is locked when Meta would refuse it: the
+  // comment's one private reply is spent or 7 days old, and the person has not written in Direct.
+  const [commentMode, setCommentMode] = useState<"direct" | "public">("direct")
+  useEffect(() => { setCommentMode("direct") }, [replyConversationId])
+  const replyComment = (() => {
+    if (composerTab !== "reply" || replyChannel !== "instagram" || !replyConversationId) return null
+    let newest: (typeof customerThread.messages)[number] | null = null
+    for (const m of customerThread.messages) {
+      if (m.direction !== "inbound" || m.channelType !== "instagram" || m.conversationId !== replyConversationId) continue
+      if (!newest || new Date(m.createdAt).getTime() > new Date(newest.createdAt).getTime()) newest = m
+    }
+    const stored = newest ? storedInstagramComment(newest.metadata) : null
+    if (!newest || !stored) return null
+    const sinceDirect = hoursSinceCustomerWrote(
+      customerThread.messages.filter((m) => m.conversationId === replyConversationId),
+      "instagram",
+    )
+    const directLocked = !privateReplyAvailable(newest) && (sinceDirect === null || sinceDirect >= 7 * 24)
+    return { messageId: newest.id, text: newest.body, directLocked }
+  })()
+  const commentReplyMode: "direct" | "public" | null = replyComment
+    ? (replyComment.directLocked ? "public" : commentMode)
+    : null
   /** PATCH every conversation of the open customer — assign, folder, snooze, reopen act on all his channels. */
   const patchThreadConversations = async (body: Record<string, unknown>): Promise<boolean> => {
     const ids = customerThread.conversationIds
@@ -2024,6 +2053,7 @@ export default function InboxV2Page() {
           channel: replyChannel,
           attachmentUrl: attachment?.url,
           deliveryIdempotencyKey,
+          ...(replyComment && commentReplyMode ? { commentReply: { messageId: replyComment.messageId, mode: commentReplyMode } } : {}),
         }),
       })
       const json = await res.json().catch(() => ({} as { success?: boolean; error?: string; hint?: string; deliveryUnknown?: boolean; attemptId?: string }))
@@ -2033,6 +2063,7 @@ export default function InboxV2Page() {
         const code = json.error || `HTTP ${res.status}`
         const metaWindow = code === META_OUTSIDE_WINDOW ? metaWindowNotice(convo.messages, replyChannel) : null
         setSendError(code === "whatsapp_reply_channel_mismatch" ? t("whatsappChannelMismatch")
+          : code === INSTAGRAM_COMMENT_TEXT_ONLY ? t("commentTextOnly")
           : code === "outside_window_no_template" ? t("sendWindowClosed")
           : metaWindow ? t(metaWindow.key, metaWindow.values) : t("sendFailed", { error: code }))
         if (json.deliveryUnknown === false && nativeTikTokReplyTarget(convo.messages)) {
@@ -2215,6 +2246,8 @@ export default function InboxV2Page() {
           {VIEWS.map((v) => {
             const active = view === v.key
             const count = viewCounts[v.key]
+            // «Şərhlər» leads somewhere only where Instagram comments arrive.
+            if (v.key === "comments" && !active && !scopedConversations.some((c) => c.hasComment)) return null
             return (
               <button
                 key={v.key}
@@ -2778,7 +2811,8 @@ export default function InboxV2Page() {
                     const label = placeholderPreview(c.lastMessage)
                     if (label) return t(label.key, label.values)
                     const spoken = voiceTranscript(c.lastMessage)
-                    return spoken ? `${t("placeholderVoice")}: ${spoken}` : c.lastMessage
+                    if (spoken) return `${t("placeholderVoice")}: ${spoken}`
+                    return c.lastIsComment ? `${t("commentChip")}: ${c.lastMessage}` : c.lastMessage
                   })()}</p>
                   <div className="mt-1.5 flex items-center gap-1.5 min-h-5">
                     {/* Which of the workspace's numbers or pages the thread reached — only where there is a choice. */}
@@ -2810,6 +2844,11 @@ export default function InboxV2Page() {
                         <span className="truncate">{chip.text}</span>
                       </span>
                     ))}
+                    {c.hasComment && (
+                      <span data-testid="conversation-comment-chip" className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-pink-50 px-1.5 py-0.5 text-[10px] font-semibold text-pink-700 dark:bg-pink-950/30 dark:text-pink-300">
+                        <MessageCircle className="h-2.5 w-2.5" aria-hidden="true" />{t("commentChip")}
+                      </span>
+                    )}
                     {c.historyImport && (
                       <span data-testid="conversation-history-import" className="shrink-0 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
                         {importChipLabel(locale)}
@@ -3587,10 +3626,59 @@ export default function InboxV2Page() {
                   // A message with no words is stored as «[media]», «[Видео]», «[Документ: x]» — words for
                   // the database and the AI, not for a person (lib/inbox/media-placeholder).
                   const view = placeholderView(m)
+                  // An Instagram comment under one of the workspace's posts (lib/inbox/instagram-comment-ingest):
+                  // a card with the post, its link and the comment — not a Direct bubble.
+                  const igComment = out ? null : storedInstagramComment(m.metadata)
+                  if (igComment) {
+                    return (
+                      <div key={m.id} className="flex justify-start" data-testid="inbox-instagram-comment">
+                        <div className="w-[26rem] max-w-[72%]">
+                          <div className="overflow-hidden rounded-2xl rounded-bl-md border border-pink-200 bg-card dark:border-pink-900/50">
+                            <div className="flex items-center gap-2.5 border-b border-pink-100 bg-pink-50/70 px-3 py-2 dark:border-pink-900/40 dark:bg-pink-950/20">
+                              {igComment.imageUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img loading="lazy" decoding="async" src={igComment.imageUrl} alt="" className="h-11 w-11 shrink-0 rounded-md object-cover" />
+                              ) : (
+                                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-pink-100 text-pink-600 dark:bg-pink-900/40"><MessageCircle className="h-5 w-5" aria-hidden="true" /></span>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[11px] font-semibold text-pink-700 dark:text-pink-300">{t("commentUnderPost")}</div>
+                                {igComment.caption && <div className="truncate text-xs text-foreground/80">{igComment.caption}</div>}
+                              </div>
+                              {igComment.permalink && (
+                                <a
+                                  href={igComment.permalink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  data-testid="inbox-comment-open-post"
+                                  className="inline-flex shrink-0 items-center gap-1 rounded-md border border-pink-200 bg-card px-2 py-1 text-[11px] font-semibold text-pink-700 hover:bg-pink-50 dark:border-pink-900/50 dark:text-pink-300 dark:hover:bg-pink-950/30"
+                                >
+                                  {t("commentOpenPost")} <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                                </a>
+                              )}
+                            </div>
+                            <p className="px-3.5 py-2 text-sm whitespace-pre-wrap break-words">{m.body}</p>
+                          </div>
+                          <div className="mt-1 flex items-center gap-x-1 text-[10px] text-muted-foreground">
+                            <ChannelIcon channel="instagram" className="h-2.5 w-2.5" />
+                            <span>{t("commentMetaLine")}</span>
+                            <span>·</span>
+                            <span>{new Date(m.createdAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  }
+                  const commentReplyMode = (m.metadata as { igCommentReply?: { mode?: string } } | undefined)?.igCommentReply?.mode
                   return (
                   <div key={m.id} className={cn("flex", out ? "justify-end" : "justify-start")}>
                     <div className="max-w-[72%]">
-                      <div className={cn("rounded-2xl px-3.5 py-2", out ? "bg-primary/10 rounded-br-md" : "bg-card border border-border/60 rounded-bl-md")}>
+                      <div className={cn(
+                        "rounded-2xl px-3.5 py-2",
+                        out ? "bg-primary/10 rounded-br-md" : "bg-card border border-border/60 rounded-bl-md",
+                        // A public answer under the post: everyone sees it — drawn apart from Direct.
+                        out && commentReplyMode === "public" && "border border-dashed border-orange-300 bg-card dark:border-orange-800",
+                      )}>
                         {m.subject && <div className="text-xs font-semibold mb-0.5">{m.subject}</div>}
                         {typeof m.mediaUrl === "string" && m.mediaUrl && view.kind !== "unsent" && (
                           isImagePreview(m.messageType, m.mediaUrl) ? (
@@ -3718,6 +3806,19 @@ export default function InboxV2Page() {
                             </>
                           )
                         })()}
+                        {commentReplyMode && (
+                          <span
+                            data-testid="inbox-comment-reply-badge"
+                            className={cn(
+                              "rounded px-1 py-px font-semibold",
+                              commentReplyMode === "public"
+                                ? "bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-300"
+                                : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {commentReplyMode === "public" ? t("commentReplyPublicBadge") : t("commentReplyDirectBadge")}
+                          </span>
+                        )}
                         <span>·</span>
                         <span>{new Date(m.createdAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
                         {out && (
@@ -3819,6 +3920,50 @@ export default function InboxV2Page() {
                     <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     <span className="flex-1 truncate">{attachment.name}</span>
                     <button type="button" onClick={() => setAttachment(null)} className="shrink-0 font-semibold leading-none hover:opacity-70" aria-label="remove">✕</button>
+                  </div>
+                )}
+                {/* An answer to an Instagram comment: where it goes, in words (owner, 2026-11-16 — Direct by
+                    default, publicly under the post on request). Direct Meta would refuse is locked, and the
+                    line under it says why instead of a silently dead button. */}
+                {replyComment && commentReplyMode && (
+                  <div className="mb-2" data-testid="inbox-comment-reply">
+                    <div className="inline-flex max-w-full flex-wrap gap-1 rounded-lg bg-muted p-0.5">
+                      {replyComment.directLocked ? (
+                        <span data-testid="inbox-comment-mode-direct-locked" className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold text-muted-foreground/60">
+                          <Lock className="h-3 w-3" aria-hidden="true" /> {t("commentModeDirect")}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          data-testid="inbox-comment-mode-direct"
+                          aria-pressed={commentReplyMode === "direct"}
+                          onClick={() => setCommentMode("direct")}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                            commentReplyMode === "direct" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          <Mail className="h-3 w-3" aria-hidden="true" /> {t("commentModeDirect")}
+                          <span className="font-normal text-muted-foreground">· {t("commentModeDirectHint")}</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        data-testid="inbox-comment-mode-public"
+                        aria-pressed={commentReplyMode === "public"}
+                        onClick={() => setCommentMode("public")}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                          commentReplyMode === "public" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        <Globe className="h-3 w-3" aria-hidden="true" /> {t("commentModePublic")}
+                        <span className="font-normal text-muted-foreground">· {t("commentModePublicHint")}</span>
+                      </button>
+                    </div>
+                    <p className="mt-1 truncate text-[11px] text-muted-foreground" data-testid="inbox-comment-reply-target">
+                      {replyComment.directLocked ? t("commentDirectLocked") : t("commentReplyingTo", { text: replyComment.text })}
+                    </p>
                   </div>
                 )}
                 {/* Mode banner — make reply-vs-internal UNMISTAKABLE so an internal message can never be
