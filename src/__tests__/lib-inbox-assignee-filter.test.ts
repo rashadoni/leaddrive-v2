@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { convMatchesAssignee, inboxAssigneeOptions } from "@/lib/inbox/assignee-filter"
+import { convMatchesAssignee, inboxAssigneeOptions, inboxTransferTargets } from "@/lib/inbox/assignee-filter"
 
 /**
  * The rules the inbox's «Ответственный» filter shares between the screen and the server
@@ -69,5 +69,15 @@ describe("inbox «Ответственный» filter", () => {
     // `assignedTo` is a bare string: a conversation can point at an id that is no user at all.
     const [option] = inboxAssigneeOptions([], [{ id: "dangling", name: null, active: false, removed: true }])
     expect(option.state).toBe("removed")
+  })
+
+  it("offers everything a person holds to anyone who can take it — except the person herself", () => {
+    const agents = [{ id: "u-aysel", name: "Aysel" }, { id: "u-zaur", name: "Zaur" }]
+    // Aysel's conversations cannot be handed to Aysel.
+    expect(inboxTransferTargets(agents, "u-aysel")).toEqual([{ id: "u-zaur", name: "Zaur" }])
+    // Someone who left is not in the assign list: everybody in it can take hers.
+    expect(inboxTransferTargets(agents, "u-leyla")).toEqual(agents)
+    // Nobody chosen — nothing to hand over, and so nobody to hand it to.
+    expect(inboxTransferTargets(agents, null)).toEqual([])
   })
 })

@@ -26,6 +26,11 @@ export type InboxAssigneeHolder = {
   active: boolean
   /** The account was deleted (anonymized) — its row carries a placeholder, not a name. */
   removed: boolean
+  /**
+   * How many open conversations and website chats the person holds that the caller may see — the
+   * number «hand over all» (`transferOpenConversations`) moves, counted by the same condition.
+   */
+  open: number
 }
 
 /**
@@ -59,7 +64,7 @@ export type InboxAssigneeOption = {
  */
 export function inboxAssigneeOptions(
   agents: ReadonlyArray<{ id: string; name: string | null }>,
-  holders: ReadonlyArray<InboxAssigneeHolder>,
+  holders: ReadonlyArray<Pick<InboxAssigneeHolder, "id" | "name" | "active" | "removed">>,
 ): InboxAssigneeOption[] {
   const byName = (a: { name: string | null }, b: { name: string | null }) =>
     (a.name ?? "").localeCompare(b.name ?? "")
@@ -74,4 +79,13 @@ export function inboxAssigneeOptions(
     .filter((holder) => holder.removed || !holder.name)
     .map((holder) => ({ id: holder.id, name: null, state: "removed" }))
   return [...active.sort(byName), ...inactive.sort(byName), ...removed.sort((a, b) => a.id.localeCompare(b.id))]
+}
+
+/**
+ * Who everything a person holds can be handed to at once: anyone who can be given a conversation,
+ * except the person herself. Never «nobody» — an open conversation without an owner is what the AI
+ * auto-reply takes (lib/user-work-handover).
+ */
+export function inboxTransferTargets<T extends { id: string }>(agents: ReadonlyArray<T>, fromId: string | null): T[] {
+  return fromId ? agents.filter((agent) => agent.id !== fromId) : []
 }

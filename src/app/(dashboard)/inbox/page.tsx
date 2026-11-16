@@ -39,6 +39,7 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { InboxBulkBar } from "@/components/inbox/inbox-bulk-bar"
 import { BulkCloseDialog } from "@/components/inbox/bulk-close-dialog"
+import { AssigneeTransferDialog } from "@/components/inbox/assignee-transfer-dialog"
 import { HelpButton } from "@/components/help/help-button"
 import { Hint } from "@/components/hint"
 import { ClickToCallButton } from "@/components/call-widget"
@@ -90,7 +91,7 @@ import { placeholderPreview, placeholderView, voiceTranscript } from "@/lib/inbo
 import { threadHeaderActionInline, threadHeaderTier, type ThreadHeaderAction } from "@/lib/inbox/thread-header-layout"
 import { inboxListBesideThread, inboxPanelBesideThread, inboxRailFolded } from "@/lib/inbox/inbox-columns"
 import { importChipLabel, WhatsAppImportBanner, WhatsAppImportPanel } from "@/components/inbox/whatsapp-import-screen"
-import { convMatchesAssignee, inboxAssigneeOptions, type InboxAssigneeHolder, type InboxAssigneeOption } from "@/lib/inbox/assignee-filter"
+import { convMatchesAssignee, inboxAssigneeOptions, inboxTransferTargets, type InboxAssigneeHolder, type InboxAssigneeOption } from "@/lib/inbox/assignee-filter"
 import {
   CHANNELS, ChannelIcon, channelColor, channelLabel,
   avatarTint, initials, extractQuickReplies, appendTag, dropTag, convStatusTab, convMatchesView, extractAttachments,
@@ -531,6 +532,10 @@ export default function InboxV2Page() {
   const assigneeId = assigneeChoice?.id ?? null
   const [assigneeHolders, setAssigneeHolders] = useState<InboxAssigneeHolder[]>([])
   const [assigneeMore, setAssigneeMore] = useState(false)
+  // «Hand over all»: everything the chosen person holds goes to another at once (components/inbox/assignee-transfer-dialog).
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [transferBusy, setTransferBusy] = useState(false)
+  const [transferError, setTransferError] = useState<string | null>(null)
   // What a read of the list asks for. An answer for the channel, the trash or the person chosen
   // BEFORE must not replace the list of the one chosen after: with a person chosen, the answer
   // carries her older conversations, and the other answer would silently drop them until the next
@@ -1245,6 +1250,37 @@ export default function InboxV2Page() {
       setBulkNotice({ tone: "error", text: t("bulkFailed") })
     } finally {
       setBulkBusy(false)
+    }
+  }
+  // «Hand over all»: the server moves every open conversation the person holds — the ones this list
+  // has no room for included — and answers with how many it really moved. The filter stays on the
+  // person afterwards: her list, now empty, is the proof that nothing was left behind.
+  const transferAll = async (toUserId: string) => {
+    if (!assigneeChoice || transferBusy) return
+    setTransferBusy(true)
+    setTransferError(null)
+    try {
+      const res = await fetch("/api/v1/inbox/assignees/transfer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({ from: assigneeChoice.id, to: toUserId }),
+      })
+      const json = await readJsonSafely<ApiEnvelope<{ total?: number }>>(res)
+      if (!res.ok || !json?.success) {
+        // Nothing was moved: the dialog stays open and says so.
+        setTransferError(t("assigneeTransferFailed"))
+        return
+      }
+      const name = agents.find((agent) => agent.id === toUserId)?.name || toUserId
+      setBulkNotice({ tone: "success", text: t("assigneeTransferDone", { count: json.data?.total ?? 0, name }) })
+      setTransferOpen(false)
+      clearBulk()
+      await fetchInbox()
+      loadAssigneeHolders()
+    } catch {
+      setTransferError(t("assigneeTransferFailed"))
+    } finally {
+      setTransferBusy(false)
     }
   }
   const confirmBulkClose = (
@@ -2088,10 +2124,21 @@ export default function InboxV2Page() {
     const option = assigneeOptions.find((x) => x.id === id)
     setAssigneeChoice(option ? { id, label: assigneeOptionLabel(option) } : null)
     setAssigneeMore(false)
+    setTransferOpen(false)
     setSelected(null)
     // «Mine», «unassigned» and «other agents» each exclude most people outright: a person picked
     // from inside one of them would open onto an empty list.
     if (option && (view === "me" || view === "unassigned" || view === "others")) setView("all")
+  }
+  // How many open conversations the chosen person holds — every one of them, not only the list's;
+  // and who can take them all at once.
+  const assigneeOpenCount = assigneeHolders.find((holder) => holder.id === assigneeId)?.open ?? 0
+  const transferTargets = inboxTransferTargets(agents, assigneeId)
+  const openTransfer = () => {
+    setTransferError(null)
+    setTransferOpen(true)
+    // The count the dialog names is read again: the list may have been open for an hour.
+    loadAssigneeHolders()
   }
 
   const activeFilterCount = [
@@ -2536,8 +2583,9 @@ export default function InboxV2Page() {
         </div>
 
         {/* Whose conversations the list holds while «Ответственный» is set — the filter itself sits in
-            a popover, and a narrowed list must say so. The button under it is the way on to handing
-            them over: it ticks the visible ones, and the card below then offers the new owner. */}
+            a popover, and a narrowed list must say so. Under it, the two ways on to handing them over:
+            all of them at once to one person, or the visible ones ticked for the card below — to give
+            a part to one colleague and a part to another. */}
         {assigneeChoice && (
           <div
             data-testid="inbox-assignee-strip"
@@ -2554,17 +2602,36 @@ export default function InboxV2Page() {
               </button>
             </div>
             {assigneeMore && <p className="text-muted-foreground">{t("assigneeFilterMore")}</p>}
-            {bulkSelected.size === 0 && allVisibleSelectable.length > 0 && (
-              <Hint text={t("assigneeFilterSelectHint")} side="bottom" align="start">
-                <button
-                  type="button"
-                  onClick={selectAllVisible}
-                  data-testid="inbox-assignee-select-all"
-                  className="inline-flex min-h-7 items-center rounded-md border border-border/70 bg-background px-2 font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {t("bulkSelectAllVisible", { count: Math.min(allVisibleSelectable.length, BULK_LIMIT) })}
-                </button>
-              </Hint>
+            {bulkSelected.size === 0 && (
+              <div className="flex flex-wrap gap-1.5 empty:hidden">
+                {assigneeOpenCount > 0 && transferTargets.length > 0 && (
+                  <Hint text={t("assigneeTransferHint")} side="bottom" align="start">
+                    {/* The shared Button: the screen's one filled action takes the CRM's own action
+                        colour (crm-workspace.css), which a native button with `bg-primary` does not. */}
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={openTransfer}
+                      data-testid="inbox-assignee-transfer-all"
+                      className="h-7 px-2.5"
+                    >
+                      {t("assigneeTransferAll", { count: assigneeOpenCount })}
+                    </Button>
+                  </Hint>
+                )}
+                {allVisibleSelectable.length > 0 && (
+                  <Hint text={t("assigneeFilterSelectHint")} side="bottom" align="start">
+                    <button
+                      type="button"
+                      onClick={selectAllVisible}
+                      data-testid="inbox-assignee-select-all"
+                      className="inline-flex min-h-7 items-center rounded-md border border-border/70 bg-background px-2 font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {t("bulkSelectAllVisible", { count: Math.min(allVisibleSelectable.length, BULK_LIMIT) })}
+                    </button>
+                  </Hint>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -2617,6 +2684,16 @@ export default function InboxV2Page() {
           allowNoResult={pendingFolderActive}
           onOpenChange={handleBulkCloseOpenChange}
           onConfirm={confirmBulkClose}
+        />
+        <AssigneeTransferDialog
+          open={transferOpen && assigneeChoice !== null}
+          fromLabel={assigneeChoice?.label ?? ""}
+          count={assigneeOpenCount}
+          targets={transferTargets}
+          busy={transferBusy}
+          error={transferError}
+          onOpenChange={setTransferOpen}
+          onConfirm={(toUserId) => { void transferAll(toUserId) }}
         />
         {/* A number's contacts and six months of chats coming over from the WhatsApp Business
             app (lib/whatsapp-history-import): the card opens the import screen in the thread's place. */}

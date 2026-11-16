@@ -8,7 +8,9 @@
  *    recently written ones — and shows hers only, with every count beside the list inside them;
  *  - the strip above the list says whose conversations these are and leads on to handing them over
  *    with the bulk «assign» that already exists;
- *  - an answer for the person chosen before never replaces the list of the choice made after.
+ *  - an answer for the person chosen before never replaces the list of the choice made after;
+ *  - «Bütün söhbətləri ötür»: everything the person holds goes to one colleague in one press — by the
+ *    number the server counted, not by what the list shows — and a refusal is said in the dialog.
  *
  * What the server adds for a person, and that the conversations reach their new owner in the
  * database, is `user-handover-inbox-postgres.test.ts`.
@@ -91,6 +93,10 @@ let requests: Array<{ url: string; method: string; body: Record<string, unknown>
 /** When set, the answer for Leyla's list waits until the test lets it go. */
 let holdLeyla: { release: () => void; waiting: Promise<void> } | null = null
 let leylaHasMore = false
+/** What `POST /api/v1/inbox/assignees/transfer` answers; null — the server refuses. */
+let transferAnswer: { conversations: number; webChats: number; total: number } | null = { conversations: 6, webChats: 1, total: 7 }
+/** Set once a handover went through: Leyla holds nothing any more. */
+let handedOver = false
 
 const json = (data: unknown) => new Response(JSON.stringify({ success: true, data }), { headers: { "content-type": "application/json" } })
 
@@ -99,6 +105,8 @@ beforeEach(() => {
   requests = []
   holdLeyla = null
   leylaHasMore = false
+  transferAnswer = { conversations: 6, webChats: 1, total: 7 }
+  handedOver = false
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} })
   window.history.replaceState(null, "", "/inbox")
   vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
@@ -107,15 +115,25 @@ beforeEach(() => {
     requests.push({ url, method, body: init?.body && typeof init.body === "string" ? JSON.parse(init.body) : null })
     if (url === "/api/v1/inbox/assignees") {
       return json([
-        { id: "u-aysel", name: "Aysel", active: true, removed: false },
-        // Switched off last week; her conversations are still hers.
-        { id: "u-leyla", name: "Leyla", active: false, removed: false },
+        { id: "u-aysel", name: "Aysel", active: true, removed: false, open: handedOver ? 8 : 1 },
+        // Switched off last week; her conversations are still hers. Seven of them — the list below
+        // shows two: the rest are website chats and conversations the answer had no room for.
+        ...(handedOver ? [] : [{ id: "u-leyla", name: "Leyla", active: false, removed: false, open: 7 }]),
         // Deleted long ago: the row holds a placeholder, the answer no name.
-        { id: "u-gone", name: null, active: false, removed: true },
+        { id: "u-gone", name: null, active: false, removed: true, open: 1 },
       ])
+    }
+    if (url === "/api/v1/inbox/assignees/transfer") {
+      if (!transferAnswer) return new Response(JSON.stringify({ error: "Invalid assignee" }), { status: 400, headers: { "content-type": "application/json" } })
+      handedOver = true
+      return json(transferAnswer)
     }
     if (url === "/api/v1/inbox" || url.startsWith("/api/v1/inbox?")) {
       const assignee = new URL(url, "http://localhost").searchParams.get("assignee")
+      if (assignee === "u-leyla" && handedOver) {
+        // Her conversations are Aysel's now.
+        return json({ conversations: [thread("conv-leyla-recent", "Anar Məmmədov", "u-aysel", 1), ...WINDOW.slice(1)], channels: [], stats: { totalMessages: 3, inbound: 3, outbound: 0, conversations: 3 }, assignee: { id: "u-leyla", more: false } })
+      }
       if (assignee === "u-leyla") {
         if (holdLeyla) await holdLeyla.waiting
         return json({ conversations: [...WINDOW, QUIET], channels: [], stats: { totalMessages: 3, inbound: 3, outbound: 0, conversations: 4 }, assignee: { id: "u-leyla", more: leylaHasMore } })
@@ -273,5 +291,88 @@ describe("the inbox's «Məsul əməkdaş» filter", () => {
     await flush()
     expect(strip()).toBeNull()
     expect(customers()).toEqual(["Anar Məmmədov", "Rəna Hüseynova", "Kamran Əliyev"])
+  })
+
+  // ── «Bütün söhbətləri ötür» ─────────────────────────────────────────────────────────────────────
+
+  const transferButton = () => strip()?.querySelector<HTMLButtonElement>('[data-testid="inbox-assignee-transfer-all"]') ?? null
+  const dialog = () => document.querySelector<HTMLElement>('[data-testid="inbox-assignee-transfer-dialog"]')
+  const transferTo = () => document.querySelector<HTMLSelectElement>('[data-testid="inbox-assignee-transfer-to"]')!
+  const confirm = () => document.querySelector<HTMLButtonElement>('[data-testid="inbox-assignee-transfer-confirm"]')!
+  const posts = (url: string) => requests.filter((r) => r.method === "POST" && r.url === url)
+
+  it("hands over everything the person holds in one press — by the server's count, not the list's", async () => {
+    await renderInbox()
+    await choose(await assigneeFilter(), "u-leyla")
+    // The list shows two conversations; she holds seven.
+    expect(customers()).toEqual(["Anar Məmmədov", "Sevda Həsənova"])
+    expect(words(transferButton())).toBe("Bütün söhbətləri ötür (7)")
+    expect(dialog()).toBeNull()
+
+    await press(transferButton()!)
+    expect(words(dialog())).toContain("Leyla (deaktiv): açıq söhbətlər — 7.")
+    expect(words(dialog())).toContain("Bağlı söhbətlər və zibil qutusu olduğu kimi qalır.")
+    // Who can take them: the people the assign list knows. Never «nobody», never Leyla herself.
+    expect([...transferTo().options].map((option) => option.textContent)).toEqual(["Əməkdaş seçin", "Rəşad", "Aysel"])
+    // Nothing is sent until somebody is chosen.
+    expect(confirm().disabled).toBe(true)
+    expect(words(confirm())).toBe("7 söhbəti ötür")
+    await press(confirm())
+    expect(posts("/api/v1/inbox/assignees/transfer")).toEqual([])
+
+    await choose(transferTo(), "u-aysel")
+    expect(confirm().disabled).toBe(false)
+    const readsBefore = listReads().length
+    await press(confirm())
+
+    // One request names the two people — no ids, no rounds of fifty.
+    expect(posts("/api/v1/inbox/assignees/transfer").map((r) => r.body)).toEqual([{ from: "u-leyla", to: "u-aysel" }])
+    expect(posts("/api/v1/inbox/conversations/bulk")).toEqual([])
+    // The dialog is gone, the screen says what happened in the number the server answered with.
+    expect(dialog()).toBeNull()
+    expect(words(container.querySelector('[role="status"]'))).toContain("7 söhbət ötürüldü — indi Aysel cavab verir")
+    // Her list is read again and is empty now; there is nothing left to hand over.
+    expect(listReads().length).toBeGreaterThan(readsBefore)
+    expect(listReads().at(-1)).toBe("/api/v1/inbox?assignee=u-leyla")
+    expect(customers()).toEqual([])
+    expect(words(strip())).toContain("Əməkdaşın söhbətləri: Leyla (deaktiv)")
+    expect(transferButton()).toBeNull()
+  })
+
+  it("says in the dialog that nothing was moved when the server refuses — and keeps the choice", async () => {
+    transferAnswer = null
+    await renderInbox()
+    await choose(await assigneeFilter(), "u-leyla")
+    await press(transferButton()!)
+    await choose(transferTo(), "u-aysel")
+    await press(confirm())
+
+    expect(posts("/api/v1/inbox/assignees/transfer").length).toBe(1)
+    expect(words(dialog()!.querySelector('[role="alert"]'))).toBe(copy.assigneeTransferFailed)
+    expect(transferTo().value).toBe("u-aysel")
+    // No success is claimed, and her conversations are still listed as hers.
+    expect(container.querySelector('[role="status"]')).toBeNull()
+    expect(customers()).toEqual(["Anar Məmmədov", "Sevda Həsənova"])
+
+    // «Ləğv et» closes it; the button is still there to try again.
+    await press([...document.querySelectorAll("button")].find((b) => words(b) === (az.common as Record<string, string>).cancel)!)
+    expect(dialog()).toBeNull()
+    expect(words(transferButton())).toBe("Bütün söhbətləri ötür (7)")
+  })
+
+  it("does not offer a person her own conversations, and offers nothing for someone who holds none", async () => {
+    await renderInbox()
+    // Aysel holds one: it can go to anyone but Aysel.
+    await choose(await assigneeFilter(), "u-aysel")
+    expect(words(transferButton())).toBe("Bütün söhbətləri ötür (1)")
+    await press(transferButton()!)
+    expect([...transferTo().options].map((option) => option.textContent)).toEqual(["Əməkdaş seçin", "Rəşad"])
+    expect(words(confirm())).toBe("1 söhbəti ötür")
+    await press([...document.querySelectorAll("button")].find((b) => words(b) === (az.common as Record<string, string>).cancel)!)
+
+    // Rəşad holds no open conversation — there is nothing to hand over, and no button says otherwise.
+    await choose(await assigneeFilter(), "u-me")
+    expect(words(strip())).toContain("Əməkdaşın söhbətləri: Rəşad")
+    expect(transferButton()).toBeNull()
   })
 })
