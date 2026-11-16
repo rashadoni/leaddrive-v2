@@ -288,12 +288,11 @@ export default function IntakeFormsPage() {
 
       {/* ─── Editor Dialog ─────────────────────────────────────────────────── */}
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingForm ? t("editForm") : t("newForm")}</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-5 py-2">
+        <DialogHeader>
+          <DialogTitle>{editingForm ? t("editForm") : t("newForm")}</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-5">
             {/* Basic info */}
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 space-y-1.5">
@@ -483,15 +482,14 @@ export default function IntakeFormsPage() {
               ))}
             </div>
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditorOpen(false)}>{t("cancel")}</Button>
-            <Button onClick={handleSave} disabled={saving || !formName.trim()}>
-              {saving && <Loader2 className="animate-spin h-4 w-4 mr-1" />}
-              {t("save")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setEditorOpen(false)}>{t("cancel")}</Button>
+          <Button onClick={handleSave} disabled={saving || !formName.trim()}>
+            {saving && <Loader2 className="animate-spin h-4 w-4 mr-1" />}
+            {t("save")}
+          </Button>
+        </DialogFooter>
       </Dialog>
     </div>
   )

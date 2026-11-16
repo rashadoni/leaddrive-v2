@@ -687,14 +687,14 @@ export default function NewTenantPage() {
         </div>
       </Card>
 
-      <Dialog open={!!result} onOpenChange={(open) => !open && result && router.push(`/admin/tenants/${result.organization.id}`)}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              Tenant created · {result?.provisioning.status}
-            </DialogTitle>
-          </DialogHeader>
+      <Dialog open={!!result} onOpenChange={(open) => !open && result && router.push(`/admin/tenants/${result.organization.id}`)} widthClassName="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            Tenant created · {result?.provisioning.status}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent>
           {result ? (
             <div className="space-y-4">
               <div className="grid gap-2 rounded-xl border bg-muted/20 p-4 text-sm">

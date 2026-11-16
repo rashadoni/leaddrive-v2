@@ -277,15 +277,14 @@ export default function WorkflowTemplatesPage() {
 
       {/* Preview + customize modal */}
       <Dialog open={!!previewTpl} onOpenChange={(open) => !open && setPreviewTpl(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          {previewTpl && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{t(previewTpl.nameKey)}</DialogTitle>
-                <DialogDescription>{t(previewTpl.descriptionKey)}</DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-4 py-2">
+        {previewTpl && (
+          <>
+            <DialogHeader>
+              <DialogTitle>{t(previewTpl.nameKey)}</DialogTitle>
+              <DialogDescription>{t(previewTpl.descriptionKey)}</DialogDescription>
+            </DialogHeader>
+            <DialogContent>
+              <div className="space-y-4">
                 <div className="rounded-md bg-muted/40 p-3 text-xs space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-muted-foreground">{t("previewTrigger")}:</span>
@@ -397,25 +396,24 @@ export default function WorkflowTemplatesPage() {
                   </div>
                 )}
               </div>
-
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setPreviewTpl(null)}>
-                  {t("cancel")}
-                </Button>
-                <Button
-                  onClick={applyTemplate}
-                  disabled={
-                    applying === previewTpl.id ||
-                    (previewTpl.requiresSms && !previewTpl.canRun) ||
-                    (previewTpl.isApplied && !forceApply)
-                  }
-                >
-                  {applying === previewTpl.id ? t("applying") : t("useTemplate")}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
+            </DialogContent>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setPreviewTpl(null)}>
+                {t("cancel")}
+              </Button>
+              <Button
+                onClick={applyTemplate}
+                disabled={
+                  applying === previewTpl.id ||
+                  (previewTpl.requiresSms && !previewTpl.canRun) ||
+                  (previewTpl.isApplied && !forceApply)
+                }
+              >
+                {applying === previewTpl.id ? t("applying") : t("useTemplate")}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
       </Dialog>
     </div>
   )

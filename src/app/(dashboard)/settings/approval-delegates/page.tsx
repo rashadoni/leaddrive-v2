@@ -260,11 +260,11 @@ export default function ApprovalDelegatesPage() {
       )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
+        <form onSubmit={submitCreate}>
           <DialogHeader>
             <DialogTitle>{t("createTitle")}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={submitCreate} className="space-y-4 pt-2">
+          <DialogContent className="space-y-4">
             <div className="space-y-1.5">
               <Label>{t("delegateTo")}</Label>
               {usersLoading ? (
@@ -327,18 +327,17 @@ export default function ApprovalDelegatesPage() {
             {createError && (
               <p className="text-sm text-destructive">{createError}</p>
             )}
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
-                {tc("cancel")}
-              </Button>
-              <Button type="submit" disabled={creating}>
-                {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {t("save")}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
+          </DialogContent>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+              {tc("cancel")}
+            </Button>
+            <Button type="submit" disabled={creating}>
+              {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {t("save")}
+            </Button>
+          </DialogFooter>
+        </form>
       </Dialog>
     </div>
   )

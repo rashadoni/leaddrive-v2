@@ -877,19 +877,18 @@ export default function SnippetsPage() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen} widthClassName="max-w-6xl" maxHeightClassName="max-h-[92vh]">
-        <DialogContent className="p-0">
-          <DialogHeader className="border-b bg-card/80 pr-14">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <DialogTitle>{editingId ? tr("edit") : tr("newOne")}</DialogTitle>
-                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{tr("variablesDesc")}</p>
-              </div>
-              <Badge variant="brand" className="font-mono">
-                /{form.shortcut.trim() || tr("shortcut").toLowerCase()}
-              </Badge>
+        <DialogHeader className="border-b bg-card/80 pr-14">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <DialogTitle>{editingId ? tr("edit") : tr("newOne")}</DialogTitle>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{tr("variablesDesc")}</p>
             </div>
-          </DialogHeader>
-
+            <Badge variant="brand" className="font-mono">
+              /{form.shortcut.trim() || tr("shortcut").toLowerCase()}
+            </Badge>
+          </div>
+        </DialogHeader>
+        <DialogContent className="p-0">
           <div className="grid min-h-0 lg:grid-cols-[minmax(0,1fr)_390px]">
             <div className="space-y-5 p-6">
               <div className="grid gap-2 sm:grid-cols-3">
@@ -1085,17 +1084,16 @@ export default function SnippetsPage() {
               </div>
             </aside>
           </div>
-
-          <DialogFooter className="flex-col items-stretch sm:flex-row sm:items-center">
-            <span className={cn("rounded-lg bg-muted/40 px-3 py-2 text-xs sm:mr-auto sm:bg-transparent sm:px-0 sm:py-0", canSave ? "text-emerald-700" : "text-muted-foreground")}>
-              {saveReadinessText}
-            </span>
-            <Button variant="outline" onClick={() => setOpen(false)}>{tr("cancel")}</Button>
-            <Button onClick={save} disabled={!canSave || saving} title={!canSave ? saveReadinessText : undefined}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : tr("save")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter className="flex-col items-stretch sm:flex-row sm:items-center">
+          <span className={cn("rounded-lg bg-muted/40 px-3 py-2 text-xs sm:mr-auto sm:bg-transparent sm:px-0 sm:py-0", canSave ? "text-emerald-700" : "text-muted-foreground")}>
+            {saveReadinessText}
+          </span>
+          <Button variant="outline" onClick={() => setOpen(false)}>{tr("cancel")}</Button>
+          <Button onClick={save} disabled={!canSave || saving} title={!canSave ? saveReadinessText : undefined}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : tr("save")}
+          </Button>
+        </DialogFooter>
       </Dialog>
     </div>
   )

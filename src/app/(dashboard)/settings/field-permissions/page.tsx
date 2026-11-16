@@ -382,11 +382,11 @@ export default function FieldPermissionsPage() {
 
       {/* Rule Dialog */}
       <Dialog open={ruleDialogOpen} onOpenChange={setRuleDialogOpen}>
+        <DialogHeader>
+          <DialogTitle>{editingRule ? t("fieldPermissions.editRule") : t("fieldPermissions.newSharingRule")}</DialogTitle>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingRule ? t("fieldPermissions.editRule") : t("fieldPermissions.newSharingRule")}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4">
             <div className="grid gap-1.5">
               <Label>{t("fieldPermissions.ruleName")}</Label>
               <Input value={ruleForm.name} onChange={e => setRuleForm(p => ({ ...p, name: e.target.value }))} placeholder={t("fieldPermissions.ruleNamePlaceholder")} />
@@ -449,11 +449,11 @@ export default function FieldPermissionsPage() {
               <Input value={ruleForm.description} onChange={e => setRuleForm(p => ({ ...p, description: e.target.value }))} placeholder={t("fieldPermissions.ruleDescriptionPlaceholder")} />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRuleDialogOpen(false)}>{t("fieldPermissions.cancel")}</Button>
-            <Button onClick={handleSaveRule} disabled={!ruleForm.name}>{t("fieldPermissions.save")}</Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setRuleDialogOpen(false)}>{t("fieldPermissions.cancel")}</Button>
+          <Button onClick={handleSaveRule} disabled={!ruleForm.name}>{t("fieldPermissions.save")}</Button>
+        </DialogFooter>
       </Dialog>
 
       <DeleteConfirmDialog

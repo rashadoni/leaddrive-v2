@@ -434,12 +434,11 @@ export default function ApprovalRulesPage() {
 
       {/* Editor Dialog */}
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingRule ? t("editRule") : t("createRule")}</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-5 py-2">
+        <DialogHeader>
+          <DialogTitle>{editingRule ? t("editRule") : t("createRule")}</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-5">
             {/* Name */}
             <div className="space-y-1.5">
               <Label>{t("nameLabel")} *</Label>
@@ -624,17 +623,16 @@ export default function ApprovalRulesPage() {
 
             {saveError && <p className="text-sm text-destructive">{saveError}</p>}
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditorOpen(false)}>
-              {t("cancel")}
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {t("save")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setEditorOpen(false)}>
+            {t("cancel")}
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {t("save")}
+          </Button>
+        </DialogFooter>
       </Dialog>
     </div>
   )

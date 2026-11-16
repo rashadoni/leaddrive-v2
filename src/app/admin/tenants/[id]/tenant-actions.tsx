@@ -244,51 +244,51 @@ export function TenantActions({
 
       {/* Deactivate dialog */}
       <Dialog open={showDeactivate} onOpenChange={setShowDeactivate}>
+        <DialogHeader>
+          <DialogTitle>{isActive ? "Deactivate" : "Activate"} {tenantName}?</DialogTitle>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{isActive ? "Deactivate" : "Activate"} {tenantName}?</DialogTitle>
-          </DialogHeader>
           <p className="text-sm text-muted-foreground">
             {isActive
               ? "Users will not be able to log in. Data is preserved."
               : "This will re-enable login for all users."}
           </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeactivate(false)}>Cancel</Button>
-            <Button variant={isActive ? "destructive" : "default"} onClick={handleDeactivateToggle} disabled={!!loading}>
-              {loading === "deactivate" && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-              {isActive ? "Deactivate" : "Activate"}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowDeactivate(false)}>Cancel</Button>
+          <Button variant={isActive ? "destructive" : "default"} onClick={handleDeactivateToggle} disabled={!!loading}>
+            {loading === "deactivate" && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+            {isActive ? "Deactivate" : "Activate"}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* Schedule delete dialog */}
       <Dialog open={showScheduleDelete} onOpenChange={setShowScheduleDelete}>
+        <DialogHeader>
+          <DialogTitle>Schedule deletion of {tenantName}?</DialogTitle>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Schedule deletion of {tenantName}?</DialogTitle>
-          </DialogHeader>
           <p className="text-sm text-muted-foreground">
             The tenant will be deactivated immediately and permanently deleted after <strong>30 days</strong>.
             You can cancel the deletion at any time during the grace period. A JSON export will be created automatically before deletion.
           </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowScheduleDelete(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleScheduleDelete} disabled={!!loading}>
-              {loading === "schedule" && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-              Schedule Deletion
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowScheduleDelete(false)}>Cancel</Button>
+          <Button variant="destructive" onClick={handleScheduleDelete} disabled={!!loading}>
+            {loading === "schedule" && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+            Schedule Deletion
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* Force delete dialog */}
       <Dialog open={showForceDelete} onOpenChange={setShowForceDelete}>
+        <DialogHeader>
+          <DialogTitle className="text-destructive">Permanently delete {tenantName}?</DialogTitle>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-destructive">Permanently delete {tenantName}?</DialogTitle>
-          </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               This will <strong>immediately and permanently</strong> delete all data for this tenant.
@@ -309,26 +309,26 @@ export function TenantActions({
               <p className="text-sm text-destructive">{error}</p>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowForceDelete(false)}>Cancel</Button>
-            <Button
-              variant="destructive"
-              onClick={handleForceDelete}
-              disabled={slugConfirm !== tenantSlug || !!loading}
-            >
-              {loading === "force" && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-              Delete Permanently
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowForceDelete(false)}>Cancel</Button>
+          <Button
+            variant="destructive"
+            onClick={handleForceDelete}
+            disabled={slugConfirm !== tenantSlug || !!loading}
+          >
+            {loading === "force" && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+            Delete Permanently
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* Clear demo data dialog */}
       <Dialog open={showClearDemo} onOpenChange={setShowClearDemo}>
+        <DialogHeader>
+          <DialogTitle className="text-amber-600">Clear demo data for {tenantName}?</DialogTitle>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-amber-600">Clear demo data for {tenantName}?</DialogTitle>
-          </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               Wipes <strong>all business data</strong> (companies, contacts, deals, invoices,
@@ -355,20 +355,20 @@ export function TenantActions({
             {error && <p className="text-sm text-destructive">{error}</p>}
             {clearResult && <p className="text-sm text-emerald-600">{clearResult}</p>}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowClearDemo(false)}>
-              {clearResult ? "Close" : "Cancel"}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleClearDemo}
-              disabled={clearConfirm !== tenantSlug || !!loading}
-            >
-              {loading === "clear" && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-              Clear Demo Data
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowClearDemo(false)}>
+            {clearResult ? "Close" : "Cancel"}
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleClearDemo}
+            disabled={clearConfirm !== tenantSlug || !!loading}
+          >
+            {loading === "clear" && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+            Clear Demo Data
+          </Button>
+        </DialogFooter>
       </Dialog>
     </>
   )

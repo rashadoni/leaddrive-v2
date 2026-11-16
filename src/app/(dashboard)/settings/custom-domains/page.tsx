@@ -357,12 +357,12 @@ export default function CustomDomainsPage() {
 
       {/* Add Domain Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogHeader>
+          <DialogTitle>{t("addDomainTitle")}</DialogTitle>
+          <DialogDescription>{t("addDomainDesc")}</DialogDescription>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("addDomainTitle")}</DialogTitle>
-            <DialogDescription>{t("addDomainDesc")}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="domain">{t("domain")}</Label>
               <Input
@@ -375,38 +375,38 @@ export default function CustomDomainsPage() {
               <p className="text-xs text-muted-foreground">{t("domainHint")}</p>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>
-              {t("cancel")}
-            </Button>
-            <Button onClick={handleAdd} disabled={adding || !domainInput.trim()}>
-              {adding ? "..." : t("add")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setAddOpen(false)}>
+            {t("cancel")}
+          </Button>
+          <Button onClick={handleAdd} disabled={adding || !domainInput.trim()}>
+            {adding ? "..." : t("add")}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* Delete Confirm Dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogHeader>
+          <DialogTitle>{t("deleteConfirm")}</DialogTitle>
+        </DialogHeader>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("deleteConfirm")}</DialogTitle>
-            <DialogDescription>
-              {t("deleteConfirmHint")}
-              {deletingDomain && (
-                <span className="block font-mono mt-2 font-semibold text-foreground">{deletingDomain.domain}</span>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-              {t("cancel")}
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              {t("delete")}
-            </Button>
-          </DialogFooter>
+          <DialogDescription>
+            {t("deleteConfirmHint")}
+            {deletingDomain && (
+              <span className="block font-mono mt-2 font-semibold text-foreground">{deletingDomain.domain}</span>
+            )}
+          </DialogDescription>
         </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+            {t("cancel")}
+          </Button>
+          <Button variant="destructive" onClick={handleDelete}>
+            {t("delete")}
+          </Button>
+        </DialogFooter>
       </Dialog>
     </div>
   )

@@ -2903,12 +2903,12 @@ function ChannelsPageInner() {
         widthClassName="max-w-4xl"
         maxHeightClassName="max-h-[92vh]"
       >
+        <DialogHeader>
+          <DialogTitle className="sr-only">
+            {tutorialUi.title} — {connectCard?.title}
+          </DialogTitle>
+        </DialogHeader>
         <DialogContent className="border-border bg-card p-0 text-foreground">
-          <DialogHeader>
-            <DialogTitle className="sr-only">
-              {tutorialUi.title} — {connectCard?.title}
-            </DialogTitle>
-          </DialogHeader>
           {connectTutorial && connectCard && currentTutorialScene && (
             <div className="grid overflow-hidden rounded-xl bg-card lg:grid-cols-[minmax(0,1.35fr)_320px]">
               <div className="bg-background p-5 text-foreground">
@@ -3121,11 +3121,11 @@ function ChannelsPageInner() {
         }}
         widthClassName="max-w-md"
       >
-        <DialogContent className="border-border bg-card text-foreground sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{c.testMessage}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
+        <DialogHeader>
+          <DialogTitle>{c.testMessage}</DialogTitle>
+        </DialogHeader>
+        <DialogContent className="border-border bg-card text-foreground">
+          <div className="space-y-4">
             <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800">
               <p className="font-semibold">{c.testCaveatTitle}</p>
               <p className="mt-1 leading-5">{c.testCaveatBody}</p>
@@ -3183,19 +3183,19 @@ function ChannelsPageInner() {
               </div>
             )}
           </div>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => setTestChannelId(null)}
-              className="border border-border bg-card text-foreground hover:bg-muted"
-            >
-              {c.cancel}
-            </Button>
-            <Button onClick={sendTestWhatsApp} disabled={testSending || !testPhone} className="bg-primary text-primary-foreground hover:bg-primary/90">
-              {testSending ? c.sending : c.send}
-            </Button>
-          </DialogFooter>
         </DialogContent>
+        <DialogFooter className="gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => setTestChannelId(null)}
+            className="border border-border bg-card text-foreground hover:bg-muted"
+          >
+            {c.cancel}
+          </Button>
+          <Button onClick={sendTestWhatsApp} disabled={testSending || !testPhone} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            {testSending ? c.sending : c.send}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* Keyed by the row: the dialog keeps its last refusal in its own state, and without a fresh instance per row the
