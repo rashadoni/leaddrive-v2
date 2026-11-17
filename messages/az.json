@@ -27091,6 +27091,29 @@
     }
   },
   "quotesDetail": {
+    "versions": {
+      "title": "Versiyalar",
+      "new": "Yeni versiya",
+      "created": "{n} versiyası yaradıldı",
+      "failed": "Versiya yaratmaq alınmadı",
+      "compare": "Müqayisə et",
+      "total": "Cəmi",
+      "noChanges": "Mövqelər eynidir.",
+      "change": {
+        "added": "əlavə edilib",
+        "removed": "silinib",
+        "changed": "dəyişib",
+        "same": "dəyişməyib"
+      },
+      "status": {
+        "draft": "Qaralama",
+        "sent": "Göndərilib",
+        "viewed": "Baxılıb",
+        "accepted": "Qəbul edilib",
+        "rejected": "Rədd edilib",
+        "expired": "Vaxtı keçib"
+      }
+    },
     "loading": "Yüklənir…",
     "notFound": "Təklif tapılmadı.",
     "backToQuotes": "Təkliflərə qayıt",

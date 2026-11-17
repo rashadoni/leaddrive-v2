@@ -571,6 +571,29 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     expect((await route.POST(request(`http://localhost:3000/api/v1/deals/${dealId}/change-approvals`, "POST", { kind: "other", after: "x", approvedByName: "x", approvedAt: "2026-11-17", channel: "phone" }), ctx(dealId))).status).toBe(403)
   })
 
+  it("a commercial offer gets versions: the old one stays as sent, the new is a draft copy, and both are journaled", async () => {
+    const quotesRoute = await import("@/app/api/v1/quotes/route")
+    const versionsRoute = await import("@/app/api/v1/quotes/[id]/versions/route")
+    as("sales")
+    const created = await json(await quotesRoute.POST(request("http://localhost:3000/api/v1/quotes", "POST", {
+      quoteNumber: "KP-77", dealId, currency: "AZN",
+      lineItems: [{ productName: "Stand 3×2 m", quantity: 1, unitPrice: 3000 }, { productName: "Banner", quantity: 4, unitPrice: 500 }],
+    })))
+    expect(created.status).toBe(201)
+    const v1 = created.body.quote.id as string
+    const [first, second] = await Promise.all([
+      versionsRoute.POST(request(`http://localhost:3000/api/v1/quotes/${v1}/versions`, "POST"), ctx(v1)),
+      versionsRoute.POST(request(`http://localhost:3000/api/v1/quotes/${v1}/versions`, "POST"), ctx(v1)),
+    ])
+    expect([first.status, second.status]).toEqual([201, 201])
+    const listed = await json(await versionsRoute.GET(request(`http://localhost:3000/api/v1/quotes/${v1}/versions`, "GET"), ctx(v1)))
+    expect(listed.body.data.map((v: { version: number; status: string; lineItems: unknown[] }) => [v.version, v.status, v.lineItems.length])).toEqual([[3, "draft", 2], [2, "draft", 2], [1, "draft", 2]])
+    const journal = await bypass(() => prisma.auditLog.findMany({ where: { organizationId: BUYER, entityType: "quote" }, select: { action: true } }))
+    expect(journal.map((row) => row.action).sort()).toEqual(["create", "new_version", "new_version"])
+    as("support")
+    expect((await versionsRoute.POST(request(`http://localhost:3000/api/v1/quotes/${v1}/versions`, "POST"), ctx(v1))).status).toBe(403)
+  })
+
   it("eight requests saved at once get eight different numbers", async () => {
     as("sales")
     const results = await Promise.all(Array.from({ length: 8 }, () => requests.POST(request(`${API}/requests`, "POST", { title: "Paint", items: [{ name: "Paint", quantity: 2 }] }))))

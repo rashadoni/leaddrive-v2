@@ -27095,6 +27095,29 @@
     }
   },
   "quotesDetail": {
+    "versions": {
+      "title": "Versions",
+      "new": "New version",
+      "created": "Version {n} created",
+      "failed": "Could not create a version",
+      "compare": "Compare",
+      "total": "Total",
+      "noChanges": "The lines are the same.",
+      "change": {
+        "added": "added",
+        "removed": "removed",
+        "changed": "changed",
+        "same": "same"
+      },
+      "status": {
+        "draft": "Draft",
+        "sent": "Sent",
+        "viewed": "Viewed",
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "expired": "Expired"
+      }
+    },
     "loading": "Loading…",
     "notFound": "Quote not found.",
     "backToQuotes": "Back to quotes",
