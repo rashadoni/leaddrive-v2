@@ -286,6 +286,7 @@
     "onlineBooking": "Ссылка, по которой клиент сам записывается на свободное время",
     "bookingWorkspace": "Встречи команды, онлайн-запись и страницы бронирования",
     "bookingServices": "Ваши услуги и ссылка для записи",
+    "procurementSuppliers": "У кого вы закупаете: контакты, VÖEN и история",
     "bookingWhatsApp": "Искусственный интеллект записывает клиента сам",
     "bookingTeam": "Рабочие дни сотрудников и чьи встречи вы видите",
     "skillRouting": "Навыки агентов и очереди тикетов",
@@ -525,6 +526,8 @@
       "agent": "Агент",
       "support": "Агент поддержки",
       "ticketing": "Агент тикетов",
+      "procurement": "Закупки",
+      "finance": "Финансы",
       "other": "Участник команды"
     },
     "noAgents": "Агентов пока нет.",
@@ -547,6 +550,7 @@
     "onlineBooking": "Онлайн-запись",
     "bookingWorkspace": "Расписание",
     "bookingServices": "Услуги",
+    "procurementSuppliers": "Поставщики",
     "bookingWhatsApp": "WhatsApp",
     "bookingTeam": "Команда",
     "skillRouting": "Маршрутизация",
@@ -744,6 +748,7 @@
       "CRM": "Основная",
       "Boards": "Доски",
       "Booking": "Встречи",
+      "Procurement": "Закупки",
       "Sales": "Продажи",
       "Contracts Control": "Управление контрактами",
       "Marketing": "Маркетинг",
@@ -5265,6 +5270,9 @@
     "module_budgeting": "Бюджетирование",
     "module_profitability": "Прибыльность",
     "module_finance": "Обзор финансов",
+    "module_procurement": "Закупки",
+    "module_purchase-requests": "Заявки на закупку",
+    "module_procurement-costs": "Закупочные цены и маржа",
     "moduleHint_finance": "Счета поставщиков и их оплата, платёжные поручения и их согласование, банковские счета, фонды.",
     "module_users": "Пользователи",
     "module_audit": "Audit log",
@@ -5532,6 +5540,8 @@
     "role_finance": "Финансы",
     "role_service_desk": "Служба поддержки",
     "role_ticketing": "Тикетинг",
+    "role_procurement": "Закупки",
+    "role_finance": "Финансы",
     "role_superadmin": "Супер-админ",
     "aiAutomationTitle": "ИИ-автоматизация",
     "aiAutomationDesc": "Управление ИИ-функциями, теневыми действиями, бюджетом",
@@ -10482,6 +10492,8 @@
     "role_agent": "Агент",
     "role_support": "Поддержка",
     "role_ticketing": "Тикет-агент",
+    "role_procurement": "Закупки",
+    "role_finance": "Финансы",
     "showPreview": "Предпросмотр",
     "hidePreview": "Скрыть предпросмотр",
     "actionType": "Тип действия {number}",
@@ -27468,6 +27480,14 @@
           "Бюджетирование и финансовая аналитика"
         ]
       },
+      "procurement": {
+        "name": "Закупки",
+        "summary": "Закупайте под каждый заказ клиента и видьте его себестоимость.",
+        "benefits": [
+          "Заявки, предложения поставщиков и заказы",
+          "Согласование по сумме, сроки поставки и маржа"
+        ]
+      },
       "analytics": {
         "name": "Отчёты и аналитика",
         "summary": "Просматривайте результаты работы организации.",
@@ -33956,5 +33976,37 @@
     "customerSince": "с {date}",
     "channelsLabel": "Каналы, где пишет клиент",
     "openCrmContact": "Открыть в CRM →"
+  },
+  "procurement": {
+    "suppliers": {
+      "title": "Поставщики",
+      "subtitle": "Компании, у которых вы закупаете. Они хранятся отдельно от клиентов.",
+      "add": "Добавить поставщика",
+      "search": "Поиск по названию, VÖEN, телефону или e-mail",
+      "empty": "Поставщиков пока нет",
+      "emptyHint": "Добавьте компании, у которых закупаете материалы и услуги.",
+      "loadFailed": "Не удалось загрузить поставщиков",
+      "name": "Название",
+      "voen": "VÖEN",
+      "director": "Руководитель",
+      "phone": "Телефон",
+      "email": "E-mail",
+      "website": "Сайт",
+      "address": "Адрес",
+      "city": "Город",
+      "notes": "Заметки",
+      "save": "Сохранить",
+      "cancel": "Отмена",
+      "saving": "Сохраняем…",
+      "created": "Поставщик добавлен",
+      "createFailed": "Не удалось добавить поставщика",
+      "invalidVoen": "VÖEN — десять цифр",
+      "nameRequired": "Введите название",
+      "activeTab": "Активные",
+      "inactiveTab": "Неактивные",
+      "allTab": "Все",
+      "count": "{count, plural, one {# поставщик} few {# поставщика} many {# поставщиков} other {# поставщика}}",
+      "open": "Открыть карточку"
+    }
   }
 }

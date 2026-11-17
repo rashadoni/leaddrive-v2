@@ -435,7 +435,7 @@ describe("admin sidebar catalog (derived — no drift from navItems)", () => {
     // real IA regression — a group silently added, removed, or reordered —
     // rather than just a bug in the catalog's own .map.
     expect(SIDEBAR_SECTIONS.map((s) => s.group)).toEqual([
-      "CRM", "Boards", "Booking", "Sales", "Contracts Control", "Marketing", "Loyalty Program", "Communication", "Social Monitoring", "VoIP", "Support", "Finance", "Analytics",
+      "CRM", "Boards", "Booking", "Sales", "Contracts Control", "Marketing", "Loyalty Program", "Communication", "Social Monitoring", "VoIP", "Support", "Finance", "Procurement", "Analytics",
       "Route & Field", "Health Cloud", "Insurance Cloud", "Public Sector",
       "Media Cloud", "Energy & Utilities", "Settings",
     ])

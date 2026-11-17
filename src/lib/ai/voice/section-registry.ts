@@ -230,6 +230,7 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   profitability: "surface",
   finance: "surface",
   pricing: "surface",
+  procurement_suppliers: "surface",
   mtm: "surface",
   mtm_map: "surface",
   mtm_analytics: "surface",

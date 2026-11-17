@@ -51,7 +51,7 @@ export type UserHideableId = GroupModuleId | typeof WORKFORCE_HIDEABLE_ID
 // two ever disagree, so a new group-module cannot be forgotten here.
 const HIDEABLE_GROUP_IDS = [
   "crm", "sales", "contracts", "marketing", "loyalty", "omnichannel", "social",
-  "voip", "support", "finance",
+  "voip", "support", "finance", "procurement",
   "analytics", "mtm", "health", "insurance", "public-sector", "media",
   "energy",
 ] as const satisfies readonly GroupModuleId[]

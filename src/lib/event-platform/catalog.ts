@@ -155,6 +155,16 @@ export const EVENT_DOMAIN_CATALOG = [
     },
   },
   {
+    domainId: "procurement",
+    title: "Procurement",
+    // Purchasing for a customer order, a tenant module of its own since
+    // 2026-11-17 (docs/sales-procurement/README.md); off unless given.
+    scopes: ["procurement"],
+    profiles: ["B"],
+    migrationWave: 3,
+    implementation: planned,
+  },
+  {
     domainId: "analytics",
     title: "Analytics and reports",
     scopes: ["analytics"],

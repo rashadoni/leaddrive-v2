@@ -286,6 +286,7 @@
     "onlineBooking": "A link where customers book a free time themselves",
     "bookingWorkspace": "Team meetings, online booking and booking pages",
     "bookingServices": "The services you offer and the booking link",
+    "procurementSuppliers": "Who you buy from: contacts, VÖEN and history",
     "bookingWhatsApp": "The agent books the client itself",
     "bookingTeam": "Working days and whose meetings you see",
     "skillRouting": "Agent skills and ticket queues",
@@ -525,6 +526,8 @@
       "agent": "Agent",
       "support": "Support agent",
       "ticketing": "Ticketing agent",
+      "procurement": "Procurement",
+      "finance": "Finance",
       "other": "Team member"
     },
     "noAgents": "No agents yet.",
@@ -547,6 +550,7 @@
     "onlineBooking": "Online booking",
     "bookingWorkspace": "Schedule",
     "bookingServices": "Services",
+    "procurementSuppliers": "Suppliers",
     "bookingWhatsApp": "WhatsApp",
     "bookingTeam": "Team",
     "skillRouting": "Skill Routing",
@@ -744,6 +748,7 @@
       "CRM": "Core",
       "Boards": "Boards",
       "Booking": "Meetings",
+      "Procurement": "Procurement",
       "Sales": "Sales",
       "Contracts Control": "Contracts Control",
       "Marketing": "Marketing",
@@ -5265,6 +5270,9 @@
     "module_budgeting": "Budgeting",
     "module_profitability": "Profitability",
     "module_finance": "Finance overview",
+    "module_procurement": "Purchasing",
+    "module_purchase-requests": "Purchase requests",
+    "module_procurement-costs": "Purchase prices and margin",
     "moduleHint_finance": "Vendor bills and their payments, payment orders and their approval, bank accounts, funds.",
     "module_users": "Users",
     "module_audit": "Audit log",
@@ -5532,6 +5540,8 @@
     "role_finance": "Finance",
     "role_service_desk": "Service Desk",
     "role_ticketing": "Ticketing agent",
+    "role_procurement": "Procurement",
+    "role_finance": "Finance",
     "role_superadmin": "Super Admin",
     "aiAutomationTitle": "AI Automation",
     "aiAutomationDesc": "Manage AI features, shadow actions, budget",
@@ -10482,6 +10492,8 @@
     "role_agent": "Agent",
     "role_support": "Support",
     "role_ticketing": "Ticket agent",
+    "role_procurement": "Procurement",
+    "role_finance": "Finance",
     "showPreview": "Preview sequence",
     "hidePreview": "Hide preview",
     "actionType": "Action {number} type",
@@ -27468,6 +27480,14 @@
           "Budgeting and financial analytics"
         ]
       },
+      "procurement": {
+        "name": "Procurement",
+        "summary": "Buy for each customer order and see its cost.",
+        "benefits": [
+          "Purchase requests, supplier quotes and orders",
+          "Approval by amount, delivery dates and margin"
+        ]
+      },
       "analytics": {
         "name": "Reports and analytics",
         "summary": "Review your organisation’s results.",
@@ -33956,5 +33976,37 @@
     "customerSince": "since {date}",
     "channelsLabel": "Channels this customer writes on",
     "openCrmContact": "Open in CRM →"
+  },
+  "procurement": {
+    "suppliers": {
+      "title": "Suppliers",
+      "subtitle": "Companies you buy from. They are kept apart from your clients.",
+      "add": "Add supplier",
+      "search": "Search by name, VÖEN, phone or e-mail",
+      "empty": "No suppliers yet",
+      "emptyHint": "Add the companies you buy materials and services from.",
+      "loadFailed": "Could not load suppliers",
+      "name": "Name",
+      "voen": "VÖEN",
+      "director": "Director",
+      "phone": "Phone",
+      "email": "E-mail",
+      "website": "Website",
+      "address": "Address",
+      "city": "City",
+      "notes": "Notes",
+      "save": "Save",
+      "cancel": "Cancel",
+      "saving": "Saving…",
+      "created": "Supplier added",
+      "createFailed": "Could not add the supplier",
+      "invalidVoen": "VÖEN is ten digits",
+      "nameRequired": "Enter the name",
+      "activeTab": "Active",
+      "inactiveTab": "Inactive",
+      "allTab": "All",
+      "count": "{count, plural, one {# supplier} other {# suppliers}}",
+      "open": "Open card"
+    }
   }
 }

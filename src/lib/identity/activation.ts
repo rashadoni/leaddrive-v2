@@ -122,7 +122,7 @@ export async function activateReviewedIdentityInTransaction(tx: Prisma.Transacti
     const activeActors = new Set<string>()
     for (const plan of current.filter(p => p.status === "ACTIVE")) {
       if (plan.application === "CRM") {
-        if (plan.role !== person.role || !["admin", "manager", "sales", "support", "ticketing", "viewer"].includes(plan.role ?? "")) throw new IdentityRegistryError("IDENTITY_CRM_ROLE_CHANGE_FORBIDDEN")
+        if (plan.role !== person.role || !["admin", "manager", "sales", "support", "ticketing", "procurement", "finance", "viewer"].includes(plan.role ?? "")) throw new IdentityRegistryError("IDENTITY_CRM_ROLE_CHANGE_FORBIDDEN")
         continue
       }
       const card = cards.find(row => row.id === plan.actorId)

@@ -619,6 +619,16 @@ jobs:
           FINANCE_TELEGRAM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           FINANCE_TELEGRAM_DB_GATE: required
 
+      - name: Procurement database gate
+        # Purchasing for a customer order (docs/sales-procurement/README.md):
+        # the module and the role decide who reads and adds suppliers, nothing
+        # is written on a refusal, and a supplier never shows up in the
+        # customer list of companies — read back from a real Postgres.
+        run: npx vitest run src/__tests__/procurement-suppliers-postgres.test.ts
+        env:
+          PROCUREMENT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          PROCUREMENT_DB_GATE: required
+
       - name: WhatsApp ticket path database gate
         # Which ticket a customer's WhatsApp message lands on, read off the
         # tables after the real intake ran on a real Postgres under the

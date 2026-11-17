@@ -1,7 +1,7 @@
 import { LEGACY_MODULE_MAP, type ModuleId } from "./modules"
 import { currentRoleAccess, isEditableCell, levelAllows, type RoleAccessMap } from "./role-access"
 
-export type Role = "superadmin" | "admin" | "manager" | "sales" | "support" | "ticketing" | "viewer" | "reviewer"
+export type Role = "superadmin" | "admin" | "manager" | "sales" | "support" | "ticketing" | "procurement" | "finance" | "viewer" | "reviewer"
 export type Action = "read" | "write" | "delete" | "export" | "admin"
 export type Module =
   | "companies" | "contacts" | "deals" | "leads" | "tasks" | "bookings"
@@ -19,6 +19,13 @@ export type Module =
   // credential and always acts as admin, and nothing should approve a payment
   // order without a person behind it.
   | "finance"
+  // Procurement for a customer order (docs/sales-procurement/README.md).
+  // `procurement` — suppliers, supplier quotes, purchase orders and their
+  // approval; `purchase-requests` — what sales asks to buy for a deal;
+  // `procurement-costs` — purchase prices, costs and margins, which sales does
+  // not read. None of the three is a member of MODULES: a purchase order is
+  // approved by a person, never by the organization's API key.
+  | "procurement" | "purchase-requests" | "procurement-costs"
   | "inbox" | "journeys" | "segments" | "voip"
   // Social Monitoring — its own scope since the 2026-08-01 module split. It
   // shares the `social` name with the group-module it bridges to (identity entry
@@ -265,6 +272,11 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, Action[]>> = {
     // every other /api/finance route checked no role whatsoever — so a manager
     // could approve a payment order but not rename a fund.
     finance: ["read", "write", "export"],
+    // Management runs purchasing too and approves purchase orders within the
+    // organization's limits (docs/sales-procurement/README.md).
+    procurement: ["read", "write", "delete", "export"],
+    "purchase-requests": ["read", "write", "delete"],
+    "procurement-costs": ["read"],
     projects: ["read", "write", "delete"],
     events: ["read", "write"],
     pricing: ["read"],
@@ -343,6 +355,10 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, Action[]>> = {
     contracts: ["read"],
     offers: ["read", "write"],
     invoices: ["read"],
+    // Sales raises a purchase request from its deal and follows its status;
+    // it does not see purchase prices or margins (procurement-costs).
+    "purchase-requests": ["read", "write"],
+    procurement: ["read"],
     tickets: ["read"],
     kb: ["read"],
     campaigns: ["read"],
@@ -509,6 +525,9 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, Action[]>> = {
     // visit data, agent lists, and analytics to support field ops.
     // Cannot author visits/photos or manage team structure.
     mtm: ["read"],
+    procurement: [],
+    "purchase-requests": [],
+    "procurement-costs": [],
     workforce: [],
     ai: ["read"],
     settings: [],
@@ -557,11 +576,53 @@ const ROLE_PERMISSIONS: Record<Role, Record<string, Action[]>> = {
     media: [],
     "account-engagement": [],
     mtm: [],
+    procurement: [],
+    "purchase-requests": [],
+    "procurement-costs": [],
     workforce: [],
     ai: ["read"],
     settings: [],
     users: [],
     audit: [],
+  },
+  // Purchasing staff (docs/sales-procurement/README.md, owner 2026-11-17):
+  // suppliers are companies, so companies/contacts are writable; deals are read
+  // to see what the customer ordered; purchase prices are their work.
+  procurement: {
+    companies: ["read", "write"],
+    contacts: ["read", "write"],
+    deals: ["read"],
+    offers: ["read"],
+    contracts: ["read"],
+    tasks: ["read", "write"],
+    projects: ["read"],
+    procurement: ["read", "write", "delete", "export"],
+    "purchase-requests": ["read", "write"],
+    "procurement-costs": ["read"],
+    reports: ["read", "export"],
+    ai: ["read"],
+  },
+  // Finance staff: treasury and receivables, budgets and profitability, and a
+  // read of purchasing with its costs and margins — no sales or purchasing
+  // decisions of their own.
+  finance: {
+    companies: ["read"],
+    contacts: ["read"],
+    deals: ["read"],
+    offers: ["read"],
+    contracts: ["read"],
+    tasks: ["read", "write"],
+    projects: ["read"],
+    invoices: ["read", "write", "export"],
+    finance: ["read", "write", "export"],
+    budgeting: ["read", "write"],
+    profitability: ["read"],
+    pricing: ["read"],
+    procurement: ["read", "export"],
+    "purchase-requests": ["read"],
+    "procurement-costs": ["read"],
+    reports: ["read", "export"],
+    ai: ["read"],
   },
   viewer: {
     "*": ["read"],
@@ -595,6 +656,7 @@ export const ROUTE_MODULE_MAP: Record<string, Module> = {
   // Phone orders sit with sales (owner, 2026-10-26), gated like deals.
   "/api/v1/pharmacy-orders": "deals",
   "/api/v1/leads": "leads",
+  "/api/v1/procurement": "procurement",
   "/api/v1/tasks": "tasks",
   "/api/v1/bookings": "bookings",
   "/api/v1/booking-pages": "bookings",
@@ -1098,6 +1160,9 @@ export const ALL_MODULES: { id: Module; group: string }[] = [
   // matches the sidebar IA — see src/components/sidebar.tsx Phase 2 note.
   { id: "projects", group: "CRM" },
   { id: "finance", group: "Finance" },
+  { id: "procurement", group: "Procurement" },
+  { id: "purchase-requests", group: "Procurement" },
+  { id: "procurement-costs", group: "Procurement" },
   { id: "revenue-recognition", group: "Finance" },
   { id: "education", group: "Industry" },
   { id: "financial-services", group: "Industry" },
@@ -1114,4 +1179,4 @@ export const ALL_MODULES: { id: Module; group: string }[] = [
 ]
 
 export const ALL_ACTIONS: Action[] = ["read", "write", "delete", "export", "admin"]
-export const ALL_ROLES: Role[] = ["superadmin", "admin", "manager", "sales", "support", "ticketing", "viewer", "reviewer"]
+export const ALL_ROLES: Role[] = ["superadmin", "admin", "manager", "sales", "support", "ticketing", "procurement", "finance", "viewer", "reviewer"]

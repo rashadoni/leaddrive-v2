@@ -40,6 +40,10 @@ export const DEFAULT_ROLES: RoleConfig[] = [
   { id: "sales", name: "Sales", color: "emerald", isSystem: true },
   { id: "support", name: "Support", color: "cyan", isSystem: true },
   { id: "ticketing", name: "Ticketing agent", color: "orange", isSystem: true },
+  // Enforced since 2026-11-17 (docs/sales-procurement/README.md): both have a
+  // block in ROLE_PERMISSIONS, unlike the `finance` that was dropped earlier.
+  { id: "procurement", name: "Procurement", color: "amber", isSystem: true },
+  { id: "finance", name: "Finance", color: "violet", isSystem: true },
   { id: "viewer", name: "Viewer", color: "gray", isSystem: true },
 ]
 
