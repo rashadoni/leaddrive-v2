@@ -549,6 +549,28 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     }
   })
 
+  it("a change the customer approved is journaled and flags every open purchase of the deal", async () => {
+    const { requestId, cheapQuote } = await requestWithQuotes()
+    const orderId = await orderFrom(cheapQuote)
+    const route = await import("@/app/api/v1/deals/[id]/change-approvals/route")
+    await bypass(() => prisma.notification.deleteMany({}))
+    as("sales")
+    const bad = await route.POST(request(`http://localhost:3000/api/v1/deals/${dealId}/change-approvals`, "POST", { kind: "size", after: "", approvedByName: "x", approvedAt: "2026-11-17", channel: "phone" }), ctx(dealId))
+    expect(bad.status).toBe(400)
+    const res = await route.POST(request(`http://localhost:3000/api/v1/deals/${dealId}/change-approvals`, "POST", {
+      kind: "size", before: "3×2 m", after: "4×2 m", approvedByName: "Leyla (customer)", approvedAt: "2026-11-17", channel: "whatsapp", note: "by voice message",
+    }), ctx(dealId))
+    expect(res.status).toBe(201)
+    const listed = await json(await route.GET(request(`http://localhost:3000/api/v1/deals/${dealId}/change-approvals`, "GET"), ctx(dealId)))
+    expect(listed.body.data.map((row: { kind: string; before: string; after: string; approvedByName: string }) => [row.kind, row.before, row.after, row.approvedByName])).toEqual([["size", "3×2 m", "4×2 m", "Leyla (customer)"]])
+    expect((await bypass(() => prisma.purchaseRequest.findUniqueOrThrow({ where: { id: requestId } }))).dealChangedAt).not.toBeNull()
+    expect((await orderRow(orderId)).dealChangedAt).not.toBeNull()
+    const told = await bypass(() => prisma.notification.findMany({ where: { organizationId: BUYER, userId: `procurement-${BUYER}` } }))
+    expect(told.some((n) => n.message.includes("3×2 m → 4×2 m"))).toBe(true)
+    as("support")
+    expect((await route.POST(request(`http://localhost:3000/api/v1/deals/${dealId}/change-approvals`, "POST", { kind: "other", after: "x", approvedByName: "x", approvedAt: "2026-11-17", channel: "phone" }), ctx(dealId))).status).toBe(403)
+  })
+
   it("eight requests saved at once get eight different numbers", async () => {
     as("sales")
     const results = await Promise.all(Array.from({ length: 8 }, () => requests.POST(request(`${API}/requests`, "POST", { title: "Paint", items: [{ name: "Paint", quantity: 2 }] }))))

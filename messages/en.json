@@ -34275,5 +34275,39 @@
     "remove": "Remove",
     "confirmRemove": "Remove this file?",
     "note": "Note"
+  },
+  "dealApprovals": {
+    "tab": "Customer approvals",
+    "hint": "What the customer agreed to change and who confirmed it. Entries are not edited — this is the record.",
+    "add": "Record an approval",
+    "empty": "No approvals recorded yet.",
+    "kind": "What changed",
+    "kinds": {
+      "layout": "Layout",
+      "size": "Size",
+      "quantity": "Quantity",
+      "price": "Price",
+      "deadline": "Date",
+      "other": "Other"
+    },
+    "before": "Was",
+    "after": "Now",
+    "approvedBy": "Confirmed by (customer)",
+    "approvedAt": "When",
+    "channel": "How",
+    "channels": {
+      "email": "E-mail",
+      "whatsapp": "WhatsApp",
+      "phone": "Phone",
+      "meeting": "Meeting",
+      "other": "Other"
+    },
+    "note": "Note",
+    "file": "Confirmation file",
+    "noFile": "No file",
+    "saved": "Approval recorded",
+    "failed": "Could not record the approval",
+    "required": "Fill in what it is now and who confirmed it",
+    "cancel": "Cancel"
   }
 }

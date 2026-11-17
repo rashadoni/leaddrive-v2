@@ -34271,5 +34271,39 @@
     "remove": "Sil",
     "confirmRemove": "Fayl silinsin?",
     "note": "Qeyd"
+  },
+  "dealApprovals": {
+    "tab": "Müştəri təsdiqləri",
+    "hint": "Müştərinin nəyi dəyişməyə razı olduğu və bunu kimin təsdiqlədiyi. Qeydlər dəyişdirilmir — bu jurnaldır.",
+    "add": "Təsdiqi qeyd et",
+    "empty": "Hələ təsdiq qeyd edilməyib.",
+    "kind": "Nə dəyişdi",
+    "kinds": {
+      "layout": "Maket",
+      "size": "Ölçü",
+      "quantity": "Miqdar",
+      "price": "Qiymət",
+      "deadline": "Müddət",
+      "other": "Digər"
+    },
+    "before": "Əvvəl",
+    "after": "İndi",
+    "approvedBy": "Təsdiqləyən (müştəri)",
+    "approvedAt": "Nə vaxt",
+    "channel": "Necə",
+    "channels": {
+      "email": "E-poçt",
+      "whatsapp": "WhatsApp",
+      "phone": "Telefon",
+      "meeting": "Görüş",
+      "other": "Digər"
+    },
+    "note": "Qeyd",
+    "file": "Təsdiq faylı",
+    "noFile": "Faylsız",
+    "saved": "Təsdiq qeyd edildi",
+    "failed": "Təsdiqi qeyd etmək alınmadı",
+    "required": "İndi nə olduğunu və kimin təsdiqlədiyini yazın",
+    "cancel": "Ləğv et"
   }
 }
