@@ -18,9 +18,9 @@ const ACTIONS: Action[] = ["read", "write", "delete", "export"]
 const MAY: Record<Role, Record<Scope, Action[]>> = {
   superadmin: { procurement: ACTIONS, "purchase-requests": ACTIONS, "procurement-costs": ACTIONS },
   admin: { procurement: ACTIONS, "purchase-requests": ACTIONS, "procurement-costs": ACTIONS },
-  manager: { procurement: ["read", "write", "delete", "export"], "purchase-requests": ["read", "write", "delete"], "procurement-costs": ["read"] },
-  procurement: { procurement: ["read", "write", "delete", "export"], "purchase-requests": ["read", "write"], "procurement-costs": ["read"] },
-  finance: { procurement: ["read", "export"], "purchase-requests": ["read"], "procurement-costs": ["read"] },
+  manager: { procurement: ["read", "write", "delete", "export"], "purchase-requests": ["read", "write", "delete"], "procurement-costs": ["read", "export"] },
+  procurement: { procurement: ["read", "write", "delete", "export"], "purchase-requests": ["read", "write"], "procurement-costs": ["read", "export"] },
+  finance: { procurement: ["read", "export"], "purchase-requests": ["read"], "procurement-costs": ["read", "export"] },
   // Sales asks to buy for its deal and follows the status — no purchase prices.
   sales: { procurement: ["read"], "purchase-requests": ["read", "write"], "procurement-costs": [] },
   support: { procurement: [], "purchase-requests": [], "procurement-costs": [] },

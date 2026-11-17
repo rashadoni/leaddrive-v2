@@ -234,6 +234,7 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   procurement_requests: "surface",
   procurement_orders: "surface",
   procurement_settings: "config",
+  procurement_reports: "surface",
   mtm: "surface",
   mtm_map: "surface",
   mtm_analytics: "surface",

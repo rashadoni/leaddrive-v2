@@ -416,11 +416,11 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     const finance = await json(await GET(request(`${API}/deals/${dealId}`, "GET"), ctx(dealId)))
     expect(finance.status).toBe(200)
     expect(finance.body.data.lines.map((line: { stage: string; cost: number }) => [line.stage, line.cost])).toEqual([["sent", 1200], ["sent", 600]])
-    expect(finance.body.data.totals).toEqual({ revenue: 5000, cost: 1800, margin: 3200, marginPct: 64 })
+    expect(finance.body.data.totals).toEqual({ revenue: 5000, cost: 1800, margin: 3200, marginPct: 64, foreignCost: null })
     expect(finance.body.data.summary).toMatchObject({ ready: 0, total: 2 })
     as("sales")
     const sales = await json(await GET(request(`${API}/deals/${dealId}`, "GET"), ctx(dealId)))
-    expect(sales.body.data.totals).toEqual({ revenue: null, cost: null, margin: null, marginPct: null })
+    expect(sales.body.data.totals).toEqual({ revenue: null, cost: null, margin: null, marginPct: null, foreignCost: null })
     expect(sales.body.data.lines.every((line: { cost: unknown }) => line.cost === null)).toBe(true)
   })
 
@@ -452,6 +452,52 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     const order = await orderRow(orderId)
     expect(order.status).toBe("sent")
     expect(order.events.filter((event) => event.type === "emailed").map((event) => (event.data as { ok: boolean }).ok).sort()).toEqual([false, true])
+  })
+
+  it("reports: one supplier on time, one late; spend per currency, margin per deal, files for finance, nothing for sales", async () => {
+    const { cheapQuote, requestId, items } = await requestWithQuotes()
+    const onTime = await orderFrom(cheapQuote)
+    as("procurement")
+    const lateRes = await json(await orders.POST(request(`${API}/orders`, "POST", {
+      supplierId: supplierB, requestId, currency: "AZN",
+      items: [{ name: "Banner", quantity: 4, unitPrice: 160, requestItemId: items[1].id, dealLineItemId: lineIds[1] }],
+    })))
+    expect(lateRes.status).toBe(201)
+    const late = lateRes.body.data.id as string
+    for (const id of [onTime, late]) {
+      await act("procurement", id, "submit")
+      await act("manager", id, "approve")
+      if ((await orderRow(id)).status === "pending_approval") await act("finance", id, "approve")
+      await act("procurement", id, "send")
+    }
+    const tomorrow = new Date(Date.now() + 86_400_000)
+    await bypass(() => prisma.purchaseOrder.update({ where: { id: onTime }, data: { expectedDeliveryAt: tomorrow } }))
+    await bypass(() => prisma.purchaseOrder.update({ where: { id: late }, data: { expectedDeliveryAt: new Date(Date.now() - 3 * 86_400_000) } }))
+    for (const id of [onTime, late]) {
+      const lines = (await orderRow(id)).items
+      as("procurement")
+      await receive.POST(request(`${API}/orders/${id}/receive`, "POST", { items: lines.map((line) => ({ itemId: line.id, quantity: Number(line.quantity) })) }), ctx(id))
+    }
+    const reports = await import("@/app/api/v1/procurement/reports/route")
+    const exportRoute = await import("@/app/api/v1/procurement/reports/export/route")
+    as("finance")
+    const report = await json(await reports.GET(request(`${API}/reports`, "GET")))
+    expect(report.status).toBe(200)
+    expect(report.body.data.kpis).toMatchObject({ orders: 2, received: 2, onTimePct: 50, averageDelayDays: 1.5, lateOpen: 0, committedByCurrency: { AZN: 2440 } })
+    expect(report.body.data.suppliers.map((row: { supplier: string; spend: number; onTime: number; late: number }) => [row.supplier, row.spend, row.onTime, row.late])).toEqual([
+      ["Wood Workshop", 1800, 1, 0],
+      ["Print House", 640, 0, 1],
+    ])
+    expect(report.body.data.deals).toEqual([{ dealId, deal: "Conference stand for a bank", currency: "AZN", revenue: 5000, cost: 2440, margin: 2560, marginPct: 51.2, otherCurrency: false }])
+    const xlsx = await exportRoute.GET(request(`${API}/reports/export?format=xlsx&lang=ru`, "GET"))
+    expect(xlsx.status).toBe(200)
+    expect(xlsx.headers.get("content-type")).toMatch(/spreadsheetml/)
+    expect(Buffer.from(await xlsx.arrayBuffer()).subarray(0, 2).toString()).toBe("PK")
+    const pdf = await exportRoute.GET(request(`${API}/reports/export?format=pdf`, "GET"))
+    expect(Buffer.from(await pdf.arrayBuffer()).subarray(0, 4).toString()).toBe("%PDF")
+    as("sales")
+    expect((await reports.GET(request(`${API}/reports`, "GET"))).status).toBe(403)
+    expect((await exportRoute.GET(request(`${API}/reports/export`, "GET"))).status).toBe(403)
   })
 
   it("eight requests saved at once get eight different numbers", async () => {

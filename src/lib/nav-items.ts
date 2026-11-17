@@ -371,6 +371,7 @@ export const navItems: NavItem[] = [
   { module: "procurement", href: "/procurement/requests", icon: ClipboardList, tKey: "procurementRequests", group: "Procurement", permissionScope: "purchase-requests" },
   { module: "procurement", href: "/procurement/orders", icon: PackageCheck, tKey: "procurementOrders", group: "Procurement", permissionScope: "procurement" },
   { module: "procurement", href: "/procurement/suppliers", icon: Truck, tKey: "procurementSuppliers", group: "Procurement", permissionScope: "procurement" },
+  { module: "procurement", href: "/procurement/reports", icon: BarChart3, tKey: "procurementReports", group: "Procurement", permissionScope: "procurement-costs" },
   { module: "procurement", href: "/procurement/settings", icon: ShieldCheck, tKey: "procurementSettings", group: "Procurement", permissionScope: "procurement" },
   { module: "analytics", href: "/reports", icon: BarChart3, tKey: "reports", group: "Analytics" },
   { module: "analytics", href: "/reports/builder", icon: FileSpreadsheet, tKey: "reportBuilder", group: "Analytics" },
