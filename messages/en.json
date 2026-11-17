@@ -34262,5 +34262,18 @@
       "otherCurrency": "another currency",
       "empty": "No purchase orders in this period."
     }
+  },
+  "dealFiles": {
+    "tab": "Files",
+    "add": "Add file",
+    "hint": "Layout, PDF, photo or the customer's confirmation, up to 10 MB.",
+    "empty": "No files yet.",
+    "uploaded": "File added",
+    "failed": "Could not add the file",
+    "tooBig": "The file is larger than 10 MB",
+    "type": "This file type is not allowed",
+    "remove": "Remove",
+    "confirmRemove": "Remove this file?",
+    "note": "Note"
   }
 }

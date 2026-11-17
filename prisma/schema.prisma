@@ -70,6 +70,7 @@ model Organization {
   purchaseOrderItems    PurchaseOrderItem[]
   purchaseOrderApprovals PurchaseOrderApprovalStep[]
   purchaseOrderEvents   PurchaseOrderEvent[]
+  dealFiles             DealFile[]
   companies             Company[]
   contacts              Contact[]
   deals                 Deal[]
@@ -1750,6 +1751,7 @@ model Deal {
   lineItems DealLineItem[]
   purchaseRequests PurchaseRequest[]
   purchaseOrders PurchaseOrder[]
+  files DealFile[]
 
   @@index([organizationId])
   @@index([organizationId, stage])
@@ -24861,3 +24863,26 @@ model PurchaseOrderEvent {
   @@index([organizationId, orderId, createdAt])
   @@map("purchase_order_events")
 }
+
+/// A file of a customer order — the layout, a PDF, a photo, the customer's
+/// confirmation (docs/sales-procurement/README.md, task 4.1). Stored sealed with
+/// the organization's key under uploads/deal-files, served by the uploads gate.
+model DealFile {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  dealId         String
+  deal           Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  fileName       String
+  originalName   String
+  fileSize       Int
+  mimeType       String
+  note           String?
+  uploadedBy     String?
+  createdAt      DateTime     @default(now())
+
+  @@unique([organizationId, fileName])
+  @@index([organizationId, dealId])
+  @@map("deal_files")
+}
+

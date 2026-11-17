@@ -22,6 +22,8 @@ if (!adminUrl && process.env.PROCUREMENT_DB_GATE === "required") {
 }
 
 const scratch = vi.hoisted(() => {
+  // Files of a deal are sealed with the organization's key (test value, not a credential).
+  process.env.TENANT_PII_MASTER_KEY = "7".repeat(64)
   const admin = process.env.PROCUREMENT_TEST_DATABASE_URL
   if (!admin) return null
   const name = `procurement_orders_${process.pid}`
@@ -498,6 +500,53 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     as("sales")
     expect((await reports.GET(request(`${API}/reports`, "GET"))).status).toBe(403)
     expect((await exportRoute.GET(request(`${API}/reports/export`, "GET"))).status).toBe(403)
+  })
+
+  it("a file of the deal is sealed on disk, opened only inside the organization and its bytes go with the row", async () => {
+    const { mkdtempSync, readFileSync, existsSync, rmSync } = await import("node:fs")
+    const { homedir } = await import("node:os")
+    const runtime = mkdtempSync(path.join(homedir(), ".deal-files-runtime-test-"))
+    const logs = mkdtempSync(path.join(homedir(), ".deal-files-logs-test-"))
+    process.env.LEADDRIVE_RUNTIME_DIR = runtime
+    process.env.LEADDRIVE_LOG_DIR = logs
+    try {
+      const files = await import("@/app/api/v1/deals/[id]/files/route")
+      const gate = await import("@/app/api/v1/uploads/[...path]/route")
+      // A real PNG: signature, IHDR, IDAT, IEND (1×1 transparent).
+      const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64")
+      const form = new FormData()
+      form.append("file", new File([png], "maket v2.png", { type: "image/png" }))
+      as("sales")
+      const created = await files.POST(new NextRequest(`http://localhost:3000/api/v1/deals/${dealId}/files`, { method: "POST", body: form }), ctx(dealId))
+      expect(created.status).toBe(201)
+      const row = (await created.json()).data as { id: string; fileName: string; url: string }
+      const onDisk = path.join(runtime, "uploads", "deal-files", row.fileName)
+      expect(readFileSync(onDisk).subarray(0, 4).toString()).toBe("LDFE")
+      as("procurement")
+      const listed = await json(await files.GET(request(`http://localhost:3000/api/v1/deals/${dealId}/files`, "GET"), ctx(dealId)))
+      expect(listed.body.data.map((f: { originalName: string }) => f.originalName)).toEqual(["maket v2.png"])
+      const served = await gate.GET(new NextRequest(`http://localhost:3000${row.url}`), { params: Promise.resolve({ path: ["deal-files", row.fileName] }) })
+      expect(served.status).toBe(200)
+      expect(Buffer.from(await served.arrayBuffer()).equals(png)).toBe(true)
+      as("admin", PLAIN)
+      const foreign = await gate.GET(new NextRequest(`http://localhost:3000${row.url}`), { params: Promise.resolve({ path: ["deal-files", row.fileName] }) })
+      expect(foreign.status).toBe(404)
+      as("support")
+      expect((await files.DELETE(request(`http://localhost:3000/api/v1/deals/${dealId}/files?fileId=${row.id}`, "DELETE"), ctx(dealId))).status).toBe(403)
+      as("sales")
+      expect((await files.DELETE(request(`http://localhost:3000/api/v1/deals/${dealId}/files?fileId=${row.id}`, "DELETE"), ctx(dealId))).status).toBe(200)
+      expect(existsSync(onDisk)).toBe(false)
+      expect(await bypass(() => prisma.dealFile.count({ where: { dealId } }))).toBe(0)
+      // A script disguised as a picture is refused by its bytes.
+      const fake = new FormData()
+      fake.append("file", new File([Buffer.from("<script>alert(1)</script>")], "logo.png", { type: "image/png" }))
+      expect((await files.POST(new NextRequest(`http://localhost:3000/api/v1/deals/${dealId}/files`, { method: "POST", body: fake }), ctx(dealId))).status).toBe(400)
+    } finally {
+      delete process.env.LEADDRIVE_RUNTIME_DIR
+      delete process.env.LEADDRIVE_LOG_DIR
+      rmSync(runtime, { recursive: true, force: true })
+      rmSync(logs, { recursive: true, force: true })
+    }
   })
 
   it("eight requests saved at once get eight different numbers", async () => {

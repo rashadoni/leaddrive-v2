@@ -34258,5 +34258,18 @@
       "otherCurrency": "başqa valyuta",
       "empty": "Bu dövrdə təchizatçı sifarişi yoxdur."
     }
+  },
+  "dealFiles": {
+    "tab": "Fayllar",
+    "add": "Fayl əlavə et",
+    "hint": "Maket, PDF, şəkil və ya müştərinin təsdiqi, 10 MB-a qədər.",
+    "empty": "Hələ fayl yoxdur.",
+    "uploaded": "Fayl əlavə edildi",
+    "failed": "Faylı əlavə etmək alınmadı",
+    "tooBig": "Fayl 10 MB-dan böyükdür",
+    "type": "Bu fayl növünə icazə yoxdur",
+    "remove": "Sil",
+    "confirmRemove": "Fayl silinsin?",
+    "note": "Qeyd"
   }
 }

@@ -98,6 +98,7 @@ const UPLOAD_SUBDIR_SCOPE: Record<string, Module> = {
   contracts: "contracts",
   "contract-images": "contracts",
   tasks: "tasks",
+  "deal-files": "deals",
   tickets: "tickets",
   "email-images": "campaigns",
   "web-chat": "inbox",

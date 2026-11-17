@@ -68,6 +68,10 @@ export function tenantFileLocations(): TenantFileLocation[] {
         ),
       (fileName) => /^(.+)\.w\d+\.webp$/.exec(fileName)?.[1] ?? null,
     ),
+    ownedFileLocation("deal-files", runtimePublicUploadDirectory("deal-files"), async (names) =>
+      ownersBy<{ fileName: string; organizationId: string }>((row) => row.fileName)(
+        await prisma.dealFile.findMany({ where: { fileName: { in: names } }, select: { fileName: true, organizationId: true } }),
+      )),
     ownedFileLocation("tickets", runtimePublicUploadDirectory("tickets"), async (names) =>
       ownersBy<{ fileName: string; organizationId: string }>((row) => row.fileName)(
         await prisma.ticketAttachment.findMany({ where: { fileName: { in: names } }, select: { fileName: true, organizationId: true } }),
