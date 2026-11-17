@@ -50,6 +50,11 @@ vi.mock("@/lib/email", async () => {
     }),
   }
 })
+/** Outgoing webhooks as the organization's systems would receive them (task 6.4). */
+const hooks = vi.hoisted(() => ({ fired: [] as { event: string; data: Record<string, unknown> }[] }))
+vi.mock("@/lib/webhooks", () => ({
+  fireWebhooks: vi.fn(async (_orgId: string, event: string, data: Record<string, unknown>) => { hooks.fired.push({ event, data }) }),
+}))
 vi.mock("@/lib/mobile-auth", async () => {
   const { makeMobileAuthMock } = await import("./mocks/mobile-auth")
   return makeMobileAuthMock()
@@ -638,6 +643,28 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     expect(created).toEqual([{ companyId: supplierA, source: "import" }])
     expect(await bypass(() => prisma.notification.count({ where: { organizationId: BUYER } }))).toBe(0)
     expect(await bypass(() => prisma.auditLog.count({ where: { organizationId: BUYER, action: "import" } }))).toBe(2)
+  })
+
+  it("the organization's systems hear each sent request and every status of an order by webhook, with the total", async () => {
+    hooks.fired = []
+    const { cheapQuote } = await requestWithQuotes()
+    const orderId = await orderFrom(cheapQuote)
+    await act("procurement", orderId, "submit")
+    await act("manager", orderId, "approve")
+    await act("finance", orderId, "approve")
+    await act("procurement", orderId, "send")
+    const lines = (await orderRow(orderId)).items
+    as("procurement")
+    await receive.POST(request(`${API}/orders/${orderId}/receive`, "POST", { items: lines.map((line) => ({ itemId: line.id, quantity: Number(line.quantity) })) }), ctx(orderId))
+    const procurement = hooks.fired.filter((hook) => hook.event.startsWith("purchase_"))
+    expect(procurement.map((hook) => [hook.event, hook.data.to ?? null])).toEqual([
+      ["purchase_request.submitted", null],
+      ["purchase_order.status_changed", "pending_approval"],
+      ["purchase_order.status_changed", "approved"],
+      ["purchase_order.status_changed", "sent"],
+      ["purchase_order.status_changed", "received"],
+    ])
+    expect(procurement[4].data).toMatchObject({ total: "1800", currency: "AZN", supplier: { name: "Wood Workshop" } })
   })
 
   it("eight requests saved at once get eight different numbers", async () => {

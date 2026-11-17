@@ -46,6 +46,7 @@ const WEBHOOK_EVENTS = [
   "whatsapp.message_received", "whatsapp.message_status",
   "contact.created", "contact.updated", "contact.deleted",
   "deal.created", "deal.updated", "deal.stage_changed",
+  "purchase_request.submitted", "purchase_order.status_changed",
   "lead.created", "lead.updated",
   "ticket.created", "ticket.updated", "ticket.resolved",
   "company.created", "company.updated",

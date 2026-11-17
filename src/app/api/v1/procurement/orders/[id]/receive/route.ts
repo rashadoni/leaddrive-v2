@@ -8,6 +8,7 @@ import { RECEIVABLE_STATUSES, type PurchaseOrderStatus } from "@/lib/procurement
 import { badRequest, conflict, notFound, readJsonBody } from "@/lib/procurement/access"
 import { recordOrderEvent } from "@/lib/procurement/orders"
 import { notifyProcurement } from "@/lib/procurement/notify"
+import { emitPurchaseOrderStatus } from "@/lib/procurement/events"
 
 /**
  * Goods in (task 3.5): the quantity that arrived now, per line. A line never
@@ -73,5 +74,6 @@ export const POST = withRlsAuth("procurement", "write", async (req, { orgId, use
     orgId, actorId: userId, recipients: outcome.recipients, entityType: "purchase_order", entityId: id,
     event: { kind: "order.received", number, supplier: outcome.supplier, partial: outcome.to !== "received" },
   })
+  await emitPurchaseOrderStatus(orgId, id, null, outcome.to)
   return NextResponse.json({ success: true, data: { status: outcome.to } })
 })

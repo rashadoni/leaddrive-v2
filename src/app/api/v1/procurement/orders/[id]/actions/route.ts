@@ -10,6 +10,7 @@ import { CANCELLABLE_STATUSES, EDITABLE_STATUSES, MANUAL_TRANSITIONS, type Purch
 import { badRequest, conflict, money, notFound, readJsonBody } from "@/lib/procurement/access"
 import { recordOrderEvent } from "@/lib/procurement/orders"
 import { emailPurchaseOrder } from "@/lib/procurement/send-order-email"
+import { emitPurchaseOrderStatus } from "@/lib/procurement/events"
 import { notifyProcurement, purchasersOf, usersWithRoles } from "@/lib/procurement/notify"
 
 /**
@@ -165,6 +166,7 @@ export const POST = withRlsAuth("procurement", "read", async (req, auth, { param
   const number = procurementNumber("order", outcome.order.seq)
   logAudit(orgId, action, "purchase_order", id, number, { oldValue: { status: outcome.from }, newValue: { status: outcome.to, comment: comment ?? null }, userId })
   await outcome.notify()
+  if (outcome.from !== outcome.to) await emitPurchaseOrderStatus(orgId, id, outcome.from, outcome.to)
   // The order is sent whatever the mailer says; the history says whether the e-mail left.
   const emailed = action === "send" && emailTo
     ? await emailPurchaseOrder({ orgId, orderId: id, actorId: userId, to: emailTo, lang: emailLang, message: emailMessage })
