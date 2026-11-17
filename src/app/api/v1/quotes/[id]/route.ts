@@ -1,8 +1,10 @@
 /**
  * S6 CPQ — Quote single-row endpoints.
  *
- * Auth: org-scoped via `withRls` (uses the passed { orgId, session }). See parent
- * `route.ts` header for the `cpq:*` permission key carve-out.
+ * Auth: `withRlsAuth("offers", read | write | delete)` — role and the `sales`
+ * module, see the parent `route.ts` header. Deleting needs `offers` delete,
+ * which the built-in matrix gives only to admin (as for contracts); an
+ * organization can grant it per role with «Tam» in the roles table.
  *
  * GET    /api/v1/quotes/[id]   — fetch one quote with line items
  * PATCH  /api/v1/quotes/[id]   — update fields + state transitions + line-item replace + auto-rollup
@@ -29,8 +31,7 @@ import { NextResponse } from "next/server"
 import { Prisma, type QuoteLineItem } from "@prisma/client"
 import { z } from "zod"
 import { prisma, logAudit } from "@/lib/prisma"
-import { orgHasModule, moduleDisabledResponse } from "@/lib/api-auth"
-import { withRls } from "@/lib/with-rls"
+import { withRlsAuth } from "@/lib/with-rls"
 import { rollUpQuote } from "@/lib/cpq/totals"
 import { isValidLineQuantity, LINE_TYPES } from "@/lib/cpq/line-types"
 import {
@@ -106,9 +107,7 @@ const patchSchema = z
   .refine((q) => asNonNegative(q.discountAmount), { message: "discountAmount must be ≥ 0" })
   .refine((q) => asNonNegative(q.discountPct), { message: "discountPct must be ≥ 0" })
 
-export const GET = withRls(async (_req, { orgId, session }, { params }: { params: Promise<{ id: string }> }) => {
-  if (session?.role !== "superadmin" && !(await orgHasModule(orgId, "sales"))) return moduleDisabledResponse("sales")
-
+export const GET = withRlsAuth("offers", "read", async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
   try {
     const quote = await prisma.quote.findFirst({
@@ -148,9 +147,7 @@ export const GET = withRls(async (_req, { orgId, session }, { params }: { params
   }
 })
 
-export const PATCH = withRls(async (req, { orgId, session }, { params }: { params: Promise<{ id: string }> }) => {
-  if (session?.role !== "superadmin" && !(await orgHasModule(orgId, "sales"))) return moduleDisabledResponse("sales")
-
+export const PATCH = withRlsAuth("offers", "write", async (req, { orgId, userId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
   let body: unknown
   try {
@@ -384,7 +381,7 @@ export const PATCH = withRls(async (req, { orgId, session }, { params }: { param
           },
           rolledTotalAmount: rolled.totalAmount.toString(),
           dealCompanyId: dealForContract?.companyId ?? null,
-          createdByUserId: session?.userId ?? null,
+          createdByUserId: userId ?? null,
         })
         const created = await tx.contract.create({
           data: contractData,
@@ -465,7 +462,7 @@ export const PATCH = withRls(async (req, { orgId, session }, { params }: { param
     logAudit(orgId, "update", "quote", id, `${existing.quoteNumber} v${existing.version}`, {
       oldValue: { status: existing.status },
       newValue: { ...(input.status ? { status: input.status } : {}), ...(input.lineItems ? { lines: input.lineItems.length } : {}) },
-      userId: session?.userId ?? undefined,
+      userId,
     })
     return NextResponse.json({ quote: response, spawnedContract: updated.spawnedContract })
   } catch (err) {
@@ -495,9 +492,7 @@ export const PATCH = withRls(async (req, { orgId, session }, { params }: { param
   }
 })
 
-export const DELETE = withRls(async (_req, { orgId, session }, { params }: { params: Promise<{ id: string }> }) => {
-  if (session?.role !== "superadmin" && !(await orgHasModule(orgId, "sales"))) return moduleDisabledResponse("sales")
-
+export const DELETE = withRlsAuth("offers", "delete", async (_req, { orgId, userId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
   try {
     const existing = await prisma.quote.findFirst({
@@ -509,7 +504,7 @@ export const DELETE = withRls(async (_req, { orgId, session }, { params }: { par
     }
     // Cascade kicks in via FK ON DELETE CASCADE on quote_line_items.
     await prisma.quote.delete({ where: { id } })
-    logAudit(orgId, "delete", "quote", id, `${existing.quoteNumber} v${existing.version}`, { oldValue: { status: existing.status }, userId: session?.userId ?? undefined })
+    logAudit(orgId, "delete", "quote", id, `${existing.quoteNumber} v${existing.version}`, { oldValue: { status: existing.status }, userId })
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("[quotes/:id] DELETE error:", err)
