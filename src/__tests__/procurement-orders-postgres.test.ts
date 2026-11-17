@@ -594,6 +594,52 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     expect((await versionsRoute.POST(request(`http://localhost:3000/api/v1/quotes/${v1}/versions`, "POST"), ctx(v1))).status).toBe(403)
   })
 
+  it("Excel import: columns guessed from az/ru headers, duplicates and bad rows skipped, nothing fired for old contacts", async () => {
+    const ExcelJS = (await import("exceljs")).default
+    const route = await import("@/app/api/v1/imports/route")
+    const workbook = new ExcelJS.Workbook()
+    const sheet = workbook.addWorksheet("Təchizatçılar")
+    sheet.addRow(["Ad", "VÖEN", "Telefon", "E-poçt"])
+    sheet.addRow(["Akril Studio", "1400000001", "+994 50 111 11 11", "info@akril.example"])
+    sheet.addRow(["Wood Workshop", "", "", ""]) // already a supplier of this organization
+    sheet.addRow(["Bad Number", "12-34", "", ""])
+    sheet.addRow(["Akril Studio", "1400000001", "", ""]) // repeated in the file
+    const xlsx = Buffer.from(await workbook.xlsx.writeBuffer())
+    const send = (step: string, entity: string, file: File, mapping?: unknown) => {
+      const form = new FormData()
+      form.append("entity", entity)
+      form.append("step", step)
+      form.append("file", file)
+      if (mapping) form.append("mapping", JSON.stringify(mapping))
+      return route.POST(new NextRequest("http://localhost:3000/api/v1/imports", { method: "POST", body: form }))
+    }
+    const book = new File([xlsx], "suppliers.xlsx")
+    as("procurement")
+    const read = await json(await send("read", "suppliers", book))
+    expect(read.status).toBe(200)
+    expect(read.body.data.mapping).toEqual(["name", "voen", "phone", "email"])
+    const check = await json(await send("check", "suppliers", book, read.body.data.mapping))
+    expect(check.body.data).toMatchObject({ total: 4, created: 1, duplicateCount: 2, errorCount: 1, errors: [{ row: 4, message: "voen" }] })
+    expect(await bypass(() => prisma.company.count({ where: { organizationId: BUYER, name: "Akril Studio" } }))).toBe(0)
+    const done = await json(await send("import", "suppliers", book, read.body.data.mapping))
+    expect(done.body.data.created).toBe(1)
+    expect(await bypass(() => prisma.company.findMany({ where: { organizationId: BUYER, name: "Akril Studio" }, select: { category: true, voen: true } }))).toEqual([{ category: "supplier", voen: "1400000001" }])
+    // Sales cannot import suppliers.
+    as("sales")
+    expect((await send("read", "suppliers", book)).status).toBe(403)
+    // A Russian CSV with semicolons and a quoted comma, for contacts: no notification per old contact.
+    await bypass(() => prisma.notification.deleteMany({}))
+    const csv = new File([Buffer.from("\uFEFFФИО;Телефон;Компания\n\"Алиев, Рашад\";+994 55 000 00 01;Wood Workshop\nЛейла;+994 55 000 00 01;\n", "utf8")], "contacts.csv")
+    const contactRead = await json(await send("read", "contacts", csv))
+    expect(contactRead.body.data.mapping).toEqual(["fullName", "phone", "companyName"])
+    const contacts = await json(await send("import", "contacts", csv, contactRead.body.data.mapping))
+    expect(contacts.body.data).toMatchObject({ created: 1, duplicateCount: 1 })
+    const created = await bypass(() => prisma.contact.findMany({ where: { organizationId: BUYER, fullName: "Алиев, Рашад" }, select: { companyId: true, source: true } }))
+    expect(created).toEqual([{ companyId: supplierA, source: "import" }])
+    expect(await bypass(() => prisma.notification.count({ where: { organizationId: BUYER } }))).toBe(0)
+    expect(await bypass(() => prisma.auditLog.count({ where: { organizationId: BUYER, action: "import" } }))).toBe(2)
+  })
+
   it("eight requests saved at once get eight different numbers", async () => {
     as("sales")
     const results = await Promise.all(Array.from({ length: 8 }, () => requests.POST(request(`${API}/requests`, "POST", { title: "Paint", items: [{ name: "Paint", quantity: 2 }] }))))

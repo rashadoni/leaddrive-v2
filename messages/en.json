@@ -34332,5 +34332,60 @@
     "failed": "Could not record the approval",
     "required": "Fill in what it is now and who confirmed it",
     "cancel": "Cancel"
+  },
+  "excelImport": {
+    "button": "Import from Excel",
+    "title": {
+      "companies": "Import clients",
+      "suppliers": "Import suppliers",
+      "contacts": "Import contacts",
+      "products": "Import products"
+    },
+    "hint": "An .xlsx or .csv file up to 5 MB and 5000 rows; the first row holds the column names.",
+    "choose": "Choose file",
+    "reading": "Reading…",
+    "columns": "Which field each column goes to",
+    "skip": "— skip —",
+    "sample": "First rows",
+    "check": "Check",
+    "checking": "Checking…",
+    "willCreate": "Will be added: {n}",
+    "duplicates": "Already in the CRM or repeated in the file — skipped: {n}",
+    "errors": "Rows with errors — skipped: {n}",
+    "row": "Row {n}",
+    "import": "Import",
+    "importing": "Importing…",
+    "done": "Added: {n}",
+    "close": "Close",
+    "back": "Back",
+    "failed": "Could not read the file",
+    "errorField": {
+      "name": "no name",
+      "fullName": "no name",
+      "voen": "VÖEN is not ten digits",
+      "email": "e-mail is not valid",
+      "price": "price is not a number",
+      "currency": "unknown currency"
+    },
+    "fields": {
+      "name": "Name",
+      "voen": "VÖEN",
+      "phone": "Phone",
+      "email": "E-mail",
+      "website": "Website",
+      "address": "Address",
+      "city": "City",
+      "industry": "Industry",
+      "director": "Director",
+      "description": "Note",
+      "fullName": "Full name",
+      "position": "Position",
+      "companyName": "Company",
+      "category": "Category",
+      "source": "Source",
+      "sku": "Code (SKU)",
+      "price": "Price",
+      "currency": "Currency"
+    }
   }
 }

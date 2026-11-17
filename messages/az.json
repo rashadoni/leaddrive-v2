@@ -34328,5 +34328,60 @@
     "failed": "Təsdiqi qeyd etmək alınmadı",
     "required": "İndi nə olduğunu və kimin təsdiqlədiyini yazın",
     "cancel": "Ləğv et"
+  },
+  "excelImport": {
+    "button": "Excel-dən idxal",
+    "title": {
+      "companies": "Müştəriləri idxal et",
+      "suppliers": "Təchizatçıları idxal et",
+      "contacts": "Əlaqələri idxal et",
+      "products": "Məhsulları idxal et"
+    },
+    "hint": "5 MB və 5000 sətrə qədər .xlsx və ya .csv faylı; birinci sətirdə sütun adları olsun.",
+    "choose": "Fayl seç",
+    "reading": "Oxunur…",
+    "columns": "Hər sütun hansı sahəyə gedir",
+    "skip": "— keç —",
+    "sample": "İlk sətirlər",
+    "check": "Yoxla",
+    "checking": "Yoxlanılır…",
+    "willCreate": "Əlavə ediləcək: {n}",
+    "duplicates": "CRM-də artıq var və ya faylda təkrarlanır — keçildi: {n}",
+    "errors": "Səhvli sətirlər — keçildi: {n}",
+    "row": "Sətir {n}",
+    "import": "İdxal et",
+    "importing": "İdxal edilir…",
+    "done": "Əlavə edildi: {n}",
+    "close": "Bağla",
+    "back": "Geri",
+    "failed": "Faylı oxumaq alınmadı",
+    "errorField": {
+      "name": "ad yoxdur",
+      "fullName": "ad yoxdur",
+      "voen": "VÖEN on rəqəm deyil",
+      "email": "e-poçt düzgün deyil",
+      "price": "qiymət rəqəm deyil",
+      "currency": "naməlum valyuta"
+    },
+    "fields": {
+      "name": "Ad",
+      "voen": "VÖEN",
+      "phone": "Telefon",
+      "email": "E-poçt",
+      "website": "Sayt",
+      "address": "Ünvan",
+      "city": "Şəhər",
+      "industry": "Sahə",
+      "director": "Rəhbər",
+      "description": "Qeyd",
+      "fullName": "Ad Soyad",
+      "position": "Vəzifə",
+      "companyName": "Şirkət",
+      "category": "Kateqoriya",
+      "source": "Mənbə",
+      "sku": "Kod (artikul)",
+      "price": "Qiymət",
+      "currency": "Valyuta"
+    }
   }
 }

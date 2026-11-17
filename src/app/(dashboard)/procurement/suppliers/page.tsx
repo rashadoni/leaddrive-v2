@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
-import { Loader2, Plus, Search, Truck } from "lucide-react"
+import { Loader2, Plus, Search, Truck, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { checkPermission, type Role } from "@/lib/permissions"
 import { StatusTabs } from "@/components/procurement/status-tabs"
+import { ExcelImportDialog } from "@/components/excel-import-dialog"
 
 interface SupplierRow {
   id: string
@@ -48,6 +49,8 @@ export default function SuppliersPage() {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const ti = useTranslations("excelImport")
   const reads = useRef(0)
 
   const load = useCallback(async () => {
@@ -132,10 +135,16 @@ export default function SuppliersPage() {
           </div>
         </div>
         {canAdd && (
-          <Button onClick={() => setOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t("add")}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              {ti("button")}
+            </Button>
+            <Button onClick={() => setOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t("add")}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -218,6 +227,7 @@ export default function SuppliersPage() {
           </DialogFooter>
         </form>
       </Dialog>
+      <ExcelImportDialog open={importOpen} onOpenChange={setImportOpen} entity="suppliers" onImported={() => { void load() }} />
     </div>
   )
 }

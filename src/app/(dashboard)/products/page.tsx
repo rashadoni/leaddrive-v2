@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
+import { ExcelImportDialog } from "@/components/excel-import-dialog"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { HelpButton } from "@/components/help/help-button"
@@ -18,7 +19,7 @@ import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { InfoHint } from "@/components/info-hint"
 import { PageDescription } from "@/components/page-description"
 import { DidYouKnow } from "@/components/did-you-know"
-import { Package, Plus, Pencil, Trash2, DollarSign, Tag, Layers, CheckCircle, XCircle, Sparkles, Loader2 } from "lucide-react"
+import { Package, Plus, Pencil, Trash2, DollarSign, Tag, Layers, CheckCircle, XCircle, Sparkles, Loader2, Upload } from "lucide-react"
 import { Hint } from "@/components/hint"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -60,6 +61,8 @@ const categoryColors: Record<string, string> = {
 }
 
 export default function ProductsPage() {
+  const ti = useTranslations("excelImport")
+  const [importOpen, setImportOpen] = useState(false)
   const { data: session } = useSession()
   const router = useRouter()
   const t = useTranslations("products")
@@ -303,7 +306,10 @@ export default function ProductsPage() {
             <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>
-        <Button onClick={openCreate}><Plus className="h-4 w-4 mr-1" /> {t("newProduct")}</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-1" /> {ti("button")}</Button>
+          <Button onClick={openCreate}><Plus className="h-4 w-4 mr-1" /> {t("newProduct")}</Button>
+        </div>
       </div>
 
       <PageDescription text={t("pageDescription")} />
@@ -430,6 +436,7 @@ export default function ProductsPage() {
       </Dialog>
 
       <DeleteConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={confirmDelete} title={t("deleteProduct")} itemName={deleteItem?.name} />
+      <ExcelImportDialog open={importOpen} onOpenChange={setImportOpen} entity="products" onImported={() => { void fetchProducts() }} />
     </div>
   )
 }
