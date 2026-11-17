@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import { OrderStatusBadge, LateBadge } from "@/components/procurement/status-badge"
 import { formatDay, formatMoney } from "@/components/procurement/format"
 import { checkPermission, type Role } from "@/lib/permissions"
+import { StatusTabs } from "@/components/procurement/status-tabs"
 
 interface OrderRow {
   id: string
@@ -76,20 +77,7 @@ export default function PurchaseOrdersPage() {
         </div>
       </div>
 
-      <div className="flex w-fit flex-wrap gap-1 rounded-lg border p-1" role="tablist">
-        {TABS.map((value) => (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            aria-selected={tab === value}
-            onClick={() => setTab(value)}
-            className={`rounded-md px-3 py-1.5 text-sm ${tab === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-          >
-            {tabLabel(value)}
-          </button>
-        ))}
-      </div>
+      <StatusTabs tabs={TABS.map((value) => ({ id: value, label: tabLabel(value) }))} value={tab} onChange={setTab} />
 
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
