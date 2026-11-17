@@ -34136,6 +34136,14 @@
       "openOnly": "Open"
     },
     "orderDetail": {
+      "sendTitle": "Send to supplier",
+      "emailToSupplier": "E-mail the order PDF to the supplier",
+      "emailAddress": "Supplier e-mail",
+      "emailLanguage": "Language of the PDF",
+      "emailMessage": "Message (optional)",
+      "emailed": "E-mail sent",
+      "emailFailed": "The order is marked sent, but the e-mail did not go",
+      "emailAgain": "E-mail to supplier",
       "submit": "Send for approval",
       "approve": "Approve",
       "reject": "Reject",
@@ -34165,6 +34173,7 @@
         "delivery_date": "Delivery date changed",
         "receipt": "Goods received",
         "approval": "Approval step",
+        "emailed": "E-mailed to supplier",
         "overdue": "Supplier is late",
         "deal_changed": "Deal changed"
       },

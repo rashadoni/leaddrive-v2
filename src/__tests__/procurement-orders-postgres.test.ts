@@ -34,6 +34,20 @@ const scratch = vi.hoisted(() => {
 const session = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 
 vi.mock("@/lib/auth", () => ({ auth: async () => session.current }))
+/** The mailer is the one stand-in besides the session: what it was handed is what a supplier would get. */
+const mail = vi.hoisted(() => ({ sent: [] as { to: string; subject: string; attachment: { filename: string; bytes: number; pdf: boolean } | null }[], fail: false }))
+vi.mock("@/lib/email", async () => {
+  const fs = await import("node:fs")
+  return {
+    sendEmail: vi.fn(async (input: { to: string; subject: string; attachments?: { filename: string; path: string }[] }) => {
+      const file = input.attachments?.[0]
+      const bytes = file ? fs.readFileSync(file.path) : null
+      mail.sent.push({ to: input.to, subject: input.subject, attachment: file && bytes ? { filename: file.filename, bytes: bytes.length, pdf: bytes.subarray(0, 4).toString() === "%PDF" } : null })
+      ;(mail as unknown as { lastPath?: string }).lastPath = file?.path
+      return mail.fail ? { success: false, error: "smtp down" } : { success: true }
+    }),
+  }
+})
 vi.mock("@/lib/mobile-auth", async () => {
   const { makeMobileAuthMock } = await import("./mocks/mobile-auth")
   return makeMobileAuthMock()
@@ -408,6 +422,36 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     const sales = await json(await GET(request(`${API}/deals/${dealId}`, "GET"), ctx(dealId)))
     expect(sales.body.data.totals).toEqual({ revenue: null, cost: null, margin: null, marginPct: null })
     expect(sales.body.data.lines.every((line: { cost: unknown }) => line.cost === null)).toBe(true)
+  })
+
+  it("sending to the supplier e-mails the order's PDF, keeps no copy on disk and writes the outcome to the history", async () => {
+    const { cheapQuote } = await requestWithQuotes()
+    const orderId = await orderFrom(cheapQuote)
+    await act("procurement", orderId, "submit")
+    await act("manager", orderId, "approve")
+    await act("finance", orderId, "approve")
+    mail.sent = []
+    mail.fail = false
+    as("procurement")
+    const res = await json(await actions.POST(request(`${API}/orders/${orderId}/actions`, "POST", { action: "send", emailTo: "orders@wood.example", emailLang: "ru" }), ctx(orderId)))
+    expect(res.status).toBe(200)
+    expect(res.body.data).toEqual({ status: "sent", emailed: true })
+    expect(mail.sent).toHaveLength(1)
+    expect(mail.sent[0].to).toBe("orders@wood.example")
+    expect(mail.sent[0].subject).toMatch(/^Заказ поставщику PO-\d{4} — Tenant org-buyer$/)
+    expect(mail.sent[0].attachment).toMatchObject({ pdf: true })
+    expect(mail.sent[0].attachment!.bytes).toBeGreaterThan(1000)
+    const { existsSync } = await import("node:fs")
+    expect(existsSync((mail as unknown as { lastPath: string }).lastPath)).toBe(false)
+    // A failing mailer leaves the order sent and says so; sales cannot e-mail prices.
+    mail.fail = true
+    const again = await json(await (await import("@/app/api/v1/procurement/orders/[id]/email/route")).POST(request(`${API}/orders/${orderId}/email`, "POST", { to: "orders@wood.example" }), ctx(orderId)))
+    expect(again.status).toBe(502)
+    as("sales")
+    expect((await (await import("@/app/api/v1/procurement/orders/[id]/email/route")).POST(request(`${API}/orders/${orderId}/email`, "POST", { to: "x@y.example" }), ctx(orderId))).status).toBe(403)
+    const order = await orderRow(orderId)
+    expect(order.status).toBe("sent")
+    expect(order.events.filter((event) => event.type === "emailed").map((event) => (event.data as { ok: boolean }).ok).sort()).toEqual([false, true])
   })
 
   it("eight requests saved at once get eight different numbers", async () => {

@@ -34132,6 +34132,14 @@
       "openOnly": "Açıq"
     },
     "orderDetail": {
+      "sendTitle": "Təchizatçıya göndər",
+      "emailToSupplier": "Sifarişin PDF-ini təchizatçıya e-poçtla göndər",
+      "emailAddress": "Təchizatçının e-poçtu",
+      "emailLanguage": "PDF-in dili",
+      "emailMessage": "Mesaj (istəyə görə)",
+      "emailed": "Məktub göndərildi",
+      "emailFailed": "Sifariş göndərilmiş kimi qeyd edildi, amma məktub getmədi",
+      "emailAgain": "Təchizatçıya e-poçtla göndər",
       "submit": "Təsdiqə göndər",
       "approve": "Təsdiqlə",
       "reject": "Rədd et",
@@ -34161,6 +34169,7 @@
         "delivery_date": "Çatdırılma müddəti dəyişdi",
         "receipt": "Mal qəbul edildi",
         "approval": "Təsdiq addımı",
+        "emailed": "Təchizatçıya e-poçtla göndərildi",
         "overdue": "Təchizatçı gecikir",
         "deal_changed": "Sövdələşmə dəyişdi"
       },
