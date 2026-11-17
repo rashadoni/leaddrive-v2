@@ -59,6 +59,9 @@ const MAP = {
   // finance
   invoices: "finance", budgeting: "finance", profitability: "finance",
   pricing: "finance", payments: "finance", subscriptions: "finance", finance: "finance",
+  // procurement (docs/sales-procurement/README.md) — mirror only: no legacy
+  // record carries these ids, so no re-run is needed (BACKFILL_VERSION stays).
+  procurement: "procurement", "purchase-requests": "procurement", "procurement-costs": "procurement",
   // analytics
   reports: "analytics",
   // settings

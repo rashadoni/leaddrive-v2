@@ -17,6 +17,7 @@ import {
 import { applyRecordFilter } from "@/lib/sharing-rules"
 import { nonNegativeFinancialAmountSchema } from "@/lib/validation/numeric"
 import { voenInput } from "@/lib/companies/az-taxpayer-registry"
+import { NON_CUSTOMER_COMPANY_CATEGORIES } from "@/lib/procurement/suppliers"
 
 const createCompanySchema = z.object({
   name: z.string().min(1).max(200),
@@ -89,7 +90,7 @@ export const GET = withRlsAuth("companies", "read", async (req, auth) => {
   }
 
   try {
-    const categoryWhere = category && category !== "all" ? { category } : { category: { not: "partner" } }
+    const categoryWhere = category && category !== "all" ? { category } : { category: { notIn: [...NON_CUSTOMER_COMPANY_CATEGORIES] } }
 
     // The screen's tabs count every status of the chosen category, whatever
     // is typed in the search box — the same set the "All" tab shows.
@@ -151,7 +152,7 @@ export const GET = withRlsAuth("companies", "read", async (req, auth) => {
       })
     }
 
-    const baseWhere = { organizationId: orgId, category: { not: "partner" } }
+    const baseWhere = { organizationId: orgId, category: { notIn: [...NON_CUSTOMER_COMPANY_CATEGORIES] } }
 
     const [companies, total, agg] = await Promise.all([
       prisma.company.findMany({

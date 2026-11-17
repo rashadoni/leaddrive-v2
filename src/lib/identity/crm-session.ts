@@ -7,7 +7,7 @@ import { IDENTITY_AUTH_SETTING_KEY, isIdentityAuthExplicitlyEnabled } from "./te
 import { IDENTITY_PASSWORD_DUMMY_HASH, isCanonicalIdentityPasswordHash } from "./canonical-password"
 import { REVIEWER_ROLE } from "../reviewer-grant"
 
-const CRM_ROLES = ["admin", "manager", "sales", "support", "ticketing", "viewer"] as const
+const CRM_ROLES = ["admin", "manager", "sales", "support", "ticketing", "procurement", "finance", "viewer"] as const
 export type IdentityCrmRole = typeof CRM_ROLES[number]
 /** Private Auth.js authority hint. Not a JWT, cookie, bearer token or MFA proof.
  * Only verified server code may put this inside an Auth.js signed token.

@@ -286,6 +286,7 @@
     "onlineBooking": "Müştərinin boş vaxta özü yazıldığı link",
     "bookingWorkspace": "Komanda görüşləri, onlayn yazılış və yazılış səhifələri",
     "bookingServices": "Təklif etdiyiniz xidmətlər və yazılış linki",
+    "procurementSuppliers": "Kimdən alırsınız: əlaqə, VÖEN və tarixçə",
     "bookingWhatsApp": "Süni intellekt müştərini özü yazır",
     "bookingTeam": "İşçilərin iş günləri və kimin görüşlərini görürsünüz",
     "skillRouting": "Agent bacarıqları və bilet növbələri",
@@ -525,6 +526,8 @@
       "agent": "Agent",
       "support": "Dəstək agenti",
       "ticketing": "Tiket agenti",
+      "procurement": "Təchizat",
+      "finance": "Maliyyə",
       "other": "Komanda üzvü"
     },
     "noAgents": "Hələ agent yoxdur.",
@@ -547,6 +550,7 @@
     "onlineBooking": "Onlayn yazılış",
     "bookingWorkspace": "Cədvəl",
     "bookingServices": "Xidmətlər",
+    "procurementSuppliers": "Təchizatçılar",
     "bookingWhatsApp": "WhatsApp",
     "bookingTeam": "Komanda",
     "skillRouting": "Bacarıq marşrutu",
@@ -744,6 +748,7 @@
       "CRM": "Əsas",
       "Boards": "Lövhələr",
       "Booking": "Görüşlər",
+      "Procurement": "Təchizat",
       "Sales": "Satış",
       "Contracts Control": "Müqavilə nəzarəti",
       "Marketing": "Marketinq",
@@ -5265,6 +5270,9 @@
     "module_budgeting": "Büdcələmə",
     "module_profitability": "Rentabellik",
     "module_finance": "Maliyyə icmalı",
+    "module_procurement": "Təchizat",
+    "module_purchase-requests": "Satınalma sorğuları",
+    "module_procurement-costs": "Alış qiymətləri və marja",
     "moduleHint_finance": "Təchizatçı hesabları və onların ödənişi, ödəniş tapşırıqları və onların təsdiqi, bank hesabları, fondlar.",
     "module_users": "İstifadəçilər",
     "module_audit": "Audit log",
@@ -5532,6 +5540,8 @@
     "role_finance": "Maliyyə",
     "role_service_desk": "Dəstək xidməti",
     "role_ticketing": "Tiketinq",
+    "role_procurement": "Təchizat",
+    "role_finance": "Maliyyə",
     "role_superadmin": "Super Admin",
     "aiAutomationTitle": "AI Avtomatlaşdırma",
     "aiAutomationDesc": "AI funksiyalarını, kölgə əməliyyatlarını və büdcəni idarə edin",
@@ -10478,6 +10488,8 @@
     "role_agent": "Agent",
     "role_support": "Dəstək",
     "role_ticketing": "Tiket agenti",
+    "role_procurement": "Təchizat",
+    "role_finance": "Maliyyə",
     "showPreview": "Ardıcıllığa bax",
     "hidePreview": "Önizləməni gizlət",
     "actionType": "{number}-ci əməliyyatın növü",
@@ -27464,6 +27476,14 @@
           "Büdcələmə və maliyyə analitikası"
         ]
       },
+      "procurement": {
+        "name": "Təchizat",
+        "summary": "Hər müştəri sifarişi üçün alış edin və maya dəyərini görün.",
+        "benefits": [
+          "Sorğular, təchizatçı təklifləri və sifarişlər",
+          "Məbləğə görə təsdiq, çatdırılma müddəti və marja"
+        ]
+      },
       "analytics": {
         "name": "Hesabatlar və analitika",
         "summary": "Təşkilatın iş nəticələrinə baxın.",
@@ -33952,5 +33972,37 @@
     "customerSince": "{date} tarixindən",
     "channelsLabel": "Müştərinin yazdığı kanallar",
     "openCrmContact": "CRM-də aç →"
+  },
+  "procurement": {
+    "suppliers": {
+      "title": "Təchizatçılar",
+      "subtitle": "Alış etdiyiniz şirkətlər. Onlar müştərilərinizdən ayrı saxlanılır.",
+      "add": "Təchizatçı əlavə et",
+      "search": "Ad, VÖEN, telefon və ya e-poçt üzrə axtarış",
+      "empty": "Hələ təchizatçı yoxdur",
+      "emptyHint": "Material və xidmət aldığınız şirkətləri əlavə edin.",
+      "loadFailed": "Təchizatçıları yükləmək alınmadı",
+      "name": "Ad",
+      "voen": "VÖEN",
+      "director": "Rəhbər",
+      "phone": "Telefon",
+      "email": "E-poçt",
+      "website": "Sayt",
+      "address": "Ünvan",
+      "city": "Şəhər",
+      "notes": "Qeydlər",
+      "save": "Yadda saxla",
+      "cancel": "Ləğv et",
+      "saving": "Yadda saxlanılır…",
+      "created": "Təchizatçı əlavə edildi",
+      "createFailed": "Təchizatçını əlavə etmək alınmadı",
+      "invalidVoen": "VÖEN on rəqəmdir",
+      "nameRequired": "Adı daxil edin",
+      "activeTab": "Aktiv",
+      "inactiveTab": "Qeyri-aktiv",
+      "allTab": "Hamısı",
+      "count": "{count, plural, one {# təchizatçı} other {# təchizatçı}}",
+      "open": "Kartı aç"
+    }
   }
 }

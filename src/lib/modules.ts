@@ -1,6 +1,6 @@
 export const GROUP_MODULE_IDS = [
   "crm", "boards", "booking", "sales", "contracts", "marketing", "loyalty", "omnichannel", "social",
-  "voip", "support", "finance",
+  "voip", "support", "finance", "procurement",
   "analytics", "mtm", "health", "insurance", "public-sector", "media",
   "energy", "settings",
 ] as const
@@ -92,6 +92,11 @@ export const MODULE_REGISTRY: Record<ModuleId, ModuleDefinition> = {
   voip:             { name: "VoIP / Telephony",     requires: [] },
   support:          { name: "Support",             requires: ["crm"] },
   finance:          { name: "Finance",             requires: [] },
+  // Purchasing for a customer order (docs/sales-procurement/README.md, owner
+  // 2026-11-17): suppliers, purchase requests raised from a deal, supplier
+  // quotes, purchase orders with approval by amount. Off unless a tenant is
+  // given it — no migration writes it for anyone.
+  procurement:      { name: "Procurement",         requires: [] },
   analytics:        { name: "Analytics",           requires: [] },
   mtm:              { name: "Route & Field (MTM)", requires: [] },
   health:           { name: "Health Cloud",        requires: [] },
@@ -139,6 +144,10 @@ export const LEGACY_MODULE_MAP: Record<string, GroupModuleId> = {
   // тот же тенантный модуль: бридж оставляет модульный гейт на `social`.
   "social-legal": "social",
   tickets: "support", "knowledge-base": "support", kb: "support", portal: "support",
+  // Procurement (docs/sales-procurement/README.md): purchase orders and
+  // suppliers, the requests sales raises from a deal, and the purchase prices,
+  // costs and margins only management and finance read.
+  procurement: "procurement", "purchase-requests": "procurement", "procurement-costs": "procurement",
   invoices: "finance", budgeting: "finance", profitability: "finance",
   pricing: "finance", payments: "finance", subscriptions: "finance", finance: "finance",
   reports: "analytics",

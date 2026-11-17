@@ -218,8 +218,9 @@ const expectedDomains = sorted(new Set([
   "sms-otp",
   ...intentionallyUngated,
 ]))
-// 29 since 2026-11-10: meetings became the tenant module `booking` of its own.
-assert.equal(expectedDomains.length, 29, "the governed product-domain boundary changed")
+// 29 since 2026-11-10: meetings became the tenant module `booking` of its own;
+// 30 since 2026-11-17: purchasing for a customer order, `procurement`.
+assert.equal(expectedDomains.length, 30, "the governed product-domain boundary changed")
 
 const topics = await readJson("ops/event-platform/topics.v1.json")
 assert.equal(topics.status, "template-not-applied")
@@ -279,8 +280,9 @@ for (const topic of topics.controlTopics) {
   assert.equal(topic.config["unclean.leader.election.enable"], "false", `${topic.name} unclean election`)
   expandedNames.push(topic.name.replace("<env>", "ci"))
 }
-// 29 domains x 3 topic families, plus the control topics: 92 since 2026-11-10.
-assert.equal(expandedNames.length, 92)
+// 29 domains x 3 topic families, plus the control topics: 92 since 2026-11-10;
+// 95 since 2026-11-17 (the `procurement` domain).
+assert.equal(expandedNames.length, 95)
 unique(expandedNames, "expanded physical topic names")
 
 const connector = await readJson("ops/event-platform/debezium/event-outbox-connector.template.json")

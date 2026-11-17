@@ -17,8 +17,9 @@ describe("event-platform governance catalog", () => {
     ].sort()
     const actual = EVENT_DOMAIN_CATALOG.flatMap(({ scopes }) => scopes).sort()
 
-    // 22 since 2026-11-10: meetings are the `booking` module of their own.
-    expect(Object.keys(MODULE_REGISTRY)).toHaveLength(22)
+    // 22 since 2026-11-10: meetings are the `booking` module of their own;
+    // 23 since 2026-11-17: purchasing for a customer order, `procurement`.
+    expect(Object.keys(MODULE_REGISTRY)).toHaveLength(23)
     expect(BUSINESS_UNGATED_EVENT_SCOPES).toHaveLength(7)
     expect([...BUSINESS_UNGATED_EVENT_SCOPES].sort()).toEqual(
       [...INTENTIONALLY_UNGATED]

@@ -19,13 +19,14 @@ function parse(text) {
   }))
 }
 
+// 95 topics / 1506 partitions since 2026-11-17: the `procurement` domain joined the map.
 // 92 topics / 1476 partitions since 2026-11-10: the `booking` domain joined the
 // map when meetings became a tenant module of their own.
-test('catalog expands to the 92 governed topics with effective safety configs', () => {
+test('catalog expands to the 95 governed topics with effective safety configs', () => {
   const topics = expandCatalog(catalog, 'prod')
-  assert.equal(topics.length, 92)
-  assert.equal(new Set(topics.map((t) => t.name)).size, 92)
-  assert.equal(topics.reduce((sum, t) => sum + t.partitions, 0), 1476)
+  assert.equal(topics.length, 95)
+  assert.equal(new Set(topics.map((t) => t.name)).size, 95)
+  assert.equal(topics.reduce((sum, t) => sum + t.partitions, 0), 1506)
   for (const topic of topics) {
     assert.match(topic.name, /^ld\.prod\./)
     assert.equal(topic.replicationFactor, 3)

@@ -33,7 +33,7 @@ export type RoleAccessMap = Record<string, Record<string, AccessLevel>>
 export const ACCESS_LEVELS: readonly AccessLevel[] = ["full", "edit", "view", "none"]
 
 /** Roles whose rights an organization may change. */
-export const EDITABLE_ROLES = ["manager", "sales", "support", "ticketing", "viewer"] as const
+export const EDITABLE_ROLES = ["manager", "sales", "support", "ticketing", "procurement", "finance", "viewer"] as const
 
 /** Scopes no organization setting may touch. */
 export const LOCKED_SCOPES: ReadonlySet<string> = new Set([
@@ -45,6 +45,7 @@ export const EDITABLE_SCOPES: ReadonlySet<string> = new Set([
   "companies", "contacts", "projects", "tasks", "deals", "leads", "offers", "contracts",
   "campaigns", "journeys", "segments", "events", "loyalty", "inbox", "social", "voip",
   "tickets", "kb", "invoices", "finance", "budgeting", "profitability", "pricing", "reports",
+  "procurement", "purchase-requests", "procurement-costs",
   "health", "insurance", "public-sector", "media", "energy-utilities", "ai",
 ])
 

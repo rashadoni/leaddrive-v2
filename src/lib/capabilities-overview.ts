@@ -31,6 +31,7 @@ export const CAPABILITIES_OVERVIEW_CATALOG: readonly OverviewDefinition[] = [
   { id: "personnel", module: "mtm", goal: "team", capabilityId: "personnel", openPath: "/mtm/attendance", setupPath: "/mtm/attendance/settings" },
   { id: "contracts", module: "contracts", goal: "operations", openPath: "/contracts" },
   { id: "finance", module: "finance", goal: "operations" },
+  { id: "procurement", module: "procurement", goal: "operations", openPath: "/procurement/suppliers" },
   { id: "analytics", module: "analytics", goal: "operations" },
   { id: "social", module: "social", goal: "operations", capabilityId: "brand-monitoring", openPath: "/social-monitoring" },
   { id: "ai", module: "ai", goal: "operations", capabilityId: "da-vinci-ai" },

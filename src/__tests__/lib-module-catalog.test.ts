@@ -13,7 +13,7 @@ describe("group-module registry", () => {
   it("has exactly the sidebar group-modules", () => {
     expect([...GROUP_MODULE_IDS].sort()).toEqual([
       "analytics", "boards", "booking", "contracts", "crm", "energy", "finance", "health",
-      "insurance", "loyalty", "marketing", "media", "mtm", "omnichannel",
+      "insurance", "loyalty", "marketing", "media", "mtm", "omnichannel", "procurement",
       "public-sector", "sales", "settings", "social", "support", "voip",
     ])
   })

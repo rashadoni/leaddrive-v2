@@ -33,7 +33,7 @@ import {
   // Phase 7 Industry Cloud icons
   HeartPulse, Umbrella, Landmark, Tv2, Flame,
   ClipboardPlus, FileBadge, FileCheck, Radio, PackageOpen,
-  KeyRound,
+  KeyRound, Truck,
 } from "lucide-react"
 
 export type MtmNavSection = "daily" | "reference" | "control" | "results" | "administration"
@@ -365,6 +365,10 @@ export const navItems: NavItem[] = [
   { module: "finance", href: "/finance", icon: Wallet, tKey: "finance", group: "Finance", permissionScope: "finance" },
   { module: "finance", href: "/profitability", icon: Calculator, tKey: "profitability", group: "Finance", permissionScope: "profitability" },
   { module: "finance", href: "/pricing", icon: DollarSign, tKey: "pricing", group: "Finance" },
+  // ── Procurement ──────────────────────────────────────────────────────────
+  // Purchasing for a customer order (docs/sales-procurement/README.md): its own
+  // module, off unless a tenant is given it.
+  { module: "procurement", href: "/procurement/suppliers", icon: Truck, tKey: "procurementSuppliers", group: "Procurement", permissionScope: "procurement" },
   { module: "analytics", href: "/reports", icon: BarChart3, tKey: "reports", group: "Analytics" },
   { module: "analytics", href: "/reports/builder", icon: FileSpreadsheet, tKey: "reportBuilder", group: "Analytics" },
   { module: "analytics", href: "/ai/actions", icon: Inbox, tKey: "aiActions", group: "Analytics", addon: "ai" },
@@ -580,6 +584,7 @@ export const GROUP_LAUNCHER_STYLE: Record<string, { chip: string; icon: string; 
   VoIP:                 { chip: "bg-cyan-500/15",    icon: "text-cyan-600",    dot: "bg-cyan-500" },
   Support:              { chip: "bg-emerald-500/15", icon: "text-emerald-500", dot: "bg-emerald-500" },
   Finance:              { chip: "bg-amber-500/15",   icon: "text-amber-600",   dot: "bg-amber-500" },
+  Procurement:          { chip: "bg-orange-500/15",  icon: "text-orange-600",  dot: "bg-orange-500" },
   Analytics:            { chip: "bg-purple-500/15",  icon: "text-purple-500",  dot: "bg-purple-500" },
   ERP:                  { chip: "bg-indigo-500/15",  icon: "text-indigo-500",  dot: "bg-indigo-500" },
   "Route & Field":      { chip: "bg-cyan-500/15",    icon: "text-cyan-500",    dot: "bg-cyan-500" },

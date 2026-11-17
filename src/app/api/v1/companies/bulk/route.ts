@@ -15,7 +15,7 @@ import { checkPermission } from "@/lib/permissions"
  * Supported actions (v1):
  *   - delete         — bulk delete (re-checks companies:delete permission)
  *   - update_status  — bulk-set status (active/inactive/prospect)
- *   - update_category — bulk-set category (client/partner/prospect/inactive)
+ *   - update_category — bulk-set category (client/partner/prospect/inactive/supplier)
  *
  * Reassign deliberately omitted — Company has no direct `assignedTo` FK
  * (ownership is via the user's territory / sharing rules, not a column).
@@ -24,7 +24,7 @@ import { checkPermission } from "@/lib/permissions"
  */
 
 const STATUS_VALUES = ["active", "inactive", "prospect"] as const
-const CATEGORY_VALUES = ["client", "partner", "prospect", "inactive"] as const
+const CATEGORY_VALUES = ["client", "partner", "prospect", "inactive", "supplier"] as const
 
 const bulkSchema = z.object({
   ids: z.array(z.string()).min(1).max(100),

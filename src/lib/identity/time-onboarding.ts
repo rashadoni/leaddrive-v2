@@ -25,7 +25,7 @@ export async function readLegacyTimeCandidate(tx: Prisma.TransactionClient, admi
   const [person] = await tx.$queryRaw<Array<{ id: string; name: string; role: string; phone: string | null; updatedAt: Date }>>`
     SELECT id,name,role,phone,"updatedAt" FROM users WHERE "organizationId"=${organizationId} AND id=${userId}
     AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
-  if (!person || !["admin", "manager", "sales", "support", "ticketing", "viewer"].includes(person.role)) return null
+  if (!person || !["admin", "manager", "sales", "support", "ticketing", "procurement", "finance", "viewer"].includes(person.role)) return null
   const cards = await tx.$queryRaw<Array<{ id: string; name: string; role: string; status: string; phone: string | null;
     attendanceParticipant: boolean; attendanceExcluded: boolean; updatedAt: Date }>>`
     SELECT id,name,role,status,phone,"attendanceParticipant","attendanceExcluded","updatedAt" FROM mtm_agents

@@ -58,6 +58,7 @@ export const HIDEABLE_MODULE_SCOPES: Record<UserHideableId, readonly string[]> =
   voip: ["voip"],
   support: ["tickets", "kb"],
   finance: ["invoices", "finance", "budgeting", "profitability", "pricing"],
+  procurement: ["procurement", "purchase-requests", "procurement-costs"],
   analytics: ["reports"],
   mtm: ["mtm"],
   health: ["health"],
