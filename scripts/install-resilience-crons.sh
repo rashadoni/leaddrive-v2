@@ -132,6 +132,9 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # What 1C sold each pharmacy, for the line's ear (zeytun-sales-history.ts): two minutes of
   # one-at-a-time Get_Sales requests per tick at most; a no-op without its private connection file.
   printf '%s\n' "3-59/15 * * * * $TRIGGER /api/cron/zeytun-sales-history >> $LOG 2>&1"
+  # Purchasing (docs/sales-procurement/README.md, task 3.6): purchase orders whose supplier
+  # is late are marked and their people told, once per date. Hourly, leased, bounded to 200.
+  printf '%s\n' "43 * * * * $TRIGGER /api/cron/procurement-overdue >> $LOG 2>&1"
   # Durable AI lead queues advance by at most one state transition per tenant
   # per tick. Dispatch remains a no-op unless both the server execution flag
   # and the tenant's VoIP queue switch are explicitly enabled.

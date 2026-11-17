@@ -2,7 +2,7 @@
  * The shell event watcher: one look at the database every two seconds for all
  * connected organisations, and an event only for what a tab would see change.
  *
- * Prisma is a stub that answers like the real tables do for the four queries;
+ * Prisma is a stub that answers like the real tables do for its six queries;
  * the test moves rows in and out of it and reads which events come out.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -15,6 +15,8 @@ const db = vi.hoisted(() => ({
   notifications: [] as Recent[],
   tickets: [] as Recent[],
   chats: [] as Recent[],
+  purchaseOrders: [] as Recent[],
+  purchaseRequests: [] as Recent[],
   fail: false,
   queries: 0,
 }))
@@ -57,6 +59,22 @@ vi.mock("@/lib/prisma", () => {
           }))
         }),
       },
+      purchaseOrder: {
+        groupBy: vi.fn(async ({ where }: { where: { organizationId: { in: string[] } } }) => {
+          guard()
+          return db.purchaseOrders.filter((row) => inOrgs(where, row)).map((row) => ({
+            organizationId: row.organizationId, _count: { _all: row.count }, _max: { updatedAt: row.newest },
+          }))
+        }),
+      },
+      purchaseRequest: {
+        groupBy: vi.fn(async ({ where }: { where: { organizationId: { in: string[] } } }) => {
+          guard()
+          return db.purchaseRequests.filter((row) => inOrgs(where, row)).map((row) => ({
+            organizationId: row.organizationId, _count: { _all: row.count }, _max: { updatedAt: row.newest },
+          }))
+        }),
+      },
     },
   }
 })
@@ -84,6 +102,8 @@ beforeEach(() => {
   db.notifications = []
   db.tickets = []
   db.chats = []
+  db.purchaseOrders = []
+  db.purchaseRequests = []
   db.fail = false
   db.queries = 0
   vi.clearAllMocks()
@@ -188,7 +208,8 @@ describe("shell event watcher", () => {
     await vi.advanceTimersByTimeAsync(0)
     db.queries = 0
     await tick(5)
-    expect(db.queries).toBe(5 * 4)
+    // Six queries a look: calls, notifications, tickets, chats, purchase orders and requests.
+    expect(db.queries).toBe(5 * 6)
 
     for (const tab of tabs) tab.unsubscribe()
     db.queries = 0
@@ -241,5 +262,19 @@ describe("shell event watcher", () => {
       const where = (vi.mocked(prisma[model].groupBy).mock.calls[0][0] as { where: Record<string, { gt: Date }> }).where
       expect({ model, since: where[field].gt.toISOString() }).toEqual({ model, since: "2026-10-27T08:50:00.000Z" })
     }
+  })
+
+  it("announces a purchase request or order that moved, so both departments read the deal again", async () => {
+    const { heard } = listen()
+    await tick()
+    expect(heard).toEqual([])
+    db.purchaseOrders = [{ organizationId: ORG, count: 1, newest: at("2026-10-27T09:00:03.000Z") }]
+    await tick()
+    expect(heard).toEqual([{ kind: "procurement" }])
+    db.purchaseRequests = [{ organizationId: ORG, count: 1, newest: at("2026-10-27T09:00:05.000Z") }]
+    await tick()
+    expect(heard).toEqual([{ kind: "procurement" }, { kind: "procurement" }])
+    await tick()
+    expect(heard).toHaveLength(2)
   })
 })

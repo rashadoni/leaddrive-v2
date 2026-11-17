@@ -45,6 +45,6 @@ export const DELETE = withRlsAuth("deals", "write", async (req, { orgId, userId 
   if (!current) return NextResponse.json({ error: "Deal not found" }, { status: 404 })
   const lines = current.lines
     .filter((line) => line.productId !== parsed.data.productId)
-    .map(({ productId, name, sku, quantity, unitPrice, discountPct }) => ({ productId, name, sku, quantity, unitPrice, discountPct }))
+    .map(({ id: lineId, productId, name, sku, quantity, unitPrice, discountPct }) => ({ id: lineId, productId, name, sku, quantity, unitPrice, discountPct }))
   return NextResponse.json({ success: true, data: await replaceDealLines(orgId, userId ?? null, id, lines) })
 })

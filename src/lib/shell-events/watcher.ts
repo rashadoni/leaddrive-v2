@@ -23,7 +23,7 @@ import { logOperationalFailure } from "@/lib/telemetry/operational-failure"
  * route it always used, with that route's permission check.
  */
 
-export type ShellEventKind = "calls" | "notifications" | "tickets" | "webchat"
+export type ShellEventKind = "calls" | "notifications" | "tickets" | "webchat" | "procurement"
 
 /** `userIds` names the recipients of a notifications event; "" is everyone in the organisation. */
 export type ShellEvent = { kind: ShellEventKind; userIds?: string[] }
@@ -149,7 +149,7 @@ function requestTick(w: Watcher, delayMs: number) {
 async function readSignals(orgs: string[], now: number) {
   const since = new Date(now - RECENT_WINDOW_MS)
   return runWithRlsBypass(async () => {
-    const [calls, notifications, tickets, chats] = await Promise.all([
+    const [calls, notifications, tickets, chats, orders, requests] = await Promise.all([
       prisma.callLog.findMany({
         where: {
           organizationId: { in: orgs },
@@ -178,8 +178,22 @@ async function readSignals(orgs: string[], now: number) {
         _count: { _all: true },
         _max: { lastMessageAt: true },
       }),
+      // Purchasing for a customer order: any request or purchase order that
+      // moved — the deal tab and the purchasing lists of both departments read again.
+      prisma.purchaseOrder.groupBy({
+        by: ["organizationId"],
+        where: { organizationId: { in: orgs }, updatedAt: { gt: since } },
+        _count: { _all: true },
+        _max: { updatedAt: true },
+      }),
+      prisma.purchaseRequest.groupBy({
+        by: ["organizationId"],
+        where: { organizationId: { in: orgs }, updatedAt: { gt: since } },
+        _count: { _all: true },
+        _max: { updatedAt: true },
+      }),
     ])
-    return { calls, notifications, tickets, chats }
+    return { calls, notifications, tickets, chats, procurement: [...orders, ...requests] }
   })
 }
 
@@ -208,7 +222,7 @@ async function tick(w: Watcher) {
   const events: Array<{ orgId: string; event: ShellEvent }> = []
   try {
     const now = Date.now()
-    const { calls, notifications, tickets, chats } = await withinTime(readSignals(orgs, now), TICK_TIMEOUT_MS)
+    const { calls, notifications, tickets, chats, procurement } = await withinTime(readSignals(orgs, now), TICK_TIMEOUT_MS)
 
     // Which calls a popup shows depends on status and on whether a browser
     // claim is still fresh — and a claim lapses without anything being written.
@@ -224,6 +238,12 @@ async function tick(w: Watcher) {
     const nextRecent = new Map<string, Recent>()
     for (const row of tickets) {
       nextRecent.set(`tickets:${row.organizationId}`, { count: row._count._all, newest: row._max.createdAt?.getTime() ?? 0 })
+    }
+    for (const row of procurement) {
+      const key = `procurement:${row.organizationId}`
+      const previous = nextRecent.get(key)
+      const newest = row._max.updatedAt?.getTime() ?? 0
+      nextRecent.set(key, { count: (previous?.count ?? 0) + row._count._all, newest: Math.max(previous?.newest ?? 0, newest) })
     }
     for (const row of chats) {
       nextRecent.set(`webchat:${row.organizationId}`, { count: row._count._all, newest: row._max.lastMessageAt?.getTime() ?? 0 })
@@ -241,7 +261,7 @@ async function tick(w: Watcher) {
       if (known && w.calls.get(callsKey) !== print) events.push({ orgId, event: { kind: "calls" } })
       w.calls.set(callsKey, print)
 
-      for (const kind of ["tickets", "webchat"] as const) {
+      for (const kind of ["tickets", "webchat", "procurement"] as const) {
         const key = `${kind}:${orgId}`
         const next = nextRecent.get(key)
         if (next) {

@@ -15,8 +15,8 @@ import { startVisibleInterval } from "@/lib/client/visible-interval"
  * whenever it stays down, every consumer polls exactly as it did before.
  */
 
-export type ShellEventKind = "calls" | "notifications" | "tickets" | "webchat"
-const KINDS: ShellEventKind[] = ["calls", "notifications", "tickets", "webchat"]
+export type ShellEventKind = "calls" | "notifications" | "tickets" | "webchat" | "procurement"
+const KINDS: ShellEventKind[] = ["calls", "notifications", "tickets", "webchat", "procurement"]
 
 /** "connecting": wait, the first read follows `connected` or the fallback. */
 type Mode = "connecting" | "live" | "fallback"
