@@ -28,7 +28,7 @@
 import { NextResponse } from "next/server"
 import { Prisma, type QuoteLineItem } from "@prisma/client"
 import { z } from "zod"
-import { prisma } from "@/lib/prisma"
+import { prisma, logAudit } from "@/lib/prisma"
 import { orgHasModule, moduleDisabledResponse } from "@/lib/api-auth"
 import { withRls } from "@/lib/with-rls"
 import { rollUpQuote } from "@/lib/cpq/totals"
@@ -462,6 +462,11 @@ export const PATCH = withRls(async (req, { orgId, session }, { params }: { param
       }
     }
 
+    logAudit(orgId, "update", "quote", id, `${existing.quoteNumber} v${existing.version}`, {
+      oldValue: { status: existing.status },
+      newValue: { ...(input.status ? { status: input.status } : {}), ...(input.lineItems ? { lines: input.lineItems.length } : {}) },
+      userId: session?.userId ?? undefined,
+    })
     return NextResponse.json({ quote: response, spawnedContract: updated.spawnedContract })
   } catch (err) {
     // Slice-3 piece-4.5: surface unique-constraint violations from the
@@ -497,13 +502,14 @@ export const DELETE = withRls(async (_req, { orgId, session }, { params }: { par
   try {
     const existing = await prisma.quote.findFirst({
       where: { id, organizationId: orgId },
-      select: { id: true },
+      select: { id: true, quoteNumber: true, version: true, status: true },
     })
     if (!existing) {
       return NextResponse.json({ error: "Quote not found" }, { status: 404 })
     }
     // Cascade kicks in via FK ON DELETE CASCADE on quote_line_items.
     await prisma.quote.delete({ where: { id } })
+    logAudit(orgId, "delete", "quote", id, `${existing.quoteNumber} v${existing.version}`, { oldValue: { status: existing.status }, userId: session?.userId ?? undefined })
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("[quotes/:id] DELETE error:", err)

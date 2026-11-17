@@ -11,6 +11,11 @@ import { isLate } from "@/lib/procurement/orders"
  * Per line of the deal: the furthest stage any purchase for it reached, the
  * expected date, whether it is late, and its cost — the committed (approved or
  * later) order lines bought for it. Margin = deal lines' revenue − that cost.
+ *
+ * There are no exchange rates in the product: an order in another currency
+ * than the deal is not added to its cost. It is reported as `foreignCost`
+ * (per currency) and the margin is then null — a number that looks exact and
+ * is wrong is worse than none.
  */
 export type LineStage = "not_requested" | "requested" | "quoting" | "ordered" | "approved" | "sent" | "in_production" | "in_transit" | "partially_received" | "received"
 
@@ -68,16 +73,20 @@ export async function dealProcurementSummary(orgId: string, dealId: string, now 
       stage = later(stage, s)
       if (order.expectedDeliveryAt && order.status !== "received" && (!expected || order.expectedDeliveryAt > expected)) expected = order.expectedDeliveryAt
       if (isLate(order, now)) late = true
-      if ((COMMITTED_STATUSES as readonly string[]).includes(order.status)) cost += own.reduce((sum, item) => sum + Number(item.total), 0)
+      if ((COMMITTED_STATUSES as readonly string[]).includes(order.status) && order.currency === deal.currency) cost += own.reduce((sum, item) => sum + Number(item.total), 0)
     }
     return { dealLineItemId: line.id, name: line.name, quantity: Number(line.quantity), revenue, stage, expectedDeliveryAt: expected, late, cost }
   })
 
   const revenue = lines.reduce((sum, line) => sum + (line.revenue ?? 0), 0)
   // Cost of orders not tied to a line still costs the deal.
-  const cost = orders
-    .filter((order) => (COMMITTED_STATUSES as readonly string[]).includes(order.status))
-    .reduce((sum, order) => sum + Number(order.totalAmount), 0)
+  const committed = orders.filter((order) => (COMMITTED_STATUSES as readonly string[]).includes(order.status))
+  const cost = committed.filter((order) => order.currency === deal.currency).reduce((sum, order) => sum + Number(order.totalAmount), 0)
+  const foreignCost: Record<string, number> = {}
+  for (const order of committed) {
+    if (order.currency !== deal.currency) foreignCost[order.currency] = (foreignCost[order.currency] ?? 0) + Number(order.totalAmount)
+  }
+  const exact = Object.keys(foreignCost).length === 0
   const ready = lines.filter((line) => line.stage === "received").length
   const pending = lines.filter((line) => line.expectedDeliveryAt && line.stage !== "received")
   let nextExpected: Date | null = null
@@ -88,7 +97,13 @@ export async function dealProcurementSummary(orgId: string, dealId: string, now 
   return {
     currency: deal.currency,
     lines,
-    totals: { revenue, cost, margin: revenue - cost, marginPct: revenue > 0 ? Math.round(((revenue - cost) / revenue) * 1000) / 10 : null },
+    totals: {
+      revenue,
+      cost,
+      margin: exact ? revenue - cost : null,
+      marginPct: exact && revenue > 0 ? Math.round(((revenue - cost) / revenue) * 1000) / 10 : null,
+      foreignCost: exact ? null : foreignCost,
+    },
     summary: { ready, total: lines.length, late: lines.some((line) => line.late), nextExpected, dealChanged: requests.some((r) => r.dealChangedAt) || orders.some((o) => o.dealChangedAt) },
     requests: requests.map((request: RequestRow) => ({ id: request.id, title: request.title, status: request.status, neededBy: request.neededBy, dealChangedAt: request.dealChangedAt, number: procurementNumber("request", request.seq) })),
     orders: orders.map((order: OrderRow) => ({

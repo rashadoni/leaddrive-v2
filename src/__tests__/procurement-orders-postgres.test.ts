@@ -22,6 +22,8 @@ if (!adminUrl && process.env.PROCUREMENT_DB_GATE === "required") {
 }
 
 const scratch = vi.hoisted(() => {
+  // Files of a deal are sealed with the organization's key (test value, not a credential).
+  process.env.TENANT_PII_MASTER_KEY = "7".repeat(64)
   const admin = process.env.PROCUREMENT_TEST_DATABASE_URL
   if (!admin) return null
   const name = `procurement_orders_${process.pid}`
@@ -34,6 +36,25 @@ const scratch = vi.hoisted(() => {
 const session = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 
 vi.mock("@/lib/auth", () => ({ auth: async () => session.current }))
+/** The mailer is the one stand-in besides the session: what it was handed is what a supplier would get. */
+const mail = vi.hoisted(() => ({ sent: [] as { to: string; subject: string; attachment: { filename: string; bytes: number; pdf: boolean } | null }[], fail: false }))
+vi.mock("@/lib/email", async () => {
+  const fs = await import("node:fs")
+  return {
+    sendEmail: vi.fn(async (input: { to: string; subject: string; attachments?: { filename: string; path: string }[] }) => {
+      const file = input.attachments?.[0]
+      const bytes = file ? fs.readFileSync(file.path) : null
+      mail.sent.push({ to: input.to, subject: input.subject, attachment: file && bytes ? { filename: file.filename, bytes: bytes.length, pdf: bytes.subarray(0, 4).toString() === "%PDF" } : null })
+      ;(mail as unknown as { lastPath?: string }).lastPath = file?.path
+      return mail.fail ? { success: false, error: "smtp down" } : { success: true }
+    }),
+  }
+})
+/** Outgoing webhooks as the organization's systems would receive them (task 6.4). */
+const hooks = vi.hoisted(() => ({ fired: [] as { event: string; data: Record<string, unknown> }[] }))
+vi.mock("@/lib/webhooks", () => ({
+  fireWebhooks: vi.fn(async (_orgId: string, event: string, data: Record<string, unknown>) => { hooks.fired.push({ event, data }) }),
+}))
 vi.mock("@/lib/mobile-auth", async () => {
   const { makeMobileAuthMock } = await import("./mocks/mobile-auth")
   return makeMobileAuthMock()
@@ -402,12 +423,248 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     const finance = await json(await GET(request(`${API}/deals/${dealId}`, "GET"), ctx(dealId)))
     expect(finance.status).toBe(200)
     expect(finance.body.data.lines.map((line: { stage: string; cost: number }) => [line.stage, line.cost])).toEqual([["sent", 1200], ["sent", 600]])
-    expect(finance.body.data.totals).toEqual({ revenue: 5000, cost: 1800, margin: 3200, marginPct: 64 })
+    expect(finance.body.data.totals).toEqual({ revenue: 5000, cost: 1800, margin: 3200, marginPct: 64, foreignCost: null })
     expect(finance.body.data.summary).toMatchObject({ ready: 0, total: 2 })
     as("sales")
     const sales = await json(await GET(request(`${API}/deals/${dealId}`, "GET"), ctx(dealId)))
-    expect(sales.body.data.totals).toEqual({ revenue: null, cost: null, margin: null, marginPct: null })
+    expect(sales.body.data.totals).toEqual({ revenue: null, cost: null, margin: null, marginPct: null, foreignCost: null })
     expect(sales.body.data.lines.every((line: { cost: unknown }) => line.cost === null)).toBe(true)
+  })
+
+  it("sending to the supplier e-mails the order's PDF, keeps no copy on disk and writes the outcome to the history", async () => {
+    const { cheapQuote } = await requestWithQuotes()
+    const orderId = await orderFrom(cheapQuote)
+    await act("procurement", orderId, "submit")
+    await act("manager", orderId, "approve")
+    await act("finance", orderId, "approve")
+    mail.sent = []
+    mail.fail = false
+    as("procurement")
+    const res = await json(await actions.POST(request(`${API}/orders/${orderId}/actions`, "POST", { action: "send", emailTo: "orders@wood.example", emailLang: "ru" }), ctx(orderId)))
+    expect(res.status).toBe(200)
+    expect(res.body.data).toEqual({ status: "sent", emailed: true })
+    expect(mail.sent).toHaveLength(1)
+    expect(mail.sent[0].to).toBe("orders@wood.example")
+    expect(mail.sent[0].subject).toMatch(/^Заказ поставщику PO-\d{4} — Tenant org-buyer$/)
+    expect(mail.sent[0].attachment).toMatchObject({ pdf: true })
+    expect(mail.sent[0].attachment!.bytes).toBeGreaterThan(1000)
+    const { existsSync } = await import("node:fs")
+    expect(existsSync((mail as unknown as { lastPath: string }).lastPath)).toBe(false)
+    // A failing mailer leaves the order sent and says so; sales cannot e-mail prices.
+    mail.fail = true
+    const again = await json(await (await import("@/app/api/v1/procurement/orders/[id]/email/route")).POST(request(`${API}/orders/${orderId}/email`, "POST", { to: "orders@wood.example" }), ctx(orderId)))
+    expect(again.status).toBe(502)
+    as("sales")
+    expect((await (await import("@/app/api/v1/procurement/orders/[id]/email/route")).POST(request(`${API}/orders/${orderId}/email`, "POST", { to: "x@y.example" }), ctx(orderId))).status).toBe(403)
+    const order = await orderRow(orderId)
+    expect(order.status).toBe("sent")
+    expect(order.events.filter((event) => event.type === "emailed").map((event) => (event.data as { ok: boolean }).ok).sort()).toEqual([false, true])
+  })
+
+  it("reports: one supplier on time, one late; spend per currency, margin per deal, files for finance, nothing for sales", async () => {
+    const { cheapQuote, requestId, items } = await requestWithQuotes()
+    const onTime = await orderFrom(cheapQuote)
+    as("procurement")
+    const lateRes = await json(await orders.POST(request(`${API}/orders`, "POST", {
+      supplierId: supplierB, requestId, currency: "AZN",
+      items: [{ name: "Banner", quantity: 4, unitPrice: 160, requestItemId: items[1].id, dealLineItemId: lineIds[1] }],
+    })))
+    expect(lateRes.status).toBe(201)
+    const late = lateRes.body.data.id as string
+    for (const id of [onTime, late]) {
+      await act("procurement", id, "submit")
+      await act("manager", id, "approve")
+      if ((await orderRow(id)).status === "pending_approval") await act("finance", id, "approve")
+      await act("procurement", id, "send")
+    }
+    const tomorrow = new Date(Date.now() + 86_400_000)
+    await bypass(() => prisma.purchaseOrder.update({ where: { id: onTime }, data: { expectedDeliveryAt: tomorrow } }))
+    await bypass(() => prisma.purchaseOrder.update({ where: { id: late }, data: { expectedDeliveryAt: new Date(Date.now() - 3 * 86_400_000) } }))
+    for (const id of [onTime, late]) {
+      const lines = (await orderRow(id)).items
+      as("procurement")
+      await receive.POST(request(`${API}/orders/${id}/receive`, "POST", { items: lines.map((line) => ({ itemId: line.id, quantity: Number(line.quantity) })) }), ctx(id))
+    }
+    const reports = await import("@/app/api/v1/procurement/reports/route")
+    const exportRoute = await import("@/app/api/v1/procurement/reports/export/route")
+    as("finance")
+    const report = await json(await reports.GET(request(`${API}/reports`, "GET")))
+    expect(report.status).toBe(200)
+    expect(report.body.data.kpis).toMatchObject({ orders: 2, received: 2, onTimePct: 50, averageDelayDays: 1.5, lateOpen: 0, committedByCurrency: { AZN: 2440 } })
+    expect(report.body.data.suppliers.map((row: { supplier: string; spend: number; onTime: number; late: number }) => [row.supplier, row.spend, row.onTime, row.late])).toEqual([
+      ["Wood Workshop", 1800, 1, 0],
+      ["Print House", 640, 0, 1],
+    ])
+    expect(report.body.data.deals).toEqual([{ dealId, deal: "Conference stand for a bank", currency: "AZN", revenue: 5000, cost: 2440, margin: 2560, marginPct: 51.2, otherCurrency: false }])
+    const xlsx = await exportRoute.GET(request(`${API}/reports/export?format=xlsx&lang=ru`, "GET"))
+    expect(xlsx.status).toBe(200)
+    expect(xlsx.headers.get("content-type")).toMatch(/spreadsheetml/)
+    expect(Buffer.from(await xlsx.arrayBuffer()).subarray(0, 2).toString()).toBe("PK")
+    const pdf = await exportRoute.GET(request(`${API}/reports/export?format=pdf`, "GET"))
+    expect(Buffer.from(await pdf.arrayBuffer()).subarray(0, 4).toString()).toBe("%PDF")
+    as("sales")
+    expect((await reports.GET(request(`${API}/reports`, "GET"))).status).toBe(403)
+    expect((await exportRoute.GET(request(`${API}/reports/export`, "GET"))).status).toBe(403)
+  })
+
+  it("a file of the deal is sealed on disk, opened only inside the organization and its bytes go with the row", async () => {
+    const { mkdtempSync, readFileSync, existsSync, rmSync } = await import("node:fs")
+    const { homedir } = await import("node:os")
+    const runtime = mkdtempSync(path.join(homedir(), ".deal-files-runtime-test-"))
+    const logs = mkdtempSync(path.join(homedir(), ".deal-files-logs-test-"))
+    process.env.LEADDRIVE_RUNTIME_DIR = runtime
+    process.env.LEADDRIVE_LOG_DIR = logs
+    try {
+      const files = await import("@/app/api/v1/deals/[id]/files/route")
+      const gate = await import("@/app/api/v1/uploads/[...path]/route")
+      // A real PNG: signature, IHDR, IDAT, IEND (1×1 transparent).
+      const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64")
+      const form = new FormData()
+      form.append("file", new File([png], "maket v2.png", { type: "image/png" }))
+      as("sales")
+      const created = await files.POST(new NextRequest(`http://localhost:3000/api/v1/deals/${dealId}/files`, { method: "POST", body: form }), ctx(dealId))
+      expect(created.status).toBe(201)
+      const row = (await created.json()).data as { id: string; fileName: string; url: string }
+      const onDisk = path.join(runtime, "uploads", "deal-files", row.fileName)
+      expect(readFileSync(onDisk).subarray(0, 4).toString()).toBe("LDFE")
+      as("procurement")
+      const listed = await json(await files.GET(request(`http://localhost:3000/api/v1/deals/${dealId}/files`, "GET"), ctx(dealId)))
+      expect(listed.body.data.map((f: { originalName: string }) => f.originalName)).toEqual(["maket v2.png"])
+      const served = await gate.GET(new NextRequest(`http://localhost:3000${row.url}`), { params: Promise.resolve({ path: ["deal-files", row.fileName] }) })
+      expect(served.status).toBe(200)
+      expect(Buffer.from(await served.arrayBuffer()).equals(png)).toBe(true)
+      as("admin", PLAIN)
+      const foreign = await gate.GET(new NextRequest(`http://localhost:3000${row.url}`), { params: Promise.resolve({ path: ["deal-files", row.fileName] }) })
+      expect(foreign.status).toBe(404)
+      as("support")
+      expect((await files.DELETE(request(`http://localhost:3000/api/v1/deals/${dealId}/files?fileId=${row.id}`, "DELETE"), ctx(dealId))).status).toBe(403)
+      as("sales")
+      expect((await files.DELETE(request(`http://localhost:3000/api/v1/deals/${dealId}/files?fileId=${row.id}`, "DELETE"), ctx(dealId))).status).toBe(200)
+      expect(existsSync(onDisk)).toBe(false)
+      expect(await bypass(() => prisma.dealFile.count({ where: { dealId } }))).toBe(0)
+      // A script disguised as a picture is refused by its bytes.
+      const fake = new FormData()
+      fake.append("file", new File([Buffer.from("<script>alert(1)</script>")], "logo.png", { type: "image/png" }))
+      expect((await files.POST(new NextRequest(`http://localhost:3000/api/v1/deals/${dealId}/files`, { method: "POST", body: fake }), ctx(dealId))).status).toBe(400)
+    } finally {
+      delete process.env.LEADDRIVE_RUNTIME_DIR
+      delete process.env.LEADDRIVE_LOG_DIR
+      rmSync(runtime, { recursive: true, force: true })
+      rmSync(logs, { recursive: true, force: true })
+    }
+  })
+
+  it("a change the customer approved is journaled and flags every open purchase of the deal", async () => {
+    const { requestId, cheapQuote } = await requestWithQuotes()
+    const orderId = await orderFrom(cheapQuote)
+    const route = await import("@/app/api/v1/deals/[id]/change-approvals/route")
+    await bypass(() => prisma.notification.deleteMany({}))
+    as("sales")
+    const bad = await route.POST(request(`http://localhost:3000/api/v1/deals/${dealId}/change-approvals`, "POST", { kind: "size", after: "", approvedByName: "x", approvedAt: "2026-11-17", channel: "phone" }), ctx(dealId))
+    expect(bad.status).toBe(400)
+    const res = await route.POST(request(`http://localhost:3000/api/v1/deals/${dealId}/change-approvals`, "POST", {
+      kind: "size", before: "3×2 m", after: "4×2 m", approvedByName: "Leyla (customer)", approvedAt: "2026-11-17", channel: "whatsapp", note: "by voice message",
+    }), ctx(dealId))
+    expect(res.status).toBe(201)
+    const listed = await json(await route.GET(request(`http://localhost:3000/api/v1/deals/${dealId}/change-approvals`, "GET"), ctx(dealId)))
+    expect(listed.body.data.map((row: { kind: string; before: string; after: string; approvedByName: string }) => [row.kind, row.before, row.after, row.approvedByName])).toEqual([["size", "3×2 m", "4×2 m", "Leyla (customer)"]])
+    expect((await bypass(() => prisma.purchaseRequest.findUniqueOrThrow({ where: { id: requestId } }))).dealChangedAt).not.toBeNull()
+    expect((await orderRow(orderId)).dealChangedAt).not.toBeNull()
+    const told = await bypass(() => prisma.notification.findMany({ where: { organizationId: BUYER, userId: `procurement-${BUYER}` } }))
+    expect(told.some((n) => n.message.includes("3×2 m → 4×2 m"))).toBe(true)
+    as("support")
+    expect((await route.POST(request(`http://localhost:3000/api/v1/deals/${dealId}/change-approvals`, "POST", { kind: "other", after: "x", approvedByName: "x", approvedAt: "2026-11-17", channel: "phone" }), ctx(dealId))).status).toBe(403)
+  })
+
+  it("a commercial offer gets versions: the old one stays as sent, the new is a draft copy, and both are journaled", async () => {
+    const quotesRoute = await import("@/app/api/v1/quotes/route")
+    const versionsRoute = await import("@/app/api/v1/quotes/[id]/versions/route")
+    as("sales")
+    const created = await json(await quotesRoute.POST(request("http://localhost:3000/api/v1/quotes", "POST", {
+      quoteNumber: "KP-77", dealId, currency: "AZN",
+      lineItems: [{ productName: "Stand 3×2 m", quantity: 1, unitPrice: 3000 }, { productName: "Banner", quantity: 4, unitPrice: 500 }],
+    })))
+    expect(created.status).toBe(201)
+    const v1 = created.body.quote.id as string
+    const [first, second] = await Promise.all([
+      versionsRoute.POST(request(`http://localhost:3000/api/v1/quotes/${v1}/versions`, "POST"), ctx(v1)),
+      versionsRoute.POST(request(`http://localhost:3000/api/v1/quotes/${v1}/versions`, "POST"), ctx(v1)),
+    ])
+    expect([first.status, second.status]).toEqual([201, 201])
+    const listed = await json(await versionsRoute.GET(request(`http://localhost:3000/api/v1/quotes/${v1}/versions`, "GET"), ctx(v1)))
+    expect(listed.body.data.map((v: { version: number; status: string; lineItems: unknown[] }) => [v.version, v.status, v.lineItems.length])).toEqual([[3, "draft", 2], [2, "draft", 2], [1, "draft", 2]])
+    const journal = await bypass(() => prisma.auditLog.findMany({ where: { organizationId: BUYER, entityType: "quote" }, select: { action: true } }))
+    expect(journal.map((row) => row.action).sort()).toEqual(["create", "new_version", "new_version"])
+    as("support")
+    expect((await versionsRoute.POST(request(`http://localhost:3000/api/v1/quotes/${v1}/versions`, "POST"), ctx(v1))).status).toBe(403)
+  })
+
+  it("Excel import: columns guessed from az/ru headers, duplicates and bad rows skipped, nothing fired for old contacts", async () => {
+    const ExcelJS = (await import("exceljs")).default
+    const route = await import("@/app/api/v1/imports/route")
+    const workbook = new ExcelJS.Workbook()
+    const sheet = workbook.addWorksheet("Təchizatçılar")
+    sheet.addRow(["Ad", "VÖEN", "Telefon", "E-poçt"])
+    sheet.addRow(["Akril Studio", "1400000001", "+994 50 111 11 11", "info@akril.example"])
+    sheet.addRow(["Wood Workshop", "", "", ""]) // already a supplier of this organization
+    sheet.addRow(["Bad Number", "12-34", "", ""])
+    sheet.addRow(["Akril Studio", "1400000001", "", ""]) // repeated in the file
+    const xlsx = Buffer.from(await workbook.xlsx.writeBuffer())
+    const send = (step: string, entity: string, file: File, mapping?: unknown) => {
+      const form = new FormData()
+      form.append("entity", entity)
+      form.append("step", step)
+      form.append("file", file)
+      if (mapping) form.append("mapping", JSON.stringify(mapping))
+      return route.POST(new NextRequest("http://localhost:3000/api/v1/imports", { method: "POST", body: form }))
+    }
+    const book = new File([xlsx], "suppliers.xlsx")
+    as("procurement")
+    const read = await json(await send("read", "suppliers", book))
+    expect(read.status).toBe(200)
+    expect(read.body.data.mapping).toEqual(["name", "voen", "phone", "email"])
+    const check = await json(await send("check", "suppliers", book, read.body.data.mapping))
+    expect(check.body.data).toMatchObject({ total: 4, created: 1, duplicateCount: 2, errorCount: 1, errors: [{ row: 4, message: "voen" }] })
+    expect(await bypass(() => prisma.company.count({ where: { organizationId: BUYER, name: "Akril Studio" } }))).toBe(0)
+    const done = await json(await send("import", "suppliers", book, read.body.data.mapping))
+    expect(done.body.data.created).toBe(1)
+    expect(await bypass(() => prisma.company.findMany({ where: { organizationId: BUYER, name: "Akril Studio" }, select: { category: true, voen: true } }))).toEqual([{ category: "supplier", voen: "1400000001" }])
+    // Sales cannot import suppliers.
+    as("sales")
+    expect((await send("read", "suppliers", book)).status).toBe(403)
+    // A Russian CSV with semicolons and a quoted comma, for contacts: no notification per old contact.
+    await bypass(() => prisma.notification.deleteMany({}))
+    const csv = new File([Buffer.from("\uFEFFФИО;Телефон;Компания\n\"Алиев, Рашад\";+994 55 000 00 01;Wood Workshop\nЛейла;+994 55 000 00 01;\n", "utf8")], "contacts.csv")
+    const contactRead = await json(await send("read", "contacts", csv))
+    expect(contactRead.body.data.mapping).toEqual(["fullName", "phone", "companyName"])
+    const contacts = await json(await send("import", "contacts", csv, contactRead.body.data.mapping))
+    expect(contacts.body.data).toMatchObject({ created: 1, duplicateCount: 1 })
+    const created = await bypass(() => prisma.contact.findMany({ where: { organizationId: BUYER, fullName: "Алиев, Рашад" }, select: { companyId: true, source: true } }))
+    expect(created).toEqual([{ companyId: supplierA, source: "import" }])
+    expect(await bypass(() => prisma.notification.count({ where: { organizationId: BUYER } }))).toBe(0)
+    expect(await bypass(() => prisma.auditLog.count({ where: { organizationId: BUYER, action: "import" } }))).toBe(2)
+  })
+
+  it("the organization's systems hear each sent request and every status of an order by webhook, with the total", async () => {
+    hooks.fired = []
+    const { cheapQuote } = await requestWithQuotes()
+    const orderId = await orderFrom(cheapQuote)
+    await act("procurement", orderId, "submit")
+    await act("manager", orderId, "approve")
+    await act("finance", orderId, "approve")
+    await act("procurement", orderId, "send")
+    const lines = (await orderRow(orderId)).items
+    as("procurement")
+    await receive.POST(request(`${API}/orders/${orderId}/receive`, "POST", { items: lines.map((line) => ({ itemId: line.id, quantity: Number(line.quantity) })) }), ctx(orderId))
+    const procurement = hooks.fired.filter((hook) => hook.event.startsWith("purchase_"))
+    expect(procurement.map((hook) => [hook.event, hook.data.to ?? null])).toEqual([
+      ["purchase_request.submitted", null],
+      ["purchase_order.status_changed", "pending_approval"],
+      ["purchase_order.status_changed", "approved"],
+      ["purchase_order.status_changed", "sent"],
+      ["purchase_order.status_changed", "received"],
+    ])
+    expect(procurement[4].data).toMatchObject({ total: "1800", currency: "AZN", supplier: { name: "Wood Workshop" } })
   })
 
   it("eight requests saved at once get eight different numbers", async () => {

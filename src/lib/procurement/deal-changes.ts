@@ -17,27 +17,38 @@ const OPEN_ORDER = ["draft", "pending_approval", "approved", "rejected", "sent",
 
 export async function markPurchasesOfChangedLines(orgId: string, actorId: string | null, dealId: string, dealName: string, changes: readonly DealLineChange[]): Promise<void> {
   if (changes.length === 0) return
+  await markPurchases(orgId, actorId, dealId, dealName, changes.map((change) => `${change.name} (${change.change})`).join(", "), changes.map((change) => change.id), { changes: changes.map((c) => ({ ...c })) })
+}
+
+/**
+ * The customer agreed to a change of the whole order (task 5.2: a layout, a
+ * size, a date): every open purchase of the deal is flagged, whatever line.
+ */
+export async function markPurchasesOfChangedDeal(orgId: string, actorId: string | null, dealId: string, dealName: string, summary: string): Promise<void> {
+  await markPurchases(orgId, actorId, dealId, dealName, summary, null, { approval: summary })
+}
+
+async function markPurchases(orgId: string, actorId: string | null, dealId: string, dealName: string, summary: string, lineIds: string[] | null, eventData: Record<string, unknown>): Promise<void> {
   try {
-    const lineIds = changes.map((change) => change.id)
+    const lines = lineIds ? { items: { some: { dealLineItemId: { in: lineIds } } } } : {}
     const now = new Date()
-    const [requests, orders] = await Promise.all([
+    const [requests, orders]: [{ id: string; seq: number; assignedToId: string | null }[], { id: string; seq: number; createdById: string | null }[]] = await Promise.all([
       prisma.purchaseRequest.findMany({
-        where: { organizationId: orgId, dealId, status: { in: OPEN_REQUEST }, items: { some: { dealLineItemId: { in: lineIds } } } },
+        where: { organizationId: orgId, dealId, status: { in: OPEN_REQUEST }, ...lines },
         select: { id: true, seq: true, assignedToId: true },
       }),
       prisma.purchaseOrder.findMany({
-        where: { organizationId: orgId, dealId, status: { in: OPEN_ORDER }, items: { some: { dealLineItemId: { in: lineIds } } } },
+        where: { organizationId: orgId, dealId, status: { in: OPEN_ORDER }, ...lines },
         select: { id: true, seq: true, createdById: true },
       }),
     ])
     if (requests.length === 0 && orders.length === 0) return
-    const summary = changes.map((change) => `${change.name} (${change.change})`).join(", ")
     await prisma.$transaction(async (tx) => {
       if (requests.length > 0) await tx.purchaseRequest.updateMany({ where: { id: { in: requests.map((r) => r.id) } }, data: { dealChangedAt: now } })
       if (orders.length > 0) {
         await tx.purchaseOrder.updateMany({ where: { id: { in: orders.map((o) => o.id) } }, data: { dealChangedAt: now } })
         await tx.purchaseOrderEvent.createMany({
-          data: orders.map((order) => ({ organizationId: orgId, orderId: order.id, type: "deal_changed", actorId, data: { changes: changes.map((c) => ({ ...c })) } })),
+          data: orders.map((order) => ({ organizationId: orgId, orderId: order.id, type: "deal_changed", actorId, data: eventData })),
         })
       }
     })

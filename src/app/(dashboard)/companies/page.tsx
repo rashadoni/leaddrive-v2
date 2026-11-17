@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { useSession } from "next-auth/react"
+import { ExcelImportDialog } from "@/components/excel-import-dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,7 +14,7 @@ import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { PageDescription } from "@/components/page-description"
 import { DidYouKnow } from "@/components/did-you-know"
 import { Select } from "@/components/ui/select"
-import { Building2, Plus, Search, Users, FileText, TrendingUp, ArrowUpDown, Pencil, Trash2, CheckSquare, Square } from "lucide-react"
+import { Building2, Plus, Search, Users, FileText, TrendingUp, ArrowUpDown, Pencil, Trash2, CheckSquare, Square, Upload } from "lucide-react"
 import { MotionList, MotionItem } from "@/components/ui/motion"
 import { useTranslations } from "next-intl"
 import { InlineSelectCell } from "@/components/tasks/inline-tasks-table"
@@ -64,6 +65,8 @@ import { HelpButton } from "@/components/help/help-button"
 import { PageHeader } from "@/components/page-header"
 
 export default function CompaniesPage() {
+  const ti = useTranslations("excelImport")
+  const [importOpen, setImportOpen] = useState(false)
   const { data: session } = useSession()
   const t = useTranslations("companies")
   const tc = useTranslations("common")
@@ -308,9 +311,14 @@ export default function CompaniesPage() {
         title={<>{t("title")} ({total}) <TourReplayButton tourId="companies" /> <HelpButton slug="companies" variant="label" /></>}
         description={<p className="text-sm text-muted-foreground">{t("subtitle")}</p>}
         actions={
-          <Button data-tour-id="companies-new" onClick={() => { setEditData(undefined); setFormOpen(true) }}>
-            <Plus className="h-4 w-4 mr-1" /> {t("add")}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-1" /> {ti("button")}
+            </Button>
+            <Button data-tour-id="companies-new" onClick={() => { setEditData(undefined); setFormOpen(true) }}>
+              <Plus className="h-4 w-4 mr-1" /> {t("add")}
+            </Button>
+          </div>
         }
       />
       <PageDescription text={t("pageDescription")} />
@@ -563,6 +571,7 @@ export default function CompaniesPage() {
         orgId={orgId}
         onSaved={() => fetchCompanies()}
       />
+      <ExcelImportDialog open={importOpen} onOpenChange={setImportOpen} entity="companies" onImported={() => { void fetchCompanies() }} />
     </div>
   )
 }

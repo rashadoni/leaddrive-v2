@@ -7,6 +7,7 @@ import { checkPermission } from "@/lib/permissions"
 import { procurementNumber } from "@/lib/procurement/numbering"
 import { badRequest, canSeeProcurementCosts, conflict, notFound, readJsonBody, withoutPrices } from "@/lib/procurement/access"
 import { notifyProcurement, purchasersOf } from "@/lib/procurement/notify"
+import { emitPurchaseRequestSubmitted } from "@/lib/procurement/events"
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -145,6 +146,7 @@ export const PATCH = withRlsAuth("purchase-requests", "write", async (req, { org
       recipients: await purchasersOf(orgId),
       event: { kind: "request.submitted", number, title: updated.title },
     })
+    await emitPurchaseRequestSubmitted(orgId, id)
   }
   return NextResponse.json({ success: true, data: { ...updated, number } })
 })

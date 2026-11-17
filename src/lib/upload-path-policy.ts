@@ -18,6 +18,7 @@ export const PROXIED_UPLOAD_SUBDIRS = [
   "social-logos",
   "avatars",
   "tasks",
+  "deal-files",
   "tickets",
 ] as const
 

@@ -82,6 +82,7 @@ const SUBDIR_READ_MODULE = new Map<string, Module>([
   ["contracts", "contracts"],
   ["contract-images", "contracts"],
   ["tasks", "tasks"],
+  ["deal-files", "deals"],
   ["tickets", "tickets"],
   ["email-images", "campaigns"],
   ["web-chat", "inbox"],
@@ -640,6 +641,21 @@ const authenticatedGET = withRlsSessionAuth(async (req, auth, { params }: RouteC
         ifNoneMatch: req.headers.get("if-none-match"),
       })
     }
+  } else if (subdir === "deal-files") {
+    // Bare-filename layout: /uploads/deal-files/<file>. DealFile owns the row
+    // (docs/sales-procurement/README.md, task 4.1); a cross-tenant miss is the same 404.
+    const fileName = parts[1] ?? ""
+    if (!fileName) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
+    const df = await prisma.dealFile.findFirst({
+      where: { fileName, organizationId: auth.orgId },
+      select: { id: true, originalName: true },
+    })
+    if (!df) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
+    taskFile = { saveAs: announcedFileName(df.originalName, fileName), download: new URL(req.url).searchParams.get("download") === "1" }
   } else if (subdir === "tickets") {
     // TicketAttachment owns bare filenames and is always resolved inside the
     // authenticated tenant before any bytes are read from disk.
