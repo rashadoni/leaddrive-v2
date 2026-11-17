@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { checkPermission, type Role } from "@/lib/permissions"
+import { StatusTabs } from "@/components/procurement/status-tabs"
 
 interface SupplierRow {
   id: string
@@ -143,20 +144,7 @@ export default function SuppliersPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input className="pl-9" placeholder={t("search")} value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <div className="flex gap-1 rounded-lg border p-1" role="tablist">
-          {TABS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === item.id}
-              onClick={() => setTab(item.id)}
-              className={`rounded-md px-3 py-1.5 text-sm ${tab === item.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <StatusTabs tabs={TABS} value={tab} onChange={setTab} />
       </div>
 
       {loading ? (
