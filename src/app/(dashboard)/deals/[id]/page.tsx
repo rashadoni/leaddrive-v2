@@ -34,6 +34,9 @@ import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
 import { DealLineItems } from "@/components/deals/deal-line-items"
+import { DealProcurementTab } from "@/components/deals/deal-procurement-tab"
+import { checkPermission, type Role } from "@/lib/permissions"
+import { hasModule } from "@/lib/modules"
 import { STAGE_COLORS } from "@/lib/constants"
 import { VOICE_RECORD_CHANGED_EVENT, type VoiceRecordChangedDetail } from "@/lib/ai/voice/voice-confirmation"
 
@@ -283,6 +286,15 @@ export default function DealDetailPage() {
   const router = useRouter()
   useAutoTour("dealDetail")
   const { data: session } = useSession()
+  const tp = useTranslations("procurement.dealTab")
+  // The «Purchasing» tab exists only for a tenant with the procurement module
+  // and a person who may read purchase requests — the gates of its API.
+  const sessionUser = session?.user as { role?: string; plan?: string; addons?: string[]; modules?: Record<string, boolean> } | undefined
+  const showProcurement = Boolean(
+    sessionUser?.role
+    && checkPermission(sessionUser.role as Role, "purchase-requests", "read")
+    && hasModule({ plan: sessionUser.plan || "", addons: sessionUser.addons, modules: sessionUser.modules }, "procurement"),
+  )
   const orgId = session?.user?.organizationId ? String(session.user.organizationId) : undefined
 
   const { isVisible, isEditable } = useFieldPermissions("deal")
@@ -307,7 +319,7 @@ export default function DealDetailPage() {
   const [pipelineStages, setPipelineStages] = useState<any[]>([])
   const [pipelineName, setPipelineName] = useState("")
   const [activityCounts, setActivityCounts] = useState<{ emails: number; calls: number }>({ emails: 0, calls: 0 })
-  const [rightTab, setRightTab] = useState<"overview" | "feed" | "meddpicc">("overview")
+  const [rightTab, setRightTab] = useState<"overview" | "feed" | "meddpicc" | "procurement">("overview")
 
   // Header toolbar anchors: the feed lives inside a tab, so switch first,
   // then scroll on the next frame when the target is laid out.
@@ -624,6 +636,7 @@ export default function DealDetailPage() {
               { id: "overview" as const, label: t("tabOverview") },
               { id: "feed" as const, label: t("toolbarFeed") },
               { id: "meddpicc" as const, label: "MEDDPICC" },
+              ...(showProcurement ? [{ id: "procurement" as const, label: tp("tab") }] : []),
             ]).map(tab => (
               <button
                 key={tab.id}
@@ -706,6 +719,13 @@ export default function DealDetailPage() {
             <ActivityTimeline key={timelineKey} dealId={id} orgId={orgId} />
           </div>
           </div>
+
+          {/* Tab: Purchasing (docs/sales-procurement/README.md) — only with the module, mounted on open */}
+          {rightTab === "procurement" && showProcurement && (
+            <div className="rounded-xl border border-border bg-card p-4">
+              <DealProcurementTab dealId={id} dealName={deal.name} />
+            </div>
+          )}
 
           {/* Tab: MEDDPICC (D1) — mounted lazily on first open */}
           {rightTab === "meddpicc" && (

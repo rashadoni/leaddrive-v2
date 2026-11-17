@@ -22,5 +22,7 @@ export async function shellEventKindsFor(auth: AuthResult): Promise<Set<ShellEve
   if (!moduleAccessDenial(auth, orgContext, "voip", "read")) kinds.add("calls")
   if (!moduleAccessDenial(auth, orgContext, "tickets", "read")) kinds.add("tickets")
   if (!moduleAccessDenial(auth, orgContext, "inbox", "read")) kinds.add("webchat")
+  // → GET /api/v1/procurement/deals/[id] and the purchasing lists (`purchase-requests`, read).
+  if (!moduleAccessDenial(auth, orgContext, "purchase-requests", "read")) kinds.add("procurement")
   return kinds
 }

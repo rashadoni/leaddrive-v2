@@ -18,12 +18,15 @@ import { Prisma } from "@prisma/client"
 import { prisma, logAudit } from "@/lib/prisma"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { withDealEvents } from "./deal-events"
+import { markPurchasesOfChangedLines, type DealLineChange } from "@/lib/procurement/deal-changes"
 
 export const MAX_DEAL_LINES = 200
 
 const money = z.number().finite().min(0).max(1e12)
 
 export const dealLineInputSchema = z.strictObject({
+  /** An existing line of this deal to keep (and update) rather than replace. */
+  id: z.string().trim().min(1).max(60).optional(),
   productId: z.string().trim().min(1).max(60).nullable().optional(),
   name: z.string().trim().min(1).max(300),
   sku: z.string().trim().max(100).nullable().optional(),
@@ -91,6 +94,7 @@ export class DealLinesError extends Error {
  */
 export async function replaceDealLines(orgId: string, userId: string | null, dealId: string, lines: DealLineInput[]) {
   const productIds = [...new Set(lines.map((line) => line.productId).filter((id): id is string => Boolean(id)))]
+  const changes: DealLineChange[] = []
   const result = await prisma.$transaction(async (tx) => {
     const deal = await tx.deal.findFirst({ where: { id: dealId, organizationId: orgId }, select: { id: true, name: true, valueAmount: true } })
     if (!deal) throw new DealLinesError("DEAL_NOT_FOUND", "Deal not found")
@@ -98,20 +102,39 @@ export async function replaceDealLines(orgId: string, userId: string | null, dea
       const found = await tx.product.count({ where: { organizationId: orgId, id: { in: productIds } } })
       if (found !== productIds.length) throw new DealLinesError("PRODUCT_NOT_FOUND", "Product not found")
     }
-    await tx.dealLineItem.deleteMany({ where: { organizationId: orgId, dealId } })
-    if (lines.length > 0) {
+    // A line sent with its id is updated in place and keeps the id: a purchase
+    // request or order for a customer order points at the deal line it buys
+    // for (docs/sales-procurement/README.md). Lines not sent are deleted; lines
+    // without a known id are new.
+    const existing = await tx.dealLineItem.findMany({ where: { organizationId: orgId, dealId }, select: { id: true, name: true, quantity: true } })
+    type Existing = { id: string; name: string; quantity: Prisma.Decimal }
+    const known = new Map<string, Existing>(existing.map((row: Existing) => [row.id, row]))
+    const kept = new Set(lines.map((line) => line.id).filter((id): id is string => !!id && known.has(id)))
+    for (const row of existing as Existing[]) {
+      if (!kept.has(row.id)) changes.push({ id: row.id, name: row.name, change: "removed" })
+    }
+    await tx.dealLineItem.deleteMany({ where: { organizationId: orgId, dealId, id: { notIn: [...kept] } } })
+    const fields = (line: DealLineInput, index: number) => ({
+      productId: line.productId ?? null,
+      name: line.name,
+      sku: line.sku ?? null,
+      quantity: new Prisma.Decimal(line.quantity),
+      unitPrice: line.unitPrice === null ? null : new Prisma.Decimal(line.unitPrice),
+      discountPct: new Prisma.Decimal(line.discountPct),
+      sortOrder: index,
+    })
+    for (const [index, line] of lines.entries()) {
+      if (line.id && kept.has(line.id)) {
+        const before = known.get(line.id)!
+        if (before.name !== line.name) changes.push({ id: line.id, name: line.name, change: "name" })
+        else if (!before.quantity.equals(new Prisma.Decimal(line.quantity))) changes.push({ id: line.id, name: line.name, change: "quantity" })
+        await tx.dealLineItem.update({ where: { id: line.id }, data: fields(line, index) })
+      }
+    }
+    const fresh = lines.map((line, index) => ({ line, index })).filter(({ line }) => !(line.id && kept.has(line.id)))
+    if (fresh.length > 0) {
       await tx.dealLineItem.createMany({
-        data: lines.map((line, index) => ({
-          organizationId: orgId,
-          dealId,
-          productId: line.productId ?? null,
-          name: line.name,
-          sku: line.sku ?? null,
-          quantity: new Prisma.Decimal(line.quantity),
-          unitPrice: line.unitPrice === null ? null : new Prisma.Decimal(line.unitPrice),
-          discountPct: new Prisma.Decimal(line.discountPct),
-          sortOrder: index,
-        })),
+        data: fresh.map(({ line, index }) => ({ organizationId: orgId, dealId, ...fields(line, index) })),
       })
     }
     const before = decimalToNumber(deal.valueAmount)
@@ -126,6 +149,7 @@ export async function replaceDealLines(orgId: string, userId: string | null, dea
   if (result.before !== result.after) {
     void logAudit(orgId, "update", "deal", dealId, result.name, { oldValue: { valueAmount: result.before }, newValue: { valueAmount: result.after, from: "line_items" }, userId: userId ?? undefined })
   }
+  if (changes.length > 0) await markPurchasesOfChangedLines(orgId, userId, dealId, result.name, changes)
   return readDealLines(orgId, dealId)
 }
 
@@ -140,7 +164,7 @@ export async function addProductLine(orgId: string, userId: string | null, dealI
   ])
   if (!current) throw new DealLinesError("DEAL_NOT_FOUND", "Deal not found")
   if (!product) throw new DealLinesError("PRODUCT_NOT_FOUND", "Product not found")
-  const lines: DealLineInput[] = current.lines.map(({ productId: id, name, sku, quantity, unitPrice, discountPct }) => ({ productId: id, name, sku, quantity, unitPrice, discountPct }))
+  const lines: DealLineInput[] = current.lines.map(({ id, productId, name, sku, quantity, unitPrice, discountPct }) => ({ id, productId, name, sku, quantity, unitPrice, discountPct }))
   lines.push({
     productId: product.id,
     name: product.name,

@@ -15,6 +15,9 @@ import { ProductCombobox, type CatalogProduct } from "@/components/cpq/product-c
 
 interface Line {
   key: string
+  /** The saved line this row edits; absent for a row added on screen. Sent back so
+   *  the line keeps its id — purchases for a customer order point at it. */
+  id?: string
   productId: string | null
   name: string
   sku: string | null
@@ -50,6 +53,7 @@ const nextKey = () => `l${++keySeq}`
 function toLines(data: LinesData): Line[] {
   return data.lines.map((line) => ({
     key: nextKey(),
+    id: line.id,
     productId: line.productId,
     name: line.name,
     sku: line.sku,
@@ -117,6 +121,7 @@ export function DealLineItems({ dealId, orgId, onSaved, onCountChange }: {
     setError("")
     const body = {
       lines: lines.map((line) => ({
+        ...(line.id ? { id: line.id } : {}),
         productId: line.productId,
         name: line.name.trim(),
         sku: line.sku,

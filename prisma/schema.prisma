@@ -62,6 +62,14 @@ model Organization {
   inboxLearnedItems     InboxLearnedItem[]
   inboxLearningSamples  InboxLearningSample[]
   whatsappHistoryChunks WhatsAppHistoryChunk[]
+  purchaseRequests      PurchaseRequest[]
+  purchaseRequestItems  PurchaseRequestItem[]
+  supplierQuotes        SupplierQuote[]
+  supplierQuoteItems    SupplierQuoteItem[]
+  purchaseOrders        PurchaseOrder[]
+  purchaseOrderItems    PurchaseOrderItem[]
+  purchaseOrderApprovals PurchaseOrderApprovalStep[]
+  purchaseOrderEvents   PurchaseOrderEvent[]
   companies             Company[]
   contacts              Contact[]
   deals                 Deal[]
@@ -1590,6 +1598,8 @@ model Company {
   monitoringSubjects MonitoringSubject[]
   pharmacyPhoneOrders PharmacyPhoneOrder[]
   pharmacyWaitlistItems PharmacyWaitlistItem[]
+  supplierQuotes SupplierQuote[]
+  supplierPurchaseOrders PurchaseOrder[]
 
   @@unique([organizationId, externalSource, externalId])
   @@index([organizationId])
@@ -1738,6 +1748,8 @@ model Deal {
   // Product lines of the deal; when there are any, valueAmount is their sum
   // (src/lib/deals/line-items.ts).
   lineItems DealLineItem[]
+  purchaseRequests PurchaseRequest[]
+  purchaseOrders PurchaseOrder[]
 
   @@index([organizationId])
   @@index([organizationId, stage])
@@ -24632,6 +24644,220 @@ model DealLineItem {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  purchaseRequestItems PurchaseRequestItem[]
+  purchaseOrderItems   PurchaseOrderItem[]
+
   @@index([organizationId, dealId])
   @@map("deal_line_items")
+}
+
+// ─── Procurement for a customer order (docs/sales-procurement/README.md) ─────
+// Every money column is Decimal(18,4). User ids are plain strings, as on Bill
+// and PaymentOrder. Numbers are per organization, allocated under an advisory
+// lock (src/lib/procurement/numbering.ts); the unique index is the last guard.
+
+model PurchaseRequest {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  seq            Int
+  dealId         String?
+  deal           Deal?        @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  title          String
+  /// draft | submitted | in_progress | ordered | closed | cancelled
+  status         String       @default("draft")
+  neededBy       DateTime?
+  note           String?
+  requestedById  String?
+  /// The purchaser working on it.
+  assignedToId   String?
+  /// Set when the deal behind it changed after the request was sent (task 5.2).
+  dealChangedAt  DateTime?
+  submittedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  items  PurchaseRequestItem[]
+  quotes SupplierQuote[]
+  orders PurchaseOrder[]
+
+  @@unique([organizationId, seq])
+  @@index([organizationId, status])
+  @@index([organizationId, dealId])
+  @@map("purchase_requests")
+}
+
+model PurchaseRequestItem {
+  id             String          @id @default(cuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestId      String
+  request        PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  dealLineItemId String?
+  dealLineItem   DealLineItem?   @relation(fields: [dealLineItemId], references: [id], onDelete: SetNull)
+  name           String
+  quantity       Decimal         @default(1) @db.Decimal(18, 4)
+  unit           String?
+  note           String?
+  sortOrder      Int             @default(0)
+
+  quoteItems SupplierQuoteItem[]
+  orderItems PurchaseOrderItem[]
+
+  @@index([organizationId, requestId])
+  @@map("purchase_request_items")
+}
+
+model SupplierQuote {
+  id             String          @id @default(cuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestId      String
+  request        PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  supplierId     String
+  supplier       Company         @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  currency       String          @default("AZN")
+  /// received | selected | rejected
+  status         String          @default("received")
+  validUntil     DateTime?
+  leadTimeDays   Int?
+  terms          String?
+  note           String?
+  createdById    String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  items  SupplierQuoteItem[]
+  orders PurchaseOrder[]
+
+  @@index([organizationId, requestId])
+  @@index([organizationId, supplierId])
+  @@map("supplier_quotes")
+}
+
+model SupplierQuoteItem {
+  id             String              @id @default(cuid())
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  quoteId        String
+  quote          SupplierQuote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  requestItemId  String
+  requestItem    PurchaseRequestItem @relation(fields: [requestItemId], references: [id], onDelete: Cascade)
+  quantity       Decimal             @db.Decimal(18, 4)
+  unitPrice      Decimal             @db.Decimal(18, 4)
+  leadTimeDays   Int?
+  note           String?
+
+  @@unique([quoteId, requestItemId])
+  @@index([organizationId, quoteId])
+  @@map("supplier_quote_items")
+}
+
+model PurchaseOrder {
+  id                 String           @id @default(cuid())
+  organizationId     String
+  organization       Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  seq                Int
+  requestId          String?
+  request            PurchaseRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  dealId             String?
+  deal               Deal?            @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  supplierId         String
+  supplier           Company          @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  quoteId            String?
+  quote              SupplierQuote?   @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  /// draft | pending_approval | approved | rejected | sent | in_production | in_transit | partially_received | received | cancelled
+  status             String           @default("draft")
+  currency           String           @default("AZN")
+  totalAmount        Decimal          @default(0) @db.Decimal(18, 4)
+  /// Grows when an order is edited after it was approved; the history keeps the old one.
+  revision           Int              @default(1)
+  expectedDeliveryAt DateTime?
+  /// Set by the daily check once the expected date passed without full receipt.
+  overdueAt          DateTime?
+  overdueNotifiedAt  DateTime?
+  dealChangedAt      DateTime?
+  note               String?
+  cancelReason       String?
+  createdById        String?
+  submittedAt        DateTime?
+  approvedAt         DateTime?
+  sentAt             DateTime?
+  receivedAt         DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  items     PurchaseOrderItem[]
+  approvals PurchaseOrderApprovalStep[]
+  events    PurchaseOrderEvent[]
+
+  @@unique([organizationId, seq])
+  @@index([organizationId, status])
+  @@index([organizationId, dealId])
+  @@index([organizationId, supplierId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id               String               @id @default(cuid())
+  organizationId   String
+  organization     Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  orderId          String
+  order            PurchaseOrder        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  requestItemId    String?
+  requestItem      PurchaseRequestItem? @relation(fields: [requestItemId], references: [id], onDelete: SetNull)
+  dealLineItemId   String?
+  dealLineItem     DealLineItem?        @relation(fields: [dealLineItemId], references: [id], onDelete: SetNull)
+  name             String
+  unit             String?
+  quantity         Decimal              @db.Decimal(18, 4)
+  unitPrice        Decimal              @db.Decimal(18, 4)
+  total            Decimal              @db.Decimal(18, 4)
+  receivedQuantity Decimal              @default(0) @db.Decimal(18, 4)
+  sortOrder        Int                  @default(0)
+
+  @@index([organizationId, orderId])
+  @@map("purchase_order_items")
+}
+
+model PurchaseOrderApprovalStep {
+  id             String        @id @default(cuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  orderId        String
+  order          PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  /// The order's revision this chain was built for; a new revision gets a new chain.
+  revision       Int
+  stepNo         Int
+  /// A role (admin | manager | finance | procurement) or one person.
+  approverRole   String?
+  approverUserId String?
+  /// pending | approved | rejected | skipped
+  status         String        @default("pending")
+  actedById      String?
+  actedAt        DateTime?
+  comment        String?
+  createdAt      DateTime      @default(now())
+
+  @@unique([orderId, revision, stepNo])
+  @@index([organizationId, status])
+  @@map("purchase_order_approval_steps")
+}
+
+model PurchaseOrderEvent {
+  id             String        @id @default(cuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  orderId        String
+  order          PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  /// created | status | edited | delivery_date | receipt | approval | deal_changed
+  type           String
+  fromStatus     String?
+  toStatus       String?
+  actorId        String?
+  data           Json?
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId, orderId, createdAt])
+  @@map("purchase_order_events")
 }

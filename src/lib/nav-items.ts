@@ -33,7 +33,7 @@ import {
   // Phase 7 Industry Cloud icons
   HeartPulse, Umbrella, Landmark, Tv2, Flame,
   ClipboardPlus, FileBadge, FileCheck, Radio, PackageOpen,
-  KeyRound, Truck,
+  KeyRound, Truck, PackageCheck, ShieldCheck,
 } from "lucide-react"
 
 export type MtmNavSection = "daily" | "reference" | "control" | "results" | "administration"
@@ -368,7 +368,10 @@ export const navItems: NavItem[] = [
   // ── Procurement ──────────────────────────────────────────────────────────
   // Purchasing for a customer order (docs/sales-procurement/README.md): its own
   // module, off unless a tenant is given it.
+  { module: "procurement", href: "/procurement/requests", icon: ClipboardList, tKey: "procurementRequests", group: "Procurement", permissionScope: "purchase-requests" },
+  { module: "procurement", href: "/procurement/orders", icon: PackageCheck, tKey: "procurementOrders", group: "Procurement", permissionScope: "procurement" },
   { module: "procurement", href: "/procurement/suppliers", icon: Truck, tKey: "procurementSuppliers", group: "Procurement", permissionScope: "procurement" },
+  { module: "procurement", href: "/procurement/settings", icon: ShieldCheck, tKey: "procurementSettings", group: "Procurement", permissionScope: "procurement" },
   { module: "analytics", href: "/reports", icon: BarChart3, tKey: "reports", group: "Analytics" },
   { module: "analytics", href: "/reports/builder", icon: FileSpreadsheet, tKey: "reportBuilder", group: "Analytics" },
   { module: "analytics", href: "/ai/actions", icon: Inbox, tKey: "aiActions", group: "Analytics", addon: "ai" },
