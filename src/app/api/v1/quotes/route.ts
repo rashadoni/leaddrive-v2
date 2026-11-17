@@ -4,9 +4,12 @@
  * GET  /api/v1/quotes      — org-scoped list with status + dealId filters
  * POST /api/v1/quotes      — create a draft Quote (optionally with initial line items)
  *
- * Auth: org-scoped via `withRls` (uses the passed { orgId, session }). A dedicated
- * `cpq:*` permission key can land in slice-3 once the Quote builder UI
- * ships and per-role write gating becomes meaningful.
+ * Auth: `withRlsAuth("offers", …)` — role (offers read / write), the `sales`
+ * module (`offers` → `sales` in LEGACY_MODULE_MAP) and the person's own module
+ * mask, all in requireAuth. Until 2026-11-17 these were on `withRls`: its role
+ * check found the scope through ROUTE_MODULE_MAP, the module was checked inline,
+ * but the mask (User.hiddenModules) was not — a person from whom the admin hid
+ * Sales still read and edited quotes through the API.
  *
  * State machine: only `draft` quotes can be created via POST. Transition
  * to `sent` / `viewed` / `accepted` etc. happens via PATCH on
@@ -22,8 +25,7 @@ import { randomUUID } from "crypto"
 import { Prisma } from "@prisma/client"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
-import { orgHasModule, moduleDisabledResponse } from "@/lib/api-auth"
-import { withRls } from "@/lib/with-rls"
+import { withRlsAuth } from "@/lib/with-rls"
 import { rollUpQuote } from "@/lib/cpq/totals"
 import { isValidLineQuantity, LINE_TYPES } from "@/lib/cpq/line-types"
 
@@ -94,9 +96,7 @@ const createQuoteSchema = z
   .refine((q) => asNonNegative(q.discountAmount), { message: "discountAmount must be ≥ 0" })
   .refine((q) => asNonNegative(q.discountPct), { message: "discountPct must be ≥ 0" })
 
-export const GET = withRls(async (req, { orgId, session }) => {
-  if (session?.role !== "superadmin" && !(await orgHasModule(orgId, "sales"))) return moduleDisabledResponse("sales")
-
+export const GET = withRlsAuth("offers", "read", async (req, { orgId }) => {
   const { searchParams } = new URL(req.url)
   const status = searchParams.get("status") || ""
   const dealId = searchParams.get("dealId") || ""
@@ -160,9 +160,7 @@ export const GET = withRls(async (req, { orgId, session }) => {
   }
 })
 
-export const POST = withRls(async (req, { orgId, session }) => {
-  if (session?.role !== "superadmin" && !(await orgHasModule(orgId, "sales"))) return moduleDisabledResponse("sales")
-
+export const POST = withRlsAuth("offers", "write", async (req, { orgId, userId }) => {
   let body: unknown
   try {
     body = await req.json()
@@ -244,7 +242,7 @@ export const POST = withRls(async (req, { orgId, session }) => {
           // time so quotes are tracking-ready the moment they exist.
           // 122 bits of UUIDv4 randomness — unguessable.
           trackingToken: randomUUID(),
-          createdBy: session?.userId ?? null,
+          createdBy: userId ?? null,
         },
       })
 
