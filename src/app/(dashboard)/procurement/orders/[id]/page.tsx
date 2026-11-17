@@ -62,6 +62,12 @@ export default function PurchaseOrderPage() {
   const [receiveOpen, setReceiveOpen] = useState(false)
   const [receiving, setReceiving] = useState<Record<string, string>>({})
   const [linesOpen, setLinesOpen] = useState(false)
+  // «Send to supplier»: mark sent, and optionally e-mail the PDF (or e-mail it again).
+  const [sendMode, setSendMode] = useState<"send" | "email" | null>(null)
+  const [emailOn, setEmailOn] = useState(true)
+  const [emailTo, setEmailTo] = useState("")
+  const [emailLang, setEmailLang] = useState("az")
+  const [emailMessage, setEmailMessage] = useState("")
   const reads = useRef(0)
 
   const load = useCallback(async () => {
@@ -120,6 +126,36 @@ export default function PurchaseOrderPage() {
     if (ok) setPrompt(null)
   }
 
+  function openSend(mode: "send" | "email") {
+    setEmailOn(seesPrices && Boolean(order?.supplier.email))
+    setEmailTo(order?.supplier.email ?? "")
+    setEmailLang(locale === "ru" || locale === "en" ? locale : "az")
+    setEmailMessage("")
+    setSendMode(mode)
+  }
+
+  const submitSend = async () => {
+    const email = (sendMode === "email" || emailOn) && emailTo.trim()
+    setBusy(true)
+    try {
+      const res = sendMode === "email"
+        ? await fetch(`/api/v1/procurement/orders/${id}/email`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: emailTo.trim(), lang: emailLang, ...(emailMessage.trim() ? { message: emailMessage.trim() } : {}) }) })
+        : await fetch(`/api/v1/procurement/orders/${id}/actions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "send", ...(email ? { emailTo: emailTo.trim(), emailLang, ...(emailMessage.trim() ? { emailMessage: emailMessage.trim() } : {}) } : {}) }) })
+      const out = await res.json().catch(() => ({}))
+      if (sendMode === "send" && !res.ok) { toast.error(out?.error || tc("saveFailed")); return }
+      if (email || sendMode === "email") {
+        if (out?.data?.emailed) toast.success(t("emailed"))
+        else toast.error(t("emailFailed"))
+      } else {
+        toast.success(tc("saved"))
+      }
+      setSendMode(null)
+    } finally {
+      setBusy(false)
+      void load()
+    }
+  }
+
   const submitReceive = async () => {
     const items = Object.entries(receiving).filter(([, value]) => Number(value) > 0).map(([itemId, value]) => ({ itemId, quantity: Number(value) }))
     if (items.length === 0) { toast.error(t("receiveNone")); return }
@@ -136,6 +172,7 @@ export default function PurchaseOrderPage() {
     const label = t.has(`event.${event.type}`) ? t(`event.${event.type}` as never) : event.type
     if (event.type === "status" && event.toStatus) return `${label}: ${tos.has(event.toStatus) ? tos(event.toStatus as never) : event.toStatus}`
     if (event.type === "approval" && event.data) return `${label} ${String(event.data.stepNo)} — ${t(`decision.${String(event.data.decision)}` as never)}${event.data.comment ? `: ${String(event.data.comment)}` : ""}`
+    if (event.type === "emailed" && event.data) return `${label}: ${String(event.data.to ?? "")}${event.data.ok === false ? " ✗" : ""}`
     if (event.type === "delivery_date" && event.data) return `${label}: ${formatDay(String(event.data.to ?? ""), locale)}${event.data.note ? ` — ${String(event.data.note)}` : ""}`
     return label
   }
@@ -164,7 +201,8 @@ export default function PurchaseOrderPage() {
           {canPurchase && EDITABLE_STATUSES.includes(status) && <Button disabled={busy} onClick={() => act("submit")}>{t("submit")}</Button>}
           {mayDecide && <Button disabled={busy} onClick={() => act("approve")}>{t("approve")}</Button>}
           {mayDecide && <Button variant="outline" disabled={busy} onClick={() => { setPromptText(""); setPrompt({ kind: "reject", title: t("rejectReason") }) }}>{t("reject")}</Button>}
-          {canPurchase && status === "approved" && <Button disabled={busy} onClick={() => act("send")}>{t("send")}</Button>}
+          {canPurchase && status === "approved" && <Button disabled={busy} onClick={() => openSend("send")}>{t("send")}</Button>}
+          {canPurchase && seesPrices && ["sent", "in_production", "in_transit", "partially_received"].includes(status) && <Button variant="outline" disabled={busy} onClick={() => openSend("email")}>{t("emailAgain")}</Button>}
           {canPurchase && MANUAL_TRANSITIONS.in_production.includes(status) && <Button variant="outline" disabled={busy} onClick={() => act("in_production")}>{t("inProduction")}</Button>}
           {canPurchase && MANUAL_TRANSITIONS.in_transit.includes(status) && <Button variant="outline" disabled={busy} onClick={() => act("in_transit")}>{t("inTransit")}</Button>}
           {canPurchase && RECEIVABLE_STATUSES.includes(status) && <Button disabled={busy} onClick={() => { setReceiving({}); setReceiveOpen(true) }}>{t("receive")}</Button>}
@@ -277,6 +315,44 @@ export default function PurchaseOrderPage() {
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => setReceiveOpen(false)} disabled={busy}>{tc("cancel")}</Button>
           <Button type="button" onClick={submitReceive} disabled={busy}>{t("receive")}</Button>
+        </DialogFooter>
+      </Dialog>
+
+      <Dialog open={sendMode !== null} onOpenChange={(next) => { if (!next && !busy) setSendMode(null) }} widthClassName="max-w-[36rem]">
+        <DialogHeader><DialogTitle>{sendMode === "email" ? t("emailAgain") : t("sendTitle")}</DialogTitle></DialogHeader>
+        <DialogContent>
+          <div className="space-y-3">
+            {sendMode === "send" && seesPrices && (
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={emailOn} onChange={(e) => setEmailOn(e.target.checked)} />
+                {t("emailToSupplier")}
+              </label>
+            )}
+            {(sendMode === "email" || emailOn) && (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="po-email-to">{t("emailAddress")}</Label>
+                  <Input id="po-email-to" type="email" value={emailTo} maxLength={200} onChange={(e) => setEmailTo(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="po-email-lang">{t("emailLanguage")}</Label>
+                  <select id="po-email-lang" className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={emailLang} onChange={(e) => setEmailLang(e.target.value)}>
+                    <option value="az">Azərbaycan</option>
+                    <option value="ru">Русский</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="po-email-message">{t("emailMessage")}</Label>
+                  <Input id="po-email-message" value={emailMessage} maxLength={2000} onChange={(e) => setEmailMessage(e.target.value)} />
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setSendMode(null)} disabled={busy}>{tc("cancel")}</Button>
+          <Button type="button" onClick={submitSend} disabled={busy || ((sendMode === "email" || emailOn) && !emailTo.trim())}>{sendMode === "email" ? t("emailAgain") : t("send")}</Button>
         </DialogFooter>
       </Dialog>
 

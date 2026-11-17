@@ -19,8 +19,10 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock("lucide-react", () => ({
   Building2: () => null, Plus: () => null, Search: () => null, Users: () => null,
   FileText: () => null, TrendingUp: () => null, ArrowUpDown: () => null,
-  Pencil: () => null, Trash2: () => null, CheckSquare: () => null, Square: () => null,
+  Pencil: () => null, Trash2: () => null, CheckSquare: () => null, Square: () => null, Upload: () => null,
 }))
+// The Excel import dialog has its own tests; here only its button is on the page.
+vi.mock("@/components/excel-import-dialog", () => ({ ExcelImportDialog: () => null }))
 
 // Keep the actual page's hooks, requests and card text. Children with their own
 // data loading or browser integrations are outside this request-lifecycle test.

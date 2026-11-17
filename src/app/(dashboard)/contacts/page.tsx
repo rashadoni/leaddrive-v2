@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { ColorStatCard } from "@/components/color-stat-card"
 import { Select } from "@/components/ui/select"
 import { Users, Plus, Mail, Phone, Pencil, Trash2, Search, ChevronLeft, ChevronRight, CheckSquare, Square, MinusSquare, Upload, BarChart3 } from "lucide-react"
-import { CsvImportDialog } from "@/components/csv-import-dialog"
+import { ExcelImportDialog } from "@/components/excel-import-dialog"
 import { ContactForm } from "@/components/contact-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import {
@@ -123,6 +123,7 @@ export default function ContactsPage() {
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [importOpen, setImportOpen] = useState(false)
+  const ti = useTranslations("excelImport")
   const orgId = session?.user?.organizationId
   const userId = session?.user?.id
   const pageSize = PAGE_SIZE
@@ -383,7 +384,7 @@ export default function ContactsPage() {
             <Button variant="outline" onClick={() => router.push("/contacts/segments")} className="gap-1.5">
               <BarChart3 className="h-4 w-4" /> Insights
             </Button>
-            <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-1" /> CSV Import</Button>
+            <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-1" /> {ti("button")}</Button>
             <Button onClick={handleAdd} data-tour-id="contacts-new"><Plus className="h-4 w-4 mr-1" /> {t("addContact")}</Button>
           </>
         }
@@ -921,11 +922,11 @@ export default function ContactsPage() {
         itemName={t("bulkDeleteItemName", { count: selected.size })}
       />
 
-      {/* CSV Import */}
-      <CsvImportDialog
+      {/* Import from Excel or CSV (docs/sales-procurement/README.md, task 7.4) */}
+      <ExcelImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}
-        entityType="contacts"
+        entity="contacts"
         onImported={() => fetchContacts()}
       />
     </div>

@@ -23,7 +23,7 @@ import { useShellRefresh } from "@/components/shell-events-provider"
 interface Summary {
   currency: string
   lines: { dealLineItemId: string; name: string; quantity: number; revenue: number | null; stage: string; expectedDeliveryAt: string | null; late: boolean; cost: number | null }[]
-  totals: { revenue: number | null; cost: number | null; margin: number | null; marginPct: number | null }
+  totals: { revenue: number | null; cost: number | null; margin: number | null; marginPct: number | null; foreignCost: Record<string, number> | null }
   summary: { ready: number; total: number; late: boolean; nextExpected: string | null; dealChanged: boolean }
   requests: { id: string; number: string; title: string; status: string; neededBy: string | null }[]
   orders: { id: string; number: string; status: string; currency: string; totalAmount: string | null; expectedDeliveryAt: string | null; late: boolean; supplier: { name: string } }[]
@@ -86,6 +86,12 @@ export function DealProcurementTab({ dealId, dealName }: { dealId: string; dealN
           <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">{t("cost")}</div><div className="font-semibold tabular-nums">{formatMoney(data.totals.cost, data.currency, locale)}</div></div>
           <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">{t("margin")}</div><div className="font-semibold tabular-nums">{formatMoney(data.totals.margin, data.currency, locale)}{data.totals.marginPct !== null ? ` · ${data.totals.marginPct}%` : ""}</div></div>
         </div>
+      )}
+
+      {seesPrices && data.totals.foreignCost && (
+        <p className="text-xs text-muted-foreground">
+          {t("foreignCost", { list: Object.entries(data.totals.foreignCost).map(([currency, amount]) => formatMoney(amount, currency, locale)).join(", ") })}
+        </p>
       )}
 
       {data.lines.length === 0 ? (

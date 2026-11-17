@@ -24,7 +24,7 @@ import { NextResponse } from "next/server"
 import { randomUUID } from "crypto"
 import { Prisma } from "@prisma/client"
 import { z } from "zod"
-import { prisma } from "@/lib/prisma"
+import { prisma, logAudit } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { rollUpQuote } from "@/lib/cpq/totals"
 import { isValidLineQuantity, LINE_TYPES } from "@/lib/cpq/line-types"
@@ -271,6 +271,8 @@ export const POST = withRlsAuth("offers", "write", async (req, { orgId, userId }
       })
     })
 
+    // Commercial offers are journaled like deals (docs/sales-procurement/README.md, task 5.3).
+    if (created) logAudit(orgId, "create", "quote", created.id, `${created.quoteNumber} v${created.version}`, { newValue: { status: created.status, totalAmount: created.totalAmount?.toString() }, userId })
     return NextResponse.json({ quote: created }, { status: 201 })
   } catch (err: unknown) {
     if (err instanceof Prisma.PrismaClientKnownRequestError) {

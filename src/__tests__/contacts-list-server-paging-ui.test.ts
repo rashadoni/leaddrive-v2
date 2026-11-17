@@ -32,7 +32,7 @@ vi.mock("lucide-react", () => Object.fromEntries(
   ["Users", "Plus", "Mail", "Phone", "Pencil", "Trash2", "Search", "ChevronLeft", "ChevronRight",
     "CheckSquare", "Square", "MinusSquare", "Upload", "BarChart3"].map((name) => [name, () => null]),
 ))
-vi.mock("@/components/csv-import-dialog", () => ({ CsvImportDialog: () => null }))
+vi.mock("@/components/excel-import-dialog", () => ({ ExcelImportDialog: () => null }))
 vi.mock("@/components/contact-form", () => ({ ContactForm: () => null }))
 vi.mock("@/components/delete-confirm-dialog", () => ({
   DeleteConfirmDialog: ({ open, onConfirm }: { open: boolean; onConfirm: () => Promise<void> }) =>

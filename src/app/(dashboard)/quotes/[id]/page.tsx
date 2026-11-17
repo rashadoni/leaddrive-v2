@@ -23,6 +23,8 @@ import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
+import { QuoteVersions } from "@/components/cpq/quote-versions"
+import { checkPermission, type Role } from "@/lib/permissions"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -132,6 +134,7 @@ export default function QuoteDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { data: session } = useSession()
+  const canWriteOffers = checkPermission((((session?.user as { role?: string } | undefined)?.role) || "viewer") as Role, "offers", "write")
   const quoteId = params.id as string
   const orgId = session?.user?.organizationId
   const [quote, setQuote] = useState<Quote | null>(null)
@@ -663,6 +666,9 @@ export default function QuoteDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Versions of this offer (docs/sales-procurement/README.md, task 5.1) */}
+      <QuoteVersions quoteId={quoteId} canWrite={canWriteOffers} />
 
       <DeleteConfirmDialog
         open={deleteOpen}

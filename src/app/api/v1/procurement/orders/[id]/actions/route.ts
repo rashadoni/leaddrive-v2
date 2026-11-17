@@ -9,6 +9,8 @@ import { approversFor, mayActOnStep, readApprovalRules } from "@/lib/procurement
 import { CANCELLABLE_STATUSES, EDITABLE_STATUSES, MANUAL_TRANSITIONS, type PurchaseOrderStatus } from "@/lib/procurement/order-status"
 import { badRequest, conflict, money, notFound, readJsonBody } from "@/lib/procurement/access"
 import { recordOrderEvent } from "@/lib/procurement/orders"
+import { emailPurchaseOrder } from "@/lib/procurement/send-order-email"
+import { emitPurchaseOrderStatus } from "@/lib/procurement/events"
 import { notifyProcurement, purchasersOf, usersWithRoles } from "@/lib/procurement/notify"
 
 /**
@@ -26,6 +28,10 @@ type Ctx = { params: Promise<{ id: string }> }
 const actionSchema = z.object({
   action: z.enum(["submit", "approve", "reject", "send", "in_production", "in_transit", "cancel"]),
   comment: z.string().trim().max(1000).optional(),
+  /** With `send`: also e-mail the PDF to this address (task 3.3). */
+  emailTo: z.string().trim().email().max(200).optional(),
+  emailLang: z.enum(["az", "ru", "en"]).optional(),
+  emailMessage: z.string().trim().max(2000).optional(),
 }).strict()
 
 type LockedOrder = {
@@ -60,7 +66,10 @@ export const POST = withRlsAuth("procurement", "read", async (req, auth, { param
   if (!read.ok) return read.response
   const parsed = actionSchema.safeParse(read.body)
   if (!parsed.success) return badRequest(parsed.error.issues[0]?.message || "Invalid input")
-  const { action, comment } = parsed.data
+  const { action, comment, emailTo, emailLang, emailMessage } = parsed.data
+  if (emailTo && action !== "send") return badRequest("Only a sent order is e-mailed", "EMAIL_ONLY_ON_SEND")
+  // The PDF carries the prices.
+  if (emailTo && !checkPermission(role, "procurement-costs", "read")) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   // Deciding a step belongs to whoever the chain names — finance approves
   // without being a purchaser; everything else is purchasing work.
   if (action !== "approve" && action !== "reject" && !checkPermission(role, "procurement", "write")) {
@@ -157,5 +166,10 @@ export const POST = withRlsAuth("procurement", "read", async (req, auth, { param
   const number = procurementNumber("order", outcome.order.seq)
   logAudit(orgId, action, "purchase_order", id, number, { oldValue: { status: outcome.from }, newValue: { status: outcome.to, comment: comment ?? null }, userId })
   await outcome.notify()
-  return NextResponse.json({ success: true, data: { status: outcome.to } })
+  if (outcome.from !== outcome.to) await emitPurchaseOrderStatus(orgId, id, outcome.from, outcome.to)
+  // The order is sent whatever the mailer says; the history says whether the e-mail left.
+  const emailed = action === "send" && emailTo
+    ? await emailPurchaseOrder({ orgId, orderId: id, actorId: userId, to: emailTo, lang: emailLang, message: emailMessage })
+    : null
+  return NextResponse.json({ success: true, data: { status: outcome.to, ...(emailed ? { emailed: emailed.ok } : {}) } })
 })

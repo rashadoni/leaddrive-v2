@@ -70,6 +70,8 @@ model Organization {
   purchaseOrderItems    PurchaseOrderItem[]
   purchaseOrderApprovals PurchaseOrderApprovalStep[]
   purchaseOrderEvents   PurchaseOrderEvent[]
+  dealFiles             DealFile[]
+  dealChangeApprovals   DealChangeApproval[]
   companies             Company[]
   contacts              Contact[]
   deals                 Deal[]
@@ -1750,6 +1752,8 @@ model Deal {
   lineItems DealLineItem[]
   purchaseRequests PurchaseRequest[]
   purchaseOrders PurchaseOrder[]
+  files DealFile[]
+  changeApprovals DealChangeApproval[]
 
   @@index([organizationId])
   @@index([organizationId, stage])
@@ -24861,3 +24865,57 @@ model PurchaseOrderEvent {
   @@index([organizationId, orderId, createdAt])
   @@map("purchase_order_events")
 }
+
+/// A file of a customer order — the layout, a PDF, a photo, the customer's
+/// confirmation (docs/sales-procurement/README.md, task 4.1). Stored sealed with
+/// the organization's key under uploads/deal-files, served by the uploads gate.
+model DealFile {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  dealId         String
+  deal           Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  fileName       String
+  originalName   String
+  fileSize       Int
+  mimeType       String
+  note           String?
+  uploadedBy     String?
+  createdAt      DateTime     @default(now())
+
+  changeApprovals DealChangeApproval[]
+
+  @@unique([organizationId, fileName])
+  @@index([organizationId, dealId])
+  @@map("deal_files")
+}
+
+/// What the customer agreed to change in an order and who on their side said
+/// so (docs/sales-procurement/README.md, task 5.2): the layout, a size, a
+/// quantity, a price, a date. Kept as a journal — rows are added, never edited.
+model DealChangeApproval {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  dealId         String
+  deal           Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  /// layout | size | quantity | price | deadline | other
+  kind           String
+  before         String?
+  after          String
+  /// The customer's person who confirmed it.
+  approvedByName String
+  approvedAt     DateTime
+  /// email | whatsapp | phone | meeting | other
+  channel        String
+  note           String?
+  /// The confirmation itself — a screenshot, a signed layout.
+  fileId         String?
+  file           DealFile?    @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  createdBy      String?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, dealId, approvedAt])
+  @@map("deal_change_approvals")
+}
+

@@ -8,6 +8,7 @@ import { nextProcurementSeq, procurementNumber } from "@/lib/procurement/numberi
 import { PURCHASE_REQUEST_STATUSES } from "@/lib/procurement/order-status"
 import { badRequest, readJsonBody } from "@/lib/procurement/access"
 import { notifyProcurement, purchasersOf } from "@/lib/procurement/notify"
+import { emitPurchaseRequestSubmitted } from "@/lib/procurement/events"
 
 /**
  * Purchase requests (docs/sales-procurement/README.md, task 3.1): what sales
@@ -131,6 +132,7 @@ export const POST = withRlsAuth("purchase-requests", "write", async (req, { orgI
       recipients: await purchasersOf(orgId),
       event: { kind: "request.submitted", number, title: created.title },
     })
+    await emitPurchaseRequestSubmitted(orgId, created.id)
   }
   return NextResponse.json({ success: true, data: { ...created, number } }, { status: 201 })
 })

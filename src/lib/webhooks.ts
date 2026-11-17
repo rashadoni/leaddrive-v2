@@ -28,6 +28,9 @@ export type WebhookEvent =
   | "campaign.sent"
   | "whatsapp.message_received"
   | "whatsapp.message_status"
+  // Purchasing for a customer order (docs/sales-procurement/README.md, task 6.4).
+  | "purchase_request.submitted"
+  | "purchase_order.status_changed"
 
 interface WebhookPayload {
   event: string
