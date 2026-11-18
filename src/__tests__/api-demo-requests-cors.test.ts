@@ -45,6 +45,8 @@ const ALLOWED_ORIGINS = [
   CANONICAL_ORIGIN,
   "https://www.leaddrivecrm.org",
   "https://new.leaddrivecrm.org",
+  "https://biznesdoktoru.az",
+  "https://www.biznesdoktoru.az",
 ] as const
 
 const validPayload = {
