@@ -754,6 +754,8 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     const finance = await json(await tab.GET(request(`${API}/deals/${deal.id}`, "GET"), ctx(deal.id)))
     // Revenue 3000 + 2000 + 180 = 5180; plan 1100 + 560 + 110 = 1770.
     expect(finance.body.data.lines.map((line: { plannedCost: number }) => line.plannedCost)).toEqual([1100, 560, 110])
+    // The tab hands the request dialog each line's unit, so a request raised from the screen carries it too.
+    expect(finance.body.data.lines.map((line: { unit: string | null }) => line.unit)).toEqual(["ədəd", "m²", null])
     expect(finance.body.data.totals).toMatchObject({ revenue: 5180, plannedCost: 1770, plannedMargin: 3410, plannedMarginPct: 65.8, plannedMissing: 0 })
     as("sales")
     const sales = await json(await tab.GET(request(`${API}/deals/${deal.id}`, "GET"), ctx(deal.id)))
