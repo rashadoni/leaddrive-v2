@@ -5,6 +5,7 @@ import type { PrismaClient } from "@prisma/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
+  bakuNight, nextNightStart, REQUEST_GAP_MS,
   decodeSalesSoap, parseValueTable, productsOfSale, rankSalesProducts, refreshZeytunSalesHistory, salesFromSettlements,
   salesHistorySource, SalesHistoryStore, ZEYTUN_SALES_CONNECTION_FILE, type SalesFetch,
 } from "@/lib/voice-agent/pharmacy/zeytun-sales-history"
@@ -15,7 +16,8 @@ import {
 const ORG = "tenant-test"
 const PHARMACY = "3ed36d74-0000-11e9-80cb-0894ef5e9ba2"
 const A = "05bf4b43-5c22-11e9-80c5-0894ef5e9ba2", B = "15bf4b43-5c22-11e9-80c5-0894ef5e9ba2", C = "25bf4b43-5c22-11e9-80c5-0894ef5e9ba2"
-const NOW = Date.parse("2026-11-11T09:00:00Z")
+// 23:00 in Baku: the job reads 1C only at night.
+const NOW = Date.parse("2026-11-11T19:00:00Z")
 
 const column = (name: string) => `<column><Name>${name}</Name><ValueType><Type>xs:string</Type><StringQualifiers><Length>0</Length></StringQualifiers></ValueType><Title>${name}</Title><Width>10</Width></column>`
 const table = (columns: string[], rows: string[], nested = false) =>
@@ -84,6 +86,7 @@ describe("a pharmacy's 1C sales history", () => {
   })
 
   describe("the job", () => {
+    const instant = async () => {}
     const grantFile = () => join(root, "inbound-grant.json")
     const db = (guids: string[]) => ({ pharmacyPhoneOrder: { findMany: vi.fn(async () => guids.map(pharmacyGuid => ({ pharmacyGuid }))) } }) as unknown as PrismaClient
     const config = { organizationId: ORG, endpoint: "http://1c.example/ztnmain/ws/Get_Sales.1cws", username: "synthetic-user", password: "synthetic-secret", allowPlainHttp: true }
@@ -103,14 +106,14 @@ describe("a pharmacy's 1C sales history", () => {
 
     it("does nothing without its connection file", async () => {
       await rm(join(root, ZEYTUN_SALES_CONNECTION_FILE))
-      expect(await refreshZeytunSalesHistory({ db: db([PHARMACY]), env: { grantFile: grantFile(), cacheDir: root }, now: () => NOW, download }))
+      expect(await refreshZeytunSalesHistory({ sleep: instant, db: db([PHARMACY]), env: { grantFile: grantFile(), cacheDir: root }, now: () => NOW, download }))
         .toEqual({ outcome: "not_configured" })
       expect(download).not.toHaveBeenCalled()
     })
 
     it("reads a caller's recent sales once, then only new ones, and drops a sale 1C no longer lists", async () => {
       const env = { grantFile: grantFile(), cacheDir: root }
-      const first = await refreshZeytunSalesHistory({ db: db([PHARMACY]), env, now: () => NOW, download })
+      const first = await refreshZeytunSalesHistory({ sleep: instant, db: db([PHARMACY]), env, now: () => NOW, download })
       expect(first).toMatchObject({ outcome: "done", pharmacies: 1, sales: 2, failures: 0 })
       // The list, then the two sales inside the window: the 2025 one is never asked.
       expect(download).toHaveBeenCalledTimes(3)
@@ -122,42 +125,92 @@ describe("a pharmacy's 1C sales history", () => {
       listed = [["ZN000000002", "2026-11-10T10:00:00"], ["ZN000000003", "2026-11-11T08:00:00"]]
       download.mockClear()
       const later = NOW + 6 * 3_600_000
-      expect(await refreshZeytunSalesHistory({ db: db([PHARMACY]), env, now: () => later, download })).toMatchObject({ sales: 1 })
+      expect(await refreshZeytunSalesHistory({ sleep: instant, db: db([PHARMACY]), env, now: () => later, download })).toMatchObject({ sales: 1 })
       expect(download).toHaveBeenCalledTimes(2)
       const kept = await new SalesHistoryStore(root, ORG).load(PHARMACY)
       expect([...kept!.keys()].sort()).toEqual(["ZN000000002", "ZN000000003"])
 
       // Not due yet: 1C is not asked at all.
       download.mockClear()
-      expect(await refreshZeytunSalesHistory({ db: db([PHARMACY]), env, now: () => later + 60_000, download })).toMatchObject({ pharmacies: 0, due: 0 })
+      expect(await refreshZeytunSalesHistory({ sleep: instant, db: db([PHARMACY]), env, now: () => later + 60_000, download })).toMatchObject({ pharmacies: 0, due: 0 })
       expect(download).not.toHaveBeenCalled()
     })
 
     it("stops at its budget and finishes the pharmacy next tick", async () => {
       const env = { grantFile: grantFile(), cacheDir: root }
       let clock = NOW
-      const slow = vi.fn<SalesFetch>(async (url, options) => { clock += 40_000; return download(url, options) })
-      expect(await refreshZeytunSalesHistory({ db: db([PHARMACY]), env, now: () => clock, download: slow, budgetMs: 60_000 }))
+      const slow = vi.fn<SalesFetch>(async (url, options) => { clock += 3_000; return download(url, options) })
+      expect(await refreshZeytunSalesHistory({ sleep: instant, db: db([PHARMACY]), env, now: () => clock, download: slow, budgetMs: 7_000 }))
         .toMatchObject({ outcome: "done", pharmacies: 1, sales: 1 })
       expect((await new SalesHistoryStore(root, ORG).loadIndex())[PHARMACY]).toMatchObject({ complete: false })
       clock += 60_000
-      expect(await refreshZeytunSalesHistory({ db: db([PHARMACY]), env, now: () => clock, download: slow, budgetMs: 600_000 }))
+      expect(await refreshZeytunSalesHistory({ sleep: instant, db: db([PHARMACY]), env, now: () => clock, download: slow, budgetMs: 600_000 }))
         .toMatchObject({ sales: 1 })
       expect((await new SalesHistoryStore(root, ORG).loadIndex())[PHARMACY]).toMatchObject({ complete: true })
     })
 
-    it("stops at once when 1C refuses the account, and keeps no prices or credentials on disk", async () => {
+    it("stops at once when 1C refuses the account, stands down until the next night, keeps no prices or credentials", async () => {
       const env = { grantFile: grantFile(), cacheDir: root }
-      const refused = vi.fn<SalesFetch>(async () => ({ ok: false, status: 401, bodyBytes: Buffer.from("") }) as unknown as Awaited<ReturnType<SalesFetch>>)
-      expect(await refreshZeytunSalesHistory({ db: db([PHARMACY, A]), env, now: () => NOW, download: refused }))
-        .toMatchObject({ outcome: "failed", error: "authentication_required" })
-      expect(refused).toHaveBeenCalledTimes(1)
-
-      await refreshZeytunSalesHistory({ db: db([PHARMACY]), env, now: () => NOW, download })
+      await refreshZeytunSalesHistory({ sleep: instant, db: db([PHARMACY]), env, now: () => NOW, download })
       const dir = (await readdir(root)).find(name => name.startsWith("sales-history-"))!
       const { readFile } = await import("node:fs/promises")
       const stored = await readFile(join(root, dir, `${PHARMACY}.json`), "utf8")
       expect(stored).not.toMatch(/7\.52|synthetic|10\.5/)
+
+      const refused = vi.fn<SalesFetch>(async () => ({ ok: false, status: 401, bodyBytes: Buffer.from("") }) as unknown as Awaited<ReturnType<SalesFetch>>)
+      expect(await refreshZeytunSalesHistory({ sleep: instant, db: db([PHARMACY, A]), env, now: () => NOW, download: refused }))
+        .toMatchObject({ outcome: "failed", error: "authentication_required" })
+      expect(refused).toHaveBeenCalledTimes(1)
+      expect(await refreshZeytunSalesHistory({ sleep: instant, db: db([PHARMACY, A]), env, now: () => NOW + 3_600_000, download: refused }))
+        .toMatchObject({ outcome: "paused", until: new Date(nextNightStart(NOW)).toISOString() })
+      expect(refused).toHaveBeenCalledTimes(1)
+    })
+
+    // Owner 2026-11-18 «включай», after 2026-11-11: ~4 requests a second dropped Zeytun's integrations with 1C.
+    it("reads only at night in Baku", async () => {
+      const env = { grantFile: grantFile(), cacheDir: root }
+      expect(bakuNight(Date.parse("2026-11-11T17:59:00Z"))).toBe(false) // 21:59 Baku
+      expect(bakuNight(Date.parse("2026-11-11T18:00:00Z"))).toBe(true) // 22:00
+      expect(bakuNight(Date.parse("2026-11-12T02:59:00Z"))).toBe(true) // 06:59
+      expect(bakuNight(Date.parse("2026-11-12T03:00:00Z"))).toBe(false) // 07:00
+      expect(new Date(nextNightStart(Date.parse("2026-11-12T03:00:00Z"))).toISOString()).toBe("2026-11-12T18:00:00.000Z")
+      expect(await refreshZeytunSalesHistory({ sleep: instant, db: db([PHARMACY]), env, now: () => Date.parse("2026-11-12T08:00:00Z"), download }))
+        .toEqual({ outcome: "outside_hours" })
+      expect(download).not.toHaveBeenCalled()
+      // The night ending mid-tick ends the tick.
+      let clock = Date.parse("2026-11-12T02:59:55Z")
+      const late = vi.fn<SalesFetch>(async (url, options) => { clock += 1_000; return download(url, options) })
+      const run = await refreshZeytunSalesHistory({ sleep: async ms => { clock += ms }, db: db([PHARMACY]), env, now: () => clock, download: late })
+      // The list and one sale fit before 07:00; the next request would start after it.
+      expect(late).toHaveBeenCalledTimes(2)
+      expect(run).toMatchObject({ outcome: "done", sales: 1 })
+    })
+
+    it("waits two seconds between requests", async () => {
+      const env = { grantFile: grantFile(), cacheDir: root }
+      let clock = NOW
+      const starts: number[] = []
+      const timed = vi.fn<SalesFetch>(async (url, options) => { starts.push(clock); clock += 300; return download(url, options) })
+      await refreshZeytunSalesHistory({ sleep: async ms => { clock += ms }, db: db([PHARMACY]), env, now: () => clock, download: timed })
+      expect(starts).toHaveLength(3)
+      for (let i = 1; i < starts.length; i++) expect(starts[i] - starts[i - 1]).toBeGreaterThanOrEqual(REQUEST_GAP_MS + 300)
+    })
+
+    it("stands down until the next night when 1C answers slowly", async () => {
+      const env = { grantFile: grantFile(), cacheDir: root }
+      let clock = NOW
+      const sluggish = vi.fn<SalesFetch>(async (url, options) => { clock += 9_000; return download(url, options) })
+      expect(await refreshZeytunSalesHistory({ sleep: async ms => { clock += ms }, db: db([PHARMACY, A]), env, now: () => clock, download: sluggish }))
+        .toMatchObject({ outcome: "stopped", error: "slow" })
+      expect(sluggish).toHaveBeenCalledTimes(1)
+      const asked = download.mock.calls.length
+      expect(await refreshZeytunSalesHistory({ sleep: instant, db: db([PHARMACY, A]), env, now: () => clock + 60_000, download }))
+        .toMatchObject({ outcome: "paused" })
+      expect(download.mock.calls.length).toBe(asked)
+      // The next night it reads again.
+      const next = nextNightStart(clock) + 60_000
+      expect(await refreshZeytunSalesHistory({ sleep: instant, db: db([PHARMACY]), env, now: () => next, download }))
+        .toMatchObject({ outcome: "done" })
     })
   })
 })

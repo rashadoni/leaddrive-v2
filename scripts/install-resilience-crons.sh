@@ -129,8 +129,8 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # Owner's queue task 10: the line's AI calls a pharmacy back about products it waited for.
   # A no-op unless the order organization switched it on; one call at most, inside voice hours.
   printf '%s\n' "1-59/5 * * * * $TRIGGER /api/cron/zeytun-waitlist-callback >> $LOG 2>&1"
-  # What 1C sold each pharmacy, for the line's ear (zeytun-sales-history.ts): two minutes of
-  # one-at-a-time Get_Sales requests per tick at most; a no-op without its private connection file.
+  # What 1C sold each pharmacy, for the line's ear (zeytun-sales-history.ts): only 22:00-07:00 Baku,
+  # one Get_Sales request every 2 s; a no-op by day and without its private connection file.
   printf '%s\n' "3-59/15 * * * * $TRIGGER /api/cron/zeytun-sales-history >> $LOG 2>&1"
   # Purchasing (docs/sales-procurement/README.md, task 3.6): purchase orders whose supplier
   # is late are marked and their people told, once per date. Hourly, leased, bounded to 200.

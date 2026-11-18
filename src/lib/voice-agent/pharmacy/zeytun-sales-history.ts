@@ -31,9 +31,10 @@ import { ZeytunSnapshotStore } from "./zeytun-snapshot-store"
  *   products (`ГуидНоменклатуры` = the catalog's product GUID) and quantities.
  *
  * A background job (POST /api/cron/zeytun-sales-history, the jobs process)
- * reads the sales of the last HISTORY_DAYS per pharmacy, one request at a
- * time inside a time budget, and keeps per pharmacy only which products each
- * sale held: no prices, no sums. The line reads that file when a call starts
+ * reads the sales of the last HISTORY_DAYS per pharmacy, at night in Baku only,
+ * one request every REQUEST_GAP_MS, standing down until the next night when 1C
+ * is slow or refuses, and keeps per pharmacy only which products each sale
+ * held: no prices, no sums. The line reads that file when a call starts
  * (salesHistorySource) and never calls 1C itself.
  */
 
@@ -314,6 +315,16 @@ export class SalesHistoryStore {
     await this.write(`${pharmacyGuid}.json`, JSON.stringify(stored))
   }
 
+  /** Until when the job stands down (1C slow or failing); 0 when it does not. */
+  async loadPause(): Promise<number> {
+    try {
+      const value = await readPrivate(join(this.root, "pause.json"), 1024) as { until?: unknown }
+      return typeof value?.until === "number" && Number.isFinite(value.until) ? value.until : 0
+    } catch { return 0 }
+  }
+
+  savePause(until: number): Promise<void> { return this.write("pause.json", JSON.stringify({ until })) }
+
   async loadIndex(): Promise<HistoryIndex> {
     try { return indexSchema.parse(await readPrivate(join(this.root, "index.json"), MAX_FILE_BYTES)) } catch { return {} }
   }
@@ -368,23 +379,53 @@ const OTHER_EVERY_MS = 3 * DAY_MS
 const CALLERS_SINCE_MS = 90 * DAY_MS
 const TRUSTED_IDENTIFICATION = ["phone_unique", "phone_shared", "manager_selected"]
 
+// Night only, one request every two seconds, and it stops itself (owner 2026-11-18: «включай»).
+// 2026-11-11 the job read ~4 requests a second in the working day, and within 40 minutes
+// Zeytun's own integrations lost 1C («Connection lost with 1C»); their API serves many clients.
+export const NIGHT_FROM_HOUR = 22, NIGHT_TO_HOUR = 7
+const BAKU_OFFSET_MS = 4 * 3_600_000
+/** Between the end of one request to 1C and the start of the next. */
+export const REQUEST_GAP_MS = 2_000
+/** A request slower than this means 1C is busy: the job stops until the next night. */
+export const SLOW_REQUEST_MS = 8_000
+/** A tick runs every 15 minutes; it reads for at most this long. */
+const NIGHT_BUDGET_MS = 12 * 60_000
+
+/** 22:00-07:00 in Baku (UTC+4 all year). */
+export function bakuNight(now: number): boolean {
+  const hour = new Date(now + BAKU_OFFSET_MS).getUTCHours()
+  return hour >= NIGHT_FROM_HOUR || hour < NIGHT_TO_HOUR
+}
+
+/** The next 22:00 in Baku strictly after `now`. */
+export function nextNightStart(now: number): number {
+  const local = now + BAKU_OFFSET_MS
+  let start = Math.floor(local / DAY_MS) * DAY_MS + NIGHT_FROM_HOUR * 3_600_000
+  if (start <= local) start += DAY_MS
+  return start - BAKU_OFFSET_MS
+}
+
 type Env = { grantFile?: string; cacheDir?: string }
 export type SalesHistoryRun = {
-  outcome: "not_configured" | "busy" | "done" | "failed"
-  error?: ZeytunSalesReadError["code"]
-  pharmacies?: number; sales?: number; due?: number; failures?: number
+  outcome: "not_configured" | "outside_hours" | "paused" | "busy" | "done" | "stopped" | "failed"
+  error?: ZeytunSalesReadError["code"] | "slow"
+  pharmacies?: number; sales?: number; due?: number; failures?: number; until?: string
 }
 
 let running = false
 
 /**
  * One tick: the due pharmacies, line callers first, then every other pharmacy
- * of 1C's directory, the longest unread first, until the budget runs out. One
- * request at a time: 1C is Zeytun's working system. A pharmacy cut off by the
- * budget keeps what was read and goes on next tick.
+ * of 1C's directory, the longest unread first, until the budget or the night
+ * runs out. Only at night in Baku, one request at a time with REQUEST_GAP_MS
+ * between them: 1C is Zeytun's working system, shared with other clients. A
+ * request slower than SLOW_REQUEST_MS, or 1C refusing or down, stands the job
+ * down until the next night. A pharmacy cut off by the budget keeps what was
+ * read and goes on next tick.
  */
 export async function refreshZeytunSalesHistory(input: {
   db: PrismaClient; env?: Env; now?: () => number; budgetMs?: number; download?: SalesFetch
+  sleep?: (ms: number) => Promise<void>
 }): Promise<SalesHistoryRun> {
   const env = input.env ?? { grantFile: process.env.ZEYTUN_INBOUND_PILOT_FILE, cacheDir: process.env.ZEYTUN_CACHE_DIR }
   const now = input.now ?? Date.now
@@ -393,11 +434,29 @@ export async function refreshZeytunSalesHistory(input: {
   try { raw = await readPrivate(join(dirname(env.grantFile), ZEYTUN_SALES_CONNECTION_FILE), 16_384) }
   catch { return { outcome: "not_configured" } }
   const config = parseZeytunSalesConfig(raw)
+  if (!bakuNight(now())) return { outcome: "outside_hours" }
   if (running) return { outcome: "busy" }
   running = true
   try {
-    const started = now(), budget = input.budgetMs ?? 120_000
+    const started = now(), budget = input.budgetMs ?? NIGHT_BUDGET_MS
     const store = new SalesHistoryStore(env.cacheDir, config.organizationId)
+    const pausedUntil = await store.loadPause()
+    if (pausedUntil > started) return { outcome: "paused", until: new Date(pausedUntil).toISOString() }
+    const sleep = input.sleep ?? ((ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms)))
+    const download = input.download ?? postOutboundResource
+    let last = 0, slow = false
+    const paced: SalesFetch = async (url, options) => {
+      const wait = last ? last + REQUEST_GAP_MS - now() : 0
+      if (wait > 0) await sleep(wait)
+      const asked = now()
+      try { return await download(url, options) } finally {
+        last = now()
+        if (last - asked > SLOW_REQUEST_MS) slow = true
+      }
+    }
+    // The next request starts after the gap: it must still fit the budget and the night.
+    const going = () => !slow && now() + REQUEST_GAP_MS - started < budget && bakuNight(now() + REQUEST_GAP_MS)
+    const standDown = async () => { await store.savePause(nextNightStart(now())) }
     const index = await store.loadIndex()
     const callers = await lineCallers(input.db, config.organizationId, started)
     const others = await directoryPharmacies(env, config.organizationId)
@@ -409,23 +468,28 @@ export async function refreshZeytunSalesHistory(input: {
     ])]
     let pharmacies = 0, sales = 0, failures = 0
     for (const guid of queue) {
-      if (now() - started >= budget) break
+      if (!going()) break
       try {
-        const read = await refreshPharmacy(config, store, guid, started, () => now() - started < budget, input.download)
+        const read = await refreshPharmacy(config, store, guid, started, going, paced)
         sales += read.fetched
         index[guid] = { at: started, complete: read.complete }
         pharmacies++
       } catch (error) {
         failures++
-        // Credentials refused or 1C down: the rest would fail the same way.
+        // Credentials refused or 1C down: the rest would fail the same way, and 1C needs quiet.
         if (error instanceof ZeytunSalesReadError && error.code !== "invalid_response") {
           await store.saveIndex(index)
+          await standDown()
           return { outcome: "failed", error: error.code, pharmacies, sales, due: queue.length, failures }
         }
         index[guid] = { at: started, complete: true }
       }
     }
     await store.saveIndex(index)
+    if (slow) {
+      await standDown()
+      return { outcome: "stopped", error: "slow", pharmacies, sales, due: queue.length, failures }
+    }
     return { outcome: "done", pharmacies, sales, due: queue.length, failures }
   } finally { running = false }
 }
