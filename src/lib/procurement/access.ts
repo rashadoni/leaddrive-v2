@@ -15,7 +15,7 @@ export function canWriteProcurement(role: string): boolean {
   return checkPermission(role as Role, "procurement", "write")
 }
 
-const MONEY_KEYS = new Set(["unitPrice", "total", "totalAmount", "cost", "margin", "marginPct", "revenue", "foreignCost", "spend"])
+const MONEY_KEYS = new Set(["unitPrice", "total", "totalAmount", "cost", "margin", "marginPct", "revenue", "foreignCost", "spend", "purchasePrice", "plannedUnitCost", "plannedCost", "plannedMargin", "plannedMarginPct"])
 
 /** A deep copy with every money field nulled — for a reader without `procurement-costs`. */
 export function withoutPrices<T>(value: T): T {

@@ -69,18 +69,18 @@ export const POST = withRlsAuth("purchase-requests", "write", async (req, { orgI
   if (!parsed.success) return badRequest(parsed.error.issues[0]?.message || "Invalid input")
   const input = parsed.data
 
-  let deal: { id: string; name: string; lineItems: { id: string; name: string; quantity: Prisma.Decimal }[] } | null = null
+  let deal: { id: string; name: string; lineItems: { id: string; name: string; quantity: Prisma.Decimal; product: { unit: string | null } | null }[] } | null = null
   if (input.dealId) {
     if (!checkPermission(role, "deals", "read")) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     deal = await prisma.deal.findFirst({
       where: { id: input.dealId, organizationId: orgId },
-      select: { id: true, name: true, lineItems: { select: { id: true, name: true, quantity: true }, orderBy: { sortOrder: "asc" } } },
+      select: { id: true, name: true, lineItems: { select: { id: true, name: true, quantity: true, product: { select: { unit: true } } }, orderBy: { sortOrder: "asc" } } },
     })
     if (!deal) return NextResponse.json({ error: "Deal not found" }, { status: 404 })
   }
 
   const items = input.items ?? (deal?.lineItems ?? []).map((line) => ({
-    dealLineItemId: line.id, name: line.name, quantity: Number(line.quantity), unit: null, note: null,
+    dealLineItemId: line.id, name: line.name, quantity: Number(line.quantity), unit: line.product?.unit ?? null, note: null,
   }))
   if (items.length === 0) return badRequest("A purchase request needs at least one line", "NO_LINES")
   if (deal) {

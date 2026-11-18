@@ -26,6 +26,7 @@ const createSchema = z.object({
   price: z.number().finite().nonnegative().max(MAX_PRODUCT_PRICE).default(0),
   currency: productCurrencySchema.default(DEFAULT_CURRENCY),
   isActive: z.boolean().default(true),
+  unit: z.string().trim().max(20).nullable().optional(),
   features: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
 })

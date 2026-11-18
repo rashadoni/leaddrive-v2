@@ -72,6 +72,7 @@ model Organization {
   purchaseOrderEvents   PurchaseOrderEvent[]
   dealFiles             DealFile[]
   dealChangeApprovals   DealChangeApproval[]
+  productCosts          ProductCost[]
   companies             Company[]
   contacts              Contact[]
   deals                 Deal[]
@@ -1602,6 +1603,7 @@ model Company {
   pharmacyWaitlistItems PharmacyWaitlistItem[]
   supplierQuotes SupplierQuote[]
   supplierPurchaseOrders PurchaseOrder[]
+  suppliedProducts ProductCost[] @relation("ProductDefaultSupplier")
 
   @@unique([organizationId, externalSource, externalId])
   @@index([organizationId])
@@ -4735,6 +4737,8 @@ model Product {
   productType    String   @default("other") // hardware | license | subscription | service | other
   price          Float    @default(0)
   currency       String   @default("AZN")
+  /// Unit of measure («ədəd», «m²», «kq») — copied into purchase request lines.
+  unit           String?
   isActive       Boolean  @default(true)
   features       String[] @default([])
   tags           String[] @default([])
@@ -4756,8 +4760,31 @@ model Product {
 
   dealLineItems DealLineItem[]
 
+  /// Purchase price and default supplier — a table of its own so that no
+  /// reader of `products` (catalog, storefront, quotes, AI) ever carries it.
+  cost ProductCost?
+
   @@index([organizationId])
   @@map("products")
+}
+
+/// What a product costs to buy (docs/sales-procurement/README.md, task 2.2).
+/// Read only through the `procurement-costs` scope.
+model ProductCost {
+  productId         String       @id
+  product           Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  organizationId    String
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchasePrice     Decimal?     @db.Decimal(18, 4)
+  currency          String
+  defaultSupplierId String?
+  defaultSupplier   Company?     @relation("ProductDefaultSupplier", fields: [defaultSupplierId], references: [id], onDelete: SetNull)
+  leadTimeDays      Int?
+  updatedBy         String?
+  updatedAt         DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@map("product_costs")
 }
 
 // ═══════════════════════════════════════════════════
@@ -24644,6 +24671,9 @@ model DealLineItem {
   /// Null until someone enters a price in the deal's currency.
   unitPrice      Decimal?     @db.Decimal(18, 4)
   discountPct    Decimal      @default(0) @db.Decimal(5, 2)
+  /// Planned cost of one unit in the deal's currency — `procurement-costs`
+  /// only. Taken from the product's purchase price when the line is added.
+  plannedUnitCost Decimal?    @db.Decimal(18, 4)
   sortOrder      Int          @default(0)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt

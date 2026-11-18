@@ -4719,6 +4719,8 @@
     "slaSnapshotMeaning": "SLA son tarixi olmayan biletlər də daxil olmaqla cari növbə. Tamamlanmış öhdəliklərin icra faizi deyil."
   },
   "products": {
+    "unitLabel": "Ölçü vahidi",
+    "unitPlaceholder": "ədəd, m², kq",
     "title": "Məhsullar və Xidmətlər",
     "subtitle": "Məhsul kataloqunu idarə edin",
     "newProduct": "Yeni məhsul",
@@ -34249,7 +34251,30 @@
         "received": "Qəbul edilib"
       },
       "requestsTitle": "Sorğular",
-      "ordersTitle": "Təchizatçı sifarişləri"
+      "ordersTitle": "Təchizatçı sifarişləri",
+      "planTitle": "Plan",
+      "planCost": "Planlaşdırılan maya dəyəri",
+      "planMargin": "Planlaşdırılan marja",
+      "planMissing": "{count, plural, one {# sətirdə plan yoxdur} other {# sətirdə plan yoxdur}}",
+      "planEdit": "Planı dəyiş",
+      "planSave": "Planı saxla",
+      "planSaved": "Plan saxlanıldı",
+      "planFailed": "Planı saxlamaq alınmadı",
+      "planInvalid": "Planlaşdırılan maya dəyəri mənfi olmayan rəqəm olmalıdır",
+      "planColumn": "Plan",
+      "planUnitCost": "Vahid üzrə plan, {currency}"
+    },
+    "productCost": {
+      "title": "Satınalma",
+      "hint": "Rəhbərlik, maliyyə və satınalma görür. Bu məhsulla sövdələşməyə əlavə olunan yeni sətir bu qiyməti planlaşdırılan maya dəyəri kimi götürür.",
+      "edit": "Dəyiş",
+      "price": "Alış qiyməti",
+      "currency": "Valyuta",
+      "supplier": "Əsas təchizatçı",
+      "noSupplier": "Seçilməyib",
+      "leadTime": "Çatdırılma müddəti, gün",
+      "days": "{count, plural, one {# gün} other {# gün}}",
+      "invalid": "Qiymət və müddət mənfi olmayan rəqəm olmalıdır"
     },
     "reports": {
       "title": "Təchizat hesabatları",

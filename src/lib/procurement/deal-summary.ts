@@ -34,13 +34,13 @@ const later = (a: LineStage, b: LineStage) => (STAGE_ORDER.indexOf(a) >= STAGE_O
 
 type RequestRow = { id: string; seq: number; title: string; status: string; neededBy: Date | null; dealChangedAt: Date | null; items: { dealLineItemId: string | null }[]; _count: { quotes: number } }
 type OrderRow = { id: string; seq: number; status: string; currency: string; totalAmount: Prisma.Decimal; expectedDeliveryAt: Date | null; dealChangedAt: Date | null; supplier: { id: string; name: string }; items: { dealLineItemId: string | null; total: Prisma.Decimal }[] }
-type LineRow = { id: string; name: string; quantity: Prisma.Decimal; unitPrice: Prisma.Decimal | null; discountPct: Prisma.Decimal }
+type LineRow = { id: string; name: string; quantity: Prisma.Decimal; unitPrice: Prisma.Decimal | null; discountPct: Prisma.Decimal; plannedUnitCost: Prisma.Decimal | null }
 
 export async function dealProcurementSummary(orgId: string, dealId: string, now = new Date()) {
   const [deal, requests, orders]: [{ id: string; currency: string; lineItems: LineRow[] } | null, RequestRow[], OrderRow[]] = await Promise.all([
     prisma.deal.findFirst({
       where: { id: dealId, organizationId: orgId },
-      select: { id: true, currency: true, lineItems: { orderBy: { sortOrder: "asc" }, select: { id: true, name: true, quantity: true, unitPrice: true, discountPct: true } } },
+      select: { id: true, currency: true, lineItems: { orderBy: { sortOrder: "asc" }, select: { id: true, name: true, quantity: true, unitPrice: true, discountPct: true, plannedUnitCost: true } } },
     }),
     prisma.purchaseRequest.findMany({
       where: { organizationId: orgId, dealId },
@@ -75,7 +75,9 @@ export async function dealProcurementSummary(orgId: string, dealId: string, now 
       if (isLate(order, now)) late = true
       if ((COMMITTED_STATUSES as readonly string[]).includes(order.status) && order.currency === deal.currency) cost += own.reduce((sum, item) => sum + Number(item.total), 0)
     }
-    return { dealLineItemId: line.id, name: line.name, quantity: Number(line.quantity), revenue, stage, expectedDeliveryAt: expected, late, cost }
+    const plannedUnitCost = line.plannedUnitCost === null ? null : Number(line.plannedUnitCost)
+    const plannedCost = plannedUnitCost === null ? null : Number(line.quantity) * plannedUnitCost
+    return { dealLineItemId: line.id, name: line.name, quantity: Number(line.quantity), revenue, stage, expectedDeliveryAt: expected, late, cost, plannedUnitCost, plannedCost }
   })
 
   const revenue = lines.reduce((sum, line) => sum + (line.revenue ?? 0), 0)
@@ -87,6 +89,12 @@ export async function dealProcurementSummary(orgId: string, dealId: string, now 
     if (order.currency !== deal.currency) foreignCost[order.currency] = (foreignCost[order.currency] ?? 0) + Number(order.totalAmount)
   }
   const exact = Object.keys(foreignCost).length === 0
+  // The plan: what the lines are expected to cost before any order exists.
+  // Only a full plan gives a margin — one unplanned line would make it look
+  // better than it is.
+  const plannedMissing = lines.filter((line) => line.plannedCost === null).length
+  const plannedCost = lines.reduce((sum, line) => sum + (line.plannedCost ?? 0), 0)
+  const plannedComplete = lines.length > 0 && plannedMissing === 0
   const ready = lines.filter((line) => line.stage === "received").length
   const pending = lines.filter((line) => line.expectedDeliveryAt && line.stage !== "received")
   let nextExpected: Date | null = null
@@ -103,6 +111,10 @@ export async function dealProcurementSummary(orgId: string, dealId: string, now 
       margin: exact ? revenue - cost : null,
       marginPct: exact && revenue > 0 ? Math.round(((revenue - cost) / revenue) * 1000) / 10 : null,
       foreignCost: exact ? null : foreignCost,
+      plannedCost: lines.length > 0 && plannedMissing < lines.length ? plannedCost : null,
+      plannedMargin: plannedComplete ? revenue - plannedCost : null,
+      plannedMarginPct: plannedComplete && revenue > 0 ? Math.round(((revenue - plannedCost) / revenue) * 1000) / 10 : null,
+      plannedMissing,
     },
     summary: { ready, total: lines.length, late: lines.some((line) => line.late), nextExpected, dealChanged: requests.some((r) => r.dealChangedAt) || orders.some((o) => o.dealChangedAt) },
     requests: requests.map((request: RequestRow) => ({ id: request.id, title: request.title, status: request.status, neededBy: request.neededBy, dealChangedAt: request.dealChangedAt, number: procurementNumber("request", request.seq) })),

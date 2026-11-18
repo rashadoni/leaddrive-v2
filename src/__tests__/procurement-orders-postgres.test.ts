@@ -132,7 +132,8 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
       { ...process.env, DATABASE_URL: scratch!.url },
     )
     // The CHECKs of the migration, which `db push` does not know.
-    const migration = readFileSync(path.join(ROOT, "prisma/migrations/20261222090000_procurement_core/migration.sql"), "utf8")
+    const migration = ["20261222090000_procurement_core", "20261223090000_procurement_product_costs"]
+      .map((name) => readFileSync(path.join(ROOT, `prisma/migrations/${name}/migration.sql`), "utf8")).join("\n")
     const checks = migration.split("\n").join(" ").match(/ALTER TABLE "[a-z_]+" ADD CONSTRAINT "[a-z_]+_check"[^;]+;/g) ?? []
     expect(checks.length).toBeGreaterThan(5)
     prismaCli(["db", "execute", "--url", scratch!.url, "--stdin"], process.env, checks.join("\n"))
@@ -423,11 +424,11 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     const finance = await json(await GET(request(`${API}/deals/${dealId}`, "GET"), ctx(dealId)))
     expect(finance.status).toBe(200)
     expect(finance.body.data.lines.map((line: { stage: string; cost: number }) => [line.stage, line.cost])).toEqual([["sent", 1200], ["sent", 600]])
-    expect(finance.body.data.totals).toEqual({ revenue: 5000, cost: 1800, margin: 3200, marginPct: 64, foreignCost: null })
+    expect(finance.body.data.totals).toEqual({ revenue: 5000, cost: 1800, margin: 3200, marginPct: 64, foreignCost: null, plannedCost: null, plannedMargin: null, plannedMarginPct: null, plannedMissing: 2 })
     expect(finance.body.data.summary).toMatchObject({ ready: 0, total: 2 })
     as("sales")
     const sales = await json(await GET(request(`${API}/deals/${dealId}`, "GET"), ctx(dealId)))
-    expect(sales.body.data.totals).toEqual({ revenue: null, cost: null, margin: null, marginPct: null, foreignCost: null })
+    expect(sales.body.data.totals).toEqual({ revenue: null, cost: null, margin: null, marginPct: null, foreignCost: null, plannedCost: null, plannedMargin: null, plannedMarginPct: null, plannedMissing: 2 })
     expect(sales.body.data.lines.every((line: { cost: unknown }) => line.cost === null)).toBe(true)
   })
 
@@ -593,8 +594,12 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     expect([first.status, second.status]).toEqual([201, 201])
     const listed = await json(await versionsRoute.GET(request(`http://localhost:3000/api/v1/quotes/${v1}/versions`, "GET"), ctx(v1)))
     expect(listed.body.data.map((v: { version: number; status: string; lineItems: unknown[] }) => [v.version, v.status, v.lineItems.length])).toEqual([[3, "draft", 2], [2, "draft", 2], [1, "draft", 2]])
-    const journal = await bypass(() => prisma.auditLog.findMany({ where: { organizationId: BUYER, entityType: "quote" }, select: { action: true } }))
-    expect(journal.map((row) => row.action).sort()).toEqual(["create", "new_version", "new_version"])
+    // The routes journal without awaiting (logAudit is fire-and-forget), so the
+    // rows land a moment after the responses: wait for them, then compare.
+    await vi.waitFor(async () => {
+      const journal = await bypass(() => prisma.auditLog.findMany({ where: { organizationId: BUYER, entityType: "quote" }, select: { action: true } }))
+      expect(journal.map((row) => row.action).sort()).toEqual(["create", "new_version", "new_version"])
+    }, { timeout: 5_000, interval: 100 })
     as("support")
     expect((await versionsRoute.POST(request(`http://localhost:3000/api/v1/quotes/${v1}/versions`, "POST"), ctx(v1))).status).toBe(403)
   })
@@ -665,6 +670,109 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
       ["purchase_order.status_changed", "received"],
     ])
     expect(procurement[4].data).toMatchObject({ total: "1800", currency: "AZN", supplier: { name: "Wood Workshop" } })
+  })
+
+  it("a product's purchase price: purchasing sets it, sales neither reads nor writes it, and the catalog never carries it", async () => {
+    const product = await bypass(() => prisma.product.create({ data: { organizationId: BUYER, name: "Roll-up banner", price: 120, currency: "AZN", unit: "ədəd" } }))
+    const { GET, PUT } = await import("@/app/api/v1/procurement/products/[id]/cost/route")
+    const url = `${API}/products/${product.id}/cost`
+    const body = { purchasePrice: 45.5, currency: "azn", defaultSupplierId: supplierB, leadTimeDays: 7 }
+
+    for (const role of ["sales", "support", "finance", "viewer"]) {
+      as(role)
+      expect((await PUT(request(url, "PUT", body), ctx(product.id))).status, role).toBe(403)
+    }
+    expect(await bypass(() => prisma.productCost.count({ where: { productId: product.id } }))).toBe(0)
+    as("sales")
+    expect((await GET(request(url, "GET"), ctx(product.id))).status).toBe(403)
+
+    as("procurement")
+    const saved = await json(await PUT(request(url, "PUT", body), ctx(product.id)))
+    expect(saved.status).toBe(200)
+    expect(saved.body.data).toMatchObject({ purchasePrice: 45.5, currency: "AZN", defaultSupplier: { id: supplierB, name: "Print House" }, leadTimeDays: 7 })
+    as("finance")
+    expect((await json(await GET(request(url, "GET"), ctx(product.id)))).body.data.purchasePrice).toBe(45.5)
+
+    // A client company is not a supplier; another tenant's product is not found.
+    as("procurement")
+    const client = await bypass(() => prisma.company.create({ data: { organizationId: BUYER, name: "Some Bank" } }))
+    expect((await PUT(request(url, "PUT", { ...body, defaultSupplierId: client.id }), ctx(product.id))).status).toBe(400)
+    as("admin", PLAIN)
+    expect((await PUT(request(url, "PUT", body), ctx(product.id))).status).toBe(403)
+
+    // The catalog carries the unit, never the purchase price — not even to a
+    // manager, who may see costs: the price lives in its own table.
+    const catalog = await import("@/app/api/v1/products/route")
+    as("manager")
+    const listed = await json(await catalog.GET(request("http://localhost:3000/api/v1/products", "GET")))
+    const row = listed.body.data.find((p: { id: string }) => p.id === product.id)
+    expect(row.unit).toBe("ədəd")
+    expect(JSON.stringify(listed.body)).not.toMatch(/45\.5|purchasePrice/)
+    await bypass(() => prisma.product.delete({ where: { id: product.id } }))
+    expect(await bypass(() => prisma.productCost.count({ where: { productId: product.id } }))).toBe(0)
+  })
+
+  it("the plan: a new deal line takes the purchase price as its planned cost, the deal tab shows plan and planned margin to finance only", async () => {
+    const stand = await bypass(() => prisma.product.create({ data: { organizationId: BUYER, name: "Stand 3×2 m", price: 3000, currency: "AZN", unit: "ədəd" } }))
+    const banner = await bypass(() => prisma.product.create({ data: { organizationId: BUYER, name: "Banner", price: 500, currency: "AZN", unit: "m²" } }))
+    const imported = await bypass(() => prisma.product.create({ data: { organizationId: BUYER, name: "Imported lamp", price: 90, currency: "AZN" } }))
+    await bypass(() => prisma.productCost.createMany({ data: [
+      { productId: stand.id, organizationId: BUYER, purchasePrice: 1100, currency: "AZN" },
+      { productId: banner.id, organizationId: BUYER, purchasePrice: 140, currency: "AZN" },
+      // Bought in dollars: no exchange rates, so never a planned cost in a manat deal.
+      { productId: imported.id, organizationId: BUYER, purchasePrice: 30, currency: "USD" },
+    ] }))
+    const deal = await bypass(() => prisma.deal.create({ data: { organizationId: BUYER, name: "Expo booth", stage: "proposal", valueAmount: 0, currency: "AZN", assignedTo: `sales-${BUYER}` } }))
+    const lines = await import("@/app/api/v1/deals/[id]/line-items/route")
+    const linesUrl = `http://localhost:3000/api/v1/deals/${deal.id}/line-items`
+    as("sales")
+    expect((await lines.PUT(request(linesUrl, "PUT", { lines: [
+      { productId: stand.id, name: "Stand 3×2 m", quantity: 1, unitPrice: 3000, discountPct: 0 },
+      { productId: banner.id, name: "Banner", quantity: 4, unitPrice: 500, discountPct: 0 },
+      { productId: imported.id, name: "Imported lamp", quantity: 2, unitPrice: 90, discountPct: 0 },
+    ] }), ctx(deal.id))).status).toBe(200)
+    let rows = await bypass(() => prisma.dealLineItem.findMany({ where: { dealId: deal.id }, orderBy: { sortOrder: "asc" } }))
+    expect(rows.map((row) => (row.plannedUnitCost === null ? null : Number(row.plannedUnitCost)))).toEqual([1100, 140, null])
+    // What sales reads of its own lines carries no planned cost.
+    expect(JSON.stringify((await json(await lines.GET(request(linesUrl, "GET"), ctx(deal.id)))).body)).not.toMatch(/planned|1100/)
+
+    // A request raised from the deal takes each product's unit.
+    expect((await requests.POST(request(`${API}/requests`, "POST", { dealId: deal.id }))).status).toBe(201)
+    const items = await bypass(() => prisma.purchaseRequestItem.findMany({ where: { request: { dealId: deal.id } }, orderBy: { sortOrder: "asc" } }))
+    expect(items.map((item) => item.unit)).toEqual(["ədəd", "m²", null])
+
+    // Sales cannot set the plan; purchasing fills the missing line.
+    const plan = await import("@/app/api/v1/procurement/deals/[id]/planned-costs/route")
+    const planUrl = `${API}/deals/${deal.id}/planned-costs`
+    expect((await plan.PUT(request(planUrl, "PUT", { lines: [{ dealLineItemId: rows[2].id, plannedUnitCost: 1 }] }), ctx(deal.id))).status).toBe(403)
+    as("procurement")
+    expect((await plan.PUT(request(planUrl, "PUT", { lines: [{ dealLineItemId: lineIds[0], plannedUnitCost: 1 }] }), ctx(deal.id))).status).toBe(400)
+    expect((await plan.PUT(request(planUrl, "PUT", { lines: [{ dealLineItemId: rows[2].id, plannedUnitCost: 55 }] }), ctx(deal.id))).status).toBe(200)
+
+    const tab = await import("@/app/api/v1/procurement/deals/[id]/route")
+    as("finance")
+    const finance = await json(await tab.GET(request(`${API}/deals/${deal.id}`, "GET"), ctx(deal.id)))
+    // Revenue 3000 + 2000 + 180 = 5180; plan 1100 + 560 + 110 = 1770.
+    expect(finance.body.data.lines.map((line: { plannedCost: number }) => line.plannedCost)).toEqual([1100, 560, 110])
+    expect(finance.body.data.totals).toMatchObject({ revenue: 5180, plannedCost: 1770, plannedMargin: 3410, plannedMarginPct: 65.8, plannedMissing: 0 })
+    as("sales")
+    const sales = await json(await tab.GET(request(`${API}/deals/${deal.id}`, "GET"), ctx(deal.id)))
+    expect(sales.body.data.totals).toMatchObject({ plannedCost: null, plannedMargin: null, plannedMarginPct: null })
+    expect(sales.body.data.lines.every((line: { plannedCost: unknown; plannedUnitCost: unknown }) => line.plannedCost === null && line.plannedUnitCost === null)).toBe(true)
+
+    // Sales saves its lines again: the plan stays. Switching a line to another product re-plans it.
+    rows = await bypass(() => prisma.dealLineItem.findMany({ where: { dealId: deal.id }, orderBy: { sortOrder: "asc" } }))
+    expect((await lines.PUT(request(linesUrl, "PUT", { lines: [
+      { id: rows[0].id, productId: stand.id, name: "Stand 3×2 m", quantity: 2, unitPrice: 3000, discountPct: 0 },
+      { id: rows[1].id, productId: stand.id, name: "Stand 3×2 m", quantity: 1, unitPrice: 3000, discountPct: 0 },
+      { id: rows[2].id, productId: imported.id, name: "Imported lamp", quantity: 2, unitPrice: 90, discountPct: 0 },
+    ] }), ctx(deal.id))).status).toBe(200)
+    rows = await bypass(() => prisma.dealLineItem.findMany({ where: { dealId: deal.id }, orderBy: { sortOrder: "asc" } }))
+    expect(rows.map((row) => (row.plannedUnitCost === null ? null : Number(row.plannedUnitCost)))).toEqual([1100, 1100, 55])
+
+    await bypass(() => prisma.purchaseRequest.deleteMany({ where: { dealId: deal.id } }))
+    await bypass(() => prisma.deal.delete({ where: { id: deal.id } }))
+    await bypass(() => prisma.product.deleteMany({ where: { id: { in: [stand.id, banner.id, imported.id] } } }))
   })
 
   it("eight requests saved at once get eight different numbers", async () => {
