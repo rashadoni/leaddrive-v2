@@ -4,6 +4,10 @@ const ALLOWED_DEMO_REQUEST_ORIGINS = new Set([
   // verified. CORS compares the exact page origin, not the eventual target.
   "https://www.leaddrivecrm.org",
   "https://new.leaddrivecrm.org",
+  // biznesdoktoru.az — the owner's agency site that sells the same products
+  // (owner, 2026-11-18): its «Demo istəyirəm» form posts here too.
+  "https://biznesdoktoru.az",
+  "https://www.biznesdoktoru.az",
 ])
 
 export const DEMO_REQUEST_ALLOWED_METHODS = "POST, OPTIONS"

@@ -194,13 +194,25 @@ pgDescribe("social webhooks inside the monitoring fence, on a real Postgres with
     }
   }, 60_000)
 
+  /**
+   * A comment is "new" an hour before the run, never on a fixed date. Ingestion drops
+   * anything older than the 30-day monitoring window (monitoring-age-retention.ts), so
+   * the fixed 2026-10-19 these deliveries used to carry turned every one of them into
+   * `ingested: 0` on 2026-11-18 and reddened static-checks for every pull request.
+   */
+  function anHourAgo() {
+    const at = new Date(Date.now() - 3_600_000)
+    return { seconds: Math.floor(at.getTime() / 1000), iso: at.toISOString() }
+  }
+
   /** Meta delivers one new comment under a post on the organization's Facebook page, signed. */
   async function metaDelivers(org: OrgName, commentId: string) {
+    const sent = anHourAgo()
     const raw = JSON.stringify({
       object: "page",
       entry: [{
         id: ORGS[org].page,
-        time: 1_792_400_000,
+        time: sent.seconds,
         changes: [{
           field: "feed",
           value: {
@@ -210,7 +222,7 @@ pgDescribe("social webhooks inside the monitoring fence, on a real Postgres with
             post_id: `${ORGS[org].page}_post-1`,
             message: complaint(commentId),
             from: { id: `fan-${commentId}`, name: `Customer ${commentId}` },
-            created_time: 1_792_400_000,
+            created_time: sent.seconds,
           },
         }],
       }],
@@ -239,7 +251,7 @@ pgDescribe("social webhooks inside the monitoring fence, on a real Postgres with
             video_id: "video-1",
             text: complaint(commentId),
             author: { username: `fan_${commentId}`, name: `Customer ${commentId}` },
-            created_at: "2026-10-19T08:00:00.000Z",
+            created_at: anHourAgo().iso,
           },
         }),
       },
