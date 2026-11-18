@@ -827,6 +827,23 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     await bypass(() => prisma.task.deleteMany({}))
   })
 
+  it("the approval chain on the order card names a person, not the id stored in the step", async () => {
+    await bypass(() => prisma.organization.update({ where: { id: BUYER }, data: { settings: { procurement: { approvalRules: [
+      { minAmount: 0, maxAmount: null, approvers: [{ userId: `manager-${BUYER}` }] },
+    ] } } } }))
+    const { cheapQuote } = await requestWithQuotes()
+    const orderId = await orderFrom(cheapQuote)
+    await act("procurement", orderId, "submit")
+    as("procurement")
+    const seen = await json(await orderOne.GET(request(`${API}/orders/${orderId}`, "GET"), ctx(orderId)))
+    expect(seen.body.data.approvals.map((step: { approverUserId: string | null }) => step.approverUserId)).toEqual([`manager-${BUYER}`])
+    expect(seen.body.data.people).toEqual({ [`manager-${BUYER}`]: "manager" })
+    await bypass(() => prisma.organization.update({ where: { id: BUYER }, data: { settings: { procurement: { approvalRules: [
+      { minAmount: 0, maxAmount: 1000, approvers: [{ role: "manager" }] },
+      { minAmount: 1000, maxAmount: null, approvers: [{ role: "manager" }, { role: "finance" }] },
+    ] } } } }))
+  })
+
   it("eight requests saved at once get eight different numbers", async () => {
     as("sales")
     const results = await Promise.all(Array.from({ length: 8 }, () => requests.POST(request(`${API}/requests`, "POST", { title: "Paint", items: [{ name: "Paint", quantity: 2 }] }))))

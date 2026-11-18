@@ -31,6 +31,8 @@ interface OrderDetail {
   id: string; number: string; status: string; currency: string; totalAmount: string | null; revision: number
   expectedDeliveryAt: string | null; late: boolean; dealChangedAt: string | null; note: string | null; cancelReason: string | null; createdById: string | null
   supplier: { id: string; name: string; email: string | null; phone: string | null }
+  /** Names of the people in the approval chain, by id (the steps store ids). */
+  people?: Record<string, string>
   deal: { id: string; name: string } | null
   request: { id: string; number: string; title: string } | null
   items: OrderItem[]; approvals: Step[]; events: OrderEvent[]
@@ -111,7 +113,7 @@ export default function PurchaseOrderPage() {
   const status = order.status as PurchaseOrderStatus
   const current = order.approvals.find((step) => step.status === "pending")
   const mayDecide = status === "pending_approval" && !!current && mayActOnStep(current, order, { userId: me, role })
-  const approverName = (step: Step) => (step.approverUserId ? step.approverUserId : step.approverRole ? (tr.has(step.approverRole) ? tr(step.approverRole as never) : step.approverRole) : "—")
+  const approverName = (step: Step) => (step.approverUserId ? (order.people?.[step.approverUserId] || step.approverUserId) : step.approverRole ? (tr.has(step.approverRole) ? tr(step.approverRole as never) : step.approverRole) : "—")
 
   const submitPrompt = async () => {
     if (!prompt) return
