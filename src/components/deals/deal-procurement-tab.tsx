@@ -12,8 +12,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useLocale, useTranslations } from "next-intl"
-import { Loader2, Plus } from "lucide-react"
+import { Loader2, Pencil, Plus } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { OrderStatusBadge, RequestStatusBadge, LateBadge } from "@/components/procurement/status-badge"
 import { RequestCreateDialog, type DealForRequest } from "@/components/procurement/request-create-dialog"
 import { formatDay, formatMoney, formatQuantity } from "@/components/procurement/format"
@@ -22,8 +24,8 @@ import { useShellRefresh } from "@/components/shell-events-provider"
 
 interface Summary {
   currency: string
-  lines: { dealLineItemId: string; name: string; quantity: number; revenue: number | null; stage: string; expectedDeliveryAt: string | null; late: boolean; cost: number | null }[]
-  totals: { revenue: number | null; cost: number | null; margin: number | null; marginPct: number | null; foreignCost: Record<string, number> | null }
+  lines: { dealLineItemId: string; name: string; quantity: number; revenue: number | null; stage: string; expectedDeliveryAt: string | null; late: boolean; cost: number | null; plannedUnitCost: number | null; plannedCost: number | null }[]
+  totals: { revenue: number | null; cost: number | null; margin: number | null; marginPct: number | null; foreignCost: Record<string, number> | null; plannedCost: number | null; plannedMargin: number | null; plannedMarginPct: number | null; plannedMissing: number }
   summary: { ready: number; total: number; late: boolean; nextExpected: string | null; dealChanged: boolean }
   requests: { id: string; number: string; title: string; status: string; neededBy: string | null }[]
   orders: { id: string; number: string; status: string; currency: string; totalAmount: string | null; expectedDeliveryAt: string | null; late: boolean; supplier: { name: string } }[]
@@ -37,6 +39,10 @@ export function DealProcurementTab({ dealId, dealName }: { dealId: string; dealN
   const role = ((session?.user as { role?: string } | undefined)?.role || "viewer") as Role
   const canRequest = checkPermission(role, "purchase-requests", "write")
   const seesPrices = checkPermission(role, "procurement-costs", "read")
+  // The plan is purchasing work by someone who may see costs (the route asks the same).
+  const canPlan = seesPrices && checkPermission(role, "procurement", "write")
+  const [plan, setPlan] = useState<Record<string, string> | null>(null)
+  const [savingPlan, setSavingPlan] = useState(false)
   const [data, setData] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
@@ -64,6 +70,34 @@ export function DealProcurementTab({ dealId, dealName }: { dealId: string; dealN
     [data, dealId, dealName],
   )
 
+  async function savePlan() {
+    if (!plan || !data) return
+    const lines = data.lines.map((line) => {
+      const raw = (plan[line.dealLineItemId] ?? "").trim().replace(",", ".")
+      return { dealLineItemId: line.dealLineItemId, plannedUnitCost: raw === "" ? null : Number(raw) }
+    })
+    if (lines.some((line) => line.plannedUnitCost !== null && (!Number.isFinite(line.plannedUnitCost) || line.plannedUnitCost < 0))) {
+      toast.error(t("planInvalid"))
+      return
+    }
+    setSavingPlan(true)
+    try {
+      const res = await fetch(`/api/v1/procurement/deals/${dealId}/planned-costs`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ lines }),
+      })
+      if (!res.ok) throw new Error(String(res.status))
+      setPlan(null)
+      toast.success(t("planSaved"))
+      await load()
+    } catch {
+      toast.error(t("planFailed"))
+    } finally {
+      setSavingPlan(false)
+    }
+  }
+
   if (loading) return <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
   if (!data) return <p className="py-6 text-sm text-muted-foreground">{tc("loadFailed")}</p>
 
@@ -88,6 +122,26 @@ export function DealProcurementTab({ dealId, dealName }: { dealId: string; dealN
         </div>
       )}
 
+      {seesPrices && data.lines.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-dashed p-3 text-sm">
+          <span className="font-medium">{t("planTitle")}</span>
+          <span>{t("planCost")}: <span className="tabular-nums">{formatMoney(data.totals.plannedCost, data.currency, locale)}</span></span>
+          <span>{t("planMargin")}: <span className="tabular-nums">{data.totals.plannedMargin === null ? "—" : formatMoney(data.totals.plannedMargin, data.currency, locale)}{data.totals.plannedMarginPct !== null ? ` · ${data.totals.plannedMarginPct}%` : ""}</span></span>
+          {data.totals.plannedMissing > 0 && <span className="text-muted-foreground">{t("planMissing", { count: data.totals.plannedMissing })}</span>}
+          {canPlan && !plan && (
+            <Button size="sm" variant="outline" className="ml-auto" onClick={() => setPlan(Object.fromEntries(data.lines.map((line) => [line.dealLineItemId, line.plannedUnitCost === null ? "" : String(line.plannedUnitCost)])))}>
+              <Pencil className="mr-1 h-4 w-4" />{t("planEdit")}
+            </Button>
+          )}
+          {plan && (
+            <span className="ml-auto flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setPlan(null)} disabled={savingPlan}>{tc("cancel")}</Button>
+              <Button size="sm" onClick={() => void savePlan()} disabled={savingPlan}>{savingPlan && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{t("planSave")}</Button>
+            </span>
+          )}
+        </div>
+      )}
+
       {seesPrices && data.totals.foreignCost && (
         <p className="text-xs text-muted-foreground">
           {t("foreignCost", { list: Object.entries(data.totals.foreignCost).map(([currency, amount]) => formatMoney(amount, currency, locale)).join(", ") })}
@@ -105,6 +159,7 @@ export function DealProcurementTab({ dealId, dealName }: { dealId: string; dealN
                 <th className="px-3 py-2 text-right font-medium">{tc("quantity")}</th>
                 <th className="px-3 py-2 font-medium">{t("stage")}</th>
                 <th className="px-3 py-2 font-medium">{tc("expected")}</th>
+                {seesPrices && <th className="px-3 py-2 text-right font-medium">{plan ? t("planUnitCost", { currency: data.currency }) : t("planColumn")}</th>}
                 {seesPrices && <th className="px-3 py-2 text-right font-medium">{t("cost")}</th>}
               </tr>
             </thead>
@@ -115,6 +170,19 @@ export function DealProcurementTab({ dealId, dealName }: { dealId: string; dealN
                   <td className="px-3 py-2 text-right tabular-nums">{formatQuantity(line.quantity, locale)}</td>
                   <td className="px-3 py-2"><span className="inline-flex items-center gap-1">{t(`stages.${line.stage}` as never)}{line.late && <LateBadge />}</span></td>
                   <td className="px-3 py-2">{formatDay(line.expectedDeliveryAt, locale)}</td>
+                  {seesPrices && (
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {plan ? (
+                        <Input
+                          inputMode="decimal"
+                          aria-label={t("planUnitCost", { currency: data.currency })}
+                          className="ml-auto h-8 w-28 text-right"
+                          value={plan[line.dealLineItemId] ?? ""}
+                          onChange={(event) => setPlan({ ...plan, [line.dealLineItemId]: event.target.value })}
+                        />
+                      ) : line.plannedCost === null ? "—" : formatMoney(line.plannedCost, null, locale)}
+                    </td>
+                  )}
                   {seesPrices && <td className="px-3 py-2 text-right tabular-nums">{line.cost ? formatMoney(line.cost, null, locale) : "—"}</td>}
                 </tr>
               ))}

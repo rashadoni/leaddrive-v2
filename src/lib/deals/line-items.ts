@@ -19,6 +19,7 @@ import { prisma, logAudit } from "@/lib/prisma"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { withDealEvents } from "./deal-events"
 import { markPurchasesOfChangedLines, type DealLineChange } from "@/lib/procurement/deal-changes"
+import { plannedCostsFor } from "@/lib/procurement/product-costs"
 
 export const MAX_DEAL_LINES = 200
 
@@ -96,7 +97,7 @@ export async function replaceDealLines(orgId: string, userId: string | null, dea
   const productIds = [...new Set(lines.map((line) => line.productId).filter((id): id is string => Boolean(id)))]
   const changes: DealLineChange[] = []
   const result = await prisma.$transaction(async (tx) => {
-    const deal = await tx.deal.findFirst({ where: { id: dealId, organizationId: orgId }, select: { id: true, name: true, valueAmount: true } })
+    const deal = await tx.deal.findFirst({ where: { id: dealId, organizationId: orgId }, select: { id: true, name: true, valueAmount: true, currency: true } })
     if (!deal) throw new DealLinesError("DEAL_NOT_FOUND", "Deal not found")
     if (productIds.length > 0) {
       const found = await tx.product.count({ where: { organizationId: orgId, id: { in: productIds } } })
@@ -106,8 +107,13 @@ export async function replaceDealLines(orgId: string, userId: string | null, dea
     // request or order for a customer order points at the deal line it buys
     // for (docs/sales-procurement/README.md). Lines not sent are deleted; lines
     // without a known id are new.
-    const existing = await tx.dealLineItem.findMany({ where: { organizationId: orgId, dealId }, select: { id: true, name: true, quantity: true } })
-    type Existing = { id: string; name: string; quantity: Prisma.Decimal }
+    const existing = await tx.dealLineItem.findMany({ where: { organizationId: orgId, dealId }, select: { id: true, name: true, quantity: true, productId: true } })
+    type Existing = { id: string; name: string; quantity: Prisma.Decimal; productId: string | null }
+    // The planned cost (procurement-costs) is not part of what the line editor
+    // sends: a kept line keeps it, a new line or a line switched to another
+    // product takes the product's purchase price in the deal's currency.
+    const plannedCosts = await plannedCostsFor(tx, orgId, productIds, deal.currency)
+    const plannedFor = (productId: string | null | undefined) => (productId ? plannedCosts.get(productId) ?? null : null)
     const known = new Map<string, Existing>(existing.map((row: Existing) => [row.id, row]))
     const kept = new Set(lines.map((line) => line.id).filter((id): id is string => !!id && known.has(id)))
     for (const row of existing as Existing[]) {
@@ -128,13 +134,14 @@ export async function replaceDealLines(orgId: string, userId: string | null, dea
         const before = known.get(line.id)!
         if (before.name !== line.name) changes.push({ id: line.id, name: line.name, change: "name" })
         else if (!before.quantity.equals(new Prisma.Decimal(line.quantity))) changes.push({ id: line.id, name: line.name, change: "quantity" })
-        await tx.dealLineItem.update({ where: { id: line.id }, data: fields(line, index) })
+        const productChanged = (line.productId ?? null) !== before.productId
+        await tx.dealLineItem.update({ where: { id: line.id }, data: { ...fields(line, index), ...(productChanged ? { plannedUnitCost: plannedFor(line.productId) } : {}) } })
       }
     }
     const fresh = lines.map((line, index) => ({ line, index })).filter(({ line }) => !(line.id && kept.has(line.id)))
     if (fresh.length > 0) {
       await tx.dealLineItem.createMany({
-        data: fresh.map(({ line, index }) => ({ organizationId: orgId, dealId, ...fields(line, index) })),
+        data: fresh.map(({ line, index }) => ({ organizationId: orgId, dealId, ...fields(line, index), plannedUnitCost: plannedFor(line.productId) })),
       })
     }
     const before = decimalToNumber(deal.valueAmount)

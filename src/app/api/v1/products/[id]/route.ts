@@ -18,6 +18,7 @@ const updateSchema = z.object({
   price: z.number().finite().nonnegative().max(MAX_PRODUCT_PRICE).optional(),
   currency: productCurrencySchema.optional(),
   isActive: z.boolean().optional(),
+  unit: z.string().trim().max(20).nullable().optional(),
   features: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
   sku: z.string().max(64).nullable().optional(),

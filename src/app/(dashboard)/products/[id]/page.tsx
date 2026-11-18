@@ -25,6 +25,9 @@ import { DEFAULT_CURRENCY, CURRENCY_SYMBOLS } from "@/lib/constants"
 import { normalizeProductCurrency } from "@/lib/products/pricing"
 import { LINE_TYPES } from "@/lib/cpq/line-types"
 import { HelpButton } from "@/components/help/help-button"
+import { ProductCostCard } from "@/components/procurement/product-cost-card"
+import { checkPermission, type Role } from "@/lib/permissions"
+import { hasModule } from "@/lib/modules"
 
 const categoryColors: Record<string, string> = {
   service: "bg-blue-500", product: "bg-green-500", addon: "bg-purple-500", consulting: "bg-amber-500",
@@ -37,6 +40,14 @@ export default function ProductDetailPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const id = params.id as string
+  // Purchase price and supplier (docs/sales-procurement/README.md, task 2.2):
+  // only with the procurement module, only for someone who may see costs.
+  const sessionUser = session?.user as { role?: string; plan?: string; addons?: string[]; modules?: Record<string, boolean> } | undefined
+  const purchaseRole = (sessionUser?.role || "viewer") as Role
+  const showPurchase = !!sessionUser
+    && checkPermission(purchaseRole, "procurement-costs", "read")
+    && hasModule({ plan: sessionUser.plan || "", addons: sessionUser.addons, modules: sessionUser.modules }, "procurement")
+  const canEditPurchase = showPurchase && checkPermission(purchaseRole, "procurement", "write")
   const orgId = session?.user?.organizationId
 
   const CATEGORIES = [
@@ -64,6 +75,7 @@ export default function ProductDetailPage() {
   const [tagsStr, setTagsStr] = useState("")
   const [sku, setSku] = useState("")
   const [productType, setProductType] = useState("other")
+  const [unit, setUnit] = useState("")
 
   const headers = (): any => ({
     "Content-Type": "application/json",
@@ -94,6 +106,7 @@ export default function ProductDetailPage() {
     setTagsStr((p.tags || []).join(", "))
     setSku(p.sku || "")
     setProductType(p.productType ?? "other")
+    setUnit(p.unit || "")
   }
 
   useEffect(() => { fetchProduct() }, [id, session?.user?.id, session?.user?.organizationId])
@@ -111,6 +124,7 @@ export default function ProductDetailPage() {
           tags: tagsStr.split(",").map(s => s.trim()).filter(Boolean),
           sku: sku || null,
           productType,
+          unit: unit.trim() || null,
         }),
       })
       if (res.ok) {
@@ -280,6 +294,10 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
                 <div>
+                  <Label htmlFor="product-unit">{t("unitLabel")}</Label>
+                  <Input id="product-unit" value={unit} onChange={e => setUnit(e.target.value)} placeholder={t("unitPlaceholder")} maxLength={20} />
+                </div>
+                <div>
                   <Label>{t("tagsLabel")}</Label>
                   <Input value={tagsStr} onChange={e => setTagsStr(e.target.value)} placeholder="cloud, migration, enterprise" />
                 </div>
@@ -302,6 +320,7 @@ export default function ProductDetailPage() {
                     { icon: <DollarSign className="h-4 w-4" />, label: tc("price"), value: product.price > 0 ? `${product.price.toLocaleString()} ${product.currency}` : tc("free") },
                     { icon: product.isActive ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />, label: tc("status"), value: product.isActive ? tc("active") : tc("inactive") },
                     ...(product.sku ? [{ icon: <Tag className="h-4 w-4" />, label: "SKU", value: product.sku }] : []),
+                    ...(product.unit ? [{ icon: <Package className="h-4 w-4" />, label: t("unitLabel"), value: product.unit }] : []),
                     { icon: <Layers className="h-4 w-4" />, label: "Type", value: (product.productType ?? "other").charAt(0).toUpperCase() + (product.productType ?? "other").slice(1) },
                   ].map((row, i) => (
                     <div key={i} className="flex items-center gap-3">
@@ -375,6 +394,8 @@ export default function ProductDetailPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {showPurchase && <ProductCostCard productId={id} canEdit={canEditPurchase} />}
 
       <DeleteConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={confirmDelete} title={t("deleteProduct")} itemName={product.name} />
     </div>

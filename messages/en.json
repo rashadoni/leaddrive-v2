@@ -4719,6 +4719,8 @@
     "slaSnapshotMeaning": "Current queue, including tickets without an SLA deadline. Not a completed-obligation compliance rate."
   },
   "products": {
+    "unitLabel": "Unit of measure",
+    "unitPlaceholder": "pcs, m², kg",
     "title": "Products & Services",
     "subtitle": "Manage your product catalog",
     "newProduct": "New Product",
@@ -34253,7 +34255,30 @@
         "received": "Received"
       },
       "requestsTitle": "Requests",
-      "ordersTitle": "Orders to suppliers"
+      "ordersTitle": "Orders to suppliers",
+      "planTitle": "Plan",
+      "planCost": "Planned cost",
+      "planMargin": "Planned margin",
+      "planMissing": "{count, plural, one {# line without a planned cost} other {# lines without a planned cost}}",
+      "planEdit": "Change plan",
+      "planSave": "Save plan",
+      "planSaved": "Plan saved",
+      "planFailed": "Could not save the plan",
+      "planInvalid": "A planned cost must be a non-negative number",
+      "planColumn": "Planned cost",
+      "planUnitCost": "Planned cost per unit, {currency}"
+    },
+    "productCost": {
+      "title": "Purchase",
+      "hint": "Seen by management, finance and purchasing. A new deal line of this product takes this price as its planned cost.",
+      "edit": "Change",
+      "price": "Purchase price",
+      "currency": "Currency",
+      "supplier": "Default supplier",
+      "noSupplier": "Not set",
+      "leadTime": "Lead time, days",
+      "days": "{count, plural, one {# day} other {# days}}",
+      "invalid": "Price and lead time must be non-negative numbers"
     },
     "reports": {
       "title": "Purchasing reports",
