@@ -24,7 +24,7 @@ import { useShellRefresh } from "@/components/shell-events-provider"
 
 interface Summary {
   currency: string
-  lines: { dealLineItemId: string; name: string; quantity: number; revenue: number | null; stage: string; expectedDeliveryAt: string | null; late: boolean; cost: number | null; plannedUnitCost: number | null; plannedCost: number | null }[]
+  lines: { dealLineItemId: string; name: string; quantity: number; unit: string | null; revenue: number | null; stage: string; expectedDeliveryAt: string | null; late: boolean; cost: number | null; plannedUnitCost: number | null; plannedCost: number | null }[]
   totals: { revenue: number | null; cost: number | null; margin: number | null; marginPct: number | null; foreignCost: Record<string, number> | null; plannedCost: number | null; plannedMargin: number | null; plannedMarginPct: number | null; plannedMissing: number }
   summary: { ready: number; total: number; late: boolean; nextExpected: string | null; dealChanged: boolean }
   requests: { id: string; number: string; title: string; status: string; neededBy: string | null }[]
@@ -66,7 +66,7 @@ export function DealProcurementTab({ dealId, dealName }: { dealId: string; dealN
   useShellRefresh("procurement", load, 120_000)
 
   const deal: DealForRequest | null = useMemo(
-    () => (data ? { id: dealId, name: dealName, lines: data.lines.map((line) => ({ id: line.dealLineItemId, name: line.name, quantity: line.quantity })) } : null),
+    () => (data ? { id: dealId, name: dealName, lines: data.lines.map((line) => ({ id: line.dealLineItemId, name: line.name, quantity: line.quantity, unit: line.unit })) } : null),
     [data, dealId, dealName],
   )
 

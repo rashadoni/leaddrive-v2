@@ -15,7 +15,7 @@ type Line = { dealLineItemId: string | null; name: string; quantity: string; uni
 export interface DealForRequest {
   id: string
   name: string
-  lines: { id: string; name: string; quantity: number | string }[]
+  lines: { id: string; name: string; quantity: number | string; unit?: string | null }[]
 }
 
 /**
@@ -44,7 +44,7 @@ export function RequestCreateDialog({ open, onOpenChange, onCreated, deal }: {
     setNote("")
     setSubmitNow(true)
     setLines(deal && deal.lines.length > 0
-      ? deal.lines.map((line) => ({ dealLineItemId: line.id, name: line.name, quantity: String(Number(line.quantity)), unit: "" }))
+      ? deal.lines.map((line) => ({ dealLineItemId: line.id, name: line.name, quantity: String(Number(line.quantity)), unit: line.unit ?? "" }))
       : [{ dealLineItemId: null, name: "", quantity: "1", unit: "" }])
     // Filled once per opening, so a re-render of the parent does not erase what is typed.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -3,6 +3,7 @@ import { runWithRlsBypass } from "@/lib/rls-context"
 import { withJobLease } from "@/lib/cron/job-lease"
 import { procurementNumber } from "@/lib/procurement/numbering"
 import { notifyProcurement, purchasersOf } from "@/lib/procurement/notify"
+import { emitPurchaseOrderOverdue } from "@/lib/procurement/events"
 
 /**
  * Late suppliers (docs/sales-procurement/README.md, task 3.6). Once an hour:
@@ -41,6 +42,7 @@ export async function runProcurementOverdueJob(now = new Date()) {
         entityId: order.id,
         event: { kind: "order.overdue", number: procurementNumber("order", order.seq), supplier: order.supplier.name, date: order.expectedDeliveryAt!.toISOString().slice(0, 10) },
       })
+      await emitPurchaseOrderOverdue(order.organizationId, order.id)
     }
     return { checked: due.length, marked }
   }))
