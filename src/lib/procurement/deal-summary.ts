@@ -34,13 +34,13 @@ const later = (a: LineStage, b: LineStage) => (STAGE_ORDER.indexOf(a) >= STAGE_O
 
 type RequestRow = { id: string; seq: number; title: string; status: string; neededBy: Date | null; dealChangedAt: Date | null; items: { dealLineItemId: string | null }[]; _count: { quotes: number } }
 type OrderRow = { id: string; seq: number; status: string; currency: string; totalAmount: Prisma.Decimal; expectedDeliveryAt: Date | null; dealChangedAt: Date | null; supplier: { id: string; name: string }; items: { dealLineItemId: string | null; total: Prisma.Decimal }[] }
-type LineRow = { id: string; name: string; quantity: Prisma.Decimal; unitPrice: Prisma.Decimal | null; discountPct: Prisma.Decimal; plannedUnitCost: Prisma.Decimal | null }
+type LineRow = { id: string; name: string; quantity: Prisma.Decimal; unitPrice: Prisma.Decimal | null; discountPct: Prisma.Decimal; plannedUnitCost: Prisma.Decimal | null; product: { unit: string | null } | null }
 
 export async function dealProcurementSummary(orgId: string, dealId: string, now = new Date()) {
   const [deal, requests, orders]: [{ id: string; currency: string; lineItems: LineRow[] } | null, RequestRow[], OrderRow[]] = await Promise.all([
     prisma.deal.findFirst({
       where: { id: dealId, organizationId: orgId },
-      select: { id: true, currency: true, lineItems: { orderBy: { sortOrder: "asc" }, select: { id: true, name: true, quantity: true, unitPrice: true, discountPct: true, plannedUnitCost: true } } },
+      select: { id: true, currency: true, lineItems: { orderBy: { sortOrder: "asc" }, select: { id: true, name: true, quantity: true, unitPrice: true, discountPct: true, plannedUnitCost: true, product: { select: { unit: true } } } } },
     }),
     prisma.purchaseRequest.findMany({
       where: { organizationId: orgId, dealId },
@@ -77,7 +77,7 @@ export async function dealProcurementSummary(orgId: string, dealId: string, now 
     }
     const plannedUnitCost = line.plannedUnitCost === null ? null : Number(line.plannedUnitCost)
     const plannedCost = plannedUnitCost === null ? null : Number(line.quantity) * plannedUnitCost
-    return { dealLineItemId: line.id, name: line.name, quantity: Number(line.quantity), revenue, stage, expectedDeliveryAt: expected, late, cost, plannedUnitCost, plannedCost }
+    return { dealLineItemId: line.id, name: line.name, quantity: Number(line.quantity), unit: line.product?.unit ?? null, revenue, stage, expectedDeliveryAt: expected, late, cost, plannedUnitCost, plannedCost }
   })
 
   const revenue = lines.reduce((sum, line) => sum + (line.revenue ?? 0), 0)

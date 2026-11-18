@@ -120,6 +120,8 @@ export default function WorkflowsPage() {
     contacts: t("entityContact"),
     company: t("entityCompany"),
     companies: t("entityCompany"),
+    purchase_request: t("entityPurchaseRequest"),
+    purchase_order: t("entityPurchaseOrder"),
     social_mention: "Social mention",
     social_mentions: "Social mention",
   }
@@ -131,6 +133,8 @@ export default function WorkflowsPage() {
     stage_changed: t("triggerStageChanged"),
     assigned: t("triggerAssigned"),
     replied: t("triggerReplied"),
+    submitted: t("triggerPurchaseSubmitted"),
+    overdue: t("triggerPurchaseOverdue"),
     web_activity: t("triggerWebActivity"),
   }
 

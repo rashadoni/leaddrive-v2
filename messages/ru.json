@@ -9162,6 +9162,11 @@
     "fieldCreatedAt": "Создано"
   },
   "workflows": {
+    "entityPurchaseRequest": "Заявка на закупку",
+    "entityPurchaseOrder": "Заказ поставщику",
+    "triggerPurchaseSubmitted": "Отправлена в закупки",
+    "triggerPurchaseOverdue": "Поставщик опаздывает",
+    "fieldSupplier": "Поставщик",
     "title": "Рабочие процессы",
     "subtitle": "Создавайте и управляйте правилами автоматизации",
     "newWorkflow": "Новый процесс",
