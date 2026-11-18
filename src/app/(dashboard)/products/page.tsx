@@ -90,6 +90,7 @@ export default function ProductsPage() {
   const [featuresStr, setFeaturesStr] = useState("")
   const [tagsStr, setTagsStr] = useState("")
   const [sku, setSku] = useState("")
+  const [unit, setUnit] = useState("")
   const [productType, setProductType] = useState("other")
   const [saving, setSaving] = useState(false)
   // «AI ilə doldur» (src/lib/products/ai-fill.ts): which fields the AI filled
@@ -150,7 +151,7 @@ export default function ProductsPage() {
     resetAi()
     setEditItem(null)
     setName(""); setDescription(""); setCategory("service"); setPrice(""); resetCurrency()
-    setIsActive(true); setFeaturesStr(""); setTagsStr(""); setSku(""); setProductType("other")
+    setIsActive(true); setFeaturesStr(""); setTagsStr(""); setSku(""); setUnit(""); setProductType("other")
     setFormOpen(true)
   }
 
@@ -166,6 +167,7 @@ export default function ProductsPage() {
     setFeaturesStr(p.features.join(", "))
     setTagsStr(p.tags.join(", "))
     setSku(p.sku || "")
+    setUnit(p.unit || "")
     setProductType(p.productType ?? "other")
     setFormOpen(true)
   }
@@ -188,6 +190,7 @@ export default function ProductsPage() {
       features: featuresStr.split(",").map(s => s.trim()).filter(Boolean),
       tags: tagsStr.split(",").map(s => s.trim()).filter(Boolean),
       sku: sku || null,
+      unit: unit.trim() || null,
       productType,
     }
 
@@ -413,6 +416,10 @@ export default function ProductsPage() {
                 ))}
               </Select>
             </div>
+          </div>
+          <div>
+            <Label htmlFor="product-create-unit">{t("unitLabel")}</Label>
+            <Input id="product-create-unit" value={unit} onChange={e => setUnit(e.target.value)} placeholder={t("unitPlaceholder")} maxLength={20} />
           </div>
           <div>
             <Label>{t("featuresLabel")}<AiMark field="features" /></Label>
