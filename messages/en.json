@@ -9162,6 +9162,11 @@
     "fieldCreatedAt": "Created At"
   },
   "workflows": {
+    "entityPurchaseRequest": "Purchase request",
+    "entityPurchaseOrder": "Purchase order",
+    "triggerPurchaseSubmitted": "Sent to purchasing",
+    "triggerPurchaseOverdue": "Supplier is late",
+    "fieldSupplier": "Supplier",
     "title": "Workflows",
     "subtitle": "Create and manage automation rules",
     "newWorkflow": "New workflow",

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
+import { useSession } from "next-auth/react"
+import { hasModule } from "@/lib/modules"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -52,6 +54,11 @@ export function WorkflowForm({ open, onOpenChange, onSaved, initialData, orgId }
   const t = useTranslations("workflows")
   const tc = useTranslations("common")
   const isEdit = !!initialData?.id
+  // Purchasing events (docs/sales-procurement/README.md, task 6.4) — only for a
+  // tenant with the procurement module.
+  const { data: session } = useSession()
+  const sessionUser = session?.user as { plan?: string; addons?: string[]; modules?: Record<string, boolean> } | undefined
+  const withProcurement = !!sessionUser && hasModule({ plan: sessionUser.plan || "", addons: sessionUser.addons, modules: sessionUser.modules }, "procurement")
 
   const [name, setName] = useState("")
   const [entityType, setEntityType] = useState("deal")
@@ -125,9 +132,12 @@ export function WorkflowForm({ open, onOpenChange, onSaved, initialData, orgId }
     { value: "task", label: t("entityTask") },
     { value: "contact", label: t("entityContact") },
     { value: "company", label: t("entityCompany") },
+    ...(withProcurement || entityType.startsWith("purchase_")
+      ? [{ value: "purchase_request", label: t("entityPurchaseRequest") }, { value: "purchase_order", label: t("entityPurchaseOrder") }]
+      : []),
   ]
 
-  const triggerEvents = [
+  const genericTriggerEvents = [
     { value: "created", label: t("triggerCreated") },
     { value: "updated", label: t("triggerUpdated") },
     { value: "status_changed", label: t("triggerStatusChanged") },
@@ -135,6 +145,16 @@ export function WorkflowForm({ open, onOpenChange, onSaved, initialData, orgId }
     { value: "assigned", label: t("triggerAssigned") },
     { value: "replied", label: t("triggerReplied") },
   ]
+  // A purchase has its own events: they are fired by the purchasing code
+  // (src/lib/procurement/events.ts), not by the generic CRUD paths.
+  const PURCHASE_TRIGGERS: Record<string, { value: string; label: string }[]> = {
+    purchase_request: [{ value: "submitted", label: t("triggerPurchaseSubmitted") }],
+    purchase_order: [
+      { value: "status_changed", label: t("triggerStatusChanged") },
+      { value: "overdue", label: t("triggerPurchaseOverdue") },
+    ],
+  }
+  const triggerEvents = PURCHASE_TRIGGERS[entityType] ?? genericTriggerEvents
 
   const conditionFields = [
     { value: "status", label: t("fieldStatus") },
@@ -143,6 +163,7 @@ export function WorkflowForm({ open, onOpenChange, onSaved, initialData, orgId }
     { value: "assignee", label: t("fieldAssignee") },
     { value: "priority", label: t("fieldPriority") },
     { value: "amount", label: t("fieldAmount") },
+    ...(entityType === "purchase_order" ? [{ value: "supplier", label: t("fieldSupplier") }] : []),
   ]
 
   const operators = [
@@ -173,7 +194,16 @@ export function WorkflowForm({ open, onOpenChange, onSaved, initialData, orgId }
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs text-muted-foreground">{t("entityType")}</Label>
-                <Select value={entityType} onChange={(e) => setEntityType(e.target.value)}>
+                <Select
+                  value={entityType}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    setEntityType(next)
+                    // Keep the trigger valid for the new entity.
+                    const allowed = PURCHASE_TRIGGERS[next] ?? genericTriggerEvents
+                    if (!allowed.some((te) => te.value === triggerEvent)) setTriggerEvent(allowed[0].value)
+                  }}
+                >
                   {entityTypes.map(et => (
                     <option key={et.value} value={et.value}>{et.label}</option>
                   ))}

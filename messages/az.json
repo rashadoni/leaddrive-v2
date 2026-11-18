@@ -9158,6 +9158,11 @@
     "fieldCreatedAt": "Yaradılıb"
   },
   "workflows": {
+    "entityPurchaseRequest": "Satınalma sorğusu",
+    "entityPurchaseOrder": "Təchizatçıya sifariş",
+    "triggerPurchaseSubmitted": "Satınalmaya göndərildi",
+    "triggerPurchaseOverdue": "Təchizatçı gecikir",
+    "fieldSupplier": "Təchizatçı",
     "title": "İş Axınları",
     "subtitle": "Avtomatlaşdırma qaydalarını yaradın və idarə edin",
     "newWorkflow": "Yeni iş axını",

@@ -775,6 +775,48 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     await bypass(() => prisma.product.deleteMany({ where: { id: { in: [stand.id, banner.id, imported.id] } } }))
   })
 
+  it("automations: an admin's rules on a sent request, a status and a late supplier run, and no rule can move an order", async () => {
+    const rule = (name: string, entityType: string, triggerEvent: string, actions: { actionType: string; actionConfig: Record<string, unknown> }[], conditions: Record<string, unknown> = {}) =>
+      bypass(() => prisma.workflowRule.create({ data: { organizationId: BUYER, name, entityType, triggerEvent, conditions: conditions as object, actions: { create: actions.map((action, index) => ({ ...action, actionConfig: action.actionConfig as object, actionOrder: index })) } } }))
+    await rule("Check a new request", "purchase_request", "submitted", [{ actionType: "create_task", actionConfig: { title: "Check what was asked" } }])
+    await rule("Tell the customer it is ordered", "purchase_order", "status_changed", [{ actionType: "create_task", actionConfig: { title: "Tell the customer: ordered" } }], { rules: [{ field: "status", operator: "equals", value: "sent" }] })
+    await rule("Big orders", "purchase_order", "status_changed", [{ actionType: "create_task", actionConfig: { title: "Big order moved" } }], { rules: [{ field: "amount", operator: "greater_than", value: "5000" }] })
+    // A rule that tries to cancel an order: purchases are not on the engine's update list.
+    await rule("Try to cancel", "purchase_order", "status_changed", [{ actionType: "update_field", actionConfig: { field: "status", value: "cancelled" } }, { actionType: "assign_to", actionConfig: { assignTo: `viewer-${BUYER}` } }])
+    await rule("Late supplier", "purchase_order", "overdue", [{ actionType: "create_task", actionConfig: { title: "Call the supplier" } }])
+    // Another tenant's rule never runs here.
+    await bypass(() => prisma.workflowRule.create({ data: { organizationId: PLAIN, name: "Foreign", entityType: "purchase_order", triggerEvent: "status_changed", actions: { create: [{ actionType: "create_task", actionConfig: { title: "Foreign task" } }] } } }))
+    await bypass(() => prisma.task.deleteMany({}))
+
+    const { cheapQuote } = await requestWithQuotes()
+    const orderId = await orderFrom(cheapQuote)
+    await act("procurement", orderId, "submit")
+    await act("manager", orderId, "approve")
+    await act("finance", orderId, "approve")
+    await act("procurement", orderId, "send")
+    expect((await orderRow(orderId)).status).toBe("sent")
+
+    await bypass(() => prisma.purchaseOrder.update({ where: { id: orderId }, data: { expectedDeliveryAt: new Date(Date.now() - 86_400_000) } }))
+    const { runProcurementOverdueJob } = await import("@/lib/procurement/overdue-job")
+    await runProcurementOverdueJob()
+
+    const tasks = await bypass(() => prisma.task.findMany({ select: { organizationId: true, title: true, assignedTo: true, relatedType: true, relatedId: true }, orderBy: { createdAt: "asc" } }))
+    // The request was asked for by sales; the order is for sales' deal.
+    expect(tasks.map((task) => [task.title, task.assignedTo, task.relatedType])).toEqual([
+      ["Check what was asked", `sales-${BUYER}`, "purchase_request"],
+      ["Tell the customer: ordered", `sales-${BUYER}`, "purchase_order"],
+      ["Call the supplier", `sales-${BUYER}`, "purchase_order"],
+    ])
+    expect(tasks.every((task) => task.organizationId === BUYER)).toBe(true)
+    expect(tasks[1].relatedId).toBe(orderId)
+    const order = await orderRow(orderId)
+    expect(order.status).toBe("sent")
+    expect(order.events.some((event) => event.type === "overdue")).toBe(true)
+
+    await bypass(() => prisma.workflowRule.deleteMany({}))
+    await bypass(() => prisma.task.deleteMany({}))
+  })
+
   it("eight requests saved at once get eight different numbers", async () => {
     as("sales")
     const results = await Promise.all(Array.from({ length: 8 }, () => requests.POST(request(`${API}/requests`, "POST", { title: "Paint", items: [{ name: "Paint", quantity: 2 }] }))))
