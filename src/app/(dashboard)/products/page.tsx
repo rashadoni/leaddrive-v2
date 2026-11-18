@@ -47,6 +47,7 @@ interface Product {
   tags: string[]
   createdAt: string
   sku?: string | null
+  unit?: string | null
   productType?: string
 }
 
