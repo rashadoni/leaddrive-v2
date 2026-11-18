@@ -10,8 +10,9 @@ export const runtime = "nodejs"
 
 /**
  * What 1C sold each pharmacy (zeytun-sales-history.ts), for the line's ear and
- * search. Every 15 minutes, two minutes of one-at-a-time requests to 1C at most;
- * nothing without the private Get_Sales connection file. Counts only in the answer.
+ * search. Every 15 minutes; reads only 22:00-07:00 Baku, one request every two
+ * seconds, at most 12 minutes a tick, and stands down until the next night when
+ * 1C is slow or refuses. Nothing without the private Get_Sales connection file.
  */
 export async function POST(req: NextRequest) {
   const cronError = requireCronAuth(req)
