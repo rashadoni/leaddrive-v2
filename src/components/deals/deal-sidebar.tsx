@@ -28,6 +28,8 @@ interface Deal {
   probability: number
   confidenceLevel: number
   assignedTo: string | null
+  /** The owner's name, when the API could resolve `assignedTo` to a person of the organization. */
+  assignedToName?: string | null
   notes: string | null
   expectedClose: string | null
   stageChangedAt: string | null
@@ -460,7 +462,7 @@ export function DealSidebar({ deal, orgId, offersCount, invoicesCount, onEdit, f
       <div className="p-4 border-b border-border space-y-2.5">
         {[
           { icon: Building2, label: t("company"), value: deal.company?.name, field: "name" },
-          { icon: User, label: t("assignedTo"), value: deal.assignedTo, field: "assignedTo" },
+          { icon: User, label: t("assignedTo"), value: deal.assignedToName ?? deal.assignedTo, field: "assignedTo" },
           { icon: Calendar, label: t("expectedClose"), value: deal.expectedClose ? formatDate(deal.expectedClose, locale) : null, field: "expectedClose" },
           { icon: Clock, label: tc("created"), value: formatDate(deal.createdAt, locale), field: "createdAt" },
           { icon: Target, label: t("campaign"), value: deal.campaign?.name, field: "campaign" },

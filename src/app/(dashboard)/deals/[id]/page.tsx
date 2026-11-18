@@ -62,6 +62,8 @@ interface Deal {
   probability: number
   confidenceLevel: number
   assignedTo: string | null
+  /** The owner's name, when the API could resolve `assignedTo` to a person of the organization. */
+  assignedToName?: string | null
   notes: string | null
   expectedClose: string | null
   stageChangedAt: string | null

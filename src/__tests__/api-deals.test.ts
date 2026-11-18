@@ -524,6 +524,25 @@ describe("GET /api/v1/deals/:id", () => {
     expect(json.data.contactRoles).toHaveLength(1)
   })
 
+  it("names the owner instead of handing the screen the id stored in assignedTo", async () => {
+    vi.mocked(prisma.deal.findFirst).mockResolvedValue({
+      id: "d1", name: "Deal One", stage: "QUALIFIED", contactId: null, assignedTo: "u9",
+      teamMembers: [], company: null, campaign: null,
+    } as any)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "u9", name: "Səbinə Rzayeva", email: "s@b.com", avatar: null, role: "manager" }] as any)
+    vi.mocked(prisma.dealContactRole.findMany).mockResolvedValue([] as any)
+    const json = await (await GET_BY_ID(makeReq("http://localhost:3000/api/v1/deals/d1"), makeParams("d1"))).json()
+    expect(json.data.assignedTo).toBe("u9")
+    expect(json.data.assignedToName).toBe("Səbinə Rzayeva")
+    // The owner is looked up inside the organization, with the team.
+    expect(vi.mocked(prisma.user.findMany).mock.calls.at(-1)?.[0]).toMatchObject({ where: { id: { in: ["u9"] }, organizationId: "org-1" } })
+
+    // An owner who is not a person of the organization (a legacy free-text value) gets no name.
+    vi.mocked(prisma.user.findMany).mockResolvedValue([] as any)
+    const legacy = await (await GET_BY_ID(makeReq("http://localhost:3000/api/v1/deals/d1"), makeParams("d1"))).json()
+    expect(legacy.data.assignedToName).toBeUndefined()
+  })
+
   it("contact sub-query scopes to organizationId", async () => {
     const mockDeal = {
       id: "d1", name: "Deal Bug", stage: "LEAD", contactId: "ct-cross-tenant",
