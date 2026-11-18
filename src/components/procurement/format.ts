@@ -1,3 +1,5 @@
+import { formatDate } from "@/lib/format-date"
+
 /** Money as the API sends it (Decimal as a string, or null when hidden from this reader). */
 export function formatMoney(value: string | number | null | undefined, currency?: string | null, locale?: string): string {
   if (value === null || value === undefined || value === "") return "—"
@@ -13,10 +15,13 @@ export function formatQuantity(value: string | number | null | undefined, locale
   return Number.isFinite(n) ? n.toLocaleString(locale, { maximumFractionDigits: 4 }) : "—"
 }
 
+/**
+ * A day as «08 dek 2026». Through the app's formatDate: Chrome's ICU has no
+ * `az` data and `toLocaleDateString("az", …)` prints «2026 M12 08» there.
+ */
 export function formatDay(value: string | null | undefined, locale?: string): string {
   if (!value) return "—"
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString(locale, { day: "2-digit", month: "short", year: "numeric" })
+  return formatDate(value, locale || "az", { day: "2-digit", month: "short", year: "numeric" }) || "—"
 }
 
 /** yyyy-mm-dd for an <input type="date">. */

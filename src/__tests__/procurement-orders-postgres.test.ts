@@ -755,6 +755,8 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     // Revenue 3000 + 2000 + 180 = 5180; plan 1100 + 560 + 110 = 1770.
     expect(finance.body.data.lines.map((line: { plannedCost: number }) => line.plannedCost)).toEqual([1100, 560, 110])
     expect(finance.body.data.totals).toMatchObject({ revenue: 5180, plannedCost: 1770, plannedMargin: 3410, plannedMarginPct: 65.8, plannedMissing: 0 })
+    // No order committed yet: the cost is unknown, not 0 — no «100 %» margin, the plan stands.
+    expect(finance.body.data.totals).toMatchObject({ margin: null, marginPct: null })
     as("sales")
     const sales = await json(await tab.GET(request(`${API}/deals/${deal.id}`, "GET"), ctx(deal.id)))
     expect(sales.body.data.totals).toMatchObject({ plannedCost: null, plannedMargin: null, plannedMarginPct: null })

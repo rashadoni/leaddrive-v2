@@ -8,7 +8,8 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
+import { formatDate } from "@/lib/format-date"
 import { CopyPlus, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -21,6 +22,7 @@ const money = (value: string | number, currency: string) => `${Number(value).toL
 
 export function QuoteVersions({ quoteId, canWrite }: { quoteId: string; canWrite: boolean }) {
   const t = useTranslations("quotesDetail.versions")
+  const locale = useLocale()
   const router = useRouter()
   const [versions, setVersions] = useState<Version[]>([])
   const [loading, setLoading] = useState(true)
@@ -85,7 +87,7 @@ export function QuoteVersions({ quoteId, canWrite }: { quoteId: string; canWrite
         {versions.map((v) => (
           <li key={v.id} className="flex flex-wrap items-center justify-between gap-2">
             <button type="button" className={`hover:underline ${v.id === quoteId ? "font-semibold" : "text-primary"}`} onClick={() => router.push(`/quotes/${v.id}`)}>v{v.version}</button>
-            <span className="text-muted-foreground">{t(`status.${v.status}` as never)} · {new Date(v.createdAt).toLocaleDateString()}</span>
+            <span className="text-muted-foreground">{t(`status.${v.status}` as never)} · {formatDate(v.createdAt, locale)}</span>
             <span className="tabular-nums">{money(v.totalAmount, v.currency)}</span>
           </li>
         ))}

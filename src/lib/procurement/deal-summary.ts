@@ -89,6 +89,9 @@ export async function dealProcurementSummary(orgId: string, dealId: string, now 
     if (order.currency !== deal.currency) foreignCost[order.currency] = (foreignCost[order.currency] ?? 0) + Number(order.totalAmount)
   }
   const exact = Object.keys(foreignCost).length === 0
+  // Before any order is committed the cost is not 0, it is unknown: a margin
+  // of 100 % would be read as a fact. The plan below is what stands until then.
+  const costed = committed.length > 0
   // The plan: what the lines are expected to cost before any order exists.
   // Only a full plan gives a margin — one unplanned line would make it look
   // better than it is.
@@ -108,8 +111,8 @@ export async function dealProcurementSummary(orgId: string, dealId: string, now 
     totals: {
       revenue,
       cost,
-      margin: exact ? revenue - cost : null,
-      marginPct: exact && revenue > 0 ? Math.round(((revenue - cost) / revenue) * 1000) / 10 : null,
+      margin: exact && costed ? revenue - cost : null,
+      marginPct: exact && costed && revenue > 0 ? Math.round(((revenue - cost) / revenue) * 1000) / 10 : null,
       foreignCost: exact ? null : foreignCost,
       plannedCost: lines.length > 0 && plannedMissing < lines.length ? plannedCost : null,
       plannedMargin: plannedComplete ? revenue - plannedCost : null,
