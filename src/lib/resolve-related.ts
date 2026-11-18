@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { procurementNumber } from "@/lib/procurement/numbering"
 
 /**
  * Resolves the display name of a related entity scoped to the given org.
@@ -30,6 +31,16 @@ export async function resolveRelated(
     case "ticket": {
       const e = await prisma.ticket.findFirst({ where: { id, organizationId: orgId }, select: { subject: true } })
       return e ? { name: e.subject || "" } : null
+    }
+    // A task an automation made for a purchase (src/lib/procurement/events.ts):
+    // its number and who it is from or what it is for — no amounts.
+    case "purchase_order": {
+      const e = await prisma.purchaseOrder.findFirst({ where: { id, organizationId: orgId }, select: { seq: true, supplier: { select: { name: true } } } })
+      return e ? { name: `${procurementNumber("order", e.seq)} · ${e.supplier.name}` } : null
+    }
+    case "purchase_request": {
+      const e = await prisma.purchaseRequest.findFirst({ where: { id, organizationId: orgId }, select: { seq: true, title: true } })
+      return e ? { name: `${procurementNumber("request", e.seq)} · ${e.title}` } : null
     }
     default:
       return null

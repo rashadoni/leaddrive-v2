@@ -816,6 +816,12 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     const order = await orderRow(orderId)
     expect(order.status).toBe("sent")
     expect(order.events.some((event) => event.type === "overdue")).toBe(true)
+    // The task card names what it is for — the order's number and supplier, the request's number and title.
+    const { resolveRelated } = await import("@/lib/resolve-related")
+    expect(await bypass(() => resolveRelated(BUYER, "purchase_order", orderId))).toEqual({ name: `PO-${String(order.seq).padStart(4, "0")} · Wood Workshop` })
+    const requestRow = await bypass(() => prisma.purchaseRequest.findFirstOrThrow({ where: { organizationId: BUYER }, orderBy: { seq: "asc" } }))
+    expect(await bypass(() => resolveRelated(BUYER, "purchase_request", requestRow.id))).toEqual({ name: `PR-${String(requestRow.seq).padStart(4, "0")} · ${requestRow.title}` })
+    expect(await bypass(() => resolveRelated(PLAIN, "purchase_order", orderId))).toBeNull()
 
     await bypass(() => prisma.workflowRule.deleteMany({}))
     await bypass(() => prisma.task.deleteMany({}))

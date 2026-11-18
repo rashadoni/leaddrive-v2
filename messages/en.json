@@ -902,6 +902,8 @@
     "errDefault": "Sign-in error. Please try another method."
   },
   "common": {
+    "purchase_order": "Purchase order",
+    "purchase_request": "Purchase request",
     "settings": "Settings",
     "categoryVip": "VIP",
     "categoryPartner": "Partner",
