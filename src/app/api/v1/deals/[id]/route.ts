@@ -24,7 +24,8 @@ export const GET = withRls(async (_req, { orgId, session }, { params }: { params
     if (!deal) return NextResponse.json({ error: "Deal not found" }, { status: 404 })
 
     // Enrich team members with user info
-    const userIds = deal.teamMembers.map((m: any) => m.userId)
+    // The owner too: the card shows a person, not the id stored in `assignedTo`.
+    const userIds = [...new Set([...deal.teamMembers.map((m: any) => m.userId), ...(deal.assignedTo ? [deal.assignedTo] : [])])]
     const users = userIds.length > 0
       ? await prisma.user.findMany({
           where: { id: { in: userIds }, organizationId: orgId },
@@ -69,7 +70,11 @@ export const GET = withRls(async (_req, { orgId, session }, { params }: { params
 
     const fieldPerms = await getFieldPermissions(orgId, role, "deal")
     const dealNorm = { ...normalizeDealRow(deal), teamMembers: enrichedTeam, contact, contactRoles: enrichedRoles }
-    const filteredDeal = filterEntityFields(dealNorm, fieldPerms, role)
+    const filteredDeal = filterEntityFields(dealNorm, fieldPerms, role) as Record<string, unknown>
+    // Only next to an owner the reader may see (field permissions above).
+    if (typeof filteredDeal.assignedTo === "string" && userMap[filteredDeal.assignedTo]?.name) {
+      filteredDeal.assignedToName = userMap[filteredDeal.assignedTo].name
+    }
 
     return NextResponse.json({ success: true, data: filteredDeal })
   } catch (e: any) {
