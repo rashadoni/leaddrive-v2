@@ -8,6 +8,7 @@
  */
 import { useCallback, useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import { formatDate } from "@/lib/format-date"
 import { Loader2, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -86,7 +87,7 @@ export function DealChangeApprovals({ dealId, canWrite }: { dealId: string; canW
             <li key={row.id} className="rounded-xl border p-3 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-semibold">{t(`kinds.${row.kind}` as never)}</span>
-                <span className="text-xs text-muted-foreground">{new Date(row.approvedAt).toLocaleDateString(locale)} · {t(`channels.${row.channel}` as never)} · {row.approvedByName}</span>
+                <span className="text-xs text-muted-foreground">{formatDate(row.approvedAt, locale)} · {t(`channels.${row.channel}` as never)} · {row.approvedByName}</span>
               </div>
               <div className="mt-1">{row.before ? <><span className="text-muted-foreground line-through">{row.before}</span> → </> : null}<span>{row.after}</span></div>
               {row.note && <p className="mt-1 text-xs text-muted-foreground">{row.note}</p>}

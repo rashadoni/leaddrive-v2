@@ -757,6 +757,8 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     // The tab hands the request dialog each line's unit, so a request raised from the screen carries it too.
     expect(finance.body.data.lines.map((line: { unit: string | null }) => line.unit)).toEqual(["ədəd", "m²", null])
     expect(finance.body.data.totals).toMatchObject({ revenue: 5180, plannedCost: 1770, plannedMargin: 3410, plannedMarginPct: 65.8, plannedMissing: 0 })
+    // No order committed yet: the cost is unknown, not 0 — no «100 %» margin, the plan stands.
+    expect(finance.body.data.totals).toMatchObject({ margin: null, marginPct: null })
     as("sales")
     const sales = await json(await tab.GET(request(`${API}/deals/${deal.id}`, "GET"), ctx(deal.id)))
     expect(sales.body.data.totals).toMatchObject({ plannedCost: null, plannedMargin: null, plannedMarginPct: null })

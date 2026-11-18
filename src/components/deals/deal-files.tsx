@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import { formatDate } from "@/lib/format-date"
 import { FileText, Loader2, Paperclip, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -88,7 +89,7 @@ export function DealFiles({ dealId, canWrite }: { dealId: string; canWrite: bool
                 : <FileText className="h-6 w-6 shrink-0 text-muted-foreground" />}
               <div className="min-w-0 flex-1">
                 <a href={file.url} target="_blank" rel="noreferrer" className="block truncate font-medium text-primary hover:underline">{file.originalName}</a>
-                <div className="text-xs text-muted-foreground">{size(file.fileSize)} · {new Date(file.createdAt).toLocaleDateString(locale)}</div>
+                <div className="text-xs text-muted-foreground">{size(file.fileSize)} · {formatDate(file.createdAt, locale)}</div>
               </div>
               {canWrite && (
                 <Button size="icon" variant="ghost" aria-label={t("remove")} onClick={() => void remove(file.id)}><Trash2 className="h-4 w-4" /></Button>
