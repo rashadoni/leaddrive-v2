@@ -144,6 +144,9 @@ const RELATED_TYPE_ROUTES: Record<string, string> = {
   company: "/companies",
   lead: "/leads",
   ticket: "/tickets",
+  // Tasks an automation makes for a purchase (src/lib/procurement/events.ts).
+  purchase_order: "/procurement/orders",
+  purchase_request: "/procurement/requests",
 }
 
 const RELATED_ENTITY_ICONS: Record<string, typeof User> = {

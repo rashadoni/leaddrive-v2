@@ -902,6 +902,8 @@
     "errDefault": "Giriş xətası. Başqa üsul sınayın."
   },
   "common": {
+    "purchase_order": "Təchizatçı sifarişi",
+    "purchase_request": "Satınalma sorğusu",
     "settings": "Parametrlər",
     "categoryVip": "VIP",
     "categoryPartner": "Tərəfdaş",

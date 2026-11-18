@@ -902,6 +902,8 @@
     "errDefault": "Ошибка входа. Попробуйте другой способ."
   },
   "common": {
+    "purchase_order": "Заказ поставщику",
+    "purchase_request": "Заявка на закупку",
     "settings": "Настройки",
     "categoryVip": "VIP",
     "categoryPartner": "Партнёр",

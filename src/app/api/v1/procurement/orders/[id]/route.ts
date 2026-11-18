@@ -15,7 +15,12 @@ export const GET = withRlsAuth("procurement", "read", async (_req, { orgId, role
   const { id } = await params
   const order = await prisma.purchaseOrder.findFirst({ where: { id, organizationId: orgId }, include: ORDER_DETAIL_INCLUDE })
   if (!order) return notFound()
-  const data = { ...presentOrder(order), late: isLate(order) }
+  // The approval chain names people, not the ids stored in its steps.
+  const peopleIds = [...new Set(order.approvals.flatMap((step) => [step.approverUserId, step.actedById]).filter((id): id is string => !!id))]
+  const people: Record<string, string> = Object.fromEntries((peopleIds.length > 0
+    ? await prisma.user.findMany({ where: { id: { in: peopleIds }, organizationId: orgId }, select: { id: true, name: true } })
+    : []).map((user: { id: string; name: string | null }) => [user.id, user.name ?? ""]).filter(([, name]: [string, string]) => name))
+  const data = { ...presentOrder(order), late: isLate(order), people }
   return NextResponse.json({ success: true, data: canSeeProcurementCosts(role) ? data : withoutPrices(data) })
 })
 
