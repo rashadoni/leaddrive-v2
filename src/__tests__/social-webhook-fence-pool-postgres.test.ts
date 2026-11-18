@@ -194,13 +194,23 @@ pgDescribe("social webhooks inside the monitoring fence, on a real Postgres with
     }
   }, 60_000)
 
+  /**
+   * When the comment was written: an hour ago. Social Monitoring drops what was
+   * published more than 30 days ago (monitoring-age-retention.ts, since
+   * 2026-11-08), so a fixed date in this file — 2026-10-19 08:53 UTC — turned
+   * every comment into «published_beyond_retention» on 2026-11-18 at 08:53 and
+   * this required gate red for every pull request.
+   */
+  const writtenAt = () => new Date(Date.now() - 3_600_000)
+
   /** Meta delivers one new comment under a post on the organization's Facebook page, signed. */
   async function metaDelivers(org: OrgName, commentId: string) {
+    const at = Math.floor(writtenAt().getTime() / 1000)
     const raw = JSON.stringify({
       object: "page",
       entry: [{
         id: ORGS[org].page,
-        time: 1_792_400_000,
+        time: at,
         changes: [{
           field: "feed",
           value: {
@@ -210,7 +220,7 @@ pgDescribe("social webhooks inside the monitoring fence, on a real Postgres with
             post_id: `${ORGS[org].page}_post-1`,
             message: complaint(commentId),
             from: { id: `fan-${commentId}`, name: `Customer ${commentId}` },
-            created_time: 1_792_400_000,
+            created_time: at,
           },
         }],
       }],
@@ -239,7 +249,7 @@ pgDescribe("social webhooks inside the monitoring fence, on a real Postgres with
             video_id: "video-1",
             text: complaint(commentId),
             author: { username: `fan_${commentId}`, name: `Customer ${commentId}` },
-            created_at: "2026-10-19T08:00:00.000Z",
+            created_at: writtenAt().toISOString(),
           },
         }),
       },
