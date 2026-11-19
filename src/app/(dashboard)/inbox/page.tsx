@@ -23,6 +23,7 @@ import { formatDate } from "@/lib/format-date"
 import { cn } from "@/lib/utils"
 import { normalizeInboxFolderName } from "@/lib/inbox-folder-name"
 import { toast } from "sonner"
+import { MessagePhoto } from "@/components/inbox/message-photo"
 import { isAudioPreview, isImagePreview, isTikTokPlayerUrl, isVideoPreview, sharedPostLabel } from "@/lib/media-preview"
 import { readJsonSafely } from "@/lib/http/read-json-safely"
 import { applySnippetVariables, type MessageSnippetLike } from "@/lib/inbox/snippet-vars"
@@ -3682,8 +3683,8 @@ export default function InboxV2Page() {
                         {m.subject && <div className="text-xs font-semibold mb-0.5">{m.subject}</div>}
                         {typeof m.mediaUrl === "string" && m.mediaUrl && view.kind !== "unsent" && (
                           isImagePreview(m.messageType, m.mediaUrl) ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img loading="lazy" decoding="async" src={m.mediaUrl} alt="attachment" className="mb-1 max-h-48 rounded-lg object-cover" />
+                            // A click opens the whole photo; the bubble only holds a cropped thumbnail.
+                            <MessagePhoto src={m.mediaUrl} />
                           ) : isAudioPreview(m.messageType, m.mediaUrl) ? (
                             // A voice note plays here; its words are the body under it.
                             <audio controls preload="none" src={m.mediaUrl} className="mb-1 h-9 w-64 max-w-full" data-testid="inbox-voice-player" />
