@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from "vitest"
 
 /**
  * One AI agent per page (owner 2026-11-13: «нужно разделение по страницам внутри Instagram…
@@ -104,6 +104,13 @@ const ask = (channelConfigId: string | undefined, conversationId: string) =>
     orgId: ORG, channel: "instagram", externalId: "igsid_1", userMessage: "Qiymət neçədir?", senderName: "Aysel",
     conversationId, channelConfigId,
   })
+
+// «Open all day» in these tests is 00:00–23:59, and the end of an interval is not inside it, so
+// at 23:59 in Baku a page reads as closed: the deploy of 2026-11-19 ran two of them at 19:59 UTC
+// and went red. The clock is fixed at a working-day noon in Baku; only Date is faked, and the
+// tests that care about a moment pass their own «now».
+beforeAll(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-11-11T08:00:00Z")) })
+afterAll(() => { vi.useRealTimers() })
 
 describe("the agent that answers depends on the page the customer wrote to", () => {
   it("answers on a page with its own agent from that page's rules, knowledge and greeting", async () => {
