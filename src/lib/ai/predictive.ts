@@ -101,9 +101,12 @@ export async function predictDealWin(dealId: string, orgId: string): Promise<Dea
 
   // Activity metrics
   const lastActivityDate = activities[0]?.createdAt || null
-  const daysSinceLastActivity = daysSince(lastActivityDate)
   const activityCount = activities.length
   const dealAge = daysSince(deal.createdAt)
+  // A deal nobody has touched yet has been quiet since it was created — not
+  // for «999 days» (the card said exactly that), and a deal created this
+  // morning is not «recent activity» either.
+  const daysSinceLastActivity = lastActivityDate ? daysSince(lastActivityDate) : dealAge
 
   // Historical data
   const historicalDeals = await prisma.deal.findMany({
@@ -121,7 +124,7 @@ export async function predictDealWin(dealId: string, orgId: string): Promise<Dea
   // Activity engagement
   if (daysSinceLastActivity > 30) score -= 25
   else if (daysSinceLastActivity > 14) score -= 15
-  else if (daysSinceLastActivity <= 3) score += 5
+  else if (lastActivityDate && daysSinceLastActivity <= 3) score += 5
 
   if (activityCount > 10) score += 10
   else if (activityCount > 5) score += 5
@@ -154,7 +157,7 @@ export async function predictDealWin(dealId: string, orgId: string): Promise<Dea
 
   const positiveFactors: PredictionFactor[] = []
   if (activityCount > 5) positiveFactors.push({ key: "interactionsCount", params: { count: activityCount } })
-  if (daysSinceLastActivity <= 3) positiveFactors.push({ key: "recentActivity" })
+  if (lastActivityDate && daysSinceLastActivity <= 3) positiveFactors.push({ key: "recentActivity" })
   if (stageProbability >= 70) positiveFactors.push({ key: "highProbabilityStage", params: { probability: stageProbability } })
 
   const confidence = totalClosed > 20 ? 80 : totalClosed > 5 ? 50 : 30

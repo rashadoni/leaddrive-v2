@@ -115,6 +115,9 @@ const COPY = {
       Amount: "Amount",
       "First response due": "First response due",
       "SLA due": "SLA due",
+      Stage: "Stage",
+      Probability: "Probability",
+      Value: "Value",
     },
     statusValues: {
       open: "open",
@@ -135,6 +138,14 @@ const COPY = {
       high: "high",
       medium: "medium",
       low: "low",
+    },
+    stageValues: {
+      LEAD: "Lead",
+      QUALIFIED: "Qualified",
+      PROPOSAL: "Proposal",
+      NEGOTIATION: "Negotiation",
+      WON: "Won",
+      LOST: "Lost",
     },
     entityTypes: {
       ticket: "ticket",
@@ -159,6 +170,15 @@ const COPY = {
       followUpQuoteTitle: "Follow up quote {quote}",
       quoteFollowUpMessage: "Quote is {status} and has been idle for {days} days. Confirm buyer decision or revise terms.",
       quoteRiskNote: "Quote {status} is without buyer decision for {days} days. Amount {amount}.",
+      dealStalled: "{deal} is stalled in {stage}",
+      dealNoStageMovement: "No stage movement for {days} days.",
+      dealNoStageMovementOverdue: "No stage movement for {days} days and close date is overdue.",
+      followUpDealTitle: "Follow up: {deal}",
+      dealNotMovedTask: "Deal has not moved for {days} days. Confirm next step and update close plan.",
+      advisorRiskNote: "Advisor risk: {record}",
+      dealStalledNote: "Stalled in {stage} for {days} days. Probability {probability}%, value {value}.",
+      nextStepFor: "Next step for {deal}",
+      dealFollowUpDraft: "Hi, checking in on the next step for {deal}.",
     },
   },
   ru: {
@@ -252,6 +272,9 @@ const COPY = {
       Amount: "Сумма",
       "First response due": "Первый ответ до",
       "SLA due": "SLA до",
+      Stage: "Этап",
+      Probability: "Вероятность",
+      Value: "Сумма",
     },
     statusValues: {
       open: "открыт",
@@ -272,6 +295,14 @@ const COPY = {
       high: "высокий",
       medium: "средний",
       low: "низкий",
+    },
+    stageValues: {
+      LEAD: "Лид",
+      QUALIFIED: "Квалифицирован",
+      PROPOSAL: "Предложение",
+      NEGOTIATION: "Переговоры",
+      WON: "Выиграна",
+      LOST: "Проиграна",
     },
     entityTypes: {
       ticket: "тикет",
@@ -296,6 +327,15 @@ const COPY = {
       followUpQuoteTitle: "Проверить решение покупателя по {quote}",
       quoteFollowUpMessage: "Предложение в статусе {status} и без движения {days} дн. Подтвердите решение покупателя или обновите условия.",
       quoteRiskNote: "Предложение {status} без решения покупателя {days} дн. Сумма {amount}.",
+      dealStalled: "{deal}: сделка стоит на этапе «{stage}»",
+      dealNoStageMovement: "Этап не менялся {days} дн.",
+      dealNoStageMovementOverdue: "Этап не менялся {days} дн., дата закрытия прошла.",
+      followUpDealTitle: "Проверить следующий шаг по {deal}",
+      dealNotMovedTask: "Сделка не двигается {days} дн. Подтвердите следующий шаг и обновите план закрытия.",
+      advisorRiskNote: "Риск Advisor: {record}",
+      dealStalledNote: "Стоит на этапе «{stage}» {days} дн. Вероятность {probability}%, сумма {value}.",
+      nextStepFor: "Следующий шаг по {deal}",
+      dealFollowUpDraft: "Здравствуйте, уточняю следующий шаг по {deal}.",
     },
   },
   az: {
@@ -389,6 +429,9 @@ const COPY = {
       Amount: "Məbləğ",
       "First response due": "İlk cavab vaxtı",
       "SLA due": "SLA vaxtı",
+      Stage: "Mərhələ",
+      Probability: "Ehtimal",
+      Value: "Dəyər",
     },
     statusValues: {
       open: "açıq",
@@ -409,6 +452,14 @@ const COPY = {
       high: "yüksək",
       medium: "orta",
       low: "aşağı",
+    },
+    stageValues: {
+      LEAD: "Lid",
+      QUALIFIED: "Kvalifikasiya olunub",
+      PROPOSAL: "Təklif",
+      NEGOTIATION: "Danışıqlar",
+      WON: "Qazanılıb",
+      LOST: "Uduzulub",
     },
     entityTypes: {
       ticket: "tiket",
@@ -433,6 +484,15 @@ const COPY = {
       followUpQuoteTitle: "{quote} üzrə alıcı qərarını yoxla",
       quoteFollowUpMessage: "Təklif {status} statusundadır və {days} gündür hərəkətsizdir. Alıcı qərarını təsdiqləyin və ya şərtləri yeniləyin.",
       quoteRiskNote: "Təklif {status} statusunda {days} gündür alıcı qərarı olmadan qalır. Məbləğ {amount}.",
+      dealStalled: "{deal} «{stage}» mərhələsində dayanıb",
+      dealNoStageMovement: "{days} gündür mərhələ dəyişməyib.",
+      dealNoStageMovementOverdue: "{days} gündür mərhələ dəyişməyib və bağlanış tarixi keçib.",
+      followUpDealTitle: "{deal} üzrə növbəti addımı yoxla",
+      dealNotMovedTask: "Sövdələşmə {days} gündür irəliləmir. Növbəti addımı təsdiqləyin və bağlanış planını yeniləyin.",
+      advisorRiskNote: "Advisor riski: {record}",
+      dealStalledNote: "{days} gündür «{stage}» mərhələsində dayanıb. Ehtimal {probability}%, dəyər {value}.",
+      nextStepFor: "{deal} üzrə növbəti addım",
+      dealFollowUpDraft: "Salam, {deal} üzrə növbəti addımı dəqiqləşdirirəm.",
     },
   },
 }
@@ -456,7 +516,22 @@ function interpolate(template: string, values: Record<string, string>) {
   return Object.entries(values).reduce((result, [key, value]) => result.replace(`{${key}}`, value), template)
 }
 
-function advisorTextFor(copy: (typeof COPY)["en"], value: string) {
+/** The built-in stages by their own words; a stage the organization named itself is already words. */
+function stageLabelFor(copy: (typeof COPY)["en"], stage: string) {
+  return copy.stageValues[stage.toUpperCase() as keyof typeof copy.stageValues] || stage
+}
+
+/**
+ * The step's label comes from the server in English: a generic one ("Create
+ * task") is the action type's own label, a specific one goes through the texts.
+ */
+function actionLabelFor(copy: (typeof COPY)["en"], action: AdvisorAction) {
+  const englishTypeLabel = COPY.en.actionTypes[action.actionType as keyof typeof COPY.en.actionTypes]
+  if (englishTypeLabel && action.label === englishTypeLabel) return actionTypeLabelFor(copy, action.actionType)
+  return advisorTextFor(copy, action.label)
+}
+
+export function advisorTextFor(copy: (typeof COPY)["en"], value: string) {
   const exact: Record<string, string> = {
     "First response SLA is breached.": copy.advisorTexts.firstResponseSlaBreached,
     "Resolution SLA is breached.": copy.advisorTexts.resolutionSlaBreached,
@@ -509,6 +584,40 @@ function advisorTextFor(copy: (typeof COPY)["en"], value: string) {
     return interpolate(copy.advisorTexts.quoteFollowUpMessage, { status, days: quoteFollowUp[2] })
   }
 
+  const dealStalled = value.match(/^(.+) is stalled in (.+)$/)
+  if (dealStalled) return interpolate(copy.advisorTexts.dealStalled, { deal: dealStalled[1], stage: stageLabelFor(copy, dealStalled[2]) })
+
+  const noStageMovement = value.match(/^No stage movement for (\d+) days( and close date is overdue)?\.$/)
+  if (noStageMovement) {
+    const template = noStageMovement[2] ? copy.advisorTexts.dealNoStageMovementOverdue : copy.advisorTexts.dealNoStageMovement
+    return interpolate(template, { days: noStageMovement[1] })
+  }
+
+  const followUpDeal = value.match(/^Follow up: (.+)$/)
+  if (followUpDeal) return interpolate(copy.advisorTexts.followUpDealTitle, { deal: followUpDeal[1] })
+
+  const dealNotMoved = value.match(/^Deal has not moved for (\d+) days\. Confirm next step and update close plan\.$/)
+  if (dealNotMoved) return interpolate(copy.advisorTexts.dealNotMovedTask, { days: dealNotMoved[1] })
+
+  const advisorRiskNote = value.match(/^Advisor risk: (.+)$/)
+  if (advisorRiskNote) return interpolate(copy.advisorTexts.advisorRiskNote, { record: advisorRiskNote[1] })
+
+  const dealStalledNote = value.match(/^Stalled in (.+) for (\d+) days\. Probability (.+)%, value (.+)\.$/)
+  if (dealStalledNote) {
+    return interpolate(copy.advisorTexts.dealStalledNote, {
+      stage: stageLabelFor(copy, dealStalledNote[1]),
+      days: dealStalledNote[2],
+      probability: dealStalledNote[3],
+      value: dealStalledNote[4],
+    })
+  }
+
+  const nextStepFor = value.match(/^Next step for (.+)$/)
+  if (nextStepFor) return interpolate(copy.advisorTexts.nextStepFor, { deal: nextStepFor[1] })
+
+  const dealFollowUpDraft = value.match(/^Hi, checking in on the next step for (.+)\.$/)
+  if (dealFollowUpDraft) return interpolate(copy.advisorTexts.dealFollowUpDraft, { deal: dealFollowUpDraft[1] })
+
   const quoteRiskNote = value.match(/^Quote (.+) without buyer decision for (\d+) days\. Amount (.+)\.$/)
   if (quoteRiskNote) {
     const status = copy.statusValues[quoteRiskNote[1] as keyof typeof copy.statusValues] || quoteRiskNote[1]
@@ -526,6 +635,7 @@ function factValueFor(copy: (typeof COPY)["en"], fact: AdvisorSignal["facts"][nu
   const value = fact.value
   if (fact.label === "Status") return copy.statusValues[value as keyof typeof copy.statusValues] || value
   if (fact.label === "Priority") return copy.priorityValues[value as keyof typeof copy.priorityValues] || value
+  if (fact.label === "Stage") return stageLabelFor(copy, value)
   return advisorTextFor(copy, value)
 }
 
@@ -739,7 +849,7 @@ function RecordSignalRisk({
                 <Inbox className="h-3 w-3" />
                 <span>{copy.recommendedStep}</span>
               </div>
-              <p className="line-clamp-2 text-xs font-semibold text-foreground">{advisorTextFor(copy, primaryAction.label)}</p>
+              <p className="line-clamp-2 text-xs font-semibold text-foreground">{actionLabelFor(copy, primaryAction)}</p>
             </div>
             <Badge variant="outline" className="shrink-0 text-[10px]">{copy.requiresApproval}</Badge>
           </div>

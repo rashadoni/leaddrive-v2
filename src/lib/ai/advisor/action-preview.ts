@@ -66,6 +66,19 @@ export function advisorPreviewValue(value: unknown): string {
   }
 }
 
+/** The assignee's name when the signal attached it for this very id, else the id. */
+export function advisorAssigneePreview(payload: Record<string, unknown>): string {
+  const assignee = payload.assignee
+  if (
+    assignee && typeof assignee === "object" &&
+    typeof (assignee as { name?: unknown }).name === "string" &&
+    (assignee as { id?: unknown }).id === payload.assignedTo
+  ) {
+    return advisorPreviewValue((assignee as { name: string }).name)
+  }
+  return advisorPreviewValue(payload.assignedTo)
+}
+
 function relatedRecordPreview(input: AdvisorActionPreviewInput) {
   const relatedType = typeof input.payload.relatedType === "string" ? input.payload.relatedType : input.entityType
   const relatedId = typeof input.payload.relatedId === "string" ? input.payload.relatedId : input.entityId
@@ -83,22 +96,22 @@ export function buildAdvisorActionPreviewEntries(input: AdvisorActionPreviewInpu
     create_task: compactPreviewEntries([
       { label: labels.taskTitle, value: advisorPreviewValue(payload.title) },
       { label: labels.description, value: advisorPreviewValue(payload.description) },
-      { label: labels.assignee, value: advisorPreviewValue(payload.assignedTo) },
+      { label: labels.assignee, value: advisorAssigneePreview(payload) },
       { label: labels.relatedRecord, value: relatedRecordPreview(input) },
     ]),
     assign_task: compactPreviewEntries([
       { label: labels.taskTitle, value: advisorPreviewValue(payload.title) },
       { label: labels.description, value: advisorPreviewValue(payload.description) },
-      { label: labels.assignee, value: advisorPreviewValue(payload.assignedTo) },
+      { label: labels.assignee, value: advisorAssigneePreview(payload) },
       { label: labels.relatedRecord, value: relatedRecordPreview(input) },
     ]),
     assign_owner: compactPreviewEntries([
-      { label: labels.assignee, value: advisorPreviewValue(payload.assignedTo) },
+      { label: labels.assignee, value: advisorAssigneePreview(payload) },
       { label: labels.description, value: advisorPreviewValue(payload.description) },
       { label: labels.relatedRecord, value: relatedRecordPreview(input) },
     ]),
     assign_ticket_owner: compactPreviewEntries([
-      { label: labels.assignee, value: advisorPreviewValue(payload.assignedTo) },
+      { label: labels.assignee, value: advisorAssigneePreview(payload) },
       { label: labels.description, value: advisorPreviewValue(payload.description) },
       { label: labels.relatedRecord, value: relatedRecordPreview(input) },
     ]),
@@ -125,25 +138,25 @@ export function buildAdvisorActionPreviewEntries(input: AdvisorActionPreviewInpu
     contract_review: compactPreviewEntries([
       { label: labels.taskTitle, value: advisorPreviewValue(payload.title) },
       { label: labels.description, value: advisorPreviewValue(payload.description) },
-      { label: labels.assignee, value: advisorPreviewValue(payload.assignedTo) },
+      { label: labels.assignee, value: advisorAssigneePreview(payload) },
       { label: labels.relatedRecord, value: relatedRecordPreview(input) },
     ]),
     campaign_review: compactPreviewEntries([
       { label: labels.taskTitle, value: advisorPreviewValue(payload.title) },
       { label: labels.description, value: advisorPreviewValue(payload.description) },
-      { label: labels.assignee, value: advisorPreviewValue(payload.assignedTo) },
+      { label: labels.assignee, value: advisorAssigneePreview(payload) },
       { label: labels.relatedRecord, value: relatedRecordPreview(input) },
     ]),
     support_escalation: compactPreviewEntries([
       { label: labels.alertTitle, value: advisorPreviewValue(payload.title) },
       { label: labels.message, value: advisorPreviewValue(payload.description || payload.message) },
-      { label: labels.assignee, value: advisorPreviewValue(payload.assignedTo) },
+      { label: labels.assignee, value: advisorAssigneePreview(payload) },
       { label: labels.relatedRecord, value: relatedRecordPreview(input) },
     ]),
     kpi_plan_review: compactPreviewEntries([
       { label: labels.taskTitle, value: advisorPreviewValue(payload.title) },
       { label: labels.description, value: advisorPreviewValue(payload.description) },
-      { label: labels.assignee, value: advisorPreviewValue(payload.assignedTo) },
+      { label: labels.assignee, value: advisorAssigneePreview(payload) },
       { label: labels.relatedRecord, value: relatedRecordPreview(input) },
     ]),
     create_note: compactPreviewEntries([
@@ -183,10 +196,10 @@ export function buildAdvisorActionPreviewEntries(input: AdvisorActionPreviewInpu
   const preferredKeys = ["title", "subject", "description", "companyName", "invoiceNumber", "amount", "daysOverdue", "assignedTo", "body", "relatedType", "relatedId"]
   const entries = preferredKeys
     .filter((key) => key in payload)
-    .map((key) => ({ label: fallbackLabels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (char) => char.toUpperCase()), value: advisorPreviewValue(payload[key]) }))
+    .map((key) => ({ label: fallbackLabels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (char) => char.toUpperCase()), value: key === "assignedTo" ? advisorAssigneePreview(payload) : advisorPreviewValue(payload[key]) }))
   if (entries.length > 0) return entries.slice(0, 5)
   return Object.entries(payload)
-    .filter(([key]) => key !== "advisor")
+    .filter(([key]) => key !== "advisor" && key !== "assignee")
     .slice(0, 5)
     .map(([key, value]) => ({ label: key, value: advisorPreviewValue(value) }))
 }
