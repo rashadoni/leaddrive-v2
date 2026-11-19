@@ -39,9 +39,10 @@ vi.mock("@/lib/prisma", () => {
       return { ...state.target, ...data }
     }),
   }
+  const mtmAgent = { updateMany: vi.fn(async () => ({ count: 0 })) }
   return {
     logAudit: vi.fn(),
-    prisma: { user, $transaction: vi.fn(async (work: (tx: unknown) => unknown) => work({ user })) },
+    prisma: { user, $transaction: vi.fn(async (work: (tx: unknown) => unknown) => work({ user, mtmAgent })) },
   }
 })
 

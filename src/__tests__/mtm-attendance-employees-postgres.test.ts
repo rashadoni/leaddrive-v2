@@ -454,6 +454,43 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     } finally { web.current = null }
   })
 
+  // Zeytun, 2026-11-19: a deleted admin's card kept +994…, the app signed the number's new holder
+  // into that dead card (lock screen), and Personnel called the number an administrator's.
+  it("frees the sign-in number of a deleted user's card, including one deleted before the fix", async () => {
+    const usersById = await import("@/app/api/v1/users/[id]/route")
+    const { findPhoneOwner } = await import("@/lib/mtm/mobile-login-phone")
+    const org = "employee-pg-deleted-number", adminId = "deleted-number-admin"
+    await bypass(async () => {
+      await prisma.organization.create({ data: { id: org, name: "Fictional deleted number", slug: org, modules: { "route-field": true, personnel: true } } })
+      await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
+      for (const [id, role] of [[adminId, "admin"], ["deleted-number-old", "admin"], ["deleted-number-legacy", "manager"]] as const) {
+        await prisma.user.create({ data: { id, organizationId: org, name: `Fictional ${id}`, email: `${id}@example.invalid`, role, passwordHash: "fixture" } })
+      }
+    })
+    const cardOf = (userId: string) => tenant(org, () => prisma.mtmAgent.findFirstOrThrow({ where: { userId } }))
+    await tenant(org, async () => {
+      await prisma.mtmAgent.update({ where: { id: (await cardOf("deleted-number-old")).id }, data: { phone: "+994501230001" } })
+      await prisma.mtmAgent.update({ where: { id: (await cardOf("deleted-number-legacy")).id }, data: { phone: "+994501230002" } })
+      // Deleted before this fix: the user row erased, the card's number left behind.
+      await prisma.user.update({ where: { id: "deleted-number-legacy" }, data: { isActive: false, anonymizedAt: new Date(), phone: null } })
+    })
+    web.current = { orgId: org, userId: adminId, role: "admin", email: `${adminId}@example.invalid`, name: "Fictional admin", principalType: "session" }
+    try {
+      const res = await usersById.DELETE(new NextRequest(`http://localhost/api/v1/users/deleted-number-old`, { method: "DELETE" }), { params: Promise.resolve({ id: "deleted-number-old" }) })
+      expect(res.status).toBe(200)
+    } finally { web.current = null }
+    const old = await cardOf("deleted-number-old")
+    expect(old).toMatchObject({ phone: null, userId: "deleted-number-old" }) // the card itself stays
+    await tenant(org, async () => {
+      expect(await findPhoneOwner(prisma, org, "+994501230001")).toEqual({ kind: "none" })
+      expect(await findPhoneOwner(prisma, org, "0501230002")).toEqual({ kind: "none" })
+      // The person who holds the number now can be given it and signs in by it.
+      const live = await cardOf(adminId)
+      await prisma.mtmAgent.update({ where: { id: live.id }, data: { phone: "+994501230002" } })
+      expect(await findPhoneOwner(prisma, org, "0501230002")).toMatchObject({ kind: "found", agentId: live.id })
+    })
+  })
+
   it("protects an active CRM user's link and card while leaving exclusion as a separate operation", async () => {
     await tenant(automaticOrg, async () => {
       const card = await prisma.mtmAgent.findFirstOrThrow({ where: { userId: "automatic-new" } })

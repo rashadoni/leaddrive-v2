@@ -71,6 +71,7 @@ vi.mock("@/lib/prisma", () => ({
     division: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
     socialConversation: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
     webChatSession: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    mtmAgent: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
   },
 }))
 

@@ -423,6 +423,13 @@ export const DELETE = withRlsSessionAuth(async (_req: NextRequest, authResult, {
         where: { id },
         data: buildUserAnonymizationData(id),
       })
+      // The sign-in number on this person's employee card goes with the user: it is how the
+      // mobile app finds a person, and left there it signed the number's next holder into a
+      // dead card (Zeytun, 2026-11-19). The card itself — personnel number, history — stays.
+      await tx.mtmAgent.updateMany({
+        where: { organizationId: orgId, userId: id, phone: { not: null } },
+        data: { phone: null },
+      })
       // Получатель — администратор, выполняющий удаление. Линии подчинения в
       // модели нет (у User нет ни managerId, ни divisionId), вычислить
       // «руководителя» не из чего, а придумывать его — гадание.

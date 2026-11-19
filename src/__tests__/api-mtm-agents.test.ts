@@ -1896,9 +1896,22 @@ describe("an agent's WhatsApp number — the one it signs in by", () => {
 
   it("refuses a number that sits on the CRM user linked to another card", async () => {
     vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([card("office", null, "user-office")] as never)
-    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "user-office", phone: "+994501112233" }] as never)
+    // The lookup also asks which linked users were deleted: none here.
+    vi.mocked(prisma.user.findMany).mockImplementation((async (args: { where?: { anonymizedAt?: unknown } }) =>
+      args.where?.anonymizedAt ? [] : [{ id: "user-office", phone: "+994501112233" }]) as never)
     const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "Fictional Agent", phone: "+994501112233" }))
     expect(res.status).toBe(409)
+  })
+
+  // Zeytun, 2026-11-19: a deleted admin's card kept the number, and its new holder could neither
+  // sign in nor be given it. A card of a deleted CRM user holds nothing.
+  it("does not count a number left on the card of a deleted CRM user", async () => {
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([card("dead", "+994501112233", "user-deleted")] as never)
+    vi.mocked(prisma.user.findMany).mockImplementation((async (args: { where?: { anonymizedAt?: unknown } }) =>
+      args.where?.anonymizedAt ? [{ id: "user-deleted", phone: null }] : []) as never)
+    vi.mocked(prisma.mtmAgent.create).mockResolvedValue({ id: "a-new" } as never)
+    const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "Fictional Agent", phone: "+994501112233" }))
+    expect(res.status).toBe(201)
   })
 
   describe("on an existing card", () => {

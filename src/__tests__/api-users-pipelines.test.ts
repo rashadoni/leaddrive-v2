@@ -29,6 +29,8 @@ vi.mock("@/lib/prisma", () => {
     // Диалоги инбокса и чаты сайта уходят той же передачей (2026-11-16).
     socialConversation: model(),
     webChatSession: model(),
+    // Номер входа с карточки сотрудника снимается тем же удалением (2026-11-19).
+    mtmAgent: model(),
   }
   // Колбэк получает тот же мок-клиент: тесты продолжают видеть вызовы
   // update/updateMany там же, где и раньше, без отдельного tx-двойника.
@@ -247,6 +249,11 @@ describe("DELETE /api/v1/users/[id]", () => {
     expect((await res.json()).success).toBe(true)
     expect(prisma.user.delete).not.toHaveBeenCalled()
     expect(prisma.user.update).toHaveBeenCalledOnce()
+    // The sign-in number leaves the employee card with the user (Zeytun, 2026-11-19).
+    expect((prisma as any).mtmAgent.updateMany).toHaveBeenCalledWith({
+      where: { organizationId: "org-1", userId: "u1", phone: { not: null } },
+      data: { phone: null },
+    })
   })
 
   it("reports an already anonymised user as not found", async () => {
