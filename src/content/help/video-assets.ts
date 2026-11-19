@@ -10,7 +10,7 @@ export interface HelpVideoEntry {
 }
 
 const HELP_VIDEO_BASE_PATH = process.env.NEXT_PUBLIC_HELP_VIDEO_BASE_URL ?? "/api/help-videos"
-const HELP_VIDEO_ASSET_VERSION = "20261110-meetings-four-screens-az"
+const HELP_VIDEO_ASSET_VERSION = "20261119-procurement-az"
 const HELP_VIDEO_BLOCKED_LOCAL_TTS_SLUGS = new Set<string>()
 
 const HELP_VIDEO_ENTRIES_RAW = [
@@ -104,6 +104,14 @@ const HELP_VIDEO_ENTRIES_RAW = [
   { slug: "pricing", routes: ["/pricing"] },
   { slug: "invoice-settings", routes: ["/settings/invoice-settings"] },
   { slug: "finance-notifications", routes: ["/settings/finance-notifications"] },
+  // Purchasing (docs/sales-procurement/README.md): the whole way of a
+  // customer order on the module's first screen, one short film per other
+  // screen (owner, 2026-11-19). A request's page shares the overview.
+  { slug: "procurement", routes: ["/procurement/requests"] },
+  { slug: "procurement-orders", routes: ["/procurement/orders"] },
+  { slug: "procurement-suppliers", routes: ["/procurement/suppliers"] },
+  { slug: "procurement-reports", routes: ["/procurement/reports"] },
+  { slug: "procurement-settings", routes: ["/procurement/settings"] },
   { slug: "reports", routes: ["/reports"] },
   { slug: "report-builder", routes: ["/reports/builder"] },
   { slug: "ai-command-center", routes: ["/ai-command-center"] },
@@ -193,6 +201,10 @@ const HELP_VIDEO_TITLE_OVERRIDES: Record<string, string> = {
   "mtm-settings": "MTM Settings",
   "mtm-tasks": "MTM Tasks",
   "mtm-visits": "MTM Visits",
+  "procurement-orders": "Procurement · Orders",
+  "procurement-reports": "Procurement · Reports",
+  "procurement-settings": "Procurement · Approval Limits",
+  "procurement-suppliers": "Procurement · Suppliers",
   "sales-forecast-settings": "Sales Forecast Settings",
   "settings-voip": "Settings VoIP",
   "skill-routing": "Skill Routing",
