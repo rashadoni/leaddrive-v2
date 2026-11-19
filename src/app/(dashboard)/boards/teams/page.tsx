@@ -54,12 +54,16 @@ export default function TeamsAndUsersPage() {
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  // «Tapşırığı verən» on every new task (lib/tasks/default-reporter.ts): "" = nobody.
+  const [defaultReporter, setDefaultReporter] = useState("")
 
   const load = useCallback(async () => {
-    const [teamsRes, usersRes] = await Promise.all([
+    const [teamsRes, usersRes, reporterRes] = await Promise.all([
       fetch("/api/v1/tasks/teams", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch("/api/v1/users", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/v1/tasks/default-reporter", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ])
+    setDefaultReporter(reporterRes?.data?.reporter?.id ?? "")
     if (!teamsRes) { setError("load"); setTeams([]); return }
     setTeams(teamsRes.data.teams)
     setCanManage(teamsRes.data.canManage === true)
@@ -110,6 +114,10 @@ export default function TeamsAndUsersPage() {
   const setRole = async (userId: string, role: TeamRole) => {
     const teamId = membership.get(userId)?.teamId
     if (teamId && await send("/api/v1/tasks/teams/members", "PUT", { userId, teamId, role })) await load()
+  }
+  const saveDefaultReporter = async (id: string) => {
+    setDefaultReporter(id)
+    if (!(await send("/api/v1/tasks/default-reporter", "PUT", { reporterId: id || null }))) await load()
   }
   const setReports = async (person: Person, open: boolean) => {
     setPeople((list) => list.map((p) => (p.id === person.id ? { ...p, boardReportsHidden: !open } : p)))
@@ -167,7 +175,8 @@ export default function TeamsAndUsersPage() {
       {error && <p role="alert" className="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">{t(error === "load" ? "loadFailed" : error === "name" ? "nameTaken" : "saveFailed")}</p>}
 
       <div className="grid items-start gap-x-10 gap-y-8 md:grid-cols-[17rem_minmax(0,1fr)]">
-        <nav aria-label={t("teams")} data-testid="teams-list" className="md:sticky md:top-4">
+        <div className="md:sticky md:top-4">
+        <nav aria-label={t("teams")} data-testid="teams-list">
           <h2 className="mb-2 px-3 text-sm font-semibold">{t("teams")}</h2>
           <div className={teamRow(selected === "")}>
             <button type="button" aria-current={selected === "" ? "true" : undefined} onClick={() => setSelected("")} className={teamButton}>
@@ -234,6 +243,24 @@ export default function TeamsAndUsersPage() {
             )}
           </div>
         </nav>
+        {/* Nazrin, Zeytun, 2026-11-18: «men default butun tasklarda reporter olum… her defe meni secmesinler»; owner: «у админа на всех задачах». */}
+        <section className={cn("mt-6 border-t pt-4", line)} data-testid="teams-default-reporter">
+          <label htmlFor="teams-default-reporter-select" className="mb-1 block px-3 text-sm font-semibold">{t("defaultReporter")}</label>
+          <p className="mb-2 px-3 text-xs leading-5 text-muted-foreground">{t("defaultReporterHint")}</p>
+          <div className="relative">
+            <select
+              id="teams-default-reporter-select"
+              value={defaultReporter}
+              onChange={(e) => void saveDefaultReporter(e.target.value)}
+              className={cn("h-10 w-full cursor-pointer appearance-none truncate rounded-lg border border-input bg-background pl-3 pr-9 text-sm", ring)}
+            >
+              <option value="">{t("defaultReporterNone")}</option>
+              {active.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          </div>
+        </section>
+        </div>
 
         <section className="min-w-0" data-testid="teams-people" aria-labelledby="teams-people-title">
           <div className="mb-3 flex items-baseline gap-2 px-1">

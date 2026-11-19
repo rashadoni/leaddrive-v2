@@ -96,6 +96,11 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
       ? String(initialData.recurrenceCount)
       : "",
   )
+  // «Tapşırığı verən» (Nazrin, Zeytun, 2026-11-18: «bu hissede reporter olmalidir»).
+  // undefined = untouched: a new task gets the organization's default
+  // (lib/tasks/default-reporter.ts), an edited one keeps its own. null = nobody.
+  const [reporterId, setReporterId] = useState<string | null | undefined>(undefined)
+  const [defaultReporter, setDefaultReporter] = useState<{ id: string; name: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [blockedTaskId, setBlockedTaskId] = useState<string | null>(null)
@@ -142,6 +147,13 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
         eventType: (initialData?.eventType as string) || "",
       })
       setCollaboratorIds((initialData?.collaborators ?? []).map((c: any) => c?.user?.id ?? c?.id).filter(Boolean))
+      setReporterId(undefined)
+      if (!isEdit && !defaultReporter) {
+        fetch("/api/v1/tasks/default-reporter", { headers: orgId ? { "x-organization-id": orgId } : {} as Record<string, string> })
+          .then(r => (r.ok ? r.json() : null))
+          .then(j => { if (j?.data?.reporter) setDefaultReporter(j.data.reporter) })
+          .catch(() => {})
+      }
       // Load users for assignee dropdown
       if (users.length === 0) {
         setUsersLoading(true)
@@ -317,6 +329,12 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
     }).catch(() => {})
   }
 
+  // What the reporter box shows: a touched choice, else the task's own (edit) or the organization's default (new).
+  const reporterValue = reporterId !== undefined
+    ? (reporterId ?? "")
+    : isEdit ? ((initialData?.reporterId as string | null | undefined) ?? "") : (defaultReporter?.id ?? "")
+  const reporterOptions = defaultReporter && !users.some(user => user.id === defaultReporter.id) ? [...users, defaultReporter] : users
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -337,6 +355,9 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
 
       const url = isEdit ? `/api/v1/tasks/${initialData!.id}` : "/api/v1/tasks"
       const body: Record<string, any> = { ...form, dueDate: form.dueDate || undefined, assignedTo: form.assignedTo || undefined, category: form.category || null, type: form.type || undefined, eventType: form.eventType || null, collaboratorIds }
+      // Sent only when picked here: an untouched new task takes the organization's
+      // default on the server, an untouched edit keeps whoever stands there.
+      if (reporterId !== undefined) body.reporterId = reporterId
       if (relatedType && relatedId) {
         body.relatedType = relatedType
         body.relatedId = relatedId
@@ -544,7 +565,7 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
               </div>
               <div><Label>{tc("status")}</Label><Select value={form.status} onChange={e => u("status", e.target.value)}><option value="backlog">{tc("backlog")}</option><option value="pending">{tc("pending")}</option><option value="in_progress">{tc("inProgress")}</option><option value="completed">{tc("completed")}</option><option value="cancelled">{tc("cancelled")}</option></Select></div>
             </div>
-            {/* Row: assignee | quarter | project (span 2) */}
+            {/* Row: assignee | reporter | quarter | project */}
             <div className="grid grid-cols-4 gap-3">
               <div>
                 <Label>{tc("assignee")}</Label>
@@ -559,6 +580,15 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
                 </Select>
               </div>
               <div>
+                <Label htmlFor="task-form-reporter">{t("reporter")}</Label>
+                <Select id="task-form-reporter" data-testid="task-form-reporter" value={reporterValue} onChange={e => setReporterId(e.target.value || null)}>
+                  <option value="">—</option>
+                  {reporterOptions.map(user => (
+                    <option key={user.id} value={user.id}>{user.name}</option>
+                  ))}
+                </Select>
+              </div>
+              <div>
                 <Label>{tc("quarter")}</Label>
                 <Select value={form.category} onChange={e => u("category", e.target.value)}>
                   <option value="">—</option>
@@ -568,7 +598,7 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
                   <option value="Q4">Q4</option>
                 </Select>
               </div>
-              <div className="col-span-2">
+              <div>
                 <Label>{tc("project") || "Project"}</Label>
                 <Select
                   value={projectId}

@@ -32,6 +32,9 @@ export const createTaskCommandSchema = z.strictObject({
   recurrenceCount: z.number().int().min(0).max(10_000).nullable().optional(),
   customFields: z.record(z.string(), z.json()).optional(),
   collaboratorIds: z.array(z.string().min(1)).max(20).optional(),
+  // «Tapşırığı verən». Left out, the organization's default reporter stands
+  // (lib/tasks/default-reporter.ts); null is the maker's own «nobody».
+  reporterId: z.string().min(1).nullable().optional(),
 }).superRefine((data, context) => {
   if (Boolean(data.relatedType) !== Boolean(data.relatedId)) {
     context.addIssue({
