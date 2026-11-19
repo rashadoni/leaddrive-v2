@@ -70,3 +70,35 @@ describe("predictDealWin — закрытая сделка", () => {
     expect(r.confidence).toBeLessThan(100)
   })
 })
+
+/**
+ * Demo deal «Restoran mebeli — 24 yer» (2026-11-18): no activity ever logged,
+ * and the forecast said «999 gündür aktivlik yoxdur» — the stand-in for
+ * «never» printed as a number of days.
+ */
+describe("predictDealWin — сделка без единой активности", () => {
+  it("называет дни с создания сделки, а не 999", async () => {
+    vi.useFakeTimers({ now: new Date("2026-11-18T10:00:00.000Z") })
+    try {
+      setup("NEGOTIATION")
+      const r = await predictDealWin("d1", "org-1")
+      const idle = r.riskFactors.find((f) => f.key === "noActivityDays")
+      expect(idle?.params?.days).toBe(117)
+      expect(JSON.stringify(r)).not.toContain("999")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("только что созданная сделка без активности — не «недавняя активность»", async () => {
+    vi.useFakeTimers({ now: new Date("2026-07-24T12:00:00.000Z") })
+    try {
+      setup("LEAD")
+      const r = await predictDealWin("d1", "org-1")
+      expect(r.positiveFactors.map((f) => f.key)).not.toContain("recentActivity")
+      expect(r.riskFactors.map((f) => f.key)).not.toContain("noActivityDays")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

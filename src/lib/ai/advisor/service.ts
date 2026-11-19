@@ -64,7 +64,8 @@ export async function getAdvisorPayload(
   ])
   const signals = collection.signals
   const scopedSignals = role && userId ? scopeSignalsForUser(signals, role, userId) : signals
-  const visibleSignals = role ? await redactSignalsForRole(organizationId, role, scopedSignals) : scopedSignals
+  const redactedSignals = role ? await redactSignalsForRole(organizationId, role, scopedSignals) : scopedSignals
+  const visibleSignals = await attachAdvisorAssigneeNames(organizationId, redactedSignals)
   if (options.syncAlerts) {
     await syncAdvisorProactiveAlerts(organizationId, visibleSignals)
   }
@@ -328,6 +329,42 @@ export async function answerAdvisorQuestion(input: {
       generatedAt,
     },
   }
+}
+
+/**
+ * A recommended task names its assignee by user id, and the record card showed
+ * that id as is («İcraçı: cmub9ftzx…»). Put the person's name next to it as
+ * `assignee: { id, name }`: the preview shows the name only while `assignedTo`
+ * is still that id, so an assignee edited in the approval queue never borrows
+ * the old name. The executor reads `assignedTo` alone.
+ */
+export async function attachAdvisorAssigneeNames(organizationId: string, signals: AdvisorSignal[]): Promise<AdvisorSignal[]> {
+  const ids = new Set<string>()
+  for (const signal of signals) {
+    for (const action of signal.recommendedActions) {
+      const id = action.payload?.assignedTo
+      if (typeof id === "string" && id) ids.add(id)
+    }
+  }
+  if (ids.size === 0) return signals
+  const users = await prisma.user.findMany({
+    where: { organizationId, id: { in: [...ids] } },
+    select: { id: true, name: true },
+  }).catch(() => [] as Array<{ id: string; name: string | null }>)
+  const names = new Map<string, string>()
+  for (const user of users) {
+    const name = user.name?.trim()
+    if (name) names.set(user.id, name)
+  }
+  if (names.size === 0) return signals
+  return signals.map((signal) => ({
+    ...signal,
+    recommendedActions: signal.recommendedActions.map((action) => {
+      const id = action.payload?.assignedTo
+      const name = typeof id === "string" ? names.get(id) : undefined
+      return name ? { ...action, payload: { ...action.payload, assignee: { id, name } } } : action
+    }),
+  }))
 }
 
 export async function redactSignalsForRole(organizationId: string, role: string, signals: AdvisorSignal[]): Promise<AdvisorSignal[]> {
