@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { writeWithMtmAgentCode } from "@/lib/mtm/agent-external-code"
 import { withLegacyCredentialMaintenance } from "@/lib/identity/legacy-credential-write"
+import { phonesMatch } from "@/lib/mtm/mobile-login-phone"
 import type { ASSIGNABLE_FIELD_CARD_ROLES } from "@/lib/user-access-summary"
 
 /**
@@ -32,6 +33,25 @@ export type FieldCardOnCreateResult<T> =
 
 class CardTaken extends Error {}
 
+/** A card nobody holds: never linked, or linked to a CRM user who was deleted (Zeytun, 2026-11-19:
+ * the IT head's own card, personnel number 0002, stayed on his deleted login). */
+const FREE_CARD = { OR: [{ userId: null }, { user: { anonymizedAt: { not: null } } }] } satisfies Prisma.MtmAgentWhereInput
+
+/**
+ * The card a new user with this number takes back: the one card of a deleted user that still
+ * carries the number — the number is how the app knows the person. Deletion has cleared the
+ * number since 2026-11-19, so only cards deleted before keep one.
+ */
+export async function cardLeftByDeletedUser(organizationId: string, phone: string | null): Promise<string | null> {
+  if (!phone) return null
+  const cards = await prisma.mtmAgent.findMany({
+    where: { organizationId, status: "ACTIVE", fieldDeletedAt: null, phone: { not: null }, user: { anonymizedAt: { not: null } } },
+    select: { id: true, phone: true },
+  })
+  const matches = cards.filter((card: { id: string; phone: string | null }) => phonesMatch(card.phone, phone))
+  return matches.length === 1 ? matches[0].id : null
+}
+
 export async function createUserWithFieldCard<T extends { id: string }>(input: {
   organizationId: string
   fieldCard: FieldCardOnCreate
@@ -48,16 +68,30 @@ export async function createUserWithFieldCard<T extends { id: string }>(input: {
 
   if (fieldCard.kind === "existing") {
     const card = await prisma.mtmAgent.findFirst({
-      where: { organizationId, id: fieldCard.id, userId: null, status: "ACTIVE", fieldDeletedAt: null },
+      where: { organizationId, id: fieldCard.id, status: "ACTIVE", fieldDeletedAt: null, ...FREE_CARD },
       select: { id: true, name: true, role: true, userId: true },
     })
     if (!card) return { ok: false, code: "FIELD_CARD_UNAVAILABLE" }
+    if (card.userId) {
+      // Still on its deleted user: the credential fence calls such a card unavailable, so it is
+      // let go first. Releasing a link to a tombstone grants nobody anything; a deleted user who
+      // had moved to the canonical identity keeps the card (the fence below then refuses).
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${"identity-registry:" + organizationId}, 0))`
+        const migrated = await tx.identityAccount.findFirst({ where: { organizationId, userId: card.userId!, cutoverAt: { not: null } }, select: { userId: true } })
+        if (migrated) return
+        await tx.mtmAgent.updateMany({
+          where: { organizationId, id: card.id, userId: card.userId, user: { anonymizedAt: { not: null } } },
+          data: { userId: null },
+        })
+      }, { timeout: 15_000 })
+    }
     try {
       // The same fence a card relink takes on «Сотрудники MTM» (agents/[id] PUT).
       const result = await withLegacyCredentialMaintenance(prisma, organizationId, [{ kind: "ACTOR", actorId: card.id }], async (tx) => {
         const user = await input.createInactiveUser(tx)
         const linked = await tx.mtmAgent.updateMany({
-          where: { organizationId, id: card.id, userId: null, status: "ACTIVE", fieldDeletedAt: null },
+          where: { organizationId, id: card.id, status: "ACTIVE", fieldDeletedAt: null, ...FREE_CARD },
           data: { userId: user.id },
         })
         if (linked.count !== 1) throw new CardTaken()

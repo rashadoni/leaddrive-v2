@@ -484,11 +484,23 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     await tenant(org, async () => {
       expect(await findPhoneOwner(prisma, org, "+994501230001")).toEqual({ kind: "none" })
       expect(await findPhoneOwner(prisma, org, "0501230002")).toEqual({ kind: "none" })
-      // The person who holds the number now can be given it and signs in by it.
-      const live = await cardOf(adminId)
-      await prisma.mtmAgent.update({ where: { id: live.id }, data: { phone: "+994501230002" } })
-      expect(await findPhoneOwner(prisma, org, "0501230002")).toMatchObject({ kind: "found", agentId: live.id })
     })
+    // The same person added again with their number takes their old card back — personnel
+    // number and history — instead of a second one (Zeytun, 2026-11-19: «там же есть уже я»).
+    const legacyCard = await tenant(org, () => prisma.mtmAgent.findFirstOrThrow({ where: { phone: "+994501230002" } }))
+    const users = await import("@/app/api/v1/users/route")
+    web.current = { orgId: org, userId: adminId, role: "admin", email: `${adminId}@example.invalid`, name: "Fictional admin", principalType: "session" }
+    try {
+      const res = await users.POST(new NextRequest("http://localhost/api/v1/users", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "Fictional returning head", email: "returning@example.invalid", password: "Fixture-Pass-2026!", role: "admin", phone: "+994501230002" }) }))
+      expect(res.status).toBe(201)
+      const back = (await res.json()).data
+      await tenant(org, async () => {
+        expect(await prisma.mtmAgent.findMany({ where: { userId: back.id }, select: { id: true } })).toEqual([{ id: legacyCard.id }])
+        expect(await prisma.mtmAgent.findUnique({ where: { id: legacyCard.id } })).toMatchObject({ phone: "+994501230002", status: "ACTIVE" })
+        expect(await findPhoneOwner(prisma, org, "0501230002")).toMatchObject({ kind: "found", agentId: legacyCard.id })
+      })
+    } finally { web.current = null }
   })
 
   it("protects an active CRM user's link and card while leaving exclusion as a separate operation", async () => {
