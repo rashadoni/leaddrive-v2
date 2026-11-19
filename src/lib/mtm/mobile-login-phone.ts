@@ -82,7 +82,8 @@ export type PhoneOwner =
  * office employee's number may live on the CRM user the card is linked to
  * (Personnel → Add employee wrote it there before 2026-10-15); the card's own
  * number wins when both are set. Two people with one number sign in by
- * nobody's code until HR corrects one of them.
+ * nobody's code until HR corrects one of them. A card of a deleted CRM user is
+ * nobody's and never matches.
  */
 export async function findPhoneOwner(client: LookupClient, organizationId: string, entered: string): Promise<PhoneOwner> {
   if (phoneDigits(entered).length < MIN_SIGNIFICANT_DIGITS) return { kind: "none" }
@@ -90,13 +91,21 @@ export async function findPhoneOwner(client: LookupClient, organizationId: strin
     where: { organizationId, status: "ACTIVE", OR: [{ fieldDeletedAt: null }, { role: "EMPLOYEE" }] },
     select: { id: true, phone: true, userId: true },
   })
-  const linkedIds = agents.filter(agent => !agent.phone && agent.userId).map(agent => agent.userId!)
+  // A card whose CRM user was deleted belongs to nobody. Its own number stayed on it (deletion
+  // erased only the user row), so it signed the number's new holder into a dead card with no
+  // access — the app's lock screen — and called the number taken (Zeytun, 2026-11-19).
+  const allLinked = [...new Set(agents.flatMap(agent => agent.userId ? [agent.userId] : []))]
+  const deleted = new Set(allLinked.length
+    ? (await client.user.findMany({ where: { organizationId, id: { in: allLinked }, anonymizedAt: { not: null } }, select: { id: true, phone: true } })).map(user => user.id)
+    : [])
+  const live = deleted.size ? agents.filter(agent => !agent.userId || !deleted.has(agent.userId)) : agents
+  const linkedIds = live.filter(agent => !agent.phone && agent.userId).map(agent => agent.userId!)
   const userPhones = new Map<string, string | null>()
   if (linkedIds.length) {
     const users = await client.user.findMany({ where: { organizationId, id: { in: linkedIds }, isActive: true }, select: { id: true, phone: true } })
     for (const user of users) userPhones.set(user.id, user.phone)
   }
-  const matches = agents
+  const matches = live
     .map(agent => ({ agentId: agent.id, stored: agent.phone ?? (agent.userId ? userPhones.get(agent.userId) ?? null : null) }))
     .filter(candidate => phonesMatch(candidate.stored, entered))
   if (matches.length === 0) return { kind: "none" }
