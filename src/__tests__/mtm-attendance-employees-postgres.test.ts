@@ -24,6 +24,14 @@ const scratch = vi.hoisted(() => {
 const identity = vi.hoisted(() => ({ orgId: "employee-pg-a", agentId: "", role: "EMPLOYEE" }))
 // The plan's seat limit is billing, not under test here.
 vi.mock("@/lib/plan-limits", () => ({ checkUserLimit: async () => ({ allowed: true }) }))
+// «Настройки → Пользователи» runs as a browser admin; every other case keeps the real resolver.
+const web = vi.hoisted(() => ({ current: null as null | { orgId: string; userId: string; role: "admin"; email: string; name: string; principalType: "session" } }))
+vi.mock("@/lib/api-auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api-auth")>()
+  return { ...actual,
+    requireSessionAuth: async (...args: Parameters<typeof actual.requireSessionAuth>) => web.current ?? actual.requireSessionAuth(...args),
+    orgHasModule: async (...args: Parameters<typeof actual.orgHasModule>) => web.current ? true : actual.orgHasModule(...args) }
+})
 vi.mock("@/lib/mobile-auth", () => ({ resolveMobileAuth: async () => ({ ...identity, tenantCapabilities: { routeField: true, workforceHrm: false, personnel: true } }) }))
 function sql(url: string, statement: string) {
   const cli = createRequire(import.meta.url).resolve("prisma/build/index.js")
@@ -386,6 +394,64 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       await expect(prisma.mtmAgent.create({ data: { organizationId: automaticOrg, userId: "automatic-user-010", name: "Second field card", role: "AGENT" } })).rejects.toThrow(/MTM_ATTENDANCE_EMPLOYEE_IDENTITY_CONFLICT/)
       expect(await prisma.mtmAgent.count({ where: { userId: "automatic-user-010" } })).toBe(1)
     })
+  })
+
+  // Zeytun, 2026-11-19: «Пользователь сохранён, но карточку сотрудника привязать не удалось: This user
+  // conflicts with an existing employee card». The form saved the user, the trigger gave it an EMPLOYEE
+  // card, and the card the admin chose was refused as a second one. Now the card goes with the user.
+  it("creates a user with the employee card chosen in «Добавить пользователя»: one card, linked, in attendance", async () => {
+    const users = await import("@/app/api/v1/users/route")
+    // Its own organization: the cards made here must not move other cases' Personnel lists.
+    const org = "employee-pg-user-form", adminId = "user-form-admin"
+    await bypass(async () => {
+      await prisma.organization.create({ data: { id: org, name: "Fictional user form", slug: org, modules: { "route-field": true, personnel: true } } })
+      await prisma.mtmSetting.create({ data: { organizationId: org, key: "attendanceEnabled", value: true } })
+      await prisma.user.create({ data: { id: adminId, organizationId: org, name: "Fictional admin", email: "user-form-admin@example.invalid", role: "admin", passwordHash: "fixture" } })
+    })
+    web.current = { orgId: org, userId: adminId, role: "admin", email: "user-form-admin@example.invalid", name: "Fictional admin", principalType: "session" }
+    const post = (body: Record<string, unknown>) => users.POST(new NextRequest("http://localhost/api/v1/users", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Fictional manager", password: "Fixture-Pass-2026!", role: "manager", ...body }) }))
+    try {
+      await bypass(() => prisma.mtmAgent.create({ data: { id: "form-free-card", organizationId: org, name: "Field card made in MTM first",
+        email: "form-existing@example.invalid", role: "MANAGER", canPlanOwnRoutes: true } }))
+
+      // «Новая карточка» with a field role: that card, not the trigger's EMPLOYEE one.
+      const fresh = await post({ email: "form-new@example.invalid", fieldCard: { kind: "new", role: "MANAGER" } })
+      expect(fresh.status).toBe(201)
+      const freshUser = (await fresh.json()).data
+      expect(freshUser).toMatchObject({ isActive: true })
+      await tenant(org, async () => {
+        const cards = await prisma.mtmAgent.findMany({ where: { userId: freshUser.id } })
+        expect(cards).toHaveLength(1)
+        expect(cards[0]).toMatchObject({ role: "MANAGER", status: "ACTIVE", name: "Fictional manager", attendanceParticipant: true, externalCode: expect.any(String) })
+        expect(await prisma.user.findUnique({ where: { id: freshUser.id } })).toMatchObject({ isActive: true })
+        expect(await prisma.mtmAuditLog.count({ where: { agentId: cards[0].id, action: "AGENT_CREATE" } })).toBe(1)
+      })
+
+      // A card that already exists — even with the same email, which alone refuses a new user.
+      const linked = await post({ email: "form-existing@example.invalid", fieldCard: { kind: "existing", id: "form-free-card" } })
+      expect(linked.status).toBe(201)
+      const linkedUser = (await linked.json()).data
+      await tenant(org, async () => {
+        expect(await prisma.mtmAgent.findMany({ where: { userId: linkedUser.id }, select: { id: true, role: true, attendanceParticipant: true } }))
+          .toEqual([{ id: "form-free-card", role: "MANAGER", attendanceParticipant: true }])
+        expect(await prisma.mtmAgent.count({ where: { email: "form-existing@example.invalid" } })).toBe(1)
+      })
+
+      // Taken meanwhile: refused as a whole, no user left behind.
+      const before = await tenant(org, () => prisma.user.count())
+      const taken = await post({ email: "form-late@example.invalid", fieldCard: { kind: "existing", id: "form-free-card" } })
+      expect(taken.status).toBe(409)
+      expect(await taken.json()).toMatchObject({ code: "FIELD_CARD_UNAVAILABLE" })
+      expect(await tenant(org, () => prisma.user.count())).toBe(before)
+
+      // «Без карточки» stays what it was: the trigger's own EMPLOYEE card.
+      const plain = await post({ email: "form-plain@example.invalid" })
+      expect(plain.status).toBe(201)
+      const plainUser = (await plain.json()).data
+      expect(await tenant(org, () => prisma.mtmAgent.findMany({ where: { userId: plainUser.id }, select: { role: true } }))).toEqual([{ role: "EMPLOYEE" }])
+    } finally { web.current = null }
   })
 
   it("protects an active CRM user's link and card while leaving exclusion as a separate operation", async () => {

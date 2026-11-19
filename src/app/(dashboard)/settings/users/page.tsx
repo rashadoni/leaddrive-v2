@@ -139,6 +139,8 @@ type UserPayload = {
   hiddenChannelConfigIds?: string[]
   settingsSections: string[]
   password?: string
+  // Create only: the card chosen under «Маршрут и поле», linked in the same request.
+  fieldCard?: { kind: "new"; role: string } | { kind: "existing"; id: string }
 }
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
@@ -440,6 +442,14 @@ function UserFormDialog({
       }
       if (!isEdit) {
         payload.password = form.password
+        // A new user's card goes with the user, in one request: with attendance on the
+        // database gives the new user a card of its own on insert and then refuses a
+        // second one, so a card linked afterwards always failed (Zeytun, 2026-11-19).
+        if (fieldCardEditable && fieldCardChoice !== FIELD_CARD_NONE) {
+          payload.fieldCard = fieldCardChoice === FIELD_CARD_NEW
+            ? { kind: "new", role: newFieldRole }
+            : { kind: "existing", id: fieldCardChoice }
+        }
       }
 
       const url = isEdit ? `/api/v1/users/${editUser!.id}` : "/api/v1/users"
@@ -453,9 +463,8 @@ function UserFormDialog({
       })
       const json = await res.json().catch(() => null)
       if (!res.ok) throw new Error(apiErrorText(tu, json, tc("errorUpdateFailed")))
-      const savedUserId: string | undefined = isEdit ? editUser!.id : json?.data?.id
       try {
-        if (savedUserId) await applyFieldCard(savedUserId)
+        if (isEdit) await applyFieldCard(editUser!.id)
       } catch (cardError) {
         // The user row is saved; say so, and keep the card open on the part that failed.
         onSaved()

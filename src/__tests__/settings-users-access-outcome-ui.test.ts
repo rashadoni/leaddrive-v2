@@ -332,6 +332,39 @@ describe("user card — the employee card behind Route & Field", () => {
     expect(block()).not.toBeNull()
   })
 
+  // Zeytun, 2026-11-19: a new user's card went as a second request after the user, and with
+  // attendance on the database had already given the user a card of its own — «Пользователь
+  // сохранён, но карточку сотрудника привязать не удалось». On create the card goes with the user.
+  it("a new user's card goes in the same request as the user, not after it", async () => {
+    cards = [spareCard, takenCard]
+    await act(async () => { root.render(createElement(TooltipProvider, null, createElement(UsersPage))) })
+    await settle()
+    const add = [...document.querySelectorAll("button")].find((button) => button.textContent?.includes("Добавить"))
+    await act(async () => { add?.click() })
+    await settle()
+    const type = async (id: string, value: string) => {
+      const input = document.querySelector<HTMLInputElement>(`#${id}`)
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value)
+        input?.dispatchEvent(new Event("input", { bubbles: true }))
+      })
+    }
+    await type("name", "Aytan")
+    await type("email", "aytan@example.invalid")
+    await type("password", "Fixture-Pass-2026!")
+    await choose([...document.querySelectorAll("select")].find((select) => select.value === "viewer"), "manager")
+    await settle()
+    expect(fieldCard()?.value).toBe("new")
+    await choose(fieldCard(), "card-spare")
+    const create = [...document.querySelectorAll("button")].find((button) => button.textContent?.trim() === "Создать")
+    await act(async () => { create?.click() })
+    await settle()
+
+    expect(writes.map((write) => write.url)).toEqual(["/api/v1/users"])
+    expect(writes[0].body).toMatchObject({ email: "aytan@example.invalid", role: "manager", fieldCard: { kind: "existing", id: "card-spare" } })
+    expect(document.body.textContent).not.toContain("привязать не удалось")
+  })
+
   it("leaves the card alone while the module is hidden from the person", async () => {
     await openCard([ownCard])
     const field = [...block().querySelectorAll("li")].find((row) => row.textContent?.includes("Маршруты и поле"))

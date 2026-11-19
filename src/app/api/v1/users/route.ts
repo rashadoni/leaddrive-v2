@@ -13,6 +13,9 @@ import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
 import { USER_ADMIN_SELECT, USER_ROSTER_SELECT } from "@/lib/user-directory-projection"
 import { effectiveHiddenChannels, parseHiddenModulesInput } from "@/lib/user-module-access"
 import { effectiveSettingsSections, normalizeSettingsSections } from "@/lib/settings-sections"
+import { ASSIGNABLE_FIELD_CARD_ROLES } from "@/lib/user-access-summary"
+import { resolveMtmAgentAdministration } from "@/lib/mtm/agent-administration"
+import { createUserWithFieldCard } from "@/lib/mtm/user-field-card-on-create"
 
 const MAX_CREATE_USER_BODY_SIZE = 32 * 1024
 
@@ -44,6 +47,13 @@ const createUserSchema = z.object({
   // edit form sends. Missing here until 2026-11-12, so «İstifadəçi əlavə et» with those ticks failed
   // with «Unrecognized key: hiddenChannelConfigIds» (Zeytun, Togrul).
   hiddenChannelConfigIds: z.array(z.string().min(1).max(64)).max(200).optional(),
+  // The employee card chosen under «Маршрут и поле» in the same form, linked in the same
+  // transaction (lib/mtm/user-field-card-on-create). Sent as a second request until
+  // 2026-11-19, which attendance refused for every choice but «no card».
+  fieldCard: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("new"), role: z.enum(ASSIGNABLE_FIELD_CARD_ROLES) }).strict(),
+    z.object({ kind: z.literal("existing"), id: z.string().min(1).max(64) }).strict(),
+  ]).optional(),
 }).strict()
 
 // Reading the team roster is `users:read`, not `settings:read`. The two are
@@ -128,6 +138,7 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
       hiddenModules,
       settingsSections,
       hiddenChannelConfigIds,
+      fieldCard,
     } = parsed.data
 
     const passwordError = passwordPolicyError(password)
@@ -185,30 +196,54 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
     }
     const resolvedHiddenChannels = effectiveHiddenChannels(resolvedRole, requestedChannels)
 
+    // Linking a card to a web login is MTM administration, as on «Сотрудники MTM».
+    if (fieldCard) {
+      const administration = await resolveMtmAgentAdministration(prisma, { orgId, session: authResult })
+      if (administration.kind !== "organization") {
+        return NextResponse.json({ error: "Web administrator access required", code: "MTM_AGENT_ADMIN_REQUIRED" }, { status: 403 })
+      }
+    }
+
     const passwordHash = await bcrypt.hash(password, 12)
 
-    const user = await prisma.user.create({
-      data: {
-        organizationId: orgId,
-        name,
-        email,
-        passwordHash,
-        role: resolvedRole,
-        department: department || null,
-        phone: phone || null,
-        isActive: isActive !== false,
-        skills: skills || [],
-        maxTickets: maxTickets || 10,
-        preferredLanguage: preferredLanguage || null,
-        ...(resolvedHiddenModules.length > 0 ? { hiddenModules: resolvedHiddenModules } : {}),
-        ...(resolvedSettingsSections.length > 0 ? { settingsSections: resolvedSettingsSections } : {}),
-        ...(resolvedHiddenChannels.length > 0 ? { hiddenChannelConfigIds: resolvedHiddenChannels } : {}),
-      },
-      select: {
-        id: true, name: true, email: true, role: true, hiddenModules: true, hiddenChannelConfigIds: true, settingsSections: true,
-        phone: true, department: true, isActive: true, createdAt: true,
-      },
-    })
+    const userData = {
+      organizationId: orgId,
+      name,
+      email,
+      passwordHash,
+      role: resolvedRole,
+      department: department || null,
+      phone: phone || null,
+      isActive: isActive !== false,
+      skills: skills || [],
+      maxTickets: maxTickets || 10,
+      preferredLanguage: preferredLanguage || null,
+      ...(resolvedHiddenModules.length > 0 ? { hiddenModules: resolvedHiddenModules } : {}),
+      ...(resolvedSettingsSections.length > 0 ? { settingsSections: resolvedSettingsSections } : {}),
+      ...(resolvedHiddenChannels.length > 0 ? { hiddenChannelConfigIds: resolvedHiddenChannels } : {}),
+    }
+    const userSelect = {
+      id: true, name: true, email: true, role: true, hiddenModules: true, hiddenChannelConfigIds: true, settingsSections: true,
+      phone: true, department: true, isActive: true, createdAt: true,
+    } as const
+
+    let user
+    if (fieldCard) {
+      const created = await createUserWithFieldCard({
+        organizationId: orgId, fieldCard, name, active: userData.isActive, req,
+        createInactiveUser: (tx) => tx.user.create({ data: { ...userData, isActive: false }, select: userSelect }),
+      })
+      if (!created.ok) {
+        const error = created.code === "FIELD_CARD_UNAVAILABLE"
+          ? "The chosen employee card is no longer free. Reopen the form and choose again."
+          : created.code === "MTM_AGENT_CODE_TAKEN" ? "Could not give the new card a code. Try again."
+          : "Use the current credential management flow for this card"
+        return NextResponse.json({ error, code: created.code }, { status: 409 })
+      }
+      user = { ...created.user, isActive: userData.isActive }
+    } else {
+      user = await prisma.user.create({ data: userData, select: userSelect })
+    }
 
     await logAudit(orgId, "user_created", "user", user.id, user.email, {
       userId: authResult.userId,
