@@ -72,6 +72,20 @@ export async function createUserWithFieldCard<T extends { id: string }>(input: {
       select: { id: true, name: true, role: true, userId: true },
     })
     if (!card) return { ok: false, code: "FIELD_CARD_UNAVAILABLE" }
+    if (card.userId) {
+      // Still on its deleted user: the credential fence calls such a card unavailable, so it is
+      // let go first. Releasing a link to a tombstone grants nobody anything; a deleted user who
+      // had moved to the canonical identity keeps the card (the fence below then refuses).
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${"identity-registry:" + organizationId}, 0))`
+        const migrated = await tx.identityAccount.findFirst({ where: { organizationId, userId: card.userId!, cutoverAt: { not: null } }, select: { userId: true } })
+        if (migrated) return
+        await tx.mtmAgent.updateMany({
+          where: { organizationId, id: card.id, userId: card.userId, user: { anonymizedAt: { not: null } } },
+          data: { userId: null },
+        })
+      }, { timeout: 15_000 })
+    }
     try {
       // The same fence a card relink takes on «Сотрудники MTM» (agents/[id] PUT).
       const result = await withLegacyCredentialMaintenance(prisma, organizationId, [{ kind: "ACTOR", actorId: card.id }], async (tx) => {
