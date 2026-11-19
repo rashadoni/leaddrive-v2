@@ -15,7 +15,7 @@ import { effectiveHiddenChannels, parseHiddenModulesInput } from "@/lib/user-mod
 import { effectiveSettingsSections, normalizeSettingsSections } from "@/lib/settings-sections"
 import { ASSIGNABLE_FIELD_CARD_ROLES } from "@/lib/user-access-summary"
 import { resolveMtmAgentAdministration } from "@/lib/mtm/agent-administration"
-import { createUserWithFieldCard } from "@/lib/mtm/user-field-card-on-create"
+import { cardLeftByDeletedUser, createUserWithFieldCard, type FieldCardOnCreate } from "@/lib/mtm/user-field-card-on-create"
 
 const MAX_CREATE_USER_BODY_SIZE = 32 * 1024
 
@@ -227,10 +227,15 @@ export const POST = withRlsSessionAuth(async (req, authResult) => {
       phone: true, department: true, isActive: true, createdAt: true,
     } as const
 
+    // No card chosen, but the number sits on the card of a deleted user: that is this person's
+    // card (personnel number, history), and it comes back to them instead of a second one.
+    const revived = fieldCard ? null : await cardLeftByDeletedUser(orgId, userData.phone)
+    const cardChoice: FieldCardOnCreate | undefined = fieldCard ?? (revived ? { kind: "existing", id: revived } : undefined)
+
     let user
-    if (fieldCard) {
+    if (cardChoice) {
       const created = await createUserWithFieldCard({
-        organizationId: orgId, fieldCard, name, active: userData.isActive, req,
+        organizationId: orgId, fieldCard: cardChoice, name, active: userData.isActive, req,
         createInactiveUser: (tx) => tx.user.create({ data: { ...userData, isActive: false }, select: userSelect }),
       })
       if (!created.ok) {

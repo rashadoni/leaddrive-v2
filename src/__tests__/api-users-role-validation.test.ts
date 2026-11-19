@@ -66,6 +66,8 @@ vi.mock("@/lib/prisma", () => ({
         return { id: "new_1", ...data }
       }),
     },
+    // No card of a deleted user carries the new user's number here (lib/mtm/user-field-card-on-create).
+    mtmAgent: { findMany: vi.fn(async () => []) },
     channelConfig: {
       // This organization owns wa-1 and fb-1.
       count: vi.fn(async ({ where }: any) => (where.id.in as string[]).filter((id) => ["wa-1", "fb-1"].includes(id)).length),
