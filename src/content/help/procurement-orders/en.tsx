@@ -15,7 +15,7 @@ export default function ProcurementOrdersHelpEn() {
       <HelpSection title="What's on the page">
         <dl className="rounded-md border p-3">
           <HelpDef term="List">number (PO-0001), supplier, deal, status, expected date and total.</HelpDef>
-          <HelpDef term="Filters"><HelpKey>Open</HelpKey> and <HelpKey>Late only</HelpKey>.</HelpDef>
+          <HelpDef term="Filters"><HelpKey>Open</HelpKey>, <HelpKey>Awaiting approval</HelpKey>, <HelpKey>Late only</HelpKey>, <HelpKey>Received</HelpKey>, <HelpKey>Cancelled</HelpKey>, <HelpKey>All</HelpKey>.</HelpDef>
           <HelpDef term="Statuses">Draft → Awaiting approval → Approved → Sent to supplier → In production → In transit → Partly received → Received; also Rejected and Cancelled.</HelpDef>
           <HelpDef term="Order page"><HelpKey>Lines</HelpKey> (quantity, price, amount, how much is received), <HelpKey>Approval</HelpKey> (who, which step) and <HelpKey>History</HelpKey>.</HelpDef>
         </dl>

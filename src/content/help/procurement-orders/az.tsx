@@ -15,7 +15,7 @@ export default function ProcurementOrdersHelpAz() {
       <HelpSection title="Səhifədə nə var">
         <dl className="rounded-md border p-3">
           <HelpDef term="Siyahı">nömrə (PO-0001), təchizatçı, sövdələşmə, status, gözlənilən tarix və məbləğ.</HelpDef>
-          <HelpDef term="Süzgəclər"><HelpKey>Açıq</HelpKey> və <HelpKey>Yalnız gecikənlər</HelpKey>.</HelpDef>
+          <HelpDef term="Süzgəclər"><HelpKey>Açıq</HelpKey>, <HelpKey>Təsdiq gözləyir</HelpKey>, <HelpKey>Yalnız gecikənlər</HelpKey>, <HelpKey>Qəbul edilib</HelpKey>, <HelpKey>Ləğv edilib</HelpKey>, <HelpKey>Hamısı</HelpKey>.</HelpDef>
           <HelpDef term="Statuslar">Qaralama → Təsdiq gözləyir → Təsdiqlənib → Təchizatçıya göndərilib → İstehsaldadır → Yoldadır → Qismən qəbul edilib → Qəbul edilib; həmçinin Rədd edilib və Ləğv edilib.</HelpDef>
           <HelpDef term="Sifarişin səhifəsi"><HelpKey>Mövqelər</HelpKey> (miqdar, qiymət, məbləğ, nə qədər qəbul edilib), <HelpKey>Təsdiq</HelpKey> (kim, hansı addım) və <HelpKey>Tarixçə</HelpKey>.</HelpDef>
         </dl>

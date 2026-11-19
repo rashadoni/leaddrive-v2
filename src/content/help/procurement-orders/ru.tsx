@@ -15,7 +15,7 @@ export default function ProcurementOrdersHelpRu() {
       <HelpSection title="Что на странице">
         <dl className="rounded-md border p-3">
           <HelpDef term="Список">номер (PO-0001), поставщик, сделка, статус, ожидаемая дата и сумма.</HelpDef>
-          <HelpDef term="Фильтры"><HelpKey>Открытые</HelpKey> и <HelpKey>Только опаздывающие</HelpKey>.</HelpDef>
+          <HelpDef term="Фильтры"><HelpKey>Открытые</HelpKey>, <HelpKey>На согласовании</HelpKey>, <HelpKey>Только опаздывающие</HelpKey>, <HelpKey>Принят</HelpKey>, <HelpKey>Отменён</HelpKey>, <HelpKey>Все</HelpKey>.</HelpDef>
           <HelpDef term="Статусы">Черновик → На согласовании → Согласован → Отправлен поставщику → В производстве → В пути → Принят частично → Принят; а также Отклонён и Отменён.</HelpDef>
           <HelpDef term="Страница заказа"><HelpKey>Позиции</HelpKey> (количество, цена, сумма, сколько принято), <HelpKey>Согласование</HelpKey> (кто, какой шаг) и <HelpKey>История</HelpKey>.</HelpDef>
         </dl>
