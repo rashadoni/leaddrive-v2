@@ -40,6 +40,10 @@ vi.mock("@/lib/prisma", () => {
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
+    // A new task's default reporter is the organization's setting (none here);
+    // the default itself is proven in task-default-reporter-postgres.test.ts.
+    organization: { findUnique: vi.fn().mockResolvedValue({ settings: {} }) },
+    taskFollower: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
     $executeRaw: vi.fn().mockResolvedValue(1),
     $queryRaw: vi.fn().mockResolvedValue([{ max: 0 }]),
   }

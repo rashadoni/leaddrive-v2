@@ -71,6 +71,21 @@ export function CreateTaskDialog({
   const [priority, setPriority] = useState<string>("medium")
   const [category, setCategory] = useState<string>("")
   const [assignedTo, setAssignedTo] = useState<string>(defaultAssignee)
+  // «Tapşırığı verən»: undefined until touched — the organization's default
+  // stands (lib/tasks/default-reporter.ts; Zeytun: Nazrin, 2026-11-19); null is «nobody».
+  const [reporterId, setReporterId] = useState<string | null | undefined>(undefined)
+  const [defaultReporter, setDefaultReporter] = useState<OrgUser | null>(null)
+  useEffect(() => {
+    let alive = true
+    fetch("/api/v1/tasks/default-reporter", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (alive && j?.data?.reporter) setDefaultReporter(j.data.reporter) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [])
+  const reporterValue = reporterId === undefined ? (defaultReporter?.id ?? "") : (reporterId ?? "")
+  // The default reporter is offered even on a board she is not a member of (an admin sees every board).
+  const reporterOptions = defaultReporter && !users.some((u) => u.id === defaultReporter.id) ? [...users, defaultReporter] : users
   const [dueDate, setDueDate] = useState<string>("")
   const [description, setDescription] = useState<string>("")
   const [saving, setSaving] = useState(false)
@@ -128,6 +143,7 @@ export function CreateTaskDialog({
           priority,
           ...(category ? { category } : {}),
           ...(assignedTo ? { assignedTo } : {}),
+          ...(reporterId !== undefined ? { reporterId } : {}),
           // The end of the chosen day in the person's own time, as everywhere
           // else on the boards (task panel, subtasks): `new Date("yyyy-mm-dd")`
           // is midnight UTC — 04:00 in Baku — so the task was overdue from the
@@ -238,22 +254,33 @@ export function CreateTaskDialog({
             </select>
           </div>
           <div>
+            <label htmlFor="board-create-reporter" className="mb-1 block text-sm font-medium">{t("reporter")}</label>
+            <select id="board-create-reporter" data-testid="board-create-reporter" value={reporterValue} onChange={(e) => setReporterId(e.target.value || null)} className="w-full rounded-md border px-2 py-2 text-sm" style={{ borderColor: C.input, background: C.card }}>
+              <option value="">—</option>
+              {reporterOptions.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          <div>
             <label className="mb-1 block text-sm font-medium">{t("category")}</label>
             <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-md border px-2 py-2 text-sm" style={{ borderColor: C.input, background: C.card }}>
               <option value="">—</option>
               {CATEGORIES.map((x) => <option key={x} value={x}>{x}</option>)}
             </select>
           </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">{t("dueDate")}</label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="w-full rounded-md border px-3 py-2 text-sm outline-none"
+              style={{ borderColor: C.input }}
+            />
+          </div>
         </div>
-
-        <label className="mb-1 block text-sm font-medium">{t("dueDate")}</label>
-        <input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          className="mb-4 w-full rounded-md border px-3 py-2 text-sm outline-none"
-          style={{ borderColor: C.input }}
-        />
 
         {error && <p className="mb-3 text-sm" style={{ color: C.red }}>{error}</p>}
 

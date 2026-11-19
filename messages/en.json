@@ -2419,6 +2419,7 @@
     "pickerButton": "From template…"
   },
   "board": {
+    "reporter": "Reporter",
     "boardLabel": "Board",
     "newTask": "New Task",
     "assignedToMe": "Assigned to me",
@@ -8330,6 +8331,7 @@
     }
   },
   "forms": {
+    "reporter": "Reporter",
     "sourceManaged": "Name, phone, city and address come from 1C and are edited there.",
     "recurrenceRule": "Repeat",
     "recurrenceNever": "Never",
@@ -33678,6 +33680,9 @@
     }
   },
   "boardTeams": {
+    "defaultReporter": "Reporter on every new task",
+    "defaultReporterHint": "Filled in on each new task; whoever makes the task can pick someone else. The reporter is notified of messages on the task.",
+    "defaultReporterNone": "Nobody",
     "title": "Teams and users",
     "teams": "Teams",
     "allTeams": "Everyone",

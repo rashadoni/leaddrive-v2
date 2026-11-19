@@ -2419,6 +2419,7 @@
     "pickerButton": "Şablondan…"
   },
   "board": {
+    "reporter": "Tapşırığı verən",
     "boardLabel": "Lövhə",
     "newTask": "Yeni Tapşırıq",
     "assignedToMe": "Mənə təyin olunanlar",
@@ -8326,6 +8327,7 @@
     }
   },
   "forms": {
+    "reporter": "Tapşırığı verən",
     "sourceManaged": "Ad, telefon, şəhər və ünvan 1C-dən gəlir və orada dəyişdirilir.",
     "recurrenceRule": "Təkrar",
     "recurrenceNever": "Təkrarlanmasın",
@@ -33674,6 +33676,9 @@
     }
   },
   "boardTeams": {
+    "defaultReporter": "Bütün yeni tapşırıqlarda tapşırığı verən",
+    "defaultReporterHint": "Hər yeni tapşırıqda avtomatik seçilir, tapşırığı yaradan başqasını seçə bilər. Tapşırığı verənə tapşırıqdakı mesajlar barədə bildiriş gəlir.",
+    "defaultReporterNone": "Heç kim",
     "title": "Komandalar və istifadəçilər",
     "teams": "Komandalar",
     "allTeams": "Hamısı",

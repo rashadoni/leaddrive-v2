@@ -20,6 +20,8 @@ import {
   isHierarchyConstraintViolation,
 } from "@/lib/tasks/board-hierarchy"
 import { isValidTaskType, isValidEventType } from "@/lib/tasks/task-types"
+import { resolveDefaultReporter } from "@/lib/tasks/default-reporter"
+import { follow } from "@/lib/tasks/task-notify"
 import type { CrmCommandActorContext } from "../actor-context"
 import {
   dispatchOrDeferCommandEffects,
@@ -165,6 +167,20 @@ export async function createTaskCommand(
     }
   }
 
+  // «Tapşırığı verən»: the one picked, or — when the maker picked nothing — the
+  // organization's default (Zeytun: Nazrin on every task, 2026-11-19).
+  let reporterId: string | null = null
+  if (input.reporterId) {
+    const reporter = await db.user.findFirst({
+      where: { id: input.reporterId, organizationId: orgId, isActive: true },
+      select: { id: true },
+    })
+    if (!reporter) throw validationError("reporterId must be an active member of this organization")
+    reporterId = reporter.id
+  } else if (input.reporterId === undefined) {
+    reporterId = (await resolveDefaultReporter(db, orgId))?.id ?? null
+  }
+
   const baseData = {
     organizationId: orgId,
     title: input.title,
@@ -185,6 +201,7 @@ export async function createTaskCommand(
     relatedId: input.relatedId,
     projectId: input.projectId ?? null,
     createdBy: userId,
+    reporterId,
     customFields: input.customFields ?? {},
     recurrenceRule: input.recurrenceRule || null,
     recurrenceEndAt: input.recurrenceEndAt ? new Date(input.recurrenceEndAt) : null,
@@ -227,6 +244,9 @@ export async function createTaskCommand(
           newValue: created.status,
         },
       })
+      // The reporter follows the task from its first minute — the point of
+      // being it is hearing what happens there (as a later change of reporter does).
+      if (reporterId) await follow(tx, orgId, created.id, [reporterId])
       return created
     }
 

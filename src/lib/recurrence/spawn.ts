@@ -31,6 +31,8 @@ interface SpawnArgs {
     priority: string
     dueDate: Date | null
     assignedTo: string | null
+    // «Tapşırığı verən» stays the same on every occurrence (lib/tasks/default-reporter.ts).
+    reporterId?: string | null
     relatedType: string | null
     relatedId: string | null
     projectId: string | null
@@ -75,6 +77,7 @@ export async function spawnNextRecurringTask({ task }: SpawnArgs): Promise<{ id:
         status: "pending",
         dueDate: next,
         assignedTo: task.assignedTo,
+        reporterId: task.reporterId ?? null,
         relatedType: task.relatedType,
         relatedId: task.relatedId,
         projectId: task.projectId,
