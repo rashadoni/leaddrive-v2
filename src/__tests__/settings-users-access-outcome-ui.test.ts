@@ -365,6 +365,21 @@ describe("user card — the employee card behind Route & Field", () => {
     expect(document.body.textContent).not.toContain("привязать не удалось")
   })
 
+  // Zeytun, 2026-11-19: attendance gives every login an EMPLOYEE card it will not release; a
+  // manager left with only that card met the app's lock screen. A field role is that card's role.
+  it("gives the automatic employee card the chosen field role instead of releasing it", async () => {
+    const employeeCard: Card = { ...ownCard, id: "card-employee", role: "EMPLOYEE" }
+    await openCard([employeeCard, spareCard])
+    expect(fieldCard()?.value).toBe("card-employee")
+    await choose(fieldCard(), "new")
+    await choose(document.querySelector<HTMLSelectElement>("#fieldRole"), "MANAGER")
+    await save()
+
+    expect(cardWrites()).toEqual([
+      { url: "/api/v1/mtm/agents/card-employee", method: "PUT", body: { role: "MANAGER" } },
+    ])
+  })
+
   it("leaves the card alone while the module is hidden from the person", async () => {
     await openCard([ownCard])
     const field = [...block().querySelectorAll("li")].find((row) => row.textContent?.includes("Маршруты и поле"))

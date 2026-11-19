@@ -398,6 +398,14 @@ function UserFormDialog({
         throw new Error(json?.error || tc("errorUpdateFailed"))
       }
     }
+    // The EMPLOYEE card attendance gave this login on its own (mtm_attendance_provision_user)
+    // cannot be released while the login is active, so «a new card with a field role» is that
+    // card taking the role. Zeytun, 2026-11-19: a manager left with only that card met the
+    // app's lock screen «İş vaxtı uçotu hazırda əlçatan deyil», and no form could fix it.
+    if (fieldCardChoice === FIELD_CARD_NEW && linkedFieldCard?.role === "EMPLOYEE") {
+      await send(`/api/v1/mtm/agents/${linkedFieldCard.id}`, "PUT", { role: newFieldRole })
+      return
+    }
     if (initial !== FIELD_CARD_NONE) await send(`/api/v1/mtm/agents/${initial}`, "PUT", { userId: null })
     if (fieldCardChoice === FIELD_CARD_NEW) {
       await send("/api/v1/mtm/agents", "POST", { name: form.name, role: newFieldRole, userId })
