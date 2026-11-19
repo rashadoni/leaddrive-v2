@@ -16,6 +16,11 @@ import type { Locale } from "@/i18n/routing"
 export type HelpLocale = Locale
 export type HelpSlug =
   | "quotes"
+  | "procurement-requests"
+  | "procurement-orders"
+  | "procurement-suppliers"
+  | "procurement-reports"
+  | "procurement-settings"
   | "quote-detail"
   | "contracts"
   | "contracts-lifecycle"
@@ -261,6 +266,91 @@ export const HELP_REGISTRY: Record<HelpSlug, ArticleEntry> = {
       en: lazy(() => import("./inbox-automation/en")),
       ru: lazy(() => import("./inbox-automation/ru")),
       az: lazy(() => import("./inbox-automation/az")),
+    },
+  },
+  "procurement-requests": {
+    title: {
+      en: "Purchase requests",
+      ru: "Заявки на закупку",
+      az: "Satınalma sorğuları",
+    },
+    subtitle: {
+      en: "Buying for a customer order: a request from the deal, supplier quotes side by side, the order from the best one.",
+      ru: "Закупка под заказ клиента: заявка из сделки, предложения поставщиков рядом, заказ из лучшего.",
+      az: "Müştəri sifarişi altında alış: sövdələşmədən sorğu, təchizatçı təklifləri yan-yana, ən yaxşısından sifariş.",
+    },
+    content: {
+      en: lazy(() => import("./procurement-requests/en")),
+      ru: lazy(() => import("./procurement-requests/ru")),
+      az: lazy(() => import("./procurement-requests/az")),
+    },
+  },
+  "procurement-orders": {
+    title: {
+      en: "Purchase orders",
+      ru: "Заказы поставщикам",
+      az: "Təchizatçı sifarişləri",
+    },
+    subtitle: {
+      en: "Approval by amount, sending with the PDF, delivery dates, receipt in parts and the full history.",
+      ru: "Согласование по сумме, отправка с PDF, сроки поставки, приёмка частями и полная история.",
+      az: "Məbləğə görə təsdiq, PDF ilə göndərmə, çatdırılma müddətləri, hissə-hissə qəbul və tam tarixçə.",
+    },
+    content: {
+      en: lazy(() => import("./procurement-orders/en")),
+      ru: lazy(() => import("./procurement-orders/ru")),
+      az: lazy(() => import("./procurement-orders/az")),
+    },
+  },
+  "procurement-suppliers": {
+    title: {
+      en: "Suppliers",
+      ru: "Поставщики",
+      az: "Təchizatçılar",
+    },
+    subtitle: {
+      en: "The companies you buy from — kept apart from clients, imported from Excel, linked to products.",
+      ru: "Компании, у которых вы покупаете: отдельно от клиентов, импорт из Excel, связь с товарами.",
+      az: "Alış etdiyiniz şirkətlər: müştərilərdən ayrı, Excel-dən idxal, məhsullarla əlaqə.",
+    },
+    content: {
+      en: lazy(() => import("./procurement-suppliers/en")),
+      ru: lazy(() => import("./procurement-suppliers/ru")),
+      az: lazy(() => import("./procurement-suppliers/az")),
+    },
+  },
+  "procurement-reports": {
+    title: {
+      en: "Purchasing reports",
+      ru: "Отчёты по закупкам",
+      az: "Təchizat hesabatları",
+    },
+    subtitle: {
+      en: "Spend, on-time delivery, delays, margin by deal and approval time for a period — with Excel and PDF.",
+      ru: "Расход, своевременность, опоздания, маржа по сделкам и время согласования за период — с Excel и PDF.",
+      az: "Dövr üzrə xərc, vaxtında çatdırılma, gecikmələr, sövdələşmələr üzrə marja və təsdiq müddəti — Excel və PDF ilə.",
+    },
+    content: {
+      en: lazy(() => import("./procurement-reports/en")),
+      ru: lazy(() => import("./procurement-reports/ru")),
+      az: lazy(() => import("./procurement-reports/az")),
+    },
+  },
+  "procurement-settings": {
+    title: {
+      en: "Approval limits",
+      ru: "Лимиты согласования",
+      az: "Təsdiq limitləri",
+    },
+    subtitle: {
+      en: "Who approves a purchase order and in what order, by its amount.",
+      ru: "Кто и в каком порядке согласует заказ поставщику в зависимости от суммы.",
+      az: "Təchizatçı sifarişini məbləğə görə kim və hansı ardıcıllıqla təsdiqləyir.",
+    },
+    content: {
+      en: lazy(() => import("./procurement-settings/en")),
+      ru: lazy(() => import("./procurement-settings/ru")),
+      az: lazy(() => import("./procurement-settings/az")),
     },
   },
   quotes: {

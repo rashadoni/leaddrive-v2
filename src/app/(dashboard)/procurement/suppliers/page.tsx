@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { checkPermission, type Role } from "@/lib/permissions"
 import { StatusTabs } from "@/components/procurement/status-tabs"
 import { ExcelImportDialog } from "@/components/excel-import-dialog"
+import { HelpButton } from "@/components/help/help-button"
 
 interface SupplierRow {
   id: string
@@ -130,7 +131,7 @@ export default function SuppliersPage() {
         <div className="flex items-center gap-3">
           <Truck className="h-7 w-7 text-orange-600" />
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <HelpButton slug="procurement-suppliers" variant="label" /></h1>
             <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>

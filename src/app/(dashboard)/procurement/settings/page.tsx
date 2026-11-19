@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { isAdmin, type Role } from "@/lib/permissions"
 import { APPROVER_ROLES } from "@/lib/procurement/approval"
+import { HelpButton } from "@/components/help/help-button"
 
 type Approver = { role: string } | { userId: string }
 type Band = { minAmount: string; maxAmount: string; approvers: Approver[] }
@@ -82,7 +83,7 @@ export default function ProcurementSettingsPage() {
       <div className="flex items-center gap-3">
         <ShieldCheck className="h-7 w-7 text-orange-600" />
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <HelpButton slug="procurement-settings" variant="label" /></h1>
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
       </div>

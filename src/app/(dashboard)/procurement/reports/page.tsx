@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { OrderStatusBadge, LateBadge } from "@/components/procurement/status-badge"
 import { formatDay, formatMoney } from "@/components/procurement/format"
 import type { ProcurementReport } from "@/lib/procurement/reports"
+import { HelpButton } from "@/components/help/help-button"
 
 const DAY = 86_400_000
 const isoDay = (date: Date) => date.toISOString().slice(0, 10)
@@ -58,7 +59,7 @@ export default function ProcurementReportsPage() {
       <div className="flex items-center gap-3">
         <BarChart3 className="h-7 w-7 text-orange-600" />
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <HelpButton slug="procurement-reports" variant="label" /></h1>
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
       </div>
