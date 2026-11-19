@@ -18,6 +18,7 @@ import { RequestCreateDialog } from "@/components/procurement/request-create-dia
 import { formatDay } from "@/components/procurement/format"
 import { checkPermission, type Role } from "@/lib/permissions"
 import { StatusTabs } from "@/components/procurement/status-tabs"
+import { HelpButton } from "@/components/help/help-button"
 
 interface RequestRow {
   id: string
@@ -77,7 +78,7 @@ export default function PurchaseRequestsPage() {
         <div className="flex items-center gap-3">
           <ClipboardList className="h-7 w-7 text-orange-600" />
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <HelpButton slug="procurement-requests" variant="label" /></h1>
             <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
           </div>
         </div>

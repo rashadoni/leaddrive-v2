@@ -107,7 +107,7 @@ const HELP_VIDEO_ENTRIES_RAW = [
   // Purchasing (docs/sales-procurement/README.md): the whole way of a
   // customer order on the module's first screen, one short film per other
   // screen (owner, 2026-11-19). A request's page shares the overview.
-  { slug: "procurement", routes: ["/procurement/requests"] },
+  { slug: "procurement", routes: ["/procurement/requests"], helpSlugs: ["procurement-requests"] },
   { slug: "procurement-orders", routes: ["/procurement/orders"] },
   { slug: "procurement-suppliers", routes: ["/procurement/suppliers"] },
   { slug: "procurement-reports", routes: ["/procurement/reports"] },

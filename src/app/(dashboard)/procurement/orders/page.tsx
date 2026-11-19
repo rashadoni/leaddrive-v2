@@ -12,6 +12,7 @@ import { OrderStatusBadge, LateBadge } from "@/components/procurement/status-bad
 import { formatDay, formatMoney } from "@/components/procurement/format"
 import { checkPermission, type Role } from "@/lib/permissions"
 import { StatusTabs } from "@/components/procurement/status-tabs"
+import { HelpButton } from "@/components/help/help-button"
 
 interface OrderRow {
   id: string
@@ -72,7 +73,7 @@ export default function PurchaseOrdersPage() {
       <div className="flex items-center gap-3">
         <PackageCheck className="h-7 w-7 text-orange-600" />
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <HelpButton slug="procurement-orders" variant="label" /></h1>
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
       </div>
