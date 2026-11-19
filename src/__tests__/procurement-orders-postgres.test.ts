@@ -252,7 +252,10 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     expect(seen.body.data.totalAmount).toBeNull()
     expect(seen.body.data.items.map((item: { unitPrice: unknown; total: unknown; quantity: unknown }) => [item.unitPrice, item.total])).toEqual([[null, null], [null, null]])
     const detail = await json(await requestOne.GET(request(`${API}/requests/${requestId}`, "GET"), ctx(requestId)))
-    expect(JSON.stringify(detail.body.data.quotes)).not.toMatch(/1200|1500/)
+    // Prices only: a random record id once held «…15001541…» and failed the deploy gate (2026-11-19).
+    // Strings that are not a number (ids, names, dates) are blanked before looking for the amounts.
+    const amounts = JSON.stringify(detail.body.data.quotes, (_key, value) => typeof value === "string" && !/^-?\d+(\.\d+)?$/.test(value) ? "" : value)
+    expect(amounts).not.toMatch(/(?<![\d.])(1200|1500)(\.0+)?(?![\d.])/)
     as("finance")
     const finance = await json(await orderOne.GET(request(`${API}/orders/${orderId}`, "GET"), ctx(orderId)))
     expect(Number(finance.body.data.totalAmount)).toBe(1800)
