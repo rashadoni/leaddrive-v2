@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { generateQuotePdf } from "@/lib/cpq/quote-pdf"
+import { generateQuotePdf, quotePdfLanguage } from "@/lib/cpq/quote-pdf"
 import { withRlsAuth } from "@/lib/with-rls"
 
 /**
@@ -16,6 +16,9 @@ import { withRlsAuth } from "@/lib/with-rls"
  *   ?download=1 → forces `Content-Disposition: attachment` so the
  *                browser saves the file; default is `inline` so
  *                clicking the link opens the PDF in a new tab.
+ *   ?lang=az|ru|en → the PDF's language. Without it: the organization's
+ *                «Язык общения с клиентами», then the language the CRM is
+ *                open in (`quotePdfLanguage`).
  */
 export const GET = withRlsAuth("offers", "read", async (req: NextRequest, auth, { params }: { params: Promise<{ id: string }> }) => {
   // Scope `offers` (NOT the unmapped `quotes`): roles carry `offers` read/write
@@ -42,16 +45,21 @@ export const GET = withRlsAuth("offers", "read", async (req: NextRequest, auth, 
       }),
       prisma.organization.findUnique({
         where: { id: orgId },
-        select: { name: true, logo: true, branding: true },
+        select: { name: true, logo: true, branding: true, settings: true },
       }),
     ])
 
     if (!quote) return NextResponse.json({ error: "Not found" }, { status: 404 })
     if (!organization) return NextResponse.json({ error: "Org not found" }, { status: 500 })
 
-    const pdf = generateQuotePdf({ quote, organization })
-
     const { searchParams } = new URL(req.url)
+    const lang = quotePdfLanguage({
+      query: searchParams.get("lang"),
+      organizationSettings: organization.settings,
+      uiLocale: req.headers.get("x-locale"),
+    })
+    const pdf = generateQuotePdf({ lang, quote, organization })
+
     const disposition = searchParams.get("download") === "1" ? "attachment" : "inline"
     // Sanitize quoteNumber for Content-Disposition: defangs both header
     // injection (CRLF) and quote-character smuggling. Schema allows
