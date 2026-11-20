@@ -35,7 +35,7 @@ describe("Personnel's own menu at the top of its pages (owner, 2026-10-20: as in
     await render("/mtm/attendance")
     const nav = container.querySelector("nav")!
     expect(nav.getAttribute("aria-label")).toBe("Kadr uçotu")
-    expect(tabs().map((tab) => tab.textContent)).toEqual(["Bu gün", "Tabel", "Əməkdaşlar", "Hesabatlar", "Parametrlər"])
+    expect(tabs().map((tab) => tab.textContent)).toEqual(["Bu gün", "Tabel", "Əməkdaşlar", "İzahatlar", "Hesabatlar", "Parametrlər"])
     expect(tabs().map((tab) => tab.getAttribute("href"))).toEqual(ALL)
     // Plain links: reachable with Tab and opened with Enter, nothing taken out of the order.
     for (const tab of tabs()) expect(tab.hasAttribute("tabindex")).toBe(false)

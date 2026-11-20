@@ -1,3 +1,4 @@
+import { ATTENDANCE_EXPLANATION_NOTIFICATION_KIND } from "@/lib/mtm/attendance-explanation-notification"
 import { MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_KIND } from "@/lib/mtm/attendance-installation-notification"
 import { MTM_ATTENDANCE_RISK_NOTIFICATION_KIND } from "@/lib/mtm/attendance-risk-notification"
 import { MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND } from "@/lib/mtm/attendance-request-notification"
@@ -84,6 +85,8 @@ export const KINDS_ON_UNLESS_SWITCHED_OFF: ReadonlySet<string> = new Set([
   MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND,
   MTM_ATTENDANCE_RISK_NOTIFICATION_KIND,
   MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_KIND,
+  // An employee's explanation for being late or absent waits for a decision (2026-11-20).
+  ATTENDANCE_EXPLANATION_NOTIFICATION_KIND,
   // Once a year: next year's official holidays are waiting for an admin to add them.
   PUBLIC_CALENDAR_NOTIFICATION_KIND,
   // A reminder the person set for himself (inbox panel «Напомнить», 2026-11-15): a section

@@ -131,6 +131,8 @@ pgDescribe("Explanations on real PostgreSQL", () => {
       expect((await store.answerOwnAttendanceExplanation(self("absent"), { date: TODAY, kind: "ABSENT", text: "Затопило квартиру, ждала мастера до 12:00" }, now)).idempotent).toBe(true)
       const voluntary = await store.answerOwnAttendanceExplanation(self("late"), { date: YESTERDAY, kind: "LATE", text: "Пробка на мосту" }, now)
       expect(voluntary.item).toMatchObject({ status: "ANSWERED", requestedAt: null, lateMinutes: 45 })
+      // Written unasked, it goes to whoever decides this employee's requests (2026-11-20: it told nobody).
+      expect(await prisma.notification.count({ where: { userId: ADMIN, entityId: voluntary.item.id, entityType: "mtm_attendance_explanation" } })).toBe(1)
       expect((await store.listOwnAttendanceExplanations(self("late"), now)).candidates).toEqual([])
       // Nothing to explain: on time, on sick leave, or outside the last month.
       for (const [agentId, date, kind] of [["ontime", TODAY, "LATE"], ["sick", TODAY, "ABSENT"], ["absent", "2026-10-14", "ABSENT"]] as const) {

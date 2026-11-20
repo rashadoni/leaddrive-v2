@@ -19,9 +19,10 @@ import az from "../../../messages/az.json"
 import ru from "../../../messages/ru.json"
 import en from "../../../messages/en.json"
 import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
-
-export const ATTENDANCE_EXPLANATION_ENTITY = "mtm_attendance_explanation"
-export const ATTENDANCE_EXPLANATION_NOTIFICATION_KIND = "mtm.attendanceExplanation.answered"
+import { ATTENDANCE_EXPLANATION_NOTIFICATION_ENTITY, ATTENDANCE_EXPLANATION_NOTIFICATION_KIND } from "@/lib/mtm/attendance-explanation-notification"
+import { attendanceRequestReviewers } from "@/lib/mtm/attendance-request-notify"
+export const ATTENDANCE_EXPLANATION_ENTITY = ATTENDANCE_EXPLANATION_NOTIFICATION_ENTITY
+export { ATTENDANCE_EXPLANATION_NOTIFICATION_KIND }
 const MESSAGES = { az: az.mtmAttendance, ru: ru.mtmAttendance, en: en.mtmAttendance }
 type Locale = keyof typeof MESSAGES
 const localeOf = (value: string | null | undefined): Locale => value === "ru" || value === "en" ? value : "az"
@@ -208,12 +209,21 @@ export async function answerOwnAttendanceExplanation(self: AttendanceSelf, raw: 
     }
     await tx.mtmAuditLog.create({ data: { organizationId: self.organizationId, agentId: self.agentId, action: "MTM_ATTENDANCE_EXPLANATION_ANSWERED",
       entity: ATTENDANCE_EXPLANATION_ENTITY, entityId: saved.id, metadataKind: "mtm_attendance_explanation", newData: { date: input.date, kind: input.kind, requested: !!saved.requestedByUserId } } })
+    // Who reads it: the one who asked; an explanation written unasked goes to whoever decides
+    // this employee's requests — the same people, by the same rule (attendance-request-notify.ts).
+    // Before 2026-11-20 an unasked one told nobody.
+    const readers: Array<{ id: string; preferredLanguage: string | null }> = []
     if (saved.requestedByUserId) {
       const [reader] = await tx.$queryRaw<{ preferredLanguage: string | null }[]>`SELECT "preferredLanguage" FROM users WHERE "organizationId"=${self.organizationId} AND id=${saved.requestedByUserId} AND "isActive" AND "anonymizedAt" IS NULL`
-      if (reader) {
-        const agent = await tx.mtmAgent.findFirst({ where: { organizationId: self.organizationId, id: self.agentId }, select: { name: true } })
+      if (reader) readers.push({ id: saved.requestedByUserId, preferredLanguage: reader.preferredLanguage })
+    } else {
+      readers.push(...await attendanceRequestReviewers(tx, { organizationId: self.organizationId, agentId: self.agentId }))
+    }
+    if (readers.length) {
+      const agent = await tx.mtmAgent.findFirst({ where: { organizationId: self.organizationId, id: self.agentId }, select: { name: true } })
+      for (const reader of readers) {
         const locale = localeOf(reader.preferredLanguage), t = MESSAGES[locale]
-        await createNotification({ organizationId: self.organizationId, userId: saved.requestedByUserId, type: "info",
+        await createNotification({ organizationId: self.organizationId, userId: reader.id, type: "info",
           title: fill(t.explanationAnsweredTitle, { name: agent?.name ?? "—", date: dayLabel(input.date, locale) }), message: t.explanationAnsweredBody,
           entityType: ATTENDANCE_EXPLANATION_ENTITY, entityId: saved.id, kind: ATTENDANCE_EXPLANATION_NOTIFICATION_KIND,
           idempotencyKey: `mtm-attendance-explanation:${saved.id}:${now.toISOString()}`, client: tx })

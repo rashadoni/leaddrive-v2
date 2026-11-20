@@ -69,6 +69,8 @@ export const ENTITY_TO_MODULE: Record<string, string> = {
   mtm_attendance_reminder: "mtm",
   mtm_attendance_installation: "mtm",
   mtm_attendance_public_calendar: "mtm",
+  // An employee's explanation for a late or absent day (ATTENDANCE_EXPLANATION_NOTIFICATION_ENTITY).
+  mtm_attendance_explanation: "mtm",
   survey:         "campaigns",   // Survey response — gated by campaigns module (Marketing group)
   loyalty:        "loyalty",     // Loyalty tier/redeem — gated by loyalty module (Loyalty Program group)
   // Phase 2d — Industry Cloud emitters (one notable gated kind per vertical)
@@ -207,6 +209,7 @@ export const NOTIFICATION_KINDS: NotificationKind[] = (
     { kind: "mtm.attendanceRisk.detected", entityType: "mtm_attendance_risk" },
     { kind: "mtm.attendanceReminder.detected", entityType: "mtm_attendance_reminder" },
     { kind: "mtm.attendancePublicCalendar.found", entityType: "mtm_attendance_public_calendar" },
+    { kind: "mtm.attendanceExplanation.answered", entityType: "mtm_attendance_explanation" },
     // Phase 2c — Marketing: survey response (gated by campaigns module)
     { kind: "survey.response",     entityType: "survey" },
     // Phase 2c — Loyalty Program: notable low-volume loyalty events only (NOT per-earn spam)

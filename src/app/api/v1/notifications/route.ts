@@ -1,3 +1,4 @@
+import { ATTENDANCE_EXPLANATION_NOTIFICATION_ENTITY, ATTENDANCE_EXPLANATION_NOTIFICATION_URL } from "@/lib/mtm/attendance-explanation-notification"
 import { attendanceReminderWebFilter } from "@/lib/mtm/attendance-reminder-notification"
 import { ATTENDANCE_REMINDER_ENTITY, ATTENDANCE_REMINDER_URL } from "@/lib/mtm/attendance-reminder-contract"
 import { MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY, MTM_ATTENDANCE_RISK_NOTIFICATION_URL } from "@/lib/mtm/attendance-risk-notification"
@@ -29,8 +30,9 @@ async function computeEntityTypeFilter(orgId: string, role: Role) {
     const orgCtx = await getOrgModuleContext(orgId)
     const ctx = { role, ...orgCtx }
     allowed = Object.keys(ENTITY_TO_MODULE).filter((et) => canNotifyEntityType(ctx, et))
-    if ((allowed.includes(MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY) || allowed.includes(MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY))) {
-      if (!await readAttendanceFeature(prisma, orgId)) allowed = allowed.filter((entity) => entity !== MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY && entity !== MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY)
+    const attendanceOnly = [MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY, MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY, ATTENDANCE_EXPLANATION_NOTIFICATION_ENTITY]
+    if (allowed.some((entity) => attendanceOnly.includes(entity))) {
+      if (!await readAttendanceFeature(prisma, orgId)) allowed = allowed.filter((entity) => !attendanceOnly.includes(entity))
     }
   } catch {
     // fail-closed: keep allowed=[] so only null-entityType rows pass
@@ -65,6 +67,7 @@ const notificationListUrls: Record<string, string> = {
   [MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_ENTITY]: MTM_CONTACT_CREATE_REQUEST_NOTIFICATION_URL,
   [MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY]: MTM_ATTENDANCE_RISK_NOTIFICATION_URL,
   [MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY]: MTM_ATTENDANCE_REQUEST_NOTIFICATION_URL,
+  [ATTENDANCE_EXPLANATION_NOTIFICATION_ENTITY]: ATTENDANCE_EXPLANATION_NOTIFICATION_URL,
 }
 
 function getNotificationUrl(notification: NotificationTarget) {
