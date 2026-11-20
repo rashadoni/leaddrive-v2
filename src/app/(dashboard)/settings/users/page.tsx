@@ -7,6 +7,7 @@ import { signOut, useSession } from "next-auth/react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PhoneInput } from "@/components/ui/phone-input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { DataTable } from "@/components/data-table"
@@ -558,22 +559,12 @@ function UserFormDialog({
             </div>
             <div>
               <Label htmlFor="phone">{tu("fieldPhone")}</Label>
-              <Input
+              <PhoneInput
                 id="phone"
-                type="tel"
-                inputMode="tel"
                 autoComplete="tel"
-                maxLength={16}
                 placeholder="+994501234567"
                 value={form.phone}
-                onChange={(e) => {
-                  // Accept only leading + and digits, strip everything else
-                  // as the user types so copy-pasted spaces/dashes/parens
-                  // don't get saved verbatim into the DB.
-                  let v = e.target.value.replace(/[^\d+]/g, "")
-                  if (v.indexOf("+") > 0) v = v.replace(/\+/g, "")
-                  setForm((f) => ({ ...f, phone: v.slice(0, 16) }))
-                }}
+                onValueChange={(phone) => setForm((f) => ({ ...f, phone }))}
                 aria-invalid={form.phone !== "" && !PHONE_PATTERN.test(form.phone)}
                 className={
                   form.phone !== "" && !PHONE_PATTERN.test(form.phone)

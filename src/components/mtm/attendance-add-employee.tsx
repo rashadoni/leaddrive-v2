@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { MessageCircle, UserPlus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PhoneInput } from "@/components/ui/phone-input"
 import { MtmAttendanceDepartmentField, departmentPayload, emptyDepartmentValue, type DepartmentValue } from "@/components/mtm/attendance-department-field"
 import { ATTENDANCE_EMPLOYEE_POSITION_MAX, type AttendanceDepartment, type AttendanceSection } from "@/lib/mtm/attendance-employee-contract"
 import { AttendancePhoneMatchResult, type AttendancePhoneMatch } from "@/lib/mtm/attendance-phone-match-contract"
@@ -194,7 +195,7 @@ export function MtmAttendanceAddEmployee({ disabled, teams, departments, onAdded
       <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5" aria-label={p("close")} onClick={close}><X className="h-4 w-4" aria-hidden="true" /><MtmWord word="close" /></Button></div>
     <div className="grid gap-4 md:grid-cols-2">
       <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeeName")}</span><Input required maxLength={200} className="min-h-11" autoComplete="off" value={form.name} onChange={event => set("name")(event.target.value)} /></label>
-      <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeePhone")}</span><Input required type="tel" inputMode="tel" placeholder="+994501234567" maxLength={24} className="min-h-11" autoComplete="off" value={form.phone} onChange={event => set("phone")(event.target.value)} data-testid="attendance-add-employee-phone" /></label>
+      <label className="space-y-2 text-sm font-medium"><span>{p("addEmployeePhone")}</span><PhoneInput required placeholder="+994501234567" className="min-h-11" autoComplete="off" value={form.phone} onValueChange={set("phone")} data-testid="attendance-add-employee-phone" /></label>
       <MtmAttendanceDepartmentField id="add-employee-department" teams={teams} departments={departments} value={form.department} onChange={set("department")} onRenamed={onUnitRenamed ? () => onUnitRenamed() : undefined} />
       <label className="space-y-2 text-sm font-medium"><span>{p("employeeCardPosition")}</span><Input maxLength={ATTENDANCE_EMPLOYEE_POSITION_MAX} className="min-h-11" autoComplete="off" placeholder={p("employeeCardPositionPlaceholder")} value={form.position} onChange={event => set("position")(event.target.value)} /></label>
       <label className="space-y-2 text-sm font-medium"><span>{p("employeeCardHired")}</span><Input type="date" className="min-h-11" value={form.hireDate} onChange={event => set("hireDate")(event.target.value)} />

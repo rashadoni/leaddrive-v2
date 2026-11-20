@@ -166,8 +166,8 @@ describe("Add employee", () => {
     await type("addEmployeeName", "Nigar Demo"); await type("addEmployeePhone", "+994 50 111 22 33")
     await send()
     expect(creates()).toHaveLength(1)
-    expect(JSON.parse(String(creates()[0][1]!.body))).toEqual({ name: "Nigar Demo", phone: "+994 50 111 22 33", email: null, position: null, departmentId: null, teamId: null, hireDate: null })
-    expect(container.querySelector('[data-testid="attendance-employee-added"]')!.textContent).toBe(p("addEmployeeDone", { name: "Nigar Demo", phone: "+994 50 111 22 33" }))
+    expect(JSON.parse(String(creates()[0][1]!.body))).toEqual({ name: "Nigar Demo", phone: "+994501112233", email: null, position: null, departmentId: null, teamId: null, hireDate: null })
+    expect(container.querySelector('[data-testid="attendance-employee-added"]')!.textContent).toBe(p("addEmployeeDone", { name: "Nigar Demo", phone: "+994501112233" }))
     expect(container.querySelector('[data-testid="attendance-add-employee-form"]')).toBeNull()
   })
 
