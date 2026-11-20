@@ -81,7 +81,7 @@ def build(source, bridge):
         else:
 '''
     text = text[:start] + pilot + "".join("    " + line if line.strip() else line for line in normal.splitlines(True)) + text[end:]
-    replace('        return {"setup": setup}\n', '        if self.pharmacy_preview:\n            setup["tools"] = self.pharmacy_bridge.tools()\n            setup["inputAudioTranscription"] = self.pharmacy_bridge.transcription()\n            language, voice = self.pharmacy_bridge.speech_language(), self.pharmacy_bridge.speech_voice()\n            if language:\n                setup["generationConfig"]["speechConfig"]["languageCode"] = language\n            if voice:\n                setup["generationConfig"]["speechConfig"]["voiceConfig"]["prebuiltVoiceConfig"]["voiceName"] = voice\n        return {"setup": setup}\n')
+    replace('        return {"setup": setup}\n', '        if self.pharmacy_preview:\n            setup["tools"] = self.pharmacy_bridge.tools()\n            setup["inputAudioTranscription"] = self.pharmacy_bridge.transcription()\n            language, voice = self.pharmacy_bridge.speech_language(), self.pharmacy_bridge.speech_voice()\n            if language:\n                setup["generationConfig"]["speechConfig"]["languageCode"] = language\n            if voice:\n                setup["generationConfig"]["speechConfig"]["voiceConfig"]["prebuiltVoiceConfig"]["voiceName"] = voice\n            self.pharmacy_bridge.adjust_setup(setup)\n        return {"setup": setup}\n')
     method = '''    def _pharmacy_open_early(self, early):
         opened = time.monotonic()
         try:
