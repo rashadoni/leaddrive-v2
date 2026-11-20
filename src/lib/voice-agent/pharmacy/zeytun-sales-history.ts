@@ -40,7 +40,8 @@ import { ZeytunSnapshotStore } from "./zeytun-snapshot-store"
 
 export const ZEYTUN_SALES_CONNECTION_FILE = "zeytun-1c-sales.json"
 /** Sales older than this are dropped: what a pharmacy buys now, not two years ago. */
-export const HISTORY_DAYS = 180
+// Owner 2026-11-20: three months, not six — the night reads reach every pharmacy about twice as fast.
+export const HISTORY_DAYS = 90
 /** The most sales kept per pharmacy, the newest. */
 const MAX_DOCS = 500
 const DAY_MS = 24 * 60 * 60_000

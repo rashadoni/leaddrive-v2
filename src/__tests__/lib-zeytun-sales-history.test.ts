@@ -5,7 +5,7 @@ import type { PrismaClient } from "@prisma/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
-  bakuNight, nextNightStart, REQUEST_GAP_MS,
+  bakuNight, HISTORY_DAYS, nextNightStart, REQUEST_GAP_MS,
   decodeSalesSoap, parseValueTable, productsOfSale, rankSalesProducts, refreshZeytunSalesHistory, salesFromSettlements,
   salesHistorySource, SalesHistoryStore, ZEYTUN_SALES_CONNECTION_FILE, type SalesFetch,
 } from "@/lib/voice-agent/pharmacy/zeytun-sales-history"
@@ -66,6 +66,13 @@ describe("a pharmacy's 1C sales history", () => {
   let root: string
   beforeEach(async () => { root = await mkdtemp(join(tmpdir(), "zeytun-sales-test-")) })
   afterEach(async () => { await rm(root, { recursive: true, force: true }) })
+
+  // Owner 2026-11-20: «сделай три месяца».
+  it("keeps three months of a pharmacy's sales", () => {
+    expect(HISTORY_DAYS).toBe(90)
+    const sales = new Map([["1", { date: "2026-08-14", products: [A] }], ["2", { date: "2026-08-12", products: [B] }]])
+    expect(rankSalesProducts(sales, NOW)).toEqual([A])
+  })
 
   it("ranks products by how many recent sales held them, ignoring sales older than the window", () => {
     const sales = new Map([
