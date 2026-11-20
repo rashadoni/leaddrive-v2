@@ -426,6 +426,8 @@ describe("Personnel → Today", () => {
     // 09:20 — Рашад has not marked in: absent, ticked; HR asks with the one button.
     expect(rowOf("Рашад").dataset.type).toBe("absent")
     expect(tick("Рашад").checked).toBe(true)
+    // Or one press next to the name, no ticking (owner, 2026-11-20).
+    expect(rowOf("Рашад").querySelector('[data-testid="attendance-explain-ask-one"]')?.textContent).toBe(p("drawerAsk"))
     explanations = [explanationOf("Рашад", "ABSENT", "REQUESTED"), explanationOf("Нигяр", "LATE", "REQUESTED")]
     await act(async () => ask()!.click())
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
@@ -439,8 +441,9 @@ describe("Personnel → Today", () => {
     expect(rashad().dataset.type).toBe("late")
     // His late row carries the answer, is not ticked for another question, and says what the answer is to.
     expect(rashad().querySelector('[data-testid="attendance-explain-status"]')?.textContent).toBe(p("explainAnswered"))
-    expect(tick("Рашад").checked).toBe(false)
-    expect(tick("Рашад").disabled).toBe(true)
+    // Already asked: no box at all — a box that would not tick read as broken (owner, 2026-11-20).
+    expect(rashad().querySelector('input[type="checkbox"]')).toBeNull()
+    expect(rashad().querySelector('[data-testid="attendance-explain-ask-one"]')).toBeNull()
     expect(rashad().querySelector('[data-testid="attendance-explain-about"]')?.textContent).toBe(p("explainForAbsent"))
     // Nobody is left to ask, so there is nothing to press: the bar is gone.
     expect(byTestId("attendance-explain-bar")).toBeNull()
@@ -463,7 +466,7 @@ describe("Personnel → Today", () => {
     currentReport = reportOf([{ name: "Рашад", start: "11:30" }, { name: "Камран", start: "11:40" }])
     await minute()
     expect(tick("Камран").checked).toBe(true)
-    expect(tick("Рашад").checked).toBe(false)
+    expect(rowOf("Рашад").querySelector('input[type="checkbox"]')).toBeNull()
     expect(byTestId("attendance-explain-bar")!.textContent).toContain(ru.personnel.explainSelectAll.replace("{count}", "1"))
     expect(ask()!.textContent).toBe(ru.personnel.explainAsk.replace("{count}", "1"))
     explanations = [...explanations, explanationOf("Камран", "LATE", "REQUESTED")]
@@ -489,7 +492,7 @@ describe("Personnel → Today", () => {
     const own = items[1]
     expect(own.querySelector("p")!.textContent).toBe("Рашад")
     expect(own.querySelector('[data-testid="attendance-explain-about"]')?.textContent).toBe(p("explainForAbsent"))
-    expect(own.querySelector<HTMLInputElement>('input[type="checkbox"]')!.disabled).toBe(true)
+    expect(own.querySelector('input[type="checkbox"]')).toBeNull()
     expect(own.querySelector("a")!.getAttribute("href")).toBe(`/mtm/attendance/timesheet?date=${today}&employeeId=${encodeURIComponent("id-Рашад")}`)
     // The card's count includes his row, and «the rest, no questions» is Айсель alone.
     expect(card.querySelector("span.rounded-full")?.textContent).toBe("4")

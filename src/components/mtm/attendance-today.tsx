@@ -268,8 +268,9 @@ export function MtmAttendanceToday() {
               const about = explanation && (item.type === "explanation" || explanation.kind !== (item.type === "late" ? "LATE" : "ABSENT"))
                 ? `${t(explanation.kind === "LATE" ? "explainForLate" : "explainForAbsent")}${data && item.date !== data.today ? ` · ${dateLabel(item.date)}` : ""}` : null
               return <li key={key} className="py-2.5" data-testid="attendance-today-attention-item" data-type={item.type}><div className="flex flex-wrap items-center gap-3">
-              {explainId && data?.explanations ? <input type="checkbox" className="h-4 w-4 shrink-0" aria-label={t("explainSelect", { name: item.employeeName })} disabled={!!explanation}
-                checked={!explanation && selected.has(explainId)} onChange={event => setSelected(current => { const next = new Set(current); if (event.target.checked) next.add(explainId); else next.delete(explainId); return next })} /> : null}
+              {/* Only someone who can still be asked gets a box: an already asked one showed a box that would not tick (owner, 2026-11-20). */}
+              {explainId && data?.explanations && !explanation ? <input type="checkbox" className="h-4 w-4 shrink-0" aria-label={t("explainSelect", { name: item.employeeName })}
+                checked={selected.has(explainId)} onChange={event => setSelected(current => { const next = new Set(current); if (event.target.checked) next.add(explainId); else next.delete(explainId); return next })} /> : null}
               <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.employeeName}</p>
                 {item.type === "explanation" ? null : <p className="text-sm text-muted-foreground">{item.type === "absent" ? t("absentNoReason")
                   : item.type === "late" ? t("lateBy", { duration: item.lateSeconds < 3600 ? t("minutes", { count: Math.round(item.lateSeconds / 60) }) : formatAttendanceDuration(item.lateSeconds), time: formatTime(item.startedAt, locale, { hour: "2-digit", minute: "2-digit", timeZone: item.timezone }) })
@@ -279,6 +280,9 @@ export function MtmAttendanceToday() {
                 : explanation.status === "REQUESTED" ? <span className="text-amber-700 dark:text-amber-400">{t("explainWaiting", { time: explanation.requestedAt ? clock(explanation.requestedAt) : "" })}</span>
                 : explanation.status === "ANSWERED" ? <button type="button" className="font-semibold text-primary hover:underline" aria-expanded={reading === explanation.id} onClick={() => setReading(reading === explanation.id ? null : explanation.id)}>{t("explainAnswered")}</button>
                 : <span className={explanation.status === "ACCEPTED" ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-300"}>{t(explanation.status === "ACCEPTED" ? "explainAccepted" : "explainRejected")}</span>}</span> : null}
+              {/* One person, one press — next to the name, no ticking (owner, 2026-11-20). */}
+              {explainId && data?.explanations && !explanation ? <Button size="sm" variant="outline" className="min-h-9 shrink-0" disabled={busyId !== null} data-testid="attendance-explain-ask-one"
+                onClick={() => void askExplanations([explainId])}><MessageCircleQuestionMark className="mr-1.5 h-4 w-4" aria-hidden="true" />{t("drawerAsk")}</Button> : null}
               <Button asChild size="sm" variant="outline" className="min-h-9 shrink-0"><Link prefetch={false} href={item.type === "absent" ? recordHref(item.employeeId, item.date) : dayHref(item.employeeId, item.date)}>{item.type === "absent" ? t("addReason") : t("openDay")}</Link></Button>
               </div>
               {explanation && reading === explanation.id ? <div className="mt-2 rounded-lg bg-muted/60 px-3 py-2 text-sm" data-testid="attendance-explain-answer">
