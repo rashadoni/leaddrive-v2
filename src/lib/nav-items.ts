@@ -34,6 +34,7 @@ import {
   HeartPulse, Umbrella, Landmark, Tv2, Flame,
   ClipboardPlus, FileBadge, FileCheck, Radio, PackageOpen,
   KeyRound, Truck, PackageCheck, ShieldCheck,
+  MessageSquareText,
 } from "lucide-react"
 
 export type MtmNavSection = "daily" | "reference" | "control" | "results" | "administration"
@@ -424,6 +425,8 @@ export const navItems: NavItem[] = [
   { tenantCapability: "personnel", href: "/mtm/attendance", icon: Clock, tKey: "personnelToday", group: "Personnel", orgSetting: "attendanceEnabled" },
   { tenantCapability: "personnel", href: "/mtm/attendance/timesheet", icon: FileSpreadsheet, tKey: "personnelTimesheet", group: "Personnel", orgSetting: "attendanceEnabled" },
   { tenantCapability: "personnel", href: "/mtm/attendance/people", icon: Users, tKey: "personnelPeople", group: "Personnel", orgSetting: "attendanceEnabled" },
+  // Explanations for being late or absent, all in one place (owner, 2026-11-20).
+  { tenantCapability: "personnel", href: "/mtm/attendance/explanations", icon: MessageSquareText, tKey: "personnelExplanations", group: "Personnel", orgSetting: "attendanceEnabled" },
   { tenantCapability: "personnel", href: "/mtm/attendance/reports", icon: BarChart3, tKey: "personnelReports", group: "Personnel", orgSetting: "attendanceEnabled" },
   { tenantCapability: "personnel", href: "/mtm/attendance/settings", icon: Settings, tKey: "personnelSettings", group: "Personnel", orgSetting: "attendanceEnabled", orgSettingAdminBypass: true },
   // Workforce is a first-class capability, not a Route & Field child. It has
