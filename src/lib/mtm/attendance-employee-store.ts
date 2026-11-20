@@ -354,7 +354,7 @@ export async function readAttendanceEmployee(actor: AttendanceReviewer, agentId:
     const timezone = await requireAttendanceEmployeeAdmin(tx, actor), organizationId = actor.organizationId
     const card = await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId, ...ATTENDANCE_TRACKED_CARD_WHERE },
       select: { id: true, name: true, phone: true, email: true, role: true, status: true, position: true, personnelNumber: true, teamId: true, managerId: true, attendanceExcluded: true, team: { select: { name: true } }, departmentId: true, department: { select: { name: true } },
-        user: { select: { id: true, name: true, phone: true, email: true, role: true, isActive: true, identityAccount: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
+        user: { select: { id: true, name: true, phone: true, email: true, role: true, isActive: true, anonymizedAt: true, identityAccount: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } },
         identityActorBinding: { select: { account: { select: { cutoverAt: true, phoneClaim: { select: { normalizedPhone: true } } } } } } } })
     if (!card) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND", 404)
     const [teams, departments, managerCards, events, participation] = await Promise.all([
@@ -380,14 +380,17 @@ export async function readAttendanceEmployee(actor: AttendanceReviewer, agentId:
       if (!(error instanceof Error) || !error.message.startsWith("MTM_ATTENDANCE_")) throw error
     }
     const marks = await todayMarks(tx, organizationId, [agentId], today)
-    const phone = identityDirectoryPhone({ userAccount: card.user?.identityAccount, boundAccount: card.identityActorBinding?.account, legacyPhone: card.phone ?? card.user?.phone ?? null })
+    // A deleted CRM user's login is nobody's: the card's own number is what HR sees and edits
+    // (Zeytun, 2026-11-19: the page showed the deleted user's old number, and every save failed).
+    const deletedUser = card.user?.anonymizedAt != null
+    const phone = identityDirectoryPhone({ userAccount: deletedUser ? undefined : card.user?.identityAccount, boundAccount: card.identityActorBinding?.account, legacyPhone: card.phone ?? (deletedUser ? null : card.user?.phone) ?? null })
     const preparationCard = card.user?.identityAccount?.cutoverAt || card.identityActorBinding?.account.cutoverAt
       ? { ...card, phone, email: null, user: card.user ? { ...card.user, phone, email: null } : null } : card
     const preparation = await readAttendanceEmployeePreparation(tx, { organizationId, agentId, date: today }, preparationCard, now)
     return { timezone, today, teams, departments, preparation, managers: managerCards.map(manager => ({ id: manager.id, name: manager.name, position: manager.position ?? null })), month,
       employee: { id: card.id, name: card.user?.name ?? card.name, phone, email: realEmail(card.email) ?? realEmail(card.user?.email),
-        role: card.role, status: card.status, crmRole: card.user?.role ?? null, loginEditable: !card.user?.identityAccount?.cutoverAt && !card.identityActorBinding?.account.cutoverAt
-          && (!card.user || !LOGIN_LOCKED_ROLES.has(card.user.role)),
+        role: card.role, status: card.status, crmRole: deletedUser ? null : card.user?.role ?? null, loginEditable: deletedUser ? !card.identityActorBinding?.account.cutoverAt
+          : !card.user?.identityAccount?.cutoverAt && !card.identityActorBinding?.account.cutoverAt && (!card.user || !LOGIN_LOCKED_ROLES.has(card.user.role)),
         position: card.position ?? null, personnelNumber: card.personnelNumber ?? null, teamId: card.teamId, teamName: card.team?.name ?? null, departmentId: card.departmentId, departmentName: card.department?.name ?? null, managerId: card.managerId,
         included: !card.attendanceExcluded, participationVersion: participation.at(-1)?.id ?? null, todayMark: marks.get(agentId) ?? null,
         history: events.map(event => ({ id: event.id, kind: event.kind, date: employmentDate(event, timezone), at: event.effectiveAt.toISOString(), byName: names.get(event.recordedByUserId) ?? null })) } }
@@ -415,7 +418,8 @@ export async function updateAttendanceEmployee(actor: AttendanceReviewer, agentI
         AND ${attendanceTrackedCardSql()} FOR UPDATE`
     if (!card) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND", 404)
     if (card.userId) await tx.$queryRaw`SELECT id FROM users WHERE "organizationId" = ${organizationId} AND id = ${card.userId} FOR UPDATE`
-    const user = card.userId ? await tx.user.findFirst({ where: { organizationId, id: card.userId }, select: { id: true, name: true, phone: true, email: true, role: true } }) : null
+    // A deleted user's tombstone is not written to and locks nothing: the card stands alone.
+    const user = card.userId ? await tx.user.findFirst({ where: { organizationId, id: card.userId, anonymizedAt: null }, select: { id: true, name: true, phone: true, email: true, role: true } }) : null
     const beforePhone = card.phone ?? user?.phone ?? null, beforeEmail = realEmail(card.email) ?? realEmail(user?.email) ?? null
     const phoneChange = input.phone !== undefined && input.phone !== beforePhone
     const emailChange = input.email !== undefined && input.email !== beforeEmail
@@ -460,12 +464,16 @@ export async function updateAttendanceEmployee(actor: AttendanceReviewer, agentI
   const result = !editsLogin ? await prisma.$transaction(save, { timeout: 15_000 }) : await (async () => {
     // Admission precedes target credential inspection. Repeat authorization
     // inside save after the fence; no locks survive this separate preflight.
-    await runWithTenant(organizationId, () => prisma.$transaction(async tx => {
+    const deletedUser = await runWithTenant(organizationId, () => prisma.$transaction(async tx => {
       await requireAttendanceEmployeeAdmin(tx, actor)
-      if (!await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId, ...ATTENDANCE_TRACKED_CARD_WHERE }, select: { id: true } })) {
-        throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND", 404)
-      }
+      const target = await tx.mtmAgent.findFirst({ where: { organizationId, id: agentId, ...ATTENDANCE_TRACKED_CARD_WHERE }, select: { id: true, identityActorBinding: { select: { userId: true } }, user: { select: { anonymizedAt: true } } } })
+      if (!target) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND", 404)
+      return target.user?.anonymizedAt != null && !target.identityActorBinding
     }, { timeout: 15_000 }))
+    // The credential fence calls a card on a deleted user unavailable and refused every save
+    // (Zeytun, 2026-11-19). Such a card is nobody's login: save() takes the registry lock itself,
+    // checks the number is free and writes it to the card only.
+    if (deletedUser) return await runWithTenant(organizationId, () => prisma.$transaction(save, { timeout: 15_000 }))
     const fenced = await runWithTenant(organizationId, () => withLegacyCredentialMaintenance(prisma, organizationId,
       [{ kind: "ACTOR", actorId: agentId }], save))
     if (!fenced.allowed) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED", 409)

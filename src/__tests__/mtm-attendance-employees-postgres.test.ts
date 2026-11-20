@@ -503,6 +503,23 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     } finally { web.current = null }
   })
 
+  // Zeytun, 2026-11-20: the page of a deleted user's card showed that user's old number and
+  // refused every save with «the administrator's number is changed in Users».
+  it("shows and saves the card of a deleted user as a card of its own", async () => {
+    const create = await import("@/lib/mtm/attendance-employee-create")
+    const org = "employee-pg-deleted-number", actor = { organizationId: org, userId: "deleted-number-admin", principalType: "session" as const }
+    const created = await tenant(org, () => create.createAttendanceEmployee(actor, { name: "Fictional leaver", phone: "+994550003311" }))
+    await tenant(org, () => prisma.user.update({ where: { id: created.userId }, data: { isActive: false, anonymizedAt: new Date(), phone: null, name: "Deleted user" } }))
+    const page = await tenant(org, () => store.readAttendanceEmployee(actor, created.agentId))
+    expect(page.employee).toMatchObject({ phone: "+994550003311", loginEditable: true, crmRole: null })
+    await tenant(org, () => store.updateAttendanceEmployee(actor, created.agentId, { name: "Fictional leaver", phone: "+994550003322", email: null, position: "Fictional clerk", teamId: null, managerId: null }))
+    await tenant(org, async () => {
+      expect(await prisma.mtmAgent.findUnique({ where: { id: created.agentId } })).toMatchObject({ phone: "+994550003322", position: "Fictional clerk", userId: created.userId })
+      // The tombstone is not written to.
+      expect(await prisma.user.findUnique({ where: { id: created.userId } })).toMatchObject({ phone: null, name: "Deleted user" })
+    })
+  })
+
   it("protects an active CRM user's link and card while leaving exclusion as a separate operation", async () => {
     await tenant(automaticOrg, async () => {
       const card = await prisma.mtmAgent.findFirstOrThrow({ where: { userId: "automatic-new" } })
