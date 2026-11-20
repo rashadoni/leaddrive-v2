@@ -193,6 +193,17 @@ describe("attendance API and server page guards", () => {
     await expect(AttendanceLayout({ children: "private attendance content" })).rejects.toThrow("NEXT_NOT_FOUND")
   })
 
+  // Zeytun, 2026-11-20: a manager with only the automatic employee card met a bare 404 and was made admin.
+  it("tells someone without the HR grant or a manager's card what is missing, without the page", async () => {
+    storedSwitch(true)
+    caller("manager", null)
+    const content = await AttendanceLayout({ children: "private attendance content" })
+    const az = JSON.parse(readFileSync("messages/az.json", "utf8"))
+    const html = renderToStaticMarkup(createElement(NextIntlClientProvider, { locale: "az", timeZone: "Asia/Baku", messages: az, children: content }))
+    expect(html).toContain('data-testid="attendance-no-grant"')
+    expect(html).not.toContain("private attendance content")
+  })
+
   it("renders the nested page for a manager and reads settings under the tenant context", async () => {
     caller("manager", MANAGER)
     vi.mocked(prisma.mtmSetting.findMany).mockImplementation((async () => {

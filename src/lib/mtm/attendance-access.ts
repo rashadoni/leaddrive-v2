@@ -19,5 +19,6 @@ export async function getMtmAttendanceAccess(organizationId: string, userId: str
     }
   }
   const actor = await resolveMtmRouteActor(prisma, { organizationId, userId, webRole })
-  return { enabled: true as const, settings, actor: actor?.role === "AGENT" ? null : actor }
+  // A field agent is outside Personnel entirely (no page, no explanation of why).
+  return { enabled: true as const, settings, actor: actor?.role === "AGENT" ? null : actor, fieldAgent: actor?.role === "AGENT" }
 }
