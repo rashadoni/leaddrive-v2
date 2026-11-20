@@ -11,6 +11,7 @@ import { hasModule, LEGACY_MODULE_MAP } from "@/lib/modules"
 import { isNavItemEnabled, navItems, NAV_GROUP_ORDER } from "@/lib/nav-items"
 import type { Module } from "@/lib/permissions"
 import { ENTITY_TO_MODULE } from "@/lib/notifications/taxonomy"
+import { hideableIdForGateModule } from "@/lib/user-module-access"
 
 // ---------------------------------------------------------------------------
 // Context type
@@ -117,6 +118,25 @@ export function roleCanRead(role: Role, moduleId: string): boolean {
   // invoices, budgeting, profitability, reports, voip, ai, projects, events, mtm,
   // health, insurance, public-sector, media, etc.) — direct permission-module lookup.
   return checkPermission(role, moduleId as Module, "read")
+}
+
+// ---------------------------------------------------------------------------
+// entityTypeHiddenFromUser
+// ---------------------------------------------------------------------------
+
+/**
+ * True when an admin hid this notice's module from the person (Settings → Users,
+ * `User.hiddenModules`, already empty for an admin — pass effectiveHiddenModules).
+ * The same reading as requireAuth's per-user gate (api-auth.ts moduleAccessDenial):
+ * permission scope → module id → the hideable entry. Owner, 2026-11-20: «если
+ * модули будут включены конкретные, то и уведомления только из этих модулей».
+ */
+export function entityTypeHiddenFromUser(entityType: string, hiddenModules: readonly string[]): boolean {
+  if (hiddenModules.length === 0) return false
+  const moduleId = ENTITY_TO_MODULE[entityType]
+  if (!moduleId) return false
+  const gateModule = PERMISSION_MODULE_TO_MODULE_ID[moduleId] ?? LEGACY_MODULE_MAP[moduleId] ?? moduleId
+  return hiddenModules.includes(hideableIdForGateModule(gateModule)) || hiddenModules.includes(moduleId)
 }
 
 // ---------------------------------------------------------------------------

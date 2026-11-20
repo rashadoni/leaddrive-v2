@@ -8,7 +8,8 @@ import { prisma } from "@/lib/prisma"
 import { sendPushToUser } from "@/lib/push-send"
 import { sendStaffTelegramNotice } from "@/lib/telegram-staff/notify"
 import { deriveSection } from "@/lib/notifications/taxonomy"
-import { canNotifyEntityType } from "@/lib/notifications/access"
+import { canNotifyEntityType, entityTypeHiddenFromUser } from "@/lib/notifications/access"
+import { effectiveHiddenModules } from "@/lib/user-module-access"
 import { shouldPush, type NotificationPrefs } from "@/lib/notifications/prefs"
 import { getOrgModuleContext } from "@/lib/api-auth"
 import type { Role } from "@/lib/permissions"
@@ -82,7 +83,7 @@ async function resolvePushDecision(
     if (!section) return false // unknown entityType → don't push (fail-closed)
 
     const [recipient, orgCtx, prefRow] = await Promise.all([
-      prisma.user.findUnique({ where: { id: recipientUserId }, select: { role: true } }),
+      prisma.user.findUnique({ where: { id: recipientUserId }, select: { role: true, hiddenModules: true } }),
       getOrgModuleContext(orgId),
       prisma.userPreference.findUnique({ where: { userId: recipientUserId } }),
     ])
@@ -92,6 +93,8 @@ async function resolvePushDecision(
     const ctx = { role: recipient.role as Role, ...orgCtx }
     // Use canNotifyEntityType (per-entity gate) for delivery, not canNotifySection (per-section).
     if (!canNotifyEntityType(ctx, entityType)) return false
+    // Nor from a module an admin hid from this person — the bell does not list it either.
+    if (entityTypeHiddenFromUser(entityType, effectiveHiddenModules(recipient.role, recipient.hiddenModules))) return false
 
     const prefs: NotificationPrefs =
       ((prefRow?.data as { notificationPreferences?: NotificationPrefs } | null)?.notificationPreferences) ?? {}

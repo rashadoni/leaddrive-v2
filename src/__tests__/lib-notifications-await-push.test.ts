@@ -30,6 +30,7 @@ vi.mock("@/lib/notifications/taxonomy", () => ({
 
 vi.mock("@/lib/notifications/access", () => ({
   canNotifyEntityType: vi.fn(() => true),
+  entityTypeHiddenFromUser: vi.fn(() => false),
 }))
 
 vi.mock("@/lib/notifications/prefs", () => ({
