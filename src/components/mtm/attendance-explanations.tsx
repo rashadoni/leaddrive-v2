@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { formatDate, formatTime } from "@/lib/format-date"
 import { Button } from "@/components/ui/button"
+import { MTM_TAB_ROW, mtmTabClass } from "@/components/mtm/calm-classes"
 import { ATTENDANCE_EXPLANATION_LOOKBACK_DAYS, type AttendanceExplanationDto } from "@/lib/mtm/attendance-explanation-contract"
 import { addDateKeyDays, currentDateKey } from "@/lib/mtm/mobile-week"
 
@@ -70,12 +71,13 @@ export function MtmAttendanceExplanations() {
         <h1 className="text-2xl font-bold tracking-tight">{t("explanationsTitle")}</h1>
         <p className="text-sm text-muted-foreground">{t("explanationsHint")}</p>
       </div>
-      <div className="flex flex-wrap gap-2" role="tablist">
+      <div className={MTM_TAB_ROW} role="tablist">
         {FILTERS.map(value => (
-          <Button key={value} type="button" role="tab" aria-selected={filter === value} variant={filter === value ? "default" : "outline"}
-            className="min-h-10 rounded-full" onClick={() => setFilter(value)} data-testid={`attendance-explanations-filter-${value}`}>
+          <button key={value} type="button" role="tab" aria-selected={filter === value}
+            className={`${mtmTabClass(filter === value)} inline-flex items-center text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring`}
+            onClick={() => setFilter(value)} data-testid={`attendance-explanations-filter-${value}`}>
             {t(`explanationsFilter_${value}`)} · {count(value)}
-          </Button>
+          </button>
         ))}
       </div>
       {message ? <p role="status" className="text-sm text-muted-foreground">{message}</p> : null}
