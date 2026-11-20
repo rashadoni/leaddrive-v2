@@ -78,6 +78,8 @@ const ownCard: Card = { id: "card-own", name: "Field Manager", role: "SUPERVISOR
 let cards: Card[] = []
 let writes: { url: string; method: string; body: unknown }[] = []
 let cardWriteStatus = 200
+/** Personnel's HR-grant list (GET /mtm/attendance/access); null = the section is off for the tenant. */
+let hrUsers: { id: string; allEmployees: boolean; version: string }[] | null = null
 
 let root: Root
 let container: HTMLDivElement
@@ -97,6 +99,7 @@ beforeEach(async () => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
   writes = []
   cardWriteStatus = 200
+  hrUsers = null
   vi.stubGlobal("fetch", vi.fn(async (input: string, init?: { method?: string; body?: string }) => {
     const url = String(input)
     const method = init?.method ?? "GET"
@@ -107,6 +110,7 @@ beforeEach(async () => {
       if (url.includes("/mtm/agents") && cardWriteStatus !== 200) return reply(cardWriteStatus, { error: "Seat limit reached" })
       return reply(200, { success: true, data: { id: "u-1" } })
     }
+    if (url.includes("/mtm/attendance/access")) return hrUsers ? reply(200, { success: true, data: { users: hrUsers, hasMore: false } }) : reply(404, { error: "Not found" })
     if (url.includes("/mtm/agents")) return reply(200, { success: true, data: { agents: cards, total: cards.length } })
     if (url.includes("/settings/roles")) return reply(200, { success: true, data: { roles, permissions: {} } })
     if (url.includes("/voice-budget")) return reply(200, { success: true, data: {} })
@@ -378,6 +382,29 @@ describe("user card — the employee card behind Route & Field", () => {
     expect(cardWrites()).toEqual([
       { url: "/api/v1/mtm/agents/card-employee", method: "PUT", body: { role: "MANAGER" } },
     ])
+  })
+
+  // Zeytun, 2026-11-20: Ayshan, a manager with only the automatic employee card, met «page not
+  // found» in Personnel whatever was ticked, and was made an administrator. The HR grant is here now.
+  it("says Personnel will not open without HR access or a manager's card, and saves the HR tick", async () => {
+    hrUsers = [{ id: "u-1", allEmployees: false, version: "2026-11-20T10:00:00.000Z" }]
+    await openCard([])
+    await choose(fieldCard(), "none")
+    const hr = () => document.querySelector<HTMLInputElement>('[data-testid="user-personnel-hr"]')
+    expect(hr()?.checked).toBe(false)
+    expect(document.querySelector('[data-testid="user-personnel-closed"]')).not.toBeNull()
+    await act(async () => { hr()!.click() })
+    expect(document.querySelector('[data-testid="user-personnel-closed"]')).toBeNull()
+    await save()
+
+    expect(writes.filter((write) => write.url.includes("/mtm/attendance/access"))).toEqual([
+      { url: "/api/v1/mtm/attendance/access/u-1", method: "PATCH", body: { allEmployees: true, version: "2026-11-20T10:00:00.000Z" } },
+    ])
+  })
+
+  it("shows no HR tick while the tenant's attendance is off", async () => {
+    await openCard([])
+    expect(document.querySelector('[data-testid="user-personnel-access"]')).toBeNull()
   })
 
   it("leaves the card alone while the module is hidden from the person", async () => {

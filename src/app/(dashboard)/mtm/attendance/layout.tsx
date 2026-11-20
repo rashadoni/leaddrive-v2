@@ -7,6 +7,7 @@ import { checkPermission, type Role } from "@/lib/permissions"
 import { getMtmAttendanceAccess } from "@/lib/mtm/attendance-access"
 import { MtmAttendanceFeatureSwitch } from "@/components/mtm/attendance-feature-switch"
 import { MtmAttendanceSectionTabs } from "@/components/mtm/attendance-section-tabs"
+import { MtmAttendanceNoGrant } from "@/components/mtm/attendance-no-grant"
 import { isNavItemRoleAllowed, navItems, orgFromSession } from "@/lib/nav-items"
 
 export const dynamic = "force-dynamic"
@@ -21,11 +22,14 @@ export default async function AttendanceLayout({ children }: { children: ReactNo
     const capability = await getTenantCapabilityAccess(organizationId, "personnel")
     if (!capability.allowed) return "closed" as const
     const access = await getMtmAttendanceAccess(organizationId, userId, role)
-    return !access.enabled ? "off" as const : access.actor ? "open" as const : "closed" as const
+    // Attendance on, the module open to this person, but neither the HR grant nor a manager's card.
+    return !access.enabled ? "off" as const : access.actor ? "open" as const : access.fieldAgent ? "closed" as const : "no-grant" as const
   })
   // The switch lives in Personnel → Settings only, so with attendance off an
   // administrator still reaches the section — every page of it shows the switch.
   if (state === "off" && (role === "admin" || role === "superadmin")) return <MtmAttendanceFeatureSwitch enabled={false} canChange />
+  // Said in words, not «page not found» (Zeytun, 2026-11-20: Ayshan saw only a 404 and was made admin).
+  if (state === "no-grant") return <MtmAttendanceNoGrant />
   if (state !== "open") notFound()
   // The section's own menu on each of its pages, as the «Kadr uçotu» clip shows it
   // (owner, 2026-10-20): the sidebar's Personnel items this person may open.

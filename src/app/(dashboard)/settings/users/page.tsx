@@ -221,6 +221,19 @@ const USER_FORM_COPY: Record<Loc, Record<string, string>> = {
   },
 }
 
+/** Card roles that open Personnel without the HR grant (lib/mtm/attendance-access.ts). */
+const PERSONNEL_CARD_ROLES = new Set(["ADMIN", "MANAGER", "SUPERVISOR"])
+
+/** The Personnel HR-grant rows matching a name; null when the section is off or refused. */
+async function readHrRow(name: string, orgId?: string): Promise<Array<{ id: string; allEmployees: boolean; version: string }> | null> {
+  const res = await fetch(`/api/v1/mtm/attendance/access?${new URLSearchParams({ search: name })}`, {
+    cache: "no-store", headers: orgId ? { "x-organization-id": orgId } : undefined,
+  })
+  if (!res.ok) return null
+  const json = await res.json().catch(() => null)
+  return Array.isArray(json?.data?.users) ? json.data.users : null
+}
+
 function UserFormDialog({
   open, onOpenChange, onSaved, editUser, orgId, availableRoles,
 }: {
@@ -379,6 +392,45 @@ function UserFormDialog({
     return () => { cancelled = true }
   }, [open, tenantHasOmni, orgId])
 
+  // Personnel (Kadr uçotu) opens to a non-admin only with the HR grant or a manager's card
+  // (lib/mtm/attendance-access.ts). Zeytun, 2026-11-20: Ayshan, a manager with only the automatic
+  // EMPLOYEE card, met «page not found» whatever modules were ticked. The grant is set here now.
+  // null = not read: the attendance section is off, or the list did not load — nothing is shown.
+  const [hrAccess, setHrAccess] = useState<{ allEmployees: boolean } | null>(null)
+  const [hrPick, setHrPick] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!open || !tenantHasField) return
+    let cancelled = false
+    setHrAccess(null)
+    setHrPick(null)
+    readHrRow(editUser?.name ?? "", orgId)
+      .then((users) => {
+        if (cancelled || users === null) return
+        setHrAccess({ allEmployees: users.find((user) => user.id === editUserId)?.allEmployees === true })
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [open, editUserId, editUser?.name, tenantHasField, orgId])
+  const hrChecked = hrPick ?? hrAccess?.allEmployees ?? false
+  const personnelOpens = hrChecked || (chosenFieldCard !== null && PERSONNEL_CARD_ROLES.has(chosenFieldCard.role))
+  // Saved after the user row, like the card: the grant names a saved login.
+  const applyHrAccess = async (userId: string, name: string) => {
+    if (hrAccess === null || moduleMaskIgnored || form.hiddenModules.includes("mtm")) return
+    if (hrChecked === hrAccess.allEmployees) return
+    const users = await readHrRow(name, orgId)
+    const row = users?.find((user) => user.id === userId)
+    if (!row) throw new Error(tc("errorUpdateFailed"))
+    const res = await fetch(`/api/v1/mtm/attendance/access/${encodeURIComponent(userId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": orgId } : {} as Record<string, string>) },
+      body: JSON.stringify({ allEmployees: hrChecked, version: row.version }),
+    })
+    if (!res.ok) {
+      const json = await res.json().catch(() => null)
+      throw new Error(json?.error || tc("errorUpdateFailed"))
+    }
+  }
+
   // Links, unlinks or creates the employee card after the user row is saved.
   // The MTM API owns these writes (admin-only, audited); this only calls it.
   const applyFieldCard = async (userId: string) => {
@@ -472,12 +524,20 @@ function UserFormDialog({
       })
       const json = await res.json().catch(() => null)
       if (!res.ok) throw new Error(apiErrorText(tu, json, tc("errorUpdateFailed")))
+      const savedUserId: string | undefined = isEdit ? editUser!.id : json?.data?.id
       try {
         if (isEdit) await applyFieldCard(editUser!.id)
       } catch (cardError) {
         // The user row is saved; say so, and keep the card open on the part that failed.
         onSaved()
         setError(tu("fieldCardSaveFailed", { reason: errorMessage(cardError) }))
+        return
+      }
+      try {
+        if (savedUserId) await applyHrAccess(savedUserId, form.name)
+      } catch (hrError) {
+        onSaved()
+        setError(tu("personnelHrSaveFailed", { reason: errorMessage(hrError) }))
         return
       }
       onSaved()
@@ -725,6 +785,18 @@ function UserFormDialog({
                               </p>
                             </div>
                           )
+                        )}
+                        {option.id === "mtm" && access.outcome !== "hidden" && hrAccess !== null && !moduleMaskIgnored && (
+                          <div className="mt-2 grid gap-1" data-testid="user-personnel-access">
+                            <label className="flex items-start gap-2 text-sm">
+                              <input type="checkbox" className="mt-0.5 h-4 w-4 rounded border-input" checked={hrChecked}
+                                onChange={(e) => setHrPick(e.target.checked)} data-testid="user-personnel-hr" />
+                              <span>{tu("personnelHrLabel")}<span className="block text-xs text-muted-foreground">{tu("personnelHrHint")}</span></span>
+                            </label>
+                            {!personnelOpens && (
+                              <p className="text-xs text-amber-700 dark:text-amber-400" data-testid="user-personnel-closed">{tu("personnelClosedNote")}</p>
+                            )}
+                          </div>
                         )}
                       </li>
                     )
