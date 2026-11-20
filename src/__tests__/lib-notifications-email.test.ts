@@ -25,7 +25,7 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("@/lib/push-send", () => ({ sendPushToUser: mocks.sendPushToUser }))
 vi.mock("@/lib/api-auth", () => ({ getOrgModuleContext: mocks.getOrgModuleContext }))
 vi.mock("@/lib/notifications/taxonomy", () => ({ deriveSection: vi.fn(() => "crm") }))
-vi.mock("@/lib/notifications/access", () => ({ canNotifyEntityType: vi.fn(() => true) }))
+vi.mock("@/lib/notifications/access", () => ({ canNotifyEntityType: vi.fn(() => true), entityTypeHiddenFromUser: vi.fn(() => false) }))
 vi.mock("@/lib/notifications/prefs", () => ({ shouldPush: vi.fn(() => true) }))
 vi.mock("@/lib/email", () => ({ sendEmail: mocks.sendEmail }))
 

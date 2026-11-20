@@ -10,7 +10,8 @@ import { withRls } from "@/lib/with-rls"
 import { PAGE_SIZE } from "@/lib/constants"
 import type { Role } from "@/lib/permissions"
 import { ENTITY_TO_MODULE } from "@/lib/notifications/taxonomy"
-import { canNotifyEntityType } from "@/lib/notifications/access"
+import { canNotifyEntityType, entityTypeHiddenFromUser } from "@/lib/notifications/access"
+import { effectiveHiddenModules } from "@/lib/user-module-access"
 import {
   MTM_LOCATION_REQUEST_NOTIFICATION_ENTITY,
   MTM_LOCATION_REQUEST_NOTIFICATION_URL,
@@ -24,12 +25,13 @@ import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
  * entityType is null (system/global) OR maps to a module the user may access.
  * Fail-CLOSED: any ctx error → only null-entityType rows.
  */
-async function computeEntityTypeFilter(orgId: string, role: Role) {
+async function computeEntityTypeFilter(orgId: string, role: Role, hiddenModules: readonly string[] = []) {
   let allowed: string[] = []
   try {
     const orgCtx = await getOrgModuleContext(orgId)
     const ctx = { role, ...orgCtx }
-    allowed = Object.keys(ENTITY_TO_MODULE).filter((et) => canNotifyEntityType(ctx, et))
+    // A module an admin hid from this person brings them no notices either (2026-11-20).
+    allowed = Object.keys(ENTITY_TO_MODULE).filter((et) => canNotifyEntityType(ctx, et) && !entityTypeHiddenFromUser(et, hiddenModules))
     const attendanceOnly = [MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY, MTM_ATTENDANCE_RISK_NOTIFICATION_ENTITY, ATTENDANCE_EXPLANATION_NOTIFICATION_ENTITY]
     if (allowed.some((entity) => attendanceOnly.includes(entity))) {
       if (!await readAttendanceFeature(prisma, orgId)) allowed = allowed.filter((entity) => !attendanceOnly.includes(entity))
@@ -145,7 +147,7 @@ export const GET = withRls(async (req, { orgId, session }) => {
     // unknown entityTypes fail closed; entityType IS NULL (system/global) always
     // visible. Same filter on the list + both counts so they stay consistent.
     const recipientFilter = { OR: [{ userId }, { userId: "" }] }
-    const entityTypeFilter = await computeEntityTypeFilter(orgId, role)
+    const entityTypeFilter = await computeEntityTypeFilter(orgId, role, effectiveHiddenModules(role, session?.hiddenModules))
     const reminderFilter = await attendanceReminderWebFilter(orgId, userId)
 
     // Optional entityType scope — lets a caller (e.g. the sidebar Inbox badge) narrow the unread count
@@ -207,7 +209,7 @@ export const PATCH = withRls(async (req, { orgId, session }) => {
   // user can't mark inaccessible-section notifications read (mark state must match
   // what the read-gate shows). + recipient scope (FIX C: IDOR).
   const recipientFilter = { OR: [{ userId }, { userId: "" }] }
-  const entityTypeFilter = await computeEntityTypeFilter(orgId, role)
+  const entityTypeFilter = await computeEntityTypeFilter(orgId, role, effectiveHiddenModules(role, session?.hiddenModules))
   const reminderFilter = await attendanceReminderWebFilter(orgId, userId)
 
   try {
