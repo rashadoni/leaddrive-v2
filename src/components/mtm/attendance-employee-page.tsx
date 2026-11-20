@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { BriefcaseBusiness, CalendarDays, ChevronLeft, History, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PhoneInput } from "@/components/ui/phone-input"
 import { HomePill, type HomeTone } from "@/components/mtm/home-parts"
 import { MtmAttendanceEmployeeRemove } from "@/components/mtm/attendance-employee-remove"
 import { MtmAttendanceDepartmentField, applyAttendanceUnitRename, departmentPayload, emptyDepartmentValue, type DepartmentValue } from "@/components/mtm/attendance-department-field"
@@ -138,7 +139,7 @@ export function MtmAttendanceEmployeePage({ agentId, back }: { agentId: string; 
         <Section title={p("sectionPersonal")} icon={<UserRound className="h-4 w-4" />} testId="employee-section-personal">
           <Field id="employee-name" label={p("addEmployeeName")}><Input id="employee-name" required maxLength={200} className="min-h-11" value={form.name} onChange={event => set("name")(event.target.value)} /></Field>
           <Field id="employee-phone" label={p("employeePhone")} hint={employee.loginEditable ? p("employeePhoneHint") : p("employeeLoginLocked")} missing={!form.phone}>
-            <Input id="employee-phone" type="tel" inputMode="tel" placeholder="+994501234567" maxLength={24} className="min-h-11" disabled={!employee.loginEditable} value={form.phone} onChange={event => set("phone")(event.target.value)} /></Field>
+            <PhoneInput id="employee-phone" placeholder="+994501234567" className="min-h-11" disabled={!employee.loginEditable} value={form.phone} onValueChange={set("phone")} /></Field>
           <Field id="employee-email" label={p("addEmployeeEmail")}>
             <Input id="employee-email" type="email" maxLength={320} className="min-h-11" disabled={!employee.loginEditable} value={form.email} onChange={event => set("email")(event.target.value)} /></Field>
         </Section>

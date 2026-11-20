@@ -80,7 +80,7 @@ describe("Personnel → employee page", () => {
     await submit(saveForm)
     expect(String(posts()[0][0])).toBe("/api/v1/mtm/attendance/employees/togrul")
     expect(JSON.parse(String(posts()[0][1]!.body))).toEqual({ name: "Togrul Məmmədov", position: "Менеджер", departmentId: "dep-finance", teamId: "team-kassa", managerId: "m-saida",
-      phone: "+994 55 000 11 22", email: "togrul@example.test", hireDate: "2026-03-02" })
+      phone: "+994550001122", email: "togrul@example.test", hireDate: "2026-03-02" })
     expect(container.textContent).toContain(p("employeeSaved"))
   })
 

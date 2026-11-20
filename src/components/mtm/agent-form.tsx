@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { Check, X, MessageCircle, KeyRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PhoneInput } from "@/components/ui/phone-input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
@@ -390,7 +391,7 @@ export function MtmAgentForm({ open, onOpenChange, onSaved, initialData, orgId }
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="phone">{`${tf("whatsappPhone")}${isEdit ? "" : " *"}`}</Label>
-                <Input id="phone" type="tel" inputMode="tel" placeholder="+994501234567" value={form.phone} onChange={e => update("phone", e.target.value)} required={!isEdit} />
+                <PhoneInput id="phone" placeholder="+994501234567" value={form.phone} onValueChange={phone => update("phone", phone)} required={!isEdit} />
               </div>
               <div>
                 <Label htmlFor="email">{tf("emailOptional")}</Label>

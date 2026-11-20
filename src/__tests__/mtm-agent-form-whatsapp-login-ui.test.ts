@@ -178,7 +178,8 @@ describe("agent card — signing in by a code from WhatsApp", () => {
     await save()
     const [write] = writes()
     expect([write.method, write.url]).toEqual(["POST", "/api/v1/mtm/agents"])
-    expect(write.body).toMatchObject({ name: "Fictional Agent", phone: "+994 50 111 22 33" })
+    // The field keeps «+» and digits only (2026-11-19), so the spaces never reach the server.
+    expect(write.body).toMatchObject({ name: "Fictional Agent", phone: "+994501112233" })
     expect("password" in write.body).toBe(false)
   })
 
