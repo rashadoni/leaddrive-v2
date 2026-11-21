@@ -13,7 +13,7 @@ export const ATTENDANCE_SETTINGS_GROUPS = [
 ] as const
 export type AttendanceSettingsCard = (typeof ATTENDANCE_SETTINGS_GROUPS)[number]["cards"][number]
 export const ATTENDANCE_SETTINGS_CARDS: readonly AttendanceSettingsCard[] = ATTENDANCE_SETTINGS_GROUPS.flatMap(group => [...group.cards])
-/** Administrator-only like their endpoints. */
+/** For whoever runs Personnel, like their endpoints: an administrator or HR. */
 export const ATTENDANCE_ADMIN_SETTINGS: readonly AttendanceSettingsCard[] = ["location", "reminders", "approval", "checks"]
 
 /** Working days as runs: [1,2,3,4,5] → "Mon–Fri", [1,2,4] → "Mon, Tue, Thu".

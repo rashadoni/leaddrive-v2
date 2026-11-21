@@ -67,7 +67,7 @@ export function MtmAttendanceQrDisplay() {
   }
   async function toggle() {
     if (!directory?.canConfigure) return
-    await mutate(() => fetch("/api/v1/mtm/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ attendanceBranchQrEnabled: !directory.enabled }) }))
+    await mutate(() => fetch("/api/v1/mtm/attendance/policy", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ attendanceBranchQrEnabled: !directory.enabled }) }))
     await load()
   }
   async function pair(branchId: string, screensBefore: number) {

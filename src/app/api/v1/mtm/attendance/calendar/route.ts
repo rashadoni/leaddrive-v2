@@ -12,12 +12,12 @@ export const GET = withMtmAttendanceAuth("read", async (req, auth) => {
     return NextResponse.json({ error: "Invalid calendar range", code: "MTM_ATTENDANCE_CALENDAR_RANGE_INVALID" }, { status: 400 })
   }
   const days = await readAttendanceCalendar(auth.orgId, from, to)
-  return NextResponse.json({ success: true, data: { today, days, canManage: auth.role === "admin" || auth.role === "superadmin" } },
+  return NextResponse.json({ success: true, data: { today, days, canManage: auth.canManagePersonnel } },
     { headers: { "Cache-Control": "private, no-store" } })
 })
 
 async function mutate(req: NextRequest, auth: AttendanceAuth, remove: boolean) {
-  if (auth.role !== "admin" && auth.role !== "superadmin") {
+  if (!auth.canManagePersonnel) {
     return NextResponse.json({ error: "Forbidden", code: "MTM_ATTENDANCE_ADMIN_REQUIRED" }, { status: 403 })
   }
   try {

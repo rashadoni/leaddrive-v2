@@ -33,12 +33,15 @@ describe("user card and reviewer dialog: every sidebar section has a tick", () =
     }
   })
 
-  it("names every sidebar group a tick opens, so Personnel is not invisible", () => {
-    const [mtm] = userModuleOptions(["mtm"], translate)
-    expect(mtm.groups).toEqual(["Route & Field", "Personnel"])
-    expect(mtm.label).toBe("Marşrut & Sahə · Kadr uçotu")
+  it("gives Route & Field and Personnel a tick each (owner, 2026-11-21)", () => {
+    const [mtm, personnel] = userModuleOptions(["mtm", "personnel"], translate)
+    expect(mtm.groups).toEqual(["Route & Field"])
+    expect(mtm.label).toBe("Marşrut & Sahə")
     expect(mtm.pagesText).not.toContain(translate("pharmacyPhoneOrders"))
-    expect(mtm.pagesText).toContain(translate("personnelToday"))
+    expect(mtm.pagesText).not.toContain(translate("personnelToday"))
+    expect(personnel.groups).toEqual(["Personnel"])
+    expect(personnel.label).toBe("Kadr uçotu")
+    expect(personnel.pagesText).toContain(translate("personnelToday"))
   })
 
   it("every offered tick resolves to a translated sidebar name", () => {

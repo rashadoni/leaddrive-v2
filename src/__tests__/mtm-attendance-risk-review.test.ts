@@ -72,7 +72,7 @@ describe("attendance risk reports and reason ledger",()=>{
  })
  it.each(["grant","hidden","disabled","scope"])("rechecks a stale middleware actor after %s changes",async mode=>{
   if(mode==="grant"){currentUser={role:"viewer",hiddenModules:[],mtmAttendanceAll:false};vi.mocked(resolveMtmRouteActor).mockResolvedValue(null)}
-  if(mode==="hidden")currentUser={role:"manager",hiddenModules:["mtm"],mtmAttendanceAll:true}
+  if(mode==="hidden")currentUser={role:"manager",hiddenModules:["personnel"],mtmAttendanceAll:true}
   if(mode==="disabled")vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({value:false} as never)
   if(mode==="scope")vi.mocked(resolveMtmRouteActor).mockResolvedValue({role:"MANAGER",agentId:null,scopedAgentIds:[]})
   await expect(readAttendanceRiskReport({organizationId:org,actor,allEmployeesGrant:true,reviewer,query:{...query,employeeId:employee}})).rejects.toMatchObject({status:mode==="disabled"?404:403})

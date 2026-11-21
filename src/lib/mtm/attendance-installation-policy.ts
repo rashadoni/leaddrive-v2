@@ -1,6 +1,6 @@
+import { isPersonnelManager } from "@/lib/mtm/attendance-manager"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { effectiveHiddenModules } from "@/lib/user-module-access"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import type { AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
 import { isAttendanceMarkExempt, lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
@@ -22,9 +22,9 @@ export async function saveAttendanceInstallationRule(reviewer: AttendanceReviewe
   if (reviewer.principalType !== "session" || typeof required !== "boolean") throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await lockAttendanceInstallationPolicy(tx, reviewer.organizationId, true)
-    const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`SELECT role,"hiddenModules" FROM users
+    const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[]; mtmAttendanceAll: boolean }[]>`SELECT role,"hiddenModules","mtmAttendanceAll" FROM users
       WHERE "organizationId"=${reviewer.organizationId} AND id=${reviewer.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
-    if (!user || !["admin", "superadmin"].includes(user.role) || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
+    if (!user || !isPersonnelManager(user)) throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
     const before = await readAttendanceInstallationRule(tx, reviewer.organizationId)
     if (before === required) return { changed: false }
     await tx.mtmSetting.upsert({ where: { organizationId_key: { organizationId: reviewer.organizationId, key: ATTENDANCE_INSTALLATION_RULE_KEY } },

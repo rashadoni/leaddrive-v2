@@ -1,3 +1,4 @@
+import { isCrmAdminRole, isPersonnelManager } from "@/lib/mtm/attendance-manager"
 import { createHash, randomUUID } from "node:crypto"
 import { ATTENDANCE_TRACKED_CARD_WHERE } from "@/lib/mtm/attendance-tracking"
 import { Prisma } from "@prisma/client"
@@ -19,8 +20,9 @@ const policyDto = (row: Row): AttendanceLeaveRevision<AttendanceLeavePolicy> => 
 const profileDto = (row: Row): AttendanceLeaveRevision<AttendanceLeaveProfile> => ({ id: row.id, year: row.year, version: row.version, createdAt: row.createdAt.toISOString(), value: AttendanceLeaveProfileSchema.parse(row.value) })
 async function admin(tx: Tx, reviewer: AttendanceReviewer) {
   await currentAttendanceReadActor(tx, reviewer)
-  const user = await tx.user.findFirst({ where: { id: reviewer.userId, organizationId: reviewer.organizationId }, select: { role: true } })
-  if (!user || !["admin", "superadmin"].includes(user.role)) return fail("ADMIN_REQUIRED", 403)
+  const user = await tx.user.findFirst({ where: { id: reviewer.userId, organizationId: reviewer.organizationId }, select: { role: true, hiddenModules: true, mtmAttendanceAll: true } })
+  if (!user || !isPersonnelManager(user)) return fail("ADMIN_REQUIRED", 403)
+  return user
 }
 async function latestPolicy(tx: Tx, organizationId: string, year: number) {
   const [row] = await tx.$queryRaw<Row[]>`SELECT id,year,version,"createdAt",value,"requestHash","createdBy" FROM mtm_attendance_leave_policies
@@ -35,8 +37,10 @@ async function save(reviewer: AttendanceReviewer, raw: unknown, kind: "policy" |
   return prisma.$transaction(async (tx: Tx) => {
     await tx.$executeRaw`SELECT set_config('lock_timeout','3s',true)`
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-leave:${reviewer.organizationId}:${input.year}`},0))`
-    await admin(tx, reviewer)
+    const user = await admin(tx, reviewer)
     const agentId = "agentId" in input ? input.agentId : null
+    // HR do not set their own leave entitlement; an administrator does.
+    if (agentId && !isCrmAdminRole(user.role) && await tx.mtmAgent.findFirst({ where: { id: agentId, organizationId: reviewer.organizationId, userId: reviewer.userId }, select: { id: true } })) return fail("ADMIN_REQUIRED", 403)
     if (agentId && !await tx.mtmAgent.findFirst({ where: { id: agentId, organizationId: reviewer.organizationId, ...ATTENDANCE_TRACKED_CARD_WHERE }, select: { id: true } })) return fail("EMPLOYEE_UNAVAILABLE", 404)
     const [existing] = await tx.$queryRaw<Row[]>(Prisma.sql`SELECT id,year,version,"createdAt",value,"requestHash","createdBy" FROM ${table} WHERE "organizationId"=${reviewer.organizationId} AND "requestId"=${input.requestId}`)
     if (existing) {
@@ -71,7 +75,7 @@ export async function readAttendanceLeaveBalances(reviewer: AttendanceReviewer, 
     const now = new Date(), today = currentDateKey(now, timezone)
     const usedThrough = parsed.data.usedThrough ?? today
     if (usedThrough > today) return fail("FUTURE_USAGE", 400)
-    const user = await tx.user.findFirst({ where: { id: reviewer.userId, organizationId: reviewer.organizationId }, select: { role: true } })
+    const user = await tx.user.findFirst({ where: { id: reviewer.userId, organizationId: reviewer.organizationId }, select: { role: true, hiddenModules: true, mtmAttendanceAll: true } })
     const employees = await tx.mtmAgent.findMany({ where: { organizationId: reviewer.organizationId, ...ATTENDANCE_TRACKED_CARD_WHERE,
       ...(actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }) }, select: { id: true, name: true, team: { select: { name: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }], skip: offset, take: 51 })
     const page = employees.slice(0, 50), ids = page.map(row => row.id)
@@ -83,7 +87,7 @@ export async function readAttendanceLeaveBalances(reviewer: AttendanceReviewer, 
       query: { from: `${year}-01-01`, to: `${year}-12-31`, form: "ALL" }, now })
     const rowsByAgent = new Map<string, typeof report.rows>()
     for (const row of report.rows) { const rows = rowsByAgent.get(row.employeeId) ?? []; rows.push(row); rowsByAgent.set(row.employeeId, rows) }
-    return { year, usedThrough, today, policy, canManage: !!user && ["admin", "superadmin"].includes(user.role), hasMore: employees.length > 50,
+    return { year, usedThrough, today, policy, canManage: isPersonnelManager(user), hasMore: employees.length > 50,
       rows: page.map(employee => attendanceLeaveBalance({ employeeId: employee.id, name: employee.name, teamName: employee.team?.name ?? null,
         rows: rowsByAgent.get(employee.id) ?? [], usedThrough, policy: policy?.value ?? null, profile: byAgent.get(employee.id) ?? null })) }
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 15000 })

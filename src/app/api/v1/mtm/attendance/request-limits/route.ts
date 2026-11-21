@@ -10,12 +10,12 @@ function failure(error: unknown) {
     headers: { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } })
 }
 export const GET = withMtmAttendanceAuth("read", async (_req, auth) => {
-  try { return attendanceRequestResponse({ ...await readAttendanceRequestLimits(auth.orgId), canManage: auth.principalType === "session" && (auth.role === "admin" || auth.role === "superadmin") }) }
+  try { return attendanceRequestResponse({ ...await readAttendanceRequestLimits(auth.orgId), canManage: auth.principalType === "session" && auth.canManagePersonnel }) }
   catch (error) { return failure(error) }
 })
 export const PUT = withMtmAttendanceAuth("write", async (req, auth) => {
   try {
-    if (auth.principalType !== "session" || (auth.role !== "admin" && auth.role !== "superadmin")) throw new AttendanceRequestLimitError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
+    if (auth.principalType !== "session" || !auth.canManagePersonnel) throw new AttendanceRequestLimitError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
     const body = await readJsonRequestWithinLimit(req, 2048)
     if (!body.ok) throw new AttendanceRequestLimitError("MTM_ATTENDANCE_REQUEST_LIMITS_INVALID", body.reason === "too_large" ? 413 : 400)
     return attendanceRequestResponse(await saveAttendanceRequestLimits(auth.orgId, auth.userId, body.value))

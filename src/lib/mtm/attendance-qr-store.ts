@@ -1,3 +1,4 @@
+import { isPersonnelManager } from "@/lib/mtm/attendance-manager"
 import { isAttendanceMarkExempt } from "@/lib/mtm/attendance-self-access"
 import { randomUUID } from "node:crypto"
 import type { Prisma } from "@prisma/client"
@@ -34,9 +35,9 @@ export async function directory(tx: Tx, reviewer: AttendanceReviewer): Promise<A
         ON e."organizationId"=${reviewer.organizationId} AND e.id=a."agentId" AND e.status='ACTIVE'
         WHERE a."branchId"=b."branchId" AND a."agentId"=ANY(${ids}::text[]))) ORDER BY b.name,b."branchId" LIMIT 1001`
   if (rows.length > 1000) return fail("TOO_LARGE", 422)
-  const user = await tx.user.findFirst({ where: { organizationId: reviewer.organizationId, id: reviewer.userId }, select: { role: true } })
+  const user = await tx.user.findFirst({ where: { organizationId: reviewer.organizationId, id: reviewer.userId }, select: { role: true, hiddenModules: true, mtmAttendanceAll: true } })
   const gpsOnly = await readAttendanceGpsOnlyBranchIds(tx, reviewer.organizationId)
-  return { enabled: await readAttendanceQrRule(tx, reviewer.organizationId), canConfigure: !!user && ["admin", "superadmin"].includes(user.role),
+  return { enabled: await readAttendanceQrRule(tx, reviewer.organizationId), canConfigure: isPersonnelManager(user),
     branches: rows.map(row => ({ id: row.branchId, name: row.name, markMethod: gpsOnly.has(row.branchId) ? "GPS_ONLY" as const : "QR_GPS" as const })),
     revisions: new Map(rows.map(row => [row.branchId, row.id])) }
 }

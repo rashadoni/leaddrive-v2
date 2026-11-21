@@ -8,7 +8,7 @@ import { passwordPolicyError } from "@/lib/password-policy"
 import { USER_HIDEABLE_MODULE_IDS, parseHiddenModulesInput } from "@/lib/user-module-access"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import type { AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
-import { recordAttendanceInitialHire, requireAttendanceEmployeeAdmin, resolveAttendanceUnit } from "@/lib/mtm/attendance-employee-store"
+import { attendanceEmployeeManager, ownFieldScope, recordAttendanceInitialHire, refuseWiderFieldScope, resolveAttendanceUnit } from "@/lib/mtm/attendance-employee-store"
 import { ATTENDANCE_EMPLOYEE_POSITION_MAX, OFFICE_EMPLOYEE_CRM_ROLE } from "@/lib/mtm/attendance-employee-contract"
 import { isDateKey } from "@/lib/mtm/mobile-week"
 import { ATTENDANCE_TRACKED_CARD_WHERE } from "@/lib/mtm/attendance-tracking"
@@ -68,7 +68,7 @@ export async function createAttendanceEmployee(actor: AttendanceReviewer, raw: u
   const passwordHash = password !== undefined ? await bcrypt.hash(password, 12) : NO_CRM_PASSWORD
 
   const created = await prisma.$transaction(async tx => {
-    const timezone = await requireAttendanceEmployeeAdmin(tx, actor)
+    const access = await attendanceEmployeeManager(tx, actor), timezone = access.timezone, scopeBefore = await ownFieldScope(tx, actor, access)
     const owner = await findPhoneOwner(tx, organizationId, phone)
     // The number is an existing CRM user's: they already have the automatic
     // card, so HR adds that person instead of being refused (owner, 2026-10-29:
@@ -76,7 +76,7 @@ export async function createAttendanceEmployee(actor: AttendanceReviewer, raw: u
     // and CRM access stay as they are; only the HR fields are written.
     if (owner.kind === "found") {
       const existing = await adoptExistingCard(tx, actor, owner.agentId, { position, teamId, newTeamName, departmentId, newDepartmentName, hireDate }, timezone)
-      if (existing) return existing
+      if (existing) { await refuseWiderFieldScope(tx, actor, access, scopeBefore); return existing }
     }
     if (email) {
       if (await tx.user.findFirst({ where: { organizationId, email }, select: { id: true } })) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_EMAIL_TAKEN", 409)
@@ -100,6 +100,7 @@ export async function createAttendanceEmployee(actor: AttendanceReviewer, raw: u
     if (!card) await tx.mtmAgent.create({ data: { id: agentId, organizationId, userId: user.id, name, email, phone, role: "EMPLOYEE", status: "ACTIVE",
       attendanceParticipant: true, canPlanOwnRoutes: false, canSelfPublishRoutes: false, position, ...unit } })
     else await tx.mtmAgent.update({ where: { organizationId, id: agentId }, data: { phone, ...(email ? {} : { email: null }), ...(position || unit.teamId || unit.departmentId ? { position, ...unit } : {}) } })
+    await refuseWiderFieldScope(tx, actor, access, scopeBefore)
     if (hireDate) await recordAttendanceInitialHire(tx, actor, agentId, hireDate, timezone)
     await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: actor.userId, agentId, entity: "agent", entityId: agentId,
       action: "MTM_ATTENDANCE_EMPLOYEE_CREATED", metadataKind: "mtm_attendance_employment", newData: { userId: user.id, position, ...unit, hireDate } } })

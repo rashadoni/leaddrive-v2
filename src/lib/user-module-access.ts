@@ -36,7 +36,14 @@ import { isTenantCapabilityEnabled, type FieldTenantCapabilityId } from "./tenan
  * keeps the `mtm` id: that is the toggle the superadmin's tenant editor shows.
  */
 export const WORKFORCE_HIDEABLE_ID = "workforce-hrm"
-export type UserHideableId = GroupModuleId | typeof WORKFORCE_HIDEABLE_ID
+/**
+ * Personnel («Kadr uçotu») has its own tick (owner, 2026-11-21: HR are not
+ * agents and must not need an employee card). Hiding Route & Field no longer
+ * hides it; the migration 20261224090000_user_hidden_personnel gave everyone
+ * who had `mtm` hidden this tick too, so nobody gained anything.
+ */
+export const PERSONNEL_HIDEABLE_ID = "personnel"
+export type UserHideableId = GroupModuleId | typeof WORKFORCE_HIDEABLE_ID | typeof PERSONNEL_HIDEABLE_ID
 
 /**
  * `settings` is deliberately not hideable. Its scope is not only the settings
@@ -72,6 +79,7 @@ export const USER_HIDEABLE_MODULE_IDS: readonly UserHideableId[] = [
   BOOKING_MODULE_ID,
   ...HIDEABLE_GROUP_IDS.filter((id) => id !== "crm"),
   WORKFORCE_HIDEABLE_ID,
+  PERSONNEL_HIDEABLE_ID,
 ]
 
 const HIDEABLE = new Set<string>(USER_HIDEABLE_MODULE_IDS)
@@ -123,9 +131,8 @@ export function effectiveHiddenChannels(role: string | null | undefined, value: 
 
 /** The hideable entry that owns a field capability. */
 export function hideableIdForFieldCapability(capability: FieldTenantCapabilityId): UserHideableId {
-  // Personnel is hidden from a person together with MTM until it has its own
-  // tick on the user card (roadmap, stage 2).
-  return capability === "workforce-hrm" ? WORKFORCE_HIDEABLE_ID : "mtm"
+  if (capability === "workforce-hrm") return WORKFORCE_HIDEABLE_ID
+  return capability === "personnel" ? PERSONNEL_HIDEABLE_ID : "mtm"
 }
 
 /**
@@ -152,6 +159,7 @@ export function tenantHideableModules(org: OrgModuleFields): UserHideableId[] {
   return USER_HIDEABLE_MODULE_IDS.filter((id) => {
     if (id === "mtm") return isTenantCapabilityEnabled("route-field", org) || hasModule(org, "mtm")
     if (id === WORKFORCE_HIDEABLE_ID) return isTenantCapabilityEnabled("workforce-hrm", org)
+    if (id === PERSONNEL_HIDEABLE_ID) return isTenantCapabilityEnabled("personnel", org)
     return hasModule(org, id as ModuleId) // boards: follows crm
   })
 }

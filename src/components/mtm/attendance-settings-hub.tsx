@@ -21,7 +21,7 @@ type Live = { rule?: MtmAttendanceRule; holidays?: number }
 /** Personnel → Settings: one page of cards, each with what it is (or its
  * current value) and one button that opens it. Values are best effort: a card
  * whose source fails keeps its plain description. */
-export function MtmAttendanceSettingsHub({ isAdmin }: { isAdmin: boolean }) {
+export function MtmAttendanceSettingsHub({ isAdmin, canSwitchOff = isAdmin }: { isAdmin: boolean; canSwitchOff?: boolean }) {
   const p = useTranslations("personnel")
   const locale = useLocale() as "az" | "ru" | "en"
   const [live, setLive] = useState<Live>({})
@@ -55,7 +55,7 @@ export function MtmAttendanceSettingsHub({ isAdmin }: { isAdmin: boolean }) {
 
   return <div className="space-y-6" data-testid="attendance-settings-hub">
     <h1 className="text-2xl font-bold tracking-tight">{p("settingsTitle")}</h1>
-    <MtmAttendanceFeatureSwitch enabled canChange={isAdmin} />
+    <MtmAttendanceFeatureSwitch enabled canChange={canSwitchOff} />
     {ATTENDANCE_SETTINGS_GROUPS.map(group => {
       const cards = group.cards.filter(card => isAdmin || !ATTENDANCE_ADMIN_SETTINGS.includes(card))
       if (!cards.length) return null

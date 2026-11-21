@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { getTenantCapabilityAccess } from "@/lib/tenant-capability-access"
@@ -8,7 +8,8 @@ import { getMtmAttendanceAccess } from "@/lib/mtm/attendance-access"
 import { MtmAttendanceFeatureSwitch } from "@/components/mtm/attendance-feature-switch"
 import { MtmAttendanceSectionTabs } from "@/components/mtm/attendance-section-tabs"
 import { MtmAttendanceNoGrant } from "@/components/mtm/attendance-no-grant"
-import { isNavItemRoleAllowed, navItems, orgFromSession } from "@/lib/nav-items"
+import { accessibleNavItems, isNavItemRoleAllowed, navItems, orgFromSession } from "@/lib/nav-items"
+import { isPersonnelOnlyWorkspace } from "@/lib/tenant-landing"
 
 export const dynamic = "force-dynamic"
 
@@ -16,7 +17,7 @@ export default async function AttendanceLayout({ children }: { children: ReactNo
   const session = await runWithRlsBypass(async () => auth())
   const user = session?.user
   if (!user?.id || !user.organizationId || !checkPermission(user.role as Role, "mtm", "read")
-    || user.hiddenModules?.includes("mtm")) notFound()
+    || user.hiddenModules?.includes("personnel")) notFound()
   const { id: userId, organizationId, role } = user
   const state = await runWithTenant(organizationId, async () => {
     const capability = await getTenantCapabilityAccess(organizationId, "personnel")
@@ -30,6 +31,8 @@ export default async function AttendanceLayout({ children }: { children: ReactNo
   if (state === "off" && (role === "admin" || role === "superadmin")) return <MtmAttendanceFeatureSwitch enabled={false} canChange />
   // Said in words, not «page not found» (Zeytun, 2026-11-20: Ayshan saw only a 404 and was made admin).
   if (state === "no-grant") return <MtmAttendanceNoGrant />
+  // Login sends someone with only this section here, and the proxy cannot read its switch.
+  if (state === "off" && isPersonnelOnlyWorkspace(orgFromSession(user))) redirect(accessibleNavItems(orgFromSession(user))[0]?.href ?? "/settings/profile")
   if (state !== "open") notFound()
   // The section's own menu on each of its pages, as the «Kadr uçotu» clip shows it
   // (owner, 2026-10-20): the sidebar's Personnel items this person may open.

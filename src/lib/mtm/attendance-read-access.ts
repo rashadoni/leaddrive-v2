@@ -15,7 +15,7 @@ export async function currentAttendanceReadActor(tx: Prisma.TransactionClient, r
   const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[]; mtmAttendanceAll: boolean }[]>`
     SELECT role,"hiddenModules","mtmAttendanceAll" FROM users WHERE "organizationId"=${organizationId} AND id=${userId}
       AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
-  if (!user || !checkPermission(user.role as Role, "mtm", "read") || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) throw new AttendanceRequestError("MTM_ATTENDANCE_RISK_FORBIDDEN", 403)
+  if (!user || !checkPermission(user.role as Role, "mtm", "read") || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) throw new AttendanceRequestError("MTM_ATTENDANCE_RISK_FORBIDDEN", 403)
   await tx.$queryRaw`SELECT id FROM organizations WHERE id=${organizationId} FOR SHARE`
   const org = await tx.organization.findUnique({ where: { id: organizationId }, select: { plan: true, addons: true, features: true, modules: true, settings: true } })
   const definition = getTenantCapabilityDefinition("personnel")

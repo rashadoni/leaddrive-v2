@@ -133,7 +133,7 @@ describe("attendance decision endpoint with the real authorization wrapper, deci
     if (kind === "revoked-write") currentUser!.role = "viewer"
     if (kind === "missing-principal") identity({ principalType: undefined })
     if (kind === "inactive-user") currentUser = null
-    if (kind === "hidden-module") { currentUser!.role = "manager"; currentUser!.hiddenModules = ["mtm"] }
+    if (kind === "hidden-module") { currentUser!.role = "manager"; currentUser!.hiddenModules = ["personnel"] }
     if (kind === "feature-revoked") vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({ value: false } as never)
     if (kind === "capability-revoked") vi.mocked(prisma.organization.findUnique).mockResolvedValue(null)
     if (kind === "read-all-viewer") { identity({ role: "viewer" }); currentUser = { role: "viewer", hiddenModules: [], mtmAttendanceAll: true } }
@@ -201,7 +201,7 @@ describe("attendance review list has its own current write scope", () => {
     if (kind === "missing-principal") identity({ principalType: undefined })
     if (kind === "inactive-user") currentUser = null
     if (kind === "read-only-hr") { currentUser = { role: "viewer", hiddenModules: [], mtmAttendanceAll: true }; identity({ role: "viewer" }) }
-    if (kind === "hidden") currentUser = { role: "manager", hiddenModules: ["mtm"] }
+    if (kind === "hidden") currentUser = { role: "manager", hiddenModules: ["personnel"] }
     if (kind === "feature-off") vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({ value: false } as never)
     if (kind === "unbounded-manager") vi.mocked(resolveMtmRouteActor).mockResolvedValue({ role: "MANAGER", agentId: null, scopedAgentIds: null })
     expect([403, 404]).toContain((await reviewGet(new NextRequest("http://localhost/api/v1/mtm/attendance/requests"))).status)

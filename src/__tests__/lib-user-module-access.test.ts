@@ -34,6 +34,7 @@ describe("the hideable catalog", () => {
       "boards",
       ...GROUP_MODULE_IDS.filter((id) => id !== "settings" && id !== "crm" && id !== "boards"),
       "workforce-hrm",
+      "personnel",
     ])
   })
 
@@ -62,7 +63,7 @@ describe("the hideable catalog", () => {
     expect(tenantHideableModules(org({ crm: true, sales: true, settings: true }))).toEqual(["crm", "boards", "booking", "sales"])
     expect(tenantHideableModules(org({ crm: false, sales: true }))).toEqual(["booking", "sales"])
     // The historical `mtm` grant dual-reads as both field capabilities.
-    expect(tenantHideableModules(org({ crm: true, mtm: true }))).toEqual(["crm", "boards", "mtm"])
+    expect(tenantHideableModules(org({ crm: true, mtm: true }))).toEqual(["crm", "boards", "mtm", "personnel"])
     // A Workforce-only tenant has HRM without Route & Field.
     expect(tenantHideableModules(org({ crm: true, "workforce-hrm": true }))).toEqual(["crm", "boards"])
   })

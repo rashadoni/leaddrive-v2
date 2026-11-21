@@ -3,6 +3,7 @@ import { createNotification } from "@/lib/notifications"
 import { checkPermission, type Role } from "@/lib/permissions"
 import { effectiveHiddenModules } from "@/lib/user-module-access"
 import { canReviewMtmRouteRequest, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { isPersonnelGrantHolder, personnelManagerActor } from "@/lib/mtm/attendance-manager"
 import { MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_ENTITY, MTM_ATTENDANCE_INSTALLATION_NOTIFICATION_KIND } from "@/lib/mtm/attendance-installation-notification"
 import az from "../../../messages/az.json"
 import ru from "../../../messages/ru.json"
@@ -20,12 +21,12 @@ export async function notifyAttendanceInstallationReviewers(tx: Prisma.Transacti
   const ids = cards.flatMap((card) => card.userId ? [card.userId] : [])
   const users = await tx.user.findMany({ where: { organizationId, isActive: true, anonymizedAt: null,
     ...(owner?.userId ? { id: { not: owner.userId } } : {}),
-    OR: [{ role: { in: ["admin", "superadmin"] } }, { id: { in: ids } }],
-  }, orderBy: { id: "asc" }, take: 1001, select: { id: true, role: true, preferredLanguage: true, hiddenModules: true } })
+    OR: [{ role: { in: ["admin", "superadmin"] } }, { id: { in: ids } }, { mtmAttendanceAll: true }],
+  }, orderBy: { id: "asc" }, take: 1001, select: { id: true, role: true, preferredLanguage: true, hiddenModules: true, mtmAttendanceAll: true } })
   if (users.length > 1000) throw new Error("MTM_ATTENDANCE_INSTALLATION_RECIPIENT_LIMIT")
   for (const user of users) {
-    if (!checkPermission(user.role as Role, "mtm", "write") || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) continue
-    const actor = await resolveMtmRouteActor(tx, { organizationId, userId: user.id, webRole: user.role })
+    if (!checkPermission(user.role as Role, "mtm", "write") || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) continue
+    const actor = isPersonnelGrantHolder(user) ? personnelManagerActor() : await resolveMtmRouteActor(tx, { organizationId, userId: user.id, webRole: user.role })
     if (!actor || !canReviewMtmRouteRequest(actor, agentId)) continue
     const t = messages[user.preferredLanguage === "ru" || user.preferredLanguage === "en" ? user.preferredLanguage : "az"]
     const row = await createNotification({ organizationId, userId: user.id, type: "warning",

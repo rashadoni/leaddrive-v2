@@ -1,8 +1,8 @@
+import { isPersonnelManager } from "@/lib/mtm/attendance-manager"
 import type { Prisma, PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
-import { effectiveHiddenModules } from "@/lib/user-module-access"
 import { capabilitySettingsFromTenantSettings, getTenantCapabilityDefinition, resolveTenantCapability, tenantModulesFromFields } from "@/lib/tenant-capabilities"
 import { AttendanceRequestLimitsSchema, AttendanceRequestLimitsUpdateSchema, DEFAULT_ATTENDANCE_REQUEST_LIMITS, type AttendanceRequestLimits } from "@/lib/mtm/attendance-request-limits"
 import { readAttendanceFeature } from "@/lib/mtm/attendance-feature"
@@ -28,10 +28,10 @@ export async function readAttendanceRequestLimits(organizationId: string, db: Re
 }
 
 async function requireAdmin(tx: Prisma.TransactionClient, organizationId: string, userId: string) {
-  const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`
-    SELECT "role", "hiddenModules" FROM "users" WHERE "organizationId" = ${organizationId} AND "id" = ${userId}
+  const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[]; mtmAttendanceAll: boolean }[]>`
+    SELECT "role", "hiddenModules", "mtmAttendanceAll" FROM "users" WHERE "organizationId" = ${organizationId} AND "id" = ${userId}
     AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
-  if (!user || (user.role !== "admin" && user.role !== "superadmin") || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) {
+  if (!isPersonnelManager(user)) {
     throw new AttendanceRequestLimitError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
   }
   await tx.$queryRaw`SELECT "id" FROM "organizations" WHERE "id" = ${organizationId} FOR SHARE`

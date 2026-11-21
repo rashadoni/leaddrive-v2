@@ -1,3 +1,4 @@
+import { isPersonnelManager } from "@/lib/mtm/attendance-manager"
 import { createHash, randomUUID } from "node:crypto"
 import { ATTENDANCE_TRACKED_CARD_WHERE, attendanceTrackedCardSql } from "@/lib/mtm/attendance-tracking"
 import { Prisma } from "@prisma/client"
@@ -44,8 +45,8 @@ export async function readAttendanceShiftDirectory(reviewer: AttendanceReviewer,
   return prisma.$transaction(async (tx: Tx) => {
     const actor = await currentAttendanceReadActor(tx, reviewer)
     const timezone = await timezoneFor(tx, reviewer.organizationId)
-    const user = await tx.user.findFirst({ where: { organizationId: reviewer.organizationId, id: reviewer.userId }, select: { role: true } })
-    const canManage = !!user && ["admin", "superadmin"].includes(user.role)
+    const user = await tx.user.findFirst({ where: { organizationId: reviewer.organizationId, id: reviewer.userId }, select: { role: true, hiddenModules: true, mtmAttendanceAll: true } })
+    const canManage = isPersonnelManager(user)
     const agents = await tx.mtmAgent.findMany({ where: { organizationId: reviewer.organizationId, ...ATTENDANCE_TRACKED_CARD_WHERE,
       ...(actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }) }, select: { id: true, teamId: true, status: true, attendanceExcluded: true }, take: 5001 })
     if (agents.length > 5000) return fail("DIRECTORY_TOO_LARGE")
@@ -80,8 +81,8 @@ export async function publishAttendanceShiftPlan(reviewer: AttendanceReviewer, r
     await tx.$executeRaw`SELECT set_config('lock_timeout','3s',true)`
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-shifts:${reviewer.organizationId}`},0))`
     await currentAttendanceReadActor(tx, reviewer)
-    const user = await tx.user.findFirst({ where: { organizationId: reviewer.organizationId, id: reviewer.userId }, select: { role: true } })
-    if (!user || !["admin", "superadmin"].includes(user.role)) return fail("ADMIN_REQUIRED", 403)
+    const user = await tx.user.findFirst({ where: { organizationId: reviewer.organizationId, id: reviewer.userId }, select: { role: true, hiddenModules: true, mtmAttendanceAll: true } })
+    if (!isPersonnelManager(user)) return fail("ADMIN_REQUIRED", 403)
     const [existing] = await tx.$queryRaw<(PlanRow & { requestHash: string; createdBy: string })[]>`SELECT p.*,(SELECT count(*)::int FROM mtm_attendance_shift_members m WHERE m."organizationId"=p."organizationId" AND m."planId"=p.id) AS "memberCount"
       FROM mtm_attendance_shift_plans p WHERE p."organizationId"=${reviewer.organizationId} AND p."requestId"=${input.requestId}`
     if (existing) {

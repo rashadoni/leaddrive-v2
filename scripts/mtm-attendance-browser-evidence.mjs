@@ -39,7 +39,7 @@ const destinations = {
   review: ['review', ''], 'location-settings': ['settings?tab=location', 'settings'], recordings: ['recordings', null],
   'day-kinds': ['settings?tab=day-kinds', 'settings'], 'request-limits': ['settings?tab=requests', 'settings'], 'hr-access': ['settings?tab=access', 'settings'],
 }
-const personnelHrefs = ['/mtm/attendance', '/mtm/attendance/timesheet', '/mtm/attendance/people', '/mtm/attendance/reports', '/mtm/attendance/settings']
+const personnelHrefs = ['/mtm/attendance', '/mtm/attendance/timesheet', '/mtm/attendance/people', '/mtm/attendance/explanations', '/mtm/attendance/reports', '/mtm/attendance/settings']
 const caseNames = ['fixture-rls', 'credentials-and-roles', 'hr-read-grant', 'mobile-workday', 'report-scope-exports', 'views-crud', 'deliveries-crud', 'rules-calendar', 'day-kinds-quotas', 'employee-participation', 'employment-history', 'branches-assignments', 'geo-policy-consent', 'requests-decisions', 'hr-recording-batch', 'installation-decisions', 'shift-day-night', 'leave-policy-profile', 'month-freeze', 'risk-dismissal', ...routes.map(route => `page:${route || 'report'}`), 'browser-report-tabs-filters-pagination', 'browser-views-save-rename-delete-cancel', 'browser-employee-search-switch-history', 'browser-branch-create-edit-archive-cancel', 'browser-request-approve-reject-revoke', 'browser-qr-branch-screen-pair-show-revoke', 'browser-locales-mobile-width', 'hr-revoke-fresh-session', 'final-privacy-invariants', 'browser-settings-hr-catalogue-quotas', 'browser-delivery-create-edit-cancel-delete', 'browser-batch-recording-and-decision-journal', 'browser-shift-publish-cancel-and-leave-profile', 'browser-geo-off-legal-block-and-branch-summary', 'browser-installation-approve-revoke-history', 'browser-month-frozen-download']
 caseNames.push('browser-rules-calendar-crud', 'browser-hr-grant-revoke', 'browser-kind-create-archive-restore', 'browser-employment-record', 'browser-primary-branch-assignment', 'browser-risk-dismissal', 'browser-leave-policy-publication', 'browser-month-preview-close-blockers', 'browser-sidebar-click-traversal', 'browser-branch-lost-acknowledgement-retry', 'browser-catalogue-competing-tabs', 'browser-private-document-download-and-permissions')
 caseNames.push('employee-explanations-authentication', 'browser-existing-crm-phone-hire')
@@ -738,7 +738,7 @@ try {
     try {
       // The component aborts the old PUT response while loading its new state.
       // Prove the real status and resulting state without reading a discarded body.
-      await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)
+      await clickResponse(toggle, '/api/v1/mtm/attendance/policy', 'PUT', 200, false)
       await poll(async () => await toggle.getAttribute('aria-checked') === 'true', 'QR enabled')
       assert.equal((await api('admin', '/branch-qr')).enabled, true)
       // A signed-in browser shows no code and cannot mint one (owner, 2026-10-29).
@@ -816,7 +816,7 @@ try {
       await kiosk.getByTestId('desk-screen-pair').waitFor({ timeout: 120000 })
       assert.equal(await qr.count(), 0)
       await page.bringToFront()
-      await clickResponse(toggle, '/api/v1/mtm/settings', 'PUT', 200, false)
+      await clickResponse(toggle, '/api/v1/mtm/attendance/policy', 'PUT', 200, false)
       await poll(async () => await toggle.getAttribute('aria-checked') === 'false', 'QR disabled')
     } finally {
       // Failed lifecycle assertions must still leave the disposable policy OFF.

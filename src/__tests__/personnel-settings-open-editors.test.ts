@@ -13,7 +13,7 @@ beforeEach(() => {
   container = document.createElement("div"); document.body.append(container); root = createRoot(container)
   // Rules say the viewer manages; every editor's own read stays pending, which is enough to see it open.
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => String(input).endsWith("/rules")
-    ? new Response(JSON.stringify({ success: true, data: { canManageRules: true } })) : new Promise<Response>(() => {})))
+    ? new Response(JSON.stringify({ success: true, data: { canManageRules: true, canManageAccess: true } })) : new Promise<Response>(() => {})))
 })
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals() })
 
