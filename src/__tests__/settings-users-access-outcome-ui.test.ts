@@ -63,7 +63,7 @@ import { USER_HIDEABLE_MODULE_IDS } from "@/lib/user-module-access"
 
 const person = {
   id: "u-1", name: "Field Manager", email: "field@example.az", role: "manager",
-  hiddenModules: USER_HIDEABLE_MODULE_IDS.filter((id) => id !== "mtm"),
+  hiddenModules: USER_HIDEABLE_MODULE_IDS.filter((id) => id !== "mtm") as string[],
   phone: null, department: null, isActive: true, totpEnabled: false, require2fa: false, smsAuthEnabled: false,
   verifiedPhone: null, skills: [], maxTickets: 20, isAvailable: true, preferredLanguage: null,
   createdAt: "2026-10-02T10:00:00Z", lastLogin: null,
