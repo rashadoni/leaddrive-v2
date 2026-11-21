@@ -172,6 +172,9 @@ export async function sendPushMessages(input: {
               : { notification: { title: message.title, body: message.body }, data: message.data }),
             android: {
               priority: "HIGH",
+              // Says what happened this evening: not news for a phone that
+              // comes back online tomorrow.
+              ...(message.dataOnly ? { ttl: "43200s" } : {}),
               ...(message.channelId && !message.dataOnly
                 ? {
                     notification: {
