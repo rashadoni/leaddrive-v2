@@ -1833,9 +1833,13 @@ WhatsApp заводил тикет на каждое входящее, без н
 - Ключ серверный (`server-owned-settings`): форма канала его не стирает и не пишет; пишет только
   `PUT /api/v1/channels/[id]/whatsapp-purpose` (админ, с записью в журнал). Экран — окно
   `whatsapp-number-purpose.tsx`: само открывается после подключения номера и по «Изменить» в строке номера.
+  **Те же две карточки стоят первыми в форме «Изменить настройку» номера** (`channel-config-form.tsx`):
+  владелец в день выпуска открыл именно её, выбора там не нашёл и прислал снимок. «Сохранить» формы пишет
+  выбор тем же отдельным маршрутом; при ручном создании номера выбор уходит в `POST`. Новый экран, где
+  настраивают номер WhatsApp, показывает `WhatsAppNumberPurposeCards`, а не отсылает к другому месту.
 - Стерегут `whatsapp-ticket-path-postgres.test.ts` (настоящий вебхук на настоящем Postgres: номер каждого
   вида, гейт в `static-checks` и в деплое), `chat-ticket-transcript-author.test.ts` (ход ИИ),
-  `api-channels-whatsapp-purpose.test.ts`, `whatsapp-number-purpose-ui.test.ts`.
+  `api-channels-whatsapp-purpose.test.ts`, `whatsapp-number-purpose-ui.test.ts`, `channel-form-whatsapp-purpose-ui.test.ts`.
 
 ## WhatsApp coexistence: импорт контактов и переписки за 6 месяцев — `src/lib/whatsapp-history-import`
 

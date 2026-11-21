@@ -123,6 +123,74 @@ const ICON: Record<WhatsAppInboundPurpose, typeof MessagesSquare> = {
   support: Headset,
 }
 
+/** The words of the choice, for a screen that puts the cards under a heading of its own. */
+export function whatsappNumberPurposeCopy(locale: string) {
+  const c = COPY[asLocale(locale)]
+  return { title: c.title, toConversationsNote: c.toConversationsNote }
+}
+
+/**
+ * The two cards themselves. The window below shows them, and so does the channel's «Изменить
+ * настройку» form (components/channel-config-form) — that form is where the owner looked for the
+ * choice first (2026-11-21, a screenshot of it with nothing to press).
+ */
+export function WhatsAppNumberPurposeCards({
+  value,
+  onChange,
+  locale,
+}: {
+  value: WhatsAppInboundPurpose
+  onChange: (purpose: WhatsAppInboundPurpose) => void
+  locale: string
+}) {
+  const c = COPY[asLocale(locale)]
+  return (
+    <div role="radiogroup" aria-label={c.title} className="grid gap-3 sm:grid-cols-2">
+      {WHATSAPP_INBOUND_PURPOSES.map((purpose) => {
+        const option = c.options[purpose]
+        const selected = value === purpose
+        const Icon = ICON[purpose]
+        return (
+          <button
+            key={purpose}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            data-testid={`whatsapp-number-purpose-${purpose}`}
+            onClick={() => onChange(purpose)}
+            className={cn(
+              "flex h-full flex-col items-start gap-2 rounded-xl border bg-card p-4 text-left transition-colors",
+              selected
+                ? "border-primary ring-2 ring-primary/30"
+                : "border-border hover:border-foreground/30",
+            )}
+          >
+            <span className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
+              {selected
+                ? <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+                : <Circle className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />}
+              <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              {option.name}
+            </span>
+            <span className="text-sm leading-relaxed text-muted-foreground">{option.body}</span>
+            <span className="mt-auto rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">{option.tag}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Stores the number's purpose; false when the server did not take it. */
+export async function saveWhatsAppNumberPurpose(channelId: string, purpose: WhatsAppInboundPurpose): Promise<boolean> {
+  const res = await fetch(`/api/v1/channels/${encodeURIComponent(channelId)}/whatsapp-purpose`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ purpose }),
+  }).catch(() => null)
+  return !!res?.ok
+}
+
 export function WhatsAppNumberPurposeDialog({
   open,
   channelId,
@@ -161,13 +229,9 @@ export function WhatsAppNumberPurposeDialog({
     if (!channelId || saving) return
     setSaving(true)
     setFailed(false)
-    const res = await fetch(`/api/v1/channels/${encodeURIComponent(channelId)}/whatsapp-purpose`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ purpose: choice }),
-    }).catch(() => null)
+    const saved = await saveWhatsAppNumberPurpose(channelId, choice)
     setSaving(false)
-    if (!res?.ok) {
+    if (!saved) {
       setFailed(true)
       return
     }
@@ -187,39 +251,7 @@ export function WhatsAppNumberPurposeDialog({
               {[numberLabel, justConnected ? c.connectedLead : null].filter(Boolean).join(" · ")}
             </p>
           )}
-          <div role="radiogroup" aria-label={c.title} className="grid gap-3 sm:grid-cols-2">
-            {WHATSAPP_INBOUND_PURPOSES.map((purpose) => {
-              const option = c.options[purpose]
-              const selected = choice === purpose
-              const Icon = ICON[purpose]
-              return (
-                <button
-                  key={purpose}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  data-testid={`whatsapp-number-purpose-${purpose}`}
-                  onClick={() => setChoice(purpose)}
-                  className={cn(
-                    "flex h-full flex-col items-start gap-2 rounded-xl border bg-card p-4 text-left transition-colors",
-                    selected
-                      ? "border-primary ring-2 ring-primary/30"
-                      : "border-border hover:border-foreground/30",
-                  )}
-                >
-                  <span className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
-                    {selected
-                      ? <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-                      : <Circle className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />}
-                    <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                    {option.name}
-                  </span>
-                  <span className="text-sm leading-relaxed text-muted-foreground">{option.body}</span>
-                  <span className="mt-auto rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">{option.tag}</span>
-                </button>
-              )
-            })}
-          </div>
+          <WhatsAppNumberPurposeCards value={choice} onChange={setChoice} locale={locale} />
           {choice === "conversations" && initial === "support" && !justConnected && (
             <p className="text-sm text-muted-foreground" data-testid="whatsapp-number-purpose-note">{c.toConversationsNote}</p>
           )}
