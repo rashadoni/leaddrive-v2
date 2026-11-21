@@ -25,6 +25,7 @@ import { ATTENDANCE_OUTSIDE_RULE_KEY, saveAttendanceOutsideRule } from "@/lib/mt
 import { ATTENDANCE_RISK_SETTING_KEYS, saveAttendanceRiskPolicy } from "@/lib/mtm/attendance-risk-policy"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { ATTENDANCE_AUTO_CLOSE_BY_KEY, ATTENDANCE_AUTO_CLOSE_SETTING_KEY } from "@/lib/mtm/attendance-auto-close"
+import { ATTENDANCE_TWO_STEP_SETTING_KEY } from "@/lib/mtm/attendance-approval-chain"
 
 const MODULE_TOGGLE_ROLES = ["admin", "superadmin"]
 // Whole-feature visibility switches. Only an administrator changes them.
@@ -73,7 +74,7 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     )
     // Unlike legacy menu switches, attendance enables new personal-data access.
     // Refuse the entire unauthorized request before any setting can be written.
-    if ((body.attendanceEnabled !== undefined || ATTENDANCE_REMINDER_KEYS.some(key => body[key] !== undefined) || body[ATTENDANCE_QR_RULE_KEY] !== undefined || body[ATTENDANCE_INSTALLATION_RULE_KEY] !== undefined || body[ATTENDANCE_OUTSIDE_RULE_KEY] !== undefined || ATTENDANCE_RISK_SETTING_KEYS.some(key => body[key] !== undefined) || body[ATTENDANCE_AUTO_CLOSE_SETTING_KEY] !== undefined) && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
+    if ((body.attendanceEnabled !== undefined || ATTENDANCE_REMINDER_KEYS.some(key => body[key] !== undefined) || body[ATTENDANCE_QR_RULE_KEY] !== undefined || body[ATTENDANCE_INSTALLATION_RULE_KEY] !== undefined || body[ATTENDANCE_OUTSIDE_RULE_KEY] !== undefined || ATTENDANCE_RISK_SETTING_KEYS.some(key => body[key] !== undefined) || body[ATTENDANCE_TWO_STEP_SETTING_KEY] !== undefined || body[ATTENDANCE_AUTO_CLOSE_SETTING_KEY] !== undefined) && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
       return NextResponse.json({ error: "Forbidden", code: "MTM_ATTENDANCE_ADMIN_REQUIRED" }, { status: 403 })
     }
     // Hiding a whole module surface for every manager and field agent is an

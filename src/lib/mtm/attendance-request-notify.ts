@@ -3,6 +3,7 @@ import { createNotification } from "@/lib/notifications"
 import { checkPermission, type Role } from "@/lib/permissions"
 import { effectiveHiddenModules } from "@/lib/user-module-access"
 import { canReviewMtmRouteRequest, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { isPersonnelGrantHolder, personnelManagerActor } from "@/lib/mtm/attendance-manager"
 import { MTM_ATTENDANCE_REQUEST_NOTIFICATION_ENTITY, MTM_ATTENDANCE_REQUEST_NOTIFICATION_KIND } from "@/lib/mtm/attendance-request-notification"
 import { readAttendanceTwoStepApproval } from "@/lib/mtm/attendance-approval-chain"
 import az from "../../../messages/az.json"
@@ -23,8 +24,8 @@ async function employeeName(tx: Prisma.TransactionClient, organizationId: string
 const named = (template: string, name: string) => template.replace("{name}", name)
 /**
  * Who decides this employee's request: an active CRM login with write on MTM,
- * MTM not hidden from it, and the employee in its scope — an admin, or a
- * manager card linked to the login. Never the employee's own login. The bell
+ * Personnel not hidden from it, and the employee in its scope — an admin, the
+ * HR grant, or a manager card linked to the login. Never the employee's own login. The bell
  * (below) and the push to the manager's phone (attendance-request-push.ts)
  * go to the same people.
  */
@@ -40,12 +41,12 @@ export async function attendanceRequestReviewers(
   const ids = cards.flatMap((card) => card.userId ? [card.userId] : [])
   const users = await tx.user.findMany({ where: { organizationId, isActive: true, anonymizedAt: null,
     ...(owner?.userId ? { id: { not: owner.userId } } : {}),
-    OR: [{ role: { in: ["admin", "superadmin"] } }, { id: { in: ids } }],
-  }, orderBy: { id: "asc" }, take: 50, select: { id: true, role: true, preferredLanguage: true, hiddenModules: true } })
+    OR: [{ role: { in: ["admin", "superadmin"] } }, { id: { in: ids } }, { mtmAttendanceAll: true }],
+  }, orderBy: { id: "asc" }, take: 50, select: { id: true, role: true, preferredLanguage: true, hiddenModules: true, mtmAttendanceAll: true } })
   const reviewers: Array<{ id: string; preferredLanguage: string | null; hr: boolean }> = []
   for (const user of users) {
     if (!checkPermission(user.role as Role, "mtm", "write") || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) continue
-    const actor = await resolveMtmRouteActor(tx, { organizationId, userId: user.id, webRole: user.role })
+    const actor = isPersonnelGrantHolder(user) ? personnelManagerActor() : await resolveMtmRouteActor(tx, { organizationId, userId: user.id, webRole: user.role })
     if (!actor || !canReviewMtmRouteRequest(actor, agentId)) continue
     // HR of the two-step approval is an administrator (attendance-approval-chain.ts).
     reviewers.push({ id: user.id, preferredLanguage: user.preferredLanguage, hr: actor.role === "ADMIN" })

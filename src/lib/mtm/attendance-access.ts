@@ -3,22 +3,24 @@ import { getMtmSettings } from "@/lib/mtm-settings"
 import { checkPermission, type Role } from "@/lib/permissions"
 import { effectiveHiddenModules } from "@/lib/user-module-access"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { isCrmAdminRole, isPersonnelManager } from "@/lib/mtm/attendance-manager"
 
 /** Called inside the authenticated tenant context; never caches an opt-in. */
 export async function getMtmAttendanceAccess(organizationId: string, userId: string, webRole: string) {
   const settings = await getMtmSettings(organizationId)
   if (settings.attendanceEnabled !== true) return { enabled: false as const }
-  // This narrow grant does not change the user's role or Route & Field scope.
+  // This grant does not change the user's role or Route & Field scope. It runs
+  // Personnel when the role may write (attendance-manager.ts).
   // It is read from the database on every report/export/email, never a cookie.
   if (webRole !== "admin" && webRole !== "superadmin") {
     const [user] = await prisma.$queryRaw<{ mtmAttendanceAll: boolean; role: string; hiddenModules: string[] }[]>`
       SELECT "mtmAttendanceAll", "role", "hiddenModules" FROM "users"
       WHERE "organizationId" = ${organizationId} AND "id" = ${userId} AND "isActive" AND "anonymizedAt" IS NULL`
     if (user?.mtmAttendanceAll === true && checkPermission(user.role as Role, "mtm", "read") && !effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) {
-      return { enabled: true as const, settings, actor: { role: "MANAGER" as const, agentId: null, scopedAgentIds: null }, allEmployeesGrant: true }
+      return { enabled: true as const, settings, actor: { role: "MANAGER" as const, agentId: null, scopedAgentIds: null }, allEmployeesGrant: true, canManagePersonnel: isPersonnelManager(user) }
     }
   }
   const actor = await resolveMtmRouteActor(prisma, { organizationId, userId, webRole })
   // A field agent is outside Personnel entirely (no page, no explanation of why).
-  return { enabled: true as const, settings, actor: actor?.role === "AGENT" ? null : actor, fieldAgent: actor?.role === "AGENT" }
+  return { enabled: true as const, settings, actor: actor?.role === "AGENT" ? null : actor, fieldAgent: actor?.role === "AGENT", canManagePersonnel: isCrmAdminRole(webRole) }
 }

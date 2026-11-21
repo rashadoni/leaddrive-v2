@@ -7,6 +7,7 @@ import { checkPermission, type Role } from "@/lib/permissions"
 import { effectiveHiddenModules } from "@/lib/user-module-access"
 import { capabilitySettingsFromTenantSettings, getTenantCapabilityDefinition, resolveTenantCapability, tenantModulesFromFields } from "@/lib/tenant-capabilities"
 import { canReviewMtmRouteRequest, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { isPersonnelGrantHolder, personnelManagerActor } from "@/lib/mtm/attendance-manager"
 import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
 import { lockAttendanceRequests } from "@/lib/mtm/attendance-self-access"
 import { readAttendanceProjectionInTransaction } from "@/lib/mtm/attendance-report-store"
@@ -29,10 +30,11 @@ export async function attendanceReminderTenantEnabled(tx: Prisma.TransactionClie
   return capability.enabled && capability.status !== "disabled"
 }
 
-/** A current report reader, not a cached session and not an HR-wide write grant. */
+/** A current report reader, not a cached session: a manager's card, or HR who run the section. */
 export async function attendanceReminderReader(tx: Prisma.TransactionClient, organizationId: string, userId: string) {
-  const user = await tx.user.findFirst({ where: { id: userId, organizationId, isActive: true, anonymizedAt: null }, select: { role: true, hiddenModules: true, preferredLanguage: true } })
+  const user = await tx.user.findFirst({ where: { id: userId, organizationId, isActive: true, anonymizedAt: null }, select: { role: true, hiddenModules: true, preferredLanguage: true, mtmAttendanceAll: true } })
   if (!user || !checkPermission(user.role as Role, "mtm", "read") || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) return null
+  if (isPersonnelGrantHolder(user)) return { actor: personnelManagerActor(), locale: user.preferredLanguage }
   const actor = await resolveMtmRouteActor(tx, { organizationId, userId, webRole: user.role })
   return actor && actor.role !== "AGENT" && (actor.role === "ADMIN" || actor.scopedAgentIds !== null) ? { actor, locale: user.preferredLanguage } : null
 }
@@ -88,7 +90,7 @@ export async function createAttendanceRemindersInTransaction(tx: Prisma.Transact
     const cards = await tx.mtmAgent.findMany({ where: { organizationId, status: "ACTIVE", role: { in: ["ADMIN", "MANAGER", "SUPERVISOR"] }, userId: { not: null } }, select: { userId: true } })
     const cardUsers = cards.flatMap(card => card.userId ? [card.userId] : [])
     const users = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM users WHERE "organizationId"=${organizationId} AND "isActive" AND "anonymizedAt" IS NULL
-      AND (${agent.userId}::text IS NULL OR id<>${agent.userId}) AND (role IN ('admin','superadmin') OR id=ANY(${cardUsers}::text[])) ORDER BY id LIMIT 1001 FOR SHARE`
+      AND (${agent.userId}::text IS NULL OR id<>${agent.userId}) AND (role IN ('admin','superadmin') OR "mtmAttendanceAll" OR id=ANY(${cardUsers}::text[])) ORDER BY id LIMIT 1001 FOR SHARE`
     if (users.length > 1000) throw new Error("MTM_ATTENDANCE_REMINDER_RECIPIENT_LIMIT")
     for (const user of users) {
       const reader = await attendanceReminderReader(tx, organizationId, user.id)

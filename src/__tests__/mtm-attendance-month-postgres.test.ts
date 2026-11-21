@@ -37,7 +37,7 @@ const at=(date:string,time:string)=>new Date(`${date}T${time}:00+04:00`)
   sql(scratch!.adminDb,readFileSync("scripts/rls/enable-batch-5.sql","utf8"));sql(scratch!.adminDb,`GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
   prisma=(await import("@/lib/prisma")).prisma;({runWithTenant:tenant,runWithRlsBypass:bypass}=await import("@/lib/rls-context"));store=await import("@/lib/mtm/attendance-month-store");requests=await import("@/lib/mtm/attendance-request-store");decisions=await import("@/lib/mtm/attendance-request-decision");workday=await import("@/lib/mtm/workday")
   await bypass(async()=>{for(const id of [ORG,OTHER]){await prisma.organization.create({data:{id,slug:id,name:"Fictional month company",plan:"enterprise",modules:{mtm:true,"route-field":true},features:["mtm"]}});await prisma.mtmSetting.create({data:{organizationId:id,key:"attendanceEnabled",value:true}})}
-   for(const [id,role] of [[ADMIN,"admin"],[HR,"manager"],[MANAGER,"manager"]])await prisma.user.create({data:{id,organizationId:ORG,name:"Fictional month reviewer",email:`${id}@example.invalid`,role,passwordHash:"unusable",mtmAttendanceAll:id===HR}})
+   for(const [id,role] of [[ADMIN,"admin"],[HR,"viewer"],[MANAGER,"manager"]])await prisma.user.create({data:{id,organizationId:ORG,name:"Fictional month reviewer",email:`${id}@example.invalid`,role,passwordHash:"unusable",mtmAttendanceAll:id===HR}})
    await prisma.mtmTeam.create({data:{id:TEAM,organizationId:ORG,name:"Fictional month team"}});await prisma.mtmAgent.create({data:{organizationId:ORG,name:"Fictional supervisor",role:"SUPERVISOR",userId:MANAGER,teamId:TEAM}})
   })
  },240000)
@@ -139,7 +139,7 @@ const at=(date:string,time:string)=>new Date(`${date}T${time}:00+04:00`)
   beforeAll(async()=>{
    await bypass(async()=>{
     for(const id of [C]){await prisma.organization.create({data:{id,slug:id,name:"Fictional N-1t company",plan:"enterprise",modules:{mtm:true,"route-field":true},features:["mtm"]}});await prisma.mtmSetting.create({data:{organizationId:id,key:"attendanceEnabled",value:true}})}
-    for(const [id,role,all] of [[C_ADMIN,"admin",false],[C_ADMIN2,"admin",false],[C_HR,"manager",true],[C_MANAGER,"manager",false]] as const)await prisma.user.create({data:{id,organizationId:C,name:id===C_ADMIN?"Fictional N-1t closer":"Fictional N-1t reviewer",email:`${id}@example.invalid`,role,passwordHash:"unusable",mtmAttendanceAll:all}})
+    for(const [id,role,all] of [[C_ADMIN,"admin",false],[C_ADMIN2,"admin",false],[C_HR,"viewer",true],[C_MANAGER,"manager",false]] as const)await prisma.user.create({data:{id,organizationId:C,name:id===C_ADMIN?"Fictional N-1t closer":"Fictional N-1t reviewer",email:`${id}@example.invalid`,role,passwordHash:"unusable",mtmAttendanceAll:all}})
     await prisma.user.create({data:{id:B_ADMIN,organizationId:OTHER,name:"Fictional other-tenant admin",email:`${B_ADMIN}@example.invalid`,role:"admin",passwordHash:"unusable"}})
     await prisma.mtmTeam.create({data:{id:C_TEAM,organizationId:C,name:"Fictional N-1t team"}})
     await prisma.mtmAgent.create({data:{organizationId:C,name:"Fictional N-1t supervisor",role:"SUPERVISOR",userId:C_MANAGER,teamId:C_TEAM}})
@@ -183,7 +183,7 @@ const at=(date:string,time:string)=>new Date(`${date}T${time}:00+04:00`)
    expect(frozen.closed!.corrections).toHaveLength(1);expect(frozen.closed!.corrections[0]).toMatchObject({employeeId:people.a,employeeName:"Fictional N-1t employee A",date:"2026-09-28",requestId:request.id})
    expect(frozen.closed!.corrections[0].before?.startedAt).toBe(at("2026-09-28","09:10").toISOString());expect(frozen.closed!.corrections[0].after.startedAt).toBe(at("2026-09-28","09:00").toISOString())
    expect(JSON.stringify(frozen)).not.toMatch(/PRIVATE_|latitude|longitude|pauseIntervals/)
-   // HR who reads everyone sees the frozen N-1t but has no press; a team manager cannot open a close holding people outside his team.
+   // The HR grant on a read-only role sees the frozen N-1t but has no press; a team manager cannot open a close holding people outside his team.
    const hr=await inC(()=>store.readAttendanceMonthN1t({...closer,userId:C_HR},{month,locale:"ru"}))
    expect(hr).toMatchObject({canClose:false,open:0,candidates:[]});expect(hr.closed!.closes.map(close=>close.id)).toEqual([closed.id])
    const manager=await inC(()=>store.readAttendanceMonthN1t({...closer,userId:C_MANAGER},{month,locale:"ru"}))

@@ -768,6 +768,43 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
     await expect(tenant(organizationId, () => store.readAttendanceEmployee(admin, created.agentId))).rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_NOT_FOUND" })
   })
 
+  // Owner, 2026-11-21: HR run employees with no card. What they may not do is reach past the section.
+  it("HR add and edit employees, but cannot take over a login or widen their own field card", async () => {
+    const create = await import("@/lib/mtm/attendance-employee-create")
+    const [hrId, colleagueId] = ["automatic-hr-writer", "automatic-hr-colleague"]
+    await bypass(async () => {
+      await prisma.user.create({ data: { id: hrId, organizationId: automaticOrg, name: "Fictional HR", email: `${hrId}@example.invalid`, role: "manager", passwordHash: "!fixture", mtmAttendanceAll: true, hiddenModules: ["mtm"] } })
+      await prisma.user.create({ data: { id: colleagueId, organizationId: automaticOrg, name: "Fictional sales manager", email: `${colleagueId}@example.invalid`, role: "manager", passwordHash: "!fixture" } })
+    })
+    const hr = { ...automaticAdmin, userId: hrId }
+    const cardOf = (userId: string) => tenant(automaticOrg, () => prisma.mtmAgent.findFirstOrThrow({ where: { organizationId: automaticOrg, userId }, select: { id: true } }))
+    const page = { position: null, teamId: null, managerId: null }
+    const hired = await tenant(automaticOrg, () => create.createAttendanceEmployee(hr, { name: "Fictional HR hire", phone: "+994550117701" }))
+    expect((await tenant(automaticOrg, () => store.readAttendanceEmployee(hr, hired.agentId))).employee.loginEditable).toBe(true)
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(hr, hired.agentId, { ...page, name: "Fictional HR hire", phone: "+994550117702" }))
+    expect(await tenant(automaticOrg, () => prisma.user.findUniqueOrThrow({ where: { id: hired.userId }, select: { phone: true } }))).toEqual({ phone: "+994550117702" })
+
+    const colleague = await cardOf(colleagueId)
+    expect((await tenant(automaticOrg, () => store.readAttendanceEmployee(hr, colleague.id))).employee.loginEditable).toBe(false)
+    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(hr, colleague.id, { ...page, name: "Fictional sales manager", phone: "+994550117703" })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED" })
+    expect(await tenant(automaticOrg, () => prisma.user.findUniqueOrThrow({ where: { id: colleagueId }, select: { phone: true } }))).toEqual({ phone: null })
+    const adminCard = await cardOf(automaticAdminId)
+    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(hr, adminCard.id, { ...page, name: "Renamed by HR" })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_LOGIN_LOCKED" })
+    await expect(tenant(automaticOrg, () => store.removeAttendanceEmployee(hr, colleague.id, { mode: "DELETE" })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_CRM_USER" })
+
+    // A field card of their own: no one may be put under it by the person who holds it.
+    const own = await cardOf(hrId)
+    await bypass(() => prisma.mtmAgent.update({ where: { id: own.id }, data: { role: "MANAGER" } }))
+    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(hr, hired.agentId, { ...page, name: "Fictional HR hire", managerId: own.id })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID" })
+    await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, hired.agentId, { ...page, name: "Fictional HR hire", managerId: own.id }))
+    await bypass(() => prisma.mtmAgent.update({ where: { id: hired.agentId }, data: { managerId: null } }))
+    await bypass(() => prisma.mtmAgent.update({ where: { id: own.id }, data: { role: "EMPLOYEE" } }))
+  })
+
   it("serializes legacy profile phone and metadata saves, rolls both records back on audit failure and locks canonical login fields", async () => {
     const org = "identity-hr-profile-maintenance", oldPhone = "+994507772411", newPhone = "+994507772412", claimedPhone = "+994507772413"
     const fixture = await bypass(async () => {

@@ -5,6 +5,7 @@ import { checkPermission, type Role } from "@/lib/permissions"
 import { effectiveHiddenModules } from "@/lib/user-module-access"
 import { capabilitySettingsFromTenantSettings, getTenantCapabilityDefinition, resolveTenantCapability, tenantModulesFromFields } from "@/lib/tenant-capabilities"
 import { canReviewMtmRouteRequest, resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { isPersonnelGrantHolder, personnelManagerActor } from "@/lib/mtm/attendance-manager"
 import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
 import { AttendanceRequestDetailsSchema, AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { attendanceRequestDto, attendanceRequestSelect, lockAttendanceRequests } from "@/lib/mtm/attendance-request-store"
@@ -26,13 +27,14 @@ export const AttendanceDecisionInputSchema = z.object({
 })
 export type AttendanceReviewer = { organizationId: string; userId: string; principalType: "session" | "api_key" }
 
-/** The report-wide HR grant is read-only. Review uses the current web write
- * permission AND current Route & Field scope, never the cached report actor. */
+/** Review uses the current web write permission AND either the HR grant, which
+ * reaches every employee with no card (owner, 2026-11-21), or the current Route &
+ * Field scope. Never the cached report actor. One's own request is refused below. */
 export async function resolveAttendanceReviewerScope(tx: Prisma.TransactionClient, reviewer: AttendanceReviewer) {
   if (reviewer.principalType !== "session") throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
   const { organizationId, userId } = reviewer
-  const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`
-    SELECT "role", "hiddenModules" FROM "users" WHERE "organizationId" = ${organizationId} AND "id" = ${userId}
+  const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[]; mtmAttendanceAll: boolean }[]>`
+    SELECT "role", "hiddenModules", "mtmAttendanceAll" FROM "users" WHERE "organizationId" = ${organizationId} AND "id" = ${userId}
     AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
   if (!user || !checkPermission(user.role as Role, "mtm", "write") || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) {
     throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
@@ -46,6 +48,7 @@ export async function resolveAttendanceReviewerScope(tx: Prisma.TransactionClien
     modules: tenantModulesFromFields(org), hidden: settings.hidden, requested: settings.requested })
   if (!capability.enabled || capability.status === "disabled") throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
   if (!await readAttendanceFeature(tx, organizationId)) throw new AttendanceRequestError("MTM_ATTENDANCE_DISABLED", 404)
+  if (isPersonnelGrantHolder(user)) return personnelManagerActor()
   const actor = await resolveMtmRouteActor(tx, { organizationId, userId, webRole: user.role })
   if (!actor || !["ADMIN", "MANAGER", "SUPERVISOR"].includes(actor.role) || (actor.role !== "ADMIN" && actor.scopedAgentIds === null)) {
     throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)

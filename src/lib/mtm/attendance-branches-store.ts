@@ -1,3 +1,4 @@
+import { isPersonnelManager } from "@/lib/mtm/attendance-manager"
 import { createHash, randomUUID } from "node:crypto"
 import { ATTENDANCE_TRACKED_CARD_WHERE } from "@/lib/mtm/attendance-tracking"
 import { Prisma } from "@prisma/client"
@@ -26,7 +27,7 @@ const hash = (userId: string, value: unknown) => createHash("sha256").update(JSO
 
 async function currentUser(tx: Tx, reviewer: AttendanceReviewer) {
   if (reviewer.principalType !== "session") return reject("FORBIDDEN", 403)
-  const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`SELECT role,"hiddenModules" FROM users
+  const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[]; mtmAttendanceAll: boolean }[]>`SELECT role,"hiddenModules","mtmAttendanceAll" FROM users
     WHERE "organizationId"=${reviewer.organizationId} AND id=${reviewer.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
   if (!user || !checkPermission(user.role as Role, "mtm", "read") || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) return reject("FORBIDDEN", 403)
   return user
@@ -53,7 +54,7 @@ export async function readAttendanceBranches(reviewer: AttendanceReviewer): Prom
     const rows = await tx.$queryRaw<BranchRow[]>`SELECT DISTINCT ON ("branchId") * FROM mtm_attendance_branch_revisions
       WHERE "organizationId"=${reviewer.organizationId} ORDER BY "branchId",version DESC LIMIT 1001`
     if (rows.length > 1000) return reject("TOO_LARGE", 422)
-    return { branches: rows.map(branchDto).sort((a,b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)), canManageBranches: ["admin","superadmin"].includes(user.role) }
+    return { branches: rows.map(branchDto).sort((a,b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)), canManageBranches: isPersonnelManager(user) }
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 15_000 })
 }
 
@@ -85,7 +86,7 @@ export async function saveAttendanceBranch(reviewer: AttendanceReviewer, raw: un
   return prisma.$transaction(async (tx: Tx) => {
     await lockRegistry(tx, reviewer.organizationId)
     const user = await currentUser(tx, reviewer)
-    if (!["admin","superadmin"].includes(user.role)) return reject("ADMIN_REQUIRED", 403)
+    if (!isPersonnelManager(user)) return reject("ADMIN_REQUIRED", 403)
     await resolveAttendanceReviewerScope(tx, reviewer)
     const [existing] = await tx.$queryRaw<BranchRow[]>`SELECT * FROM mtm_attendance_branch_revisions
       WHERE "organizationId"=${reviewer.organizationId} AND "requestId"=${input.requestId}`

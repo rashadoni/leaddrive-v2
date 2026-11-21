@@ -10,12 +10,14 @@ export const GET = withMtmAttendanceAuth("read", async (_req, auth) => {
   return NextResponse.json({ success: true, data: {
     current: attendanceRuleForDate(versions, today), versions, today,
     minEffectiveFrom: attendanceRuleMinimumDate(versions, auth.settings.timezone),
-    canManageRules: auth.role === "admin" || auth.role === "superadmin",
+    canManageRules: auth.canManagePersonnel,
+    // Who holds the HR grant is an administrator's to change, not HR's.
+    canManageAccess: auth.role === "admin" || auth.role === "superadmin",
   } })
 })
 
 export const POST = withMtmAttendanceAuth("write", async (req, auth) => {
-  if (auth.role !== "admin" && auth.role !== "superadmin") {
+  if !auth.canManagePersonnel {
     return NextResponse.json({ error: "Forbidden", code: "MTM_ATTENDANCE_ADMIN_REQUIRED" }, { status: 403 })
   }
   try {

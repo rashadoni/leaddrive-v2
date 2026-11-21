@@ -1,3 +1,4 @@
+import { isPersonnelManager } from "@/lib/mtm/attendance-manager"
 import { isValidTimezone } from "@/lib/timezone"
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma } from "@prisma/client"
@@ -93,7 +94,7 @@ export async function readAttendanceInstallationQueue(reviewer: AttendanceReview
     let writer: MtmRouteActor | null = null
     try { writer = await resolveAttendanceReviewerScope(tx, reviewer) }
     catch (e) { if (!(e instanceof AttendanceRequestError) || e.status !== 403) throw e }
-    const [settingsActor] = await tx.$queryRaw<{ role: string }[]>`SELECT role FROM users WHERE "organizationId"=${organizationId} AND id=${reviewer.userId}`
+    const [settingsActor] = await tx.$queryRaw<{ role: string; hiddenModules: string[]; mtmAttendanceAll: boolean }[]>`SELECT role,"hiddenModules","mtmAttendanceAll" FROM users WHERE "organizationId"=${organizationId} AND id=${reviewer.userId}`
     const [cursor] = query.cursor ? await tx.$queryRaw<{ submittedAt: Date; id: string }[]>`SELECT "submittedAt",id FROM mtm_attendance_installation_requests
       WHERE "organizationId"=${organizationId} AND id=${query.cursor} AND (${scope}::text[] IS NULL OR "agentId"=ANY(${scope}::text[]))` : []
     if (query.cursor && !cursor) return fail("QUERY_INVALID", 400)
@@ -111,7 +112,7 @@ export async function readAttendanceInstallationQueue(reviewer: AttendanceReview
     const required = await readAttendanceInstallationRule(tx, organizationId)
     const clock = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId, key: "timezone" } }, select: { value: true } })
     const timezone = typeof clock?.value === "string" && isValidTimezone(clock.value) ? clock.value : "Asia/Baku"
-    return { timezone, required, canConfigure: ["admin", "superadmin"].includes(settingsActor?.role ?? ""), nextCursor: rows.length > 50 ? rows[49].id : null,
+    return { timezone, required, canConfigure: isPersonnelManager(settingsActor), nextCursor: rows.length > 50 ? rows[49].id : null,
       items: rows.slice(0, 50).map(row => {
         const dto = ownDto(row, row.installationId, required)
         const canWrite = writer !== null && row.userId !== reviewer.userId && canReviewMtmRouteRequest(writer, row.agentId)

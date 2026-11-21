@@ -1,8 +1,8 @@
+import { isPersonnelManager } from "@/lib/mtm/attendance-manager"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import type { AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
-import { effectiveHiddenModules } from "@/lib/user-module-access"
 export const ATTENDANCE_RISK_SETTING_KEYS = ["attendanceAllowSharedInstallations", "attendanceRejectMockLocations", "attendanceClockDifferenceSeconds"] as const
 export type AttendanceRiskPolicy = { allowSharedInstallations: boolean; rejectMockLocations: boolean; clockDifferenceSeconds: number }
 export const DEFAULT_ATTENDANCE_RISK_POLICY: AttendanceRiskPolicy = { allowSharedInstallations: false, rejectMockLocations: false, clockDifferenceSeconds: 300 }
@@ -32,9 +32,9 @@ export async function saveAttendanceRiskPolicy(reviewer: AttendanceReviewer, cha
   }
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await lockAttendanceRiskPolicy(tx, reviewer.organizationId, true)
-    const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`SELECT role,"hiddenModules" FROM users
+    const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[]; mtmAttendanceAll: boolean }[]>`SELECT role,"hiddenModules","mtmAttendanceAll" FROM users
       WHERE "organizationId"=${reviewer.organizationId} AND id=${reviewer.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
-    if (!user || !["admin", "superadmin"].includes(user.role) || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
+    if (!user || !isPersonnelManager(user)) throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
     const prior = await readAttendanceRiskPolicy(tx, reviewer.organizationId)
     for (const [key, value] of entries) await tx.mtmSetting.upsert({ where: { organizationId_key: { organizationId: reviewer.organizationId, key } },
       create: { organizationId: reviewer.organizationId, key, value: value as Prisma.InputJsonValue }, update: { value: value as Prisma.InputJsonValue } })

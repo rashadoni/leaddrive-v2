@@ -3,6 +3,7 @@ import { ChevronLeft } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { auth } from "@/lib/auth"
 import { runWithRlsBypass } from "@/lib/rls-context"
+import { canManagePersonnelPage } from "@/lib/mtm/attendance-page-access"
 import { MtmAttendanceSettingsHub } from "@/components/mtm/attendance-settings-hub"
 import { MtmAttendanceRulesForm } from "@/components/mtm/attendance-rules-form"
 import { MtmAttendanceCalendar } from "@/components/mtm/attendance-calendar"
@@ -25,7 +26,7 @@ const UNTITLED: readonly AttendanceSettingsCard[] = ["hours", "holidays", "day-k
 export default async function PersonnelSettingsPage({ searchParams }: { searchParams: AttendanceSearchParams }) {
   const t = await getTranslations("personnel")
   const session = await runWithRlsBypass(async () => auth())
-  const isAdmin = session?.user?.role === "admin" || session?.user?.role === "superadmin"
+  const isAdmin = await canManagePersonnelPage(session?.user)
   const params = await searchParams, raw = params.tab
   // The former settings card: bookmarks and old links land on the queue itself.
   if (raw === "review") {

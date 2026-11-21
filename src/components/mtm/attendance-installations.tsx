@@ -69,7 +69,7 @@ export function MtmAttendanceInstallations() {
     const required = !queue.required, controller = new AbortController(); writing.current = controller
     setSaving(true); setError(null); setSaved(false)
     try {
-      const response = await fetch("/api/v1/mtm/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, signal: controller.signal,
+      const response = await fetch("/api/v1/mtm/attendance/policy", { method: "PUT", headers: { "Content-Type": "application/json" }, signal: controller.signal,
         body: JSON.stringify({ attendanceRequireInstallationApproval: required }) })
       if (!mounted.current || controller.signal.aborted) return
       if ([401, 403, 404].includes(response.status)) { clear(); return }

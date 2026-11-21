@@ -20,7 +20,7 @@ const adminOnly = () => NextResponse.json({ error: "Forbidden", code: "MTM_ATTEN
 
 /** Personnel → Settings → Holidays: what is offered for this or next year (decided, found, not yet). */
 export const GET = withMtmAttendanceAuth("read", async (req, auth) => {
-  if (auth.role !== "admin" && auth.role !== "superadmin") return adminOnly()
+  if !auth.canManagePersonnel return adminOnly()
   const selected = await year(auth, Number(new URL(req.url).searchParams.get("year")))
   if (selected === null) return invalidYear()
   return NextResponse.json({ success: true, data: await attendanceOfficialCalendarView(auth.orgId, selected) }, { headers: { "Cache-Control": "private, no-store" } })
@@ -31,7 +31,7 @@ export const GET = withMtmAttendanceAuth("read", async (req, auth) => {
  * found calendar the admin reviewed. With `dismiss: true`, "wrong, don't add".
  */
 export const POST = withMtmAttendanceAuth("write", async (req, auth) => {
-  if (auth.role !== "admin" && auth.role !== "superadmin") return adminOnly()
+  if !auth.canManagePersonnel return adminOnly()
   const body = await req.json().catch(() => null)
   const dismiss = DismissSchema.safeParse(body)
   const parsed = dismiss.success ? null : InputSchema.safeParse(body)

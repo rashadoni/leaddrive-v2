@@ -230,7 +230,7 @@ describe("administrator management of individual attendance access", () => {
     fetchMock.mockImplementation(async (url, options) => {
       const parsed = new URL(String(url), "https://attendance.test")
       if (parsed.pathname.includes("/access")) return deny ? response(null, 403) : server(url, options)
-      if (parsed.pathname.endsWith("/rules")) return response({ today: TODAY, canManageRules: managementFlag })
+      if (parsed.pathname.endsWith("/rules")) return response({ today: TODAY, canManageRules: managementFlag, canManageAccess: managementFlag })
       if (parsed.pathname.endsWith("/views")) return response([])
       return response(buildMtmAttendanceReport({ employees: [{ id: "agent-a", name: "Aysel Aliyeva", teamId: "north", teamName: "North" }], workdays: [], calendar: [], rules: [], from: parsed.searchParams.get("from")!, to: parsed.searchParams.get("to")!, now: `${TODAY}T19:00:00+04:00` }))
     })

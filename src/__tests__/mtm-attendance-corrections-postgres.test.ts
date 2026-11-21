@@ -84,8 +84,8 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
         await prisma.organization.create({ data: { id, name: "Fictional correction company", slug: id, modules: { "route-field": true, personnel: true } } })
         await prisma.mtmSetting.create({ data: { organizationId: id, key: "attendanceEnabled", value: true } })
       }
-      for (const [id, role] of [[ADMIN, "admin"], ["correction-pg-owner", "admin"], ["correction-pg-hr", "manager"], ["correction-pg-supervisor", "manager"]]) {
-        await prisma.user.create({ data: { id, organizationId: ORG, name: "Fictional reviewer", email: `${id}@example.invalid`, role, passwordHash: "unusable-fixture-hash", mtmAttendanceAll: id === "correction-pg-hr" } })
+      for (const [id, role] of [[ADMIN, "admin"], ["correction-pg-owner", "admin"], ["correction-pg-hr", "viewer"], ["correction-pg-hr-writer", "manager"], ["correction-pg-supervisor", "manager"]]) {
+        await prisma.user.create({ data: { id, organizationId: ORG, name: "Fictional reviewer", email: `${id}@example.invalid`, role, passwordHash: "unusable-fixture-hash", mtmAttendanceAll: id === "correction-pg-hr" || id === "correction-pg-hr-writer" } })
       }
       for (const id of ["correction-team-a", "correction-team-b"]) await prisma.mtmTeam.create({ data: { id, organizationId: ORG, name: id } })
       await prisma.mtmAgent.create({ data: { id: AGENT, organizationId: ORG, name: "Fictional employee", role: "EMPLOYEE", attendanceParticipant: true, userId: "correction-pg-owner", teamId: "correction-team-a" } })
@@ -171,6 +171,12 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
       expect(await prisma.workforceTimeCorrection.count({ where: { requestId: request.id } })).toBe(0)
     })
   })
+  // Owner, 2026-11-21: HR are not agents and decide requests with no employee card.
+  it("HR whose role may write decide a request with no card", async () => {
+    const { request } = await submit(input("2026-09-24"))
+    const decided = await tenant(ORG, () => decision.decideAttendanceRequest({ ...reviewer, userId: "correction-pg-hr-writer" }, request.id, { decision: "REJECTED", version: request.version, note: "Fictional reason" }))
+    expect(decided.request).toMatchObject({ status: "REJECTED" })
+  })
   it("denies own approval, other teams, read-only HR grant, API keys, foreign tenant and current revocation", async () => {
     const { request } = await submit(input("2026-09-07"))
     const raw = { decision: "APPROVED", version: request.version }
@@ -179,7 +185,7 @@ pgDescribe("MTM corrections on real PostgreSQL", () => {
     }
     await expect(tenant(ORG, () => decision.decideAttendanceRequest({ ...reviewer, principalType: "api_key" }, request.id, raw))).rejects.toMatchObject({ status: 403 })
     await expect(tenant(OTHER, () => decision.decideAttendanceRequest({ ...reviewer, organizationId: OTHER }, request.id, raw))).rejects.toMatchObject({ status: 404 })
-    await tenant(ORG, () => prisma.user.update({ where: { id: ADMIN }, data: { role: "manager", hiddenModules: ["mtm"] } }))
+    await tenant(ORG, () => prisma.user.update({ where: { id: ADMIN }, data: { role: "manager", hiddenModules: ["personnel"] } }))
     await expect(approve(request)).rejects.toMatchObject({ status: 403 })
     await tenant(ORG, () => prisma.user.update({ where: { id: ADMIN }, data: { role: "admin", hiddenModules: [] } }))
     await tenant(ORG, () => prisma.mtmSetting.update({ where: { organizationId_key: { organizationId: ORG, key: "attendanceEnabled" } }, data: { value: false } }))

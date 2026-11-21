@@ -23,13 +23,13 @@ import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
  * the condition that keeps lateness in the report: a correction that moves the
  * start goes to the manager as before, however the setting stands.
  *
- * Approved by whom: the administrator who switched the setting on. The ledger
+ * Approved by whom: the administrator or HR who switched the setting on. The ledger
  * (workforce_time_corrections) and its database guards require a person behind
  * every approved correction, and the agent's card usually has no CRM login; the
  * switch is that person's standing decision, so the request, the ledger row and
  * the audit name them, and the decision note says it was automatic. It is the
  * manager's own decision path (`decideAttendanceRequestInTransaction`), with
- * every check it makes: the administrator must still be active, still have
+ * every check it makes: that person must still be active, still have
  * write on MTM and the employee in scope, and never be the employee.
  */
 export const ATTENDANCE_AUTO_CLOSE_SETTING_KEY = "attendanceAutoCloseForgottenDay"
