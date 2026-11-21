@@ -511,7 +511,7 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
       { revoke: () => settings(false), restore: () => settings(true) },
       { revoke: async () => { mail.capability = false }, restore: async () => { mail.capability = true } },
       { revoke: () => user({ isActive: false }), restore: () => user({ isActive: true }) },
-      { revoke: () => user({ hiddenModules: ["mtm"] }), restore: () => user({ hiddenModules: [] }) },
+      { revoke: () => user({ hiddenModules: ["personnel"] }), restore: () => user({ hiddenModules: [] }) },
     ]
     for (const item of cases) {
       const schedule = await createSchedule("fixture-supervisor-user")
@@ -668,7 +668,7 @@ pgDescribe("MTM report reads the real saved workday and journal", () => {
     const patch = (version: string) => item.PATCH(new NextRequest("http://localhost/api/v1/mtm/attendance/access/fixture-hr-user", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ version, allEmployees: true }) }), { params: Promise.resolve({ id }) })
     const count = () => tenant(ORG, () => prisma.mtmAuditLog.count({ where: { organizationId: ORG, entityId: id, metadataKind: "mtm_attendance_access" } }))
     const before = await count()
-    for (const data of [{ isActive: false, hiddenModules: [] }, { isActive: true, hiddenModules: ["mtm"] }]) {
+    for (const data of [{ isActive: false, hiddenModules: [] }, { isActive: true, hiddenModules: ["personnel"] }]) {
       await tenant(ORG, () => prisma.user.update({ where: { id }, data }))
       const user = (await (await list()).json()).data.users[0]
       expect(user.canGrant).toBe(false)
