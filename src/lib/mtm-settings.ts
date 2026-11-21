@@ -55,6 +55,10 @@ export const MTM_SETTING_DEFAULTS = {
   attendanceClockDifferenceSeconds: 300,
   // Scheduling and date-only values across route planning and Excel reports.
   timezone: "Asia/Baku",
+  // A forgotten field workday closes itself at this local hour (client via the
+  // owner, 2026-11-21); off until a company asks — see workday-auto-close.ts.
+  workdayAutoCloseEnabled: false,
+  workdayAutoCloseHour: 20,
   // Privacy-first rollout: agents see only their own calendar unless the
   // tenant explicitly enables the separate, sanitized team-meeting feed.
   teamScheduleVisibilityEnabled: false,

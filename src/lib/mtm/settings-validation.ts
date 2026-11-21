@@ -18,6 +18,9 @@ export const MTM_SETTING_NUMBER_RANGES = {
   geofenceRadius: { min: 25, max: 10_000 },
   // Local hour after which a not-started route shows as late on the live map.
   lateAfterHour: { min: 0, max: 23 },
+  // Local hour a forgotten field workday closes. Not a morning hour: that would
+  // end every day while people are at work.
+  workdayAutoCloseHour: { min: 12, max: 23 },
   // Minutes a visit may stay open before the long-open visit alert.
   autoCheckoutMinutes: { min: 5, max: 1_440 },
   maxPhotosPerVisit: { min: 1, max: 50 },
