@@ -112,7 +112,55 @@ describe("native TikTok connection settings", () => {
     expect(container.textContent).toContain("disconnected from this workspace")
     expect(container.textContent).toContain("Disconnected")
     expect(button("Disconnect").disabled).toBe(true)
-    expect(fetchMock.mock.calls.every(([url]) => url === "/api/v1/channels/tiktok-messaging")).toBe(true)
+    // Still a guard against a stray endpoint: only the connection status and its readiness read.
+    expect(fetchMock.mock.calls.every(([url]) =>
+      url === "/api/v1/channels/tiktok-messaging" || url === "/api/v1/channels/tiktok-messaging/readiness")).toBe(true)
+  })
+
+  const readiness = (items: { id: string; state: string; value?: string | null }[], over: Record<string, unknown> = {}) => ({
+    ready: items.every(item => item.state === "ok"),
+    items: items.map(item => ({ value: null, ...item })),
+    facts: { profileReadFailed: false, ...over },
+  })
+  /** Routes the two GETs the page makes, so a readiness assertion cannot pass on the status body. */
+  function routed(status: unknown, readinessBody: unknown) {
+    return vi.fn(async (url: string) => response(String(url).endsWith("/readiness") ? readinessBody : status))
+  }
+
+  it("tells the administrator which requirement is theirs and which waits on TikTok", async () => {
+    vi.stubGlobal("fetch", routed({ ...ready, status: "needs_access", capabilities: {} }, readiness([
+      { id: "account", state: "ok", value: "@gobustone" },
+      { id: "advancedAccess", state: "warn" },
+      { id: "messagingApproval", state: "blocked" },
+    ])))
+    await render()
+    const list = container.querySelector('[data-testid="tiktok-readiness"]')
+    expect(list).not.toBeNull()
+    const text = list!.textContent ?? ""
+    expect(text).toContain("@gobustone")
+    expect(text).toContain("Your move")
+    expect(text).toContain("Waiting on TikTok")
+    // The unmet requirement explains itself; the met one does not repeat advice nobody needs.
+    expect(text).toContain("Raise it in TikTok")
+    expect(text).not.toContain("Connect the business account from the social monitoring page")
+  })
+
+  it("does not read an unanswered entitlement as a refusal", async () => {
+    vi.stubGlobal("fetch", routed(ready, readiness([
+      { id: "account", state: "ok", value: "@gobustone" },
+      { id: "advancedAccess", state: "warn" },
+      { id: "messagingApproval", state: "ok" },
+    ], { profileReadFailed: true })))
+    await render()
+    expect(container.textContent).toContain("That is not a refusal")
+  })
+
+  it("falls back to the static requirement when readiness cannot be read", async () => {
+    vi.stubGlobal("fetch", routed(ready, { error: "nope" }))
+    await render()
+    expect(container.querySelector('[data-testid="tiktok-readiness"]')).toBeNull()
+    expect(container.textContent).toContain("Could not check readiness")
+    expect(container.textContent).toContain("Business Messaging API approval")
   })
 
   it("hides server error details and blocks mutations when status cannot be verified", async () => {
