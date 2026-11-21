@@ -741,7 +741,7 @@ jobs:
         # Same gate as in pr-checks: no GPS entry — the phone's two routes, the
         # web/API-key one — stores a point taken during the employee's break
         # (see the test's header).
-        run: npx vitest run src/__tests__/mtm-mobile-location-break-postgres.test.ts
+        run: npx vitest run src/__tests__/mtm-mobile-location-break-postgres.test.ts src/__tests__/mtm-workday-auto-close-postgres.test.ts
         env:
           MTM_LOCATION_BREAK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           MTM_LOCATION_BREAK_DB_GATE: required

@@ -35,6 +35,8 @@ export interface NotifyAgentsInput {
   data?: Record<string, string>
   /** The Android channel to draw it in; the app's default channel when absent. */
   channelId?: string
+  /** Sent without a notification block, so the app can act on it in the background. */
+  dataOnly?: boolean
   /** Injected in tests. */
   send?: typeof sendPushMessages
   configured?: boolean
@@ -105,6 +107,7 @@ export async function notifyAgents(input: NotifyAgentsInput): Promise<NotifyAgen
       body: pushBody(input.body),
       data: input.data,
       ...(input.channelId ? { channelId: input.channelId } : {}),
+      ...(input.dataOnly ? { dataOnly: true } : {}),
     })),
   })
 

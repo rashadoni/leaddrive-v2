@@ -26,6 +26,7 @@ import { ATTENDANCE_RISK_SETTING_KEYS, saveAttendanceRiskPolicy } from "@/lib/mt
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
 import { ATTENDANCE_AUTO_CLOSE_BY_KEY, ATTENDANCE_AUTO_CLOSE_SETTING_KEY } from "@/lib/mtm/attendance-auto-close"
 import { ATTENDANCE_TWO_STEP_SETTING_KEY } from "@/lib/mtm/attendance-approval-chain"
+import { WORKDAY_AUTO_CLOSE_ENABLED_KEY, WORKDAY_AUTO_CLOSE_HOUR_KEY, WORKDAY_AUTO_CLOSE_SINCE_KEY } from "@/lib/mtm/workday-auto-close"
 
 const MODULE_TOGGLE_ROLES = ["admin", "superadmin"]
 // Whole-feature visibility switches. Only an administrator changes them.
@@ -85,7 +86,7 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     // `data.ignoredKeys` so the current page can say so (old pages ignore it).
     const ignoredKeys: string[] = []
     // Same rule for what a field agent may ask for ("Access & permissions").
-    for (const key of [...ADVANCED_KEYS, ...MODULE_TOGGLE_KEYS, ...AGENT_PERMISSION_ADMIN_ONLY_KEYS]) {
+    for (const key of [...ADVANCED_KEYS, ...MODULE_TOGGLE_KEYS, ...AGENT_PERMISSION_ADMIN_ONLY_KEYS, WORKDAY_AUTO_CLOSE_ENABLED_KEY, WORKDAY_AUTO_CLOSE_HOUR_KEY]) {
       if (body[key] !== undefined && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
         delete body[key]
         ignoredKeys.push(key)
@@ -319,6 +320,12 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     // Who switched auto-approval on is who its approvals are recorded for.
     if (body[ATTENDANCE_AUTO_CLOSE_SETTING_KEY] === true && differs(ATTENDANCE_AUTO_CLOSE_SETTING_KEY)) {
       await storeSetting(ATTENDANCE_AUTO_CLOSE_BY_KEY, auth.userId)
+    }
+
+    // From this moment, and not before it: the days already behind it stay as
+    // they are (workday-auto-close.ts). Written each time it is switched on.
+    if (body[WORKDAY_AUTO_CLOSE_ENABLED_KEY] === true && differs(WORKDAY_AUTO_CLOSE_ENABLED_KEY)) {
+      await storeSetting(WORKDAY_AUTO_CLOSE_SINCE_KEY, new Date().toISOString())
     }
 
     // Audit only real changes: an old page's whole-object save would otherwise
