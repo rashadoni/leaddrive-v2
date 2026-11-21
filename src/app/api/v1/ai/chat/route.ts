@@ -557,6 +557,7 @@ Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown
               hiddenModules: session.hiddenModules,
               principalType: session.principalType,
               hideCustomerPhoneForOperators: session.hideCustomerPhoneForOperators,
+              hiddenChannelConfigIds: session.hiddenChannelConfigIds,
             },
           })
           if (stateForced && toolBlock.name === stateForced.tool) {

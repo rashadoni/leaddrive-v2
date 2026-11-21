@@ -891,6 +891,15 @@ jobs:
           USER_HANDOVER_INBOX_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           USER_HANDOVER_INBOX_DB_GATE: required
 
+      - name: AI call follow-up database gate
+        # Same gate as in pr-checks: behind the VoIP switch a new caller becomes one lead,
+        # the pharmacy line and demo calls never do, a named employee gets a task only on an
+        # exact match, and the spoken summary counts inside the asker's rights.
+        run: npx vitest run src/__tests__/ai-call-follow-up-postgres.test.ts
+        env:
+          AI_CALL_FOLLOW_UP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          AI_CALL_FOLLOW_UP_DB_GATE: required
+
       - name: Inbox analytics website chat database gate
         # Same gate as in pr-checks: the website chat in analytics/temporal and
         # analytics/frt, other channels' figures unchanged. A real Postgres.

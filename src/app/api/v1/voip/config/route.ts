@@ -35,6 +35,8 @@ const commonSettings = z.object({
   voiceAgentInboundRules: z.string().trim().max(MAX_INBOUND_RULES_LENGTH)
     .refine(inboundRulesFitTransport, "Incoming call rules exceed the voice connection text limit")
     .optional(),
+  // Same rule: a tab that does not know this switch must not turn it off.
+  aiCallLeadsEnabled: z.boolean().optional(),
 });
 
 const settingsSchema = z.discriminatedUnion("provider", [

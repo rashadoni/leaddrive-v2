@@ -870,6 +870,17 @@ jobs:
           USER_HANDOVER_INBOX_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           USER_HANDOVER_INBOX_DB_GATE: required
 
+      - name: AI call follow-up database gate
+        # «Ночью ИИ принял обращения, утром рассказал» (src/lib/voice-agent/inbound-call-follow-up,
+        # src/lib/ai/voice/missed-summary): behind the VoIP switch a new caller becomes one lead,
+        # however the result is replayed; the pharmacy line and demo calls never do; a named
+        # employee gets a task only on an exact match; the spoken summary counts inside the
+        # asker's rights. Real station route, FORCE RLS, no BYPASSRLS.
+        run: npx vitest run src/__tests__/ai-call-follow-up-postgres.test.ts
+        env:
+          AI_CALL_FOLLOW_UP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          AI_CALL_FOLLOW_UP_DB_GATE: required
+
       - name: Inbox analytics website chat database gate
         # The website chat in the inbox reports (the «Bu gün» card, /inbox/analytics):
         # analytics/temporal and analytics/frt read web_chat_messages next to

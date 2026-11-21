@@ -19,6 +19,7 @@ const SOURCE_KEYS: Record<string, string> = {
   referral: "sourceReferral",
   campaign: "sourceCampaign",
   cold_call: "sourceColdCall",
+  inbound_call: "sourceInboundCall",
   event: "sourceEvent",
   other: "sourceOther",
 }

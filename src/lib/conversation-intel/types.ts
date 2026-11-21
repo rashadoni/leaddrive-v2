@@ -8,6 +8,7 @@
  * Slice 1 ships the pure extractors + LLM-DI orchestrator. Whisper
  * transcription pipeline (audio URL → transcript) lands in slice 2.
  */
+import type { CallOutcome, RequestedEmployee } from "@/lib/voice-agent/call-outcome"
 
 export type Sentiment = "very_positive" | "positive" | "neutral" | "negative" | "very_negative"
 
@@ -63,6 +64,14 @@ export interface ConversationInsight {
   latencyMs?: number
   /** Model + provider identifier — slice 2 hits multiple Claude tiers. */
   model?: string
+  /**
+   * AI phone calls only (src/lib/voice-agent/call-outcome.ts). All three are
+   * optional: rows analysed before 2026-11-21 do not have them.
+   */
+  outcome?: CallOutcome
+  requestedEmployee?: RequestedEmployee
+  /** The name the caller gave for themselves, when they gave one. */
+  callerName?: string
 }
 
 /* ─── LLM client interface (DI for testability) ───────────────────────── */

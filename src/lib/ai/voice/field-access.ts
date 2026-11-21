@@ -79,6 +79,8 @@ export function voiceFieldEntitiesForTool(
     // товарам и доскам. Границу «чей это день» держит BookingAccess, а не
     // права на поля. Появятся настраиваемые поля у встреч — завести здесь.
     case "get_bookings_summary": return []
+    // Says the names of the people who asked for this user, from leads and contacts.
+    case "get_missed_summary": return ["lead", "contact"]
     case "get_workload_by_person": {
       const focus = typeof filter.focus === "string" ? filter.focus : "all"
       const type = { tasks: "task", leads: "lead", deals: "deal", tickets: "ticket" }[focus]

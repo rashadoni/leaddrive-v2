@@ -7,13 +7,16 @@ import { useTranslations } from "next-intl"
 import { FileText, Loader2, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { CallOutcomeSummary } from "@/components/voip/call-outcome-summary"
 import { CallRecordingPlayer } from "@/components/voip/call-recording-player"
+import { readCallOutcome, type StoredCallOutcome } from "@/lib/voice-agent/call-outcome"
 
 type CallJournalRecord = {
   id: string
   transcription: string | null
   recordingPlaybackUrl: string | null
   duration: number | null
+  outcome: StoredCallOutcome
 }
 
 type CallJournalCandidate = {
@@ -21,6 +24,7 @@ type CallJournalCandidate = {
   transcription?: unknown
   recordingPlaybackUrl?: unknown
   duration?: unknown
+  insights?: unknown
 }
 
 export function CallJournalDetail() {
@@ -79,6 +83,7 @@ export function CallJournalDetail() {
               ? protectedRecordingPath
               : null,
             duration: typeof candidate.duration === "number" ? candidate.duration : null,
+            outcome: readCallOutcome(candidate.insights),
           })
         }
       } catch (error) {
@@ -147,6 +152,13 @@ export function CallJournalDetail() {
       ) : (
         <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(14rem,0.34fr)]">
           <div className="min-w-0 rounded-lg border border-border p-4">
+            <div className="mb-3 empty:hidden">
+              <CallOutcomeSummary
+                outcome={visibleCall.outcome.outcome}
+                requestedName={visibleCall.outcome.requestedEmployee?.spokenName ?? null}
+                requestedMatched={visibleCall.outcome.requestedEmployee?.match === "matched"}
+              />
+            </div>
             <h3 className="text-sm font-medium">{t("journal.transcript")}</h3>
             {visibleCall.transcription ? (
               <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words font-sans text-sm leading-6 text-foreground">
