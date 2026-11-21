@@ -699,7 +699,7 @@ jobs:
         # looked at no workday at all; the single-point route had refused them
         # all along. A mocked Prisma answers the journal read this depends on
         # with whatever the test hands it.
-        run: npx vitest run src/__tests__/mtm-mobile-location-break-postgres.test.ts
+        run: npx vitest run src/__tests__/mtm-mobile-location-break-postgres.test.ts src/__tests__/mtm-workday-auto-close-postgres.test.ts
         env:
           MTM_LOCATION_BREAK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           MTM_LOCATION_BREAK_DB_GATE: required

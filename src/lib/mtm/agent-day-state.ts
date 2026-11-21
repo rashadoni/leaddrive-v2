@@ -36,7 +36,7 @@ export type MtmAgentPresence =
   /** On a break. `since` is null when the row lost the moment. */
   | { kind: "paused"; since: string | null }
   /** The day was closed, and closing is final and once per day. */
-  | { kind: "finished"; at: string | null }
+  | { kind: "finished"; at: string | null; autoClosed?: boolean }
   /**
    * Prod 2026-09-14: a shift open for days read "working" on the map and "not
    * started" here. Past 16 h or across days it is an anomaly the agent did not

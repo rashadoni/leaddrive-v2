@@ -40,7 +40,7 @@ import {
 
 type SettingValue = string | number | boolean | string[] | MtmRouteTargetType[] | MtmVisitEvaluationQuestion[] | null | undefined
 type SettingsMap = Record<string, SettingValue>
-type UnitKey = "unitSeconds" | "unitMinutes" | "unitMeters" | "unitHour" | "unitPhotos"
+type UnitKey = "unitSeconds" | "unitMinutes" | "unitMeters" | "unitHour" | "unitEveningHour" | "unitPhotos"
 
 type Threshold = { key: string; labelKey: string; hintKey?: string; unitKey: UnitKey }
 type SettingItem = {
@@ -382,6 +382,10 @@ export default function MtmSettingsPage() {
       icon: Clock3,
       items: [
         { key: "timezone", labelKey: "lblTimezone", hintKey: "hintTimezone", type: "timezone" },
+        {
+          key: "workdayAutoCloseEnabled", labelKey: "lblWorkdayAutoClose", hintKey: "hintWorkdayAutoClose", type: "boolean", adminOnly: true,
+          thresholds: [{ key: "workdayAutoCloseHour", labelKey: "lblWorkdayAutoCloseHour", hintKey: "hintWorkdayAutoCloseHour", unitKey: "unitEveningHour" }],
+        },
       ],
     },
     {

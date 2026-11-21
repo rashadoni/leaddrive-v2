@@ -161,6 +161,19 @@ const MAX_CLOCK_SKEW_MS = MTM_WORKDAY_MAX_CLOCK_SKEW_MS
 export const MTM_WORKDAY_REOPEN_EVENT_KEY_PREFIX = "reopen:"
 export const MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX = "reopen-undo:"
 
+/**
+ * clientEventId prefix of the FINISH the server writes when the company closes
+ * a forgotten day at its end-of-day hour (`workday-auto-close.ts`). Like the
+ * manager's keys it is refused from every client, so a journal event carrying
+ * it is known to be the server's, and every screen can say «closed
+ * automatically» instead of implying the employee pressed the button.
+ */
+export const MTM_WORKDAY_AUTO_CLOSE_EVENT_KEY_PREFIX = "auto-close:"
+
+export function isMtmWorkdayAutoCloseEventKey(clientEventId: string | null | undefined): boolean {
+  return typeof clientEventId === "string" && clientEventId.startsWith(MTM_WORKDAY_AUTO_CLOSE_EVENT_KEY_PREFIX)
+}
+
 export function isMtmWorkdayReopenUndoEventKey(clientEventId: string | null | undefined): boolean {
   return typeof clientEventId === "string" && clientEventId.startsWith(MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX)
 }
@@ -168,6 +181,7 @@ export function isMtmWorkdayReopenUndoEventKey(clientEventId: string | null | un
 function isManagerWorkdayEventKey(clientEventId: string): boolean {
   return clientEventId.startsWith(MTM_WORKDAY_REOPEN_EVENT_KEY_PREFIX)
     || clientEventId.startsWith(MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX)
+    || isMtmWorkdayAutoCloseEventKey(clientEventId)
 }
 /** The owner-approved maximum age for an offline Workforce attendance claim. */
 export const WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS = 7 * 24 * 60 * 60 * 1000
@@ -884,6 +898,26 @@ export async function applyMtmWorkdayEvent(
   })
   if (!workday) return conflict("MTM_WORKDAY_NOT_FOUND", "Workday not found")
   if (workday.status === "COMPLETED") {
+    // The employee pressed «End day» on a phone that had not heard yet that
+    // the company's hour already closed it. What he asked for is true: the
+    // day is finished. A conflict would show him an error about a day that
+    // ended exactly as he wanted, so he gets the closed day back instead.
+    if (input.action === "FINISH") {
+      const lastFinish = await db.mtmAgentWorkdayEvent.findFirst({
+        where: { workdayId: workday.id, organizationId: scope.organizationId, type: "FINISH" },
+        orderBy: [{ occurredAt: "desc" }, { appliedAt: { sort: "desc", nulls: "last" } }, { id: "desc" }],
+        select: eventSelect,
+      })
+      if (lastFinish && isMtmWorkdayAutoCloseEventKey(lastFinish.clientEventId)) {
+        return {
+          status: "ok",
+          workday: workday as Record<string, unknown>,
+          event: lastFinish as Record<string, unknown>,
+          review: attendanceReviewResult(lastFinish),
+          idempotent: true,
+        }
+      }
+    }
     return conflict("MTM_WORKDAY_COMPLETED", "Completed workday cannot be changed", workday as Record<string, unknown>)
   }
 

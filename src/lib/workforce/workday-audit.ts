@@ -58,7 +58,7 @@ export async function writeWorkforceWorkdayAuditInTransaction(
     beforeWorkday?: Record<string, unknown> | null
     workday: AuditWorkday
     event: AuditEvent
-    channel: "web" | "mobile_sync"
+    channel: "web" | "mobile_sync" | "system"
     requestMetadata?: WorkforceAuditRequestMetadata
   },
 ): Promise<void> {

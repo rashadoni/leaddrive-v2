@@ -140,6 +140,7 @@ export default function MtmAgentsPage() {
       return { text: presence.since ? t("presencePausedSince", { time: at(presence.since) }) : t("presencePaused"), tone: "paused" }
     }
     if (presence?.kind === "finished") {
+      if (presence.autoClosed) return { text: presence.at ? t("presenceFinishedAutoAt", { time: at(presence.at) }) : t("presenceFinishedAuto"), tone: "quiet" }
       return { text: presence.at ? t("presenceFinishedAt", { time: at(presence.at) }) : t("presenceFinished"), tone: "quiet" }
     }
     // A field manager sees when the agent started; whether the phone is still
