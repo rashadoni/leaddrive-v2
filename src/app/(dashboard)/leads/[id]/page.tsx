@@ -328,6 +328,7 @@ export default function LeadDetailPage() {
     vkontakte: "VKontakte",
     sms: "SMS",
     "web-chat": "Web Chat",
+    inbound_call: t("sourceInboundCall"),
     email: t("sourceEmail"),
     event: t("sourceEvent"),
     other: t("sourceOther"),

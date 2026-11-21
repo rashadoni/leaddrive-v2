@@ -8,6 +8,7 @@ import type {
 } from "@/lib/conversation-intel/types"
 import { prisma } from "@/lib/prisma"
 import { applyRecordFilter } from "@/lib/sharing-rules"
+import { readCallOutcome } from "@/lib/voice-agent/call-outcome"
 import { withRlsAuth } from "@/lib/with-rls"
 
 const FETCH_LIMIT = 20
@@ -90,8 +91,13 @@ function insightForLead(value: unknown) {
   if (candidate.version !== 1 || !summary || !SENTIMENTS.has(candidate.sentiment as Sentiment)) {
     return null
   }
+  // The name only: which user it resolved to is not something this card shows.
+  const stored = readCallOutcome(value)
 
   return {
+    outcome: stored.outcome,
+    requestedName: stored.requestedEmployee?.spokenName ?? null,
+    requestedMatched: stored.requestedEmployee?.match === "matched",
     sentiment: candidate.sentiment as Sentiment,
     summary,
     topics: Array.isArray(candidate.topics)

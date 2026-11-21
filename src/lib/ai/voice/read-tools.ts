@@ -40,6 +40,7 @@ export const VOICE_SUMMARY_TOOLS = [
   "get_lead_coverage",
   "read_record",
   "get_bookings_summary",
+  "get_missed_summary",
 ] as const
 
 export type VoiceToolName = (typeof VOICE_LIST_TOOLS)[number] | (typeof VOICE_SUMMARY_TOOLS)[number]
@@ -87,6 +88,9 @@ export const VOICE_TOOL_MODULE: Record<VoiceToolName, ModuleId> = {
   // Same target-scoped shell as find_record: the route re-checks the selected
   // record type against its real module and RBAC before reading anything.
   read_record: "ai",
+  // Spans telephony, the inbox and bookings, each bought separately: the route
+  // checks every part on its own and answers for the parts this person can see.
+  get_missed_summary: "ai",
 }
 
 /**
@@ -105,6 +109,9 @@ export const VOICE_TOOL_SCHEMAS: Record<VoiceToolName, z.ZodTypeAny> = {
   get_sales_by_manager: z.object({}).strict(),
   get_overdue: z.object({}).strict(),
   get_lead_coverage: z.object({}).strict(),
+  // No period on purpose: "since the last working day ended" is the question,
+  // and the server works it out from the organization's hours.
+  get_missed_summary: z.object({}).strict(),
   // «Сегодня», «завтра» и «неделя» — то, о чём спрашивают про записи. Месяца
   // здесь нет намеренно: день салона читают вслух, а месяц — нет.
   get_bookings_summary: z.object({

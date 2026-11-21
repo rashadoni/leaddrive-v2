@@ -22,11 +22,16 @@ import {
 import { CollapsibleSection } from "@/components/crm/collapsible-section"
 import { Button } from "@/components/ui/button"
 import { formatDateTime } from "@/lib/format-date"
+import { CallOutcomeSummary } from "@/components/voip/call-outcome-summary"
 import { cn } from "@/lib/utils"
+import type { CallOutcome } from "@/lib/voice-agent/call-outcome"
 
 type Sentiment = "very_positive" | "positive" | "neutral" | "negative" | "very_negative"
 
 interface LeadCallInsight {
+  outcome?: CallOutcome | null
+  requestedName?: string | null
+  requestedMatched?: boolean
   sentiment: Sentiment
   summary: string
   topics: string[]
@@ -227,6 +232,11 @@ export function LeadCallAnalytics({
 
                   {expanded ? (
                     <div id={`lead-call-insight-${call.id}`} className="space-y-4 border-t bg-muted/20 px-4 py-4 text-sm">
+                      <CallOutcomeSummary
+                        outcome={call.insight.outcome ?? null}
+                        requestedName={call.insight.requestedName ?? null}
+                        requestedMatched={call.insight.requestedMatched === true}
+                      />
                       {call.insight.topics.length > 0 ? (
                         <section>
                           <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">

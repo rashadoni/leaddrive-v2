@@ -19,6 +19,10 @@ import {
 } from "@/lib/voice-agent/post-call"
 import { recordCallCommitment } from "@/lib/commitments/record-call-commitment"
 import { maybePlaceCallback } from "@/lib/voice-agent/callback-trigger"
+import {
+  recordInboundCallFollowUp,
+  resolveRequestedEmployee,
+} from "@/lib/voice-agent/inbound-call-follow-up"
 import { isDemoPlacedCall } from "@/lib/demo-center/call-prompt"
 import { recordDemoPromptApplied } from "@/lib/demo-center/call-prompt-match"
 import { recordUnansweredCallback } from "@/lib/voice-agent/callback-fallback-task"
@@ -634,6 +638,8 @@ async function analyzeAndRecord(params: {
   turns: VoiceAgentTurn[]
   insightsWhere: Prisma.CallLogWhereInput
   placeCallback: boolean
+  /** A call that came to us: its caller may become a lead (behind the VoIP page's switch). */
+  inboundFollowUp?: boolean
 }): Promise<NextResponse> {
   const { organizationId, call } = params
   const analysisClaim = await runWithTenant(organizationId, () => acquireAnalysisClaim({
@@ -672,15 +678,29 @@ async function analyzeAndRecord(params: {
     }
   }
 
+  // Who the caller asked for, against this organization's people. Only a call
+  // that came to us: on an outbound call the name would be the AI's own script.
+  const requestedEmployee = params.inboundFollowUp
+    ? await runWithTenant(organizationId, () => resolveRequestedEmployee(organizationId, analysis.analysis.requestedEmployeeName))
+    : null
   const insightsStored = await runWithTenant(organizationId, () => prisma.callLog.updateMany({
     where: { ...params.insightsWhere, id: call.id, organizationId, insightsAt: null },
     data: {
-      insights: toConversationInsight(analysis.analysis, analysis.model) as unknown as Prisma.InputJsonValue,
+      insights: toConversationInsight(analysis.analysis, analysis.model, requestedEmployee) as unknown as Prisma.InputJsonValue,
       insightsAt: new Date(),
       disposition: analysis.analysis.disposition,
     },
   }))
   if (insightsStored.count === 0) {
+    // A retry of a worker that died after storing the analysis: the lead and
+    // task it may not have reached are safe to ask for again.
+    if (params.inboundFollowUp) {
+      await runWithTenant(organizationId, () => recordInboundCallFollowUp({
+        organizationId,
+        callLogId: call.id,
+        turns: params.turns,
+      }))
+    }
     await runWithTenant(organizationId, () => completeAnalysisClaim({
       organizationId,
       eventId: analysisClaim.eventId,
@@ -697,6 +717,10 @@ async function analyzeAndRecord(params: {
   // commitment only there would have shipped a feature that never fired on the
   // calls that actually produce commitments.
   await runWithTenant(organizationId, async () => {
+    // First: a promise made to a new caller then lands on the lead just created.
+    if (params.inboundFollowUp) {
+      await recordInboundCallFollowUp({ organizationId, callLogId: call.id, turns: params.turns })
+    }
     const analysed = await prisma.callLog.findFirst({
       where: { id: call.id, organizationId },
       select: { leadId: true, userId: true, insights: true, createdAt: true },
@@ -829,6 +853,7 @@ async function recordInboundAiResult(params: {
     turns: params.turns,
     insightsWhere: scope,
     placeCallback: false,
+    inboundFollowUp: true,
   })
 }
 

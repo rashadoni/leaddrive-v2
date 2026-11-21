@@ -52,6 +52,7 @@ import {
 import { buildAdvisorCapabilities } from "@/lib/ai/advisor/capabilities"
 import {
   canAccessAllVoiceOverdueData,
+  canAccessVoiceData,
   canAccessVoiceRecord,
   canAccessVoiceSection,
   canAccessVoiceWorkload,
@@ -71,6 +72,8 @@ import {
   voiceBookingAccess,
 } from "@/lib/ai/voice/booking-read"
 import { buildLeadCoverageSummary } from "@/lib/ai/voice/lead-coverage"
+import { buildMissedSummary, loadMissedPeriod } from "@/lib/ai/voice/missed-summary"
+import { hiddenChannelIdsFor } from "@/lib/inbox/channel-access"
 
 export type VoiceReadOutcome = { status?: number; body: Record<string, unknown> }
 
@@ -90,6 +93,8 @@ export async function executeVoiceReadTool(params: {
     principalType?: string
     /** Посчитано аутентификацией по настройкам организации, не браузером. */
     hideCustomerPhoneForOperators?: boolean
+    /** Номера и страницы, скрытые от этого человека: их звонки и переписки он не слышит. */
+    hiddenChannelConfigIds?: readonly string[]
   }
   logTurn?: (entry: { outcome: string; keys: string[] }) => void
 }): Promise<VoiceReadOutcome> {
@@ -414,6 +419,42 @@ export async function executeVoiceReadTool(params: {
     }
     const period = (parsed.data as { period?: "today" | "tomorrow" | "week" }).period ?? "today"
     return { body: { data: await buildVoiceBookingsSummary(access, period, now, timezone) } }
+  }
+  if (toolName === "get_missed_summary") {
+    const role = auth.role as Role
+    // Each part has its own paid module and its own role check. A part that
+    // fails either is reported as unavailable, never as a zero.
+    const canSeeCalls = canAccessVoiceData(role, orgCtx, { module: "voip", permission: "voip" })
+    const canSeeChats = canAccessVoiceData(role, orgCtx, { module: "omnichannel", permission: "inbox" })
+    if (!canSeeCalls && !canSeeChats) {
+      return { body: { data: { error: "ACCESS_SCOPE_UNAVAILABLE" } } }
+    }
+    let timezone: string
+    try {
+      timezone = await loadVoiceReportingTimezone(auth.orgId, auth.userId)
+    } catch {
+      return { body: { data: { error: "REPORTING_TIMEZONE_UNAVAILABLE" } } }
+    }
+    const booking = hasModule(orgCtx, "booking") ? await voiceBookingAccess(auth) : null
+    const hiddenChannelIds = await hiddenChannelIdsFor({
+      orgId: auth.orgId,
+      userId: auth.userId,
+      role: auth.role,
+      principalType: auth.principalType === "api_key" ? "api_key" : "session",
+      hiddenChannelConfigIds: auth.hiddenChannelConfigIds,
+    })
+    return { body: {
+      data: await buildMissedSummary({
+        orgId: auth.orgId,
+        userId: auth.userId,
+        role,
+        period: await loadMissedPeriod(auth.orgId, now, timezone),
+        canSeeCalls,
+        canSeeChats,
+        booking,
+        hiddenChannelIds,
+      }),
+    } }
   }
   if (toolName === "get_quotes_summary") {
     return { body: { data: await buildQuotesSummary(auth.orgId, now) } }
