@@ -6,6 +6,7 @@
  * of 4,130 AZN, due 28 April 2026 and unpaid, with no owner and no contact.
  */
 import { describe, expect, it } from "vitest"
+import { dayMonth } from "@/components/deals/overview/deal-next-steps"
 import {
   buildNextSteps, daysOverdue, daysUntil, nextStage, paymentSummary, splitStages, stageChanges,
   stageKind, stageSegments, unmetRules, type InvoiceLike, type StageRule,
@@ -180,6 +181,14 @@ describe("history of stages", () => {
 })
 
 describe("planned", () => {
+  it("says a day in words in all three languages — Chrome has no Azerbaijani month names of its own", () => {
+    const day = new Date(2026, 10, 24, 9).toISOString()
+    expect(dayMonth(day, "az", NOW)).toBe("24 noyabr")
+    expect(dayMonth(day, "ru", NOW)).toBe("24 ноября")
+    expect(dayMonth(day, "en", NOW)).toMatch(/24/)
+    expect(dayMonth(new Date(2027, 0, 5, 9).toISOString(), "az", NOW)).toBe("5 yanvar 2027")
+  })
+
   it("counts days by the calendar, not by 24 hours", () => {
     expect(daysUntil(new Date(2026, 10, 21, 0, 5).toISOString(), NOW)).toBe(0)
     expect(daysUntil(new Date(2026, 10, 22, 0, 5).toISOString(), NOW)).toBe(1)

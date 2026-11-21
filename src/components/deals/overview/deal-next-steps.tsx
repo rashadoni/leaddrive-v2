@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Hint } from "@/components/hint"
 import { cn } from "@/lib/utils"
+import { formatDate } from "@/lib/format-date"
 import { daysUntil, type NextStep, type NextSteps, type StageKind } from "@/lib/deals/deal-overview"
 
 export interface PlannedTask { id: string; title: string; dueDate: string | null; status: string }
@@ -33,11 +34,13 @@ interface ContactOption { id: string; fullName: string; position?: string | null
 export const money = (value: number, currency: string) =>
   `${value.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${currency}`
 
-/** A day as a person says it: «24 ноября». The year is said only when it is not this one. */
-export const dayMonth = (iso: string, locale: string, now = new Date()) => {
-  const date = new Date(iso)
-  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", ...(date.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }) }).format(date)
-}
+/**
+ * A day as a person says it: «24 ноября», «24 noyabr». The year is said only
+ * when it is not this one. Through `formatDate`, never `Intl` directly: Chrome
+ * has no Azerbaijani month names and prints «M11 24» (src/lib/format-date.ts).
+ */
+export const dayMonth = (iso: string, locale: string, now = new Date()) =>
+  formatDate(iso, locale, { day: "numeric", month: "long", ...(new Date(iso).getFullYear() === now.getFullYear() ? {} : { year: "numeric" }) })
 
 const isoDay = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 
