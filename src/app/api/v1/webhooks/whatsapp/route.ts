@@ -34,6 +34,8 @@ import {
 } from "@/lib/inbox/omnichannel-commitment-rules"
 import { appendWhatsAppBotReplyToTicket, syncWhatsAppExchangeToTicket } from "@/lib/inbox/ticket-sync"
 import { ensureInboundWhatsAppTicket } from "@/lib/inbox/whatsapp-inbound-ticket"
+import { whatsappNumberFilesTickets } from "@/lib/channels/whatsapp-inbound-purpose"
+import { notifyConversationNeedsPerson } from "@/lib/inbox/escalation"
 import { WHATSAPP_CHAT_DESCRIPTION_HEAD, chatTicketDescription } from "@/lib/ticketing/chat-transcript"
 import { transcribeInboundVoice, voiceMessageBody, type VoiceTranscription } from "@/lib/inbox/inbound-voice-transcript"
 import { loadOrganizationLocale } from "@/lib/ticketing/customer-locale"
@@ -1109,6 +1111,9 @@ async function processMessages(
   channelConfig: WhatsAppWebhookChannelConfig
 ) {
   const orgId = channelConfig.organizationId
+  // What this number is for (lib/channels/whatsapp-inbound-purpose): a «Переписка» number belongs
+  // to the inbox alone — nothing below opens, reopens or extends a Service Desk ticket for it.
+  const filesTickets = whatsappNumberFilesTickets(channelConfig.settings)
   const MEDIA_TYPES = new Set(["image", "video", "audio", "voice", "document", "sticker"])
   // Resolve the WA access token ONCE, and only when this batch actually carries media — inbound
   // media arrives as an opaque id that must be fetched from the Graph API + stored before the
@@ -1450,6 +1455,7 @@ async function processMessages(
         companyId: ticketCompanyId,
         channelMessageId: savedMsg.id,
         waMessageId: messageId,
+        channelConfigId: channelConfig.id,
         demo: target,
       })
       return {
@@ -1467,6 +1473,7 @@ async function processMessages(
             ticketNumber: result.ticketNumber,
             customerText: text,
             contactId: contactId ?? undefined,
+            channelConfigId: channelConfig.id,
           }).catch(err => console.error("[WA Reopen] notification error:", err))
         },
       }
@@ -1542,7 +1549,9 @@ async function processMessages(
     // text reopens their latest resolved/closed WhatsApp ticket (reopenTicketForCustomerReply,
     // the DV-0026 helper); failing that, a new ticket. One lock per phone around all three
     // (whatsapp-inbound-ticket.ts) — the reopen used to run first, here, and won over an open ticket.
-    const inboundTicket = text.trim()
+    // Only on a «Поддержка» number: a «Переписка» number's message stays in the inbox, as on
+    // Instagram or Telegram, and a ticket appears when a person presses for one.
+    const inboundTicket = text.trim() && filesTickets
       ? await ensureInboundWhatsAppTicket({
         organizationId: orgId,
         waPhone: waId,
@@ -1553,6 +1562,7 @@ async function processMessages(
         companyId: ticketCompanyId,
         channelMessageId: savedMsg.id,
         waMessageId: messageId,
+        channelConfigId: channelConfig.id,
         reopenResolved: readsAsText,
       })
       : { ticketId: null, ticketNumber: null, created: false, commentAdded: false, reopened: false }
@@ -1584,6 +1594,7 @@ async function processMessages(
         ticketNumber: inboundTicket.ticketNumber,
         customerText: text,
         contactId: contactId ?? undefined,
+        channelConfigId: channelConfig.id,
       }).catch(err => console.error("[WA Reopen] notification error:", err))
       console.log(`[WA Reopen] Ticket ${sanitizeLog(inboundTicket.ticketNumber)} reopened for ${sanitizeLog(waId)}`)
       continue // Skip Da Vinci auto-reply
@@ -1613,6 +1624,7 @@ async function processMessages(
         await withWhatsAppAiPolicy({ organizationId: orgId, channelConfigId: channelConfig.id, conversationId: convId, phone: waId }, channelConfig.settings,
           async (stillOwned, aiTestRunId) => handleAiAutoReply(orgId, waId, text, contactId, leadId, senderName, ticketCompanyId, {
           customerMessageAlreadyTicketed: inboundTicket.commentAdded,
+          filesTickets,
           conversationId: convId,
           channelSettings: channelConfig.settings,
           channelConfigId: channelConfig.id,
@@ -1662,7 +1674,7 @@ async function handleAiAutoReply(
   leadId: string | undefined,
   senderName: string,
   contactCompanyId: string | null = null,
-  opts: { customerMessageAlreadyTicketed?: boolean; conversationId?: string | null; channelSettings?: unknown; channelConfigId?: string | null; stillOwned: () => Promise<boolean>; aiTestRunId?: string },
+  opts: { customerMessageAlreadyTicketed?: boolean; filesTickets: boolean; conversationId?: string | null; channelSettings?: unknown; channelConfigId?: string | null; stillOwned: () => Promise<boolean>; aiTestRunId?: string },
 ) {
   // Support AI predates this switch, so the shared helper preserves the legacy
   // default (ON) and stops here only after an administrator explicitly opts out.
@@ -2084,7 +2096,9 @@ async function handleAiAutoReply(
     // the value is coerced via `x || undefined` — anywhere you'd write a
     // partial filter like that, prefer an explicit `if (x) { … }` branch or a
     // sentinel value.
-    const existingTicket = await prisma.ticket.findFirst({
+    // A «Переписка» number (lib/channels/whatsapp-inbound-purpose) takes no part in tickets: it
+    // neither looks one up, nor opens one, nor writes into one the customer has from another number.
+    const existingTicket = !opts.filesTickets ? null : await prisma.ticket.findFirst({
       where: {
         organizationId,
         tags: { has: "whatsapp" },
@@ -2107,7 +2121,7 @@ async function handleAiAutoReply(
         console.error(`[WA AI] attach complaint to existing ticket ${existingTicket.ticketNumber} failed:`, e)
       }
     }
-    if ((shouldEscalate || shouldCreateTicket) && messageCount >= 2 && !hasRecentTicket) {
+    if (opts.filesTickets && (shouldEscalate || shouldCreateTicket) && messageCount >= 2 && !hasRecentTicket) {
       try {
         const chatMessages: TicketChatMessageRow[] = await prisma.aiChatMessage.findMany({
           where: { sessionId: session.id },
@@ -2171,7 +2185,8 @@ async function handleAiAutoReply(
           leadId: leadId || null, // lead-only sender (skip-auto-create) → link the AI ticket to the lead
           tags: ["whatsapp", secondaryTag, "auto_created"],
           source: "whatsapp",
-          sourceMeta: { phone: waPhone, urgency: ticketUrgency, reasons },
+          // The number the chat is on: what the ticket later sends its customer goes out from it.
+          sourceMeta: { phone: waPhone, urgency: ticketUrgency, reasons, ...(opts.channelConfigId ? { channelConfigId: opts.channelConfigId } : {}) },
           requesterName: senderName,
           requesterPhone: `+${waPhone}`,
           requesterExternalId: contactId || waPhone,
@@ -2226,6 +2241,18 @@ async function handleAiAutoReply(
 
     if (!(await opts.stillOwned())) return
 
+    // On a «Переписка» number the same moment that opens a ticket on a «Поддержка» one — the bot
+    // promised a person, admitted it does not know, heard a complaint, or the chat is going in
+    // circles — calls the inbox team instead: without a ticket nothing else would bring a person.
+    // Narrower than `shouldCreateTicket` on purpose: a word like «оплата» alone files a low-priority
+    // ticket there, but is no reason to ring the whole team here.
+    if (!opts.filesTickets && opts.conversationId && (
+      shouldEscalate || shouldCreateTicketMarker || isComplaint || aiPromisedHuman || aiAdmittedUnknown || sessionTooLong
+    )) {
+      await notifyConversationNeedsPerson({ orgId: organizationId, conversationId: opts.conversationId, platform: "whatsapp" })
+      await prisma.aiChatSession.update({ where: { id: session.id }, data: { status: "escalated" } }).catch(() => {})
+    }
+
     // Send Da Vinci reply back via WhatsApp (forceText: customer just wrote, we're in 24h window)
     const result = await sendWhatsAppMessage({
       to: waPhone,
@@ -2272,7 +2299,7 @@ async function handleAiAutoReply(
     // so an agent working the ticket sees the ongoing conversation (the creation-time snapshot is
     // otherwise stale). A new ticket was synchronized directly above; do not copy its reply
     // into an older ticket for the same customer as well.
-    if (!createdTicketSnapshot) {
+    if (!createdTicketSnapshot && opts.filesTickets) {
       await syncWhatsAppExchangeToTicket({
         orgId: organizationId,
         phone: waPhone,

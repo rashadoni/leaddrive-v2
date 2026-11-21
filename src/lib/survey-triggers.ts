@@ -1,4 +1,4 @@
-import { selectWhatsAppAutomationChannel } from "@/lib/channels/whatsapp-settings-channel"
+import { selectWhatsAppTicketChannel } from "@/lib/channels/whatsapp-settings-channel"
 import { prisma } from "@/lib/prisma"
 import { sendEmail } from "@/lib/email"
 import { sendSms } from "@/lib/sms"
@@ -79,7 +79,17 @@ export async function sendSurveyInvite({
       // Without a template, fall back to plain text inside the 23h session
       // window — the library itself blocks free-form text outside the
       // window, so this is safe (no policy violation).
-      const selection = await selectWhatsAppAutomationChannel(organizationId, phone)
+      // A ticket's survey goes out from the number the ticket came in on, when the ticket knows it.
+      let ticketSourceMeta: unknown = null
+      if (ticketId) {
+        try {
+          const row = await prisma.ticket.findFirst({ where: { id: ticketId, organizationId }, select: { sourceMeta: true } })
+          ticketSourceMeta = row?.sourceMeta ?? null
+        } catch {
+          // The older rule below still picks a number without it.
+        }
+      }
+      const selection = await selectWhatsAppTicketChannel(organizationId, phone, ticketSourceMeta)
       if (!selection.id) return { ok: false, error: selection.error || "WhatsApp not configured" }
       const waConfig = await prisma.channelConfig.findFirst({
         where: { id: selection.id, organizationId, channelType: "whatsapp", isActive: true },

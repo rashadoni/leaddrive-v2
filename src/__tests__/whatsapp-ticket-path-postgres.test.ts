@@ -26,6 +26,13 @@
  * tenant explicitly. Only outbound side effects (workflows, webhooks,
  * notifications, contact events, fetch) are stubbed.
  *
+ * And since 2026-11-21 the question before all of those — whether a message
+ * becomes a ticket at all. A WhatsApp number is connected either for the
+ * Omni-Channel inbox («Переписка») or for Service Desk («Поддержка»,
+ * lib/channels/whatsapp-inbound-purpose); until then every number filed a
+ * ticket for every message, with no setting. The last block delivers real
+ * webhook payloads to one number of each kind and reads the tables.
+ *
  * Set WHATSAPP_TICKET_TEST_DATABASE_URL to an admin connection, e.g.
  *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55499:5432 postgres:16
  *   WHATSAPP_TICKET_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55499/postgres
@@ -34,6 +41,7 @@
  * `WHATSAPP_TICKET_DB_GATE=required` turns a missing URL into a failure.
  */
 import { spawnSync } from "node:child_process"
+import { createHmac } from "node:crypto"
 import { createRequire } from "node:module"
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -66,6 +74,9 @@ const scratch = vi.hoisted(() => {
   // `@/lib/prisma` builds its client from DATABASE_URL on first import, which
   // happens after the database and the role exist (dynamic imports below).
   process.env.DATABASE_URL = app.toString()
+  // The webhook verifies Meta's signature with the app secret (no `?t=`: the env one).
+  process.env.WHATSAPP_APP_SECRET = "wa-ticket-path-test-app-secret" // gitleaks:allow — not a secret
+  delete process.env.WHATSAPP_EMBEDDED_SIGNUP_APP_SECRET
   return { name, role, password, adminDbUrl: adminDb.toString() }
 })
 
@@ -111,6 +122,9 @@ function schemaWithoutEmbeddings(): string {
 
 const ORG = "org-wa"
 const OTHER_ORG = "org-other"
+/** Two numbers of one workspace: one from before the choice existed (nothing stored), one set to «Переписка». */
+const SUPPORT_NUMBER = { id: "wa-number-support", phoneNumberId: "100000000000001" }
+const CHAT_NUMBER = { id: "wa-number-chat", phoneNumberId: "100000000000002" }
 const CONTACT = "contact-aysel"
 const PHONE = "994501234567"
 
@@ -125,6 +139,9 @@ pgDescribe("WhatsApp messages and their tickets on a real Postgres with RLS", ()
   let lockKey!: typeof import("@/lib/inbox/whatsapp-inbound-ticket").whatsappIntakeLockKey
   let createClosureRequest!: typeof import("@/lib/ticketing/closure-requests").createTicketClosureRequestForTicket
   let answerClosureLink!: typeof import("@/app/api/v1/public/ticket-closure/[token]/route").POST
+  let webhook!: typeof import("@/app/api/v1/webhooks/whatsapp/route")
+  let selectWhatsAppAutomationChannel!: typeof import("@/lib/channels/whatsapp-settings-channel").selectWhatsAppAutomationChannel
+  let selectWhatsAppTicketChannel!: typeof import("@/lib/channels/whatsapp-settings-channel").selectWhatsAppTicketChannel
   let sequence = 0
 
   beforeAll(async () => {
@@ -172,6 +189,16 @@ pgDescribe("WhatsApp messages and their tickets on a real Postgres with RLS", ()
     await bypass(() => prisma.contact.create({
       data: { id: CONTACT, organizationId: ORG, fullName: "Aysel Məmmədova", phone: `+${PHONE}` },
     }))
+    // People answer on both numbers (`replyMode: "agent"`), so no AI turn runs: what is read below
+    // is the intake alone. The support number has NO `inboundPurpose` — a row from before the choice.
+    await bypass(() => prisma.channelConfig.createMany({
+      data: [
+        { id: SUPPORT_NUMBER.id, organizationId: ORG, channelType: "whatsapp", configName: "Dəstək", isActive: true, phoneNumberId: SUPPORT_NUMBER.phoneNumberId, accessToken: "token-not-used", settings: { replyMode: "agent" } },
+        { id: CHAT_NUMBER.id, organizationId: ORG, channelType: "whatsapp", configName: "Satış", isActive: true, phoneNumberId: CHAT_NUMBER.phoneNumberId, accessToken: "token-not-used", settings: { replyMode: "agent", inboundPurpose: "conversations" } },
+      ],
+    }))
+    webhook = await import("@/app/api/v1/webhooks/whatsapp/route")
+    ;({ selectWhatsAppAutomationChannel, selectWhatsAppTicketChannel } = await import("@/lib/channels/whatsapp-settings-channel"))
   }, 300_000)
 
   afterAll(async () => {
@@ -439,5 +466,113 @@ pgDescribe("WhatsApp messages and their tickets on a real Postgres with RLS", ()
 
     expect(await ticket(toClose.id)).toMatchObject({ status: "closed", closedAt: expect.any(Date) })
     expect(await ticket(toReturn.id)).toMatchObject({ status: "open", resolvedAt: null, reopenCount: 1 })
+  })
+
+  // ── What the number is for ────────────────────────────────────────────────
+  // The real webhook, a real signed delivery, the tables read afterwards.
+
+  /** Meta delivers one text from `phone` to the number `to`. */
+  async function metaDelivers(to: { phoneNumberId: string }, phone: string, text: string) {
+    const body = JSON.stringify({
+      object: "whatsapp_business_account",
+      entry: [{
+        id: "waba-1",
+        changes: [{
+          field: "messages",
+          value: {
+            messaging_product: "whatsapp",
+            metadata: { display_phone_number: to.phoneNumberId, phone_number_id: to.phoneNumberId },
+            contacts: [{ profile: { name: `Customer ${phone}` }, wa_id: phone }],
+            messages: [{ from: phone, id: `wamid.${++sequence}`, timestamp: String(Math.floor(Date.now() / 1000)), type: "text", text: { body: text } }],
+          },
+        }],
+      }],
+    })
+    const signature = "sha256=" + createHmac("sha256", process.env.WHATSAPP_APP_SECRET!).update(body).digest("hex")
+    const res = await webhook.POST(new NextRequest("http://localhost/api/v1/webhooks/whatsapp", {
+      method: "POST",
+      body,
+      headers: { "content-type": "application/json", "x-hub-signature-256": signature },
+    }))
+    expect(res.status).toBe(200)
+  }
+
+  /** What the webhook stored of a customer's messages, per number — the proof a delivery was processed at all. */
+  const storedInbound = (phone: string) => bypass(() => prisma.channelMessage.findMany({
+    where: { organizationId: ORG, channelType: "whatsapp", direction: "inbound", metadata: { path: ["waPhone"], equals: phone } },
+    orderBy: { createdAt: "asc" },
+    select: { channelConfigId: true, body: true },
+  }))
+
+  const ticketsByPhone = (phone: string) => bypass(() => prisma.ticket.findMany({
+    where: { organizationId: ORG, sourceMeta: { path: ["phone"], equals: phone } },
+    orderBy: { createdAt: "asc" },
+    include: { comments: { orderBy: { createdAt: "asc" } } },
+  }))
+
+  it("keeps a «Переписка» number's message in the inbox and opens no ticket for it", async () => {
+    const phone = "994551110001"
+
+    await metaDelivers(CHAT_NUMBER, phone, "Salam, qiymətlər necədir?")
+
+    // The message arrived and was stored on that number — so the empty ticket list below is the
+    // number's choice, not a delivery that never ran.
+    expect(await storedInbound(phone)).toEqual([{ channelConfigId: CHAT_NUMBER.id, body: "Salam, qiymətlər necədir?" }])
+    expect(await allTickets()).toEqual([])
+  })
+
+  it("files a ticket for a number that predates the choice, and the ticket remembers its number", async () => {
+    const phone = "994551110002"
+
+    await metaDelivers(SUPPORT_NUMBER, phone, "Printer işləmir")
+
+    expect(await storedInbound(phone)).toEqual([{ channelConfigId: SUPPORT_NUMBER.id, body: "Printer işləmir" }])
+    const tickets = await ticketsByPhone(phone)
+    expect(tickets).toHaveLength(1)
+    expect(tickets[0]).toMatchObject({ status: "open", source: "whatsapp", tags: expect.arrayContaining(["whatsapp", "inbound_whatsapp"]) })
+    expect(tickets[0].sourceMeta).toMatchObject({ phone, channelConfigId: SUPPORT_NUMBER.id })
+    expect(tickets[0].comments.map((comment: { comment: string }) => comment.comment)).toEqual(["[Клиент (WhatsApp)] Printer işləmir"])
+  })
+
+  it("does not extend or reopen a customer's support ticket from the «Переписка» number", async () => {
+    const phone = "994551110003"
+    await metaDelivers(SUPPORT_NUMBER, phone, "Hesab-faktura gəlməyib")
+    const [open] = await ticketsByPhone(phone)
+    const resolved = await seedTicket("resolved", { contactId: null, phone: "994551110004" })
+
+    // The same customer writes to the sales number; another customer, whose ticket is resolved, too.
+    await metaDelivers(CHAT_NUMBER, phone, "Yeni məhsul var?")
+    await metaDelivers(CHAT_NUMBER, "994551110004", "Salam")
+
+    expect((await storedInbound(phone)).map((message: { channelConfigId: string | null }) => message.channelConfigId)).toEqual([SUPPORT_NUMBER.id, CHAT_NUMBER.id])
+    expect((await ticket(open.id)).comments).toHaveLength(1)
+    expect(await ticket(resolved.id)).toMatchObject({ status: "resolved", reopenCount: 0, comments: [] })
+    expect(await allTickets()).toHaveLength(2)
+
+    // ...and the support number still takes the next message onto the open ticket.
+    await metaDelivers(SUPPORT_NUMBER, phone, "Hələ də gəlməyib")
+    expect((await ticket(open.id)).comments).toHaveLength(2)
+    expect(await allTickets()).toHaveLength(2)
+  })
+
+  it("writes the customer from the ticket's own number, where the rule by messages has no answer", async () => {
+    const phone = "994551110005"
+    await metaDelivers(SUPPORT_NUMBER, phone, "Şifrəni unutmuşam")
+    await metaDelivers(CHAT_NUMBER, phone, "Endirim var?")
+    const [filed] = await ticketsByPhone(phone)
+
+    // The customer has written to both numbers: the automatic rule refuses to pick one — which is
+    // how a status notice used to be silently not sent.
+    expect(await tenant(ORG, () => selectWhatsAppAutomationChannel(ORG, phone))).toMatchObject({ id: null, error: "whatsapp_channel_required" })
+    expect(await tenant(ORG, () => selectWhatsAppTicketChannel(ORG, phone, filed.sourceMeta))).toMatchObject({ id: SUPPORT_NUMBER.id })
+    // A ticket that does not know its number keeps the old rule, here still without an answer.
+    expect(await tenant(ORG, () => selectWhatsAppTicketChannel(ORG, phone, { phone }))).toMatchObject({ id: null })
+    // A recorded number that has since been disconnected is not written from: the old rule again.
+    await bypass(() => prisma.channelConfig.update({ where: { id: SUPPORT_NUMBER.id }, data: { isActive: false } }))
+    try {
+      expect(await tenant(ORG, () => selectWhatsAppTicketChannel(ORG, phone, filed.sourceMeta))).toMatchObject({ id: null })
+    } finally {
+      await bypass(() => prisma.channelConfig.update({ where: { id: SUPPORT_NUMBER.id }, data: { isActive: true } }))
+    }
   })
 })
