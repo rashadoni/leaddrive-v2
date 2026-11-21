@@ -108,10 +108,10 @@ describe("help video assets", () => {
 
     expect(entry).not.toBeNull()
     expect(getHelpVideoAsset(entry!, "ru").videoSrc).toBe(
-      "/api/help-videos/deals.ru.VOICE.mp4?v=20261119-procurement-az",
+      "/api/help-videos/deals.ru.VOICE.mp4?v=20261121-deal-page",
     )
     expect(getHelpVideoAsset(entry!, "ru").posterSrc).toBe(
-      "/api/help-videos/deals.ru.poster.jpg?v=20261119-procurement-az",
+      "/api/help-videos/deals.ru.poster.jpg?v=20261121-deal-page",
     )
   })
 
