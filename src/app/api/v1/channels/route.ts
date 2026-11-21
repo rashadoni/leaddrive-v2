@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { gateChannelsAccess } from "@/lib/channels-access"
 import { runWithTenant } from "@/lib/rls-context"
 import { whatsappChannelCredentialsError } from "@/lib/channels/whatsapp-config-validation"
+import { NEW_WHATSAPP_NUMBER_PURPOSE, WHATSAPP_INBOUND_PURPOSE_KEY, isWhatsAppInboundPurpose } from "@/lib/channels/whatsapp-inbound-purpose"
 import { isTikTokChatwootChannelConfig, syncTikTokDmConnectionForChannelConfig, tiktokChannelConfigSettings } from "@/lib/channels/platform-connections"
 import { publicChannelConfig } from "@/lib/channels/public-channel-config"
 import { channelIdsClaimedElsewhere } from "@/lib/channels/inbound-claim"
@@ -178,6 +179,14 @@ export async function POST(req: NextRequest) {
               apiKey:      d.accessToken       || d.apiKey,
               phoneNumber: d.phoneNumberId     || d.phoneNumber,
               webhookUrl:  d.businessAccountId || d.webhookUrl,
+              // A number connected from now on is «Переписка» unless the request says otherwise: its
+              // messages go to the inbox and open no Service Desk ticket (lib/channels/whatsapp-inbound-purpose).
+              settings: {
+                ...(d.settings && typeof d.settings === "object" && !Array.isArray(d.settings) ? d.settings as Record<string, unknown> : {}),
+                [WHATSAPP_INBOUND_PURPOSE_KEY]: isWhatsAppInboundPurpose(d.settings?.[WHATSAPP_INBOUND_PURPOSE_KEY])
+                  ? d.settings[WHATSAPP_INBOUND_PURPOSE_KEY]
+                  : NEW_WHATSAPP_NUMBER_PURPOSE,
+              },
             }
           : isTikTokChatwoot
             ? {

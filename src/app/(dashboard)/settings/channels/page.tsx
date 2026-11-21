@@ -44,6 +44,8 @@ import { ChannelConfigForm } from "@/components/channel-config-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { useWhatsAppEmbeddedSignup } from "@/components/channels/whatsapp-embedded-signup"
 import { WhatsAppHistoryImportStatus } from "@/components/channels/whatsapp-history-import-status"
+import { WhatsAppNumberPurposeDialog, WhatsAppNumberPurposeLine } from "@/components/channels/whatsapp-number-purpose"
+import { NEW_WHATSAPP_NUMBER_PURPOSE, whatsappInboundPurpose } from "@/lib/channels/whatsapp-inbound-purpose"
 import { WhatsAppKeepAppDialog } from "@/components/channels/whatsapp-keep-app-dialog"
 import { isCoexistenceChannel } from "@/lib/whatsapp-number-onboarding"
 import { metaOAuthReturnBanner } from "@/lib/channels/meta-oauth-return-banner"
@@ -1806,15 +1808,25 @@ function ChannelsPageInner() {
   }, [])
 
   // The WhatsApp tile starts Meta's Embedded Signup itself (components/channels/whatsapp-embedded-signup).
+  // What a WhatsApp number is for — the inbox only, or Service Desk tickets
+  // (components/channels/whatsapp-number-purpose). The window opens by itself for a number that was
+  // just connected, and from «Изменить» on a number's row.
+  const [purposeTarget, setPurposeTarget] = useState<{ channelId: string; justConnected: boolean } | null>(null)
   const whatsappSignup = useWhatsAppEmbeddedSignup({
     cancelledMessage: c.esCancelled,
     failedMessage: c.esFailed,
-    onConnected: () => void fetchChannels(),
+    onConnected: (channelId) => {
+      void fetchChannels()
+      setPurposeTarget({ channelId, justConnected: true })
+    },
   })
   // The tile asks before it decides. One click used to start Meta's dialog on the path that moves the
   // number to the API — and a number that has moved cannot go back: the Deregister API refuses a
   // number that lives in the WhatsApp Business app. For a shop run from one phone that is the whole
   // business's WhatsApp, so the irreversible choice is not something a tile makes on its own.
+  const purposeRow = purposeTarget
+    ? channels.find((channel) => channel.id === purposeTarget.channelId && channel.channelType === "whatsapp") || null
+    : null
   const [whatsappChoosing, setWhatsappChoosing] = useState(false)
   const [whatsappExplaining, setWhatsappExplaining] = useState(false)
 
@@ -2320,6 +2332,15 @@ function ChannelsPageInner() {
             {channel.channelType === "whatsapp" && channel.isActive && isCoexistenceChannel(channel.settings) && (
               <WhatsAppHistoryImportStatus channelId={channel.id} locale={locale} />
             )}
+            {/* Whether this number's messages stay in the inbox or become Service Desk tickets — said
+                on the number itself, in words, with the way to change it beside them. */}
+            {channel.channelType === "whatsapp" && channel.isActive && (
+              <WhatsAppNumberPurposeLine
+                settings={channel.settings}
+                locale={locale}
+                onChange={() => setPurposeTarget({ channelId: channel.id, justConnected: false })}
+              />
+            )}
             {ownScreenHref ? (
               <p className="mt-1 text-xs text-muted-foreground">{c.cardVoipSettingsHint}</p>
             ) : rowBrokenBadge && (rowBrokenStatus || rowBrokenHint) ? (
@@ -2399,6 +2420,17 @@ function ChannelsPageInner() {
           setWhatsappExplaining(false)
           void whatsappSignup.start({ keepBusinessApp: true })
         }}
+      />
+      <WhatsAppNumberPurposeDialog
+        open={purposeTarget !== null}
+        channelId={purposeTarget?.channelId ?? null}
+        numberLabel={purposeRow?.configName ?? null}
+        // A number connected a moment ago may not be in the list yet: it starts as «Переписка».
+        initial={purposeRow ? whatsappInboundPurpose(purposeRow.settings) : NEW_WHATSAPP_NUMBER_PURPOSE}
+        justConnected={purposeTarget?.justConnected ?? false}
+        locale={locale}
+        onOpenChange={(open) => { if (!open) setPurposeTarget(null) }}
+        onSaved={() => void fetchChannels()}
       />
       {connectCard ? (
         <>

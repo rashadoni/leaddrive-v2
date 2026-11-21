@@ -1,6 +1,6 @@
 import type { Prisma, Ticket } from "@prisma/client"
 import { z } from "zod"
-import { selectWhatsAppAutomationChannel } from "@/lib/channels/whatsapp-settings-channel"
+import { selectWhatsAppTicketChannel } from "@/lib/channels/whatsapp-settings-channel"
 import { prisma, logAudit } from "@/lib/prisma"
 import { getFieldPermissions, filterWritableFields } from "@/lib/field-filter"
 import { sendWhatsAppMessage } from "@/lib/whatsapp"
@@ -287,7 +287,7 @@ export async function updateTicketCommand(
         if (request.channel === "whatsapp" && request.recipient) {
           const closureRecipient = request.recipient
           const confirmationUrl = request.confirmationUrl
-          selectWhatsAppAutomationChannel(orgId, closureRecipient).then(selection => selection.id ? sendWhatsAppMessage({
+          selectWhatsAppTicketChannel(orgId, closureRecipient, updated.sourceMeta).then(selection => selection.id ? sendWhatsAppMessage({
             to: closureRecipient,
             organizationId: orgId,
             channelConfigId: selection.id,
@@ -392,7 +392,7 @@ async function sendTicketClosureEmail(params: {
 
 async function sendWhatsAppStatusNotification(
   orgId: string,
-  ticket: { id: string; ticketNumber: string | null; description: string | null; contactId: string | null; tags: string[] },
+  ticket: { id: string; ticketNumber: string | null; description: string | null; contactId: string | null; tags: string[]; sourceMeta?: unknown },
   newStatus: string,
 ): Promise<WhatsAppStatusNotificationResult> {
   const ticketNumber = ticket.ticketNumber || ticket.id.slice(0, 8)
@@ -425,7 +425,8 @@ async function sendWhatsAppStatusNotification(
     return
   }
 
-  const selection = await selectWhatsAppAutomationChannel(orgId, waPhone)
+  // From the number the ticket came in on, when the ticket knows it (selectWhatsAppTicketChannel).
+  const selection = await selectWhatsAppTicketChannel(orgId, waPhone, ticket.sourceMeta)
   if (!selection.id) return
   // Resolve tenant's configured template mapping from ChannelConfig.settings.
   const waConfig = await prisma.channelConfig.findFirst({

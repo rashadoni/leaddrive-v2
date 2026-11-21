@@ -11,6 +11,8 @@ type WhatsAppReopenNotificationInput = {
   ticketNumber: string
   customerText: string
   contactId?: string
+  /** The number the customer wrote to — the notice answers from it (a workspace may hold several). */
+  channelConfigId?: string | null
 }
 
 /**
@@ -38,6 +40,7 @@ export async function sendGuardedWhatsAppReopenNotification(
     message: guarded.text,
     organizationId: input.organizationId,
     contactId: input.contactId,
+    channelConfigId: input.channelConfigId,
   })
 
   return guarded

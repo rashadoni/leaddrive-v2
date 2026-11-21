@@ -62,3 +62,61 @@ export async function notifyEscalationTeam(opts: {
     /* notification failure must never block the webhook 200 */
   }
 }
+
+/** How long one «the bot handed this conversation over» notice covers the conversation. */
+const NEEDS_PERSON_NOTICE_WINDOW_MS = 60 * 60 * 1000
+const NEEDS_PERSON_NOTICE_TITLE = "Бот эскалировал диалог"
+
+/**
+ * The AI could not finish a conversation and a person has to take it — on a channel whose messages
+ * do not become Service Desk tickets (a WhatsApp number set to «Переписка»,
+ * lib/channels/whatsapp-inbound-purpose). On a «Поддержка» number the same moment opens a ticket,
+ * and the ticket is what brings a person; here the inbox team gets the bell and the push instead —
+ * the notice the social channels' AI already sends when it hands a conversation over
+ * (lib/social/ai-autoreply).
+ *
+ * At most one notice per conversation an hour: a customer who keeps writing while nobody has
+ * answered yet would otherwise ring the whole team on every message. Returns whether the team was
+ * notified. Best-effort — a failure never blocks the webhook's 200 or the reply.
+ */
+export async function notifyConversationNeedsPerson(opts: {
+  orgId: string
+  conversationId: string
+  platform: string
+}): Promise<boolean> {
+  try {
+    const recent = await prisma.notification.findFirst({
+      where: {
+        organizationId: opts.orgId,
+        entityType: "inbox_message",
+        entityId: opts.conversationId,
+        title: NEEDS_PERSON_NOTICE_TITLE,
+        createdAt: { gt: new Date(Date.now() - NEEDS_PERSON_NOTICE_WINDOW_MS) },
+      },
+      select: { id: true },
+    })
+    if (recent) return false
+    const team = await prisma.user.findMany({
+      where: { organizationId: opts.orgId, role: { in: ["admin", "manager", "support"] }, isActive: true },
+      select: { id: true },
+    })
+    await Promise.all(
+      team.map((u: { id: string }) =>
+        createNotification({
+          organizationId: opts.orgId,
+          userId: u.id,
+          type: "warning",
+          title: NEEDS_PERSON_NOTICE_TITLE,
+          message: `AI-ассистент передал диалог (${opts.platform}) оператору — нужен ответ человека`,
+          entityType: "inbox_message",
+          entityId: opts.conversationId,
+          kind: "inbox.message",
+          push: true,
+        }).catch(() => {}),
+      ),
+    )
+    return team.length > 0
+  } catch {
+    return false
+  }
+}

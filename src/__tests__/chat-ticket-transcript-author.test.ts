@@ -291,6 +291,7 @@ import { POST as portalChat } from "@/app/api/v1/public/portal-chat/route"
 import { GET as agentTicket } from "@/app/api/v1/tickets/[id]/route"
 import { parseChatDescription, parseCommentSender } from "@/lib/ticketing/chat-transcript"
 import { sendWhatsAppMessage } from "@/lib/whatsapp"
+import { createNotification } from "@/lib/notifications"
 
 const ORG = "org-1"
 const WA_PHONE = "994501112233"
@@ -460,6 +461,34 @@ describe("a WhatsApp chat that opens a ticket", () => {
       { sender: "customer", name: "Клиент", body: CUSTOMER_TEXT },
       { sender: "bot", name: "Da Vinci", body: storedAssistantReply() },
     ])
+  })
+
+  // Owner, 2026-11-21: a number connected for the inbox («Переписка», lib/channels/whatsapp-inbound-purpose)
+  // takes no part in Service Desk. The same chat and the same reply of the model as above.
+  it("on a «Переписка» number opens no ticket and writes into none — the reply goes out and the inbox team is called", async () => {
+    db.table("channelConfig")[0].settings = { inboundPurpose: "conversations" }
+    db.table("user").push({ id: "user-admin", organizationId: ORG, role: "admin", isActive: true })
+    db.table("user").push({ id: "user-sales", organizationId: ORG, role: "sales", isActive: true })
+    vi.mocked(createNotification).mockClear()
+    vi.mocked(sendWhatsAppMessage).mockClear()
+
+    await customerWritesOnWhatsApp(CUSTOMER_TEXT)
+
+    // Neither the intake's WA- ticket nor the chat's DV- one; the customer's earlier ticket is not written into.
+    expect(db.table("ticket").map((ticket) => ticket.id)).toEqual(["ticket-earlier"])
+    expect(db.table("ticketComment")).toEqual([])
+    // The customer still got the answer, from the number they wrote to.
+    expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(sendWhatsAppMessage).mock.calls[0][0]).toMatchObject({ to: WA_PHONE, message: storedAssistantReply(), channelConfigId: "cfg-wa" })
+    // The bot said a specialist takes it: without a ticket, the bell is what brings one.
+    const called = vi.mocked(createNotification).mock.calls.map(([notice]) => notice)
+    expect(called).toEqual([expect.objectContaining({ userId: "user-admin", entityType: "inbox_message", entityId: "conversation-1", kind: "inbox.message", push: true })])
+  })
+
+  it("on a «Поддержка» number records on the chat's ticket the number it came in on", async () => {
+    await customerWritesOnWhatsApp(CUSTOMER_TEXT)
+
+    expect(ticketOpenedFromChat().sourceMeta).toMatchObject({ phone: WA_PHONE, channelConfigId: "cfg-wa" })
   })
 
   // Owner, 2026-11-11 (разбор «гардрейлов»): the customer's words open the ticket, but do not put it first in line.
