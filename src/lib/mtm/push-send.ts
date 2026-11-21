@@ -40,6 +40,8 @@ export interface PushMessage {
    * manifest default is used.
    */
   channelId?: string
+  /** No `notification` block: the app's own service receives it and draws it. */
+  dataOnly?: boolean
 }
 
 export type PushDelivery =
@@ -162,11 +164,18 @@ export async function sendPushMessages(input: {
         body: JSON.stringify({
           message: {
             token: message.token,
-            notification: { title: message.title, body: message.body },
-            data: message.data,
+            // A data-only message reaches the app's own service even in the
+            // background, so the app can act on it (stop GPS when the company
+            // closed the day) and draws the title and body itself.
+            ...(message.dataOnly
+              ? { data: { ...message.data, title: message.title, body: message.body } }
+              : { notification: { title: message.title, body: message.body }, data: message.data }),
             android: {
               priority: "HIGH",
-              ...(message.channelId
+              // Says what happened this evening: not news for a phone that
+              // comes back online tomorrow.
+              ...(message.dataOnly ? { ttl: "43200s" } : {}),
+              ...(message.channelId && !message.dataOnly
                 ? {
                     notification: {
                       channel_id: message.channelId,

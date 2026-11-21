@@ -165,11 +165,13 @@ describe("withPersonnelWebRlsAuth", () => {
     expect(handler).not.toHaveBeenCalled()
   })
 
-  it("is hidden from a person together with MTM until it has its own tick", async () => {
+  it("answers to its own tick, not to Route & Field's (owner, 2026-11-21)", async () => {
     const handler = vi.fn(async () => NextResponse.json({ success: true }))
-    const response = await (withPersonnelWebRlsAuth("read", handler) as unknown as WebRoute)(webRequest(), webAuth(["mtm"]))
-    expect(response.status).toBe(403)
+    const route = withPersonnelWebRlsAuth("read", handler) as unknown as WebRoute
+    expect((await route(webRequest(), webAuth(["personnel"]))).status).toBe(403)
     expect(handler).not.toHaveBeenCalled()
+    expect((await route(webRequest(), webAuth(["mtm"]))).status).toBe(200)
+    expect(handler).toHaveBeenCalledTimes(1)
   })
 })
 

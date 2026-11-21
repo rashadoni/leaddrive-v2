@@ -36,7 +36,7 @@ const branchInput=()=>({requestId:randomUUID(),branchId:null as string|null,expe
    branch=await import("@/app/api/v1/mtm/attendance/branches/route");assignment=await import("@/app/api/v1/mtm/attendance/branches/assignments/route");store=await import("@/lib/mtm/attendance-branches-store")
    await bypass(async()=>{
      for(const id of[ORG,OTHER]){await prisma.organization.create({data:{id,slug:id,name:`Fictional ${id}`,plan:"enterprise",modules:{mtm:true,"route-field":true},features:["mtm"]}});await prisma.mtmSetting.create({data:{organizationId:id,key:"attendanceEnabled",value:true}})}
-     for(const [id,role,all] of[["branch-admin","admin",false],["branch-manager","manager",false],["branch-hr","manager",true]] as const)await prisma.user.create({data:{id,organizationId:ORG,email:`${id}@example.test`,name:id,role,passwordHash:"fixture-unusable",mtmAttendanceAll:all}})
+     for(const [id,role,all] of[["branch-admin","admin",false],["branch-manager","manager",false],["branch-hr","viewer",true],["branch-hr-writer","manager",true]] as const)await prisma.user.create({data:{id,organizationId:ORG,email:`${id}@example.test`,name:id,role,passwordHash:"fixture-unusable",mtmAttendanceAll:all}})
      await prisma.mtmTeam.createMany({data:[{id:"branch-team-a",organizationId:ORG,name:"Fictional team A"},{id:"branch-team-b",organizationId:ORG,name:"Fictional team B"}]})
      await prisma.mtmAgent.createMany({data:[{id:"branch-manager-card",organizationId:ORG,name:"Fictional manager",role:"MANAGER",teamId:"branch-team-a",userId:"branch-manager"},{id:"branch-agent-a",organizationId:ORG,name:"Fictional employee A",role:"EMPLOYEE",attendanceParticipant:true,teamId:"branch-team-a"},{id:"branch-agent-b",organizationId:ORG,name:"Fictional employee B",role:"EMPLOYEE",attendanceParticipant:true,teamId:"branch-team-b"}]})
    })
@@ -80,8 +80,16 @@ const branchInput=()=>({requestId:randomUUID(),branchId:null as string|null,expe
      await tenant(ORG,async()=>{const rows=await prisma.$queryRaw<{branchId:string|null}[]>`SELECT "branchId" FROM mtm_attendance_primary_branch_revisions WHERE "agentId"='branch-agent-a' ORDER BY version`;expect(rows).toEqual([{branchId:first.branch.id},{branchId:null}])})
    }finally{caller.userId="branch-admin";caller.role="admin"}
  })
- it("HR report-wide grant reads all employees without gaining any branch or assignment write",async()=>{
-   caller.userId="branch-hr";caller.role="manager"
+ it("HR who may write run branches and assignments with no card",async()=>{
+   caller.userId="branch-hr-writer";caller.role="manager"
+   try{
+     const body=await (await assignment.GET(new NextRequest("http://localhost/api/v1/mtm/attendance/branches/assignments"),undefined)).json()
+     expect(body.data.employees.some((employee:{id:string;canAssign:boolean})=>employee.id==="branch-agent-b"&&employee.canAssign)).toBe(true)
+     expect((await post(branch.POST,branchInput())).status).toBeLessThan(300)
+   }finally{caller.userId="branch-admin";caller.role="admin"}
+ })
+ it("the HR grant on a read-only role reads all employees without gaining any branch or assignment write",async()=>{
+   caller.userId="branch-hr";caller.role="viewer"
    try{
      const body=await (await assignment.GET(new NextRequest("http://localhost/api/v1/mtm/attendance/branches/assignments"),undefined)).json()
      expect(body.data.employees.some((employee:{id:string})=>employee.id==="branch-agent-b")).toBe(true)

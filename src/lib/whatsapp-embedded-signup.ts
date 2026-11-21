@@ -4,6 +4,7 @@ import { runWithRlsBypass } from "@/lib/rls-context"
 import { encryptToken } from "@/lib/secure-token"
 import { redactOAuthProviderText } from "@/lib/oauth-redaction"
 import { decideNumberOnboarding, type NumberPlatformFacts } from "@/lib/whatsapp-number-onboarding"
+import { NEW_WHATSAPP_NUMBER_PURPOSE, WHATSAPP_INBOUND_PURPOSE_KEY } from "@/lib/channels/whatsapp-inbound-purpose"
 import { syncTemplatesFromMeta } from "@/lib/whatsapp"
 import { requestCoexistenceSync, type HistoryImportSetting } from "@/lib/whatsapp-history-import/request"
 
@@ -283,6 +284,11 @@ export async function completeEmbeddedSignup(input: EmbeddedSignupInput): Promis
   const carried: Record<string, unknown> = { ...prev }
   for (const key of ["disconnected", "cloudApiPaused", "cloudApiPausedAt", "cloudApiPausedEvent"]) delete carried[key]
   const settings: Record<string, unknown> = {
+    // A number connected for the first time starts as «Переписка»: its messages go to the inbox and
+    // open no Service Desk ticket until an admin says the number is for support
+    // (lib/channels/whatsapp-inbound-purpose). A reconnect keeps whatever the row already does —
+    // including a row from before the choice existed, which files tickets and must go on doing so.
+    ...(existing ? {} : { [WHATSAPP_INBOUND_PURPOSE_KEY]: NEW_WHATSAPP_NUMBER_PURPOSE }),
     ...carried,
     embeddedSignup: true,
     businessId: input.businessId || prev.businessId || null,

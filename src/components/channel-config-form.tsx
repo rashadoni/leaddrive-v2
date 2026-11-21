@@ -15,6 +15,8 @@ import { buildChannelPayload, type ChannelConfigFormData, type ChannelFormType, 
 import { channelConnectionState } from "@/lib/channels/live-connection"
 import { metaConnectionReason } from "@/lib/channels/connection-reason"
 import { WhatsAppEmbeddedSignup } from "@/components/channels/whatsapp-embedded-signup"
+import { WhatsAppNumberPurposeCards, saveWhatsAppNumberPurpose, whatsappNumberPurposeCopy } from "@/components/channels/whatsapp-number-purpose"
+import { NEW_WHATSAPP_NUMBER_PURPOSE, WHATSAPP_INBOUND_PURPOSE_KEY, whatsappInboundPurpose, type WhatsAppInboundPurpose } from "@/lib/channels/whatsapp-inbound-purpose"
 
 type Loc = "en" | "ru" | "az"
 
@@ -951,6 +953,10 @@ export function ChannelConfigForm({
   const [smsTestNumber, setSmsTestNumber] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  // What a WhatsApp number is for — the inbox only, or Service Desk tickets
+  // (lib/channels/whatsapp-inbound-purpose). Chosen here beside the number's other settings, but
+  // stored by its own endpoint: this form's Save can neither write nor erase it.
+  const [whatsappPurpose, setWhatsappPurpose] = useState<WhatsAppInboundPurpose>(NEW_WHATSAPP_NUMBER_PURPOSE)
   // The save succeeded, but the webhook will deliver this account's DMs to another workspace. Held on
   // screen until acknowledged: navigating straight to the catalog is how the warning got missed before.
   const [savedClaimedElsewhere, setSavedClaimedElsewhere] = useState(false)
@@ -964,6 +970,9 @@ export function ChannelConfigForm({
   useEffect(() => {
     if (open) {
       const settings = initialData?.settings || {}
+      // An existing number shows what it does today (nothing stored — it files tickets); a number
+      // being connected starts as «Переписка».
+      setWhatsappPurpose(initialData?.id ? whatsappInboundPurpose(initialData.settings) : NEW_WHATSAPP_NUMBER_PURPOSE)
       const normalizedChannelType = initialData?.channelType === "tiktok" ? "chatwoot" : initialData?.channelType || "email"
       const normalizedSettings =
         initialData?.channelType === "tiktok"
@@ -1078,16 +1087,24 @@ export function ChannelConfigForm({
     try {
       const url = isEdit ? `/api/v1/channels/${initialData!.id}` : "/api/v1/channels"
       const payload = buildChannelPayload(form)
+      // A number connected by hand is created with the purpose chosen above. On an edit the key
+      // is server-owned, so it goes to its own endpoint below instead.
+      const body = !isEdit && form.channelType === "whatsapp"
+        ? { ...payload, settings: { ...((payload as { settings?: Record<string, unknown> }).settings ?? {}), [WHATSAPP_INBOUND_PURPOSE_KEY]: whatsappPurpose } }
+        : payload
       const res = await fetch(url, {
         method: isEdit ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
           ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>),
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || tc("failedToSave"))
+      if (isEdit && form.channelType === "whatsapp" && whatsappPurpose !== whatsappInboundPurpose(initialData?.settings)) {
+        if (!(await saveWhatsAppNumberPurpose(initialData!.id!, whatsappPurpose))) throw new Error(tc("failedToSave"))
+      }
       if (json?.data?.claimedElsewhere === true) {
         setSavedClaimedElsewhere(true)
         return
@@ -1695,6 +1712,16 @@ export function ChannelConfigForm({
             )}
 
             {form.channelType === "whatsapp" && (
+              <section className="space-y-3 rounded-3xl border border-border bg-card p-4 shadow-sm" data-testid="channel-form-whatsapp-purpose">
+                <h3 className="text-sm font-semibold text-foreground">{whatsappNumberPurposeCopy(locale).title}</h3>
+                <WhatsAppNumberPurposeCards value={whatsappPurpose} onChange={setWhatsappPurpose} locale={locale} />
+                {isEdit && whatsappPurpose === "conversations" && whatsappInboundPurpose(initialData?.settings) === "support" && (
+                  <p className="text-sm text-muted-foreground">{whatsappNumberPurposeCopy(locale).toConversationsNote}</p>
+                )}
+              </section>
+            )}
+
+            {form.channelType === "whatsapp" && (
               <section className="space-y-5 rounded-3xl border border-border bg-zinc-50/70 p-4 shadow-sm">
                 <div
                   id="whatsappProviderGuide"
@@ -1725,7 +1752,13 @@ export function ChannelConfigForm({
                     agentBlockedHint: c.whatsappEsAgentBlockedHint,
                     offboardingHint: c.whatsappEsOffboardingHint,
                   }}
-                  onConnected={() => onSaved()}
+                  onConnected={(channelId) => {
+                    // Meta's dialog creates the number as «Переписка»; «Поддержка» picked above is stored now.
+                    const stored = whatsappPurpose === NEW_WHATSAPP_NUMBER_PURPOSE
+                      ? Promise.resolve(true)
+                      : saveWhatsAppNumberPurpose(channelId, whatsappPurpose)
+                    void stored.finally(() => onSaved())
+                  }}
                   locale={locale}
                 />
                 {whatsappEmbeddedNumber !== null && (

@@ -97,7 +97,7 @@ describe("scoped retroactive leave revocation", () => {
     if (condition === "other-team") vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: "manager", role: "MANAGER", scopedAgentIds: ["foreign"] })
     if (condition === "revoked-user") currentUser = null
     if (condition === "readonly") currentUser = { role: "viewer", hiddenModules: [] }
-    if (condition === "hidden") currentUser = { role: "manager", hiddenModules: ["mtm"] }
+    if (condition === "hidden") currentUser = { role: "manager", hiddenModules: ["personnel"] }
     expect((await post()).status).toBe(403); noWrites()
   })
   it("refuses feature-off and missing requests", async () => {

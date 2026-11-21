@@ -192,6 +192,23 @@ describe("completeEmbeddedSignup", () => {
     expect(db.rows[0].settings).toMatchObject({ replyMode: "agent", embeddedSignup: true })
   })
 
+  // Owner, 2026-11-21 (lib/channels/whatsapp-inbound-purpose): a number connected from now on belongs
+  // to the inbox; a number that was already there keeps doing what it did.
+  it("connects a new number as «Переписка»: its messages open no Service Desk ticket", async () => {
+    await completeEmbeddedSignup(input)
+    expect(db.rows[0].settings).toMatchObject({ inboundPurpose: "conversations" })
+  })
+
+  it("leaves a reconnected number's purpose alone — a number from before the choice goes on filing tickets", async () => {
+    db.rows.push({ id: "ours", organizationId: "org_a", channelType: "whatsapp", isActive: false, phoneNumberId: "444555666", accessToken: "OLD", settings: { replyMode: "agent" } })
+    await completeEmbeddedSignup(input)
+    expect(db.rows[0].settings).not.toHaveProperty("inboundPurpose")
+
+    db.rows[0].settings = { inboundPurpose: "support" }
+    await completeEmbeddedSignup(input)
+    expect(db.rows[0].settings).toMatchObject({ inboundPurpose: "support" })
+  })
+
   it("clears what Meta said about the previous connection when the number connects again", async () => {
     // Disconnect in the WhatsApp Business app → PARTNER_REMOVED → row off with `disconnected`; a
     // pause may linger from an ACCOUNT_OFFBOARDED. A fresh signup is a working connection: a kept

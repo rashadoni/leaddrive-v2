@@ -10,8 +10,8 @@ import { MTM_SETTING_NUMBER_RANGES } from "@/lib/mtm/settings-validation"
  * Personnel → Settings: the attendance switches that used to sit in MTM →
  * Settings → Company (owner, 2026-10-18: «настройки, которые относятся к учёту
  * времени, перемести в настройки соответствующего модуля»). The same keys, the
- * same endpoint (`/api/v1/mtm/settings`, administrators only), the same words
- * (`mtmSettingsPage`): only where they live has changed.
+ * same words (`mtmSettingsPage`), saved through Personnel's own endpoint so HR
+ * without Route & Field can run them (`/api/v1/mtm/attendance/policy`).
  *
  * One card opens one of three editors. Saving sends only the keys this editor
  * changed, so it never overwrites what another page saved meanwhile.
@@ -51,7 +51,7 @@ export function MtmAttendancePolicySettings({ card, canChange }: { card: Attenda
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch("/api/v1/mtm/settings", { cache: "no-store" })
+      const response = await fetch("/api/v1/mtm/attendance/policy", { cache: "no-store" })
       const body = await response.json().catch(() => null)
       if (!response.ok || body?.success !== true) { toast.error(tsRef.current("loadFailed")); return }
       setLoaded(body.data); setDraft(body.data); setNumbers({})
@@ -77,7 +77,7 @@ export function MtmAttendancePolicySettings({ card, canChange }: { card: Attenda
     const changes = Object.fromEntries(changed.map((key) => [key, draft[key]]))
     setSaving(true)
     try {
-      const response = await fetch("/api/v1/mtm/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(changes) })
+      const response = await fetch("/api/v1/mtm/attendance/policy", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(changes) })
       if (!response.ok) { toast.error(ts("saveFailed")); return }
       toast.success(ts("savedToast"))
       setLoaded((previous) => ({ ...previous, ...changes }))

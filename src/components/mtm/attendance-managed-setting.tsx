@@ -22,11 +22,11 @@ export function MtmAttendanceManagedSetting({ kind }: { kind: "day-kinds" | "acc
         const body = await response.json().catch(() => null)
         if (controller.signal.aborted) return
         if (!response.ok || body?.success !== true) { setDenied(true); setCanManage(false); return }
-        setCanManage(body.data?.canManageRules === true)
+        setCanManage((kind === "access" ? body.data?.canManageAccess : body.data?.canManageRules) === true)
       })
       .catch(() => { if (!controller.signal.aborted) { setDenied(true); setCanManage(false) } })
     return () => controller.abort()
-  }, [])
+  }, [kind])
   if (canManage === null) return <p role="status" className="text-sm text-muted-foreground">{t("reportLoading")}</p>
   // Opened from a Settings card: show the editor, not a second button to open it.
   const props = { canManage, accessUnavailable: denied, alwaysOpen: true, onAccessLost: () => { setDenied(true); setCanManage(false) } }

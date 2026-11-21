@@ -63,11 +63,12 @@ import { USER_HIDEABLE_MODULE_IDS } from "@/lib/user-module-access"
 
 const person = {
   id: "u-1", name: "Field Manager", email: "field@example.az", role: "manager",
-  hiddenModules: USER_HIDEABLE_MODULE_IDS.filter((id) => id !== "mtm"),
+  hiddenModules: USER_HIDEABLE_MODULE_IDS.filter((id) => id !== "mtm") as string[],
   phone: null, department: null, isActive: true, totpEnabled: false, require2fa: false, smsAuthEnabled: false,
   verifiedPhone: null, skills: [], maxTickets: 20, isAvailable: true, preferredLanguage: null,
   createdAt: "2026-10-02T10:00:00Z", lastLogin: null,
 }
+const FIELD_ONLY = [...person.hiddenModules]
 const roles = ["admin", "manager", "sales", "support", "ticketing", "viewer"]
   .map((id) => ({ id, name: id, color: "blue", isSystem: true, assignable: true }))
 
@@ -97,6 +98,7 @@ const rows = () => Object.fromEntries([...block().querySelectorAll("li")].map((r
 
 beforeEach(async () => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+  person.hiddenModules = [...FIELD_ONLY]
   writes = []
   cardWriteStatus = 200
   hrUsers = null
@@ -166,7 +168,8 @@ describe("user card — what this person gets", () => {
       "Доски": [false, "Скрыт", null],
       "Продажи": [false, "Скрыт", null],
       "Финансы": [false, "Скрыт", null],
-      "Маршруты и поле · Персонал": [true, "Всё, включая удаление", "В поле — Вся организация."],
+      "Маршруты и поле": [true, "Всё, включая удаление", "В поле — Вся организация."],
+      "Персонал": [false, "Скрыт", null],
       "Настройки": [null, "Только свои уведомления", null],
     })
   })
@@ -218,7 +221,7 @@ describe("user card — what this person gets", () => {
     const role = [...document.querySelectorAll("select")].find((select) => select.value === "manager")
 
     await choose(role, "sales")
-    expect(rows()["Маршруты и поле · Персонал"].slice(0, 2)).toEqual([true, "Просмотр и правка"])
+    expect(rows()["Маршруты и поле"].slice(0, 2)).toEqual([true, "Просмотр и правка"])
 
     await choose(role, "admin")
     const admin = rows()
@@ -228,7 +231,7 @@ describe("user card — what this person gets", () => {
     // admin included (checkPermission).
     expect(admin["Продажи"]).toEqual([null, "Всё, включая удаление", null])
     expect(admin["Встречи"]).toEqual([null, "Просмотр и правка", null])
-    expect(admin["Маршруты и поле · Персонал"]).toEqual([
+    expect(admin["Маршруты и поле"]).toEqual([
       null, "Всё, включая удаление", "Администратор видит всё поле без карточки сотрудника.",
     ])
     expect(fieldCard()).toBeNull()
@@ -254,7 +257,7 @@ describe("user card — the employee card behind Route & Field", () => {
     await openCard([spareCard])
     await choose(fieldCard(), "none")
 
-    expect(rows()["Маршруты и поле · Персонал"]).toEqual([
+    expect(rows()["Маршруты и поле"]).toEqual([
       true,
       "Нужна карточка сотрудника",
       "Без карточки сотрудника списки клиентов, маршрутов и визитов ответят отказом: чьи данные видит человек, решает она. Выберите карточку или создайте новую.",
@@ -268,7 +271,7 @@ describe("user card — the employee card behind Route & Field", () => {
     await choose([...document.querySelectorAll("select")].find((select) => select.value === "manager"), "sales")
 
     expect(fieldCard()?.value).toBe("none")
-    expect(rows()["Маршруты и поле · Персонал"].slice(0, 2)).toEqual([true, "Нужна карточка сотрудника"])
+    expect(rows()["Маршруты и поле"].slice(0, 2)).toEqual([true, "Нужна карточка сотрудника"])
   })
 
   it("offers this person's own card and the unlinked ones, never a colleague's", async () => {
@@ -278,7 +281,7 @@ describe("user card — the employee card behind Route & Field", () => {
     expect([...(fieldCard()?.options ?? [])].map((option) => option.textContent)).toEqual([
       "Нет карточки", "Seymur — Агент", "Field Manager — Админ", "Создать новую карточку",
     ])
-    expect(rows()["Маршруты и поле · Персонал"].slice(0, 2)).toEqual([true, "Всё, включая удаление"])
+    expect(rows()["Маршруты и поле"].slice(0, 2)).toEqual([true, "Всё, включая удаление"])
     expect(document.querySelector('[data-testid="user-field-card"]')?.textContent)
       .toContain("В поле — Админ: своя команда.")
   })
@@ -295,7 +298,7 @@ describe("user card — the employee card behind Route & Field", () => {
     await choose(fieldCard(), "new")
     await choose(document.querySelector<HTMLSelectElement>("#fieldRole"), "MANAGER")
 
-    expect(rows()["Маршруты и поле · Персонал"].slice(0, 2)).toEqual([true, "Всё, включая удаление"])
+    expect(rows()["Маршруты и поле"].slice(0, 2)).toEqual([true, "Всё, включая удаление"])
     await save()
 
     expect(cardWrites()).toEqual([
@@ -388,6 +391,7 @@ describe("user card — the employee card behind Route & Field", () => {
   // found» in Personnel whatever was ticked, and was made an administrator. The HR grant is here now.
   it("says Personnel will not open without HR access or a manager's card, and saves the HR tick", async () => {
     hrUsers = [{ id: "u-1", allEmployees: false, version: "2026-11-20T10:00:00.000Z" }]
+    person.hiddenModules = FIELD_ONLY.filter((id) => id !== "personnel")
     await openCard([])
     await choose(fieldCard(), "none")
     const hr = () => document.querySelector<HTMLInputElement>('[data-testid="user-personnel-hr"]')
@@ -399,6 +403,23 @@ describe("user card — the employee card behind Route & Field", () => {
 
     expect(writes.filter((write) => write.url.includes("/mtm/attendance/access"))).toEqual([
       { url: "/api/v1/mtm/attendance/access/u-1", method: "PATCH", body: { allEmployees: true, version: "2026-11-20T10:00:00.000Z" } },
+    ])
+  })
+
+  // Owner, 2026-11-21: «они не агенты» — HR gets Personnel with Route & Field unticked and no card.
+  it("keeps the HR tick on the Personnel row when Route & Field is hidden", async () => {
+    hrUsers = [{ id: "u-1", allEmployees: false, version: "2026-11-21T10:00:00.000Z" }]
+    person.hiddenModules = [...FIELD_ONLY.filter((id) => id !== "personnel"), "mtm"]
+    await openCard([])
+    const hr = document.querySelector<HTMLInputElement>('[data-testid="user-personnel-hr"]')
+    expect(hr?.closest("li")?.textContent).toContain("Персонал")
+    expect(fieldCard()).toBeNull()
+    await act(async () => { hr!.click() })
+    await save()
+
+    expect(cardWrites()).toEqual([])
+    expect(writes.filter((write) => write.url.includes("/mtm/attendance/access"))).toEqual([
+      { url: "/api/v1/mtm/attendance/access/u-1", method: "PATCH", body: { allEmployees: true, version: "2026-11-21T10:00:00.000Z" } },
     ])
   })
 
@@ -446,8 +467,8 @@ describe("user card — every module with one tick", () => {
     await act(async () => { sales?.querySelector<HTMLInputElement>("input")?.click() })
     expect(Object.entries(ticks()).filter(([, on]) => on).map(([label]) => label)).toEqual(["Продажи"])
     expect(allModules()?.indeterminate).toBe(true)
-    // Six ticks since 2026-11-10: Meetings have their own.
-    expect(document.querySelector('[data-testid="user-modules-all"]')?.textContent).toContain("отмечено 1 из 6")
+    // Seven ticks since 2026-11-21: Personnel has its own.
+    expect(document.querySelector('[data-testid="user-modules-all"]')?.textContent).toContain("отмечено 1 из 7")
 
     await save()
     const sent = writes.find((write) => write.method === "PUT")?.body as { hiddenModules: string[] }

@@ -3,6 +3,7 @@ import { Prisma, type Ticket } from "@prisma/client"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { sendWhatsAppMessage } from "@/lib/whatsapp"
+import { selectWhatsAppTicketChannel } from "@/lib/channels/whatsapp-settings-channel"
 import { createNotification } from "@/lib/notifications"
 import { markTicketMilestonesMet } from "@/lib/entitlement-process/ticket-milestones"
 import type { CrmCommandActorContext } from "../actor-context"
@@ -300,11 +301,16 @@ async function sendTicketReplyToWhatsApp(orgId: string, ticket: Ticket, text: st
     }
 
     if (waPhone) {
+      // From the number the ticket came in on, or — for a ticket that does not know it — the sole
+      // number this customer has written to (selectWhatsAppTicketChannel). Only when neither names a
+      // number does the send fall back to the workspace's default, as it always did before.
+      const selection = await selectWhatsAppTicketChannel(orgId, waPhone, ticket.sourceMeta).catch(() => ({ id: null }))
       const result = await sendWhatsAppMessage({
         to: waPhone,
         message: text,
         organizationId: orgId,
         contactId: ticket.contactId || undefined,
+        ...(selection.id ? { channelConfigId: selection.id } : {}),
       })
       console.log(`[Ticket WA] Reply to ${waPhone} for ticket ${ticket.ticketNumber}: ${result.success ? "OK" : result.error}`)
     } else {

@@ -183,6 +183,20 @@ describe("channel config secret response redaction", () => {
     assertNoRawSecrets(json)
     expect(json.data.hasAccessToken).toBe(true)
     expect(json.data).not.toHaveProperty("verifyToken")
+    // A number connected by hand starts as «Переписка», like one connected through Meta's dialog:
+    // its messages open no Service Desk ticket (lib/channels/whatsapp-inbound-purpose).
+    expect(mocks.create.mock.calls.at(-1)![0].data.settings).toEqual({ inboundPurpose: "conversations" })
+  })
+
+  it("creates a WhatsApp number as «Поддержка» only when the request says so, keeping its other settings", async () => {
+    mocks.create.mockResolvedValue(channelRow)
+    const number = { channelType: "whatsapp", configName: "Support", accessToken: "whatsapp-access-token", phoneNumberId: "phone_number_id", businessAccountId: "waba_123", verifyToken: "verify-token-required-by-edit-form", appSecret: "meta-app-secret" }
+
+    expect((await POST(req({ ...number, settings: { inboundPurpose: "support", replyMode: "agent" } }))).status).toBe(201)
+    expect(mocks.create.mock.calls.at(-1)![0].data.settings).toEqual({ inboundPurpose: "support", replyMode: "agent" })
+
+    expect((await POST(req({ ...number, settings: { inboundPurpose: "anything else" } }))).status).toBe(201)
+    expect(mocks.create.mock.calls.at(-1)![0].data.settings).toEqual({ inboundPurpose: "conversations" })
   })
 
   it("redacts raw secret fields after update without changing stored channel values", async () => {

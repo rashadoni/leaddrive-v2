@@ -13,10 +13,8 @@ import {
  * add it there.
  *
  * Before this, each screen named a tick after the FIRST sidebar group that
- * carried its id. Personnel («Kadr uçotu») is its own sidebar group but is
- * hidden together with Route & Field (`hideableIdForFieldCapability`), so it
- * appeared on no screen at all: the admin could not tell that ticking
- * «Marşrut & Sahə» also opens it.
+ * carried its id, so a group sharing a tick appeared on no screen at all.
+ * Personnel («Kadr uçotu») has its own tick since 2026-11-21.
  *
  * Kept out of user-module-access.ts on purpose: that file is read by the Edge
  * proxy and the Auth callbacks, and navItems pulls in the icon set.

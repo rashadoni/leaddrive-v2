@@ -1,3 +1,4 @@
+import { isPersonnelManager } from "@/lib/mtm/attendance-manager"
 import { enforceAttendanceMockRule, recordAttendanceRisks } from "@/lib/mtm/attendance-risk-detection"
 import { createHash, randomUUID } from "node:crypto"
 import { enforceAttendanceOutsideRule } from "@/lib/mtm/attendance-outside-rule"
@@ -45,8 +46,8 @@ export async function currentAttendanceStreamConsent(tx: Tx, self: Pick<Attendan
 }
 async function requireAdministrator(tx: Tx, reviewer: AttendanceReviewer) {
   await resolveAttendanceReviewerScope(tx,reviewer)
-  const [user] = await tx.$queryRaw<{role:string}[]>`SELECT role FROM users WHERE "organizationId"=${reviewer.organizationId} AND id=${reviewer.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
-  if (!user || !["admin","superadmin"].includes(user.role)) return reject("ADMIN_REQUIRED",403)
+  const [user] = await tx.$queryRaw<{role:string;hiddenModules:string[];mtmAttendanceAll:boolean}[]>`SELECT role,"hiddenModules","mtmAttendanceAll" FROM users WHERE "organizationId"=${reviewer.organizationId} AND id=${reviewer.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
+  if (!isPersonnelManager(user)) return reject("ADMIN_REQUIRED",403)
 }
 export async function readAttendanceLocationPolicy(reviewer: AttendanceReviewer) {
   return prisma.$transaction(async tx => {

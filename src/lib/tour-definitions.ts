@@ -49,13 +49,14 @@ export const TOUR_DEFINITIONS: Record<string, TourDef> = {
   },
 
   dealDetail: {
+    // Only what stands on the page when it opens: the feed and Da Vinci are
+    // opened by a press, so a step pointing at them would point at nothing.
     steps: [
       { targetId: "deal-stage-progress", titleKey: "stageTitle", descKey: "stageDesc" },
-      { targetId: "deal-ai-prediction", titleKey: "aiPredTitle", descKey: "aiPredDesc" },
-      { targetId: "deal-ai-suggestions", titleKey: "aiSugTitle", descKey: "aiSugDesc" },
+      { targetId: "deal-kpi-chips", titleKey: "kpiTitle", descKey: "kpiDesc" },
+      { targetId: "deal-next-steps", titleKey: "nextTitle", descKey: "nextDesc" },
       { targetId: "deal-quick-actions", titleKey: "quickTitle", descKey: "quickDesc" },
       { targetId: "deal-sidebar", titleKey: "sidebarTitle", descKey: "sidebarDesc" },
-      { targetId: "deal-timeline", titleKey: "timelineTitle", descKey: "timelineDesc" },
     ],
   },
 

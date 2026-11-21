@@ -43,6 +43,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/v1\/journeys\/process/ { next }
   /cron-trigger\.sh finance-deadlines/ { next }
   /cron-trigger\.sh mtm-auto-checkout/ { next }
+  /cron-trigger\.sh mtm-workday-auto-close/ { next }
   /cron-trigger\.sh mtm-route-notification-outbox/ { next }
   # Retire schedules installed by the removed branch-only v2 cleanup route.
   /cron-trigger\.sh mtm-mobile-sync-v2-snapshot-cleanup/ { next }
@@ -106,6 +107,11 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   printf '%s\n' "* * * * * $TRIGGER /api/v1/journeys/process >> $LOG 2>&1"
   printf '%s\n' "5 */6 * * * $TRIGGER finance-deadlines >> $LOG 2>&1"
   printf '%s\n' "*/15 * * * * $TRIGGER mtm-auto-checkout >> $LOG 2>&1"
+  # A company's end-of-day hour closes a field workday left open
+  # (workday-auto-close.ts); does nothing for a company without the switch.
+  # Minutes 5, 10 … 55: every other phase already peaks at fifteen starts, and
+  # the top of the hour at 08:00 and 09:00 UTC would be the sixteenth.
+  printf '%s\n' "5-59/5 * * * * $TRIGGER mtm-workday-auto-close >> $LOG 2>&1"
   # R5 route workflow notices are durable outbox rows. The worker is bounded,
   # idempotent and uses a cross-process lease, so a minute cadence only reduces
   # post-commit delivery latency; it does not duplicate notifications.

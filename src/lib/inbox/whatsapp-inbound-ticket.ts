@@ -73,6 +73,13 @@ export async function ensureInboundWhatsAppTicket(input: {
   companyId: string | null
   channelMessageId: string
   waMessageId?: string
+  /**
+   * The number the message came in on. A ticket opened here records it (`sourceMeta.channelConfigId`),
+   * and what the ticket later sends its customer goes out from that number
+   * (`ticketWhatsAppChannelId`, lib/channels/whatsapp-inbound-purpose). The webhook calls this only
+   * for a number set to «Поддержка»: a «Переписка» number files nothing.
+   */
+  channelConfigId?: string | null
   /** Step 2. The webhook reopens only for a typed text, not for a caption or a button reply. */
   reopenResolved?: boolean
   /** The guided demo's own ticket: its grant, and the ticket its thread holds (null before the first). */
@@ -113,11 +120,12 @@ async function placeInboundMessage({
   companyId,
   channelMessageId,
   waMessageId,
+  channelConfigId,
   reopenResolved,
   demo,
 }: Parameters<typeof ensureInboundWhatsAppTicket>[0]): Promise<InboundTicketResult> {
   if (demo) {
-    return placeDemoMessage({ organizationId, waPhone, senderName, messageText, contactId, leadId, companyId, channelMessageId, waMessageId }, demo)
+    return placeDemoMessage({ organizationId, waPhone, senderName, messageText, contactId, leadId, companyId, channelMessageId, waMessageId, channelConfigId }, demo)
   }
   const comment = `[Клиент (WhatsApp)] ${messageText.trim()}`
 
@@ -186,6 +194,7 @@ async function placeInboundMessage({
       channelMessageId,
       waMessageId: waMessageId || null,
       reasons: ["inbound_message"],
+      ...(channelConfigId ? { channelConfigId } : {}),
     },
     requesterName: senderName,
     requesterPhone: `+${waPhone}`,
@@ -215,7 +224,7 @@ async function placeDemoMessage(
   input: Omit<Parameters<typeof ensureInboundWhatsAppTicket>[0], "demo" | "reopenResolved">,
   demo: { grantId: string; ticketId: string | null },
 ): Promise<InboundTicketResult> {
-  const { organizationId, waPhone, senderName, messageText, contactId, leadId, companyId, channelMessageId, waMessageId } = input
+  const { organizationId, waPhone, senderName, messageText, contactId, leadId, companyId, channelMessageId, waMessageId, channelConfigId } = input
   const comment = `[Клиент (WhatsApp)] ${messageText.trim()}`
 
   if (demo.ticketId) {
@@ -264,6 +273,7 @@ async function placeDemoMessage(
       waMessageId: waMessageId || null,
       reasons: ["inbound_message", "demo_whatsapp"],
       demoGrantId: demo.grantId,
+      ...(channelConfigId ? { channelConfigId } : {}),
     },
     requesterName: senderName,
     requesterPhone: `+${waPhone}`,

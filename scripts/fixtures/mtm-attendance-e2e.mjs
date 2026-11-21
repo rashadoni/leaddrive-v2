@@ -85,7 +85,7 @@ export async function seedFixture() {
   const organization = await admin.organization.create({ data: { name: 'Fictional Attendance E2E', slug, plan: 'enterprise', features: ['crm', 'mtm'], modules: { crm: true, mtm: true, 'route-field': true }, addons: [], settings: { fixtureOnly: true } } })
   const foreignOrganization = await admin.organization.create({ data: { name: 'Fictional Foreign E2E', slug: `${slug}-foreign`, plan: 'enterprise', features: ['crm', 'mtm'], modules: { crm: true, mtm: true, 'route-field': true }, settings: { fixtureOnly: true } } })
   const users = {}
-  for (const [name, role, org] of [['admin', 'admin', organization], ['hr', 'sales', organization], ['manager', 'manager', organization], ['employee', 'sales', organization], ['field', 'sales', organization], ['outside', 'sales', organization], ['foreign', 'admin', foreignOrganization]]) {
+  for (const [name, role, org] of [['admin', 'admin', organization], ['hr', 'viewer', organization], ['manager', 'manager', organization], ['employee', 'sales', organization], ['field', 'sales', organization], ['outside', 'sales', organization], ['foreign', 'admin', foreignOrganization]]) {
     users[name] = await admin.user.create({ data: { organizationId: org.id, name: `Fixture ${name}`, email: `${name}-${slug}@example.invalid`, passwordHash, role, preferredLanguage: 'en' } })
   }
   const team = await admin.mtmTeam.create({ data: { organizationId: organization.id, name: 'Fixture managed team' } })

@@ -17,6 +17,7 @@ import {
   resolveMtmAgentAdministration,
 } from "@/lib/mtm/agent-administration"
 import { mtmAgentPresence, type MtmAgentPresence } from "@/lib/mtm/agent-day-state"
+import { isMtmWorkdayAutoCloseEventKey } from "@/lib/mtm/workday"
 import {
   MTM_WORKDAY_PAUSE_EVENT_TYPES,
   mtmWorkdayPauses,
@@ -117,7 +118,7 @@ function withoutTimes(presence: MtmAgentPresence): MtmAgentPresence {
   switch (presence.kind) {
     case "working": return { kind: "working", since: null }
     case "paused": return { kind: "paused", since: null }
-    case "finished": return { kind: "finished", at: null }
+    case "finished": return { kind: "finished", at: null, ...(presence.autoClosed ? { autoClosed: true } : {}) }
     default: return presence
   }
 }
@@ -235,6 +236,7 @@ export const GET = withRls(async (req, auth) => {
     // missing row already means "not started", so degrading costs one label,
     // while a 500 costs the whole screen.
     const breaksByAgent = new Map<string, Array<{ from: string; to: string | null }>>()
+    const lastFinishKey = new Map<string, string | null>()
     const dayByAgent = new Map<string, { id: string; status: "STARTED" | "PAUSED" | "COMPLETED"; startedAt: Date; pausedAt: Date | null; completedAt: Date | null }>()
     if (agents.length) {
       try {
@@ -259,8 +261,12 @@ export const GET = withRls(async (req, auth) => {
               type: { in: [...MTM_WORKDAY_PAUSE_EVENT_TYPES] },
             },
             orderBy: { occurredAt: "asc" },
-            select: { workdayId: true, type: true, occurredAt: true, appliedAt: true },
+            select: { workdayId: true, type: true, occurredAt: true, appliedAt: true, clientEventId: true },
           })
+          // The last FINISH says who ended the day (ordered by time above).
+          for (const event of events) {
+            if (event.type === "FINISH") lastFinishKey.set(event.workdayId, event.clientEventId)
+          }
           const byWorkday = new Map<string, Array<{ type: string; occurredAt: Date; appliedAt: Date | null }>>()
           for (const event of events) {
             const list = byWorkday.get(event.workdayId) ?? []
@@ -360,7 +366,12 @@ export const GET = withRls(async (req, auth) => {
             tags?: string[] | null
             mapColor?: string | null
           }
-          const presence = mtmAgentPresence(dayByAgent.get(agent.id))
+          const dayPresence = mtmAgentPresence(dayByAgent.get(agent.id))
+          const agentDayId = dayByAgent.get(agent.id)?.id
+          // Closed by the company's hour, not by the agent's own button.
+          const presence: MtmAgentPresence = dayPresence.kind === "finished" && agentDayId && isMtmWorkdayAutoCloseEventKey(lastFinishKey.get(agentDayId))
+            ? { ...dayPresence, autoClosed: true }
+            : dayPresence
           // A manager's or a supervisor's own card goes out blank — the same
           // shape as his people's cards, without what was noted about him.
           const notesOfThisCard = readsMtmAgentNotes(notesReader, agent.id)

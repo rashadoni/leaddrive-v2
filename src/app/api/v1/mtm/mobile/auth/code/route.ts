@@ -30,6 +30,9 @@ const RequestCodeSchema = z.object({
   phone: EnteredPhone,
   application: z.enum(["TIME", "ROUTE_FIELD"]).optional(),
   language: z.enum(["az", "ru", "en"]).optional(),
+  // Sent by an app that can say «no such number» (3.11.88+). An older one reads
+  // an unknown refusal as «no connection», so it keeps the old answer.
+  reportUnknownPhone: z.literal(true).optional(),
 }).strict()
 
 function sent(resendAfterSeconds: number, challengeId?: string) {
@@ -49,14 +52,20 @@ function unavailable() {
  *
  * Sends a sign-in code to the WhatsApp of the person in this company with this
  * number (owner, 2026-10-15). Pre-auth, like the password form beside it.
- * The answer is «sent» whether or not the number belongs to anybody.
+ *
+ * A number that is not in the company is told so (owner, 2026-11-21: «если
+ * номера нет в базе то и отп чтоб не приходило и писалось что такого номера
+ * нет»). Until then the answer was «sent» for anybody, and a person who mistyped
+ * a digit waited for a code that was never coming. The price is that this
+ * form now says whether a number is in a company; the limits above (five an
+ * hour per number, 100 in ten minutes per address) are what bounds trying them.
  */
 export async function POST(req: NextRequest) {
   try {
     return await runWithRlsBypass(async () => {
       const body = await readCodeFlowBody(req, RequestCodeSchema)
       if (!body.ok) return body.response
-      const { organizationSlug, phone, language, application } = body.value
+      const { organizationSlug, phone, language, application, reportUnknownPhone } = body.value
       const challengeId = application ? randomUUID() : undefined
       // Per address: an office asks codes for its people from one Wi-Fi —
       // 100 in 10 minutes covers a sign-in meeting. Codes go only to people the
@@ -87,6 +96,11 @@ export async function POST(req: NextRequest) {
       const holder = await codeHolder(organization, phone)
       if (holder.kind === "nobody") {
         if (holder.reason !== "no_card") await auditCodeFlow(req, organization.id, null, "MOBILE_LOGIN_CODE_NOT_SENT", phone, { reason: holder.reason })
+        // A dismissed person's number is no longer the company's either. The
+        // other reasons are a number that IS there and needs someone to fix it.
+        if (reportUnknownPhone && (holder.reason === "no_card" || holder.reason === "inactive")) {
+          return codeFlowError(404, "MTM_LOGIN_CODE_NO_PHONE", "This number is not in this company")
+        }
         return sent(MOBILE_LOGIN_CODE_RESEND_SECONDS, challengeId)
       }
       const { agent, sendTo } = holder

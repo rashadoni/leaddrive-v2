@@ -107,6 +107,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
   const [customView, setCustomView] = useState<{ name: string; config: AttendanceViewConfig } | null>(null)
   const [accessUnavailable, setAccessUnavailable] = useState(false)
   const [canManageAccess, setCanManageAccess] = useState(false)
+  const [canGrantHr, setCanGrantHr] = useState(false)
   const [issue, setIssue] = useState<TimesheetIssue | null>(initialFilter ?? null)
   const [openCell, setOpenCell] = useState<string | null>(initialEmployeeId && initialDate && isDateKey(initialDate) ? `${initialEmployeeId}:${initialDate}` : null)
   const [showExtras, setShowExtras] = useState(false)
@@ -131,12 +132,14 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
       if (controller.signal.aborted) return
       if (!settingsResponse.ok || settingsBody?.success !== true || !isDateKey(settingsBody.data?.today)) {
         setCanManageAccess(false)
+        setCanGrantHr(false)
         setError(t([401, 403, 404].includes(settingsResponse.status) ? "reportAccessUnavailable" : "reportLoadError"))
         if ([401, 403, 404].includes(settingsResponse.status)) setAccessUnavailable(true)
         return
       }
       setToday(settingsBody.data.today)
       setCanManageAccess(settingsBody.data.canManageRules === true)
+      setCanGrantHr(settingsBody.data.canManageAccess === true)
       const selected = requestedRange ?? (layout === "timesheet" ? timesheetRange(initialForm ?? "DAY", settingsBody.data.today, initialDate) : { from: settingsBody.data.today, to: settingsBody.data.today })
       setRange(selected)
       lastRequest.current = { range: selected, config: savedConfig }
@@ -546,7 +549,7 @@ export function MtmAttendanceReportWorkspace({ layout = "full", initialForm, ini
     <MtmAttendanceDeliveries currentConfig={currentConfig} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
     <MtmAttendancePersonalViews currentConfig={currentConfig} onApply={applyPersonal} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
     <MtmAttendanceDayKinds canManage={canManageAccess} onAccessLost={clearPrivateReport} onSaved={() => void load(report ? { from: report.from, to: report.to } : range, customView?.config)} accessUnavailable={accessUnavailable} />
-    <MtmAttendanceHrAccess canManage={canManageAccess} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
+    <MtmAttendanceHrAccess canManage={canGrantHr} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
     <MtmAttendanceRequestLimits canManage={canManageAccess} onAccessLost={clearPrivateReport} accessUnavailable={accessUnavailable} />
   </section>
 }

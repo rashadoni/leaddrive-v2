@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, type ReactNode } from "react"
+import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { AlertTriangle } from "lucide-react"
@@ -22,13 +23,19 @@ import { AlertTriangle } from "lucide-react"
  * probe — shows the page as before. Children wait for the probe so they never
  * mount, fetch and toast in the moment before the answer arrives; an admin is
  * not probed at all.
+ *
+ * Personnel («Kadr uçotu») lives under /mtm/attendance but is not a field
+ * screen: HR work there with no card, and its own layout decides who enters.
+ * Zeytun, 2026-11-21: an HR login the API admitted (200) got this notice.
  */
 export function MtmFieldScopeGate({ children }: { children: ReactNode }) {
   const { data: session } = useSession()
   const t = useTranslations("mtmApiErrors")
   const userId = session?.user?.id
   const role = session?.user?.role
-  const exempt = !userId || role === "admin" || role === "superadmin"
+  const pathname = usePathname()
+  const personnelPage = pathname === "/mtm/attendance" || !!pathname?.startsWith("/mtm/attendance/")
+  const exempt = !userId || role === "admin" || role === "superadmin" || personnelPage
   const [scope, setScope] = useState<"checking" | "ok" | "missing">("checking")
 
   useEffect(() => {

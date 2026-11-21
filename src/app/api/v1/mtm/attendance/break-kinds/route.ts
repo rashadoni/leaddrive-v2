@@ -1,3 +1,4 @@
+import { isPersonnelManager } from "@/lib/mtm/attendance-manager"
 import { prisma } from "@/lib/prisma"
 import { withMtmAttendanceAuth } from "@/lib/mtm/with-attendance-auth"
 import { AttendanceRequestError } from "@/lib/mtm/attendance-request-contract"
@@ -10,8 +11,8 @@ export const GET = withMtmAttendanceAuth("read", async (_req, auth) => {
   try {
     if (auth.principalType !== "session") throw new AttendanceRequestError("MTM_ATTENDANCE_BREAK_KINDS_FORBIDDEN", 403)
     const [settings, user] = await Promise.all([readAttendanceBreakKinds(prisma, auth.orgId),
-      prisma.user.findFirst({ where: { organizationId: auth.orgId, id: auth.userId }, select: { role: true } })])
-    return attendanceRequestResponse({ ...settings, canConfigure: !!user && ["admin", "superadmin"].includes(user.role) })
+      prisma.user.findFirst({ where: { organizationId: auth.orgId, id: auth.userId }, select: { role: true, hiddenModules: true, mtmAttendanceAll: true } })])
+    return attendanceRequestResponse({ ...settings, canConfigure: isPersonnelManager(user) })
   } catch (error) { return attendanceRequestFailure(error) }
 })
 export const PUT = withMtmAttendanceAuth("write", async (req, auth) => {

@@ -99,6 +99,10 @@ const SERVER_OWNED_SETTING_KEYS_BY_TYPE: Readonly<Record<string, readonly string
     "cloudApiPausedAt",
     "cloudApiPausedEvent",
     "disconnected",
+    // What the number is for — the inbox only, or Service Desk tickets (lib/channels/whatsapp-inbound-purpose,
+    // written by api/v1/channels/[id]/whatsapp-purpose). A number with nothing stored files a ticket for every
+    // message, so a Save that erased it would quietly start opening tickets from a number set to «Переписка».
+    "inboundPurpose",
   ],
 }
 

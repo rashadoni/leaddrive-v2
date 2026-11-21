@@ -11,7 +11,7 @@ import { hasModule, LEGACY_MODULE_MAP } from "@/lib/modules"
 import { isNavItemEnabled, navItems, NAV_GROUP_ORDER } from "@/lib/nav-items"
 import type { Module } from "@/lib/permissions"
 import { ENTITY_TO_MODULE } from "@/lib/notifications/taxonomy"
-import { hideableIdForGateModule } from "@/lib/user-module-access"
+import { hideableIdForGateModule, PERSONNEL_HIDEABLE_ID } from "@/lib/user-module-access"
 
 // ---------------------------------------------------------------------------
 // Context type
@@ -133,6 +133,9 @@ export function roleCanRead(role: Role, moduleId: string): boolean {
  */
 export function entityTypeHiddenFromUser(entityType: string, hiddenModules: readonly string[]): boolean {
   if (hiddenModules.length === 0) return false
+  // Personnel notices share the `mtm` permission scope but follow Personnel's own tick:
+  // HR with Route & Field hidden still gets requests and explanations.
+  if (entityType.startsWith("mtm_attendance_")) return hiddenModules.includes(PERSONNEL_HIDEABLE_ID)
   const moduleId = ENTITY_TO_MODULE[entityType]
   if (!moduleId) return false
   const gateModule = PERMISSION_MODULE_TO_MODULE_ID[moduleId] ?? LEGACY_MODULE_MAP[moduleId] ?? moduleId
