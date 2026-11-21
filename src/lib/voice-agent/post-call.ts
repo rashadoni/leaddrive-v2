@@ -4,6 +4,7 @@ import { z } from "zod"
 
 import { CALL_DISPOSITIONS } from "@/lib/calls/disposition"
 import type { ConversationInsight, Sentiment } from "@/lib/conversation-intel/types"
+import { CALL_OUTCOMES, type RequestedEmployee } from "@/lib/voice-agent/call-outcome"
 
 export const voiceAgentTurnSchema = z.object({
   role: z.enum(["customer", "agent"]),
@@ -140,6 +141,12 @@ const postCallAnalysisSchema = z.object({
   // and throwing away an entire call analysis over a missing optional phrase
   // would cost more than the phrase is worth.
   nextStepDueHint: z.string().trim().max(120).nullish(),
+  // What the call came to and who the caller asked for (2026-11-21). Same rule
+  // as above: required when we ask, tolerated when absent, because losing a
+  // whole analysis over one of these would cost more than the field is worth.
+  callOutcome: z.enum(CALL_OUTCOMES).nullish(),
+  requestedEmployeeName: z.string().trim().max(120).nullish(),
+  callerName: z.string().trim().max(120).nullish(),
 })
 
 export type PostCallAnalysis = z.infer<typeof postCallAnalysisSchema>
@@ -148,6 +155,20 @@ export function formatVoiceTranscript(turns: VoiceAgentTurn[]): string {
   return turns
     .map((turn) => `${turn.role === "customer" ? "Müştəri" : "AI operator"}: ${turn.text}`)
     .join("\n")
+}
+
+/**
+ * The customer's turns back out of a stored transcript. A call handed to a
+ * person and returned has two AI legs, and only the stored text holds both.
+ */
+export function customerTurnsFromTranscript(transcript: string): VoiceAgentTurn[] {
+  const turns: VoiceAgentTurn[] = []
+  for (const line of transcript.split("\n")) {
+    if (line.startsWith("Müştəri: ")) turns.push({ role: "customer", text: line.slice("Müştəri: ".length) })
+    else if (line.startsWith("AI operator: ")) turns.push({ role: "agent", text: line.slice("AI operator: ".length) })
+    else if (line.trim() && turns.length > 0) turns[turns.length - 1].text += ` ${line.trim()}`
+  }
+  return turns
 }
 
 function outputText(body: unknown): string | null {
@@ -186,6 +207,10 @@ export function fallbackPostCallAnalysis(turns: VoiceAgentTurn[]): PostCallAnaly
     disposition: "other",
     nextStep: null,
     nextStepDueHint: null,
+    // Nobody read this conversation: no verdict is better than a made-up one.
+    callOutcome: null,
+    requestedEmployeeName: null,
+    callerName: null,
   }
 }
 
@@ -232,6 +257,11 @@ export async function analyzeVoiceCall(params: {
           "nextStep yalnız açıq razılaşma və ya məntiqli satış davamı varsa yazılsın; əks halda null olsun.",
           "nextStepDueHint müştərinin vaxt barədə öz sözləri olsun (məsələn «bu gün saat 18:00», «sabah»); vaxt deyilməyibsə null. Vaxt uydurma.",
           "disposition verilən siyahıdan ən uyğun nəticə olsun.",
+          "callOutcome: müştərinin xidmətimizə real marağı var və satış davam edə bilər — qualified;",
+          "səhv nömrə, spam, bizim işimizə aid olmayan sorğu və ya maraq yoxdur — not_qualified;",
+          "müştəri insanla danışmaq istəyir, şikayət edir və ya sualına cavab verilə bilmədi — needs_human. Əmin deyilsənsə needs_human seç.",
+          "requestedEmployeeName: müştəri konkret işçini adı ilə istəyibsə, onun adı adlıq halda (məsələn «Leyla», «Rəşad Əliyev»). Vəzifə və ümumi söz («menecer», «direktor») ad deyil — null.",
+          "callerName: müştəri özünü təqdim edibsə, onun adı; əks halda null. Ad uydurma.",
         ].join(" "),
         input: transcript,
         // Sized for the two-sentence summary it used to ask for.
@@ -245,7 +275,10 @@ export async function analyzeVoiceCall(params: {
             schema: {
               type: "object",
               additionalProperties: false,
-              required: ["summary", "sentiment", "sentimentScore", "topics", "disposition", "nextStep", "nextStepDueHint"],
+              required: [
+                "summary", "sentiment", "sentimentScore", "topics", "disposition", "nextStep", "nextStepDueHint",
+                "callOutcome", "requestedEmployeeName", "callerName",
+              ],
               properties: {
                 summary: { type: "string", minLength: 1, maxLength: 1500 },
                 sentiment: {
@@ -264,6 +297,9 @@ export async function analyzeVoiceCall(params: {
                 },
                 nextStep: { type: ["string", "null"], maxLength: 600 },
                 nextStepDueHint: { type: ["string", "null"], maxLength: 120 },
+                callOutcome: { type: "string", enum: [...CALL_OUTCOMES] },
+                requestedEmployeeName: { type: ["string", "null"], maxLength: 120 },
+                callerName: { type: ["string", "null"], maxLength: 120 },
               },
             },
           },
@@ -291,8 +327,13 @@ export async function analyzeVoiceCall(params: {
 export function toConversationInsight(
   analysis: PostCallAnalysis,
   model: string,
+  /** Resolved against the organization's people by the caller; only inbound calls have it. */
+  requestedEmployee?: RequestedEmployee | null,
 ): ConversationInsight {
   return {
+    ...(analysis.callOutcome ? { outcome: analysis.callOutcome } : {}),
+    ...(requestedEmployee ? { requestedEmployee } : {}),
+    ...(analysis.callerName ? { callerName: analysis.callerName } : {}),
     version: 1,
     sentiment: analysis.sentiment as Sentiment,
     sentimentScore: analysis.sentimentScore,

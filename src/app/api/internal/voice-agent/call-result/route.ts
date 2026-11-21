@@ -19,6 +19,10 @@ import {
 } from "@/lib/voice-agent/post-call"
 import { recordCallCommitment } from "@/lib/commitments/record-call-commitment"
 import { maybePlaceCallback } from "@/lib/voice-agent/callback-trigger"
+import {
+  recordInboundCallFollowUp,
+  resolveRequestedEmployee,
+} from "@/lib/voice-agent/inbound-call-follow-up"
 import { isDemoPlacedCall } from "@/lib/demo-center/call-prompt"
 import { recordDemoPromptApplied } from "@/lib/demo-center/call-prompt-match"
 import { recordUnansweredCallback } from "@/lib/voice-agent/callback-fallback-task"
@@ -307,6 +311,13 @@ function conflictingTerminalResult(): NextResponse {
   return NextResponse.json(
     { success: false, analysisStatus: "conflict" },
     { status: 409 },
+  )
+}
+
+function followUpRetryResponse(): NextResponse {
+  return NextResponse.json(
+    { success: false, analysisStatus: "processing" },
+    { status: 503, headers: { "Retry-After": "5" } },
   )
 }
 
@@ -634,6 +645,8 @@ async function analyzeAndRecord(params: {
   turns: VoiceAgentTurn[]
   insightsWhere: Prisma.CallLogWhereInput
   placeCallback: boolean
+  /** A call that came to us: its caller may become a lead (behind the VoIP page's switch). */
+  inboundFollowUp?: boolean
 }): Promise<NextResponse> {
   const { organizationId, call } = params
   const analysisClaim = await runWithTenant(organizationId, () => acquireAnalysisClaim({
@@ -643,6 +656,16 @@ async function analyzeAndRecord(params: {
     now: new Date(),
   }))
   if (analysisClaim.state === "complete") {
+    // Nothing to pay for again, but the lead or task may be what the last
+    // attempt failed on, and a returned handoff is decided only now.
+    if (params.inboundFollowUp) {
+      const retried = await runWithTenant(organizationId, () => recordInboundCallFollowUp({
+        organizationId,
+        callLogId: call.id,
+        turns: params.turns,
+      }))
+      if (retried.status === "failed") return followUpRetryResponse()
+    }
     return NextResponse.json({ success: true, analysisStatus: "existing" })
   }
   if (analysisClaim.state === "processing") {
@@ -672,21 +695,36 @@ async function analyzeAndRecord(params: {
     }
   }
 
+  // Who the caller asked for, against this organization's people. Only a call
+  // that came to us: on an outbound call the name would be the AI's own script.
+  const requestedEmployee = params.inboundFollowUp
+    ? await runWithTenant(organizationId, () => resolveRequestedEmployee(organizationId, analysis.analysis.requestedEmployeeName))
+    : null
   const insightsStored = await runWithTenant(organizationId, () => prisma.callLog.updateMany({
     where: { ...params.insightsWhere, id: call.id, organizationId, insightsAt: null },
     data: {
-      insights: toConversationInsight(analysis.analysis, analysis.model) as unknown as Prisma.InputJsonValue,
+      insights: toConversationInsight(analysis.analysis, analysis.model, requestedEmployee) as unknown as Prisma.InputJsonValue,
       insightsAt: new Date(),
       disposition: analysis.analysis.disposition,
     },
   }))
   if (insightsStored.count === 0) {
+    // A retry of a worker that died after storing the analysis: the lead and
+    // task it may not have reached are safe to ask for again.
+    const retried = params.inboundFollowUp
+      ? await runWithTenant(organizationId, () => recordInboundCallFollowUp({
+          organizationId,
+          callLogId: call.id,
+          turns: params.turns,
+        }))
+      : null
     await runWithTenant(organizationId, () => completeAnalysisClaim({
       organizationId,
       eventId: analysisClaim.eventId,
       payload: analysisClaim.payload,
       completedAt: new Date(),
     }))
+    if (retried?.status === "failed") return followUpRetryResponse()
     return NextResponse.json({ success: true, analysisStatus: "existing" })
   }
 
@@ -696,7 +734,13 @@ async function analyzeAndRecord(params: {
   // /api/v1/calls/[id]/analyze, runs a placeholder analyser. Wiring the
   // commitment only there would have shipped a feature that never fired on the
   // calls that actually produce commitments.
+  let followUpFailed = false
   await runWithTenant(organizationId, async () => {
+    // First: a promise made to a new caller then lands on the lead just created.
+    if (params.inboundFollowUp) {
+      const followUp = await recordInboundCallFollowUp({ organizationId, callLogId: call.id, turns: params.turns })
+      followUpFailed = followUp.status === "failed"
+    }
     const analysed = await prisma.callLog.findFirst({
       where: { id: call.id, organizationId },
       select: { leadId: true, userId: true, insights: true, createdAt: true },
@@ -724,6 +768,9 @@ async function analyzeAndRecord(params: {
     payload: analysisClaim.payload,
     completedAt: new Date(),
   }))
+
+  // The analysis is stored and paid for; the station's retry only redoes the lead.
+  if (followUpFailed) return followUpRetryResponse()
 
   // The system's only self-initiated outgoing call. Placed last, after the
   // result is fully stored, so a callback can never be the reason a transcript
@@ -829,6 +876,7 @@ async function recordInboundAiResult(params: {
     turns: params.turns,
     insightsWhere: scope,
     placeCallback: false,
+    inboundFollowUp: true,
   })
 }
 

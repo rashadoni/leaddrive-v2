@@ -78,6 +78,7 @@ export const POST = withRlsAuth("ai", "read", async (req, auth) => {
       // клиента читается вслух лишь тому, кому он открыт и на экране.
       principalType: auth.principalType,
       hideCustomerPhoneForOperators: auth.hideCustomerPhoneForOperators,
+      hiddenChannelConfigIds: auth.hiddenChannelConfigIds,
     },
     logTurn: (entry) => {
       void prisma.voiceSessionTurn

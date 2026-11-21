@@ -73,6 +73,7 @@ type ChannelSettings = {
   inboundAiAfterRings?: number
   voiceAgentInboundGreeting?: string
   voiceAgentInboundRules?: string
+  aiCallLeadsEnabled?: boolean
 }
 
 type ChannelConfig = {
@@ -153,6 +154,7 @@ export default function VoipSettingsPage() {
   const [voiceQueueEnabled, setVoiceQueueEnabled] = useState(false)
   const [inboundAnswerMode, setInboundAnswerMode] = useState<InboundAnswerMode>("human")
   const [inboundAiAfterRings, setInboundAiAfterRings] = useState(DEFAULT_RINGS_BEFORE_AI)
+  const [aiCallLeads, setAiCallLeads] = useState(false)
   const [inboundGreeting, setInboundGreeting] = useState("")
   const [inboundRules, setInboundRules] = useState("")
   const [voiceAgentPrompt, setVoiceAgentPrompt] = useState(DEFAULT_VOICE_AGENT_PROMPT)
@@ -209,6 +211,7 @@ export default function VoipSettingsPage() {
             : "human",
         )
         setInboundAiAfterRings(clampRingsBeforeAi(s.inboundAiAfterRings))
+        setAiCallLeads(s.aiCallLeadsEnabled === true)
         setInboundGreeting(s.voiceAgentInboundGreeting || "")
         setInboundRules(s.voiceAgentInboundRules || "")
         setVoiceAgentPrompt(s.voiceAgentPrompt || DEFAULT_VOICE_AGENT_PROMPT)
@@ -299,6 +302,7 @@ export default function VoipSettingsPage() {
       inboundAiAfterRings,
       voiceAgentInboundGreeting: inboundGreeting.trim(),
       voiceAgentInboundRules: inboundRules.trim(),
+      aiCallLeadsEnabled: aiCallLeads,
       voiceAgentPrompt: voiceAgentPrompt.trim(),
       voiceAgentKnowledge: voiceAgentKnowledge.trim(),
     }
@@ -740,6 +744,23 @@ export default function VoipSettingsPage() {
                         <option key={count} value={count}>{t("inboundRingsOption", { count })}</option>
                       ))}
                     </Select>
+                  </div>
+                )}
+
+                {voiceAgentEnabled && inboundAnswerMode !== "human" && (
+                  <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+                    <div className="min-w-0 space-y-1">
+                      <Label htmlFor="ai-call-leads" className="text-sm font-medium">
+                        {t("aiCallLeadsLabel")}
+                      </Label>
+                      <p className="text-xs leading-relaxed text-muted-foreground">{t("aiCallLeadsHint")}</p>
+                    </div>
+                    <Switch
+                      id="ai-call-leads"
+                      checked={aiCallLeads}
+                      onCheckedChange={setAiCallLeads}
+                      aria-label={t("aiCallLeadsLabel")}
+                    />
                   </div>
                 )}
 

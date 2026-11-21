@@ -639,6 +639,16 @@ async function applyWithUniqueReplay(params: {
  * event may establish bounded party-number identity; every later event remains
  * the zero-customer-data transition contract used by outbound calls.
  */
+/** A caller handed to a person whom nobody took. In the background: the station waits for this answer. */
+function settleHandoffAfterCall(organizationId: string, callId: string) {
+  void runWithTenant(organizationId, async () => {
+    const { settleHandedOffCall } = await import("@/lib/voice-agent/inbound-call-follow-up")
+    await settleHandedOffCall(organizationId, callId)
+  }).catch((error: unknown) => {
+    console.warn("[voice-agent] handoff follow-up failed", error instanceof Error ? error.name : typeof error)
+  })
+}
+
 async function handlePost(request: NextRequest) {
   if (!authorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -678,7 +688,10 @@ async function handlePost(request: NextRequest) {
         now: new Date(),
       })
     })
-    if (TERMINAL_STATES.has(parsed.data.state)) notifyOrderAfterCall(organizationId, parsed.data.callId)
+    if (TERMINAL_STATES.has(parsed.data.state)) {
+      notifyOrderAfterCall(organizationId, parsed.data.callId)
+      settleHandoffAfterCall(organizationId, parsed.data.callId)
+    }
     return NextResponse.json({ success: true, result })
   } catch (error) {
     if (error instanceof LifecycleCallNotFoundError) {

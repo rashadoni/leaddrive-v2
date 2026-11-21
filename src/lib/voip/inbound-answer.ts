@@ -70,6 +70,15 @@ function record(value: unknown): Record<string, unknown> {
     : {}
 }
 
+/**
+ * «Создавать лиды и задачи из звонков ИИ» on the VoIP page. Off unless someone
+ * turned it on: a CRM that starts writing leads by itself after a release is
+ * exactly what the owner did not ask for.
+ */
+export function aiCallLeadsEnabled(settingsValue: unknown): boolean {
+  return record(settingsValue).aiCallLeadsEnabled === true
+}
+
 export function clampRingsBeforeAi(value: unknown): number {
   const rings = typeof value === "number" && Number.isInteger(value)
     ? value
