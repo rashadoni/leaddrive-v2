@@ -83,6 +83,28 @@ function workingIntervals(
   return day?.enabled ? day.intervals ?? [] : []
 }
 
+/**
+ * The times a working day ends on this date, earliest first. A lunch break is
+ * not an end. An interval cannot cross midnight, so a night shift is stored as
+ * «22:00-23:59» and next day's «00:00-06:00»: its end is 06:00, not 23:59.
+ */
+function closesOn(date: string, schedule: BusinessHoursSchedule, holidays: BusinessHoursHoliday[]): string[] {
+  const sorted = (day: string) => [...workingIntervals(day, schedule, holidays)]
+    .sort((a, b) => a.start.localeCompare(b.start))
+  const intervals = sorted(date)
+  if (intervals.length === 0) return []
+  const runsIntoNextDay = (interval: BusinessHoursInterval) => interval.end === "23:59"
+    && sorted(shiftDate(date, 1))[0]?.start === "00:00"
+  const closes: string[] = []
+  const previous = sorted(shiftDate(date, -1)).at(-1)
+  const tailOfNightShift = intervals[0].start === "00:00" && previous?.end === "23:59"
+  if (tailOfNightShift && !runsIntoNextDay(intervals[0])) closes.push(intervals[0].end)
+  const shift = tailOfNightShift ? intervals.slice(1) : intervals
+  const last = shift.at(-1)
+  if (last && !runsIntoNextDay(last)) closes.push(last.end)
+  return closes
+}
+
 /** When the last finished working day ended, or null when the schedule has none. */
 function lastClose(now: Date, hours: BusinessHoursForPeriod): Date | null {
   const schedule = normalizeBusinessHoursSchedule(hours.schedule)
@@ -90,12 +112,10 @@ function lastClose(now: Date, hours: BusinessHoursForPeriod): Date | null {
   const today = civilDate(now, hours.timezone)
   for (let back = 0; back <= CLOSE_LOOKBACK_DAYS; back += 1) {
     const date = shiftDate(today, -back)
-    const intervals = workingIntervals(date, schedule, holidays)
-    if (intervals.length === 0) continue
-    // The day's LAST interval: a lunch break is not the end of the working day.
-    const end = intervals.map((interval) => interval.end).sort().at(-1)!
-    const closedAt = localDateTimeToUtc(`${date}T${end}`, hours.timezone)
-    if (closedAt.getTime() <= now.getTime()) return closedAt
+    for (const end of closesOn(date, schedule, holidays).reverse()) {
+      const closedAt = localDateTimeToUtc(`${date}T${end}`, hours.timezone)
+      if (closedAt.getTime() <= now.getTime()) return closedAt
+    }
   }
   return null
 }
@@ -174,6 +194,8 @@ export type MissedSummary = {
   chats: { handled: number; qualified: number } | null
   /** Meetings the WhatsApp AI booked in the period, within this person's booking access. */
   booked: number | null
+  /** Whose meetings `booked` covers: everybody's, or this person's and the hosts they were granted. */
+  bookedScope: "all_hosts" | "own_and_granted" | null
   askedForYou: { count: number; people: Array<{ name: string | null; at: string }> } | null
   unavailable: Array<"calls" | "chats" | "bookings">
   /** True when a part held more rows than are read: its figures are a lower bound. */
@@ -339,7 +361,13 @@ async function readChats(input: {
 
   // The website chat keeps its messages in its own table.
   const botSessions = await prisma.webChatMessage.findMany({
-    where: voiceScopedWhere(orgId, { fromRole: "bot", createdAt: window }),
+    // Generated replies only: the greeting, a survey link and the escalation
+    // notice are also written as "bot", and none of them is the AI answering.
+    where: voiceScopedWhere(orgId, {
+      fromRole: "bot",
+      createdAt: window,
+      metadata: { path: ["aiGenerated"], equals: true },
+    }),
     select: { sessionId: true },
     distinct: ["sessionId"],
     take: MAX_ROWS + 1,
@@ -404,13 +432,14 @@ export async function buildMissedSummary(input: {
     calls: calls?.totals ?? null,
     chats: chats ? { handled: chats.handled, qualified: chats.qualified } : null,
     booked,
+    bookedScope: input.booking ? (input.booking.hostIds === null ? "all_hosts" : "own_and_granted") : null,
     askedForYou: calls?.askedForYou ?? null,
     unavailable,
     truncated: Boolean(calls?.truncated || chats?.truncated),
     means: {
       handled: "incoming calls the AI answered where the customer spoke, plus chats where the customer wrote and the AI replied, inside the period; pharmacy-line and demo calls are not counted",
       notQualified: "known for calls only; chats have no such verdict, so never say how many chats did not fit",
-      booked: "meetings the WhatsApp AI booked in the period and that are not cancelled; the AI does not book during phone calls",
+      booked: "meetings the WhatsApp AI booked in the period and that are not cancelled; the AI does not book during phone calls. When bookedScope is own_and_granted, say the figure covers only the hosts this user can see",
     },
   }
 }

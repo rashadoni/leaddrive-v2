@@ -11,6 +11,7 @@
  * authentication; this function trusts the auth it is handed exactly as the
  * route trusted withRlsAuth.
  */
+import { isManagerOrAbove } from "@/lib/constants"
 import { hasModule } from "@/lib/modules"
 import type { Role } from "@/lib/permissions"
 import { getOrgModuleContext } from "@/lib/api-auth"
@@ -424,7 +425,10 @@ export async function executeVoiceReadTool(params: {
     const role = auth.role as Role
     // Each part has its own paid module and its own role check. A part that
     // fails either is reported as unavailable, never as a zero.
-    const canSeeCalls = canAccessVoiceData(role, orgCtx, { module: "voip", permission: "voip" })
+    // Below manager, the call journal shows only AI calls the person placed, and
+    // an inbound AI call has no such person: their count would be a false zero.
+    const canSeeCalls = isManagerOrAbove(role)
+      && canAccessVoiceData(role, orgCtx, { module: "voip", permission: "voip" })
     const canSeeChats = canAccessVoiceData(role, orgCtx, { module: "omnichannel", permission: "inbox" })
     if (!canSeeCalls && !canSeeChats) {
       return { body: { data: { error: "ACCESS_SCOPE_UNAVAILABLE" } } }

@@ -129,6 +129,25 @@ describe("resolveMissedPeriod", () => {
     expect(resolveMissedPeriod(at("2026-11-19T19:00"), [hours({ schedule })], "UTC").from).toEqual(at("2026-11-19T18:00"))
   })
 
+  it("a night shift ends in the morning, not at midnight", () => {
+    const night = Object.fromEntries(["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day) => [day, {
+      enabled: true,
+      intervals: [{ start: "00:00", end: "06:00" }, { start: "22:00", end: "23:59" }],
+    }]))
+    const shift = hours({ schedule: night })
+    expect(resolveMissedPeriod(at("2026-11-19T07:00"), [shift], "UTC").from).toEqual(at("2026-11-19T06:00"))
+    expect(resolveMissedPeriod(at("2026-11-19T23:30"), [shift], "UTC").from).toEqual(at("2026-11-19T06:00"))
+    expect(resolveMissedPeriod(at("2026-11-19T03:00"), [shift], "UTC").from).toEqual(at("2026-11-18T06:00"))
+  })
+
+  it("a line open around the clock has no close, so the last 16 hours", () => {
+    const always = Object.fromEntries(["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day) => [day, {
+      enabled: true,
+      intervals: [{ start: "00:00", end: "23:59" }],
+    }]))
+    expect(resolveMissedPeriod(at("2026-11-19T07:00"), [hours({ schedule: always })], "UTC").basis).toBe("last_16_hours")
+  })
+
   it("skips a closed holiday", () => {
     const holidays = [{ date: "2026-11-18", closed: true }]
     expect(resolveMissedPeriod(at("2026-11-19T09:30"), [hours({ holidays })], "UTC").from).toEqual(at("2026-11-17T18:00"))

@@ -15,6 +15,7 @@ import {
   type RequestedEmployee,
 } from "@/lib/voice-agent/call-outcome"
 import { isLineOrDemoCall } from "@/lib/voice-agent/line-or-demo-call"
+import { customerTurnsFromTranscript } from "@/lib/voice-agent/post-call"
 import { aiCallLeadsEnabled } from "@/lib/voip/inbound-answer"
 import { loadInboundAnswerSelection } from "@/lib/voip/inbound-answer-config"
 import { threeCxPhoneVariants } from "@/lib/voip/threecx-crm"
@@ -283,7 +284,8 @@ async function fileFollowUpTask(input: {
 export async function recordInboundCallFollowUp(input: {
   organizationId: string
   callLogId: string
-  turns: ReadonlyArray<{ role: "customer" | "agent"; text: string }>
+  /** Used only when the call has no stored transcript yet. */
+  turns?: ReadonlyArray<{ role: "customer" | "agent"; text: string }>
   now?: Date
 }): Promise<InboundCallFollowUpResult> {
   const { organizationId, callLogId } = input
@@ -293,6 +295,8 @@ export async function recordInboundCallFollowUp(input: {
       select: {
         callMode: true,
         handoffState: true,
+        endedAt: true,
+        transcription: true,
         conversationOutcome: true,
         consentAudit: true,
         channelConfigId: true,
@@ -307,7 +311,8 @@ export async function recordInboundCallFollowUp(input: {
     if (isLineOrDemoCall(call.consentAudit)) return { status: "skipped", reason: "excluded" }
     if (call.callMode !== "ai" && call.handoffState === null) return { status: "skipped", reason: "not-ai" }
     if (!(await switchIsOn(organizationId, call.channelConfigId))) return { status: "skipped", reason: "disabled" }
-    if (call.conversationOutcome !== "customer_spoke" || !customerReallySpoke(input.turns)) {
+    const said = call.transcription ? customerTurnsFromTranscript(call.transcription) : input.turns ?? []
+    if (call.conversationOutcome !== "customer_spoke" || !customerReallySpoke(said)) {
       return { status: "skipped", reason: "no-real-conversation" }
     }
 
@@ -346,6 +351,7 @@ export async function recordInboundCallFollowUp(input: {
           source: AI_CALL_LEAD_SOURCE,
           phone,
           contactName: displayName,
+          interest: topic || summary,
         })
       }
     }
@@ -375,9 +381,16 @@ export async function recordInboundCallFollowUp(input: {
     // finds them a good fit and nobody was named: a closed lead has no one
     // watching it, and reopening it is a person's decision.
     const closedLeadCameBack = !party.leadCreated
+      && party.leadId !== callLeadId(callLogId)
       && stored.outcome === "qualified"
       && (lead?.status === "lost" || lead?.status === "converted")
-    if (!requested && stored.outcome !== "needs_human" && !closedLeadCameBack) {
+    // A person took the call, or may still: telling somebody «a customer needs
+    // a human» would be false. If the transfer fails, the returned leg or the
+    // end of the call brings this back here (settleHandedOffCall).
+    const handoffTaken = call.handoffState === "connected"
+    const handoffPending = (call.handoffState === "requested" || call.handoffState === "ringing")
+      && call.endedAt === null
+    if (handoffTaken || handoffPending || (!requested && stored.outcome !== "needs_human" && !closedLeadCameBack)) {
       return {
         status: "done",
         leadId: party.leadId,
@@ -434,4 +447,23 @@ export async function recordInboundCallFollowUp(input: {
     })
     return { status: "failed" }
   }
+}
+
+/**
+ * The end of a call that was handed to a person. If nobody took it, the caller
+ * who wanted a human is still waiting for one, and only now is that known.
+ */
+export async function settleHandedOffCall(organizationId: string, providerCallId: string): Promise<void> {
+  const call = await prisma.callLog.findFirst({
+    where: {
+      organizationId,
+      provider: "asterisk",
+      providerCallId,
+      direction: "inbound",
+      handoffState: { in: ["requested", "ringing", "returned"] },
+      insightsAt: { not: null },
+    },
+    select: { id: true },
+  })
+  if (call) await recordInboundCallFollowUp({ organizationId, callLogId: call.id })
 }

@@ -157,6 +157,20 @@ export function formatVoiceTranscript(turns: VoiceAgentTurn[]): string {
     .join("\n")
 }
 
+/**
+ * The customer's turns back out of a stored transcript. A call handed to a
+ * person and returned has two AI legs, and only the stored text holds both.
+ */
+export function customerTurnsFromTranscript(transcript: string): VoiceAgentTurn[] {
+  const turns: VoiceAgentTurn[] = []
+  for (const line of transcript.split("\n")) {
+    if (line.startsWith("Müştəri: ")) turns.push({ role: "customer", text: line.slice("Müştəri: ".length) })
+    else if (line.startsWith("AI operator: ")) turns.push({ role: "agent", text: line.slice("AI operator: ".length) })
+    else if (line.trim() && turns.length > 0) turns[turns.length - 1].text += ` ${line.trim()}`
+  }
+  return turns
+}
+
 function outputText(body: unknown): string | null {
   if (!body || typeof body !== "object") return null
   const top = body as { output_text?: unknown; output?: unknown; model?: unknown }

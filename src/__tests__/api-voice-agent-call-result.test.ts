@@ -34,6 +34,11 @@ const mocks = vi.hoisted(() => ({
 }))
 vi.mock("@/lib/voice-agent/pharmacy/zeytun-line-spend", () => ({ journalLineCallSpend: mocks.journalLineCallSpend }))
 vi.mock("@/lib/commitments/record-call-commitment", () => ({ recordCallCommitment: mocks.recordCallCommitment }))
+// Its behaviour is proved on a real database: ai-call-follow-up-postgres.test.ts.
+vi.mock("@/lib/voice-agent/inbound-call-follow-up", () => ({
+  recordInboundCallFollowUp: async () => ({ status: "skipped", reason: "disabled" }),
+  resolveRequestedEmployee: async () => null,
+}))
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {

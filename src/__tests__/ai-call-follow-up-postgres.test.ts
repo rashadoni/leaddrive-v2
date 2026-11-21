@@ -52,7 +52,22 @@ const stubs = vi.hoisted(() => ({
   modules: { voip: true, omnichannel: true, booking: true, sales: true, crm: true, ai: true } as Record<string, boolean>,
   answer: {} as Record<string, unknown>,
   modelCalls: 0,
+  failPartyMatch: false,
 }))
+
+vi.mock("@/lib/calls/party-match", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/calls/party-match")>()
+  return {
+    ...real,
+    matchCallParty: vi.fn(async (...args: Parameters<typeof real.matchCallParty>) => {
+      if (stubs.failPartyMatch) {
+        stubs.failPartyMatch = false
+        throw new Error("transient database failure")
+      }
+      return real.matchCallParty(...args)
+    }),
+  }
+})
 
 vi.mock("@/lib/api-auth", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/api-auth")>(),
@@ -263,6 +278,7 @@ function modelSays(fields: Record<string, unknown> = {}) {
       await prisma.webChatSession.deleteMany({})
       await prisma.booking.deleteMany({})
       await prisma.businessHours.deleteMany({})
+      await prisma.leadAssignmentRule.deleteMany({})
     })
     await setSwitch(false)
     Object.assign(stubs.modules, { voip: true, omnichannel: true, booking: true })
@@ -430,6 +446,15 @@ function modelSays(fields: Record<string, unknown> = {}) {
     expect(await leads()).toHaveLength(0)
   })
 
+  it("never makes a lead from a call we placed ourselves", async () => {
+    await setSwitch(true)
+    modelSays({ callOutcome: "needs_human" })
+    const { id } = await inboundCall(NEW_NUMBER, { direction: "outbound" })
+    const result = await rls.runWithTenant(ORG, () => followUp.recordInboundCallFollowUp({ organizationId: ORG, callLogId: id, turns: REAL_TURNS }))
+    expect(result).toEqual({ status: "skipped", reason: "not-found" })
+    expect(await leads()).toHaveLength(0)
+  })
+
   it("does not chase an open line: «алло» and a lone «да» are not an enquiry", async () => {
     await setSwitch(true)
     modelSays()
@@ -507,6 +532,93 @@ function modelSays(fields: Record<string, unknown> = {}) {
     const rows = await tasks()
     expect(rows).toHaveLength(1)
     expect(rows[0].assignedTo).toBe(ADMIN)
+  })
+
+  it("passes the caller's interest to the organization's assignment rules", async () => {
+    await setSwitch(true)
+    modelSays({ topics: ["kredit şərtləri"] })
+    await bypass(() => prisma.leadAssignmentRule.create({
+      data: {
+        organizationId: ORG,
+        name: "Kredit",
+        method: "condition",
+        conditions: [{ field: "interest", operator: "contains", value: "kredit" }],
+        assignees: [SABINA],
+      },
+    }))
+    await deliver((await inboundCall(NEW_NUMBER)).callId)
+    const [lead] = await leads()
+    expect(lead.assignedTo).toBe(SABINA)
+    expect(await notifications(SABINA)).toHaveLength(1)
+  })
+
+  it("asks the station to retry a failed lead, without paying for the analysis twice", async () => {
+    await setSwitch(true)
+    modelSays()
+    const { callId, id } = await inboundCall(NEW_NUMBER)
+    stubs.failPartyMatch = true
+    const before = stubs.modelCalls
+    expect((await deliver(callId)).status).toBe(503)
+    expect(await leads()).toHaveLength(0)
+
+    expect((await deliver(callId)).status).toBe(200)
+    const [lead] = await leads()
+    expect((await call(id)).leadId).toBe(lead.id)
+    expect(stubs.modelCalls).toBe(before + 1)
+  })
+
+  describe("a call handed to a person", () => {
+    it("gives nobody a task when a manager took the call, and keeps the lead", async () => {
+      await setSwitch(true)
+      modelSays({ callOutcome: "needs_human", requestedEmployeeName: "Sabina" })
+      const { callId } = await inboundCall(NEW_NUMBER, { handoffState: "connected", callMode: "human" })
+      await deliver(callId)
+      expect(await leads()).toHaveLength(1)
+      expect(await tasks()).toHaveLength(0)
+      expect(await notifications(SABINA)).toHaveLength(0)
+    })
+
+    it("waits while the transfer is open, then files the task if the call ended untaken", async () => {
+      await setSwitch(true)
+      modelSays({ callOutcome: "needs_human" })
+      const { callId, id } = await inboundCall(NEW_NUMBER, { handoffState: "requested" })
+      await deliver(callId)
+      expect(await leads()).toHaveLength(1)
+      expect(await tasks()).toHaveLength(0)
+
+      await bypass(() => prisma.callLog.update({ where: { id }, data: { endedAt: new Date() } }))
+      await rls.runWithTenant(ORG, () => followUp.settleHandedOffCall(ORG, callId))
+      const rows = await tasks()
+      expect(rows).toHaveLength(1)
+      expect(rows[0].assignedTo).toBe(ADMIN)
+    })
+
+    it("files nothing at the end of a call a manager took", async () => {
+      await setSwitch(true)
+      modelSays({ callOutcome: "needs_human" })
+      const { callId, id } = await inboundCall(NEW_NUMBER, { handoffState: "requested" })
+      await deliver(callId)
+      await bypass(() => prisma.callLog.update({ where: { id }, data: { handoffState: "connected", callMode: "human", endedAt: new Date() } }))
+      await rls.runWithTenant(ORG, () => followUp.settleHandedOffCall(ORG, callId))
+      expect(await tasks()).toHaveLength(0)
+    })
+
+    it("files the task when nobody answered and the call came back to the AI", async () => {
+      await setSwitch(true)
+      modelSays({ callOutcome: "needs_human" })
+      const { callId, id } = await inboundCall(NEW_NUMBER, { handoffState: "requested" })
+      await deliver(callId)
+      await bypass(() => prisma.callLog.update({ where: { id }, data: { handoffState: "returned", callMode: "ai" } }))
+      const before = stubs.modelCalls
+      const res = await deliver(callId, [
+        { role: "agent", text: "Menecer cavab vermədi, sizə özüm kömək edim." },
+        { role: "customer", text: "hə" },
+      ])
+      expect(res.status).toBe(200)
+      expect(await tasks()).toHaveLength(1)
+      expect(stubs.modelCalls).toBe(before)
+      expect((await call(id)).transcription).toContain("qiymətləri")
+    })
   })
 
   describe("«что я пропустил?»", () => {
@@ -645,6 +757,37 @@ function modelSays(fields: Record<string, unknown> = {}) {
       const noBooking = ((await askVoice({ userId: ADMIN, role: "admin" })).body as { data: Record<string, any> }).data
       expect(noBooking.booked).toBeNull()
       expect(noBooking.unavailable).toContain("bookings")
+    })
+
+    it("does not tell someone below manager that the AI took zero calls", async () => {
+      await storedCall({ outcome: "qualified" })
+      await chat("conv-acf-1", {})
+      const data = ((await askVoice({ userId: LEYLA_A, role: "sales" })).body as { data: Record<string, any> }).data
+      expect(data.calls).toBeNull()
+      expect(data.askedForYou).toBeNull()
+      expect(data.unavailable).toContain("calls")
+    })
+
+    it("counts the AI's website replies, not the greeting or an escalation notice", async () => {
+      await bypass(async () => {
+        for (const id of ["web-acf-ai", "web-acf-greeting"]) {
+          await prisma.webChatSession.create({ data: { id, organizationId: ORG } })
+          await prisma.webChatMessage.create({ data: { organizationId: ORG, sessionId: id, fromRole: "visitor", text: "salam", createdAt: hoursAgo(3) } })
+        }
+        await prisma.webChatMessage.create({ data: { organizationId: ORG, sessionId: "web-acf-ai", fromRole: "bot", text: "cavab", createdAt: hoursAgo(3), metadata: { aiGenerated: true } } })
+        await prisma.webChatMessage.create({ data: { organizationId: ORG, sessionId: "web-acf-greeting", fromRole: "bot", text: "Xoş gəlmisiniz", createdAt: hoursAgo(3) } })
+      })
+      const data = ((await askVoice({ userId: ADMIN, role: "admin" })).body as { data: Record<string, any> }).data
+      expect(data.chats.handled).toBe(1)
+    })
+
+    it("says whose meetings the booked figure covers", async () => {
+      await booking("whatsapp", "confirmed", ADMIN)
+      await booking("whatsapp", "confirmed", SABINA)
+      const admin = ((await askVoice({ userId: ADMIN, role: "admin" })).body as { data: Record<string, any> }).data
+      expect(admin).toMatchObject({ booked: 2, bookedScope: "all_hosts" })
+      const manager = ((await askVoice({ userId: SABINA, role: "manager" })).body as { data: Record<string, any> }).data
+      expect(manager).toMatchObject({ booked: 1, bookedScope: "own_and_granted" })
     })
 
     it("answers with an access refusal when neither calls nor chats are visible", async () => {
