@@ -250,6 +250,33 @@ pgDescribe("MTM sign-in by a WhatsApp code on a real Postgres", () => {
     expect(sent).toHaveLength(0)
   })
 
+  // Owner, 2026-11-21: «если номера нет в базе то и отп чтоб не приходило и
+  // писалось что такого номера нет». The app that can say it asks for it.
+  const askAsCurrentApp = (phone: string) => post(requestCode, "/code", { organizationSlug: ORG, phone, language: "az", reportUnknownPhone: true })
+
+  it.each([
+    ["a number nobody has", "+994501119998"],
+    ["a dismissed person's number", "+994501110004"],
+  ])("tells the app that %s is not in the company, and sends nothing", async (_label, phone) => {
+    const codesBefore = await bypass(() => prisma.otpCode.count({ where: { organizationId: ORG, phone } }))
+    const response = await askAsCurrentApp(phone)
+    expect(response.status).toBe(404)
+    expect((await response.json()).code).toBe("MTM_LOGIN_CODE_NO_PHONE")
+    expect(sent).toHaveLength(0)
+    expect(await bypass(() => prisma.otpCode.count({ where: { organizationId: ORG, phone } }))).toBe(codesBefore)
+  })
+
+  it("does not call a number that is in the company unknown", async () => {
+    // Two people share it: it is there, and somebody has to sort it out.
+    const shared = await askAsCurrentApp("+994501110003")
+    expect(shared.status).toBe(200)
+    expect((await shared.json()).data.sent).toBe(true)
+    expect(sent).toHaveLength(0)
+    const own = await askAsCurrentApp("+994501110001")
+    expect(own.status).toBe(200)
+    expect((await own.json()).data.sent).toBe(true)
+  })
+
   it("takes the right code once, sets the person's own password, signs in, and the password works by number", async () => {
     // A fresh code: the one from the first test is still the live one, so wait it out by retiring it.
     await bypass(() => prisma.otpCode.updateMany({ where: { organizationId: ORG, phone: "+994501110001" }, data: { createdAt: new Date(Date.now() - 120_000) } }))
