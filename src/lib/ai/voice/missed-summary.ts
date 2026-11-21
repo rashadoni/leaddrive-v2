@@ -39,6 +39,8 @@ const CLOSE_LOOKBACK_DAYS = 14
 const MAX_ROWS = 500
 const SPOKEN_PEOPLE = 5
 const SPOKEN_NAME_LIMIT = 60
+/** Written out so the voice tools do not load the order line's modules; the test holds it equal. */
+export const MISSED_PHONE_ORDERS_FEATURE = "pharmacy_phone_orders"
 
 export type BusinessHoursForPeriod = {
   channelType: string
@@ -172,6 +174,17 @@ function spokenTime(at: Date, timezone: string): string {
   }).format(at)
 }
 
+export type MissedPhoneOrders = {
+  count: number
+  /** Orders holding a line with no price: their amount covers the priced lines only. */
+  ordersWithUnpricedLines: number
+  /** One row per currency, never added together: the CRM has no exchange rates. */
+  totals: Array<{ currency: string; orders: number; amount: number }>
+}
+
+/** `absent`: the organization has no phone orders. `denied`: it has, this person may not read them. */
+export type MissedPhoneOrdersAccess = "absent" | "denied" | "allowed"
+
 export type MissedSummary = {
   period: {
     from: string
@@ -197,13 +210,16 @@ export type MissedSummary = {
   /** Whose meetings `booked` covers: everybody's, or this person's and the hosts they were granted. */
   bookedScope: "all_hosts" | "own_and_granted" | null
   askedForYou: { count: number; people: Array<{ name: string | null; at: string }> } | null
-  unavailable: Array<"calls" | "chats" | "bookings">
+  /** Orders the AI took on the phone. The key is missing for an organization without phone orders. */
+  phoneOrders?: MissedPhoneOrders | null
+  unavailable: Array<"calls" | "chats" | "bookings" | "phoneOrders">
   /** True when a part held more rows than are read: its figures are a lower bound. */
   truncated: boolean
   means: {
     handled: string
     notQualified: string
     booked: string
+    phoneOrders?: string
   }
 }
 
@@ -385,6 +401,35 @@ async function readChats(input: {
   return { handled: conversationIds.length + visitors.length, qualified, truncated }
 }
 
+/**
+ * Orders finished on the call inside the period. Not a broken-off call (the
+ * caller never confirmed it), not one that was cancelled or rejected, and not
+ * the owner's rehearsal calls, which are marked `test_call`.
+ */
+async function readPhoneOrders(orgId: string, period: MissedPeriod): Promise<MissedPhoneOrders> {
+  const where = voiceScopedWhere(orgId, {
+    finishedOnCallAt: { gte: period.from, lt: period.to },
+    status: { not: "rejected" },
+    pharmacyIdentification: { not: "test_call" },
+  })
+  const [groups, ordersWithUnpricedLines] = await Promise.all([
+    prisma.pharmacyPhoneOrder.groupBy({
+      by: ["currency"],
+      where,
+      _count: { _all: true },
+      _sum: { totalAmount: true },
+      orderBy: { currency: "asc" },
+    }) as Promise<Array<{ currency: string; _count: { _all: number }; _sum: { totalAmount: unknown } }>>,
+    prisma.pharmacyPhoneOrder.count({ where: { ...where, lines: { some: { lineTotal: null } } } }) as Promise<number>,
+  ])
+  const totals = groups.map((row) => ({
+    currency: row.currency,
+    orders: row._count._all,
+    amount: Number(String(row._sum.totalAmount ?? 0)),
+  }))
+  return { count: totals.reduce((sum, row) => sum + row.orders, 0), ordersWithUnpricedLines, totals }
+}
+
 export async function buildMissedSummary(input: {
   orgId: string
   userId: string
@@ -394,9 +439,10 @@ export async function buildMissedSummary(input: {
   canSeeChats: boolean
   booking: BookingAccess | null
   hiddenChannelIds: ReadonlySet<string>
+  phoneOrders: MissedPhoneOrdersAccess
 }): Promise<MissedSummary> {
   const { orgId, userId, role, period } = input
-  const [calls, chats, booked] = await Promise.all([
+  const [calls, chats, booked, phoneOrders] = await Promise.all([
     input.canSeeCalls
       ? readCalls({ orgId, userId, role, period, hiddenChannelIds: input.hiddenChannelIds })
       : Promise.resolve(null),
@@ -413,11 +459,13 @@ export async function buildMissedSummary(input: {
           },
         })
       : Promise.resolve(null),
+    input.phoneOrders === "allowed" ? readPhoneOrders(orgId, period) : Promise.resolve(null),
   ])
   const unavailable: MissedSummary["unavailable"] = [
     ...(calls ? [] : ["calls" as const]),
     ...(chats ? [] : ["chats" as const]),
     ...(booked === null ? ["bookings" as const] : []),
+    ...(input.phoneOrders === "denied" ? ["phoneOrders" as const] : []),
   ]
   return {
     period: {
@@ -434,12 +482,16 @@ export async function buildMissedSummary(input: {
     booked,
     bookedScope: input.booking ? (input.booking.hostIds === null ? "all_hosts" : "own_and_granted") : null,
     askedForYou: calls?.askedForYou ?? null,
+    ...(input.phoneOrders === "absent" ? {} : { phoneOrders }),
     unavailable,
     truncated: Boolean(calls?.truncated || chats?.truncated),
     means: {
       handled: "incoming calls the AI answered where the customer spoke, plus chats where the customer wrote and the AI replied, inside the period; pharmacy-line and demo calls are not counted",
       notQualified: "known for calls only; chats have no such verdict, so never say how many chats did not fit",
       booked: "meetings the WhatsApp AI booked in the period and that are not cancelled; the AI does not book during phone calls. When bookedScope is own_and_granted, say the figure covers only the hosts this user can see",
+      ...(input.phoneOrders === "absent" ? {} : {
+        phoneOrders: "orders the AI took on the phone and the caller confirmed on the call, not rejected; reported apart from handled, never added to it. Say each currency's amount separately and never add currencies. When ordersWithUnpricedLines is above zero, say those orders have lines without a price, so the amount covers only the priced lines",
+      }),
     },
   }
 }

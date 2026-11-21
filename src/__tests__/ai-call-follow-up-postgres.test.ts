@@ -84,7 +84,7 @@ const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js
 const RLS_TABLES = [
   "call_logs", "call_events", "leads", "contacts", "tasks", "notifications", "channel_configs",
   "channel_messages", "social_conversations", "web_chat_sessions", "web_chat_messages",
-  "bookings", "booking_pages", "business_hours",
+  "bookings", "booking_pages", "business_hours", "pharmacy_phone_orders", "pharmacy_phone_order_lines",
 ]
 
 const ORG = "org-acf"
@@ -277,11 +277,13 @@ function modelSays(fields: Record<string, unknown> = {}) {
       await prisma.webChatMessage.deleteMany({})
       await prisma.webChatSession.deleteMany({})
       await prisma.booking.deleteMany({})
+      await prisma.pharmacyPhoneOrder.deleteMany({})
       await prisma.businessHours.deleteMany({})
       await prisma.leadAssignmentRule.deleteMany({})
     })
     await setSwitch(false)
-    Object.assign(stubs.modules, { voip: true, omnichannel: true, booking: true })
+    Object.assign(stubs.modules, { voip: true, omnichannel: true, booking: true, sales: true })
+    delete stubs.modules.pharmacy_phone_orders
   })
 
   afterAll(async () => {
@@ -790,6 +792,128 @@ function modelSays(fields: Record<string, unknown> = {}) {
       expect(admin).toMatchObject({ booked: 2, bookedScope: "all_hosts" })
       const manager = ((await askVoice({ userId: SABINA, role: "manager" })).body as { data: Record<string, any> }).data
       expect(manager).toMatchObject({ booked: 1, bookedScope: "own_and_granted" })
+    })
+
+    describe("phone orders", () => {
+      let number = 0
+      async function phoneOrder(input: {
+        organizationId?: string
+        amount: string
+        currency?: string
+        status?: string
+        identification?: string
+        finishedAt?: Date | null
+        unpricedLine?: boolean
+      }) {
+        number += 1
+        const organizationId = input.organizationId ?? ORG
+        const callStartedAt = hoursAgo(3)
+        await bypass(() => prisma.pharmacyPhoneOrder.create({
+          data: {
+            organizationId,
+            number,
+            status: input.status ?? "pending_review",
+            providerCallId: randomUUID(),
+            callStartedAt,
+            callerPhone: "fixture-ciphertext",
+            pharmacyIdentification: input.identification ?? "phone_unique",
+            catalogSource: "fixture",
+            catalogScopeKey: "fixture",
+            catalogVersion: "1",
+            catalogObservedAt: callStartedAt,
+            currency: input.currency ?? "AZN",
+            totalAmount: input.amount,
+            finishedOnCallAt: input.finishedAt === undefined ? hoursAgo(2) : input.finishedAt,
+            lines: {
+              create: [{
+                organizationId,
+                position: 1,
+                status: input.unpricedLine ? "not_found" : "resolved",
+                spokenText: "fixture product",
+                quantity: 1,
+                unit: "qutu",
+                unitPrice: input.unpricedLine ? null : input.amount,
+                lineTotal: input.unpricedLine ? null : input.amount,
+              }],
+            },
+          },
+        }))
+      }
+      const missed = async (auth: Parameters<typeof askVoice>[0] = { userId: ADMIN, role: "admin" }) =>
+        ((await askVoice(auth)).body as { data: Record<string, any> }).data
+
+      it("counts orders finished on the call, per currency, and never adds currencies", async () => {
+        stubs.modules.pharmacy_phone_orders = true
+        await phoneOrder({ amount: "100.50" })
+        await phoneOrder({ amount: "20.25", status: "confirmed" })
+        await phoneOrder({ amount: "7.00", currency: "USD" })
+        await phoneOrder({ amount: "999.00", finishedAt: null }) // the call broke off
+        await phoneOrder({ amount: "999.00", status: "rejected" }) // cancelled or refused
+        await phoneOrder({ amount: "999.00", identification: "test_call" }) // the owner's rehearsal
+        await phoneOrder({ amount: "999.00", finishedAt: hoursAgo(20) }) // before the period
+        await phoneOrder({ amount: "999.00", organizationId: OTHER }) // another organization's
+
+        const data = await missed()
+        expect(data.phoneOrders).toEqual({
+          count: 3,
+          ordersWithUnpricedLines: 0,
+          totals: [
+            { currency: "AZN", orders: 2, amount: 120.75 },
+            { currency: "USD", orders: 1, amount: 7 },
+          ],
+        })
+        expect(data.means.phoneOrders).toContain("never add currencies")
+        // An order is reported on its own, not as one more enquiry.
+        expect(data.handled).toBe(0)
+      })
+
+      it("says when an amount leaves out lines that have no price", async () => {
+        stubs.modules.pharmacy_phone_orders = true
+        await phoneOrder({ amount: "50.00" })
+        await phoneOrder({ amount: "0.00", unpricedLine: true })
+        const data = await missed()
+        expect(data.phoneOrders).toMatchObject({ count: 2, ordersWithUnpricedLines: 1 })
+      })
+
+      it("reports a night with no orders as zero to an organization that takes them", async () => {
+        stubs.modules.pharmacy_phone_orders = true
+        expect((await missed()).phoneOrders).toEqual({ count: 0, ordersWithUnpricedLines: 0, totals: [] })
+      })
+
+      it("has no such field at all for an organization without phone orders", async () => {
+        await phoneOrder({ amount: "100.00" })
+        const data = await missed()
+        expect(data).not.toHaveProperty("phoneOrders")
+        expect(data.means).not.toHaveProperty("phoneOrders")
+        expect(data.unavailable).not.toContain("phoneOrders")
+      })
+
+      it("refuses a role that cannot see deals, calls or chats", async () => {
+        stubs.modules.pharmacy_phone_orders = true
+        await phoneOrder({ amount: "100.00" })
+        const out = await askVoice({ userId: VIEWER, role: "ticketing" })
+        expect(out.body).toEqual({ data: { error: "ACCESS_SCOPE_UNAVAILABLE" } })
+      })
+
+      it("does not read them when the sales module is off for this person", async () => {
+        stubs.modules.pharmacy_phone_orders = true
+        stubs.modules.sales = false
+        await phoneOrder({ amount: "100.00" })
+        const data = await missed()
+        expect(data.phoneOrders).toBeNull()
+        expect(data.unavailable).toContain("phoneOrders")
+      })
+
+      it("answers about orders alone when calls and chats are not available", async () => {
+        stubs.modules.pharmacy_phone_orders = true
+        stubs.modules.voip = false
+        stubs.modules.omnichannel = false
+        await phoneOrder({ amount: "100.00" })
+        const data = await missed()
+        expect(data.phoneOrders.count).toBe(1)
+        expect(data.calls).toBeNull()
+        expect(data.chats).toBeNull()
+      })
     })
 
     it("answers with an access refusal when neither calls nor chats are visible", async () => {

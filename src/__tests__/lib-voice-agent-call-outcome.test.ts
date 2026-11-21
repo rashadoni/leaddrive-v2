@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 
-import { resolveMissedPeriod } from "@/lib/ai/voice/missed-summary"
+import { MISSED_PHONE_ORDERS_FEATURE, resolveMissedPeriod } from "@/lib/ai/voice/missed-summary"
+import { moduleRecordFromOrgFields } from "@/lib/modules"
+import { PHONE_ORDERS_FEATURE } from "@/lib/pharmacy-orders/orders"
 import { DEMO_CALL_AUDIT_VIA } from "@/lib/demo-center/call-prompt"
 import {
   DEMO_AUDIT_VIA,
@@ -37,6 +39,16 @@ describe("isLineOrDemoCall", () => {
     expect(isLineOrDemoCall({ [PHARMACY_PREVIEW_AUDIT_KEY]: "broken" })).toBe(true)
     expect(isLineOrDemoCall({ other: true })).toBe(false)
     expect(isLineOrDemoCall(null)).toBe(false)
+  })
+})
+
+describe("the phone-orders flag the spoken summary reads", () => {
+  it("is the flag the orders screen opens on, in either stored shape", () => {
+    expect(MISSED_PHONE_ORDERS_FEATURE).toBe(PHONE_ORDERS_FEATURE)
+    const asList = moduleRecordFromOrgFields({ features: [PHONE_ORDERS_FEATURE], modules: {} })
+    const asJson = moduleRecordFromOrgFields({ features: JSON.stringify([PHONE_ORDERS_FEATURE]), modules: {} })
+    expect(asList[MISSED_PHONE_ORDERS_FEATURE]).toBe(true)
+    expect(asJson[MISSED_PHONE_ORDERS_FEATURE]).toBe(true)
   })
 })
 

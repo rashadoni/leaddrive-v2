@@ -73,7 +73,12 @@ import {
   voiceBookingAccess,
 } from "@/lib/ai/voice/booking-read"
 import { buildLeadCoverageSummary } from "@/lib/ai/voice/lead-coverage"
-import { buildMissedSummary, loadMissedPeriod } from "@/lib/ai/voice/missed-summary"
+import {
+  MISSED_PHONE_ORDERS_FEATURE,
+  buildMissedSummary,
+  loadMissedPeriod,
+  type MissedPhoneOrdersAccess,
+} from "@/lib/ai/voice/missed-summary"
 import { hiddenChannelIdsFor } from "@/lib/inbox/channel-access"
 
 export type VoiceReadOutcome = { status?: number; body: Record<string, unknown> }
@@ -430,7 +435,12 @@ export async function executeVoiceReadTool(params: {
     const canSeeCalls = isManagerOrAbove(role)
       && canAccessVoiceData(role, orgCtx, { module: "voip", permission: "voip" })
     const canSeeChats = canAccessVoiceData(role, orgCtx, { module: "omnichannel", permission: "inbox" })
-    if (!canSeeCalls && !canSeeChats) {
+    // The same gate as the sidebar's «Телефонные заказы»: the organization's
+    // feature, the sales module and the role's right to deals.
+    const phoneOrders: MissedPhoneOrdersAccess = orgCtx.modules?.[MISSED_PHONE_ORDERS_FEATURE] !== true
+      ? "absent"
+      : canAccessVoiceSection(role, orgCtx, "pharmacy-orders") ? "allowed" : "denied"
+    if (!canSeeCalls && !canSeeChats && phoneOrders !== "allowed") {
       return { body: { data: { error: "ACCESS_SCOPE_UNAVAILABLE" } } }
     }
     let timezone: string
@@ -457,6 +467,7 @@ export async function executeVoiceReadTool(params: {
         canSeeChats,
         booking,
         hiddenChannelIds,
+        phoneOrders,
       }),
     } }
   }
