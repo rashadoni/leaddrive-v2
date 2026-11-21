@@ -274,6 +274,7 @@ function UserFormDialog({
   // every list that shows a team's work — and until this control existed there
   // was no screen where an admin could link the two.
   const tenantHasField = moduleOptions.some((option) => option.id === "mtm")
+  const tenantHasPersonnel = moduleOptions.some((option) => option.id === "personnel")
   const [fieldCards, setFieldCards] = useState<FieldCard[] | null>(null)
   const [fieldCardsFailed, setFieldCardsFailed] = useState(false)
   // null = the admin has not chosen yet, so the form shows the default: the
@@ -399,7 +400,7 @@ function UserFormDialog({
   const [hrAccess, setHrAccess] = useState<{ allEmployees: boolean } | null>(null)
   const [hrPick, setHrPick] = useState<boolean | null>(null)
   useEffect(() => {
-    if (!open || !tenantHasField) return
+    if (!open || !tenantHasPersonnel) return
     let cancelled = false
     setHrAccess(null)
     setHrPick(null)
@@ -410,12 +411,12 @@ function UserFormDialog({
       })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [open, editUserId, editUser?.name, tenantHasField, orgId])
+  }, [open, editUserId, editUser?.name, tenantHasPersonnel, orgId])
   const hrChecked = hrPick ?? hrAccess?.allEmployees ?? false
   const personnelOpens = hrChecked || (chosenFieldCard !== null && PERSONNEL_CARD_ROLES.has(chosenFieldCard.role))
   // Saved after the user row, like the card: the grant names a saved login.
   const applyHrAccess = async (userId: string, name: string) => {
-    if (hrAccess === null || moduleMaskIgnored || form.hiddenModules.includes("mtm")) return
+    if (hrAccess === null || moduleMaskIgnored || form.hiddenModules.includes("personnel")) return
     if (hrChecked === hrAccess.allEmployees) return
     const users = await readHrRow(name, orgId)
     const row = users?.find((user) => user.id === userId)
@@ -786,7 +787,7 @@ function UserFormDialog({
                             </div>
                           )
                         )}
-                        {option.id === "mtm" && access.outcome !== "hidden" && hrAccess !== null && !moduleMaskIgnored && (
+                        {option.id === "personnel" && access.outcome !== "hidden" && hrAccess !== null && !moduleMaskIgnored && (
                           <div className="mt-2 grid gap-1" data-testid="user-personnel-access">
                             <label className="flex items-start gap-2 text-sm">
                               <input type="checkbox" className="mt-0.5 h-4 w-4 rounded border-input" checked={hrChecked}

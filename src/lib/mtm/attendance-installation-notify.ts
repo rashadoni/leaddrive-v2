@@ -24,7 +24,7 @@ export async function notifyAttendanceInstallationReviewers(tx: Prisma.Transacti
   }, orderBy: { id: "asc" }, take: 1001, select: { id: true, role: true, preferredLanguage: true, hiddenModules: true } })
   if (users.length > 1000) throw new Error("MTM_ATTENDANCE_INSTALLATION_RECIPIENT_LIMIT")
   for (const user of users) {
-    if (!checkPermission(user.role as Role, "mtm", "write") || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) continue
+    if (!checkPermission(user.role as Role, "mtm", "write") || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) continue
     const actor = await resolveMtmRouteActor(tx, { organizationId, userId: user.id, webRole: user.role })
     if (!actor || !canReviewMtmRouteRequest(actor, agentId)) continue
     const t = messages[user.preferredLanguage === "ru" || user.preferredLanguage === "en" ? user.preferredLanguage : "az"]

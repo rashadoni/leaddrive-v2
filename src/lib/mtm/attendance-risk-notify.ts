@@ -25,7 +25,7 @@ export async function notifyAttendanceRiskReviewers(tx: Prisma.TransactionClient
   // Never silently omit recipients above a hidden limit.
   if (users.length > 1000) throw new Error("MTM_ATTENDANCE_RISK_RECIPIENT_LIMIT")
   for (const user of users) {
-    if (!checkPermission(user.role as Role, "mtm", "read") || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) continue
+    if (!checkPermission(user.role as Role, "mtm", "read") || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) continue
     if (user.mtmAttendanceAll !== true && !["admin", "superadmin"].includes(user.role)) {
       const actor = await resolveMtmRouteActor(tx, { organizationId, userId: user.id, webRole: user.role })
       if (!actor || !canReviewMtmRouteRequest(actor, agentId)) continue

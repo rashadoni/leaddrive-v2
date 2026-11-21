@@ -44,7 +44,7 @@ export async function attendanceRequestReviewers(
   }, orderBy: { id: "asc" }, take: 50, select: { id: true, role: true, preferredLanguage: true, hiddenModules: true } })
   const reviewers: Array<{ id: string; preferredLanguage: string | null; hr: boolean }> = []
   for (const user of users) {
-    if (!checkPermission(user.role as Role, "mtm", "write") || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) continue
+    if (!checkPermission(user.role as Role, "mtm", "write") || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) continue
     const actor = await resolveMtmRouteActor(tx, { organizationId, userId: user.id, webRole: user.role })
     if (!actor || !canReviewMtmRouteRequest(actor, agentId)) continue
     // HR of the two-step approval is an administrator (attendance-approval-chain.ts).

@@ -28,7 +28,7 @@ async function currentUser(tx: Tx, reviewer: AttendanceReviewer) {
   if (reviewer.principalType !== "session") return reject("FORBIDDEN", 403)
   const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`SELECT role,"hiddenModules" FROM users
     WHERE "organizationId"=${reviewer.organizationId} AND id=${reviewer.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
-  if (!user || !checkPermission(user.role as Role, "mtm", "read") || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) return reject("FORBIDDEN", 403)
+  if (!user || !checkPermission(user.role as Role, "mtm", "read") || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) return reject("FORBIDDEN", 403)
   return user
 }
 async function lockRegistry(tx: Tx, organizationId: string) {

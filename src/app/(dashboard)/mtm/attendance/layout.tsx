@@ -16,7 +16,7 @@ export default async function AttendanceLayout({ children }: { children: ReactNo
   const session = await runWithRlsBypass(async () => auth())
   const user = session?.user
   if (!user?.id || !user.organizationId || !checkPermission(user.role as Role, "mtm", "read")
-    || user.hiddenModules?.includes("mtm")) notFound()
+    || user.hiddenModules?.includes("personnel")) notFound()
   const { id: userId, organizationId, role } = user
   const state = await runWithTenant(organizationId, async () => {
     const capability = await getTenantCapabilityAccess(organizationId, "personnel")

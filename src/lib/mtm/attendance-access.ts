@@ -14,7 +14,7 @@ export async function getMtmAttendanceAccess(organizationId: string, userId: str
     const [user] = await prisma.$queryRaw<{ mtmAttendanceAll: boolean; role: string; hiddenModules: string[] }[]>`
       SELECT "mtmAttendanceAll", "role", "hiddenModules" FROM "users"
       WHERE "organizationId" = ${organizationId} AND "id" = ${userId} AND "isActive" AND "anonymizedAt" IS NULL`
-    if (user?.mtmAttendanceAll === true && checkPermission(user.role as Role, "mtm", "read") && !effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) {
+    if (user?.mtmAttendanceAll === true && checkPermission(user.role as Role, "mtm", "read") && !effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) {
       return { enabled: true as const, settings, actor: { role: "MANAGER" as const, agentId: null, scopedAgentIds: null }, allEmployeesGrant: true }
     }
   }

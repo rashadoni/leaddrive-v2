@@ -36,7 +36,7 @@ describe("risk bell delivery scope",()=>{
   if(mode==="off")vi.mocked(prisma.mtmSetting.findUnique).mockResolvedValue({value:false} as never)
   if(mode==="other-team")vi.mocked(resolveMtmRouteActor).mockResolvedValue({role:"MANAGER",agentId:null,scopedAgentIds:["foreign"]})
   if(mode==="self")vi.mocked(resolveMtmRouteActor).mockResolvedValue({role:"MANAGER",agentId:input.agentId,scopedAgentIds:[input.agentId]})
-  if(mode==="hidden")vi.mocked(prisma.$queryRaw).mockResolvedValue([{...user,hiddenModules:["mtm"]}])
+  if(mode==="hidden")vi.mocked(prisma.$queryRaw).mockResolvedValue([{...user,hiddenModules:["personnel"]}])
   if(mode==="no-scope")vi.mocked(resolveMtmRouteActor).mockResolvedValue(null)
   await notifyAttendanceRiskReviewers(prisma,input);expect(prisma.notification.createMany).not.toHaveBeenCalled()
  })

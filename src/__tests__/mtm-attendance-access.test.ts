@@ -167,7 +167,7 @@ describe("attendance API and server page guards", () => {
   it("keeps a hidden module closed in the page before loading private attendance", async () => {
     storedSwitch(true)
     caller("manager", MANAGER)
-    vi.mocked(auth).mockResolvedValue({ user: { id: USER, organizationId: ORG, role: "manager", hiddenModules: ["mtm"] } } as never)
+    vi.mocked(auth).mockResolvedValue({ user: { id: USER, organizationId: ORG, role: "manager", hiddenModules: ["personnel"] } } as never)
     await expect(AttendanceLayout({ children: "private attendance" })).rejects.toThrow("NEXT_NOT_FOUND")
     expect(prisma.mtmSetting.findMany).not.toHaveBeenCalled()
   })

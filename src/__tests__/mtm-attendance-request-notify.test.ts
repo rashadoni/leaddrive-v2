@@ -37,7 +37,7 @@ describe("attendance request durable reviewer notification", () => {
     if (mode === "other-team") vi.mocked(resolveMtmRouteActor).mockResolvedValue({ role: "MANAGER", agentId: null, scopedAgentIds: ["other-agent"] })
     if (mode === "self-card") vi.mocked(resolveMtmRouteActor).mockResolvedValue({ role: "ADMIN", agentId: scope.agentId, scopedAgentIds: null })
     if (mode === "read-only") vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "reviewer", role: "viewer", hiddenModules: [] }] as never)
-    if (mode === "hidden") vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "reviewer", role: "manager", hiddenModules: ["mtm"] }] as never)
+    if (mode === "hidden") vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "reviewer", role: "manager", hiddenModules: ["personnel"] }] as never)
     if (mode === "no-actor") vi.mocked(resolveMtmRouteActor).mockResolvedValue(null)
     await run()
     expect(prisma.notification.createMany).not.toHaveBeenCalled()

@@ -34,7 +34,7 @@ export async function resolveAttendanceReviewerScope(tx: Prisma.TransactionClien
   const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`
     SELECT "role", "hiddenModules" FROM "users" WHERE "organizationId" = ${organizationId} AND "id" = ${userId}
     AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
-  if (!user || !checkPermission(user.role as Role, "mtm", "write") || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) {
+  if (!user || !checkPermission(user.role as Role, "mtm", "write") || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) {
     throw new AttendanceRequestError("MTM_ATTENDANCE_DECISION_FORBIDDEN", 403)
   }
   await tx.$queryRaw`SELECT "id" FROM "organizations" WHERE "id" = ${organizationId} FOR SHARE`

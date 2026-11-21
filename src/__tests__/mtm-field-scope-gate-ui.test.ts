@@ -16,6 +16,8 @@ vi.mock("next-intl", () => ({
 }))
 const session = { data: { user: { id: "u-1", role: "manager" } }, status: "authenticated" }
 vi.mock("next-auth/react", () => ({ useSession: () => session }))
+let currentPath = "/mtm"
+vi.mock("next/navigation", () => ({ usePathname: () => currentPath }))
 
 import { MtmFieldScopeGate } from "@/components/mtm/field-scope-gate"
 
@@ -42,6 +44,7 @@ async function open(role: string, answer: { status: number; body: unknown } | "n
 beforeEach(() => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
   pageMounts = 0
+  currentPath = "/mtm"
   fetchMock.mockReset()
   vi.stubGlobal("fetch", fetchMock)
   container = document.createElement("div")
@@ -72,6 +75,22 @@ describe("Route & Field — a login without an employee card", () => {
 
     expect(pageMounts).toBe(0)
     expect(container.querySelector('[aria-busy="true"]')).not.toBeNull()
+  })
+})
+
+// Zeytun, 2026-11-21: an HR login the attendance API admitted got «no employee card» on Personnel.
+describe("Personnel is not a field screen", () => {
+  it.each(["/mtm/attendance", "/mtm/attendance/timesheet"])("%s opens with no card and no probe", async (path) => {
+    currentPath = path
+    await open("manager", { status: 403, body: { code: "MTM_FIELD_SCOPE_REQUIRED" } })
+    expect([notice(), page()?.textContent]).toEqual([null, "clients list"])
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("a path that only starts alike is still a field page", async () => {
+    currentPath = "/mtm/attendance-archive"
+    await open("manager", { status: 403, body: { code: "MTM_FIELD_SCOPE_REQUIRED" } })
+    expect(notice()).not.toBeNull()
   })
 })
 

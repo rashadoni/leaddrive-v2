@@ -24,11 +24,21 @@ export const MTM_SETTINGS_CHANGED_EVENT = "leaddrive:mtm-settings-changed"
 // Launcher, Cmd+K, Quick Access and the MTM module navigation.
 const cache = new Map<string, Promise<MtmNavOrgSettings>>()
 
-function loadMtmNavOrgSettings(orgKey: string): Promise<MtmNavOrgSettings> {
+/**
+ * For someone with Personnel but not Route & Field (HR): the MTM settings route
+ * refuses them, and the attendance entry point answers the one switch they need.
+ * 404 is «the section is off»; a refusal leaves it unknown, so the menu stays hidden.
+ */
+async function readPersonnelSwitch(): Promise<MtmNavOrgSettings> {
+  const response = await fetch("/api/v1/mtm/attendance")
+  if (response.ok) return { attendanceEnabled: true }
+  return response.status === 404 ? { attendanceEnabled: false } : {}
+}
+
+function loadMtmNavOrgSettings(orgKey: string, fieldSurface: boolean): Promise<MtmNavOrgSettings> {
   const cached = cache.get(orgKey)
   if (cached) return cached
-  const request = fetch("/api/v1/mtm/settings")
-    .then(async (response) => {
+  const read = fieldSurface ? fetch("/api/v1/mtm/settings").then(async (response) => {
       if (!response.ok) return {}
       const body = await response.json().catch(() => null)
       const settings: MtmNavOrgSettings = {}
@@ -37,7 +47,8 @@ function loadMtmNavOrgSettings(orgKey: string): Promise<MtmNavOrgSettings> {
         if (typeof value === "boolean") settings[key] = value
       }
       return settings
-    })
+    }) : readPersonnelSwitch()
+  const request = read
     .catch(() => {
       // A network failure must not stick for the whole page lifetime.
       cache.delete(orgKey)
@@ -61,18 +72,18 @@ function useMtmOrgSettingsState(user: unknown): { settings: MtmNavOrgSettings; r
   const org = useMemo(() => orgFromSession(user), [user])
   // Only a tenant that can see a switchable MTM surface pays for the request.
   // Promotions need MTM but not Route & Field, so either item qualifies.
-  const eligible = Boolean(
-    orgId && ["/mtm/contacts", "/mtm/promotions"].some((href) => {
-      const item = matchNavItem(href)
-      return item && isNavItemEnabled(org, item, { ignoreModuleGate: org.role === "superadmin" })
-    }),
-  )
+  const surfaceOpen = (href: string) => {
+    const item = matchNavItem(href)
+    return Boolean(item && isNavItemEnabled(org, item, { ignoreModuleGate: org.role === "superadmin" }))
+  }
+  const fieldSurface = Boolean(orgId) && ["/mtm/contacts", "/mtm/promotions"].some(surfaceOpen)
+  const eligible = fieldSurface || (Boolean(orgId) && surfaceOpen("/mtm/attendance"))
   const [state, setState] = useState<{ orgId: string; settings: MtmNavOrgSettings }>({ orgId: "", settings: {} })
 
   useEffect(() => {
     if (!eligible) return
     let alive = true
-    void loadMtmNavOrgSettings(orgId).then((settings) => {
+    void loadMtmNavOrgSettings(orgId, fieldSurface).then((settings) => {
       if (alive) setState({ orgId, settings })
     })
     const onChanged = (event: Event) => {
@@ -84,7 +95,7 @@ function useMtmOrgSettingsState(user: unknown): { settings: MtmNavOrgSettings; r
       alive = false
       window.removeEventListener(MTM_SETTINGS_CHANGED_EVENT, onChanged)
     }
-  }, [eligible, orgId])
+  }, [eligible, fieldSurface, orgId])
 
   const loaded = eligible && state.orgId === orgId
   return {

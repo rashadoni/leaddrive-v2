@@ -20,7 +20,7 @@ export async function requireAttendanceQrAdmin(tx: Prisma.TransactionClient, rev
   if (reviewer.principalType !== "session") throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
   const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`SELECT role,"hiddenModules" FROM users
     WHERE "organizationId"=${reviewer.organizationId} AND id=${reviewer.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
-  if (!user || !["admin", "superadmin"].includes(user.role) || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
+  if (!user || !["admin", "superadmin"].includes(user.role) || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
 }
 export async function saveAttendanceQrRule(reviewer: AttendanceReviewer, enabled: boolean) {
   if (reviewer.principalType !== "session" || typeof enabled !== "boolean") throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)

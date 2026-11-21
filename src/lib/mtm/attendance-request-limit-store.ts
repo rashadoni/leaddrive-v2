@@ -31,7 +31,7 @@ async function requireAdmin(tx: Prisma.TransactionClient, organizationId: string
   const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`
     SELECT "role", "hiddenModules" FROM "users" WHERE "organizationId" = ${organizationId} AND "id" = ${userId}
     AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
-  if (!user || (user.role !== "admin" && user.role !== "superadmin") || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) {
+  if (!user || (user.role !== "admin" && user.role !== "superadmin") || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) {
     throw new AttendanceRequestLimitError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
   }
   await tx.$queryRaw`SELECT "id" FROM "organizations" WHERE "id" = ${organizationId} FOR SHARE`

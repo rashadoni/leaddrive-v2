@@ -12,7 +12,7 @@ type UserRow = { id: string; name: string; role: string; isActive: boolean; mtmA
 const adminRole = (role: string) => role === "admin" || role === "superadmin"
 function serialize(row: UserRow): AttendanceHrUser {
   return { id: row.id, name: row.name, role: row.role, isActive: row.isActive, allEmployees: row.mtmAttendanceAll,
-    canGrant: row.isActive && checkPermission(row.role as Role, "mtm", "read") && !effectiveHiddenModules(row.role, row.hiddenModules).includes("mtm"), version: row.updatedAt.toISOString() }
+    canGrant: row.isActive && checkPermission(row.role as Role, "mtm", "read") && !effectiveHiddenModules(row.role, row.hiddenModules).includes("personnel"), version: row.updatedAt.toISOString() }
 }
 export async function readAttendanceHrUsers(organizationId: string, search: string) {
   // Escape LIKE metacharacters; a search for '_' is a literal name search.

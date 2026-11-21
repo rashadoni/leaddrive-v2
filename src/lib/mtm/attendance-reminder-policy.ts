@@ -25,7 +25,7 @@ export async function saveAttendanceReminderPolicy(reviewer: AttendanceReviewer,
     await lockAttendanceReminderPolicy(tx, reviewer.organizationId, true)
     const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`SELECT role,"hiddenModules" FROM users
       WHERE "organizationId"=${reviewer.organizationId} AND id=${reviewer.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
-    if (!user || !["admin", "superadmin"].includes(user.role) || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
+    if (!user || !["admin", "superadmin"].includes(user.role) || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
     const rows = await tx.mtmSetting.findMany({ where: { organizationId: reviewer.organizationId, key: { in: [...ATTENDANCE_REMINDER_KEYS] } }, select: { key: true, value: true } })
     const before: Record<string, boolean> = {}, after: Record<string, boolean> = {}
     for (const key of ATTENDANCE_REMINDER_KEYS) {

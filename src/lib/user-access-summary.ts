@@ -67,6 +67,7 @@ export const HIDEABLE_MODULE_SCOPES: Record<UserHideableId, readonly string[]> =
   media: ["media"],
   energy: ["energy-utilities"],
   "workforce-hrm": ["workforce"],
+  personnel: ["mtm"],
 }
 
 export interface ModuleAccessOutcome {

@@ -32,7 +32,7 @@ export async function attendanceReminderTenantEnabled(tx: Prisma.TransactionClie
 /** A current report reader, not a cached session and not an HR-wide write grant. */
 export async function attendanceReminderReader(tx: Prisma.TransactionClient, organizationId: string, userId: string) {
   const user = await tx.user.findFirst({ where: { id: userId, organizationId, isActive: true, anonymizedAt: null }, select: { role: true, hiddenModules: true, preferredLanguage: true } })
-  if (!user || !checkPermission(user.role as Role, "mtm", "read") || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) return null
+  if (!user || !checkPermission(user.role as Role, "mtm", "read") || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) return null
   const actor = await resolveMtmRouteActor(tx, { organizationId, userId, webRole: user.role })
   return actor && actor.role !== "AGENT" && (actor.role === "ADMIN" || actor.scopedAgentIds !== null) ? { actor, locale: user.preferredLanguage } : null
 }

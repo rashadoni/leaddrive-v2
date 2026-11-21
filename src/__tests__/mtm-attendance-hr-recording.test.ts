@@ -87,7 +87,7 @@ describe("HR day recording through the real tenant/attendance/reviewer boundary"
     if (reason === "inactive-target") vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "employee-a", userId: null }] as never)
     if (reason === "other-team") vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: "manager", role: "MANAGER", scopedAgentIds: ["employee-a"] })
     if (reason === "read-only") currentUser!.role = "viewer"
-    if (reason === "hidden") currentUser = { role: "manager", hiddenModules: ["mtm"] }
+    if (reason === "hidden") currentUser = { role: "manager", hiddenModules: ["personnel"] }
     if (reason === "api-key") vi.mocked(requireAuth).mockResolvedValue({ orgId: organizationId, userId, role: "admin", principalType: "api_key" } as never)
     if (reason === "scope-revoked-after-lock") vi.mocked(resolveMtmRouteActor).mockResolvedValueOnce({ agentId: null, role: "ADMIN", scopedAgentIds: null }).mockResolvedValueOnce({ agentId: null, role: "ADMIN", scopedAgentIds: null }).mockResolvedValue({ agentId: "manager", role: "MANAGER", scopedAgentIds: [] })
     expect((await post(input())).status).toBe(403)

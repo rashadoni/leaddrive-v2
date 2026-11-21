@@ -178,7 +178,9 @@ describe("the card's rows cannot drift from enforcement or from the copy", () =>
       expect(scopes.length).toBeGreaterThan(0)
       for (const scope of scopes) {
         const gate = hideableIdForGateModule(PERMISSION_MODULE_TO_MODULE_ID[scope] ?? scope)
-        if (gate !== id) misfiled.push(`${scope}: card says ${id}, gate says ${gate}`)
+        // Personnel has its own tick but shares the `mtm` permission scope; its routes' wrapper
+        // (withPersonnelWebRlsAuth) checks that tick instead of the gate's.
+        if (gate !== (id === "personnel" ? "mtm" : id)) misfiled.push(`${scope}: card says ${id}, gate says ${gate}`)
       }
     }
     expect(misfiled).toEqual([])

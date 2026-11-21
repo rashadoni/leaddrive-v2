@@ -25,7 +25,7 @@ export async function saveAttendanceOutsideRule(reviewer: AttendanceReviewer, re
     const [user] = await tx.$queryRaw<{ role: string; hiddenModules: string[] }[]>`
       SELECT role,"hiddenModules" FROM users WHERE "organizationId"=${organizationId} AND id=${userId}
       AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
-    if (!user || !["admin", "superadmin"].includes(user.role) || effectiveHiddenModules(user.role, user.hiddenModules).includes("mtm")) {
+    if (!user || !["admin", "superadmin"].includes(user.role) || effectiveHiddenModules(user.role, user.hiddenModules).includes("personnel")) {
       throw new AttendanceRequestError("MTM_ATTENDANCE_ADMIN_REQUIRED", 403)
     }
     const prior = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId, key: ATTENDANCE_OUTSIDE_RULE_KEY } }, select: { value: true } })
