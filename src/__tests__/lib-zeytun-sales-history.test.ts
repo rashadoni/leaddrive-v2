@@ -5,7 +5,7 @@ import type { PrismaClient } from "@prisma/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
-  bakuNight, HISTORY_DAYS, nextNightStart, REQUEST_GAP_MS,
+  bakuNight, HISTORY_DAYS, nextNightStart, REQUEST_GAP_MS, salesReadOpen,
   decodeSalesSoap, parseValueTable, productsOfSale, rankSalesProducts, refreshZeytunSalesHistory, salesFromSettlements,
   salesHistorySource, SalesHistoryStore, ZEYTUN_SALES_CONNECTION_FILE, type SalesFetch,
 } from "@/lib/voice-agent/pharmacy/zeytun-sales-history"
@@ -191,6 +191,30 @@ describe("a pharmacy's 1C sales history", () => {
       // The list and one sale fit before 07:00; the next request would start after it.
       expect(late).toHaveBeenCalledTimes(2)
       expect(run).toMatchObject({ outcome: "done", sales: 1 })
+    })
+
+    // Owner 2026-11-21: «завтра не рабочий день, включи с утра до вечера».
+    it("also reads through the daytime of a day the owner named, and only that day", async () => {
+      expect(salesReadOpen(Date.parse("2026-11-21T08:00:00Z"))).toBe(false) // Saturday 12:00 Baku
+      expect(salesReadOpen(Date.parse("2026-11-22T03:00:00Z"))).toBe(true) // Sunday 07:00
+      expect(salesReadOpen(Date.parse("2026-11-22T17:59:00Z"))).toBe(true) // Sunday 21:59
+      expect(salesReadOpen(Date.parse("2026-11-23T02:59:00Z"))).toBe(true) // Monday 06:59, still night
+      expect(salesReadOpen(Date.parse("2026-11-23T03:00:00Z"))).toBe(false) // Monday 07:00
+      expect(salesReadOpen(Date.parse("2026-11-29T08:00:00Z"))).toBe(false) // next Sunday: not named
+
+      const env = { grantFile: grantFile(), cacheDir: root }
+      const noon = Date.parse("2026-11-22T08:00:00Z")
+      expect(await refreshZeytunSalesHistory({ sleep: instant, db: db([PHARMACY]), env, now: () => noon, download }))
+        .toMatchObject({ outcome: "done", sales: 2 })
+
+      // A slow 1C on that day stops the job until 22:00 of the same day.
+      let clock = noon + 6 * 3_600_000
+      listed = [["ZN000000003", "2026-11-22T10:00:00"]]
+      const sluggish = vi.fn<SalesFetch>(async (url, options) => { clock += 9_000; return download(url, options) })
+      expect(await refreshZeytunSalesHistory({ sleep: async ms => { clock += ms }, db: db([PHARMACY]), env, now: () => clock, download: sluggish }))
+        .toMatchObject({ outcome: "stopped", error: "slow" })
+      expect(await refreshZeytunSalesHistory({ sleep: instant, db: db([PHARMACY]), env, now: () => clock + 60_000, download }))
+        .toMatchObject({ outcome: "paused", until: "2026-11-22T18:00:00.000Z" })
     })
 
     it("waits two seconds between requests", async () => {
