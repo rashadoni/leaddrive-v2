@@ -24,6 +24,26 @@ type MessagingStatus = {
   tokenExpiresAt: string | null
 }
 type Notice = { kind: "info" | "error"; text: string }
+type ReadinessState = "ok" | "warn" | "blocked"
+type ReadinessItem = { id: string; state: ReadinessState; value: string | null }
+type Readiness = { ready: boolean; items: ReadinessItem[]; facts: { profileReadFailed?: boolean } }
+
+/**
+ * One line per requirement TikTok puts between this workspace and direct messages. The hint is
+ * shown only when the requirement is unmet: a page of advice about things already done is a page
+ * people stop reading.
+ */
+const READINESS_COPY: Record<string, { label: keyof Copy; hint: keyof Copy }> = {
+  account: { label: "readinessAccount", hint: "readinessAccountHint" },
+  advancedAccess: { label: "readinessAdvanced", hint: "readinessAdvancedHint" },
+  messagingApproval: { label: "readinessApproval", hint: "readinessApprovalHint" },
+}
+
+function readinessBadge(state: ReadinessState, c: Copy) {
+  if (state === "ok") return { text: c.readinessYes, variant: "success" as const }
+  if (state === "blocked") return { text: c.readinessWaiting, variant: "outline" as const }
+  return { text: c.readinessNo, variant: "warning" as const }
+}
 
 function connectionView(data: MessagingStatus, c: Copy) {
   if (!data.configured) return { title: c.unavailable, hint: c.unavailableHint, variant: "warning" as const }
@@ -86,6 +106,9 @@ function NativeConnection({ orgId, locale, c }: { orgId: string; locale: Locale;
   const [notice, setNotice] = useState<Notice | null>(null)
   const [pending, setPending] = useState<"connect" | "disconnect" | "subscribe" | null>(null)
   const [revision, setRevision] = useState(0)
+  const [readiness, setReadiness] = useState<Readiness | null>(null)
+  const [readinessLoading, setReadinessLoading] = useState(true)
+  const [readinessFailed, setReadinessFailed] = useState(false)
   const mutationController = useRef<AbortController | null>(null)
 
   useEffect(() => () => mutationController.current?.abort(), [])
@@ -119,6 +142,36 @@ function NativeConnection({ orgId, locale, c }: { orgId: string; locale: Locale;
     void load()
     return () => controller.abort()
   }, [orgId, revision, c])
+
+  // Separate from the connection status on purpose: readiness reaches TikTok, so it is the slower
+  // of the two, and a tenant should not wait on it to see whether they are connected at all.
+  useEffect(() => {
+    const controller = new AbortController()
+    setReadinessLoading(true)
+    setReadinessFailed(false)
+    async function load() {
+      try {
+        const response = await fetch(`${STATUS_URL}/readiness`, {
+          cache: "no-store", credentials: "same-origin", signal: controller.signal,
+          headers: { "x-organization-id": orgId },
+        })
+        if (!response.ok) throw new Error("readiness_unavailable")
+        const body = await response.json()
+        if (!body || typeof body.ready !== "boolean" || !Array.isArray(body.items)
+          || body.items.some((item: unknown) => !item || typeof item !== "object"
+            || typeof (item as ReadinessItem).id !== "string" || typeof (item as ReadinessItem).state !== "string")) {
+          throw new Error("invalid_readiness_response")
+        }
+        if (!controller.signal.aborted) setReadiness(body as Readiness)
+      } catch {
+        if (!controller.signal.aborted) { setReadiness(null); setReadinessFailed(true) }
+      } finally {
+        if (!controller.signal.aborted) setReadinessLoading(false)
+      }
+    }
+    void load()
+    return () => controller.abort()
+  }, [orgId, revision])
 
   async function mutate(action: "connect" | "disconnect" | "subscribe") {
     if (loading || loadError || pending || !data || (action !== "disconnect" && !data.configured)) return
@@ -233,10 +286,46 @@ function NativeConnection({ orgId, locale, c }: { orgId: string; locale: Locale;
           <p className="text-xs leading-5 text-muted-foreground">{c.disconnectHint}</p>
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader><CardTitle className="text-base">{c.requirements}</CardTitle></CardHeader>
-        <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
-          <p>{c.approval}</p><p>{c.textOnly}</p>
+      <Card aria-busy={readinessLoading}>
+        <CardHeader>
+          <CardTitle className="text-base">{c.readinessTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm leading-6">
+          <p className="text-muted-foreground">{c.readinessIntro}</p>
+          {readinessLoading ? (
+            <p role="status" className="text-muted-foreground">{c.readinessLoading}</p>
+          ) : readiness ? (
+            <>
+              {readiness.facts?.profileReadFailed ? (
+                <p role="status" className="rounded-xl border bg-muted/40 p-3 text-muted-foreground">{c.readinessReadFailed}</p>
+              ) : null}
+              <ul className="space-y-4 border-t pt-4" data-testid="tiktok-readiness">
+                {readiness.items.map(item => {
+                  const copy = READINESS_COPY[item.id]
+                  if (!copy) return null
+                  const badge = readinessBadge(item.state, c)
+                  return (
+                    <li key={item.id} className="space-y-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span>{c[copy.label]}{item.value ? <span className="ml-2 text-muted-foreground">{item.value}</span> : null}</span>
+                        <Badge variant={badge.variant}>{badge.text}</Badge>
+                      </div>
+                      {item.state === "ok" ? null : (
+                        <p className="text-xs leading-5 text-muted-foreground">{c[copy.hint]}</p>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+              {readiness.ready ? <p className="border-t pt-4 text-muted-foreground">{c.readinessReady}</p> : null}
+            </>
+          ) : (
+            <>
+              {readinessFailed ? <p role="status" className="text-muted-foreground">{c.readinessFailed}</p> : null}
+              <p className="text-muted-foreground">{c.approval}</p>
+            </>
+          )}
+          <p className="border-t pt-4 text-muted-foreground">{c.textOnly}</p>
         </CardContent>
       </Card>
     </div>

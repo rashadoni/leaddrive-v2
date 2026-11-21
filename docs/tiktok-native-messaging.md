@@ -24,6 +24,26 @@ Successful consent configures the app-level `DIRECT_MESSAGE` subscription to `ht
 
 Open Settings → Channels → TikTok. The page reports configuration, authorization, webhook status and last inbound time without returning credentials. Generic ChannelConfig create/edit/delete cannot modify the native configuration. The first version binds one TikTok business account per workspace, and one workspace per app/account pair. Disabled bindings retain ownership to protect historical conversations. Switching accounts or transferring ownership requires a separately designed migration; reconnect the original account.
 
+## Account readiness, shown before the attempt
+
+Settings → Channels → TikTok reports what still stands between the workspace and messaging:
+whether an Accounts API grant exists, whether that account holds Advanced Access, and whether this
+server has Business Messaging credentials at all. The first two are read live from
+`/business/get/` (`username`, `display_name`, `has_advanced_access`) with the workspace's own
+Accounts API token, whose scope TikTok approved 2026-11-21; the third is `messagingConfigured()`.
+
+The split in the states is the point. `warn` is the account owner's to fix, `blocked` waits on
+TikTok, and a self-serve channel needs that distinction: until this existed, an ineligible account
+learned of its ineligibility as a failed OAuth return with nothing to act on, which is how the
+Gobustone account spent weeks unable to send without anyone knowing the cause was the account and
+not the integration.
+
+An unanswered field is never reported as a met requirement. `/business/get/` refuses a field list
+naming anything it does not know, so narrower sets follow a refusal; a network failure stops the
+read instead, and the screen says the entitlement is unknown rather than missing. Readiness is
+fetched separately from the connection status so the slower, provider-bound call cannot delay the
+status beside it, and a readiness that cannot be read falls back to the static requirement text.
+
 ## Security and delivery behavior
 
 - Fresh administrator session, same-origin POST, signed 10-minute state bound to both user and organization, and a persistent one-use fingerprint. An older consent cannot overwrite a later attempt or a disconnect.
