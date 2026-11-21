@@ -15,7 +15,7 @@ import { ZeytunAvailableBalances } from "@/lib/voice-agent/pharmacy/zeytun-avail
 import { ZeytunBalanceCache } from "@/lib/voice-agent/pharmacy/zeytun-balance-cache"
 import { zeytunBalanceScopeKey } from "@/lib/voice-agent/pharmacy/zeytun-balance-client"
 import { createDepartedSearch } from "@/lib/voice-agent/pharmacy/zeytun-departed-items"
-import { arrivalsNote, createInboundPilotHandler, LINE_PROMPT_MAX_CHARS, ZEYTUN_LINE_PROMPT,
+import { arrivalsNote, createInboundPilotHandler, LINE_PROMPT_MAX_CHARS, WAITLIST_CALLBACK_SAID, ZEYTUN_LINE_PROMPT,
   type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { ZeytunSnapshotStore } from "@/lib/voice-agent/pharmacy/zeytun-snapshot-store"
 import { payload, row, secondGuid } from "./fixtures/zeytun-balances"
@@ -126,7 +126,7 @@ const call = {
 const NARIMANOV = { guid: "eeeeeeee-1111-4111-8111-111111111111", name: "Nərimanov aptek", address: null }
 
 function lineHandler(options: { pharmacies?: typeof NARIMANOV[]; arrivals?: () => Promise<{ externalId: string; name: string; waited: boolean }[]>;
-  purpose?: string } = {}) {
+  purpose?: string; callbackReaches?: () => Promise<boolean> } = {}) {
   const bytes = Buffer.from(payload([ademta, adenuric]))
   const feed = new ZeytunAvailableBalances(bytes, { organizationId: line.approvedSource.organizationId, observedAt: new Date(at).toISOString(), source: "live" })
   const catalog: InboundPilotCatalog = {
@@ -145,6 +145,7 @@ function lineHandler(options: { pharmacies?: typeof NARIMANOV[]; arrivals?: () =
     loadCall: async () => structuredClone(call), loadCatalog: async () => catalog,
     claim: async () => true, isClaimed: async () => true, clock: () => at,
     findPharmacies: async () => options.pharmacies ?? [NARIMANOV], saveOrder, pharmacyArrivals,
+    ...(options.callbackReaches ? { waitlistCallbackReaches: options.callbackReaches } : {}),
   })
   const post = async (body: unknown) => {
     const response = await handle(new Request("https://crm.example.test/internal", { method: "POST",
@@ -203,6 +204,19 @@ describe("the call's news: what this pharmacy waited for or orders, back in stoc
 describe("a sold-out product the pharmacy still wants goes on the waiting list", () => {
   it("tells the agent to say it is noted and to write it", () => {
     expect(ZEYTUN_LINE_PROMPT).toContain("if they still want it rather than a substitute, say \"qeyd etdim, gələn kimi xəbər verəcəyik\" and write it with its quantity.")
+  })
+
+  // Owner 2026-11-21: «как только прибудет, мы сами вам перезвоним».
+  it("promises the call back only to a caller it would reach", async () => {
+    const said = async (callbackReaches?: () => Promise<boolean>) =>
+      String((await lineHandler({ callbackReaches }).post({ action: "session", callId })).body.prompt)
+    const promised = await said(async () => true)
+    expect(promised).toContain(`say "${WAITLIST_CALLBACK_SAID}"`)
+    expect(promised).not.toContain("xəbər verəcəyik")
+    for (const prompt of [await said(async () => false), await said(async () => { throw new Error("db") }), await said()]) {
+      expect(prompt).toContain("qeyd etdim, gələn kimi xəbər verəcəyik")
+      expect(prompt).not.toContain(WAITLIST_CALLBACK_SAID)
+    }
   })
 
   it("passes the sold-out line with its 1C id to the save, and only that one", async () => {

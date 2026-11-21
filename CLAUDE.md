@@ -1358,7 +1358,9 @@ kimi açıq qalmasın»; на проде 9 дней агента из 11 не з
   1С, WhatsApp и PDF не менялся) и **дополнительно** пишется в
   `pharmacy_waitlist_items` с GUID 1С (`zeytun-waitlist.ts`,
   `recordCallWaitlist` — по каждому изменившему список сохранению звонка;
-  ИИ говорит «qeyd etdim, gələn kimi xəbər verəcəyik»). Обновление каталога
+  ИИ говорит «qeyd etdim, gələn kimi xəbər verəcəyik», а звонящему, до которого
+  дойдёт обратный звонок (`callbackReaches`), — «…özümüz sizə zəng edəcəyik»,
+  владелец 2026-11-21). Обновление каталога
   пишет рядом с `.departed` файл `.arrived` — что вернулось после ≥ 3 ч
   отсутствия, 14 дней (`zeytun-arrived-items.ts`; разом больше 300 и пятой
   части каталога — не поставка, а обрезанный ответ 1С, не пишется), а
@@ -1381,7 +1383,7 @@ kimi açıq qalmasın»; на проде 9 дней агента из 11 не з
   `settings.pharmacyPhoneOrders.waitlistCallback.enabled: true`; `testPhoneE164` — звонить только туда
   (первые звонки владельца). Только внутри часов звонков VoIP (`business_hours`, `voice`; не настроены —
   закрыто), один исходящий ИИ-звонок канала линии за раз, одна аптека за раз, товары, вернувшиеся за
-  48 ч; строки листа помечаются `callbackAt`/`callbackCallId`/`callbackStatus` — повтора нет. Звонок —
+  72 ч (пятничный вечер доживает до понедельника); строки листа помечаются `callbackAt`/`callbackCallId`/`callbackStatus` — повтора нет. Звонок —
   обычный исходящий ИИ канала линии; в `CallLog.consentAudit` метка `pharmacyWaitlistCallback`, и пилот
   линии принимает **только** исходящий с меткой своего разрешения: внутри пилота он читается как звонок
   аптеки (её номер — `fromNumber`), приветствие называет поступившее (`callbackOpening`). После звонка

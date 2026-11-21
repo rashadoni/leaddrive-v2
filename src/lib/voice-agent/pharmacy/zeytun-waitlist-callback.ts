@@ -28,8 +28,11 @@ import { PHONE_ORDERS_TABLE } from "./phone-orders"
 import { listWaitlist } from "./zeytun-waitlist"
 
 export const CALLBACK_MARKER = "pharmacyWaitlistCallback"
-/** Only products back within this long are called about: older news the pharmacy hears on its next call. */
-export const CALLBACK_ARRIVED_WITHIN_MS = 48 * 3_600_000
+/**
+ * Only products back within this long are called about: older news the pharmacy hears on its next call.
+ * Three days, because the line now promises the call: a product back on Friday evening waits for Monday 09:00.
+ */
+export const CALLBACK_ARRIVED_WITHIN_MS = 72 * 3_600_000
 /** A callback names at most this many products; the rest the agent finds when asked. */
 export const CALLBACK_ITEMS_MAX = 3
 /** An outbound AI call of the channel younger than this, not ended, is in progress: no second one. */
@@ -41,6 +44,14 @@ export function waitlistCallbackSettings(settings: unknown): CallbackSettings {
     ?.pharmacyPhoneOrders?.waitlistCallback
   const test = typeof orders?.testPhoneE164 === "string" && /^\+994\d{9}$/.test(orders.testPhoneE164) ? orders.testPhoneE164 : null
   return { enabled: orders?.enabled === true, testPhoneE164: test }
+}
+
+/**
+ * Would a callback reach this caller? The line promises one only then (owner 2026-11-21):
+ * switched on, a number that can be dialled, and with a test number set, only that number.
+ */
+export function callbackReaches(settings: CallbackSettings, caller: string): boolean {
+  return settings.enabled && /^\+\d{8,15}$/.test(caller) && (settings.testPhoneE164 === null || settings.testPhoneE164 === caller)
 }
 
 export type CallbackMarker = { version: 1; providerCallId: string; grantId: string; orderOrganizationId: string

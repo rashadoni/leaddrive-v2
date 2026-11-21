@@ -19,7 +19,7 @@ import { learnNames, type LearnedNames } from "./zeytun-learned-names"
 import { callPharmacy, lastPharmacyOrder } from "./zeytun-pharmacy-history"
 import { markWaitlistArrivals, pharmacyArrivals, recordCallWaitlist } from "./zeytun-waitlist"
 import { recoveredOrderLines } from "./zeytun-transcript-recovery"
-import { CALLBACK_MARKER, callbackMarker } from "./zeytun-waitlist-callback"
+import { CALLBACK_MARKER, callbackMarker, callbackReaches, waitlistCallbackSettings } from "./zeytun-waitlist-callback"
 import { combineAssortment, confirmedOrdersSource, createCallAssortments, type AssortmentSource,
   type LoadedAssortment } from "./zeytun-pharmacy-assortment"
 import { salesHistorySource } from "./zeytun-sales-history"
@@ -315,7 +315,9 @@ export function createInboundPilotHost(options: {
       // Owner, 2026-10-31: the organization edits its line's greeting, goodbye and notes itself.
       loadLineSpeech: async (config) => config.orderOrganizationId && await allowedOrganization(config)
         ? readLineSpeech(await options.organizationSettings!(config.orderOrganizationId)) : readLineSpeech(null),
-    } satisfies Pick<InboundPilotDependencies, "loadLineSpeech"> : {}),
+      waitlistCallbackReaches: async (config, call) => Boolean(config.orderOrganizationId) && await allowedOrganization(config)
+        && callbackReaches(waitlistCallbackSettings(await options.organizationSettings!(config.orderOrganizationId!)), callerNumber(call.fromNumber)),
+    } satisfies Pick<InboundPilotDependencies, "loadLineSpeech" | "waitlistCallbackReaches"> : {}),
     ...(options.orders ? {
       saveOrder: async (config, call, catalog, lines, pharmacy, delivery) => {
         const base = { organizationId: config.orderOrganizationId, providerCallId: call.providerCallId,

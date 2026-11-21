@@ -283,6 +283,8 @@ export type InboundPilotDependencies = {
   pharmacyHints?: (config: LineGrant) => string[]
   /** What the pharmacy of the caller's number waited for or orders and 1C has again (zeytun-waitlist.ts). Line calls only. */
   pharmacyArrivals?: (config: LineGrant, call: InboundPilotOrderCall, catalog: InboundPilotCatalog, numberPharmacyGuid: string) => Promise<ArrivalOffer[]>
+  /** Would a waiting-list callback reach this caller (zeytun-waitlist-callback.ts)? Only then the agent promises one. */
+  waitlistCallbackReaches?: (config: LineGrant, call: InboundPilotOrderCall) => Promise<boolean>
   /** Stamps waiting-list products 1C has again; warmZeytunLine calls it after each catalog refresh. */
   markWaitlistArrivals?: (config: InboundPilotConfig) => Promise<number>
   /** Task 1b (2026-11-06): lines the transcript has and an unfinished order of the call does not (zeytun-transcript-recovery.ts). */
@@ -515,6 +517,15 @@ for (const part of [LINE_CLOSING_QUOTED, LINE_UNKNOWN_DELIVERY]) {
 }
 /** Brackets would let a note close its own block; nothing else of the text is touched. */
 const noteText = (text: string) => text.replace(/[<>]/gu, match => match === "<" ? "‹" : "›")
+
+// Owner 2026-11-21: «как только прибудет, мы сами вам перезвоним». Said only to a caller the callback
+// would reach: while it goes to the test number alone, a pharmacy must not be promised a call it never gets.
+const WAITLIST_SAID = "qeyd etdim, gələn kimi xəbər verəcəyik"
+export const WAITLIST_CALLBACK_SAID = "qeyd etdim, gələn kimi özümüz sizə zəng edəcəyik"
+function promisingCallback(prompt: string) {
+  const promised = prompt.replace(WAITLIST_SAID, () => WAITLIST_CALLBACK_SAID)
+  return promised.length <= LINE_PROMPT_MAX_CHARS ? promised : prompt
+}
 
 /** The line's rules with the organization's own closing and notes; empty fields keep ZEYTUN_LINE_PROMPT as it is. */
 export function composeLinePrompt(speech: LineSpeech) {
@@ -774,17 +785,21 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
         if (seconds < 30) return denied()
         const line = isLineGrant(config)
         // A directory that cannot be read only costs the greeting its name.
-        const [candidates, speech, hearing] = await Promise.all([
+        const [candidates, speech, hearing, callbackPromised] = await Promise.all([
           line && dependencies.findPharmacies
             ? dependencies.findPharmacies(config, internationalNumber(call.fromNumber) ?? "").catch(() => []) : [],
           line ? lineSpeechFor(config, dependencies.loadLineSpeech) : EMPTY_LINE_SPEECH,
           // The station sends the pharmacy's phrases only when told so here: a key in place and readable.
           line && dependencies.secondEar ? dependencies.secondEar.enabled().catch(() => false) : false,
+          // Unread in time is no promise: the agent keeps the plain "we will let you know".
+          line && dependencies.waitlistCallbackReaches
+            ? withinMs(dependencies.waitlistCallbackReaches(config, call), ARRIVALS_WAIT_MS).catch(() => false) : false,
         ])
         let prompt = line ? composeLinePrompt(speech) : ZEYTUN_INBOUND_PROMPT
         // Notes saved under a larger budget than today's rules leave: the call
         // goes on with the code's notes-free rules rather than being refused.
         if (prompt.length > LINE_PROMPT_MAX_CHARS) prompt = composeLinePrompt({ ...speech, manner: "", knowledge: "", rules: "" })
+        if (callbackPromised === true) prompt = promisingCallback(prompt)
         // Owner's client, 2026-11-06: what this pharmacy waited for or orders and 1C has again
         // (zeytun-waitlist.ts). Only the pharmacy the caller's number alone names; a slow or
         // failed read, or a prompt without room for it, costs the call nothing.
