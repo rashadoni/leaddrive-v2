@@ -683,6 +683,8 @@ function modelSays(fields: Record<string, unknown> = {}) {
         data: {
           organizationId: ORG, bookingPageId: PAGE, hostUserId, startsAt: hoursAgo(-20), endsAt: hoursAgo(-19),
           name: "Müştəri", phone: NEW_NUMBER, status, source, cancelTokenHash: randomUUID(),
+          // Explicit: the database's own clock can stamp a row a moment after the period's end.
+          createdAt: hoursAgo(1),
         },
       }))
     }
