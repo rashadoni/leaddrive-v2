@@ -398,6 +398,19 @@ export function bakuNight(now: number): boolean {
   return hour >= NIGHT_FROM_HOUR || hour < NIGHT_TO_HOUR
 }
 
+/**
+ * Whole Baku days named by the owner as non-working: the job also reads through
+ * their daytime, at the same pace and with the same stand-down. A date, not a
+ * weekday rule, so a working Sunday is never read by accident.
+ */
+// Owner 2026-11-21: «завтра не рабочий день, включи с утра до вечера».
+export const QUIET_DAYS: ReadonlySet<string> = new Set(["2026-11-22"])
+
+/** May the job ask 1C at this moment: at night, or on a day the owner named. */
+export function salesReadOpen(now: number): boolean {
+  return bakuNight(now) || QUIET_DAYS.has(new Date(now + BAKU_OFFSET_MS).toISOString().slice(0, 10))
+}
+
 /** The next 22:00 in Baku strictly after `now`. */
 export function nextNightStart(now: number): number {
   const local = now + BAKU_OFFSET_MS
@@ -418,7 +431,7 @@ let running = false
 /**
  * One tick: the due pharmacies, line callers first, then every other pharmacy
  * of 1C's directory, the longest unread first, until the budget or the night
- * runs out. Only at night in Baku, one request at a time with REQUEST_GAP_MS
+ * runs out. Only at night in Baku or on a QUIET_DAYS date, one request at a time with REQUEST_GAP_MS
  * between them: 1C is Zeytun's working system, shared with other clients. A
  * request slower than SLOW_REQUEST_MS, or 1C refusing or down, stands the job
  * down until the next night. A pharmacy cut off by the budget keeps what was
@@ -435,7 +448,7 @@ export async function refreshZeytunSalesHistory(input: {
   try { raw = await readPrivate(join(dirname(env.grantFile), ZEYTUN_SALES_CONNECTION_FILE), 16_384) }
   catch { return { outcome: "not_configured" } }
   const config = parseZeytunSalesConfig(raw)
-  if (!bakuNight(now())) return { outcome: "outside_hours" }
+  if (!salesReadOpen(now())) return { outcome: "outside_hours" }
   if (running) return { outcome: "busy" }
   running = true
   try {
@@ -455,8 +468,8 @@ export async function refreshZeytunSalesHistory(input: {
         if (last - asked > SLOW_REQUEST_MS) slow = true
       }
     }
-    // The next request starts after the gap: it must still fit the budget and the night.
-    const going = () => !slow && now() + REQUEST_GAP_MS - started < budget && bakuNight(now() + REQUEST_GAP_MS)
+    // The next request starts after the gap: it must still fit the budget and the open hours.
+    const going = () => !slow && now() + REQUEST_GAP_MS - started < budget && salesReadOpen(now() + REQUEST_GAP_MS)
     const standDown = async () => { await store.savePause(nextNightStart(now())) }
     const index = await store.loadIndex()
     const callers = await lineCallers(input.db, config.organizationId, started)
