@@ -20,6 +20,7 @@ import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
 import { recordWorkforceEmploymentEventInTransaction, WorkforceEmploymentHistoryError } from "@/lib/workforce/employment-history"
 import type { AttendanceReviewer } from "@/lib/mtm/attendance-request-decision"
 import { resolveAttendanceReviewerScope } from "@/lib/mtm/attendance-request-decision"
+import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { ATTENDANCE_FEATURE_SETTING_KEY } from "@/lib/mtm/attendance-feature"
 import { managerAssignmentCreatesCycle } from "@/lib/mtm/agent-administration"
 import { agentHistory } from "@/lib/mtm/agent-deletion"
@@ -38,30 +39,40 @@ export async function requireAttendanceEmployeeAdmin(tx: Prisma.TransactionClien
   return (await attendanceEmployeeManager(tx, actor)).timezone
 }
 /** The same check, also saying whether this is an administrator or HR (attendance-manager.ts). */
-async function attendanceEmployeeManager(tx: Prisma.TransactionClient, actor: AttendanceReviewer) {
+export async function attendanceEmployeeManager(tx: Prisma.TransactionClient, actor: AttendanceReviewer) {
   await tx.$executeRaw`SELECT set_config('lock_timeout', '3s', true)`
   await tx.$queryRaw`SELECT "id" FROM mtm_settings WHERE "organizationId" = ${actor.organizationId} AND "key" IN (${ATTENDANCE_FEATURE_SETTING_KEY}, 'timezone') ORDER BY "key" FOR SHARE`
   await resolveAttendanceReviewerScope(tx, actor)
   // Managing people is for an administrator or HR, not a team manager's card.
   const [user] = await tx.$queryRaw<Array<{ role: string; hiddenModules: string[]; mtmAttendanceAll: boolean }>>`SELECT "role", "hiddenModules", "mtmAttendanceAll" FROM "users" WHERE "organizationId" = ${actor.organizationId} AND "id" = ${actor.userId} AND "isActive" AND "anonymizedAt" IS NULL FOR SHARE`
-  if (!isPersonnelManager(user)) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_ADMIN_REQUIRED", 403)
+  if (!user || !isPersonnelManager(user)) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_ADMIN_REQUIRED", 403)
   const setting = await tx.mtmSetting.findUnique({ where: { organizationId_key: { organizationId: actor.organizationId, key: "timezone" } }, select: { value: true } })
   const timezone = setting?.value ?? "Asia/Baku"
   if (typeof timezone !== "string" || !isValidTimezone(timezone)) throw new AttendanceRequestError("MTM_ATTENDANCE_TIMEZONE_INVALID")
-  return { timezone, isAdmin: isCrmAdminRole(user.role) }
+  return { timezone, isAdmin: isCrmAdminRole(user.role), role: user.role }
 }
 /**
- * Reporting lines and sections decide what a manager's card sees in Route & Field.
- * HR who also hold such a card may not widen it: not move their own card, and not
- * put someone under it or into its section. An administrator does that.
+ * What a manager's or supervisor's card sees in Route & Field follows from its
+ * team, the team's region and everyone reporting under it, at any depth. HR who
+ * also hold such a card may not grow that by editing people here, so the scope
+ * is measured before and after the write, inside the transaction. An
+ * administrator already sees everyone.
  */
-async function refuseOwnFieldScopeChange(tx: Prisma.TransactionClient, actor: AttendanceReviewer, agentId: string,
-  before: { teamId: string | null; departmentId: string | null; managerId: string | null }, next: { teamId: string | null; departmentId: string | null; managerId: string | null }) {
-  if (before.teamId === next.teamId && before.departmentId === next.departmentId && before.managerId === next.managerId) return
-  const own = await tx.mtmAgent.findMany({ where: { organizationId: actor.organizationId, userId: actor.userId, status: "ACTIVE", role: { in: [...ATTENDANCE_MANAGER_ROLES] } }, select: { id: true, teamId: true } })
-  if (own.some(card => card.id === agentId || card.id === next.managerId || (next.teamId !== null && card.teamId === next.teamId))) {
-    throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID", 422)
-  }
+export async function ownFieldScope(tx: Prisma.TransactionClient, actor: AttendanceReviewer, access: { isAdmin: boolean; role: string }): Promise<ReadonlySet<string> | null> {
+  if (access.isAdmin) return null
+  const field = await resolveMtmRouteActor(tx, { organizationId: actor.organizationId, userId: actor.userId, webRole: access.role })
+  return field && (field.role === "MANAGER" || field.role === "SUPERVISOR") ? new Set(field.scopedAgentIds ?? []) : null
+}
+export async function refuseWiderFieldScope(tx: Prisma.TransactionClient, actor: AttendanceReviewer, access: { isAdmin: boolean; role: string }, before: ReadonlySet<string> | null) {
+  if (!before) return
+  const after = await ownFieldScope(tx, actor, access)
+  if (after && [...after].some(id => !before.has(id))) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID", 422)
+}
+/** Whether one counts in the timesheet and one's employment dates are not HR's to set for themselves. */
+async function refuseOwnRecord(tx: Prisma.TransactionClient, actor: AttendanceReviewer, access: { isAdmin: boolean }, agentId: string) {
+  if (access.isAdmin) return
+  const own = await tx.mtmAgent.findFirst({ where: { organizationId: actor.organizationId, id: agentId, userId: actor.userId }, select: { id: true } })
+  if (own) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_ADMIN_REQUIRED", 403)
 }
 async function history(tx: Prisma.TransactionClient, organizationId: string, agentIds: string[]): Promise<EmploymentRow[]> {
   if (!agentIds.length) return []
@@ -162,7 +173,7 @@ export async function setAttendanceParticipation(actor: AttendanceReviewer, raw:
   if (!parsed.success) throw new AttendanceRequestError("MTM_ATTENDANCE_PARTICIPATION_INVALID", 400)
   const input = parsed.data, organizationId = actor.organizationId
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    await requireAttendanceEmployeeAdmin(tx, actor)
+    await refuseOwnRecord(tx, actor, await attendanceEmployeeManager(tx, actor), input.agentId)
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-participation-request:${organizationId}:${input.clientRequestId}`}, 0))`
     // Match workday writers and month close: canonical employee locks precede
     // the source fence, so a close cannot hold our row while waiting on us.
@@ -257,7 +268,8 @@ export async function recordAttendanceEmployment(actor: AttendanceReviewer, raw:
   if (!parsed.success) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_INVALID", 400)
   const input = parsed.data, organizationId = actor.organizationId
   return prisma.$transaction(async tx => {
-    const timezone = await requireAttendanceEmployeeAdmin(tx, actor)
+    const access = await attendanceEmployeeManager(tx, actor), timezone = access.timezone
+    await refuseOwnRecord(tx, actor, access, input.agentId)
     const { hash, receipt } = await lockOperation(tx, actor, input.clientRequestId, { type: "EMPLOYMENT", ...input })
     if (receipt) {
       if (!receipt.entityId) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_CHANGED")
@@ -286,7 +298,7 @@ export async function updateAttendanceEmployeeCard(actor: AttendanceReviewer, ra
   if (!parsed.success) throw new AttendanceRequestError("MTM_ATTENDANCE_EMPLOYEE_INVALID", 400)
   const input = parsed.data, organizationId = actor.organizationId
   return prisma.$transaction(async tx => {
-    const access = await attendanceEmployeeManager(tx, actor)
+    const access = await attendanceEmployeeManager(tx, actor), scopeBefore = await ownFieldScope(tx, actor, access)
     const [card] = await tx.$queryRaw<Array<{ position: string | null; teamId: string | null; departmentId: string | null; managerId: string | null }>>`
       SELECT "position", "teamId", "departmentId", "managerId" FROM mtm_agents WHERE "organizationId" = ${organizationId} AND id = ${input.agentId}
         AND ${attendanceTrackedCardSql()} FOR UPDATE`
@@ -297,9 +309,9 @@ export async function updateAttendanceEmployeeCard(actor: AttendanceReviewer, ra
     }
     const { teamId, departmentId } = await resolveAttendanceUnit(tx, organizationId, input, card.departmentId)
     const next = { position: input.position, teamId, departmentId, managerId: input.managerId }
-    if (!access.isAdmin) await refuseOwnFieldScopeChange(tx, actor, input.agentId, card, next)
     if (next.position === card.position && next.teamId === card.teamId && next.departmentId === card.departmentId && next.managerId === card.managerId) return { agentId: input.agentId, eventId: input.agentId, idempotent: true }
     await tx.mtmAgent.update({ where: { organizationId, id: input.agentId }, data: next })
+    await refuseWiderFieldScope(tx, actor, access, scopeBefore)
     const audit = await tx.mtmAuditLog.create({ data: { organizationId, actorUserId: actor.userId, agentId: input.agentId, entity: "agent", entityId: input.agentId,
       action: "MTM_ATTENDANCE_EMPLOYEE_CARD_CHANGED", metadataKind: "mtm_attendance_employee_card", oldData: card, newData: next }, select: { id: true } })
     return { agentId: input.agentId, eventId: audit.id, idempotent: false }
@@ -431,7 +443,7 @@ export async function updateAttendanceEmployee(actor: AttendanceReviewer, agentI
     // actor→User locks while a phone writer holds User→actor locks.
     await tx.$executeRaw`SELECT set_config('lock_timeout', '3s', true)`
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'identity-registry:' + organizationId}, 0))`
-    const access = await attendanceEmployeeManager(tx, actor), timezone = access.timezone
+    const access = await attendanceEmployeeManager(tx, actor), timezone = access.timezone, scopeBefore = await ownFieldScope(tx, actor, access)
     const [card] = await tx.$queryRaw<Array<{ name: string; role: string; phone: string | null; email: string | null; userId: string | null; position: string | null; personnelNumber: string | null; teamId: string | null; departmentId: string | null; managerId: string | null }>>`
       SELECT name, "role", phone, email, "userId", "position", "personnelNumber", "teamId", "departmentId", "managerId" FROM mtm_agents WHERE "organizationId" = ${organizationId} AND id = ${agentId}
         AND ${attendanceTrackedCardSql()} FOR UPDATE`
@@ -466,12 +478,12 @@ export async function updateAttendanceEmployee(actor: AttendanceReviewer, agentI
     // a tab opened before 2026-11-03 still sends the field, and it changes nothing.
     const personnelNumber = card.personnelNumber
     const { teamId, departmentId } = await resolveAttendanceUnit(tx, organizationId, input, card.departmentId)
-    if (!access.isAdmin) await refuseOwnFieldScopeChange(tx, actor, agentId, card, { teamId, departmentId, managerId: input.managerId })
     // The CRM user needs an address; without a real one it keeps one that reaches nobody.
     const userEmail = emailChange ? input.email ?? `staff-${randomUUID()}@${NO_EMAIL_DOMAIN}` : undefined
     if (user) await tx.user.update({ where: { id: user.id }, data: { name: input.name, ...(phoneChange ? { phone: input.phone } : {}), ...(userEmail ? { email: userEmail } : {}) } })
     await tx.mtmAgent.update({ where: { organizationId, id: agentId }, data: { name: input.name, position: input.position, personnelNumber, teamId, departmentId, managerId: input.managerId,
       ...(phoneChange ? { phone: input.phone } : {}), ...(emailChange ? { email: input.email ?? null } : {}) } })
+    await refuseWiderFieldScope(tx, actor, access, scopeBefore)
     const hire = input.hireDate && !(await history(tx, organizationId, [agentId])).length ? await recordAttendanceInitialHire(tx, actor, agentId, input.hireDate, timezone) : null
     const before = { name: user?.name ?? card.name, phone: beforePhone, email: beforeEmail, position: card.position, personnelNumber: card.personnelNumber, teamId: card.teamId, departmentId: card.departmentId, managerId: card.managerId }
     const after = { name: input.name, phone: phoneChange ? input.phone! : beforePhone, email: emailChange ? input.email ?? null : beforeEmail, position: input.position, personnelNumber, teamId, departmentId, managerId: input.managerId }

@@ -17,6 +17,8 @@ export const GET = withMtmAttendanceAuth("read", async (_req, auth) => {
 export const PUT = withMtmAttendanceAuth("write", async (req, auth) => {
   try {
     if (auth.principalType !== "session" || !auth.canManagePersonnel) throw refuse()
-    return attendanceRequestResponse(await saveAttendancePolicy(auth, await readJsonRequestWithinLimit(req, 16_384), req))
+    const body = await readJsonRequestWithinLimit(req, 16_384)
+    if (!body.ok) throw new AttendanceRequestError("MTM_ATTENDANCE_POLICY_INVALID", body.reason === "too_large" ? 413 : 400)
+    return attendanceRequestResponse(await saveAttendancePolicy(auth, body.value, req))
   } catch (error) { return attendanceRequestFailure(error) }
 })

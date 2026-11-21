@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import type { NextRequest } from "next/server"
+import { NextRequest } from "next/server"
 
 const { upsert } = vi.hoisted(() => ({ upsert: vi.fn(async () => ({})) }))
 vi.mock("@/lib/prisma", () => ({ prisma: { mtmSetting: { upsert } } }))
@@ -8,6 +8,10 @@ vi.mock("@/lib/mtm-settings", () => ({
   getMtmSettings: async () => ({ attendanceEnabled: true, attendanceTwoStepApproval: false, attendanceAutoCloseForgottenDay: false }),
 }))
 vi.mock("@/lib/mtm-audit", () => ({ writeMtmAudit: vi.fn(async () => undefined) }))
+vi.mock("@/lib/mtm/with-attendance-auth", () => ({
+  withMtmAttendanceAuth: (_action: string, handler: (req: unknown, auth: unknown, ctx: unknown) => unknown) => (req: unknown) =>
+    handler(req, { orgId: "org-1", userId: "hr-1", role: "manager", principalType: "session", canManagePersonnel: true }, undefined),
+}))
 
 import { hrMayChangeLogin, isOfficeLogin, isPersonnelGrantHolder, isPersonnelManager, personnelManagerActor } from "@/lib/mtm/attendance-manager"
 import { ATTENDANCE_POLICY_KEYS, saveAttendancePolicy } from "@/lib/mtm/attendance-policy-save"
@@ -56,6 +60,29 @@ describe("whose sign-in HR may change: whoever changes it can sign in as them", 
 
   it("not a manager's card with no login", () => {
     expect(hrMayChangeLogin("SUPERVISOR", null)).toBe(false)
+  })
+})
+
+describe("the settings route hands the save the request's own body", () => {
+  const put = async (raw: string) => {
+    const { PUT } = await import("@/app/api/v1/mtm/attendance/policy/route")
+    const request = new NextRequest("http://localhost/api/v1/mtm/attendance/policy", { method: "PUT", body: raw })
+    return (PUT as unknown as (req: NextRequest) => Promise<Response>)(request)
+  }
+
+  beforeEach(() => upsert.mockClear())
+
+  it("saves what the page sent", async () => {
+    const response = await put(JSON.stringify({ attendanceTwoStepApproval: true }))
+    expect(response.status).toBe(200)
+    expect((await response.json()).data.changed).toEqual(["attendanceTwoStepApproval"])
+    expect(upsert).toHaveBeenCalledTimes(1)
+  })
+
+  it("refuses a body it cannot read instead of answering saved", async () => {
+    expect((await put("{not json")).status).toBe(400)
+    expect((await put(JSON.stringify({ attendanceTwoStepApproval: "x".repeat(20_000) }))).status).toBe(413)
+    expect(upsert).not.toHaveBeenCalled()
   })
 })
 

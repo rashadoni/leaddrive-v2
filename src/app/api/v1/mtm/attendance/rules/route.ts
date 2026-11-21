@@ -17,7 +17,7 @@ export const GET = withMtmAttendanceAuth("read", async (_req, auth) => {
 })
 
 export const POST = withMtmAttendanceAuth("write", async (req, auth) => {
-  if !auth.canManagePersonnel {
+  if (!auth.canManagePersonnel) {
     return NextResponse.json({ error: "Forbidden", code: "MTM_ATTENDANCE_ADMIN_REQUIRED" }, { status: 403 })
   }
   try {

@@ -1,4 +1,4 @@
-import { isPersonnelManager } from "@/lib/mtm/attendance-manager"
+import { isCrmAdminRole, isPersonnelManager } from "@/lib/mtm/attendance-manager"
 import { createHash, randomUUID } from "node:crypto"
 import { ATTENDANCE_TRACKED_CARD_WHERE } from "@/lib/mtm/attendance-tracking"
 import { Prisma } from "@prisma/client"
@@ -21,7 +21,8 @@ const profileDto = (row: Row): AttendanceLeaveRevision<AttendanceLeaveProfile> =
 async function admin(tx: Tx, reviewer: AttendanceReviewer) {
   await currentAttendanceReadActor(tx, reviewer)
   const user = await tx.user.findFirst({ where: { id: reviewer.userId, organizationId: reviewer.organizationId }, select: { role: true, hiddenModules: true, mtmAttendanceAll: true } })
-  if (!isPersonnelManager(user)) return fail("ADMIN_REQUIRED", 403)
+  if (!user || !isPersonnelManager(user)) return fail("ADMIN_REQUIRED", 403)
+  return user
 }
 async function latestPolicy(tx: Tx, organizationId: string, year: number) {
   const [row] = await tx.$queryRaw<Row[]>`SELECT id,year,version,"createdAt",value,"requestHash","createdBy" FROM mtm_attendance_leave_policies
@@ -36,8 +37,10 @@ async function save(reviewer: AttendanceReviewer, raw: unknown, kind: "policy" |
   return prisma.$transaction(async (tx: Tx) => {
     await tx.$executeRaw`SELECT set_config('lock_timeout','3s',true)`
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`mtm-attendance-leave:${reviewer.organizationId}:${input.year}`},0))`
-    await admin(tx, reviewer)
+    const user = await admin(tx, reviewer)
     const agentId = "agentId" in input ? input.agentId : null
+    // HR do not set their own leave entitlement; an administrator does.
+    if (agentId && !isCrmAdminRole(user.role) && await tx.mtmAgent.findFirst({ where: { id: agentId, organizationId: reviewer.organizationId, userId: reviewer.userId }, select: { id: true } })) return fail("ADMIN_REQUIRED", 403)
     if (agentId && !await tx.mtmAgent.findFirst({ where: { id: agentId, organizationId: reviewer.organizationId, ...ATTENDANCE_TRACKED_CARD_WHERE }, select: { id: true } })) return fail("EMPLOYEE_UNAVAILABLE", 404)
     const [existing] = await tx.$queryRaw<Row[]>(Prisma.sql`SELECT id,year,version,"createdAt",value,"requestHash","createdBy" FROM ${table} WHERE "organizationId"=${reviewer.organizationId} AND "requestId"=${input.requestId}`)
     if (existing) {

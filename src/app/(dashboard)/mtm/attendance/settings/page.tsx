@@ -36,7 +36,8 @@ export default async function PersonnelSettingsPage({ searchParams }: { searchPa
   }
   const requested = (Array.isArray(raw) ? raw[0] : raw) as AttendanceSettingsCard | undefined
   const tab = requested && ATTENDANCE_SETTINGS_CARDS.includes(requested) && (isAdmin || !ATTENDANCE_ADMIN_SETTINGS.includes(requested)) ? requested : null
-  if (!tab) return <MtmAttendanceSettingsHub isAdmin={isAdmin} />
+  // HR run every card; switching the whole section off stays with an administrator.
+  if (!tab) return <MtmAttendanceSettingsHub isAdmin={isAdmin} canSwitchOff={session?.user?.role === "admin" || session?.user?.role === "superadmin"} />
   return <div className="space-y-6">
     <Link href="/mtm/attendance/settings" prefetch={false} className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary hover:underline" data-testid="attendance-back-to-settings">
       <ChevronLeft className="h-4 w-4" aria-hidden="true" />{t("settingsTitle")}</Link>

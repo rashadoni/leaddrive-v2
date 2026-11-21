@@ -802,7 +802,25 @@ pgDescribe("MTM office employees on real PostgreSQL", () => {
       .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID" })
     await tenant(automaticOrg, () => store.updateAttendanceEmployee(automaticAdmin, hired.agentId, { ...page, name: "Fictional HR hire", managerId: own.id }))
     await bypass(() => prisma.mtmAgent.update({ where: { id: hired.agentId }, data: { managerId: null } }))
-    await bypass(() => prisma.mtmAgent.update({ where: { id: own.id }, data: { role: "EMPLOYEE" } }))
+    // A supervisor's scope is their team: neither moving someone in nor moving themselves out to another is theirs.
+    const [ownTeam, otherTeam] = ["automatic-hr-team-own", "automatic-hr-team-other"]
+    await bypass(async () => {
+      for (const id of [ownTeam, otherTeam]) await prisma.mtmTeam.create({ data: { id, organizationId: automaticOrg, name: id } })
+      await prisma.mtmAgent.update({ where: { id: own.id }, data: { role: "SUPERVISOR", teamId: ownTeam } })
+      await prisma.mtmAgent.update({ where: { id: hired.agentId }, data: { teamId: otherTeam } })
+    })
+    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(hr, hired.agentId, { ...page, name: "Fictional HR hire", teamId: ownTeam })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID" })
+    await expect(tenant(automaticOrg, () => store.updateAttendanceEmployee(hr, own.id, { ...page, name: "Fictional HR", teamId: otherTeam })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_MANAGER_INVALID" })
+    expect(await tenant(automaticOrg, () => prisma.mtmAgent.findUniqueOrThrow({ where: { id: hired.agentId }, select: { teamId: true } }))).toEqual({ teamId: otherTeam })
+    await expect(tenant(automaticOrg, () => store.setAttendanceParticipation(hr, { clientRequestId: randomUUID(), agentId: own.id, included: false, previousEventId: null })))
+      .rejects.toMatchObject({ code: "MTM_ATTENDANCE_EMPLOYEE_ADMIN_REQUIRED" })
+    await bypass(async () => {
+      await prisma.mtmAgent.update({ where: { id: own.id }, data: { role: "EMPLOYEE", teamId: null } })
+      await prisma.mtmAgent.update({ where: { id: hired.agentId }, data: { teamId: null } })
+      await prisma.mtmTeam.deleteMany({ where: { id: { in: [ownTeam, otherTeam] } } })
+    })
   })
 
   it("serializes legacy profile phone and metadata saves, rolls both records back on audit failure and locks canonical login fields", async () => {

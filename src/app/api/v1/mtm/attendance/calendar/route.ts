@@ -17,7 +17,7 @@ export const GET = withMtmAttendanceAuth("read", async (req, auth) => {
 })
 
 async function mutate(req: NextRequest, auth: AttendanceAuth, remove: boolean) {
-  if !auth.canManagePersonnel {
+  if (!auth.canManagePersonnel) {
     return NextResponse.json({ error: "Forbidden", code: "MTM_ATTENDANCE_ADMIN_REQUIRED" }, { status: 403 })
   }
   try {
