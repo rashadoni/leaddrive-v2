@@ -40,9 +40,11 @@ import { asksDeposit, depositPolicy } from "@/lib/booking/deposit"
 
 import { BOOK_TOOL, CANCEL_TOOL, clockIn, FIND_TOOL, PHONE_SERVICES_MAX, weekdayOf, type PhoneService } from "./prompt"
 
-/** Free times in one answer. */
-const TIMES_MAX = 8
+/** Ranges of free start times in one answer (a day cut into more pieces is cut short and says so). */
+const RANGES_MAX = 8
 const TIMES_AFTER_TAKEN = 3
+/** The caller's appointments read back with a booking. */
+const APPOINTMENTS_MAX = 5
 
 export type BookingToolContext = {
   organizationId: string
@@ -92,10 +94,27 @@ const cancelArgs = z.object({ date: dateSchema, time: timeSchema.optional() })
 const invalid = (): ToolResult => ({ status: "invalid_request" })
 const unavailable = (): ToolResult => ({ status: "unavailable" })
 
-/** A few of the day's times across the whole day, not its first eight: «после обеда» must be among them. */
-function sample<T>(items: readonly T[], max: number): T[] {
-  if (items.length <= max) return [...items]
-  return Array.from({ length: max }, (_, index) => items[Math.round(index * (items.length - 1) / (max - 1))])
+type FreeSlot = { startsAt: string; endsAt: string }
+
+/**
+ * Every free start time of a day, as ranges: "09:00-12:30" with every 30 is 09:00, 09:30 … 12:30.
+ *
+ * Whole, not a sample. Stand call 2026-11-22: given eight times of a free day (09:00, 10:30,
+ * 12:00 …) the model told the caller that 11:00 was taken — it was not, it was only not in the
+ * sample — and never tried to book it. A range is also fewer tokens than the times it stands for.
+ */
+function freeRanges(slots: readonly FreeSlot[], timezone: string): { every: number; free: string[]; more?: true } {
+  const minutes = (slot: FreeSlot) => Math.round((Date.parse(slot.endsAt) - Date.parse(slot.startsAt)) / 60_000)
+  const every = slots.length ? minutes(slots[0]) : 0
+  const ranges: { from: FreeSlot; to: FreeSlot }[] = []
+  for (const slot of [...slots].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))) {
+    const last = ranges.at(-1)
+    if (last && Date.parse(slot.startsAt) - Date.parse(last.to.startsAt) === every * 60_000) last.to = slot
+    else ranges.push({ from: slot, to: slot })
+  }
+  const text = ranges.slice(0, RANGES_MAX).map(({ from, to }) =>
+    from === to ? clockIn(from.startsAt, timezone) : `${clockIn(from.startsAt, timezone)}-${clockIn(to.startsAt, timezone)}`)
+  return { every, free: text, ...(ranges.length > RANGES_MAX ? { more: true as const } : {}) }
 }
 
 /** The free days of a service exactly as its public page offers them, or null when the page is gone. */
@@ -110,13 +129,18 @@ async function findFreeTimes(ctx: BookingToolContext, raw: unknown): Promise<Too
   if (!args.success || !service) return invalid()
   const free = await freeDays(ctx, service.pageId)
   if (!free) return unavailable()
-  const times = (day: { slots: { startsAt: string }[] }, max: number) => sample(day.slots, max).map((slot) => clockIn(slot.startsAt, free.timezone))
   const day = free.days.find((item) => item.date === args.data.date)
-  if (day) return { date: day.date, weekday: weekdayOf(day.date), times: times(day, TIMES_MAX) }
-  // Nothing that day: the nearest day that has something, so one call answers «а когда тогда?».
-  const next = free.days.find((item) => item.date > args.data.date) ?? free.days[0]
-  return { date: args.data.date, times: [],
-    ...(next ? { next: { date: next.date, weekday: weekdayOf(next.date), times: times(next, TIMES_AFTER_TAKEN + 1) } } : {}) }
+  if (day) return { date: day.date, weekday: weekdayOf(day.date), ...freeRanges(day.slots, free.timezone) }
+  return { date: args.data.date, free: [], ...nextDay(free, args.data.date) }
+}
+
+/**
+ * Nothing on the day asked for — the service is not given that day, or the day is full: the
+ * nearest day that has something, so one answer covers «а когда тогда?» without another round.
+ */
+function nextDay(free: { timezone: string; days: { date: string; slots: FreeSlot[] }[] }, date: string) {
+  const next = free.days.find((item) => item.date > date) ?? free.days[0]
+  return next ? { next: { date: next.date, weekday: weekdayOf(next.date), ...freeRanges(next.slots, free.timezone) } } : {}
 }
 
 /** The three free times of that day nearest the one asked for; of two equally near, the later: a caller who wanted 11 can rarely come earlier. */
@@ -126,7 +150,28 @@ function nearest(slots: readonly { startsAt: string }[], wanted: Date, timezone:
     .slice(0, TIMES_AFTER_TAKEN).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)).map((slot) => clockIn(slot.startsAt, timezone))
 }
 
-const booked = (date: string, time: string): ToolResult => ({ status: "booked", date, weekday: weekdayOf(date), time })
+type Appointment = { id: string; pageId: string; date: string; time: string; service: string }
+
+/**
+ * The confirmed appointments ahead on the number the caller rang from, soonest first. The number
+ * is compared as a number, not as text: a meeting booked on the public page as «050 111 22 33»
+ * is the same caller's.
+ */
+async function callerAppointments(ctx: BookingToolContext, timezone: string): Promise<Appointment[]> {
+  if (!ctx.callerNumber) return []
+  const upcoming = await prisma.booking.findMany({
+    where: { organizationId: ctx.organizationId, status: "confirmed", startsAt: { gt: ctx.now } },
+    orderBy: { startsAt: "asc" }, take: 2000,
+    select: { id: true, phone: true, startsAt: true, bookingPageId: true, bookingPage: { select: { title: true } } },
+  })
+  return upcoming.filter((row) => normalizeLineNumber(row.phone) === ctx.callerNumber).map((row) => ({
+    id: row.id, pageId: row.bookingPageId, date: dateInputValueInTimezone(row.startsAt, timezone), time: clockIn(row.startsAt, timezone),
+    // The call's own code where the call has one (the model knows its name); else the name.
+    service: ctx.services.find((item) => item.pageId === row.bookingPageId)?.code ?? row.bookingPage.title.slice(0, 60),
+  }))
+}
+
+const spoken = (rows: readonly Appointment[]) => rows.slice(0, APPOINTMENTS_MAX).map(({ service, date, time }) => ({ service, date, time }))
 
 async function bookAppointment(ctx: BookingToolContext, raw: unknown): Promise<ToolResult> {
   const args = bookArgs.safeParse(raw)
@@ -139,16 +184,25 @@ async function bookAppointment(ctx: BookingToolContext, raw: unknown): Promise<T
   let startsAt: Date
   try { startsAt = localDateTimeToUnambiguousUtc(`${args.data.date}T${args.data.time}`, org.timezone) } catch { return invalid() }
   const { date, time } = args.data
+  /**
+   * Booked, with every appointment the caller now holds. Stand call 2026-11-22: asked to repeat
+   * «both appointments», the model named one it had never booked. What it sums up from is in the
+   * tool's own answer, not in its memory of the conversation. A caller whose number is hidden gets
+   * only this one back: a dictated number is not proof of whose appointments these are.
+   */
+  const booked = async (): Promise<ToolResult> => ({ status: "booked", date, weekday: weekdayOf(date), time,
+    all: ctx.callerNumber ? spoken(await callerAppointments(ctx, org.timezone)) : [{ service: service.code, date, time }] })
   // This number already holds this very time of this service: the answer is the
   // meeting it has, whether the first answer was lost on the way or the model
   // asked again with the name spelt differently. Never a second row.
   const held = () => prisma.booking.findFirst({
     where: { organizationId: ctx.organizationId, bookingPageId: service.pageId, startsAt, phone, status: "confirmed" }, select: { id: true } })
-  if (await held()) return booked(date, time)
+  if (await held()) return booked()
   const taken = async (): Promise<ToolResult> => {
     const free = await freeDays(ctx, service.pageId).catch(() => null)
     const day = free?.days.find((item) => item.date === date)
-    return { status: "taken", date, times: day && free ? nearest(day.slots, startsAt, free.timezone) : [] }
+    if (free && day) return { status: "taken", date, times: nearest(day.slots, startsAt, free.timezone) }
+    return { status: "taken", date, times: [], ...(free ? nextDay(free, date) : {}) }
   }
   try {
     const identity = `${ctx.organizationId}:${ctx.callLogId}:${service.pageId}:${startsAt.toISOString()}`
@@ -160,12 +214,12 @@ async function bookAppointment(ctx: BookingToolContext, raw: unknown): Promise<T
       startsAt: startsAt.toISOString(), name: args.data.name, phone,
       phoneCall: { callLogId: ctx.callLogId },
     }, ctx.now)
-    if (result.ok) return booked(date, time)
+    if (result.ok) return booked()
     return result.reason === "taken" ? taken() : unavailable()
   } catch (error) {
-    if (error instanceof IdempotencyConflictError) return (await held()) ? booked(date, time) : unavailable()
+    if (error instanceof IdempotencyConflictError) return (await held()) ? booked() : unavailable()
     if (error instanceof BookingCommandError) {
-      if (error.code === "AVAILABILITY_CHANGED" || error.code === "SLOT_TAKEN") return (await held()) ? booked(date, time) : taken()
+      if (error.code === "AVAILABILITY_CHANGED" || error.code === "SLOT_TAKEN") return (await held()) ? booked() : taken()
       // A host's calendar that cannot be read blocks the booking, as on the public page.
       return unavailable()
     }
@@ -179,18 +233,13 @@ async function cancelAppointment(ctx: BookingToolContext, raw: unknown): Promise
   // Nothing identifies a caller with a hidden number: the administrator cancels for them.
   if (!ctx.callerNumber) return { status: "none" }
   const org = await orgContext(ctx.organizationId)
-  const upcoming = await prisma.booking.findMany({
-    where: { organizationId: ctx.organizationId, status: "confirmed", startsAt: { gt: ctx.now } },
-    orderBy: { startsAt: "asc" }, take: 2000,
-    select: { id: true, phone: true, startsAt: true, bookingPage: { select: { title: true } } },
-  })
-  const mine = upcoming.filter((row) => normalizeLineNumber(row.phone) === ctx.callerNumber)
-    .map((row) => ({ id: row.id, date: dateInputValueInTimezone(row.startsAt, org.timezone), time: clockIn(row.startsAt, org.timezone), service: row.bookingPage.title }))
+  const mine = (await callerAppointments(ctx, org.timezone))
     .filter((row) => row.date === args.data.date && (!args.data.time || row.time === args.data.time))
   if (mine.length === 0) return { status: "none" }
-  if (mine.length > 1) return { status: "several", appointments: mine.slice(0, 4).map(({ date, time, service }) => ({ date, time, service: service.slice(0, 60) })) }
+  if (mine.length > 1) return { status: "several", appointments: spoken(mine) }
   const outcome = await cancelStoredBooking(ctx.organizationId, mine[0].id)
-  return outcome === "cancelled" || outcome === "already" ? { status: "cancelled", date: mine[0].date, time: mine[0].time } : { status: "none" }
+  if (outcome !== "cancelled" && outcome !== "already") return { status: "none" }
+  return { status: "cancelled", date: mine[0].date, time: mine[0].time, all: spoken(await callerAppointments(ctx, org.timezone)) }
 }
 
 /** One tool call of a booking call. Throws only on what is not the caller's doing (the database). */

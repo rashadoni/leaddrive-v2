@@ -41,10 +41,10 @@ export function bookingToolDeclarations(services: readonly PhoneService[]) {
   const date = { type: "STRING", description: "YYYY-MM-DD" }
   return [
     { name: FIND_TOOL,
-      description: "Free times of one service on one day. A sample: another time may be free too, book_appointment checks it.",
+      description: "Every free start time of one service on one day. free is ranges: 09:00-12:30 with every 30 means 09:00, 09:30 ... 12:30. next: the nearest day with free times when that day has none.",
       parameters: { type: "OBJECT", properties: { service, date }, required: ["service", "date"] } },
     { name: BOOK_TOOL,
-      description: "Book once the caller gave service, day, time and name. booked: confirm it. taken: offer its times. need_phone: ask the caller's number and call again with phone.",
+      description: "Book once the caller gave service, day, time and name. booked: confirm it; all is every appointment the caller now holds. taken: offer its times. need_phone: ask the caller's number and call again with phone.",
       parameters: { type: "OBJECT", properties: { service, date, time: { type: "STRING", description: "HH:MM, 24-hour" },
         name: { type: "STRING", description: "The caller's name as said." },
         phone: { type: "STRING", description: "Only after need_phone." } }, required: ["service", "date", "time", "name"] } },
@@ -75,7 +75,8 @@ export function bookingPromptBlock(input: { services: readonly PhoneService[]; t
     `Services (code: name, length, price): ${list}.`,
     "To book you need the service, the day, the time and the caller's name: ask only for what is missing, one question at a time.",
     `When the caller names a day and a time, call ${BOOK_TOOL} at once: it checks the time itself. Call ${FIND_TOOL} only when the caller asks what is free or names no time, and offer at most three of its times.`,
-    `Say an appointment is booked or cancelled only after the tool returned that status in this call, and name its day and time once. taken: say that time is taken and offer the times returned. unavailable or any other status: say the administrator will call back, never that it is booked.`,
+    `Say an appointment is booked or cancelled only after the tool returned that status in this call, and name its day and time once. Never say a time is taken or free from memory or from an older answer: only ${BOOK_TOOL} decides. taken: say that time is taken and offer the times returned, or the day in next when that day has none. unavailable or any other status: say the administrator will call back, never that it is booked.`,
+    `When you repeat or sum up appointments, name only those in all of the latest booked answer. One the caller asked for that is not there is NOT booked: book it now or say it is not booked.`,
     `To cancel, ask "Qəbulu ləğv edək?" and call ${CANCEL_TOOL} only after a clear yes. To move an appointment, book the new time first, then cancel the old one.`,
     "A service that is not in the list is not booked by phone: take the request for the administrator.",
     `When the caller says goodbye or has nothing more, say exactly this closing sentence and nothing after it: "${input.closing}" The line is hung up after it. Never say it earlier.`,
