@@ -5,7 +5,7 @@
  * exactly what the assistants did before training existed.
  */
 import { prisma } from "@/lib/prisma"
-import { composeLearnedCharacter, composeLearnedKnowledge, type LearnedRow } from "@/lib/inbox/learning/compose"
+import { MANUAL_SOURCE, composeLearnedCharacter, composeLearnedKnowledge, type LearnedRow } from "@/lib/inbox/learning/compose"
 
 export type LearnedBlocks = { character: string; knowledge: string }
 const NONE: LearnedBlocks = { character: "", knowledge: "" }
@@ -25,12 +25,25 @@ export async function learnedPromptBlocks(params: {
       channelConfigId = conversation?.channelConfigId ?? null
     }
     if (!channelConfigId) return NONE
-    const rows: LearnedRow[] = await prisma.inboxLearnedItem.findMany({
-      where: { organizationId: params.organizationId, channelConfigId, removedAt: null },
+    const channelRows = { organizationId: params.organizationId, channelConfigId, removedAt: null }
+    const read = {
       orderBy: [{ lastSeenAt: "desc" }, { id: "asc" }],
-      select: { kind: true, type: true, title: true, body: true, status: true, removedAt: true },
+      select: { kind: true, type: true, title: true, body: true, status: true, source: true, removedAt: true },
       take: 400,
-    })
+    }
+    // Two reads, so that learned rows, however many and however fresh, cannot push the character or
+    // what a person added out of the window. Waiting and conflicting prices are in neither.
+    const [fixed, learned]: LearnedRow[][] = await Promise.all([
+      prisma.inboxLearnedItem.findMany({
+        ...read,
+        where: { ...channelRows, OR: [{ kind: "trait" }, { kind: "knowledge", status: "active", source: MANUAL_SOURCE }] },
+      }),
+      prisma.inboxLearnedItem.findMany({
+        ...read,
+        where: { ...channelRows, kind: "knowledge", status: "active", source: { not: MANUAL_SOURCE } },
+      }),
+    ])
+    const rows = [...fixed, ...learned]
     return { character: composeLearnedCharacter(rows), knowledge: composeLearnedKnowledge(rows) }
   } catch (error) {
     console.error("[inbox-learning prompt]", error instanceof Error ? error.message : error)

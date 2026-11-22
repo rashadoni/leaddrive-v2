@@ -15,10 +15,19 @@ export type LearnedRow = {
   title: string
   body: string
   status: string
+  source: string
   removedAt: Date | null
 }
 
-/** The share of the prompt the learned knowledge may take; the newest-seen rows come first. */
+/** A row a person added with «Добавить знание»: the company's own word, a price included. */
+export const MANUAL_SOURCE = "manual"
+
+/**
+ * The share of the prompt the learned knowledge may take. What a person added comes first, then the
+ * newest-seen learned rows: learned rows refresh their date on every conversation, so by date alone
+ * a price the company typed in would be the first thing to fall out, and the price rule would stop
+ * finding it among the facts.
+ */
 export const LEARNED_KNOWLEDGE_MAX_CHARS = 6000
 
 const TRAIT_LABEL: Record<string, string> = {
@@ -55,15 +64,20 @@ export function composeLearnedCharacter(rows: readonly LearnedRow[]): string {
 
 export function composeLearnedKnowledge(rows: readonly LearnedRow[], maxChars = LEARNED_KNOWLEDGE_MAX_CHARS): string {
   const usable = rows.filter(isUsableKnowledge)
-  if (usable.length === 0) return ""
+  const ordered = [
+    ...usable.filter((r) => r.source === MANUAL_SOURCE),
+    ...usable.filter((r) => r.source !== MANUAL_SOURCE),
+  ]
   const lines: string[] = []
   let used = 0
-  for (const row of usable) {
+  for (const row of ordered) {
     const line = `- ${row.title.trim()}: ${row.body.trim().replace(/\s+/g, " ")}`
-    if (used + line.length + 1 > maxChars) break
+    // One long row does not cost the shorter ones after it their place.
+    if (used + line.length + 1 > maxChars) continue
     lines.push(line)
     used += line.length + 1
   }
+  if (lines.length === 0) return ""
   return `Выучено из ответов сотрудников этой страницы и проверено компанией:\n${lines.join("\n")}`
 }
 

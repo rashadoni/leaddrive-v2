@@ -214,7 +214,7 @@ describe("a conversation's facts join the channel's knowledge", () => {
 })
 
 describe("what the AI may state", () => {
-  const row = (over: Partial<LearnedRow>): LearnedRow => ({ kind: "knowledge", type: "qa", title: "T", body: "B", status: "active", removedAt: null, ...over })
+  const row = (over: Partial<LearnedRow>): LearnedRow => ({ kind: "knowledge", type: "qa", title: "T", body: "B", status: "active", source: "learned", removedAt: null, ...over })
 
   it("puts only confirmed knowledge among the facts", () => {
     const text = composeLearnedKnowledge([
@@ -230,6 +230,33 @@ describe("what the AI may state", () => {
     expect(text).not.toContain("30 ₼")
     expect(text).not.toContain("Парковка")
     expect(composeLearnedKnowledge([row({ status: "pending" })])).toBe("")
+  })
+
+  it("keeps what a person added when learned rows overflow the block, and puts it first", () => {
+    const learned = Array.from({ length: 40 }, (_, i) => row({ title: `Вопрос ${i}`, body: "ответ ".repeat(40) }))
+    const text = composeLearnedKnowledge([
+      ...learned,
+      row({ type: "price", title: "Новый прайс", body: "Маникюр 40 ₼", source: "manual" }),
+      row({ type: "price", title: "Ждёт", body: "77 ₼", status: "pending", source: "manual" }),
+      row({ type: "price", title: "Спор", body: "88 ₼", status: "conflict" }),
+    ])
+    expect(text.split("\n")[1]).toBe("- Новый прайс: Маникюр 40 ₼")
+    expect(text).toContain("- Вопрос 0:") // learned rows still fill what is left
+    expect(text).not.toContain("- Вопрос 39:") // the block did overflow
+    expect(text).not.toContain("77 ₼")
+    expect(text).not.toContain("88 ₼")
+  })
+
+  it("lets a shorter row in after one that did not fit, and writes no empty block", () => {
+    const text = composeLearnedKnowledge([
+      row({ title: "Короткое 1", body: "a" }),
+      row({ title: "Длинное", body: "x".repeat(200) }),
+      row({ title: "Короткое 2", body: "b" }),
+    ], 60)
+    expect(text).toContain("- Короткое 1: a")
+    expect(text).toContain("- Короткое 2: b")
+    expect(text).not.toContain("Длинное")
+    expect(composeLearnedKnowledge([row({ body: "x".repeat(200) })], 60)).toBe("")
   })
 
   it("writes the character as rules, phrases quoted", () => {
