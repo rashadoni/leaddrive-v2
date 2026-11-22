@@ -279,6 +279,7 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   "inbox_business-hours": "config",
   "inbox_ai-agent": "config",
   "inbox_ai-training": "config",
+  inbox_comments: "surface",
   contracts_lifecycle: "surface",
   contracts_templates: "config",
   contracts_request: "config",

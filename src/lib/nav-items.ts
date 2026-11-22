@@ -490,6 +490,9 @@ export const navItems: NavItem[] = [
   // Per-group AI agent — last section of the Communication group (omnichannel's own
   // agent + per-channel AI/agent matrix; kept separate from the support/sales agents).
   { module: "omnichannel", href: "/inbox/ai-agent", icon: Sparkles, tKey: "aiAgentNav", group: "Communication", addon: "ai" },
+  // Comments under the company's posts and reels (owner 2026-11-22): people write the reel's word
+  // under the reel, not in Direct. Grouped by post, answered here (lib/inbox/comments-board).
+  { module: "omnichannel", href: "/inbox/comments", icon: MessageCircle, tKey: "inboxCommentsNav", group: "Communication" },
   // Its training (owner 2026-11-15): the AI learns from how the team answers on a channel.
   { module: "omnichannel", href: "/inbox/ai-training", icon: GraduationCap, tKey: "aiTrainingNav", group: "Communication", addon: "ai" },
 
