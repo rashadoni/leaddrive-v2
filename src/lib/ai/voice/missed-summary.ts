@@ -13,6 +13,7 @@ import {
 } from "@/lib/inbox/business-hours"
 import { visibleChannelWhere } from "@/lib/inbox/channel-access"
 import { canRead, type Role } from "@/lib/permissions"
+import { readableProductName } from "@/lib/pharmacy-orders/product-label"
 import { prisma } from "@/lib/prisma"
 import { localDateTimeToUtc } from "@/lib/timezone"
 import { readCallOutcome } from "@/lib/voice-agent/call-outcome"
@@ -41,6 +42,12 @@ const SPOKEN_PEOPLE = 5
 const SPOKEN_NAME_LIMIT = 60
 /** Written out so the voice tools do not load the order line's modules; the test holds it equal. */
 export const MISSED_PHONE_ORDERS_FEATURE = "pharmacy_phone_orders"
+/** How much of the period's orders is read aloud; the rest is a count and the screen. */
+const SPOKEN_ORDERS = 5
+const SPOKEN_ORDER_ITEMS = 10
+const SPOKEN_PRODUCT_LIMIT = 80
+/** The pharmacy is what 1C or a manager says it is; any other name is the caller's word. */
+const PHARMACY_KNOWN_BY = new Set(["phone_unique", "manager_selected"])
 
 export type BusinessHoursForPeriod = {
   channelType: string
@@ -174,12 +181,32 @@ function spokenTime(at: Date, timezone: string): string {
   }).format(at)
 }
 
+export type MissedPhoneOrder = {
+  /** The number people see on the order, TS-1234. */
+  order: string
+  at: string
+  pharmacy: string | null
+  /** False: the caller only named this pharmacy, nobody has confirmed it. */
+  pharmacyConfirmed: boolean
+  status: "awaiting_review" | "confirmed"
+  amount: number
+  currency: string
+  /** Catalog names only. What the caller said for a line is never read aloud. */
+  items: Array<{ product: string; quantity: number; unit: string; amount: number | null }>
+  moreItems: number
+  /** Lines the catalog did not recognize: a manager has to pick the product. */
+  itemsNotIdentified: number
+}
+
 export type MissedPhoneOrders = {
   count: number
   /** Orders holding a line with no price: their amount covers the priced lines only. */
   ordersWithUnpricedLines: number
   /** One row per currency, never added together: the CRM has no exchange rates. */
   totals: Array<{ currency: string; orders: number; amount: number }>
+  /** The newest orders of the period, so a follow-up question has an answer. */
+  orders: MissedPhoneOrder[]
+  moreOrders: number
 }
 
 /** `absent`: the organization has no phone orders. `denied`: it has, this person may not read them. */
@@ -412,7 +439,7 @@ async function readPhoneOrders(orgId: string, period: MissedPeriod): Promise<Mis
     status: { not: "rejected" },
     pharmacyIdentification: { not: "test_call" },
   })
-  const [groups, ordersWithUnpricedLines] = await Promise.all([
+  const [groups, ordersWithUnpricedLines, newest] = await Promise.all([
     prisma.pharmacyPhoneOrder.groupBy({
       by: ["currency"],
       where,
@@ -421,13 +448,75 @@ async function readPhoneOrders(orgId: string, period: MissedPeriod): Promise<Mis
       orderBy: { currency: "asc" },
     }) as Promise<Array<{ currency: string; _count: { _all: number }; _sum: { totalAmount: unknown } }>>,
     prisma.pharmacyPhoneOrder.count({ where: { ...where, lines: { some: { lineTotal: null } } } }) as Promise<number>,
+    prisma.pharmacyPhoneOrder.findMany({
+      where,
+      orderBy: [{ finishedOnCallAt: "desc" }, { number: "desc" }],
+      take: SPOKEN_ORDERS,
+      select: {
+        number: true,
+        status: true,
+        finishedOnCallAt: true,
+        totalAmount: true,
+        currency: true,
+        pharmacyName: true,
+        pharmacyIdentification: true,
+        company: { select: { name: true } },
+        // `spokenText` is left out on purpose: it is free text from whoever
+        // called, and this answer is read by a model that can act on words.
+        lines: {
+          orderBy: { position: "asc" },
+          select: { status: true, productName: true, quantity: true, unit: true, lineTotal: true },
+        },
+      },
+    }) as Promise<PhoneOrderRow[]>,
   ])
   const totals = groups.map((row) => ({
     currency: row.currency,
     orders: row._count._all,
     amount: Number(String(row._sum.totalAmount ?? 0)),
   }))
-  return { count: totals.reduce((sum, row) => sum + row.orders, 0), ordersWithUnpricedLines, totals }
+  const count = totals.reduce((sum, row) => sum + row.orders, 0)
+  return {
+    count,
+    ordersWithUnpricedLines,
+    totals,
+    orders: newest.map((row) => spokenPhoneOrder(row, period.timezone)),
+    moreOrders: Math.max(0, count - newest.length),
+  }
+}
+
+type PhoneOrderRow = {
+  number: number
+  status: string
+  finishedOnCallAt: Date
+  totalAmount: unknown
+  currency: string
+  pharmacyName: string | null
+  pharmacyIdentification: string
+  company: { name: string } | null
+  lines: Array<{ status: string; productName: string | null; quantity: number; unit: string; lineTotal: unknown }>
+}
+
+function spokenPhoneOrder(row: PhoneOrderRow, timezone: string): MissedPhoneOrder {
+  const known = row.lines.filter((line) => line.status === "resolved" && line.productName)
+  const pharmacy = (row.company?.name ?? row.pharmacyName)?.replace(/[\r\n\t]+/g, " ").trim().slice(0, SPOKEN_NAME_LIMIT)
+  return {
+    order: `TS-${row.number}`,
+    at: spokenTime(row.finishedOnCallAt, timezone),
+    pharmacy: pharmacy || null,
+    pharmacyConfirmed: PHARMACY_KNOWN_BY.has(row.pharmacyIdentification),
+    status: row.status === "confirmed" ? "confirmed" : "awaiting_review",
+    amount: Number(String(row.totalAmount)),
+    currency: row.currency,
+    items: known.slice(0, SPOKEN_ORDER_ITEMS).map((line) => ({
+      product: readableProductName(line.productName!).slice(0, SPOKEN_PRODUCT_LIMIT),
+      quantity: line.quantity,
+      unit: line.unit.replace(/[^\p{L}]/gu, "").slice(0, 16),
+      amount: line.lineTotal === null ? null : Number(String(line.lineTotal)),
+    })),
+    moreItems: Math.max(0, known.length - SPOKEN_ORDER_ITEMS),
+    itemsNotIdentified: row.lines.length - known.length,
+  }
 }
 
 export async function buildMissedSummary(input: {
@@ -490,7 +579,7 @@ export async function buildMissedSummary(input: {
       notQualified: "known for calls only; chats have no such verdict, so never say how many chats did not fit",
       booked: "meetings the WhatsApp AI booked in the period and that are not cancelled; the AI does not book during phone calls. When bookedScope is own_and_granted, say the figure covers only the hosts this user can see",
       ...(input.phoneOrders === "absent" ? {} : {
-        phoneOrders: "orders the AI took on the phone and the caller confirmed on the call, not rejected; reported apart from handled, never added to it. Say each currency's amount separately and never add currencies. When ordersWithUnpricedLines is above zero, say those orders have lines without a price, so the amount covers only the priced lines",
+        phoneOrders: "orders the AI took on the phone and the caller confirmed on the call, not rejected; reported apart from handled, never added to it. Say each currency's amount separately and never add currencies. When ordersWithUnpricedLines is above zero, say those orders have lines without a price, so the amount covers only the priced lines. `orders` holds the newest orders: use it to answer which pharmacy, which products and how many. status awaiting_review means a manager has not checked it yet. When pharmacyConfirmed is false, say the caller only named that pharmacy. When moreOrders or moreItems is above zero, say the rest is on the phone orders screen",
       }),
     },
   }
