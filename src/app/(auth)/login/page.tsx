@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { signIn } from "@/lib/auth-signin"
 import { useRouter, useSearchParams } from "next/navigation"
+import { enterSignedInApp } from "@/lib/enter-signed-in-app"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
@@ -114,14 +115,13 @@ export default function LoginPage() {
       redirect: false,
     })
 
-    setLoading(false)
-
     if (!result?.ok || result.error) {
+      setLoading(false)
       setError(t("invalidCredentials"))
     } else {
       storeRememberedLogin(rememberMe, email)
-      router.push("/")
-      router.refresh()
+      // The button keeps spinning: the page is about to be replaced.
+      enterSignedInApp()
     }
   }
 

@@ -25,6 +25,12 @@ export type MicrophoneProblem =
   | "insecure_context"
   /** Inside an iframe whose embed does not carry allow="microphone". */
   | "embedded"
+  /**
+   * This document was loaded by a page that may not use the microphone (the
+   * sign-in page) and the CRM was entered without a reload. No permission can
+   * help: only loading the page again gives it the CRM's policy.
+   */
+  | "page_reload_needed"
   /** A real denial: the person, a browser setting, or an enterprise policy. */
   | "blocked"
   /** No microphone attached at all. */
@@ -48,6 +54,11 @@ export type MicrophoneEnvironment = {
    * never treated as having answered.
    */
   permission: "granted" | "prompt" | "denied" | "unknown"
+  /**
+   * Whether this document's Permissions-Policy lets it use the microphone.
+   * Absent where the browser cannot say (Safari, Firefox): not an answer.
+   */
+  documentAllowsMicrophone?: boolean
 }
 
 /**
@@ -69,11 +80,24 @@ export async function readMicrophoneEnvironment(): Promise<MicrophoneEnvironment
     // Left as "unknown": a browser that cannot report the permission must not
     // have an answer invented for it.
   }
+  let documentAllowsMicrophone: boolean | undefined
+  try {
+    const page = (typeof document === "undefined" ? undefined : document) as
+      | (Document & {
+          permissionsPolicy?: { allowsFeature(feature: string): boolean }
+          featurePolicy?: { allowsFeature(feature: string): boolean }
+        })
+      | undefined
+    documentAllowsMicrophone = (page?.permissionsPolicy ?? page?.featurePolicy)?.allowsFeature("microphone")
+  } catch {
+    // Same rule: no answer is not a "no".
+  }
   return {
     secureContext: typeof window !== "undefined" && window.isSecureContext === true,
     mediaDevicesPresent: typeof nav?.mediaDevices?.getUserMedia === "function",
     embedded: typeof window !== "undefined" && window.self !== window.top,
     permission,
+    ...(documentAllowsMicrophone === undefined ? {} : { documentAllowsMicrophone }),
   }
 }
 
@@ -87,6 +111,8 @@ export async function readMicrophoneEnvironment(): Promise<MicrophoneEnvironment
  */
 export function microphonePrecheck(env: MicrophoneEnvironment): MicrophoneProblem | null {
   if (!env.secureContext || !env.mediaDevicesPresent) return "insecure_context"
+  // In a frame the same "no" comes from the embedding page: that is `embedded`.
+  if (!env.embedded && env.documentAllowsMicrophone === false) return "page_reload_needed"
   return null
 }
 
@@ -138,6 +164,7 @@ export function microphoneMessageKey(problem: MicrophoneProblem): string {
   switch (problem) {
     case "insecure_context": return "micInsecureContext"
     case "embedded": return "micEmbedded"
+    case "page_reload_needed": return "micReloadPage"
     case "no_device": return "micNoDevice"
     case "device_busy": return "micBusy"
     case "blocked": return "micDenied"

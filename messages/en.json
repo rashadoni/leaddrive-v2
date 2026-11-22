@@ -29909,6 +29909,7 @@
     "micEmbedded": "The page is running inside another site, which does not pass microphone permission through. Open the CRM in its own window.",
     "micNoDevice": "No microphone was found. Plug in a headset or microphone and try again.",
     "micBusy": "The microphone is held by another application or blocked by the system. Close other calling apps and try again.",
+    "micReloadPage": "Refresh this page to turn on the microphone, then try again.",
     "micUnavailable": "The microphone could not be opened. Check your headset and try again."
   },
   "voiceCallQueue": {
