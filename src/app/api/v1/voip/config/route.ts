@@ -16,6 +16,7 @@ import {
   MIN_RINGS_BEFORE_AI,
   inboundRulesFitTransport,
 } from "@/lib/voip/inbound-answer";
+import { phoneAgentTextFits } from "@/lib/voice-agent/phone-agent/prompt";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,8 @@ const commonSettings = z.object({
     .optional(),
   // Same rule: a tab that does not know this switch must not turn it off.
   aiCallLeadsEnabled: z.boolean().optional(),
+  // «ИИ записывает на приём по телефону» (src/lib/voice-agent/phone-agent). Optional for the same reason.
+  phoneBookingEnabled: z.boolean().optional(),
 });
 
 const settingsSchema = z.discriminatedUnion("provider", [
@@ -101,6 +104,27 @@ const configSchema = z
         path: ["settings", "inboundAnswerMode"],
         message: "The AI can answer inbound calls only on Asterisk with the voice agent enabled",
       });
+    }
+    if (value.settings.phoneBookingEnabled) {
+      // The AI books on a call it answers itself, on the station line.
+      if (
+        value.settings.provider !== "asterisk" || !value.settings.voiceAgentEnabled
+        || !value.settings.inboundAnswerMode || value.settings.inboundAnswerMode === "human"
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["settings", "phoneBookingEnabled"],
+          message: "The AI can book appointments only on calls it answers on Asterisk",
+        });
+      } else if (!phoneAgentTextFits(value.settings)) {
+        // Such a call gets its rules whole, in one bounded text; a longer one
+        // would reach the caller with its knowledge cut off unseen.
+        ctx.addIssue({
+          code: "custom",
+          path: ["settings", "voiceAgentKnowledge"],
+          message: "AI rules and knowledge are too long for booking by phone",
+        });
+      }
     }
     const outboundAsteriskReady = (
       value.settings.provider !== "asterisk"

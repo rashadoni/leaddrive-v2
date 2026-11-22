@@ -19,6 +19,7 @@ import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { VoiceCallingHours } from "@/components/voip/voice-calling-hours"
 import { DEFAULT_VOICE_AGENT_PROMPT } from "@/lib/voice-agent/default-prompt"
+import { phoneAgentTextFits } from "@/lib/voice-agent/phone-agent/prompt"
 import {
   DEFAULT_INBOUND_GREETING,
   DEFAULT_RINGS_BEFORE_AI,
@@ -74,6 +75,7 @@ type ChannelSettings = {
   voiceAgentInboundGreeting?: string
   voiceAgentInboundRules?: string
   aiCallLeadsEnabled?: boolean
+  phoneBookingEnabled?: boolean
 }
 
 type ChannelConfig = {
@@ -155,6 +157,7 @@ export default function VoipSettingsPage() {
   const [inboundAnswerMode, setInboundAnswerMode] = useState<InboundAnswerMode>("human")
   const [inboundAiAfterRings, setInboundAiAfterRings] = useState(DEFAULT_RINGS_BEFORE_AI)
   const [aiCallLeads, setAiCallLeads] = useState(false)
+  const [phoneBooking, setPhoneBooking] = useState(false)
   const [inboundGreeting, setInboundGreeting] = useState("")
   const [inboundRules, setInboundRules] = useState("")
   const [voiceAgentPrompt, setVoiceAgentPrompt] = useState(DEFAULT_VOICE_AGENT_PROMPT)
@@ -212,6 +215,7 @@ export default function VoipSettingsPage() {
         )
         setInboundAiAfterRings(clampRingsBeforeAi(s.inboundAiAfterRings))
         setAiCallLeads(s.aiCallLeadsEnabled === true)
+        setPhoneBooking(s.phoneBookingEnabled === true)
         setInboundGreeting(s.voiceAgentInboundGreeting || "")
         setInboundRules(s.voiceAgentInboundRules || "")
         setVoiceAgentPrompt(s.voiceAgentPrompt || DEFAULT_VOICE_AGENT_PROMPT)
@@ -281,6 +285,12 @@ export default function VoipSettingsPage() {
   }, [provider, configId, loadThreeCxUrls])
 
   const voiceAgentPromptMissing = voiceAgentEnabled && !voiceAgentPrompt.trim()
+  // The server refuses the same text (phoneAgentTextFits): said here, before the save fails.
+  const phoneBookingTextTooLong = !phoneAgentTextFits({
+    provider: "asterisk", voiceAgentEnabled: true, inboundAnswerMode,
+    voiceAgentPrompt: voiceAgentPrompt.trim(), voiceAgentKnowledge: voiceAgentKnowledge.trim(),
+    voiceAgentInboundRules: inboundRules.trim(),
+  })
 
   const buildSettings = () => {
     const outboundAiEnabled = manualLeadAiCallsEnabled && provider === "asterisk" && voiceAgentEnabled
@@ -303,6 +313,8 @@ export default function VoipSettingsPage() {
       voiceAgentInboundGreeting: inboundGreeting.trim(),
       voiceAgentInboundRules: inboundRules.trim(),
       aiCallLeadsEnabled: aiCallLeads,
+      // Only a call the AI answers itself can be booked by it.
+      phoneBookingEnabled: phoneBooking && effectiveInboundAnswerMode !== "human",
       voiceAgentPrompt: voiceAgentPrompt.trim(),
       voiceAgentKnowledge: voiceAgentKnowledge.trim(),
     }
@@ -761,6 +773,28 @@ export default function VoipSettingsPage() {
                       onCheckedChange={setAiCallLeads}
                       aria-label={t("aiCallLeadsLabel")}
                     />
+                  </div>
+                )}
+
+                {voiceAgentEnabled && inboundAnswerMode !== "human" && (
+                  <div className="space-y-2 rounded-lg border p-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 space-y-1">
+                        <Label htmlFor="phone-booking" className="text-sm font-medium">
+                          {t("phoneBookingLabel")}
+                        </Label>
+                        <p className="text-xs leading-relaxed text-muted-foreground">{t("phoneBookingHint")}</p>
+                      </div>
+                      <Switch
+                        id="phone-booking"
+                        checked={phoneBooking}
+                        onCheckedChange={setPhoneBooking}
+                        aria-label={t("phoneBookingLabel")}
+                      />
+                    </div>
+                    {phoneBooking && phoneBookingTextTooLong && (
+                      <p role="alert" className="text-xs font-medium leading-relaxed text-destructive">{t("phoneBookingTooLong")}</p>
+                    )}
                   </div>
                 )}
 

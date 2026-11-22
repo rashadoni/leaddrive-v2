@@ -28,7 +28,8 @@ import { recordDemoPromptApplied } from "@/lib/demo-center/call-prompt-match"
 import { recordUnansweredCallback } from "@/lib/voice-agent/callback-fallback-task"
 import type { ConversationInsight } from "@/lib/conversation-intel/types"
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
-import { journalAiCallSpend, journalLineCallSpend } from "@/lib/voice-agent/call-spend"
+import { journalAiCallSpend, journalLineCallSpend, journalPhoneAgentCallSpend } from "@/lib/voice-agent/call-spend"
+import { phoneAgentMarker } from "@/lib/voice-agent/phone-agent/marker"
 import { callbackMarker } from "@/lib/voice-agent/pharmacy/zeytun-waitlist-callback"
 import { withStationTiming } from "@/lib/station-timing"
 
@@ -868,9 +869,15 @@ async function recordInboundAiResult(params: {
   }
   // Owner, 2026-11-22: the conversation of every other AI call is paid for as
   // well, whatever was said in it — a caller who stays silent still costs the
-  // greeting. Once per AI leg, like the line's.
+  // greeting. Once per AI leg, like the line's. A call the phone agent served
+  // (its own session, voice and tools) goes to the agent's own row, counted by
+  // the station; any other call is priced by its length. Either stays an
+  // ordinary customer call otherwise: analysed below, and a lead or a task
+  // when the organization asked for them.
   if (firstDelivery) {
-    journalAiCallSpend(organizationId, { durationSeconds: params.durationSeconds, usage: params.usage })
+    const spend = { durationSeconds: params.durationSeconds, usage: params.usage }
+    if (phoneAgentMarker(call.consentAudit, params.callId)) journalPhoneAgentCallSpend(organizationId, spend)
+    else journalAiCallSpend(organizationId, spend)
   }
   if (!customerSpoke) {
     return NextResponse.json({ success: true, analysisStatus: "not_applicable" })

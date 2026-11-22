@@ -13,7 +13,9 @@ import {
   aiCallLiveEstimateUsd, geminiSpeechMinuteUsd, liveUsageCostUsd, UNIT_PRICING, type LiveTokenCounts,
 } from "@/lib/ai/gateway/pricing"
 import { addLiveUsage, EMPTY_LIVE_USAGE, type LiveUsageMetadata } from "@/lib/ai/voice/live-usage"
-import { journalAiCallSpend, journalLineCallSpend, STATION_LIVE_MODEL, STATION_SPEECH_MODEL } from "@/lib/voice-agent/call-spend"
+import {
+  journalAiCallSpend, journalLineCallSpend, journalPhoneAgentCallSpend, STATION_LIVE_MODEL, STATION_SPEECH_MODEL,
+} from "@/lib/voice-agent/call-spend"
 import { voiceAgentLineUsageSchema } from "@/lib/voice-agent/post-call"
 
 type Turn = LiveUsageMetadata & { atSecond?: number }
@@ -177,6 +179,25 @@ describe("an AI call that is not the order line's", () => {
     const rows = journaled(journalAiCallSpend, { durationSeconds: 190, usage: { live: all } })
     expect(rows).toEqual([{ org: "org-1", provider: "gemini", feature: "ai-call", model: STATION_LIVE_MODEL,
       inputTokens: 73481 + 25788 + 2669, outputTokens: 1673 + 2154, costUsd: expect.closeTo(0.167853, 6) }])
+  })
+})
+
+describe("a call an organization's phone agent served", () => {
+  it("is priced like the line's — the same tokens, the same speech — in the agent's own row", () => {
+    const all = counted(stand.bookingCall190s.turns)
+    const usage = { live: all, tts: { requests: 14, chars: 900, audioSeconds: 60 } }
+    const agent = journaled(journalPhoneAgentCallSpend, { durationSeconds: 190, usage })
+    const line = journaled(journalLineCallSpend, { durationSeconds: 190, usage })
+    expect(agent.map((row) => row.feature)).toEqual(["phone-agent", "phone-agent"])
+    expect(agent.map((row) => ({ ...row, feature: "phone-line" }))).toEqual(line)
+    expect(Math.round(agent[0].costUsd * 1e4) / 1e4).toBe(0.1679)
+    expect(agent[1].costUsd).toBeCloseTo(0.0135, 12)
+  })
+
+  it("is priced by its length at the agent's rate, as an estimate, when the call ended before any turn", () => {
+    expect(journaled(journalPhoneAgentCallSpend, { durationSeconds: 30 })).toEqual([{ org: "org-1", provider: "gemini",
+      feature: "phone-agent", model: STATION_LIVE_MODEL, costUsd: expect.closeTo(0.03, 12), estimated: true }])
+    expect(UNIT_PRICING.phoneAgentLiveMinute).toBe(0.06)
   })
 })
 

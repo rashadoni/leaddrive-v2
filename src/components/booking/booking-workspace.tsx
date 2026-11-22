@@ -58,7 +58,7 @@ export interface WorkspaceBooking {
   hostName: string | null
   calendarLinked: boolean
   bookingPage: { title: string; locationType: string; locationText: string | null; timezone?: string | null; price?: string | null; priceCurrency?: string | null; repeatCycleDays?: number | null }
-  /** Where the meeting came from: «public_link», «staff» or «whatsapp». */
+  /** Where the meeting came from: «public_link», «staff», «whatsapp» or «phone» (the AI on a call). */
   source?: string
   /** What this visit was asked to leave to hold the time, and where it stands. */
   depositAmount?: string | null

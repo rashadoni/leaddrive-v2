@@ -10,8 +10,9 @@
  *  - speech: the seconds of audio its synthesis requests returned, at the
  *    price of the day.
  * A leg the station counted nothing for is priced by its length at a measured
- * rate, and the row says so (`estimated`): today that is every call that is
- * not the order line's — the core sends `usage` only for the line.
+ * rate, and the row says so (`estimated`). The core sends `usage` for a call
+ * that runs on the station's bridge — the order line's and a phone agent's —
+ * and for no other call yet.
  *
  * Platform keys either way, so the spend counts toward the organization's
  * daily AI limit when it set one, like Chirp; the station itself is never
@@ -76,6 +77,23 @@ export function journalLineCallSpend(
 ): void {
   journalLegSpend(organizationId, "phone-line",
     (seconds) => perMinuteCostUsd(UNIT_PRICING.phoneLineLiveMinute, seconds), call, journal, at)
+}
+
+/**
+ * A call an organization's phone agent served (src/lib/voice-agent/phone-agent:
+ * its own session, voice and tools; the row «Телефонный ИИ-агент»). It runs on
+ * the same station branch as the line, so the station sends the same `usage`.
+ * A result with none — a call that ended before any turn — is priced by the
+ * leg's length at the agent's measured rate a minute.
+ */
+export function journalPhoneAgentCallSpend(
+  organizationId: string,
+  call: AiLegSpend,
+  journal: Journal = journalPlatformAiCall,
+  at: Date = new Date(),
+): void {
+  journalLegSpend(organizationId, "phone-agent",
+    (seconds) => perMinuteCostUsd(UNIT_PRICING.phoneAgentLiveMinute, seconds), call, journal, at)
 }
 
 /**

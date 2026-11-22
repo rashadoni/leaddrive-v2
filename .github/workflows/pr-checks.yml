@@ -881,6 +881,19 @@ jobs:
           AI_CALL_FOLLOW_UP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           AI_CALL_FOLLOW_UP_DB_GATE: required
 
+      - name: Phone agent booking database gate
+        # «ИИ записывает на приём по телефону» (src/lib/voice-agent/phone-agent): the station's
+        # session and tool requests through the real route. A booking is one confirmed meeting
+        # of the call's own organization on the caller's number; the same request again, or two
+        # at once, is the same meeting; another tenant's call books only in its own and RLS
+        # itself refuses a tool pointed elsewhere; a cancel reaches only the caller's own
+        # meeting; the pharmacy line's channel is never taken; the call's Live and speech spend
+        # is written once. FORCE RLS, no BYPASSRLS.
+        run: npx vitest run src/__tests__/phone-agent-booking-postgres.test.ts
+        env:
+          PHONE_AGENT_BOOKING_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          PHONE_AGENT_BOOKING_DB_GATE: required
+
       - name: Inbox analytics website chat database gate
         # The website chat in the inbox reports (the «Bu gün» card, /inbox/analytics):
         # analytics/temporal and analytics/frt read web_chat_messages next to

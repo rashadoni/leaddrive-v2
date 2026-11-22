@@ -13,6 +13,8 @@ import { decryptForTenantBound } from "@/lib/crypto/tenant-pii-encryption"
 import { bookingHostWhere } from "./access"
 import { sendChangeNotice } from "./whatsapp-change-notice"
 import { formatInTimezone } from "@/lib/timezone"
+import { matchCallParty } from "@/lib/calls/party-match"
+import { threeCxPhoneVariants } from "@/lib/voip/threecx-crm"
 
 type Claimed = EffectOutbox & { leaseToken: string; providerRequestId: string }
 const safeId = (prefix: string, org: string, id: string) => `${prefix}_${createHash("sha256").update(`${org}:${id}`).digest("hex").slice(0, 32)}`
@@ -39,22 +41,34 @@ async function finish(tx: Prisma.TransactionClient, effect: Claimed, status: "su
 
 async function project(tx: Prisma.TransactionClient, row: Booking) {
   await tx.$executeRaw`SELECT set_config('app.booking_task_writer', 'on', true)`
-  let leadId = row.leadId, taskId = row.taskId
+  let leadId = row.leadId, taskId = row.taskId, contactId = row.contactId
+  // A meeting the AI booked on a phone call (src/lib/voice-agent/phone-agent). The caller may
+  // already be a card: a contact or a lead of long standing, or the lead this same call leaves
+  // when the organization files leads from AI calls (inbound-call-follow-up.ts). One person,
+  // one card: the number is matched as a call's is, under that follow-up's own lock, so the two
+  // cannot each see «nobody has this number» and each file a lead. Other sources are as they were.
+  if (row.snapshot && !leadId && !contactId && row.source === "phone") {
+    const phone = threeCxPhoneVariants(row.phone).canonicalE164 ?? row.phone
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`ai-call-lead:${row.organizationId}:${phone}`}, 0))`
+    const party = await matchCallParty(tx, row.organizationId, row.phone)
+    contactId = party.contactId ?? null
+    leadId = contactId ? null : party.leadId ?? null
+  }
   // A legacy missing link may represent an orphan created before the old HTTP request crashed.
   // Preserve that ambiguity instead of generating a second customer record.
   // A meeting booked for a customer the CRM already holds carries that link
   // from creation: filing a lead for them as well is the duplicate the staff
   // search exists to stop.
-  if (row.snapshot && !leadId && !row.contactId && row.source !== "legacy") {
+  if (row.snapshot && !leadId && !contactId && row.source !== "legacy") {
     const lead = await tx.lead.create({ data: { id: safeId("booking_lead", row.organizationId, row.id), organizationId: row.organizationId, contactName: row.name, phone: row.phone, email: row.email, source: `booking:${snapshot(row).slug ?? row.bookingPageId}`, sourceDetail: snapshot(row).title, status: "new", assignedTo: row.hostUserId, notes: row.note, adAttribution: row.adAttribution ? row.adAttribution as Prisma.InputJsonValue : undefined } })
     leadId = lead.id
   }
   if (row.snapshot && !taskId && row.source !== "legacy") {
-    const task = await tx.task.create({ data: { id: safeId("booking_task", row.organizationId, row.id), organizationId: row.organizationId, title: `${snapshot(row).title} — ${row.name}`, description: row.note, assignedTo: row.hostUserId, dueDate: row.startsAt, priority: "high", ...(leadId ? { relatedType: "lead" as const, relatedId: leadId } : row.contactId ? { relatedType: "contact" as const, relatedId: row.contactId } : {}) } })
+    const task = await tx.task.create({ data: { id: safeId("booking_task", row.organizationId, row.id), organizationId: row.organizationId, title: `${snapshot(row).title} — ${row.name}`, description: row.note, assignedTo: row.hostUserId, dueDate: row.startsAt, priority: "high", ...(leadId ? { relatedType: "lead" as const, relatedId: leadId } : contactId ? { relatedType: "contact" as const, relatedId: contactId } : {}) } })
     taskId = task.id
   }
   if (taskId) await tx.task.updateMany({ where: { id: taskId, organizationId: row.organizationId }, data: { dueDate: row.startsAt, assignedTo: row.hostUserId, status: row.status === "completed" ? "completed" : ["cancelled", "no_show"].includes(row.status) ? "cancelled" : "pending", completedAt: row.status === "completed" ? new Date() : null } })
-  await tx.booking.update({ where: { id: row.id }, data: { leadId, taskId } })
+  await tx.booking.update({ where: { id: row.id }, data: { leadId, taskId, ...(contactId !== row.contactId ? { contactId } : {}) } })
 }
 
 /** One record at a time; local projection and attempt completion commit atomically. */

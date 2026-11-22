@@ -900,6 +900,15 @@ jobs:
           AI_CALL_FOLLOW_UP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           AI_CALL_FOLLOW_UP_DB_GATE: required
 
+      - name: Phone agent booking database gate
+        # Same gate as in pr-checks: the AI's phone booking is one meeting of the call's own
+        # organization however the request is repeated, another tenant's call books only in
+        # its own, the pharmacy line's channel is never taken, the call's spend is written once.
+        run: npx vitest run src/__tests__/phone-agent-booking-postgres.test.ts
+        env:
+          PHONE_AGENT_BOOKING_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          PHONE_AGENT_BOOKING_DB_GATE: required
+
       - name: Inbox analytics website chat database gate
         # Same gate as in pr-checks: the website chat in analytics/temporal and
         # analytics/frt, other channels' figures unchanged. A real Postgres.

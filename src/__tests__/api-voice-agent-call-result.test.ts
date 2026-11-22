@@ -32,11 +32,13 @@ const mocks = vi.hoisted(() => ({
   recordCallCommitment: vi.fn(async () => ({ created: false, reason: "no-assignee" })),
   journalLineCallSpend: vi.fn(),
   journalAiCallSpend: vi.fn(),
+  journalPhoneAgentCallSpend: vi.fn(),
 }))
 // What a leg is priced at is its own suite, on real token counts: lib-voice-call-spend.test.ts.
 vi.mock("@/lib/voice-agent/call-spend", () => ({
   journalLineCallSpend: mocks.journalLineCallSpend,
   journalAiCallSpend: mocks.journalAiCallSpend,
+  journalPhoneAgentCallSpend: mocks.journalPhoneAgentCallSpend,
 }))
 vi.mock("@/lib/commitments/record-call-commitment", () => ({ recordCallCommitment: mocks.recordCallCommitment }))
 // Its behaviour is proved on a real database: ai-call-follow-up-postgres.test.ts.
@@ -1157,6 +1159,28 @@ describe("POST /api/internal/voice-agent/call-result", () => {
         .mockResolvedValueOnce({ transcription: "Müştəri: Qiyməti öyrənmək istəyirəm.", conversationOutcome: "customer_spoke", handoffState: null })
       expect((await POST(request(body))).status).toBe(200)
       expect(mocks.journalAiCallSpend).not.toHaveBeenCalled()
+    })
+
+    it("journals a call the phone agent served in the agent's row alone — never twice", async () => {
+      // The agent's call runs on the station's bridge, which counts its tokens; the same result
+      // must not also leave an estimate by its length.
+      mocks.findCallLog.mockResolvedValue({ id: "inbound-call-1", transcription: null, conversationOutcome: null,
+        consentAudit: { phoneAgent: { version: 1, providerCallId: callId, services: [{ code: "s1", pageId: "page-1" }] } } })
+      const response = await POST(request({ callId, durationSeconds: 62, usage,
+        turns: [{ role: "customer", text: "Sabah saat on birə yazın." }] }))
+      expect(response.status).toBe(200)
+      expect(mocks.journalPhoneAgentCallSpend).toHaveBeenCalledTimes(1)
+      expect(mocks.journalPhoneAgentCallSpend).toHaveBeenCalledWith("org-test", { durationSeconds: 62, usage })
+      expect(mocks.journalAiCallSpend).not.toHaveBeenCalled()
+      expect(mocks.journalLineCallSpend).not.toHaveBeenCalled()
+
+      // Another call's marker on the row is not this call's: it is an ordinary AI call.
+      mocks.journalPhoneAgentCallSpend.mockClear()
+      mocks.findCallLog.mockResolvedValue({ id: "inbound-call-1", transcription: null, conversationOutcome: null,
+        consentAudit: { phoneAgent: { version: 1, providerCallId: "aaaaaaaa-1111-4111-8111-111111111111", services: [] } } })
+      expect((await POST(request({ callId, durationSeconds: 62, turns: [{ role: "customer", text: "Salam." }] }))).status).toBe(200)
+      expect(mocks.journalPhoneAgentCallSpend).not.toHaveBeenCalled()
+      expect(mocks.journalAiCallSpend).toHaveBeenCalledTimes(1)
     })
 
     it("journals a call in which the caller never spoke: the greeting was paid for", async () => {
