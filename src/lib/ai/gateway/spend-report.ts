@@ -71,6 +71,11 @@ export type SpendRow = {
   inputTokens: number
   outputTokens: number
   costUsd: number
+  /**
+   * The provider's own count never reached the CRM: the cost is the calls'
+   * length at a measured rate a minute. Such calls are a row of their own.
+   */
+  estimated: boolean
 }
 
 export type SpendReport = {
@@ -135,7 +140,7 @@ export async function aiSpendReport(
         ORDER BY p.period, u.feature
       `),
       prisma.aiUsage.groupBy({
-        by: ["feature", "agentId", "provider", "model", "keySource"],
+        by: ["feature", "agentId", "provider", "model", "keySource", "estimated"],
         where: { organizationId: orgId, createdAt: { gte: start } },
         _sum: { inputTokens: true, outputTokens: true, cacheReadTokens: true, cacheWriteTokens: true, costUsd: true },
         _count: { _all: true },
@@ -179,6 +184,7 @@ export async function aiSpendReport(
         inputTokens: (g._sum.inputTokens ?? 0) + (g._sum.cacheReadTokens ?? 0) + (g._sum.cacheWriteTokens ?? 0),
         outputTokens: g._sum.outputTokens ?? 0,
         costUsd: money(g._sum.costUsd ?? 0),
+        estimated: g.estimated,
       }))
       .sort((a, b) => b.costUsd - a.costUsd || b.calls - a.calls)
 

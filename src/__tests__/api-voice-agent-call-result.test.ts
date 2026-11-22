@@ -31,8 +31,13 @@ const mocks = vi.hoisted(() => ({
   fallbackPostCallAnalysis: vi.fn(),
   recordCallCommitment: vi.fn(async () => ({ created: false, reason: "no-assignee" })),
   journalLineCallSpend: vi.fn(),
+  journalAiCallSpend: vi.fn(),
 }))
-vi.mock("@/lib/voice-agent/pharmacy/zeytun-line-spend", () => ({ journalLineCallSpend: mocks.journalLineCallSpend }))
+// What a leg is priced at is its own suite, on real token counts: lib-voice-call-spend.test.ts.
+vi.mock("@/lib/voice-agent/call-spend", () => ({
+  journalLineCallSpend: mocks.journalLineCallSpend,
+  journalAiCallSpend: mocks.journalAiCallSpend,
+}))
 vi.mock("@/lib/commitments/record-call-commitment", () => ({ recordCallCommitment: mocks.recordCallCommitment }))
 // Its behaviour is proved on a real database: ai-call-follow-up-postgres.test.ts.
 vi.mock("@/lib/voice-agent/inbound-call-follow-up", () => ({
@@ -1135,10 +1140,38 @@ describe("POST /api/internal/voice-agent/call-result", () => {
       expect(mocks.journalLineCallSpend).not.toHaveBeenCalled()
     })
 
-    it("journals nothing for an inbound AI call that is not the line's", async () => {
-      await POST(request({ callId, durationSeconds: 40, providerOutcome: "connected", usage,
-        turns: [{ role: "customer", text: "Qiyməti öyrənmək istəyirəm." }] }))
+    it("journals an inbound AI call that is not the line's as an AI call, once per AI leg", async () => {
+      // Owner, 2026-11-22: until then an organization's AI calls left no Live spend at all.
+      const body = { callId, durationSeconds: 40, providerOutcome: "connected",
+        turns: [{ role: "customer", text: "Qiyməti öyrənmək istəyirəm." }] }
+      expect((await POST(request(body))).status).toBe(200)
+      expect(mocks.journalAiCallSpend).toHaveBeenCalledTimes(1)
+      expect(mocks.journalAiCallSpend).toHaveBeenCalledWith("org-test", { durationSeconds: 40, usage: undefined })
       expect(mocks.journalLineCallSpend).not.toHaveBeenCalled()
+
+      // The station retries a result whose answer it lost: the stored one is not spent again.
+      mocks.journalAiCallSpend.mockClear()
+      mocks.callLogUpdateMany.mockResolvedValueOnce({ count: 0 })
+      mocks.findCallLog
+        .mockResolvedValueOnce({ id: "inbound-call-1", transcription: null, conversationOutcome: null, consentAudit: null })
+        .mockResolvedValueOnce({ transcription: "Müştəri: Qiyməti öyrənmək istəyirəm.", conversationOutcome: "customer_spoke", handoffState: null })
+      expect((await POST(request(body))).status).toBe(200)
+      expect(mocks.journalAiCallSpend).not.toHaveBeenCalled()
+    })
+
+    it("journals a call in which the caller never spoke: the greeting was paid for", async () => {
+      const response = await POST(request({ callId, durationSeconds: 6, providerOutcome: "connected",
+        turns: [{ role: "agent", text: "Salam!" }] }))
+      await expect(response.json()).resolves.toEqual({ success: true, analysisStatus: "not_applicable" })
+      expect(mocks.journalAiCallSpend).toHaveBeenCalledWith("org-test", { durationSeconds: 6, usage: undefined })
+    })
+
+    it("passes on the tokens of such a call the day the station counts them, the unmarked ones apart", async () => {
+      const counted = { live: { ...usage.live, audioIn: 5156, otherIn: 4484, audioOut: 596, otherOut: 267 } }
+      const response = await POST(request({ callId, durationSeconds: 62, usage: counted,
+        turns: [{ role: "customer", text: "Qiyməti öyrənmək istəyirəm." }] }))
+      expect(response.status).toBe(200)
+      expect(mocks.journalAiCallSpend).toHaveBeenCalledWith("org-test", { durationSeconds: 62, usage: counted })
     })
 
     it("rejects a usage report outside the agreed shape", async () => {
@@ -1215,6 +1248,65 @@ describe("POST /api/internal/voice-agent/call-result", () => {
         turns: [{ role: "customer", text: "Onda iki qutu Mukorin yazın." }] }))
       expect(replay.status).toBe(200)
       expect(mocks.callLogUpdateMany.mock.calls.filter(([args]) => "transcription" in (args.data ?? {}))).toHaveLength(1)
+    })
+  })
+
+  describe("what an outbound AI call spent", () => {
+    it("is journaled once, when the answered call is closed", async () => {
+      // Owner, 2026-11-22: no outbound AI call reached the spend report before.
+      expect((await POST(request(connectedPayload()))).status).toBe(200)
+      expect(mocks.journalAiCallSpend).toHaveBeenCalledTimes(1)
+      expect(mocks.journalAiCallSpend).toHaveBeenCalledWith("org-test", { durationSeconds: 37, usage: undefined })
+      expect(mocks.journalLineCallSpend).not.toHaveBeenCalled()
+    })
+
+    it("is not journaled again by a callback that lost the terminal claim to an earlier one", async () => {
+      mocks.callLogUpdateMany.mockResolvedValueOnce({ count: 0 }).mockResolvedValueOnce({ count: 1 })
+      mocks.findCallLog.mockResolvedValue({ providerOutcome: "connected", insightsAt: null,
+        transcription: "AI operator: Salam.\nMüştəri: Sabah danışaq.", duration: 37, conversationOutcome: "customer_spoke" })
+      expect((await POST(request(connectedPayload()))).status).toBe(200)
+      expect(mocks.journalAiCallSpend).not.toHaveBeenCalled()
+    })
+
+    it("is not journaled by a retry of a result already stored", async () => {
+      mocks.findSession.mockResolvedValue(persistedConnectedSession())
+      expect((await POST(request(connectedPayload()))).status).toBe(200)
+      expect(mocks.journalAiCallSpend).not.toHaveBeenCalled()
+    })
+
+    it("is nothing for a call nobody answered: no conversation was opened", async () => {
+      for (const providerOutcome of ["no_answer", "busy", "failed", "cancelled"]) {
+        mocks.journalAiCallSpend.mockClear()
+        expect((await POST(request({ callId, durationSeconds: 18, providerOutcome, turns: [] }))).status).toBe(200)
+        expect(mocks.journalAiCallSpend, providerOutcome).not.toHaveBeenCalled()
+      }
+      expect(mocks.journalLineCallSpend).not.toHaveBeenCalled()
+    })
+
+    it("goes to the order line's own row for the line's call back to a pharmacy", async () => {
+      const session = matchingSession()
+      mocks.findSession.mockResolvedValue({ ...session, callLog: { ...session.callLog,
+        consentAudit: { pharmacyWaitlistCallback: { version: 1, providerCallId: callId, grantId: "test-grant",
+          orderOrganizationId: "org-orders", pharmacyName: null, items: [{ externalId: "item-1", name: "Adefa" }] } } } })
+      const usage = { live: { textIn: 48434, audioIn: 5156, otherIn: 4484, textOut: 1140, audioOut: 596, otherOut: 267, turns: 4 },
+        tts: { requests: 6, chars: 410, audioSeconds: 31.5 } }
+      const response = await POST(request({ ...connectedPayload(), usage }))
+      await expect(response.json()).resolves.toEqual({ success: true, analysisStatus: "test_preview" })
+      expect(mocks.journalLineCallSpend).toHaveBeenCalledTimes(1)
+      expect(mocks.journalLineCallSpend).toHaveBeenCalledWith("org-test", { durationSeconds: 37, usage })
+      expect(mocks.journalAiCallSpend).not.toHaveBeenCalled()
+    })
+
+    it("goes to the order line's own row for the line's rehearsal on a dispatcher session", async () => {
+      const session = matchingSession()
+      mocks.findSession.mockResolvedValue({ ...session, callLog: { ...session.callLog,
+        consentAudit: { pharmacyInboundPreview: { version: 1, grantId: "test-grant", providerCallId: callId } } } })
+      const usage = { live: { textIn: 48434, audioIn: 9640, textOut: 1140, audioOut: 863, turns: 4 } }
+      const response = await POST(request({ ...connectedPayload(), usage }))
+      await expect(response.json()).resolves.toEqual({ success: true, analysisStatus: "test_preview" })
+      expect(mocks.journalLineCallSpend).toHaveBeenCalledTimes(1)
+      expect(mocks.journalLineCallSpend).toHaveBeenCalledWith("org-test", { durationSeconds: 37, usage })
+      expect(mocks.journalAiCallSpend).not.toHaveBeenCalled()
     })
   })
 

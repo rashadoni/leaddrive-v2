@@ -80,7 +80,7 @@ export type AiAccessOptions = {
 }
 
 /** What a finished call cost: tokens to price, or a cost already priced (seconds, images). */
-export type AiJournalEntry = Pick<AiUsageEntry, "model" | "inputTokens" | "outputTokens" | "cacheReadTokens" | "cacheWriteTokens" | "costUsd">
+export type AiJournalEntry = Pick<AiUsageEntry, "model" | "inputTokens" | "outputTokens" | "cacheReadTokens" | "cacheWriteTokens" | "costUsd" | "estimated">
 
 export type AiKeyAccess = {
   apiKey: string

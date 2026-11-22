@@ -3672,6 +3672,10 @@ model AiUsage {
   cacheReadTokens  Int          @default(0)
   cacheWriteTokens Int          @default(0)
   costUsd          Float        @default(0)
+  /// The provider's own count never reached the CRM (a station core that does not
+  /// send tokens, a tab closed before it settled): the cost is the call's length at
+  /// a measured rate a minute. The spend report marks such a row «оценка».
+  estimated        Boolean      @default(false)
   keySource        String // platform | tenant
   createdAt        DateTime     @default(now())
 

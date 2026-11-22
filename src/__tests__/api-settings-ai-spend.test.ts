@@ -80,7 +80,11 @@ function req(url: string, method = "GET", body?: unknown) {
 const REPORT = {
   granularity: "week", range: "90d", timeZone: "Asia/Baku", start: "2026-08-10T20:00:00.000Z", firstDay: "2026-08-11", lastDay: "2026-11-10",
   periods: [{ period: "2026-11-09", costUsd: 0.6, calls: 2, byFeature: { "davinci-chat": 0.6 } }],
-  rows: [{ feature: "davinci-chat", agentId: "a1", agentName: "Support Pro", provider: "anthropic", model: "claude-haiku-4-5-20251001", keySource: "platform", calls: 2, inputTokens: 2020, outputTokens: 200, costUsd: 0.6 }],
+  rows: [
+    { feature: "davinci-chat", agentId: "a1", agentName: "Support Pro", provider: "anthropic", model: "claude-haiku-4-5-20251001", keySource: "platform", calls: 2, inputTokens: 2020, outputTokens: 200, costUsd: 0.6, estimated: false },
+    // An organization's AI calls, priced by their length: the station sent no token count.
+    { feature: "ai-call", agentId: null, agentName: null, provider: "gemini", model: "gemini-3.8-live", keySource: "platform", calls: 3, inputTokens: 0, outputTokens: 0, costUsd: 0.31, estimated: true },
+  ],
   totals: { calls: 2, costUsd: 0.6 }, firstCallAt: "2026-11-09T10:00:00.000Z", today: { spent: 0.05, limit: 5, remaining: 4.95 },
 }
 
@@ -129,6 +133,12 @@ describe("AI spend report and provider keys", () => {
     expect(sheet.getRow(2).getCell(1).value).toBe("Da Vinci — чат")
     expect(sheet.getRow(2).getCell(2).value).toBe("Support Pro")
     expect(sheet.getRow(2).getCell(9).value).toBe(0.6)
+    // A cost the provider counted says nothing; one priced by the calls' length says so.
+    expect(sheet.getRow(1).getCell(10).value).toBe("Как посчитано")
+    expect(sheet.getRow(2).getCell(10).value).toBe("")
+    expect(sheet.getRow(3).getCell(1).value).toBe("Звонки ИИ — разговор")
+    expect(sheet.getRow(3).getCell(9).value).toBe(0.31)
+    expect(sheet.getRow(3).getCell(10).value).toBe("оценка по длительности")
   })
 
   it("saves a key only after the provider accepted it, and answers with its hint, never the key", async () => {

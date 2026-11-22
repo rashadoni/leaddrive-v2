@@ -43,6 +43,7 @@ export const AI_FEATURES = {
   "embeddings": { ru: "Поиск по смыслу", az: "Mənaya görə axtarış", en: "Semantic search" },
   "voice-assistant": { ru: "Голосовой ассистент", az: "Səsli assistent", en: "Voice assistant" },
   "call-transcription": { ru: "Расшифровка звонков", az: "Zənglərin transkripsiyası", en: "Call transcription" },
+  "ai-call": { ru: "Звонки ИИ — разговор", az: "AI zəngləri — danışıq", en: "AI calls — conversation" },
   "call-analysis": { ru: "Разбор звонка после разговора", az: "Zəngdən sonra təhlil", en: "After-call analysis" },
   "inbox-audio": { ru: "Переписка — расшифровка голосовых", az: "Yazışma — səsli mesajların transkripsiyası", en: "Inbox — voice message transcription" },
   "phone-line": { ru: "Телефонная линия заказов", az: "Sifariş telefon xətti", en: "Phone order line" },

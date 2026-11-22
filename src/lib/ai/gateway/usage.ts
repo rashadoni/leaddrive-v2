@@ -24,6 +24,11 @@ export type AiUsageEntry = {
   cacheWriteTokens?: number
   /** For a provider not billed by tokens; otherwise priced from the tokens. */
   costUsd?: number
+  /**
+   * The provider's count never reached the CRM and `costUsd` is the call's
+   * length at a measured rate a minute. The spend report marks the row.
+   */
+  estimated?: boolean
 }
 
 export async function recordAiUsage(entry: AiUsageEntry): Promise<void> {
@@ -48,6 +53,7 @@ export async function recordAiUsage(entry: AiUsageEntry): Promise<void> {
         cacheReadTokens,
         cacheWriteTokens,
         costUsd,
+        estimated: entry.estimated === true,
         keySource: entry.keySource,
       },
     }))

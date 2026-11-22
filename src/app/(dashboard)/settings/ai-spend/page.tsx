@@ -338,12 +338,19 @@ function Report({ report, money, count, tokens, nf, t, locale }: {
                 const share = report.totals.costUsd > 0 ? (row.costUsd / report.totals.costUsd) * 100 : 0
                 const color = colorOf(row.feature)
                 return (
-                  <tr key={`${row.feature}|${row.agentId}|${row.provider}|${row.model}|${row.keySource}|${i}`} className="border-b border-border/60">
-                    <td className="py-2.5"><span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ background: color }} />{aiFeatureLabel(row.feature, locale)}</td>
+                  <tr key={`${row.feature}|${row.agentId}|${row.provider}|${row.model}|${row.keySource}|${row.estimated}|${i}`} className="border-b border-border/60">
+                    <td className="py-2.5">
+                      <span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ background: color }} />{aiFeatureLabel(row.feature, locale)}
+                      {row.estimated && (
+                        <Hint text={t("estimatedHint")}>
+                          <span tabIndex={0} data-testid="ai-spend-estimated" className="ml-2 inline-block cursor-help rounded border border-border px-1.5 py-0.5 text-[11px] font-medium leading-none text-muted-foreground">{t("estimated")}</span>
+                        </Hint>
+                      )}
+                    </td>
                     <td className={row.agentName ? "" : "text-muted-foreground"}>{row.agentName ?? "—"}</td>
                     <td>{modelLabel(row.provider, row.model)}</td>
                     <td className="text-right">{count(row.calls)}</td>
-                    <td className="text-right text-muted-foreground">{tokens(row.inputTokens)} / {tokens(row.outputTokens)}</td>
+                    <td className="text-right text-muted-foreground">{row.estimated && row.inputTokens + row.outputTokens === 0 ? "—" : `${tokens(row.inputTokens)} / ${tokens(row.outputTokens)}`}</td>
                     <td className="pl-6">{row.keySource === "tenant" ? t("keyTenant") : t("keyPlatform")}</td>
                     <td className="text-right font-semibold">{money(row.costUsd)}</td>
                     <td className="pl-6">

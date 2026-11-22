@@ -9,7 +9,7 @@ export { recordAiUsage, type AiUsageEntry, type AiKeySource } from "./usage"
 export {
   tenantAiAccess, saveTenantAiCredential, deleteTenantAiCredential, listTenantAiCredentials, forgetTenantAiAccess, keyHint,
 } from "./credentials"
-export { aiCallCostUsd, MODEL_PRICING, UNIT_PRICING, perMinuteCostUsd } from "./pricing"
+export { aiCallCostUsd, MODEL_PRICING, UNIT_PRICING, perMinuteCostUsd, geminiSpeechMinuteUsd, aiCallLiveEstimateUsd, liveUsageCostUsd, liveTokenTotals, type LiveTokenCounts } from "./pricing"
 export {
   aiKeyFor, aiKeyOrRefusal, aiProviderAvailable, journalPlatformAiCall, journalAiCallOnCurrentKey, platformAiKey,
   type AiKeyAccess, type AiJournalEntry, type AiAccessOptions,
