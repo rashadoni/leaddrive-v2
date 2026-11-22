@@ -20,6 +20,8 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const nav = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }))
+const enter = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/enter-signed-in-app", () => ({ enterSignedInApp: enter }))
 vi.mock("next/navigation", () => ({
   useRouter: () => nav,
   useSearchParams: () => new URLSearchParams(window.location.search),
@@ -73,7 +75,7 @@ async function submit() {
   // Until the attempt has an outcome — the page went on, or said "wrong" — not
   // a fixed number of turns: the first test of the file also pays for loading
   // the sign-in helper, and five turns were sometimes not enough (CI, #1143).
-  for (let turn = 0; turn < 200 && !nav.push.mock.calls.length && !text().includes("auth.invalidCredentials"); turn += 1) {
+  for (let turn = 0; turn < 200 && !enter.mock.calls.length && !text().includes("auth.invalidCredentials"); turn += 1) {
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 5)) })
   }
   for (let turn = 0; turn < 5; turn += 1) await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
@@ -85,6 +87,7 @@ beforeEach(() => {
   passwordAccepted = true
   posted = null
   nav.push.mockClear()
+  enter.mockClear()
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => authServer(input, init)))
   container = document.createElement("div")
   document.body.appendChild(container)
@@ -105,7 +108,8 @@ describe("signing in on /login with an earlier result in the address", () => {
     await submit()
     expect(text()).not.toContain("auth.invalidCredentials")
     expect(text()).not.toContain("auth.errCrossTenant")
-    expect(nav.push).toHaveBeenCalledWith("/")
+    expect(enter).toHaveBeenCalledTimes(1)
+    expect(nav.push).not.toHaveBeenCalled()
     expect(posted?.get("callbackUrl")).toBe(`${window.location.origin}/`)
   })
 
@@ -113,7 +117,8 @@ describe("signing in on /login with an earlier result in the address", () => {
     await openLogin("?error=CredentialsSignin&code=credentials")
     await submit()
     expect(text()).not.toContain("auth.invalidCredentials")
-    expect(nav.push).toHaveBeenCalledWith("/")
+    expect(enter).toHaveBeenCalledTimes(1)
+    expect(nav.push).not.toHaveBeenCalled()
   })
 
   it("a wrong password is still called wrong", async () => {
@@ -121,7 +126,7 @@ describe("signing in on /login with an earlier result in the address", () => {
     await openLogin("?error=cross-tenant")
     await submit()
     expect(text()).toContain("auth.invalidCredentials")
-    expect(nav.push).not.toHaveBeenCalled()
+    expect(enter).not.toHaveBeenCalled()
   })
 })
 

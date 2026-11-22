@@ -33,6 +33,27 @@ function err(name: string) {
 }
 
 describe("microphone diagnosis", () => {
+  it("a page entered from sign-in without a reload is told to reload, not to grant", () => {
+    // Production 2026-11-22: the site permission was fine, the document still
+    // carried the sign-in page's `microphone=()`, and the advice was the icon.
+    const stale: MicrophoneEnvironment = { ...alreadyGranted, documentAllowsMicrophone: false }
+    expect(microphonePrecheck(stale)).toBe("page_reload_needed")
+    expect(diagnoseMicrophoneFailure(err("NotAllowedError"), { ...stale, permission: "denied" }))
+      .toBe("page_reload_needed")
+    expect(microphoneMessageKey("page_reload_needed")).toBe("micReloadPage")
+  })
+
+  it("a browser that cannot report the page's policy is not treated as refused", () => {
+    expect(microphonePrecheck(secure)).toBeNull()
+    expect(microphonePrecheck({ ...secure, documentAllowsMicrophone: true })).toBeNull()
+  })
+
+  it("inside a frame the same refusal stays the embedding page's", () => {
+    const frame: MicrophoneEnvironment = { ...framed, documentAllowsMicrophone: false }
+    expect(microphonePrecheck(frame)).toBeNull()
+    expect(diagnoseMicrophoneFailure(err("NotAllowedError"), frame)).toBe("embedded")
+  })
+
   it("names an http:// address before anything is even asked", () => {
     // The whole point: in an insecure context getUserMedia is not merely
     // denied, it is absent — the call throws a TypeError that no error-name

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { enterSignedInApp } from "@/lib/enter-signed-in-app"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,7 +19,6 @@ import { ShieldCheck, Loader2, Smartphone } from "lucide-react"
  *   - anything else → redirect out; user shouldn't be here.
  */
 export default function Verify2FAPage() {
-  const router = useRouter()
   const t = useTranslations("auth")
   const { data: session, update } = useSession()
   const [code, setCode] = useState("")
@@ -38,9 +37,9 @@ export default function Verify2FAPage() {
 
   useEffect(() => {
     if (session && !(session.user as any)?.needs2fa) {
-      router.push("/")
+      enterSignedInApp()
     }
-  }, [session, router])
+  }, [session])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -63,8 +62,7 @@ export default function Verify2FAPage() {
       }
 
       await update({ needs2fa: false, twoFactorNonce: json.data.twoFactorNonce })
-      router.push("/")
-      router.refresh()
+      enterSignedInApp()
     } catch {
       setError(t("invalidCode"))
       setLoading(false)

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { enterSignedInApp } from "@/lib/enter-signed-in-app"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { ShieldCheck, Loader2, Copy, Check } from "lucide-react"
 
 export default function Setup2FAPage() {
-  const router = useRouter()
   const t = useTranslations("auth")
   const { data: session, update } = useSession()
   const [step, setStep] = useState<"loading" | "scan" | "verify" | "done">("loading")
@@ -26,9 +25,9 @@ export default function Setup2FAPage() {
   // Redirect if user doesn't need setup
   useEffect(() => {
     if (session && !(session.user as any)?.needsSetup2fa) {
-      router.push("/")
+      enterSignedInApp()
     }
-  }, [session, router])
+  }, [session])
 
   // Start 2FA setup on mount
   useEffect(() => {
@@ -87,8 +86,7 @@ export default function Setup2FAPage() {
   async function handleFinish() {
     // Clear needsSetup2fa from session — pass server-side nonce for verification
     await update({ needsSetup2fa: false, twoFactorNonce })
-    router.push("/")
-    router.refresh()
+    enterSignedInApp()
   }
 
   function copySecret() {

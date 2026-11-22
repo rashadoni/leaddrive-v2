@@ -29905,6 +29905,7 @@
     "micEmbedded": "Səhifə başqa sayta yerləşdirilib və ora mikrofon icazəsi ötürülmür. CRM-i ayrıca pəncərədə açın.",
     "micNoDevice": "Mikrofon tapılmadı. Qulaqlığı və ya mikrofonu qoşub yenidən cəhd edin.",
     "micBusy": "Mikrofonu başqa proqram tutub və ya sistem icazə vermir. Digər zəng proqramlarını bağlayın və yenidən cəhd edin.",
+    "micReloadPage": "Mikrofonu açmaq üçün səhifəni yeniləyin və yenidən cəhd edin.",
     "micUnavailable": "Mikrofonu açmaq mümkün olmadı. Qulaqlığı yoxlayın və yenidən cəhd edin."
   },
   "voiceCallQueue": {
