@@ -97,6 +97,7 @@ export function DemoLiveWhatsApp({ live, mode = "chat" }: { live: DemoLiveWhatsA
                 <Button
                   size="sm"
                   data-testid="demo-whatsapp-welcome"
+                  data-crm-color-role="provider"
                   onClick={sendWelcome}
                   disabled={!consent || busy}
                   className="bg-emerald-600 hover:bg-emerald-700"
@@ -189,6 +190,7 @@ function TicketBlock({ live }: { live: DemoLiveWhatsAppHandle }) {
           <Button
             size="sm"
             data-testid="demo-whatsapp-ticket-start"
+            data-crm-color-role="provider"
             onClick={() => void live.startTicket()}
             disabled={live.busy}
             className="mt-2 bg-emerald-600 hover:bg-emerald-700"

@@ -164,7 +164,7 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
               onClick={() => hint(S.demoButtonHint)}
               className={cn(
                 "rounded-full border px-3 py-1 text-xs transition-colors",
-                index === 0 ? "border-foreground bg-foreground font-medium text-background" : "border-zinc-200 text-muted-foreground hover:text-foreground dark:border-zinc-700",
+                index === 0 ? "crm-choice-selected" : "border-zinc-200 text-muted-foreground hover:text-foreground dark:border-zinc-700",
               )}
             >
               {t(`status.${status}`)}

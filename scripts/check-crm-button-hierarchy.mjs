@@ -1,13 +1,14 @@
 /** Source guard for ordinary CRM actions. Status/provider/toggle controls must
- * declare their colour role explicitly; public sites and demo replicas are not
- * authenticated CRM workflows. This scan is source coverage, not browser proof. */
+ * declare their colour role explicitly; public sites and the demo's request page
+ * are not authenticated CRM workflows. The guided demo's scenes are CRM screens,
+ * so they are held to the same rule. This scan is source coverage, not browser proof. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
 const publicSurfaces = [
-  'src/components/marketing/', 'src/components/demo-center/',
+  'src/components/marketing/', 'src/components/demo-center/demo-access-shell.tsx',
   'src/components/portal-chat-widget.tsx',
   'src/components/form-builder/public-form-widget.tsx',
   'src/components/ui/shimmer-button.tsx',

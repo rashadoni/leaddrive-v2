@@ -30,7 +30,7 @@ export function GuideVoiceSwitch({
     return (
       <Button
         size="sm"
-        className={cn("h-8 bg-[#FF4D00] text-xs text-white hover:bg-[#e64500] motion-safe:animate-pulse", className)}
+        className={cn("h-8 text-xs motion-safe:animate-pulse", className)}
         data-testid={testId}
         data-blocked="true"
         onClick={onUnblock}

@@ -126,13 +126,9 @@ function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneP
             {" · "}{t("hotLeads")}: <span className={cn("font-medium", score >= HOT_SCORE ? "text-[#FF4D00]" : "text-foreground")}>{score >= HOT_SCORE ? 1 : 0}</span>
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => hint(S.demoButtonHint)}
-          className="flex items-center gap-1.5 rounded-lg bg-[#FF4D00] px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-[#e04400]"
-        >
+        <Button type="button" size="sm" className="gap-1.5 px-4 font-semibold" onClick={() => hint(S.demoButtonHint)}>
           {t("newLead")}
-        </button>
+        </Button>
       </div>
 
       <div data-tour-id="leads-stats" className="grid grid-cols-2 gap-0 overflow-hidden rounded-lg border border-zinc-200 sm:grid-cols-4 dark:border-zinc-700">
@@ -159,7 +155,7 @@ function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneP
             onClick={() => hint(S.hintFollow(step?.title ?? ""))}
             className={cn(
               "rounded-full border px-3 py-1 text-sm transition-colors",
-              index === 0 ? "border-foreground bg-foreground font-medium text-background" : "border-zinc-200 text-muted-foreground hover:border-foreground/40 hover:text-foreground dark:border-zinc-700",
+              index === 0 ? "crm-choice-selected" : "border-zinc-200 text-muted-foreground hover:border-foreground/40 hover:text-foreground dark:border-zinc-700",
             )}
           >
             {item.label}
@@ -443,6 +439,7 @@ export function LeadCardView({ snapshot, step, reviewMode, variant, dispatch, hi
                 <button
                   key={status}
                   type="button"
+                  data-crm-color-role="status"
                   onClick={() => advanceStatus(status)}
                   {...demoTarget(status === "qualified" && "lead-status-advance")}
                   className={cn(
