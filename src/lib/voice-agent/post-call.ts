@@ -28,6 +28,13 @@ const stationModel = z.string().regex(/^[a-z0-9][a-z0-9.-]{0,63}$/)
  * the station's keys and never reached the spend report). Live: the sum of
  * every `usageMetadata` of the call's sessions, split by modality. Speech: the
  * synthesis requests the station made and the audio they returned.
+ *
+ * `otherIn` / `otherOut` (2026-11-22): the tokens Google reports with no
+ * modality, apart from the audio. A core that predates them keeps sending
+ * them inside `audioIn` / `audioOut` and is priced as before
+ * (`liveUsageCostUsd`). This schema is strict, so the fields are accepted
+ * here before any core sends them — the other order would answer 400 to every
+ * call result and lose its transcript.
  */
 export const voiceAgentLineUsageSchema = z.object({
   live: z.object({
@@ -36,6 +43,8 @@ export const voiceAgentLineUsageSchema = z.object({
     audioIn: stationTokenCount,
     textOut: stationTokenCount,
     audioOut: stationTokenCount,
+    otherIn: stationTokenCount.optional(),
+    otherOut: stationTokenCount.optional(),
     turns: z.number().int().min(0).max(100_000),
   }).strict().optional(),
   tts: z.object({

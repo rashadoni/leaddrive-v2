@@ -28,9 +28,8 @@ import { recordDemoPromptApplied } from "@/lib/demo-center/call-prompt-match"
 import { recordUnansweredCallback } from "@/lib/voice-agent/callback-fallback-task"
 import type { ConversationInsight } from "@/lib/conversation-intel/types"
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
-import { journalLineCallSpend } from "@/lib/voice-agent/pharmacy/zeytun-line-spend"
+import { journalAiCallSpend, journalLineCallSpend, journalPhoneAgentCallSpend } from "@/lib/voice-agent/call-spend"
 import { phoneAgentMarker } from "@/lib/voice-agent/phone-agent/marker"
-import { journalPhoneAgentCallSpend } from "@/lib/voice-agent/phone-agent/spend"
 import { callbackMarker } from "@/lib/voice-agent/pharmacy/zeytun-waitlist-callback"
 import { withStationTiming } from "@/lib/station-timing"
 
@@ -868,12 +867,17 @@ async function recordInboundAiResult(params: {
     if (transcription !== null && customerSpoke) recoverLineOrder(params.callId, transcription)
     return NextResponse.json({ success: true, analysisStatus: "test_preview" })
   }
-  // Owner, 2026-11-22: a call the phone agent served (its own session, voice
-  // and tools) leaves its Live and speech spend as the line's calls do, once
-  // per AI leg. It stays an ordinary customer call otherwise: analysed below,
-  // and a lead or a task when the organization asked for them.
-  if (firstDelivery && phoneAgentMarker(call.consentAudit, params.callId)) {
-    journalPhoneAgentCallSpend(organizationId, { durationSeconds: params.durationSeconds, usage: params.usage })
+  // Owner, 2026-11-22: the conversation of every other AI call is paid for as
+  // well, whatever was said in it — a caller who stays silent still costs the
+  // greeting. Once per AI leg, like the line's. A call the phone agent served
+  // (its own session, voice and tools) goes to the agent's own row, counted by
+  // the station; any other call is priced by its length. Either stays an
+  // ordinary customer call otherwise: analysed below, and a lead or a task
+  // when the organization asked for them.
+  if (firstDelivery) {
+    const spend = { durationSeconds: params.durationSeconds, usage: params.usage }
+    if (phoneAgentMarker(call.consentAudit, params.callId)) journalPhoneAgentCallSpend(organizationId, spend)
+    else journalAiCallSpend(organizationId, spend)
   }
   if (!customerSpoke) {
     return NextResponse.json({ success: true, analysisStatus: "not_applicable" })
@@ -1098,6 +1102,9 @@ async function handlePost(request: NextRequest) {
 
   let insightsAt = call.insightsAt
   let correctedInsideTerminalClaim = false
+  // Whether this request is the one that closed the call: its AI spend is
+  // journaled by that request alone, so a retried result cannot spend twice.
+  let closedByThisResult = false
   const enrichesRegistryTerminal = providerOutcome !== "connected"
     && call.providerOutcome === providerOutcome
     && call.conversationOutcome === providerOutcome
@@ -1212,6 +1219,7 @@ async function handlePost(request: NextRequest) {
       throw error
     }
     correctedInsideTerminalClaim = recorded
+    closedByThisResult = recorded
 
     if (!recorded) {
       const refreshed = await runWithTenant(organizationId, () => prisma.callLog.findFirst({
@@ -1282,6 +1290,17 @@ async function handlePost(request: NextRequest) {
   // Owner's queue task 10: the line's call back to a pharmacy about products it waited for.
   // Its order goes to the managers as after an incoming call; no sales analysis, no callback of its own.
   const lineCallback = callbackMarker(call.consentAudit, parsed.data.callId)
+  // Owner, 2026-11-22: what the answered call's conversation cost, once. Until
+  // then no outbound AI call reached the spend report at all — not the line's
+  // call back to a pharmacy either. A call nobody answered opened no session.
+  if (closedByThisResult && wasAnswered) {
+    const spend = { durationSeconds: parsed.data.durationSeconds, usage: parsed.data.usage }
+    if (lineCallback || isPharmacyInboundPreview(call.consentAudit, parsed.data.callId)) {
+      journalLineCallSpend(organizationId, spend)
+    } else {
+      journalAiCallSpend(organizationId, spend)
+    }
+  }
   if (lineCallback) {
     if (canonicalTranscript !== null && customerSpoke) recoverLineOrder(parsed.data.callId, canonicalTranscript)
     announceLineOrderLater(lineCallback.orderOrganizationId, parsed.data.callId)

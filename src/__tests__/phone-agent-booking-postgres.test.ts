@@ -42,6 +42,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest } from "next/server"
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
+import { geminiSpeechMinuteUsd } from "@/lib/ai/gateway/pricing"
 
 const adminUrl = process.env.PHONE_AGENT_BOOKING_TEST_DATABASE_URL
 if (!adminUrl && process.env.PHONE_AGENT_BOOKING_DB_GATE === "required") {
@@ -597,7 +598,11 @@ except module.ZeytunPilotUnavailable:
     // 60,000 × 0.75 + 12,000 × 3 + 1,500 × 4.5 + 1,800 × 12 per million.
     expect(live.costUsd).toBeCloseTo(0.10935, 6)
     const speech = rows.find((row: { model: string }) => row.model === "gemini-3.8-flash-tts")
-    expect(speech.costUsd).toBeCloseTo(48 / 60 * 0.015, 6)
+    // 48 seconds of speech at the price of the day it was produced: $0.0135 a minute through 2026,
+    // $0.027 from 2027 (the two prices and their date are pinned in lib-voice-call-spend.test.ts).
+    expect(speech.costUsd).toBeCloseTo(48 / 60 * geminiSpeechMinuteUsd(new Date()), 9)
+    // Both were counted by the station: neither is an estimate.
+    expect(rows.map((row: { estimated: boolean }) => row.estimated)).toEqual([false, false])
     expect(await spend(SALON)).toEqual([])
   })
 
@@ -658,7 +663,17 @@ except module.ZeytunPilotUnavailable:
       body: JSON.stringify({ callId: call.callId, durationSeconds: 60, providerOutcome: "connected", turns: [{ role: "agent", text: "Salam!" }] }),
     }))
     expect(response.status).toBe(200)
+    await expect.poll(async () => (await spend(QUIET)).length, { timeout: 5_000 }).toBe(1)
     await new Promise((resolve) => setTimeout(resolve, 300))
-    expect(await spend(QUIET)).toEqual([])
+    // Nothing in the agent's row: the agent's session was never given to this call. The call's
+    // conversation is still paid for, and is journaled as any other AI call's — by its length,
+    // marked as an estimate (owner, 2026-11-22; src/lib/voice-agent/call-spend.ts).
+    const rows = await spend(QUIET)
+    expect(rows.filter((row: { feature: string }) => row.feature === "phone-agent")).toEqual([])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ feature: "ai-call", provider: "gemini", model: "gemini-3.8-live", keySource: "platform",
+      estimated: true, inputTokens: 0, outputTokens: 0 })
+    // One minute of a call under two minutes.
+    expect(rows[0].costUsd).toBeCloseTo(0.04, 9)
   })
 })

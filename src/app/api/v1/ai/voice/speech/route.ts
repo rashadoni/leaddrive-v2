@@ -5,7 +5,7 @@ import { withRlsSessionAuth } from "@/lib/with-rls"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { guardInteractiveJsonMutation } from "@/lib/social/review-apply-request"
 import { checkVoicePilotAccess } from "@/lib/ai/voice/gate"
-import { journalPlatformAiCall, perMinuteCostUsd, UNIT_PRICING } from "@/lib/ai/gateway"
+import { geminiSpeechMinuteUsd, journalPlatformAiCall, perMinuteCostUsd } from "@/lib/ai/gateway"
 import {
   CONSOLE_SPEECH_MAX_CHARS,
   CONSOLE_SPEECH_SAMPLE_RATE,
@@ -92,7 +92,8 @@ export const POST = withRlsSessionAuth(async (req, auth) => {
   }
 
   // The organization's AI journal (src/lib/ai/gateway): the speech this phrase
-  // produced, by its length. Vertex runs on the platform's credentials.
+  // produced, by its length at the price of the day. Vertex runs on the
+  // platform's credentials.
   let bytes = first.value.length
   let journaled = false
   const journal = () => {
@@ -101,7 +102,7 @@ export const POST = withRlsSessionAuth(async (req, auth) => {
     const seconds = bytes / (CONSOLE_SPEECH_SAMPLE_RATE * 2)
     journalPlatformAiCall(auth.orgId, "gemini", "voice-assistant", {
       model: "gemini-3.8-flash-tts",
-      costUsd: perMinuteCostUsd(UNIT_PRICING.geminiSpeechMinute, seconds),
+      costUsd: perMinuteCostUsd(geminiSpeechMinuteUsd(new Date()), seconds),
     })
   }
   const body = new ReadableStream<Uint8Array>({

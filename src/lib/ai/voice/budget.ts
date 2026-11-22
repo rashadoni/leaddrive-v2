@@ -17,7 +17,7 @@
  */
 import { prisma } from "@/lib/prisma"
 import { journalAiCallOnCurrentKey } from "@/lib/ai/gateway/access"
-import { LIVE_AUDIO_IN_MINUTE_USD, liveUsageCostUsd, perMinuteCostUsd, UNIT_PRICING } from "@/lib/ai/gateway/pricing"
+import { LIVE_AUDIO_IN_MINUTE_USD, liveTokenTotals, liveUsageCostUsd, perMinuteCostUsd, UNIT_PRICING } from "@/lib/ai/gateway/pricing"
 import type { LiveUsageTotals } from "./live-usage"
 import { yearMonthKey } from "./config"
 import { monthlyBudgetSeconds } from "./monthly-budget"
@@ -101,18 +101,18 @@ export async function settleVoiceSeconds(
   // cost. With the console's token totals — Google's own count, every turn
   // billing the whole context again; the incoming audio of the billed seconds
   // is the floor, so a console that reports less than that cannot make a
-  // conversation cheaper than its sound. Without them (a closed tab, the
-  // reaper) — the per-minute estimate.
+  // conversation cheaper than its sound — and a conversation the model never
+  // took a turn in (no tokens at all) costs exactly that floor. Without a
+  // count (a tab that died before it could report, the reaper, a console
+  // loaded before 2026-11-22 that had no turn) — the per-minute estimate, and
+  // the row is marked as one.
   if (billedSeconds > 0) {
     const byTokens = liveUsage
       ? Math.max(liveUsageCostUsd(liveUsage), perMinuteCostUsd(LIVE_AUDIO_IN_MINUTE_USD, billedSeconds))
       : null
     await journalAiCallOnCurrentKey(organizationId, "gemini", "voice-assistant", {
       model: "gemini-live",
-      ...(liveUsage ? {
-        inputTokens: liveUsage.textIn + liveUsage.audioIn,
-        outputTokens: liveUsage.textOut + liveUsage.audioOut,
-      } : {}),
+      ...(liveUsage ? liveTokenTotals(liveUsage) : { estimated: true }),
       costUsd: byTokens ?? perMinuteCostUsd(UNIT_PRICING.geminiLiveMinute, billedSeconds),
     })
   }

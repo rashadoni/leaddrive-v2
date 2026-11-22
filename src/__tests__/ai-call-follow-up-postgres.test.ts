@@ -10,6 +10,8 @@
  *  - The pharmacy line and demo calls never become leads.
  *  - A named employee gets a task only when the name fits exactly one person.
  *  - «Что я пропустил?» counts from the database, inside the caller's rights.
+ *  - What the call's conversation cost reaches the spend journal (`ai_usage`),
+ *    once per call, marked as an estimate by its length (owner, 2026-11-22).
  *
  * Set AI_CALL_FOLLOW_UP_TEST_DATABASE_URL to an admin connection, e.g.
  *   docker run --rm -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:55499:5432 postgres:16
@@ -85,6 +87,7 @@ const RLS_TABLES = [
   "call_logs", "call_events", "leads", "contacts", "tasks", "notifications", "channel_configs",
   "channel_messages", "social_conversations", "web_chat_sessions", "web_chat_messages",
   "bookings", "booking_pages", "business_hours", "pharmacy_phone_orders", "pharmacy_phone_order_lines",
+  "ai_usage",
 ]
 
 const ORG = "org-acf"
@@ -280,6 +283,7 @@ function modelSays(fields: Record<string, unknown> = {}) {
       await prisma.pharmacyPhoneOrder.deleteMany({})
       await prisma.businessHours.deleteMany({})
       await prisma.leadAssignmentRule.deleteMany({})
+      await prisma.aiUsage.deleteMany({})
     })
     await setSwitch(false)
     Object.assign(stubs.modules, { voip: true, omnichannel: true, booking: true, sales: true })
@@ -446,6 +450,76 @@ function modelSays(fields: Record<string, unknown> = {}) {
     expect(stubs.modelCalls).toBe(before)
     expect((await call(id)).leadId).toBeNull()
     expect(await leads()).toHaveLength(0)
+  })
+
+  describe("what the call's conversation cost", () => {
+    // Its own length, so a row another test's call leaves late is never taken for this one's.
+    const SECONDS = 97
+    const send = (callId: string, extra: Record<string, unknown> = {}) => route.POST(
+      new NextRequest("http://localhost:3000/api/internal/voice-agent/call-result", {
+        method: "POST",
+        headers: { authorization: "Bearer ai-call-follow-up-runtime", "content-type": "application/json" },
+        body: JSON.stringify({ callId, durationSeconds: SECONDS, providerOutcome: "connected", turns: REAL_TURNS, ...extra }),
+      }),
+    )
+    const spent = (organizationId = ORG) => bypass(() => prisma.aiUsage.findMany({
+      where: { organizationId, provider: "gemini" }, orderBy: { createdAt: "asc" } }))
+    /** The journal is written after the station has its answer. */
+    async function spentWhenWritten(rows: number) {
+      for (let waited = 0; waited < 3_000; waited += 25) {
+        if ((await spent()).length >= rows) break
+        await new Promise((resolve) => setTimeout(resolve, 25))
+      }
+      // Whatever was going to be written after it has had its turn too.
+      await new Promise((resolve) => setTimeout(resolve, 150))
+      return spent()
+    }
+
+    it("reaches the organization's spend journal once, as an estimate by the call's length", async () => {
+      // Owner, 2026-11-22: an organization's AI calls left only the after-call analysis in the report.
+      modelSays()
+      const { callId } = await inboundCall(NEW_NUMBER)
+      expect((await send(callId)).status).toBe(200)
+
+      const rows = await spentWhenWritten(1)
+      expect(rows).toHaveLength(1)
+      expect(rows[0]).toMatchObject({ organizationId: ORG, feature: "ai-call", provider: "gemini", model: "gemini-3.8-live",
+        keySource: "platform", estimated: true, inputTokens: 0, outputTokens: 0 })
+      // 97 seconds of a call under two minutes, at $0.04 a minute.
+      expect(rows[0].costUsd).toBeCloseTo(SECONDS / 60 * 0.04, 9)
+
+      // The station retries a result whose answer it lost: nothing is spent twice.
+      expect((await send(callId)).status).toBe(200)
+      expect(await spentWhenWritten(2)).toHaveLength(1)
+      // And it is this organization's row alone.
+      expect(await spent(OTHER)).toEqual([])
+      await rls.runWithTenant(OTHER, async () => expect(await prisma.aiUsage.findMany()).toEqual([]))
+    })
+
+    it("is priced from the tokens, with no estimate, when the station counted them", async () => {
+      modelSays()
+      const { callId } = await inboundCall(NEW_NUMBER)
+      // The 62-second stand call, the tokens Google gave no modality apart.
+      const live = { textIn: 48434, audioIn: 5156, otherIn: 4484, textOut: 1140, audioOut: 596, otherOut: 267, turns: 4 }
+      expect((await send(callId, { usage: { live } })).status).toBe(200)
+
+      const rows = await spentWhenWritten(1)
+      expect(rows).toHaveLength(1)
+      expect(rows[0]).toMatchObject({ feature: "ai-call", estimated: false, inputTokens: 58074, outputTokens: 2003 })
+      expect(rows[0].costUsd).toBeCloseTo(0.06864, 9)
+    })
+
+    it("goes to the order line's row for a line call, at the line's rate when the station counted nothing", async () => {
+      const callId = randomUUID()
+      await inboundCall(NEW_NUMBER, { callSid: callId, providerCallId: callId,
+        consentAudit: { pharmacyInboundPreview: { version: 1, grantId: "grant-1", providerCallId: callId } } })
+      expect((await send(callId, { turns: [{ role: "agent", text: "Salam!" }] })).status).toBe(200)
+
+      const rows = await spentWhenWritten(1)
+      expect(rows).toHaveLength(1)
+      expect(rows[0]).toMatchObject({ feature: "phone-line", model: "gemini-3.8-live", estimated: true })
+      expect(rows[0].costUsd).toBeCloseTo(SECONDS / 60 * 0.13, 9)
+    })
   })
 
   it("never makes a lead from a call we placed ourselves", async () => {

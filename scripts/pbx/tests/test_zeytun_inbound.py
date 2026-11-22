@@ -324,7 +324,36 @@ class TransportTests(unittest.TestCase):
         self.assertTrue(bridge.log_cost(lambda status, **fields: lines.append((status, fields))))
         self.assertFalse(bridge.log_cost(lambda status, **fields: lines.append((status, fields))))
         self.assertEqual(lines, [("call", {"usd": round((800 * 0.75 + 1200 * 3 + 50 * 4.5 + 200 * 12) / 1e6, 4),
-                                           "textIn": 800, "audioIn": 1200, "textOut": 50, "audioOut": 200, "turns": 2})])
+                                           "textIn": 800, "audioIn": 1200, "otherIn": 0,
+                                           "textOut": 50, "audioOut": 200, "otherOut": 0, "turns": 2})])
+
+    def test_tokens_google_gives_no_modality_are_counted_apart_and_priced_as_text(self):
+        # Reconciliation with the Google bill, 2026-11-22: counted as audio they overstated the
+        # line's Live by 17-25 %. The real usageMetadata of a 62-second line-stand call, four turns.
+        fixture = json.loads((ROOT.parents[1] / "src/__tests__/fixtures/gemini-live-stand-usage.json").read_text())
+        bridge, _requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
+        for turn in fixture["orderLine62s"]["turns"]:
+            bridge.handle({"usageMetadata": turn}, lambda m: None, lambda: True)
+        live = bridge.call_usage()["live"]
+        self.assertEqual(live, {"textIn": 48434, "audioIn": 5156, "otherIn": 4484,
+                                "textOut": 1140, "audioOut": 596, "otherOut": 267, "turns": 4})
+        # Nothing is lost: the counters add up to what Google reported.
+        self.assertEqual(live["textIn"] + live["audioIn"] + live["otherIn"],
+                         sum(turn["promptTokenCount"] for turn in fixture["orderLine62s"]["turns"]))
+        self.assertEqual(live["textOut"] + live["audioOut"] + live["otherOut"],
+                         sum(turn["responseTokenCount"] + turn["thoughtsTokenCount"] for turn in fixture["orderLine62s"]["turns"]))
+        lines = []
+        bridge.log_cost(lambda status, **fields: lines.append(fields))
+        # $0.0807 by the rule of the day the call was made; the CRM prices this report at the same $0.0686.
+        self.assertEqual(lines[0]["usd"], 0.0686)
+
+    def test_a_response_with_no_breakdown_is_a_function_call_not_sound(self):
+        bridge, _requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
+        bridge.handle({"usageMetadata": {"promptTokenCount": 1000, "responseTokenCount": 40,
+                                         "promptTokensDetails": [{"modality": "TEXT", "tokenCount": 900}, {"modality": "AUDIO", "tokenCount": 60}]}},
+                      lambda m: None, lambda: True)
+        self.assertEqual(bridge.call_usage()["live"], {"textIn": 900, "audioIn": 60, "otherIn": 40,
+                                                       "textOut": 0, "audioOut": 0, "otherOut": 40, "turns": 1})
 
     def test_the_leg_reports_what_it_spent_and_nothing_when_it_counted_nothing(self):
         bridge, _requests = self.cancel_bridge(lambda body: {"status": "cancelled", "say": self.CANCEL_PHRASE})
@@ -348,11 +377,12 @@ class TransportTests(unittest.TestCase):
         finally:
             del bridge_module.GEMINI_LIVE_MODEL
         self.assertEqual(usage, {
-            "live": {"textIn": 800, "audioIn": 200, "textOut": 0, "audioOut": 200, "turns": 1, "model": "gemini-3.8-live"},
+            "live": {"textIn": 800, "audioIn": 0, "otherIn": 200, "textOut": 0, "audioOut": 200, "otherOut": 0,
+                     "turns": 1, "model": "gemini-3.8-live"},
             "tts": {"requests": 1, "chars": 5, "audioSeconds": 2.0, "model": "gemini-3.8-flash-tts"},
         })
         # Exactly the CRM's strict schema (voiceAgentLineUsageSchema): these keys, nothing else.
-        self.assertEqual(set(usage["live"]), {"textIn", "audioIn", "textOut", "audioOut", "turns", "model"})
+        self.assertEqual(set(usage["live"]), {"textIn", "audioIn", "otherIn", "textOut", "audioOut", "otherOut", "turns", "model"})
         self.assertEqual(set(usage["tts"]), {"requests", "chars", "audioSeconds", "model"})
         # A model name the CRM would refuse is left out rather than sent.
         bridge_module.GEMINI_LIVE_MODEL = "Gemini Live!"

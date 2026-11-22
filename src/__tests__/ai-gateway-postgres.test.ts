@@ -17,6 +17,8 @@
  *  - Gemini, OpenAI, Voyage and Google Vision (stage 3) take the same key
  *    rules, and their calls land in the same journal — the voice assistant's
  *    by its billed length, on the key the organization holds when it ends.
+ *  - A cost estimated from a call's length is journaled as an estimate, and the
+ *    report keeps such calls in a row of their own (owner, 2026-11-22).
  *  - The spend report («Настройки → ИИ и расходы») buckets the journal by
  *    day, week or month in the viewer's time zone, returns every period of
  *    the window (an empty one as zero), names the agent, and shows nothing
@@ -83,6 +85,8 @@ vi.mock("@/lib/ai/anthropic-client", () => ({
 const ROOT = process.cwd()
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
 const MIGRATION = path.join(ROOT, "prisma/migrations/20261210090000_ai_provider_gateway/migration.sql")
+// The journal's later column, applied on top as production got it.
+const ESTIMATED_MIGRATION = path.join(ROOT, "prisma/migrations/20261225090000_ai_usage_estimated/migration.sql")
 
 const ORG = "org-gateway"
 const OTHER = "org-gateway-other"
@@ -122,7 +126,7 @@ function schemaWithoutEmbeddings(): string {
     // The two tables as production gets them: from their migration, with RLS.
     // The organizations column is already there from the schema.
     const migration = readFileSync(MIGRATION, "utf8").replace(/^ALTER TABLE "organizations"[^;]*;$/m, "")
-    sql(scratch!.adminDb, `DROP TABLE "tenant_ai_credentials"; DROP TABLE "ai_usage";\n${migration}`)
+    sql(scratch!.adminDb, `DROP TABLE "tenant_ai_credentials"; DROP TABLE "ai_usage";\n${migration}\n${readFileSync(ESTIMATED_MIGRATION, "utf8")}`)
     sql(scratch!.adminDb, `GRANT USAGE ON SCHEMA public TO "${scratch!.role}"; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${scratch!.role}"`)
 
     prisma = (await import("@/lib/prisma")).prisma
@@ -275,6 +279,12 @@ function schemaWithoutEmbeddings(): string {
       { at: now, feature: "inbox-reply", agentId: null, keySource: "tenant", costUsd: 0.25, model: "claude-haiku-4-5-20251001" },
       { at: new Date(now.getTime() - 20 * 86_400_000), feature: "social", agentId: null, keySource: "platform", costUsd: 7, model: "claude-sonnet-4-6" },
     ]
+    // Written before the journal knew an estimate from a count: the column's default, never null.
+    await rls.runWithRlsBypass(() => prisma.$executeRaw`
+      INSERT INTO ai_usage (id, "organizationId", feature, provider, model, "keySource", "costUsd", "createdAt")
+      VALUES ('row-before-the-column', ${OTHER}, 'phone-line', 'gemini', 'gemini-3.8-live', 'platform', 0.2, now())`)
+    expect((await usageRows(OTHER)).map((row) => row.estimated)).toEqual([false])
+    await rls.runWithRlsBypass(() => prisma.aiUsage.deleteMany({ where: { organizationId: OTHER } }))
     await rls.runWithRlsBypass(async () => {
       for (const r of rows) {
         await prisma.aiUsage.create({ data: {
@@ -299,9 +309,9 @@ function schemaWithoutEmbeddings(): string {
 
     const report = await gateway.aiSpendReport(ORG, { granularity: "day", range: "7d", timeZone: "Asia/Baku" })
     expect(report.rows).toEqual([
-      { feature: "social", agentId: null, agentName: null, provider: "anthropic", model: "claude-sonnet-4-6", keySource: "platform", calls: 1, inputTokens: 1010, outputTokens: 100, costUsd: 1.25 },
-      { feature: "davinci-chat", agentId: agent.id, agentName: "Support Pro", provider: "anthropic", model: "claude-haiku-4-5-20251001", keySource: "platform", calls: 2, inputTokens: 2020, outputTokens: 200, costUsd: 0.6 },
-      { feature: "inbox-reply", agentId: null, agentName: null, provider: "anthropic", model: "claude-haiku-4-5-20251001", keySource: "tenant", calls: 1, inputTokens: 1010, outputTokens: 100, costUsd: 0.25 },
+      { feature: "social", agentId: null, agentName: null, provider: "anthropic", model: "claude-sonnet-4-6", keySource: "platform", calls: 1, inputTokens: 1010, outputTokens: 100, costUsd: 1.25, estimated: false },
+      { feature: "davinci-chat", agentId: agent.id, agentName: "Support Pro", provider: "anthropic", model: "claude-haiku-4-5-20251001", keySource: "platform", calls: 2, inputTokens: 2020, outputTokens: 200, costUsd: 0.6, estimated: false },
+      { feature: "inbox-reply", agentId: null, agentName: null, provider: "anthropic", model: "claude-haiku-4-5-20251001", keySource: "tenant", calls: 1, inputTokens: 1010, outputTokens: 100, costUsd: 0.25, estimated: false },
     ])
     // Today's limit counts the platform key only, by the UTC day.
     const utcToday = rows.filter((r) => r.keySource === "platform" && localDay(r.at, "UTC") === localDay(now, "UTC")).reduce((s, r) => s + r.costUsd, 0)
@@ -359,10 +369,11 @@ function schemaWithoutEmbeddings(): string {
     // A session that never connected costs nothing and writes nothing.
     await rls.runWithTenant(ORG, () => voiceBudget.settleVoiceSeconds(ORG, "user-1", 300, 0, started))
 
-    const rows = (await usageRows(ORG)).map(({ feature, provider, keySource, costUsd }) => ({ feature, provider, keySource, costUsd }))
+    const rows = (await usageRows(ORG)).map(({ feature, provider, keySource, costUsd, estimated }) => ({ feature, provider, keySource, costUsd, estimated }))
+    // $0.124 a minute — what the one conversation settled with Google's count cost — and marked as an estimate.
     expect(rows).toEqual(expect.arrayContaining([
-      { feature: "voice-assistant", provider: "gemini", keySource: "platform", costUsd: expect.closeTo(0.045, 12) },
-      { feature: "voice-assistant", provider: "gemini", keySource: "tenant", costUsd: expect.closeTo(0.0225, 12) },
+      { feature: "voice-assistant", provider: "gemini", keySource: "platform", costUsd: expect.closeTo(0.248, 12), estimated: true },
+      { feature: "voice-assistant", provider: "gemini", keySource: "tenant", costUsd: expect.closeTo(0.124, 12), estimated: true },
     ]))
     expect(rows).toHaveLength(2)
   })
@@ -378,11 +389,63 @@ function schemaWithoutEmbeddings(): string {
 
     const rows = (await usageRows(ORG))
       .sort((a, b) => b.costUsd - a.costUsd)
-      .map(({ feature, model, inputTokens, outputTokens, costUsd }) => ({ feature, model, inputTokens, outputTokens, costUsd }))
+      .map(({ feature, model, inputTokens, outputTokens, costUsd, estimated }) => ({ feature, model, inputTokens, outputTokens, costUsd, estimated }))
     expect(rows).toEqual([
-      { feature: "voice-assistant", model: "gemini-live", inputTokens: 19_200, outputTokens: 940,
+      { feature: "voice-assistant", model: "gemini-live", inputTokens: 19_200, outputTokens: 940, estimated: false,
         costUsd: expect.closeTo((18_000 * 0.75 + 1_200 * 3 + 40 * 4.5 + 900 * 12) / 1e6, 12) },
-      { feature: "voice-assistant", model: "gemini-live", inputTokens: 1, outputTokens: 0, costUsd: expect.closeTo(0.0045, 12) },
+      { feature: "voice-assistant", model: "gemini-live", inputTokens: 1, outputTokens: 0, costUsd: expect.closeTo(0.0045, 12), estimated: false },
     ])
+  })
+
+  it("prices a conversation the model never took a turn in by its listening, not by the per-minute estimate", async () => {
+    const voiceBudget = await import("@/lib/ai/voice/budget")
+    const liveUsage = await import("@/lib/ai/voice/live-usage")
+    // What the console sends when Google sent it no usageMetadata at all.
+    const silent = liveUsage.parseLiveUsage(JSON.parse(JSON.stringify(liveUsage.EMPTY_LIVE_USAGE)))
+    expect(silent).not.toBeNull()
+    await rls.runWithTenant(ORG, () => voiceBudget.settleVoiceSeconds(ORG, "user-1", 300, 60, new Date(), silent))
+    const [row, ...more] = await usageRows(ORG)
+    expect(more).toEqual([])
+    // A minute of incoming audio at $3 a million — 27 times less than the $0.124 of a lost count.
+    expect(row).toMatchObject({ feature: "voice-assistant", inputTokens: 0, outputTokens: 0, estimated: false })
+    expect(row.costUsd).toBeCloseTo(0.0045, 12)
+  })
+
+  it("prices the tokens Google gave no modality as text, and shows every token in the row", async () => {
+    const voiceBudget = await import("@/lib/ai/voice/budget")
+    // The 62-second stand call as a console that knows the split adds it up (lib-voice-call-spend.test.ts).
+    const usage = { textIn: 48_434, audioIn: 5_156, otherIn: 4_484, textOut: 1_140, audioOut: 596, otherOut: 267, turns: 4 }
+    await rls.runWithTenant(ORG, () => voiceBudget.settleVoiceSeconds(ORG, "user-1", 300, 62, new Date(), usage))
+    const [row, ...more] = await usageRows(ORG)
+    expect(more).toEqual([])
+    expect(row).toMatchObject({ feature: "voice-assistant", inputTokens: 58_074, outputTokens: 2_003, estimated: false })
+    expect(row.costUsd).toBeCloseTo(0.06864, 9)
+  })
+
+  it("journals a phone call the station counted no tokens for as an estimate, in a report row of its own", async () => {
+    const spend = await import("@/lib/voice-agent/call-spend")
+    // An organization's own AI call of three minutes, and one the day the station counts its tokens.
+    spend.journalAiCallSpend(ORG, { durationSeconds: 180 })
+    spend.journalAiCallSpend(ORG, { durationSeconds: 62,
+      usage: { live: { textIn: 48_434, audioIn: 5_156, otherIn: 4_484, textOut: 1_140, audioOut: 596, otherOut: 267, turns: 4 } } })
+    // The order line: counted by the station as it reports today, with its speech.
+    spend.journalLineCallSpend(ORG, { durationSeconds: 62, usage: {
+      live: { model: "gemini-3.8-live", textIn: 48_434, audioIn: 9_640, textOut: 1_140, audioOut: 863, turns: 4 },
+      tts: { model: "gemini-3.8-flash-tts", requests: 6, chars: 410, audioSeconds: 60 } } }, undefined, new Date("2026-11-22T12:00:00Z"))
+    await settle()
+    await settle()
+
+    const report = await gateway.aiSpendReport(ORG, { granularity: "day", range: "7d", timeZone: "Asia/Baku" })
+    const rows = report.rows.map(({ feature, model, keySource, calls, inputTokens, outputTokens, costUsd, estimated }) =>
+      ({ feature, model, keySource, calls, inputTokens, outputTokens, costUsd, estimated }))
+    expect(rows).toEqual([
+      // Three minutes at $0.05 a minute, no tokens: the page marks it «оценка».
+      { feature: "ai-call", model: "gemini-3.8-live", keySource: "platform", calls: 1, inputTokens: 0, outputTokens: 0, costUsd: 0.15, estimated: true },
+      { feature: "phone-line", model: "gemini-3.8-live", keySource: "platform", calls: 1, inputTokens: 58_074, outputTokens: 2_003, costUsd: 0.080732, estimated: false },
+      { feature: "ai-call", model: "gemini-3.8-live", keySource: "platform", calls: 1, inputTokens: 58_074, outputTokens: 2_003, costUsd: 0.06864, estimated: false },
+      // A minute of speech in November 2026.
+      { feature: "phone-line", model: "gemini-3.8-flash-tts", keySource: "platform", calls: 1, inputTokens: 0, outputTokens: 0, costUsd: 0.0135, estimated: false },
+    ])
+    expect(report.totals.costUsd).toBeCloseTo(0.15 + 0.080732 + 0.06864 + 0.0135, 6)
   })
 })

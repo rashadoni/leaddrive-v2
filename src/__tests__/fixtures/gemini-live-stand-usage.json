@@ -1,0 +1,467 @@
+{
+ "_about": "Real Gemini Live usageMetadata of two stand calls, one record per billed turn, as Google sent them. Counts only: no text, no audio, no names. Read by src/__tests__ and by scripts/pbx/tests/test_zeytun_inbound.py.",
+ "orderLine62s": {
+  "about": "Phone order line stand with the real station core and catalog tools, run 'cost-check', 2026-11-06, 62 s. The station logged $0.0807 for it by the rule of that day (tokens with no modality counted as audio).",
+  "seconds": 62,
+  "turns": [
+   {
+    "promptTokenCount": 4770,
+    "responseTokenCount": 191,
+    "totalTokenCount": 4961,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 4326
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 187
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 191
+     }
+    ],
+    "thoughtsTokenCount": 110
+   },
+   {
+    "promptTokenCount": 5454,
+    "responseTokenCount": 110,
+    "totalTokenCount": 5564,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 4675
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 494
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 110
+     }
+    ],
+    "thoughtsTokenCount": 109
+   },
+   {
+    "promptTokenCount": 37107,
+    "responseTokenCount": 431,
+    "totalTokenCount": 37538,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 30760
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 3400
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 164
+     }
+    ],
+    "thoughtsTokenCount": 643
+   },
+   {
+    "promptTokenCount": 10743,
+    "responseTokenCount": 131,
+    "totalTokenCount": 10874,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 8673
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 1075
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 131
+     }
+    ],
+    "thoughtsTokenCount": 278
+   }
+  ]
+ },
+ "bookingCall190s": {
+  "about": "General agent with no tools, a clinic booking call, run 'cost-clinic-long-01', 2026-11-22, 190.2 s. `atSecond` is when the record arrived, from the call's start.",
+  "seconds": 190.2,
+  "turns": [
+   {
+    "atSecond": 4.022,
+    "promptTokenCount": 2720,
+    "responseTokenCount": 77,
+    "totalTokenCount": 2797,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 2508
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 187
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 77
+     }
+    ],
+    "thoughtsTokenCount": 162
+   },
+   {
+    "atSecond": 17.937,
+    "promptTokenCount": 3208,
+    "responseTokenCount": 142,
+    "totalTokenCount": 3350,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 2827
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 338
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 142
+     }
+    ],
+    "thoughtsTokenCount": 150
+   },
+   {
+    "atSecond": 25.962,
+    "promptTokenCount": 3750,
+    "responseTokenCount": 67,
+    "totalTokenCount": 3817,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 3162
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 523
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 67
+     }
+    ],
+    "thoughtsTokenCount": 93
+   },
+   {
+    "atSecond": 40.977,
+    "promptTokenCount": 4249,
+    "responseTokenCount": 171,
+    "totalTokenCount": 4420,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 3483
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 685
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 171
+     }
+    ],
+    "thoughtsTokenCount": 139
+   },
+   {
+    "atSecond": 56.342,
+    "promptTokenCount": 4849,
+    "responseTokenCount": 217,
+    "totalTokenCount": 5066,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 3823
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 921
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 217
+     }
+    ],
+    "thoughtsTokenCount": 99
+   },
+   {
+    "atSecond": 72.815,
+    "promptTokenCount": 5817,
+    "responseTokenCount": 179,
+    "totalTokenCount": 5996,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 4433
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 1253
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 179
+     }
+    ],
+    "thoughtsTokenCount": 125
+   },
+   {
+    "atSecond": 82.448,
+    "promptTokenCount": 6203,
+    "responseTokenCount": 67,
+    "totalTokenCount": 6270,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 4547
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 1499
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 67
+     }
+    ],
+    "thoughtsTokenCount": 69
+   },
+   {
+    "atSecond": 100.08,
+    "promptTokenCount": 6749,
+    "responseTokenCount": 192,
+    "totalTokenCount": 6941,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 4883
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 1693
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 192
+     }
+    ],
+    "thoughtsTokenCount": 107
+   },
+   {
+    "atSecond": 115.645,
+    "promptTokenCount": 7412,
+    "responseTokenCount": 195,
+    "totalTokenCount": 7607,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 5237
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 1976
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 195
+     }
+    ],
+    "thoughtsTokenCount": 76
+   },
+   {
+    "atSecond": 128.35,
+    "promptTokenCount": 8040,
+    "responseTokenCount": 158,
+    "totalTokenCount": 8198,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 5582
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 2233
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 158
+     }
+    ],
+    "thoughtsTokenCount": 108
+   },
+   {
+    "atSecond": 138.276,
+    "promptTokenCount": 8612,
+    "responseTokenCount": 106,
+    "totalTokenCount": 8718,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 5921
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 2444
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 106
+     }
+    ],
+    "thoughtsTokenCount": 105
+   },
+   {
+    "atSecond": 150.183,
+    "promptTokenCount": 9123,
+    "responseTokenCount": 140,
+    "totalTokenCount": 9263,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 6245
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 2611
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 140
+     }
+    ],
+    "thoughtsTokenCount": 61
+   },
+   {
+    "atSecond": 171.378,
+    "promptTokenCount": 9751,
+    "responseTokenCount": 280,
+    "totalTokenCount": 10031,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 6592
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 2870
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 280
+     }
+    ],
+    "thoughtsTokenCount": 267
+   },
+   {
+    "atSecond": 180.583,
+    "promptTokenCount": 10479,
+    "responseTokenCount": 93,
+    "totalTokenCount": 10572,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 6959
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 3199
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 93
+     }
+    ],
+    "thoughtsTokenCount": 55
+   },
+   {
+    "atSecond": 189.746,
+    "promptTokenCount": 10976,
+    "responseTokenCount": 70,
+    "totalTokenCount": 11046,
+    "promptTokensDetails": [
+     {
+      "modality": "TEXT",
+      "tokenCount": 7279
+     },
+     {
+      "modality": "AUDIO",
+      "tokenCount": 3356
+     }
+    ],
+    "responseTokensDetails": [
+     {
+      "modality": "AUDIO",
+      "tokenCount": 70
+     }
+    ],
+    "thoughtsTokenCount": 57
+   }
+  ]
+ },
+ "googleBill": {
+  "about": "Gemini Live lines of the Google Cloud bill of the project, 1-22 November 2026 (all uses of the key), tokens and USD as billed.",
+  "textIn": {
+   "tokens": 35710317,
+   "usd": 26.78
+  },
+  "audioIn": {
+   "tokens": 6075651,
+   "usd": 18.23
+  },
+  "audioOut": {
+   "tokens": 395116,
+   "usd": 4.74
+  },
+  "textOut": {
+   "tokens": 491743,
+   "usd": 2.21
+  }
+ }
+}

@@ -12,9 +12,9 @@ import { holdsSettingsSectionForRequest } from "@/lib/settings-sections"
  * and the screen never disagree.
  */
 const TEXT = {
-  ru: { rows: "По сервисам", periods: "По периодам", service: "Сервис", agent: "ИИ-агент", provider: "Провайдер", model: "Модель", key: "Чей ключ", calls: "Вызовов", input: "Токены: вход", output: "Токены: ответ", cost: "Сумма, $", period: "Начало периода", total: "Итого", platform: "LeadDrive", tenant: "Ваш ключ" },
-  az: { rows: "Xidmətlər üzrə", periods: "Dövrlər üzrə", service: "Xidmət", agent: "AI agent", provider: "Provayder", model: "Model", key: "Kimin açarı", calls: "Çağırış", input: "Tokenlər: giriş", output: "Tokenlər: cavab", cost: "Məbləğ, $", period: "Dövrün başlanğıcı", total: "Cəmi", platform: "LeadDrive", tenant: "Sizin açar" },
-  en: { rows: "By service", periods: "By period", service: "Service", agent: "AI agent", provider: "Provider", model: "Model", key: "Whose key", calls: "Calls", input: "Tokens: input", output: "Tokens: output", cost: "Cost, $", period: "Period start", total: "Total", platform: "LeadDrive", tenant: "Your key" },
+  ru: { rows: "По сервисам", periods: "По периодам", service: "Сервис", agent: "ИИ-агент", provider: "Провайдер", model: "Модель", key: "Чей ключ", basis: "Как посчитано", estimated: "оценка по длительности", calls: "Вызовов", input: "Токены: вход", output: "Токены: ответ", cost: "Сумма, $", period: "Начало периода", total: "Итого", platform: "LeadDrive", tenant: "Ваш ключ" },
+  az: { rows: "Xidmətlər üzrə", periods: "Dövrlər üzrə", service: "Xidmət", agent: "AI agent", provider: "Provayder", model: "Model", key: "Kimin açarı", basis: "Necə hesablanıb", estimated: "müddətə görə təxmini", calls: "Çağırış", input: "Tokenlər: giriş", output: "Tokenlər: cavab", cost: "Məbləğ, $", period: "Dövrün başlanğıcı", total: "Cəmi", platform: "LeadDrive", tenant: "Sizin açar" },
+  en: { rows: "By service", periods: "By period", service: "Service", agent: "AI agent", provider: "Provider", model: "Model", key: "Whose key", basis: "How it was counted", estimated: "estimate by length", calls: "Calls", input: "Tokens: input", output: "Tokens: output", cost: "Cost, $", period: "Period start", total: "Total", platform: "LeadDrive", tenant: "Your key" },
 } as const
 
 export const GET = withRlsSessionAuth(async (req, auth) => {
@@ -44,6 +44,7 @@ export const GET = withRlsSessionAuth(async (req, auth) => {
     { header: t.input, key: "input", width: 16 },
     { header: t.output, key: "output", width: 16 },
     { header: t.cost, key: "cost", width: 12 },
+    { header: t.basis, key: "basis", width: 26 },
   ]
   byRow.getRow(1).font = { bold: true }
   for (const r of report.rows) {
@@ -57,6 +58,8 @@ export const GET = withRlsSessionAuth(async (req, auth) => {
       input: r.inputTokens,
       output: r.outputTokens,
       cost: r.costUsd,
+      // Empty for a cost the provider counted; named for one priced by the calls' length.
+      basis: r.estimated ? t.estimated : "",
     })
   }
   const totalRow = byRow.addRow({ service: t.total, calls: report.totals.calls, cost: report.totals.costUsd })

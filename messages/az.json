@@ -33611,6 +33611,8 @@
     "total": "Cəmi",
     "keyPlatform": "LeadDrive",
     "keyTenant": "Sizin açar",
+    "estimated": "təxmini",
+    "estimatedHint": "Provayder bu danışıqlar üzrə token sayını göndərməyib: məbləğ onların müddətinə görə, ölçülmüş tariflə hesablanıb.",
     "tokensK": "{n} min",
     "tokensM": "{n} mln",
     "keysTitle": "AI provayderlərinin açarları",

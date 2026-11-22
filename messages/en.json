@@ -33615,6 +33615,8 @@
     "total": "Total",
     "keyPlatform": "LeadDrive",
     "keyTenant": "Your key",
+    "estimated": "estimate",
+    "estimatedHint": "The provider sent no token count for these conversations: the amount is their length at a measured rate.",
     "tokensK": "{n}K",
     "tokensM": "{n}M",
     "keysTitle": "AI provider keys",
