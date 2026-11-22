@@ -16,6 +16,7 @@ export type LearnedRow = {
   body: string
   status: string
   source: string
+  approvedAt: Date | null
   removedAt: Date | null
 }
 
@@ -23,12 +24,17 @@ export type LearnedRow = {
 export const MANUAL_SOURCE = "manual"
 
 /**
- * The share of the prompt the learned knowledge may take. What a person added comes first, then the
- * newest-seen learned rows: learned rows refresh their date on every conversation, so by date alone
- * a price the company typed in would be the first thing to fall out, and the price rule would stop
- * finding it among the facts.
+ * The share of the prompt the learned knowledge may take. What a person added comes first, then what
+ * a person confirmed, then the newest-seen learned rows: learned rows refresh their date on every
+ * conversation, so by date alone a price the company typed in or confirmed would be the first thing
+ * to fall out, and the price rule would stop finding it among the facts. An active row's approvedAt
+ * vouches for its text: a different price sends the row to "conflict" and out of the facts
+ * (lib/inbox/learning/merge).
  */
 export const LEARNED_KNOWLEDGE_MAX_CHARS = 6000
+
+const promptRank = (row: Pick<LearnedRow, "source" | "approvedAt">): number =>
+  row.source === MANUAL_SOURCE ? 0 : row.approvedAt ? 1 : 2
 
 const TRAIT_LABEL: Record<string, string> = {
   tone: "Тон",
@@ -64,10 +70,7 @@ export function composeLearnedCharacter(rows: readonly LearnedRow[]): string {
 
 export function composeLearnedKnowledge(rows: readonly LearnedRow[], maxChars = LEARNED_KNOWLEDGE_MAX_CHARS): string {
   const usable = rows.filter(isUsableKnowledge)
-  const ordered = [
-    ...usable.filter((r) => r.source === MANUAL_SOURCE),
-    ...usable.filter((r) => r.source !== MANUAL_SOURCE),
-  ]
+  const ordered = [...usable].sort((a, b) => promptRank(a) - promptRank(b))
   const lines: string[] = []
   let used = 0
   for (const row of ordered) {

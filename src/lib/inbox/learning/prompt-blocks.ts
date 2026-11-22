@@ -28,22 +28,22 @@ export async function learnedPromptBlocks(params: {
     const channelRows = { organizationId: params.organizationId, channelConfigId, removedAt: null }
     const read = {
       orderBy: [{ lastSeenAt: "desc" }, { id: "asc" }],
-      select: { kind: true, type: true, title: true, body: true, status: true, source: true, removedAt: true },
+      select: { kind: true, type: true, title: true, body: true, status: true, source: true, approvedAt: true, removedAt: true },
       take: 400,
     }
-    // Two reads, so that learned rows, however many and however fresh, cannot push the character or
-    // what a person added out of the window. Waiting and conflicting prices are in neither.
-    const [fixed, learned]: LearnedRow[][] = await Promise.all([
+    const activeLearned = { ...channelRows, kind: "knowledge", status: "active", source: { not: MANUAL_SOURCE } }
+    // Separate reads, so that learned rows, however many and however fresh, cannot push the character,
+    // what a person added or what a person confirmed out of the window. Waiting and conflicting prices
+    // are in none of them.
+    const [fixed, confirmed, learned]: LearnedRow[][] = await Promise.all([
       prisma.inboxLearnedItem.findMany({
         ...read,
         where: { ...channelRows, OR: [{ kind: "trait" }, { kind: "knowledge", status: "active", source: MANUAL_SOURCE }] },
       }),
-      prisma.inboxLearnedItem.findMany({
-        ...read,
-        where: { ...channelRows, kind: "knowledge", status: "active", source: { not: MANUAL_SOURCE } },
-      }),
+      prisma.inboxLearnedItem.findMany({ ...read, where: { ...activeLearned, approvedAt: { not: null } } }),
+      prisma.inboxLearnedItem.findMany({ ...read, where: { ...activeLearned, approvedAt: null } }),
     ])
-    const rows = [...fixed, ...learned]
+    const rows = [...fixed, ...confirmed, ...learned]
     return { character: composeLearnedCharacter(rows), knowledge: composeLearnedKnowledge(rows) }
   } catch (error) {
     console.error("[inbox-learning prompt]", error instanceof Error ? error.message : error)

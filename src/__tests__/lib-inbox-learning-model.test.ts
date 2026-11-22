@@ -214,7 +214,7 @@ describe("a conversation's facts join the channel's knowledge", () => {
 })
 
 describe("what the AI may state", () => {
-  const row = (over: Partial<LearnedRow>): LearnedRow => ({ kind: "knowledge", type: "qa", title: "T", body: "B", status: "active", source: "learned", removedAt: null, ...over })
+  const row = (over: Partial<LearnedRow>): LearnedRow => ({ kind: "knowledge", type: "qa", title: "T", body: "B", status: "active", source: "learned", approvedAt: null, removedAt: null, ...over })
 
   it("puts only confirmed knowledge among the facts", () => {
     const text = composeLearnedKnowledge([
@@ -245,6 +245,21 @@ describe("what the AI may state", () => {
     expect(text).not.toContain("- Вопрос 39:") // the block did overflow
     expect(text).not.toContain("77 ₼")
     expect(text).not.toContain("88 ₼")
+  })
+
+  it("keeps a confirmed price after what a person added and before everything learned", () => {
+    const confirmedAt = new Date()
+    const learned = Array.from({ length: 40 }, (_, i) => row({ title: `Вопрос ${i}`, body: "ответ ".repeat(40) }))
+    const text = composeLearnedKnowledge([
+      ...learned,
+      row({ type: "price", title: "Подтверждённая", body: "Педикюр 30 ₼", approvedAt: confirmedAt }),
+      row({ type: "price", title: "Спорная", body: "99 ₼", status: "conflict", approvedAt: confirmedAt }),
+      row({ type: "price", title: "Ручная", body: "Маникюр 40 ₼", source: "manual", approvedAt: confirmedAt }),
+    ])
+    expect(text.split("\n").slice(1, 3)).toEqual(["- Ручная: Маникюр 40 ₼", "- Подтверждённая: Педикюр 30 ₼"])
+    expect(text).not.toContain("- Вопрос 39:")
+    // A confirmed price people now name differently is not stated, whatever its place was.
+    expect(text).not.toContain("99 ₼")
   })
 
   it("lets a shorter row in after one that did not fit, and writes no empty block", () => {

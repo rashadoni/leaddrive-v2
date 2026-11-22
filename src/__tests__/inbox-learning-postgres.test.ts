@@ -340,6 +340,12 @@ function schemaWithoutEmbeddings(): string {
     await inOrg(() => prisma.inboxLearnedItem.create({
       data: { ...channel, kind: "trait", type: "tone", title: "Тон", body: "Тёплый, на «вы»", status: "active", lastSeenAt: older },
     }))
+    // Learned from a conversation long ago, then confirmed by a person with «Подтвердить».
+    const waiting = await inOrg(() => prisma.inboxLearnedItem.create({
+      data: { ...channel, kind: "knowledge", type: "price", title: "Педикюр", body: "30 ₼", status: "pending", lastSeenAt: older },
+    }))
+    expect(await inOrg(() => service.changeItem({ organizationId: ORG, channelConfigId: FULL, itemId: waiting.id, userId: null, change: { action: "approve" } })))
+      .toMatchObject({ ok: true, item: { status: "active" } })
     // More rows than one read takes and more text than the block holds, all seen after the person's entry.
     await inOrg(() => prisma.inboxLearnedItem.createMany({
       data: [
@@ -352,10 +358,15 @@ function schemaWithoutEmbeddings(): string {
     }))
 
     const { knowledge, character } = await inOrg(() => blocks.learnedPromptBlocks({ organizationId: ORG, channelConfigId: FULL }))
-    expect(knowledge.split("\n")[1]).toBe("- Новый прайс: Маникюр 40 ₼")
+    expect(knowledge.split("\n").slice(1, 3)).toEqual(["- Новый прайс: Маникюр 40 ₼", "- Педикюр: 30 ₼"])
     expect(knowledge).toContain("- Вопрос ")
     expect(knowledge).not.toContain("77 ₼")
     expect(knowledge).not.toContain("88 ₼")
     expect(character).toContain("Тёплый, на «вы»")
+
+    // People start naming another price: the confirmed one leaves the facts until a person settles it.
+    await inOrg(() => prisma.inboxLearnedItem.updateMany({ where: { id: waiting.id, organizationId: ORG }, data: { status: "conflict" } }))
+    const disputed = await inOrg(() => blocks.learnedPromptBlocks({ organizationId: ORG, channelConfigId: FULL }))
+    expect(disputed.knowledge).not.toContain("- Педикюр: 30 ₼")
   })
 })
