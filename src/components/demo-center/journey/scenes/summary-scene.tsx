@@ -143,7 +143,7 @@ export function SummaryScene({ manifest, snapshot, step, reviewMode, dispatch, h
           <>
             <p className="flex-1 text-sm text-muted-foreground">{S.completedBody}</p>
             {onContactSales && (
-              <Button onClick={onContactSales} className="bg-[#FF4D00] text-white hover:bg-[#e04400]">{S.contactSales}</Button>
+              <Button onClick={onContactSales}>{S.contactSales}</Button>
             )}
           </>
         ) : (
@@ -152,7 +152,6 @@ export function SummaryScene({ manifest, snapshot, step, reviewMode, dispatch, h
             <Button
               onClick={finish}
               variant={unseen.length ? "outline" : "default"}
-              className={unseen.length ? undefined : "bg-[#FF4D00] text-white hover:bg-[#e04400]"}
               disabled={reviewMode}
               data-testid="demo-finish"
               {...(unseen.length ? {} : demoTarget("summary-finish"))}

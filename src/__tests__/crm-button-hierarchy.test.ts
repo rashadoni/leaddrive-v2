@@ -62,6 +62,12 @@ describe("CRM action hierarchy source guard", () => {
     expect(findButtonViolations(source)).toEqual([])
   })
 
+  it("holds the guided demo's scenes to the CRM's rule, and leaves only its public request page outside", () => {
+    const orange = '<button className="bg-[#FF4D00] text-white">Yeni lid</button>'
+    expect(findButtonViolations(orange, "src/components/demo-center/journey/scenes/lead-scene.tsx")).not.toEqual([])
+    expect(findButtonViolations(orange, "src/components/demo-center/demo-access-shell.tsx")).toEqual([])
+  })
+
   it("does not accept an invented semantic exception", () => {
     expect(findButtonViolations('<Button data-crm-color-role="ignore" className="bg-orange-600" />')).not.toEqual([])
   })

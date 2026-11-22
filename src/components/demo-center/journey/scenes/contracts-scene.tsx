@@ -144,7 +144,7 @@ export function ContractsScene(props: DemoSceneProps) {
                 type="button"
                 aria-current={active ? "page" : undefined}
                 onClick={() => (active ? undefined : hint(S.contractsTabHint))}
-                className={cn("rounded-xl px-3 py-1.5 text-sm font-medium transition-colors", active ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+                className={cn("rounded-xl px-3 py-1.5 text-sm font-medium transition-colors", active ? "crm-choice-selected" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
               >
                 {tNav(item.key)}
               </button>
@@ -244,7 +244,7 @@ function ListScreen(props: DemoSceneProps) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="default" size="sm" onClick={() => hint(S.demoButtonHint)}>{t("filterAll")} ({total})</Button>
+        <Button variant="selected" size="sm" onClick={() => hint(S.demoButtonHint)}>{t("filterAll")} ({total})</Button>
         {(["draft", "pending_approval", "approved", "active"] as const).map((key) => (
           stats.statusCounts[key] ? (
             <Button key={key} variant="outline" size="sm" onClick={() => hint(S.demoButtonHint)}>{t(STATUS_KEYS[key])} ({stats.statusCounts[key]})</Button>
@@ -556,7 +556,7 @@ function CustomerScreen(props: DemoSceneProps) {
               <p className="text-xs text-zinc-400">{t("typeNameHint")}</p>
             </div>
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => press("ctr-sign-customer", "ctr.signed")} className="flex-1 rounded-lg bg-indigo-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700" {...demoTarget("ctr-sign-customer")}>{t("signButton")}</button>
+              <button type="button" data-crm-color-role="status" onClick={() => press("ctr-sign-customer", "ctr.signed")} className="flex-1 rounded-lg bg-indigo-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700" {...demoTarget("ctr-sign-customer")}>{t("signButton")}</button>
               <button type="button" onClick={() => hint(S.contractsRejectHint)} className="rounded-lg border border-zinc-200 px-5 py-2.5 text-sm text-zinc-600 transition-colors hover:bg-zinc-50">{t("declineButton")}</button>
             </div>
           </div>

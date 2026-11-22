@@ -341,6 +341,7 @@ export function DemoLiveCall({
                 href={telegramLink.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                data-crm-color-role="provider"
                 className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-[#1B75A8] text-xs font-semibold text-white transition-colors hover:bg-[#176A99]"
                 {...(!codeSent ? { ...demoTarget(DEMO_LIVE_CALL_STEP_ID), ...demoLabel(S.liveCallTelegramOpen) } : {})}
               >

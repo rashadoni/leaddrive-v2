@@ -138,7 +138,7 @@ export function SupportScene(props: DemoSceneProps) {
               type="button"
               aria-current={active ? "page" : undefined}
               onClick={() => (active ? undefined : hint(S.supportTabHint))}
-              className={cn("rounded-xl px-3 py-1.5 text-sm font-medium transition-colors", active ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+              className={cn("rounded-xl px-3 py-1.5 text-sm font-medium transition-colors", active ? "crm-choice-selected" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
             >
               {tNav(item.key)}
             </button>

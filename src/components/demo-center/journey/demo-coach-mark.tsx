@@ -349,6 +349,7 @@ export function DemoCoachMark({
         <button
           type="button"
           data-testid="demo-coach-arrow"
+          data-crm-color-role="status"
           data-docked={offBelow ? "bottom" : "top"}
           onClick={() =>
             (findDemoTarget(targetStepId ?? "") ?? document.querySelector(`[data-tour-id="${anchor}"]`))?.scrollIntoView({

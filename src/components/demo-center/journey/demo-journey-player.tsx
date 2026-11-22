@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType }
 import Image from "next/image"
 import { Clock3 } from "lucide-react"
 import { toast } from "sonner"
+import { CrmAppearanceProvider } from "@/components/ui/crm-appearance"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Progress } from "@/components/ui/progress"
 import {
@@ -469,8 +470,12 @@ export function DemoJourneyPlayer({
   const coachShown = Boolean(step && Scene) && hiddenCoachKey !== coachKey
 
   return (
+    <CrmAppearanceProvider enabled>
     <TooltipProvider delayDuration={200}>
-      <section aria-label={S.sectionAria} className="relative isolate flex min-h-dvh flex-col bg-background text-foreground">
+      {/* The scenes are CRM screens, so they take the CRM's own action colours
+          (crm-workspace.css): without this scope they kept the orange buttons
+          the product dropped, and every intro clip disagreed with the CRM. */}
+      <section data-crm-workspace="" aria-label={S.sectionAria} className="relative isolate flex min-h-dvh flex-col bg-background text-foreground">
         <div
           aria-hidden="true"
           data-tour-id="demo-watermark"
@@ -635,6 +640,7 @@ export function DemoJourneyPlayer({
         )}
       </section>
     </TooltipProvider>
+    </CrmAppearanceProvider>
   )
 }
 

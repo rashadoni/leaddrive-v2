@@ -208,6 +208,15 @@ const WALK_BY_MODULES = [
 ]
 
 describe("the guided story, walked through the real screens", () => {
+  it("draws the story in the CRM's own colours: its main action is the CRM's button", async () => {
+    await renderPlayer()
+    const scene = document.getElementById("demo-scene")
+    expect(scene?.closest("[data-crm-workspace]"), "the scenes are outside the CRM's styles").not.toBeNull()
+    const next = buttonWithText(S.next, document.querySelector('[data-testid="demo-coach-card"]') ?? document)
+    expect(next?.getAttribute("data-crm-button")).toBe("default")
+    expect(next?.closest("[data-crm-workspace]")).not.toBeNull()
+  })
+
   it("reaches the end pressing only what the arrow points at", async () => {
     await renderPlayer()
     const walked = await walkToEnd()

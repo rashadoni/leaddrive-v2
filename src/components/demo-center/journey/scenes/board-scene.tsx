@@ -273,7 +273,7 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                   className={cn(
                     "rounded-full border px-3 py-1 text-xs transition-colors",
                     column.key === "todo"
-                      ? "border-foreground bg-foreground font-medium text-background"
+                      ? "crm-choice-selected"
                       : "border-zinc-200 text-muted-foreground hover:border-foreground/40 hover:text-foreground dark:border-zinc-700",
                   )}
                 >
