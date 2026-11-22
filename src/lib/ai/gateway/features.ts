@@ -46,6 +46,7 @@ export const AI_FEATURES = {
   "call-analysis": { ru: "Разбор звонка после разговора", az: "Zəngdən sonra təhlil", en: "After-call analysis" },
   "inbox-audio": { ru: "Переписка — расшифровка голосовых", az: "Yazışma — səsli mesajların transkripsiyası", en: "Inbox — voice message transcription" },
   "phone-line": { ru: "Телефонная линия заказов", az: "Sifariş telefon xətti", en: "Phone order line" },
+  "phone-agent": { ru: "Телефонный ИИ-агент", az: "Telefon AI agenti", en: "Phone AI agent" },
 } as const satisfies Record<string, Label>
 
 export type AiFeature = keyof typeof AI_FEATURES
@@ -120,7 +121,7 @@ export type AiUseId = keyof typeof AI_USES
 
 export const PROVIDER_USES: Record<(typeof SELF_KEY_PROVIDERS)[number], readonly AiUseId[]> = {
   anthropic: ["davinci", "inbox", "sales", "contracts", "support", "social", "analytics", "finance"],
-  gemini: ["voice", "phoneOrders"],
+  gemini: ["voice", "phoneOrders", "voipCalls"],
   openai: ["voipCalls", "inbox", "social"],
   voyage: ["knowledgeBase", "inbox", "contracts"],
   google_vision: ["social"],

@@ -29,6 +29,8 @@ import { recordUnansweredCallback } from "@/lib/voice-agent/callback-fallback-ta
 import type { ConversationInsight } from "@/lib/conversation-intel/types"
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
 import { journalLineCallSpend } from "@/lib/voice-agent/pharmacy/zeytun-line-spend"
+import { phoneAgentMarker } from "@/lib/voice-agent/phone-agent/marker"
+import { journalPhoneAgentCallSpend } from "@/lib/voice-agent/phone-agent/spend"
 import { callbackMarker } from "@/lib/voice-agent/pharmacy/zeytun-waitlist-callback"
 import { withStationTiming } from "@/lib/station-timing"
 
@@ -865,6 +867,13 @@ async function recordInboundAiResult(params: {
     // transcript has and it lacks, for a manager. In the background: the station waits for this answer.
     if (transcription !== null && customerSpoke) recoverLineOrder(params.callId, transcription)
     return NextResponse.json({ success: true, analysisStatus: "test_preview" })
+  }
+  // Owner, 2026-11-22: a call the phone agent served (its own session, voice
+  // and tools) leaves its Live and speech spend as the line's calls do, once
+  // per AI leg. It stays an ordinary customer call otherwise: analysed below,
+  // and a lead or a task when the organization asked for them.
+  if (firstDelivery && phoneAgentMarker(call.consentAudit, params.callId)) {
+    journalPhoneAgentCallSpend(organizationId, { durationSeconds: params.durationSeconds, usage: params.usage })
   }
   if (!customerSpoke) {
     return NextResponse.json({ success: true, analysisStatus: "not_applicable" })

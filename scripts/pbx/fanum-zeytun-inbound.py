@@ -561,6 +561,9 @@ def zeytun_caller_owed(bridge):
 def zeytun_restore_note(bridge):
     """The restore's save rule, with the list the station last sent: its externalIds keep the lines
     on their 1C products (2026-11-06 stand: a save rebuilt from the words alone came back not found)."""
+    if getattr(bridge, "agent_tools", None) is not None:
+        # A phone agent's call has no order list: what its tools did is already in the CRM.
+        return ""
     lines = list(getattr(bridge, "last_lines", None) or [])
     listed = json.dumps([{key: line[key] for key in ("spoken", "quantity", "unit", "externalId") if key in line}
                          for line in lines], ensure_ascii=False, separators=(",", ":"))
@@ -1171,10 +1174,19 @@ class ZeytunSpeechRelay:
             self._emit(content)
 
 
+# Owner, 2026-11-22: this station declares the tools a CRM session names and
+# sends their calls back to the CRM (ZeytunInboundBridge.AGENT_VARIANT). The CRM
+# gives such a session only to a station that says so here; a CRM that does not
+# know the header ignores it, so the pharmacy line is answered as before by
+# either.
+ZEYTUN_AGENT_CAPABILITY = "tools-1"
+
+
 def zeytun_post_json(url, token, body, timeout):
     req = urllib.request.Request(url,
         data=json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
-        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"}, method="POST")
+        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json",
+                 "X-Voice-Agent-Caps": ZEYTUN_AGENT_CAPABILITY}, method="POST")
     with ZEYTUN_HTTP.open(req, timeout) as response:
         raw = response.read(32769)
         if len(raw) > 32768:
@@ -1555,6 +1567,23 @@ class ZeytunInboundBridge:
     })
     # Order words only: units, forms and packaging. Medicine names are left
     # out on purpose: a hard-coded list here would drift from the catalog.
+    # Owner, 2026-11-22 («Давай» on the plan; docs/voice-agents-per-number.md,
+    # stage 3): the phone agent of an organization without a catalog — a
+    # clinic, a salon — takes this same branch for its rules, its TTS voice and
+    # its spend, but its tools are not the pharmacy's. Which tools a call has
+    # is the CRM's to say: a session of this variant names them, each call of
+    # one goes back to the CRM as action "tool", and the CRM's answer is what
+    # the model reads. The station only bounds what it forwards. A new
+    # scenario is then a CRM change, not another core install.
+    AGENT_VARIANT = "agent_tools"
+    AGENT_MAX_TOOLS = 8
+    AGENT_TOOL_NAME = re.compile(r"^[a-z][a-z0-9_]{2,39}$")
+    AGENT_DECLARATION_MAX_CHARS = 1500
+    AGENT_ARGS_MAX_CHARS = 1000
+    AGENT_RESULT_MAX_CHARS = 2000
+    # A booking checks the host's calendar, up to 8 s in the CRM; the caller
+    # hears the wait filler after FILLER_AFTER_SECONDS meanwhile.
+    AGENT_TOOL_TIMEOUT_SECONDS = 9
     TRANSCRIPTION_VOCABULARY = (
         "qutu", "ədəd", "ampula", "flakon", "şam", "tablet", "həb", "kapsul", "sirop",
         "suspenziya", "damcı", "sprey", "məlhəm", "krem", "gel", "toz", "paket", "blister",
@@ -1615,6 +1644,9 @@ class ZeytunInboundBridge:
         self.vocabulary = ()
         self.transfer_phrase = None
         self.cancel_phrase = None
+        # None on the pharmacy line. On a phone agent's call (AGENT_VARIANT):
+        # the declarations the CRM's session named, by tool name.
+        self.agent_tools = None
         # Once the CRM cancelled the call's order, no list of it is sent again.
         self.cancelled = False
         # What the caller said since the agent last asked CANCEL_QUESTION
@@ -1660,7 +1692,7 @@ class ZeytunInboundBridge:
         # cold start separate from the shorter deadline for spoken lookups.
         action = body.get("action")
         return self._post_json(self.url, body, timeout=5 if action == "session" else 6 if action in ("order", "transfer", "cancel")
-                               else self.LOOKUP_TIMEOUT_SECONDS)
+                               else self.AGENT_TOOL_TIMEOUT_SECONDS if action == "tool" else self.LOOKUP_TIMEOUT_SECONDS)
 
     def _post_json(self, url, body, timeout=2):
         return zeytun_post_json(url, self.token, body, timeout)
@@ -1806,8 +1838,13 @@ class ZeytunInboundBridge:
                 # Exactly one new authorization after the lifecycle ACK. A
                 # closed/revoked/still-unanswered call stops; no AAC fallback.
                 value = self.request({"action": "session", "callId": self.call_id})
-            if not isinstance(value, dict) or value.get("enabled") is not True or value.get("variant") != "pharmacy_inbound_preview":
+            if (not isinstance(value, dict) or value.get("enabled") is not True
+                    or value.get("variant") not in ("pharmacy_inbound_preview", self.AGENT_VARIANT)):
                 raise ValueError()
+            agent = value.get("variant") == self.AGENT_VARIANT
+            # Read before anything of the session is kept: a tool list the
+            # station cannot bound refuses the whole session.
+            agent_tools = self.agent_declarations(value.get("tools")) if agent else None
             prompt, opening, seconds = value.get("prompt"), value.get("opening"), value.get("maxSeconds")
             if (not isinstance(prompt, str) or not 1 <= len(prompt) <= self.MAX_PROMPT_CHARS
                     or not isinstance(opening, str) or not 1 <= len(opening) <= 500
@@ -1818,14 +1855,16 @@ class ZeytunInboundBridge:
             closing = value.get("closing")
             if closing is not None and (not isinstance(closing, str) or not 3 <= len(closing) <= 120):
                 raise ValueError()
-            transfer, cancel = value.get("transfer"), value.get("cancel")
+            # The pharmacy's transfer and cancel are its own tools: not a phone agent's.
+            transfer, cancel = (None, None) if agent else (value.get("transfer"), value.get("cancel"))
             for phrase in (transfer, cancel):
                 if phrase is not None and (not isinstance(phrase, str) or not 3 <= len(phrase) <= 120):
                     raise ValueError()
             voice, pin = value.get("voice"), value.get("pinSpeechLanguage")
             self.expires = self.clock() + seconds
             self.active = True
-            self.utterances = self.utterance_switch and value.get("utterance") is True
+            self.utterances = self.utterance_switch and not agent and value.get("utterance") is True
+            self.agent_tools = agent_tools
             self.closing = closing
             self.transfer_phrase = transfer
             self.cancel_phrase = cancel
@@ -1864,11 +1903,37 @@ class ZeytunInboundBridge:
         # model said "checking" and, with the result in, waited for the caller
         # to speak — 28 s of silence on the owner's call 2026-10-30.
         declarations = self._declarations()
-        for declaration in declarations[0]["functionDeclarations"]:
-            declaration["behavior"] = "BLOCKING"
+        for group in declarations:
+            for declaration in group["functionDeclarations"]:
+                declaration["behavior"] = "BLOCKING"
         return declarations
 
+    @classmethod
+    def agent_declarations(cls, value):
+        """The tools a phone agent's session names, by name: only a name, a description
+        and a parameter schema of bounded size are kept. Raises ValueError on anything else."""
+        if not isinstance(value, list) or len(value) > cls.AGENT_MAX_TOOLS:
+            raise ValueError()
+        tools = {}
+        for item in value:
+            if not isinstance(item, dict) or set(item) - {"name", "description", "parameters"}:
+                raise ValueError()
+            name, description, parameters = item.get("name"), item.get("description"), item.get("parameters")
+            if (not isinstance(name, str) or not cls.AGENT_TOOL_NAME.match(name) or name in tools
+                    or not isinstance(description, str) or not 1 <= len(description) <= 400
+                    or not isinstance(parameters, dict) or parameters.get("type") != "OBJECT"):
+                raise ValueError()
+            declaration = {"name": name, "description": description, "parameters": parameters}
+            if len(json.dumps(declaration, ensure_ascii=False, separators=(",", ":"))) > cls.AGENT_DECLARATION_MAX_CHARS:
+                raise ValueError()
+            tools[name] = declaration
+        return tools
+
     def _declarations(self):
+        if self.agent_tools is not None:
+            # A copy: tools() marks each declaration BLOCKING. No tool, no group.
+            declarations = json.loads(json.dumps(list(self.agent_tools.values())))
+            return [{"functionDeclarations": declarations}] if declarations else []
         # Short on purpose (owner, 2026-11-04: «мне нужна оптимизация»): these
         # are sent with every turn of the call; how to talk is the CRM's
         # prompt, here only what each tool does and what its answers mean.
@@ -1910,6 +1975,10 @@ class ZeytunInboundBridge:
     def transcription(self):
         # Fields of AudioTranscriptionConfig (ai.google.dev/api/live); accepted
         # by gemini-3.1-flash-live-preview and gemini-3.8-live on 2026-10-23.
+        if self.agent_tools is not None:
+            # A phone agent's callers do not order medicines: only the CRM's own words, if any.
+            words = list(self.vocabulary)[:1000]
+            return {"languageCodes": list(self.TRANSCRIPTION_LANGUAGES), **({"customVocabulary": words} if words else {})}
         words = list(dict.fromkeys(self.TRANSCRIPTION_VOCABULARY + self.vocabulary))
         # More than 1000 entries is rejected by the provider (2026-10-23).
         return {"languageCodes": list(self.TRANSCRIPTION_LANGUAGES), "customVocabulary": words[:1000]}
@@ -2429,6 +2498,103 @@ class ZeytunInboundBridge:
             usage["tts"] = speech
         return usage or None
 
+    def agent_result(self, value):
+        """The CRM's answer to a phone agent's tool call as the model reads it: a JSON
+        object of bounded size under "result", or unavailable."""
+        result = value.get("result") if isinstance(value, dict) else None
+        if not isinstance(result, dict):
+            return {"status": "unavailable"}
+        try:
+            size = len(json.dumps(result, ensure_ascii=False, separators=(",", ":")))
+        except (TypeError, ValueError):
+            return {"status": "unavailable"}
+        return result if size <= self.AGENT_RESULT_MAX_CHARS else {"status": "unavailable"}
+
+    def _agent_calls(self, calls, send, current):
+        """A phone agent's tool calls (AGENT_VARIANT): each goes to the CRM, which runs it for
+        the call's own organization; the station forwards the name and the arguments of a
+        tool this session declared, bounded, and nothing else. Same fences as a lookup:
+        one answer per call id, never after the call's ceiling, off the event thread."""
+        for call in calls:
+            if not isinstance(call, dict):
+                raise ZeytunPilotUnavailable("invalid_tool_call")
+            key, name = call.get("id"), call.get("name")
+            if not isinstance(key, str) or not 1 <= len(key) <= 128 or name not in self.agent_tools:
+                raise ZeytunPilotUnavailable("invalid_tool_call")
+            args = {} if call.get("args") is None else call.get("args")
+            try:
+                fits = isinstance(args, dict) and len(json.dumps(args, ensure_ascii=False, separators=(",", ":"))) <= self.AGENT_ARGS_MAX_CHARS
+            except (TypeError, ValueError):
+                fits = False
+            response = lambda body, key=key, name=name: {"toolResponse": {"functionResponses": [{"id": key, "name": name, "response": body}]}}
+            error = None
+            with self.lock:
+                if key in self.pending:
+                    continue
+                if key in self.seen:
+                    error = "duplicate_request"
+                elif not self.active or self.clock() >= self.expires or len(self.seen) >= self.MAX_TOOL_CALLS:
+                    error = "expired"
+                elif not fits:
+                    error = "invalid_request"
+                elif not self.workers.acquire(blocking=False):
+                    error = "busy"
+                if len(self.seen) < self.MAX_TOOL_CALLS:
+                    self.seen.add(key)
+                if error is None:
+                    marker = object()
+                    self.pending[key] = marker
+            if error is not None:
+                if current():
+                    send(response({"status": "unavailable", "reason": error}))
+                continue
+            def work(key=key, name=name, marker=marker, args=args, response=response):
+                try:
+                    result = self.agent_result(self.request({"action": "tool", "callId": self.call_id, "name": name,
+                                                             "args": args, "id": key}))
+                except Exception as error:
+                    self.log_event("zeytun_agent_tool", tool=name, status=zeytun_failure(error))
+                    result = {"status": "unavailable"}
+                else:
+                    # The tool and its status, never its arguments or its answer.
+                    self.log_event("zeytun_agent_tool", tool=name, status=str(result.get("status", "ok"))[:32])
+                def deliver():
+                    with self.lock:
+                        if self.pending.get(key) is not marker:
+                            return None
+                        self.pending.pop(key, None)
+                        if not self.active or self.clock() >= self.expires:
+                            return None
+                        return response(result)
+                try:
+                    if current():
+                        send(deliver)
+                finally:
+                    with self.lock:
+                        if self.pending.get(key) is marker:
+                            self.pending.pop(key, None)
+                    self.workers.release()
+            if self.on_wait is not None:
+                def waited(key=key, marker=marker):
+                    with self.lock:
+                        still = self.pending.get(key) is marker
+                    if still and current():
+                        try:
+                            self.on_wait()
+                        except Exception:
+                            pass
+                timer = threading.Timer(self.FILLER_AFTER_SECONDS, waited)
+                timer.daemon = True
+                timer.start()
+            try:
+                threading.Thread(target=work, name="zeytun-agent-tool", daemon=True).start()
+            except Exception:
+                with self.lock:
+                    self.pending.pop(key, None)
+                self.workers.release()
+                raise ZeytunPilotUnavailable("pilot_worker_unavailable") from None
+        return True
+
     def handle(self, event, send, current):
         """Network work never runs on the audio/event thread. send also fences
         the actual websocket/epoch under the core's existing recovery lock.
@@ -2454,6 +2620,8 @@ class ZeytunInboundBridge:
         calls = tool.get("functionCalls")
         if not isinstance(calls, list) or len(calls) > 4:
             raise ZeytunPilotUnavailable("invalid_tool_batch")
+        if self.agent_tools is not None:
+            return self._agent_calls(calls, send, current)
         for call in calls:
             if not isinstance(call, dict):
                 raise ZeytunPilotUnavailable("invalid_tool_call")

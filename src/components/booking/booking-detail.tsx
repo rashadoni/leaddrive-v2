@@ -137,6 +137,12 @@ export function BookingDetail({ booking, context, identity, schedule, onSaved, o
       <p className="mt-1.5 break-words text-muted-foreground">{t("waBookedWhy", { asked: booking.whatsapp.asked || "—", offered: booking.whatsapp.offered.map(time).join(", "), chosen: time(booking.whatsapp.chosen) })}</p>
     </div> : null}
 
+    {/* Booked by the AI on a phone call (src/lib/voice-agent/phone-agent): said in words, so the
+        front desk knows nobody of theirs spoke to this client. */}
+    {booking.source === "phone" ? <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-800 dark:bg-sky-950/40 dark:text-sky-300">
+      <Phone aria-hidden="true" className="h-4 w-4 shrink-0" />{t("phoneBookedVia")}
+    </p> : null}
+
     {booking.note ? <><CapsLabel>{t("customerNote")}</CapsLabel><p className="whitespace-pre-wrap break-words rounded-xl bg-muted/60 p-3.5 text-sm">{booking.note}</p></> : null}
 
     <CapsLabel>{t("deliverySent")}</CapsLabel>
