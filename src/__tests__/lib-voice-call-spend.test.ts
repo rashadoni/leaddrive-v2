@@ -191,4 +191,19 @@ describe("the station's usage report", () => {
       expect(voiceAgentLineUsageSchema.safeParse({ live: bad }).success, JSON.stringify(bad)).toBe(false)
     }
   })
+
+  it("is accepted with exactly the counters the station's bridge sends, and priced by every one of them", () => {
+    // The schema is strict: a counter the bridge sends and this side does not know answers 400
+    // to the whole call result, and the call's transcript is lost with it.
+    const bridge = readFileSync("scripts/pbx/fanum-zeytun-inbound.py", "utf8")
+    const sent = [...bridge.match(/USAGE_COUNTS = \(([^)]*)\)/)![1].matchAll(/"(\w+)"/g)].map((match) => match[1])
+    expect(sent).toEqual(["textIn", "audioIn", "otherIn", "textOut", "audioOut", "otherOut"])
+    const report = { ...Object.fromEntries(sent.map((name) => [name, 1_000_000])), turns: 1, model: "gemini-3.8-live" }
+    const parsed = voiceAgentLineUsageSchema.parse({ live: report })
+    // The bridge's own price list (LIVE_PRICE) and the CRM's give one number for one report.
+    const prices = Object.fromEntries([...bridge.match(/LIVE_PRICE = \{([^}]*)\}/)![1].matchAll(/"(\w+)": ([\d.]+)/g)]
+      .map((match) => [match[1], Number(match[2])]))
+    expect(Object.keys(prices).sort()).toEqual([...sent].sort())
+    expect(liveUsageCostUsd(parsed.live!)).toBeCloseTo(sent.reduce((sum, name) => sum + prices[name], 0), 9)
+  })
 })

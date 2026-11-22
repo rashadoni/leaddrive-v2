@@ -2374,22 +2374,44 @@ class ZeytunInboundBridge:
         return {"status": "unavailable"}
 
     # gemini-3.8-live, USD per 1M tokens (ai.google.dev/gemini-api/docs/pricing, 2026-11-04);
-    # the same table as the line stand's (scripts/zeytun-line/stand-crm.ts PRICE).
-    LIVE_PRICE = {"textIn": 0.75, "audioIn": 3.0, "textOut": 4.5, "audioOut": 12.0}
+    # the CRM's table (src/lib/ai/gateway/pricing.ts, LIVE_TOKEN_PRICING). otherIn / otherOut are
+    # the tokens Google reports with no modality: session overhead on the input, function calls
+    # on the output. Until 2026-11-22 they were counted as audio; the Google bill for 1-22
+    # November does not charge them as audio (its audio-in is 0.170 of its text-in, the modality
+    # labels give 0.169-0.181, counting them as audio gives 0.320), so they are priced as text.
+    LIVE_PRICE = {"textIn": 0.75, "audioIn": 3.0, "otherIn": 0.75, "textOut": 4.5, "audioOut": 12.0, "otherOut": 4.5}
+    USAGE_COUNTS = ("textIn", "audioIn", "otherIn", "textOut", "audioOut", "otherOut")
+
+    @staticmethod
+    def split_usage(details, total):
+        """One side of a turn: what Google marked as text, what it marked as anything else
+        (audio: a phone call carries nothing else), and the rest of the total, which it did not mark."""
+        text = audio = 0
+        for detail in details or []:
+            if not isinstance(detail, dict):
+                continue
+            count = detail.get("tokenCount") or 0
+            if detail.get("modality") == "TEXT":
+                text += count
+            else:
+                audio += count
+        return text, audio, max(0, (total or 0) - text - audio)
 
     def add_usage(self, usage):
         """One usageMetadata of the call's Live sessions: every turn bills the whole context again."""
-        def split(details, total):
-            text = sum(d.get("tokenCount") or 0 for d in details or [] if isinstance(d, dict) and d.get("modality") == "TEXT")
-            return text, max(0, (total or 0) - text)
-        text_in, audio_in = split(usage.get("promptTokensDetails"), usage.get("promptTokenCount"))
-        text_out, audio_out = split(usage.get("responseTokensDetails"), usage.get("responseTokenCount"))
+        text_in, audio_in, other_in = self.split_usage(usage.get("promptTokensDetails"), usage.get("promptTokenCount"))
+        if text_in + audio_in == 0:
+            # A prompt with no breakdown at all says nothing of what it holds: the dearer kind, as before.
+            audio_in, other_in = other_in, 0
+        text_out, audio_out, other_out = self.split_usage(usage.get("responseTokensDetails"), usage.get("responseTokenCount"))
         with self.lock:
-            totals = self.__dict__.setdefault("usage_totals", {"textIn": 0, "audioIn": 0, "textOut": 0, "audioOut": 0, "turns": 0})
+            totals = self.__dict__.setdefault("usage_totals", {**{key: 0 for key in self.USAGE_COUNTS}, "turns": 0})
             totals["textIn"] += text_in
             totals["audioIn"] += audio_in
+            totals["otherIn"] += other_in
             totals["textOut"] += text_out + (usage.get("thoughtsTokenCount") or 0)
             totals["audioOut"] += audio_out
+            totals["otherOut"] += other_out
             totals["turns"] += 1
 
     def log_cost(self, log):
@@ -2398,7 +2420,7 @@ class ZeytunInboundBridge:
             if self.__dict__.get("cost_logged"):
                 return False
             self.cost_logged = True
-            totals = dict(self.__dict__.get("usage_totals") or {"textIn": 0, "audioIn": 0, "textOut": 0, "audioOut": 0, "turns": 0})
+            totals = dict(self.__dict__.get("usage_totals") or {**{key: 0 for key in self.USAGE_COUNTS}, "turns": 0})
         usd = sum(totals[key] * price for key, price in self.LIVE_PRICE.items()) / 1e6
         log("call", usd=round(usd, 4), **totals)
         return True
@@ -2414,7 +2436,9 @@ class ZeytunInboundBridge:
             totals = dict(self.__dict__.get("usage_totals") or {})
         usage = {}
         if totals.get("turns"):
-            live = {key: int(totals.get(key) or 0) for key in ("textIn", "audioIn", "textOut", "audioOut", "turns")}
+            # otherIn / otherOut: the CRM must already accept them (voiceAgentLineUsageSchema is strict;
+            # it does since 2026-11-22). A CRM that predates them would refuse the whole result.
+            live = {key: int(totals.get(key) or 0) for key in (*self.USAGE_COUNTS, "turns")}
             model = globals().get("GEMINI_LIVE_MODEL")
             if isinstance(model, str) and self.USAGE_MODEL.match(model):
                 live["model"] = model
