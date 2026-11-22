@@ -177,7 +177,7 @@ export async function createStoredBooking(orgId: string, pageId: string, input: 
           leadId: client?.type === "lead" ? client.id : null,
           contactId: client?.type === "contact" ? client.id : null,
           cancelTokenHash: hashBookingToken(token), secretId,
-          source: access ? "staff" : input.whatsapp ? "whatsapp" : "public_link", createdBy: access?.userId ?? null,
+          source: access ? "staff" : input.whatsapp ? "whatsapp" : input.phoneCall ? "phone" : "public_link", createdBy: access?.userId ?? null,
           bufferBefore: currentPage.bufferMinutes, bufferAfter: currentPage.bufferMinutes,
           snapshot: { orgName: org.name, description: currentPage.description, locale: input.locale ?? "az", slug: currentPage.slug, title: currentPage.title, locationType: currentPage.locationType, locationText: currentPage.locationText, timezone: org.timezone, legacyDerived: false,
             // The price as it stood when the client agreed to it, for the master

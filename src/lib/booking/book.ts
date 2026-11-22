@@ -416,6 +416,13 @@ export interface BookingInput {
    * not block it. Ignored on a staff booking.
    */
   whatsapp?: { conversationId: string }
+  /**
+   * Set only by the phone agent (src/lib/voice-agent/phone-agent), never from
+   * a request body: the AI booked it on this call, for the number the caller
+   * rang from. The booking is recorded as coming from the phone. Everything
+   * else is the public link's own rules. Ignored on a staff booking.
+   */
+  phoneCall?: { callLogId: string }
 }
 
 export type CreateBookingResult =

@@ -354,6 +354,68 @@ describe("VoIP-only provider configuration", () => {
     }));
   });
 
+  it("saves the switch that lets the AI book appointments on the calls it answers", async () => {
+    mocks.findFirst.mockResolvedValue(row);
+    mocks.update.mockResolvedValue(row);
+    const payload = asteriskPayload({ id: "voip_1" });
+    Object.assign(payload.settings, { voiceAgentMode: "inbound", inboundAnswerMode: "ai", phoneBookingEnabled: true });
+
+    const res = await PUT(request("PUT", payload));
+
+    expect(res.status).toBe(200);
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ settings: expect.objectContaining({ phoneBookingEnabled: true, inboundAnswerMode: "ai" }) }),
+    }));
+  });
+
+  it("keeps the stored booking switch when a tab from before it saves, and lets a newer tab turn it off", async () => {
+    mocks.findFirst.mockResolvedValue({ ...row, settings: { ...row.settings, inboundAnswerMode: "ai", phoneBookingEnabled: true } });
+    mocks.update.mockResolvedValue(row);
+
+    expect((await PUT(request("PUT", asteriskPayload({ id: "voip_1" })))).status).toBe(200);
+    expect(mocks.update).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ settings: expect.objectContaining({ phoneBookingEnabled: true }) }),
+    }));
+
+    const off = asteriskPayload({ id: "voip_1" });
+    Object.assign(off.settings, { inboundAnswerMode: "ai", phoneBookingEnabled: false });
+    expect((await PUT(request("PUT", off))).status).toBe(200);
+    expect(mocks.update).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ settings: expect.objectContaining({ phoneBookingEnabled: false }) }),
+    }));
+  });
+
+  it("refuses the booking switch where the AI does not answer the call itself, before writing", async () => {
+    for (const overrides of [
+      { phoneBookingEnabled: true }, // no inbound answer chosen: people answer
+      { phoneBookingEnabled: true, inboundAnswerMode: "human" },
+      { phoneBookingEnabled: true, inboundAnswerMode: "ai", voiceAgentEnabled: false, voiceAgentPrompt: "" },
+    ]) {
+      const payload = asteriskPayload({ id: "voip_1" });
+      Object.assign(payload.settings, overrides);
+      const res = await PUT(request("PUT", payload));
+      expect(res.status, JSON.stringify(overrides)).toBe(400);
+    }
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("refuses rules and knowledge too long for a booking call, and takes the same text with the switch off", async () => {
+    mocks.findFirst.mockResolvedValue(row);
+    mocks.update.mockResolvedValue(row);
+    const long = asteriskPayload({ id: "voip_1" });
+    Object.assign(long.settings, { inboundAnswerMode: "ai", phoneBookingEnabled: true, voiceAgentKnowledge: "Fakt. ".repeat(2_500) });
+
+    expect((await PUT(request("PUT", long))).status).toBe(400);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+
+    // Without the switch the call takes the station's general path, which has no such bound.
+    Object.assign(long.settings, { phoneBookingEnabled: false });
+    expect((await PUT(request("PUT", long))).status).toBe(200);
+    // And a text that fits is saved with the switch on.
+    Object.assign(long.settings, { phoneBookingEnabled: true, voiceAgentKnowledge: "Fakt. ".repeat(1_000) });
+    expect((await PUT(request("PUT", long))).status).toBe(200);
+  });
+
   it("lets an administrator clear inbound rules without touching general rules", async () => {
     mocks.findFirst.mockResolvedValue({ ...row, settings: { ...row.settings, voiceAgentInboundRules: "Old rules" } });
     mocks.update.mockResolvedValue(row);

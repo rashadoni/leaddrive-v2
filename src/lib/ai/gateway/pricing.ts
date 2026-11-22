@@ -49,6 +49,14 @@ export const UNIT_PRICING = {
    * $0.236 a minute, growing with the call; their mean.
    */
   phoneLineLiveMinute: 0.13,
+  /**
+   * A phone agent's call without a catalog (src/lib/voice-agent/phone-agent) in
+   * Gemini Live, per minute, for a call the station sent no token count for.
+   * A 190 s clinic call on the stand, priced from its own `usageMetadata`
+   * (2026-11-22, LIVE_TOKEN_PRICING): $0.055 a minute with no tools; two
+   * booking rounds add about $0.01 a minute to a two-minute call.
+   */
+  phoneAgentLiveMinute: 0.06,
   /** Gemini / Vertex speech synthesis, per minute of speech produced. */
   geminiSpeechMinute: 0.015,
   /** Google Vision TEXT_DETECTION, per image. */
