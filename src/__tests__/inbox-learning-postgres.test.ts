@@ -325,4 +325,37 @@ function schemaWithoutEmbeddings(): string {
       expect((await blocks.learnedPromptBlocks({ organizationId: OTHER, channelConfigId: CHANNEL })).knowledge).toBe("")
     })
   })
+
+  it("keeps a person's price and the character in the prompt however much was learned after them", async () => {
+    const FULL = "cfg-ig-full"
+    await bypass(() => prisma.channelConfig.create({
+      data: { id: FULL, organizationId: ORG, channelType: "instagram", configName: "full.studio", settings: { replyMode: "learning" } },
+    }))
+    const added = await inOrg(() => service.createItem({ organizationId: ORG, channelConfigId: FULL, userId: null, type: "price", title: "Новый прайс", body: "Маникюр 40 ₼" }))
+    expect(added.ok).toBe(true)
+
+    const channel = { organizationId: ORG, channelConfigId: FULL }
+    const older = new Date(Date.now() - 3_600_000)
+    const later = new Date(Date.now() + 60_000)
+    await inOrg(() => prisma.inboxLearnedItem.create({
+      data: { ...channel, kind: "trait", type: "tone", title: "Тон", body: "Тёплый, на «вы»", status: "active", lastSeenAt: older },
+    }))
+    // More rows than one read takes and more text than the block holds, all seen after the person's entry.
+    await inOrg(() => prisma.inboxLearnedItem.createMany({
+      data: [
+        ...Array.from({ length: 450 }, (_, i) => ({
+          ...channel, kind: "knowledge", type: "qa", title: `Вопрос ${i}`, body: "ответ ".repeat(20), status: "active", lastSeenAt: later,
+        })),
+        { ...channel, kind: "knowledge", type: "price", title: "Ждёт", body: "77 ₼", status: "pending", lastSeenAt: later },
+        { ...channel, kind: "knowledge", type: "price", title: "Спор", body: "88 ₼", status: "conflict", lastSeenAt: later },
+      ],
+    }))
+
+    const { knowledge, character } = await inOrg(() => blocks.learnedPromptBlocks({ organizationId: ORG, channelConfigId: FULL }))
+    expect(knowledge.split("\n")[1]).toBe("- Новый прайс: Маникюр 40 ₼")
+    expect(knowledge).toContain("- Вопрос ")
+    expect(knowledge).not.toContain("77 ₼")
+    expect(knowledge).not.toContain("88 ₼")
+    expect(character).toContain("Тёплый, на «вы»")
+  })
 })
