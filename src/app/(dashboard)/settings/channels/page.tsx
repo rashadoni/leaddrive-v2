@@ -45,6 +45,7 @@ import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { useWhatsAppEmbeddedSignup } from "@/components/channels/whatsapp-embedded-signup"
 import { WhatsAppHistoryImportStatus } from "@/components/channels/whatsapp-history-import-status"
 import { WhatsAppNumberPurposeDialog, WhatsAppNumberPurposeLine } from "@/components/channels/whatsapp-number-purpose"
+import { WhatsAppDeliveryCheck } from "@/components/channels/whatsapp-delivery-check"
 import { NEW_WHATSAPP_NUMBER_PURPOSE, whatsappInboundPurpose } from "@/lib/channels/whatsapp-inbound-purpose"
 import { WhatsAppKeepAppDialog } from "@/components/channels/whatsapp-keep-app-dialog"
 import { isCoexistenceChannel } from "@/lib/whatsapp-number-onboarding"
@@ -2340,6 +2341,11 @@ function ChannelsPageInner() {
                 locale={locale}
                 onChange={() => setPurposeTarget({ channelId: channel.id, justConnected: false })}
               />
+            )}
+            {/* Whether Meta delivers this number's messages to the CRM at all — asked of Meta on
+                a press, said in words (components/channels/whatsapp-delivery-check). */}
+            {channel.channelType === "whatsapp" && channel.isActive && (
+              <WhatsAppDeliveryCheck channelId={channel.id} locale={locale} />
             )}
             {ownScreenHref ? (
               <p className="mt-1 text-xs text-muted-foreground">{c.cardVoipSettingsHint}</p>
