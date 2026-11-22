@@ -244,7 +244,7 @@ function ListScreen(props: DemoSceneProps) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="default" size="sm" onClick={() => hint(S.demoButtonHint)}>{t("filterAll")} ({total})</Button>
+        <Button variant="selected" size="sm" onClick={() => hint(S.demoButtonHint)}>{t("filterAll")} ({total})</Button>
         {(["draft", "pending_approval", "approved", "active"] as const).map((key) => (
           stats.statusCounts[key] ? (
             <Button key={key} variant="outline" size="sm" onClick={() => hint(S.demoButtonHint)}>{t(STATUS_KEYS[key])} ({stats.statusCounts[key]})</Button>
