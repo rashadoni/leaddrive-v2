@@ -202,4 +202,16 @@ describe("voice session end settlement", () => {
     await POST(withUsage({ ...usage, turns: -1 }))
     expect(deps.settleVoiceSeconds.mock.lastCall).toHaveLength(5)
   })
+  it("hands on a conversation the model never took a turn in as a count of nothing, not as a lost count", async () => {
+    // Such a conversation cost its listening alone; without the report it would be priced at $0.124 a minute.
+    const silent = { textIn: 0, audioIn: 0, otherIn: 0, textOut: 0, audioOut: 0, otherOut: 0, turns: 0 }
+    deps.findFirst.mockResolvedValueOnce(session("gemini:connected:nonce"))
+    await POST(withUsage(silent))
+    expect(deps.settleVoiceSeconds).toHaveBeenLastCalledWith("org-1", "user-1", 300, expect.any(Number), new Date("2026-08-12T11:59:30.000Z"), silent)
+
+    // Tokens with no turn is not a count anybody made.
+    deps.findFirst.mockResolvedValueOnce(session("gemini:connected:nonce"))
+    await POST(withUsage({ ...silent, textIn: 500 }))
+    expect(deps.settleVoiceSeconds.mock.lastCall).toHaveLength(5)
+  })
 })

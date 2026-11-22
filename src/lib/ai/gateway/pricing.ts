@@ -37,8 +37,9 @@ export const UNIT_PRICING = {
   chirpMinute: 0.016,
   /**
    * The browser voice assistant in Gemini Live, per minute of session, for a
-   * conversation whose token count never arrived (a tab closed before it
-   * settled, the reaper). Until 2026-11-22 this was $0.0225 — a minute of
+   * conversation whose token count never arrived (a tab that died before it
+   * could report; the reaper, which bills the whole reservation, five minutes
+   * by default). Until 2026-11-22 this was $0.0225 — a minute of
    * sound billed once (25 tokens a second: $0.0045 in + $0.018 out). Live does
    * not bill like that: every turn pays the whole context again, and the
    * assistant's context is its instruction and 61 tool declarations, about

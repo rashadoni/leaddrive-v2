@@ -397,6 +397,20 @@ function schemaWithoutEmbeddings(): string {
     ])
   })
 
+  it("prices a conversation the model never took a turn in by its listening, not by the per-minute estimate", async () => {
+    const voiceBudget = await import("@/lib/ai/voice/budget")
+    const liveUsage = await import("@/lib/ai/voice/live-usage")
+    // What the console sends when Google sent it no usageMetadata at all.
+    const silent = liveUsage.parseLiveUsage(JSON.parse(JSON.stringify(liveUsage.EMPTY_LIVE_USAGE)))
+    expect(silent).not.toBeNull()
+    await rls.runWithTenant(ORG, () => voiceBudget.settleVoiceSeconds(ORG, "user-1", 300, 60, new Date(), silent))
+    const [row, ...more] = await usageRows(ORG)
+    expect(more).toEqual([])
+    // A minute of incoming audio at $3 a million — 27 times less than the $0.124 of a lost count.
+    expect(row).toMatchObject({ feature: "voice-assistant", inputTokens: 0, outputTokens: 0, estimated: false })
+    expect(row.costUsd).toBeCloseTo(0.0045, 12)
+  })
+
   it("prices the tokens Google gave no modality as text, and shows every token in the row", async () => {
     const voiceBudget = await import("@/lib/ai/voice/budget")
     // The 62-second stand call as a console that knows the split adds it up (lib-voice-call-spend.test.ts).

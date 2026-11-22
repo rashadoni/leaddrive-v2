@@ -79,6 +79,10 @@ const MAX_TURNS = 10_000
  * The totals a console sent, or null for anything that is not a plausible
  * count. A console loaded before the split sends no `otherIn` / `otherOut`
  * (its audio columns hold them); present, they must be counts too.
+ *
+ * No turns and no tokens is a count as well: the model never answered, Google
+ * sent no `usageMetadata`, and the conversation cost its listening alone
+ * (budget.ts prices it by that). Tokens with no turn is not a count.
  */
 export function parseLiveUsage(raw: unknown): LiveUsageTotals | null {
   if (!raw || typeof raw !== "object") return null
@@ -102,5 +106,8 @@ export function parseLiveUsage(raw: unknown): LiveUsageTotals | null {
     if (n === null) return null
     other[name] = n
   }
-  return (totals.turns ?? 0) > 0 ? ({ ...totals, ...other } as LiveUsageTotals) : null
+  const all = { ...totals, ...other } as LiveUsageTotals
+  if (all.turns > 0) return all
+  const tokens = [all.textIn, all.audioIn, all.textOut, all.audioOut, all.otherIn ?? 0, all.otherOut ?? 0]
+  return tokens.every((n) => n === 0) ? all : null
 }

@@ -84,6 +84,17 @@ describe("Gemini Live usage of a voice conversation", () => {
     }
   })
 
+  it("takes «no turn, no tokens» as a count — the model never answered — but not tokens without a turn", () => {
+    const silent = { textIn: 0, audioIn: 0, otherIn: 0, textOut: 0, audioOut: 0, otherOut: 0, turns: 0 }
+    expect(parseLiveUsage(silent)).toEqual(silent)
+    expect(parseLiveUsage(EMPTY_LIVE_USAGE)).toEqual(silent)
+    // Such a conversation is priced by its listening: nothing by tokens.
+    expect(liveUsageCostUsd(silent)).toBe(0)
+    for (const bad of [{ ...silent, textIn: 1 }, { ...silent, otherOut: 1 }, { ...silent, audioIn: 25 }]) {
+      expect(parseLiveUsage(bad), JSON.stringify(bad)).toBeNull()
+    }
+  })
+
   it("takes the unmarked counters when the console sends them, and refuses the report when they are not counts", () => {
     const ok = { textIn: 10, audioIn: 20, otherIn: 5, textOut: 3, audioOut: 4, otherOut: 6, turns: 1 }
     expect(parseLiveUsage(ok)).toEqual(ok)

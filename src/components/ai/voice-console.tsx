@@ -289,7 +289,9 @@ async function settleVoiceSession(
         elapsedSeconds: Math.max(0, Math.ceil((Date.now() - startedAtMs) / 1000)),
         reason,
         // What Google counted, turn by turn: the server prices the conversation by it.
-        ...(usage && usage.turns > 0 ? { usage } : {}),
+        // Sent with no turns too: a conversation the model never answered in cost
+        // its listening alone, not the per-minute estimate of a lost count.
+        ...(usage ? { usage } : {}),
       }),
       keepalive: true,
       signal: controller.signal,
@@ -1654,7 +1656,7 @@ function ConsoleInner({
         new Blob([JSON.stringify({
           voiceSessionId: current.voiceSessionId,
           elapsedSeconds,
-          ...(liveUsageRef.current.turns > 0 ? { usage: liveUsageRef.current } : {}),
+          usage: liveUsageRef.current,
         })], { type: "application/json" }),
       )
       if (accepted !== true) void settleVoiceSession(current, startedAtRef.current, "page_unload", liveUsageRef.current)
