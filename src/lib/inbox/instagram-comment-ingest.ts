@@ -8,9 +8,12 @@
  *
  *   • a comment opens no Direct window — Meta takes a Direct answer to it only as the one private
  *     reply (lib/inbox/meta-reply-window, the composer);
- *   • no automatic answer: no keyword bot, no AI, no flow. A comment is public and the answer the
- *     owner wants is a person's. The AI coverage reader (`selectUncoveredAiInboundBatch`) skips these
- *     rows, so neither the webhook turn nor the backlog sweep ever picks one up.
+ *   • no automatic answer from the AI, the keyword bot of Direct or a flow. A comment is public and
+ *     the answer the owner wants is a person's. The AI coverage reader
+ *     (`selectUncoveredAiInboundBatch`) skips these rows, so neither the webhook turn nor the backlog
+ *     sweep ever picks one up. The one exception (owner 2026-11-22): a comment carrying a word an
+ *     administrator wrote a rule for gets that rule's message in Direct
+ *     (lib/inbox/comment-keyword-rules).
  *
  * The account's OWN comments come back through the same webhook. One that answers a customer's
  * comment — typed in the Instagram app, or the echo of a public reply sent from the CRM — is an
@@ -23,6 +26,7 @@ import { notifyConversationRecipients } from "@/lib/social/notify-recipients"
 import { isDuplicateInsert } from "@/lib/social/meta-inbound-idempotency"
 import { META_APP_ECHO_SOURCE } from "@/lib/inbox/meta-dm-app-echo"
 import { sanitizeLog } from "@/lib/sanitize"
+import { runCommentKeywordAutoReply } from "@/lib/inbox/comment-keyword-auto-reply"
 import {
   fetchInstagramPostInfo,
   isNoiseComment,
@@ -187,6 +191,7 @@ export type IngestSeams = {
   storeImage?: (url: string, organizationId: string) => Promise<{ url: string } | null>
   /** Tests pass [] so they do not sleep. */
   retryDelaysMs?: number[]
+  keywordReply?: typeof runCommentKeywordAutoReply
 }
 
 /** Must run inside the channel's tenant scope (the webhook's runWithTenant). Throws only on a database failure. */
@@ -229,8 +234,10 @@ export async function ingestInstagramComment(params: {
     username: comment.username,
     ...post,
   }
+  let stored: { id: string }
   try {
-    await prisma.channelMessage.create({
+    stored = await prisma.channelMessage.create({
+      select: { id: true },
       data: {
         organizationId: channel.organizationId,
         channelConfigId: channel.id,
@@ -259,5 +266,17 @@ export async function ingestInstagramComment(params: {
     entityId: conv.id,
     kind: "inbox.message",
   }).catch(() => {})
+
+  // «A word in a comment → a ready message in Direct» (lib/inbox/comment-keyword-rules): the one
+  // automatic answer a comment may get, and only where an administrator wrote a rule for the word.
+  await (seams.keywordReply ?? runCommentKeywordAutoReply)({
+    organizationId: channel.organizationId,
+    channelConfigId: channel.id,
+    conversationId: conv.id,
+    recipientId: comment.fromId,
+    inboundMessageId: stored.id,
+    commentId: comment.commentId,
+    text: comment.text,
+  })
   return "stored"
 }

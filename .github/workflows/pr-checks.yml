@@ -870,6 +870,18 @@ jobs:
           USER_HANDOVER_INBOX_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           USER_HANDOVER_INBOX_DB_GATE: required
 
+      - name: Inbox comments board database gate
+        # «Комментарии» of Omni-Channel (src/lib/inbox/comments-board,
+        # src/lib/inbox/comment-keyword-rules): a comment one organization received is
+        # not in another's section and cannot be answered by it, a hidden page stays
+        # hidden, and the rule's word sends its message in Direct once per person —
+        # never where automatic replies are off. Real ingest, routes and send; FORCE
+        # RLS, no BYPASSRLS; only Meta's HTTP is stubbed.
+        run: npx vitest run src/__tests__/inbox-comments-board-postgres.test.ts
+        env:
+          INBOX_COMMENTS_BOARD_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          INBOX_COMMENTS_BOARD_DB_GATE: required
+
       - name: AI call follow-up database gate
         # «Ночью ИИ принял обращения, утром рассказал» (src/lib/voice-agent/inbound-call-follow-up,
         # src/lib/ai/voice/missed-summary): behind the VoIP switch a new caller becomes one lead,
