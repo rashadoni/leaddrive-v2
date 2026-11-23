@@ -106,6 +106,24 @@ async function open() {
 }
 
 describe("task card panel", () => {
+  it("shows each file as a tile in its program's colour, so an Excel sheet stands out among the visuals", async () => {
+    const attachments = [
+      { id: "f1", fileName: "1.jpg", originalName: "Black friday purest-1.jpg", mimeType: "image/jpeg" },
+      { id: "f2", fileName: "2.xlsx", originalName: "Ecodenta Black Friday.xlsx", mimeType: "application/octet-stream" },
+      { id: "f3", fileName: "3.pdf", originalName: "Şərtlər.pdf", mimeType: "application/pdf" },
+    ]
+    const shown = { ...TASK, attachments }
+    const base = (globalThis.fetch as ReturnType<typeof vi.fn>).getMockImplementation()!
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) =>
+      url === "/api/v1/tasks/t1" && (init?.method ?? "GET") === "GET" ? new Response(JSON.stringify({ success: true, data: shown })) : base(url, init)))
+    await open()
+    const tiles = [...container.querySelectorAll('[data-testid="task-files-grid"] [data-testid="task-file"]')]
+    expect(tiles.map((tile) => tile.querySelector("[data-file-kind]")?.getAttribute("data-file-kind"))).toEqual(["image", "excel", "pdf"])
+    expect(tiles.map((tile) => tile.querySelector("[data-file-kind]")?.textContent)).toEqual(["JPG", "XLS", "PDF"])
+    expect(tiles[1].querySelector('a[title="Ecodenta Black Friday.xlsx"]')?.getAttribute("href")).toBe("/uploads/tasks/2.xlsx")
+    for (const id of ["task-file-pick", "task-file-download", "task-file-remove"]) expect(tiles[1].querySelector(`[data-testid="${id}"]`), id).not.toBeNull()
+  })
+
   it("shows a CRM status the board has no column for as the column the board puts it in", async () => {
     // The quick-add row writes «pending»; the card printed the raw word (2026-11-09).
     const was = TASK.status

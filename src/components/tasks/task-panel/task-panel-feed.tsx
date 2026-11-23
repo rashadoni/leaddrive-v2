@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import { TaskFileBadge } from "@/components/tasks/task-panel/task-file-badge"
 import { AtSign, Bell, BellOff, Download, Loader2, Paperclip, Pencil, Send, Trash2, X } from "lucide-react"
 import { formatDate, formatTime } from "@/lib/format-date"
 import type { FeedItem, FeedPerson } from "@/lib/tasks/task-feed"
@@ -267,7 +268,7 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
             <ul className="mb-2 flex flex-wrap gap-1.5" data-testid="feed-pending-files">
               {pending.map((file, index) => (
                 <li key={`${file.name}-${index}`} className="inline-flex items-center gap-1 rounded-md border bg-muted/50 px-2 py-0.5 text-xs">
-                  <Paperclip className="h-3 w-3" />{file.name}
+                  <TaskFileBadge name={file.name} mimeType={file.type} size="tag" />{file.name}
                   <button type="button" aria-label={t("remove")} onClick={() => setPending((list) => list.filter((_, i) => i !== index))}><X className="h-3 w-3" /></button>
                 </li>
               ))}
@@ -377,10 +378,10 @@ function MessageBody({ text, matched }: { text: string; matched: ReadonlyArray<{
           {others.map(({ name, file }, index) =>
             file ? (
               <a key={file.id} href={fileUrl(file)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                <Paperclip className="h-3 w-3" />{name}
+                <TaskFileBadge name={file.originalName} mimeType={file.mimeType} size="tag" />{name}
               </a>
             ) : (
-              <span key={`${name}-${index}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Paperclip className="h-3 w-3" />{name}</span>
+              <span key={`${name}-${index}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground"><TaskFileBadge name={name} size="tag" />{name}</span>
             ),
           )}
         </span>
