@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import AiSpendPage from "@/app/(dashboard)/settings/ai-spend/page"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 /**
  * «Настройки → ИИ и расходы», the table of services. Owner, 2026-11-22: the
@@ -43,7 +44,9 @@ let container: HTMLDivElement
 let root: Root
 async function render() {
   const intl = { locale: "ru", timeZone: "Asia/Baku", messages: ru } as Parameters<typeof NextIntlClientProvider>[0]
-  await act(async () => root.render(createElement(NextIntlClientProvider, intl, createElement(AiSpendPage))))
+  // The dashboard layout mounts the one TooltipProvider; the page's help button needs it.
+  await act(async () => root.render(createElement(NextIntlClientProvider, intl,
+    createElement(TooltipProvider, null, createElement(AiSpendPage)))))
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
 }
 /** The table's row of a service, by the service's name. */
@@ -92,5 +95,17 @@ describe("the spend table's «оценка» mark", () => {
     expect(before[4]).toMatch(/815.*\/.*17/)
     // The total still adds every row up, estimates included.
     expect(container.querySelector("tbody tr:last-child")!.textContent).toContain("15")
+  })
+})
+
+describe("the keys block's help", () => {
+  it("has a button with a word on it that opens the step-by-step for a key of one's own", async () => {
+    // Owner, 2026-11-23: «лёгкая пошаговая инструкция только для админов, как регистрировать ключ».
+    await render()
+    const keys = container.querySelector('[data-testid="ai-keys"]')!
+    const help = [...keys.querySelectorAll("button")].find((button) => button.textContent?.trim() === ru.nav.help)
+    expect(help).toBeDefined()
+    await act(async () => { help!.click(); await new Promise((resolve) => setTimeout(resolve, 0)) })
+    expect(document.body.textContent).toContain("Свой ключ Gemini")
   })
 })

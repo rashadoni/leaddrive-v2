@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireCronAuth } from "@/lib/cron-auth"
 import { readVoicePilotConfig } from "@/lib/ai/voice/config"
 import { geminiLiveModel, usableGeminiLiveModelId } from "@/lib/ai/voice/gemini-live"
-import { checkGeminiLiveProvider, providerCheckPassed } from "@/lib/ai/voice/provider-check"
+import {
+  checkGeminiLiveProvider, checkStationLiveToken, providerCheckPassed, stationTokenCheckPassed,
+} from "@/lib/ai/voice/provider-check"
 
 export const dynamic = "force-dynamic"
 
@@ -13,6 +15,8 @@ export const dynamic = "force-dynamic"
  *   POST /api/cron/voice-provider-check            the model sessions get now
  *   POST /api/cron/voice-provider-check?turn=1     ...and one tool-first turn
  *   POST /api/cron/voice-provider-check?model=ID   a model nobody uses yet
+ *   POST /api/cron/voice-provider-check?station=1  the PBX station's kind of token:
+ *                                                  not locked to a setup, two sessions on one token
  *
  * The last form is the point: the next model can be tried against production's
  * key and network before a single user is moved to it, and without the key
@@ -39,6 +43,14 @@ export async function POST(req: NextRequest) {
 
   const current = geminiLiveModel()
   const model = requested === null ? current : geminiLiveModel(requested)
+  if (req.nextUrl.searchParams.get("station") === "1") {
+    // Owner, 2026-11-23: an organization's own Gemini key for its phone calls. No turn, nothing billed.
+    const station = await checkStationLiveToken({ apiKey: voice.geminiApiKey, model: model.id })
+    return NextResponse.json(
+      { configured: true, ok: stationTokenCheckPassed(station), station: true, ...station },
+      { headers: { "Cache-Control": "no-store" } },
+    )
+  }
   const check = await checkGeminiLiveProvider({
     apiKey: voice.geminiApiKey,
     model,

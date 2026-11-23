@@ -1,4 +1,4 @@
-import { GoogleGenAI, type FunctionCall, type LiveServerMessage } from "@google/genai"
+import { Behavior, GoogleGenAI, Modality, Type, type FunctionCall, type LiveServerMessage } from "@google/genai"
 import {
   createGeminiLiveToken,
   GEMINI_LIVE_API_VERSION,
@@ -10,6 +10,7 @@ import {
   geminiFunctionResponse,
 } from "./gemini-live-browser"
 import { VOICE_SECTION_KEYS } from "./sections"
+import { mintStationLiveToken, STATION_TOKEN_API_VERSION } from "@/lib/voice-agent/station-live-token"
 
 /**
  * Ask the real provider whether a Live model will hold a CRM voice session.
@@ -253,4 +254,120 @@ export async function checkGeminiLiveProvider(input: {
       (error) => finish(bounded(error)),
     )
   })
+}
+
+/**
+ * The same question for the PBX station's kind of token (owner, 2026-11-23:
+ * an organization's own Gemini key for its phone calls,
+ * src/lib/voice-agent/station-live-token.ts).
+ *
+ * The station's token differs from the console's in everything a test with a
+ * stand-in cannot settle: it is not locked to a setup — the setup comes from
+ * the connection, as on the station's key — and it must open more than one
+ * session, because a call that loses its session opens a fresh one. So this
+ * mints such a token, opens a session with a setup of the station's shape
+ * (audio out, an instruction, a tool that blocks, transcription, resumption),
+ * waits for `setupComplete`, closes it, and does it once more with the SAME
+ * token. No model turn in either: nothing is billed.
+ */
+export type StationTokenCheck = Readonly<{
+  model: string
+  /** Sessions the one token opened to `setupComplete`; two is a pass. */
+  sessions: number
+  failure: string | null
+  ms: number
+}>
+
+export type StationCheckConnect = (input: {
+  token: string
+  model: string
+  onmessage: (message: LiveServerMessage) => void
+  onfailure: (reason: string) => void
+}) => Promise<{ close: () => void }>
+
+const STATION_SESSIONS = 2
+const STATION_SESSION_TIMEOUT_MS = 20_000
+
+const connectStationWithSdk: StationCheckConnect = ({ token, model, onmessage, onfailure }) => {
+  const client = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: STATION_TOKEN_API_VERSION } })
+  return client.live.connect({
+    model,
+    config: {
+      responseModalities: [Modality.AUDIO],
+      systemInstruction: "You answer a company's phone line. Greet the caller briefly.",
+      tools: [{
+        functionDeclarations: [{
+          name: "search_catalog",
+          description: "Looks a product up by the words the caller said.",
+          behavior: Behavior.BLOCKING,
+          parameters: { type: Type.OBJECT, properties: { text: { type: Type.STRING } }, required: ["text"] },
+        }],
+      }],
+      inputAudioTranscription: {},
+      sessionResumption: {},
+      contextWindowCompression: { slidingWindow: {} },
+    },
+    callbacks: {
+      onopen: () => {},
+      onmessage,
+      onerror: (event) => onfailure(`error: ${String(event.message ?? "")}`),
+      onclose: (event) => onfailure(`closed: ${event.code} ${String(event.reason ?? "")}`),
+    },
+  })
+}
+
+export async function checkStationLiveToken(input: {
+  apiKey: string
+  model: string
+  connect?: StationCheckConnect
+  mint?: (apiKey: string) => Promise<string>
+  timeoutMs?: number
+}): Promise<StationTokenCheck> {
+  const started = Date.now()
+  const connect = input.connect ?? connectStationWithSdk
+  let token: string
+  try {
+    token = await (input.mint ?? ((apiKey: string) => mintStationLiveToken(apiKey)))(input.apiKey)
+  } catch (error) {
+    return { model: input.model, sessions: 0, failure: bounded(error), ms: Date.now() - started }
+  }
+
+  /** One session to `setupComplete`; null, or why it did not get there. */
+  const open = () => new Promise<string | null>((resolve) => {
+    let session: { close: () => void } | null = null
+    let settled = false
+    const finish = (failure: string | null) => {
+      if (settled) return
+      settled = true
+      clearTimeout(deadline)
+      try { session?.close() } catch { /* already closed */ }
+      resolve(failure)
+    }
+    const deadline = setTimeout(() => finish("setupComplete timed out"), input.timeoutMs ?? STATION_SESSION_TIMEOUT_MS)
+    connect({
+      token,
+      model: input.model,
+      onmessage: (message) => { if (message.setupComplete) finish(null) },
+      onfailure: (reason) => finish(bounded(reason)),
+    }).then(
+      (connected) => {
+        session = connected
+        if (settled) { try { connected.close() } catch { /* already closed */ } }
+      },
+      (error) => finish(bounded(error)),
+    )
+  })
+
+  let sessions = 0
+  let failure: string | null = null
+  while (sessions < STATION_SESSIONS && failure === null) {
+    failure = await open()
+    if (failure === null) sessions += 1
+    else failure = `session ${sessions + 1}: ${failure}`
+  }
+  return { model: input.model, sessions, failure, ms: Date.now() - started }
+}
+
+export function stationTokenCheckPassed(check: StationTokenCheck): boolean {
+  return check.failure === null && check.sessions === STATION_SESSIONS
 }

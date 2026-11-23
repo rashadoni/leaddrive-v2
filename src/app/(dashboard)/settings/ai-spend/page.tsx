@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { Hint } from "@/components/hint"
+import { HelpButton } from "@/components/help/help-button"
 import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { aiFeatureLabel, AI_USES, PROVIDER_KEY_SOURCE, PROVIDER_USES, type AiUseId } from "@/lib/ai/gateway/features"
@@ -542,7 +543,11 @@ function KeysCard({ keys, onChange, t, nf, money, count }: {
 
   return (
     <section className="rounded-xl border border-border bg-card p-6" data-testid="ai-keys">
-      <h2 className="text-base font-semibold">{t("keysTitle")}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-base font-semibold">{t("keysTitle")}</h2>
+        {/* Owner, 2026-11-23: how an administrator gets a key of their own and enters it, step by step. */}
+        <HelpButton slug="ai-own-key" variant="label" />
+      </div>
       <p className="mt-1 text-xs text-muted-foreground">{t("keysSubtitle")}</p>
       <div className={`${KEY_GRID} mt-4 hidden border-b border-border pb-2 text-xs text-muted-foreground md:grid`}>
         <div>{t("colProviderKey")}</div><div>{t("colUses")}</div><div className="text-right">{t("col30d")}</div><div>{t("colOwnKey")}</div>
