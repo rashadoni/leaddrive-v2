@@ -124,6 +124,11 @@ describe("middleware", async () => {
     expect(res.headers.get("location")).toContain("callbackUrl=%2Fdashboard")
   })
 
+  it("a page's query survives the login: a colleague's link names the task in it", async () => {
+    const res = await authMiddleware(makeReq({ pathname: "/boards/b1?task=t1", auth: null }))
+    expect(new URL(res.headers.get("location")!).searchParams.get("callbackUrl")).toBe("/boards/b1?task=t1")
+  })
+
   it("redirects unauthenticated root '/' to /login", async () => {
     const req = makeReq({ pathname: "/", auth: null })
     const res = await authMiddleware(req)

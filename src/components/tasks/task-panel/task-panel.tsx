@@ -3,7 +3,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import {
-  Calendar, CalendarClock, ChevronsUp, Clock, Download, FolderUp, Hourglass, Link2, ListChecks, MoreHorizontal, Paperclip, Play, Repeat, Square, Tag, Trash2, Upload, X,
+  Calendar, CalendarClock, Check, ChevronsUp, Clock, Download, FolderUp, Hourglass, Link2, ListChecks, MoreHorizontal, Paperclip, Play, Repeat, Square, Tag, Trash2, Upload, X,
 } from "lucide-react"
 import { useTaskTypes } from "@/components/tasks/use-task-types"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
@@ -16,6 +16,7 @@ import { listLinesOf, newSubtaskTitles } from "@/lib/tasks/list-lines"
 import { withPeopleOnTask } from "@/lib/tasks/board-people"
 import { descriptionTextOf } from "@/lib/tasks/rich-description"
 import { fileDownloadUrl } from "@/lib/tasks/message-files"
+import { taskLink } from "@/lib/tasks/task-in-address"
 import { saveTaskFiles } from "@/lib/tasks/save-task-files"
 import { filesFromDrop, filesFromPicker, sendTaskFiles, type TaskFileFailure, type TaskFileToSend, type TaskFilesProgress } from "@/lib/tasks/task-file-upload"
 import { formatFileSize } from "@/lib/format-file-size"
@@ -90,6 +91,9 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
   const { types } = useTaskTypes(true)
   const [task, setTask] = useState<PanelTask | null>(null)
   const [failed, setFailed] = useState(false)
+  // 404: deleted, or on a board this person is not on (the API does not say which).
+  const [noAccess, setNoAccess] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
   const [people, setPeople] = useState<Person[]>([])
   const [brandOptions, setBrandOptions] = useState<string[] | null>(null)
   const [time, setTime] = useState<TimeSummary | null>(null)
@@ -175,7 +179,11 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
       setDescription(loaded.description ?? "")
       setTime(timeJson?.data ?? null)
       setFailed(false)
-    }).catch(() => { if (alive) setFailed(true) })
+    }).catch((error: unknown) => {
+      if (!alive) return
+      setNoAccess(error instanceof Error && error.message === "404")
+      setFailed(true)
+    })
     return () => { alive = false }
   }, [taskId, reloadKey])
 
@@ -364,7 +372,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
       <div className="flex h-full w-full max-w-[1120px] flex-col overflow-hidden border-l bg-background shadow-2xl md:w-[88vw]" data-crm-dialog="">
         {failed ? (
           <div className="p-6">
-            <p className="text-sm text-destructive">{t("loadFailed")}</p>
+            <p className="text-sm text-destructive">{t(noAccess ? "noAccess" : "loadFailed")}</p>
             <button type="button" onClick={onClose} className="mt-3 rounded-md border px-3 py-1.5 text-sm">{t("close")}</button>
           </div>
         ) : !task ? (
@@ -403,7 +411,20 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                       )}
                     </div>
                   )}
-                  <button type="button" aria-label={t("copyLink")} onClick={() => void navigator.clipboard?.writeText(`${window.location.origin}/tasks/${task.id}`)} className="rounded p-1.5 hover:bg-muted"><Link2 className="h-4 w-4" /></button>
+                  <button
+                    type="button"
+                    data-testid="task-panel-copy-link"
+                    title={t(linkCopied ? "linkCopied" : "copyLink")}
+                    aria-label={t(linkCopied ? "linkCopied" : "copyLink")}
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(taskLink(window.location.origin, window.location.pathname, task.id))
+                        .then(() => { setLinkCopied(true); window.setTimeout(() => setLinkCopied(false), 1800) })
+                        .catch(() => {})
+                    }}
+                    className="rounded p-1.5 hover:bg-muted"
+                  >
+                    {linkCopied ? <Check className="h-4 w-4 text-emerald-600" /> : <Link2 className="h-4 w-4" />}
+                  </button>
                   <button type="button" aria-label={t("close")} onClick={onClose} className="rounded p-1.5 hover:bg-muted"><X className="h-5 w-5" /></button>
                 </div>
               </div>

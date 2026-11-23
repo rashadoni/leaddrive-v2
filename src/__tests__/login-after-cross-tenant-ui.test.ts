@@ -33,6 +33,7 @@ const t = vi.hoisted(() => Object.assign((key: string) => `auth.${key}`, { has: 
 vi.mock("next-intl", () => ({ useTranslations: () => t, useLocale: () => "az" }))
 
 import LoginPage from "@/app/(auth)/login/page"
+import { signInDestination } from "@/lib/login-return-path"
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -101,6 +102,15 @@ afterEach(async () => {
 })
 
 describe("signing in on /login with an earlier result in the address", () => {
+  it("a right password leads back to the link that sent the person here", async () => {
+    window.sessionStorage.clear()
+    await openLogin(`?callbackUrl=${encodeURIComponent("/boards/b1?task=t1")}`)
+    await submit()
+    expect(enter).toHaveBeenCalledTimes(1)
+    expect(signInDestination()).toBe("/boards/b1?task=t1")
+    window.sessionStorage.clear()
+  })
+
   it("a right password after being sent here from another organisation signs in", async () => {
     await openLogin("?error=cross-tenant")
     expect(text()).toContain("auth.errCrossTenant")

@@ -138,7 +138,8 @@ describe("Mənim işlərim → Təqvim", () => {
     expect(container.querySelector('[data-testid="task-panel"]')?.getAttribute("data-task")).toBe("w-soon")
     await act(async () => { (container.querySelector('[data-testid="my-work-view-list"]') as HTMLButtonElement).click() })
     expect(container.querySelector('[data-testid="my-work-calendar"]')).toBeNull()
-    expect(window.location.search).toBe("")
+    // The list is the default and is not written; the address names the open card (task-in-address.ts).
+    expect(window.location.search).toBe("?task=w-soon")
   })
 })
 

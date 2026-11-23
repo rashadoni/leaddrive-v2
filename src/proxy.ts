@@ -1023,7 +1023,8 @@ const authMiddleware = auth(async (req) => {
       return withCspHeaders(NextResponse.redirect(new URL("/login", baseUrl)), nonce)
     }
     const loginUrl = new URL("/login", baseUrl)
-    loginUrl.searchParams.set("callbackUrl", pathname)
+    // A page keeps its query: `?task=<id>` is which card a colleague's link opens.
+    loginUrl.searchParams.set("callbackUrl", pathname.startsWith("/api/") ? pathname : `${pathname}${req.nextUrl.search}`)
     return withCspHeaders(NextResponse.redirect(loginUrl), nonce)
   }
 
