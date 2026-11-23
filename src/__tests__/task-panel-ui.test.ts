@@ -119,7 +119,7 @@ describe("task card panel", () => {
     await open()
     const tiles = [...container.querySelectorAll('[data-testid="task-files-grid"] [data-testid="task-file"]')]
     expect(tiles.map((tile) => tile.querySelector("[data-file-kind]")?.getAttribute("data-file-kind"))).toEqual(["image", "excel", "pdf"])
-    expect(tiles.map((tile) => tile.querySelector("[data-file-kind]")?.textContent)).toEqual(["JPG", "XLS", "PDF"])
+    expect(tiles.map((tile) => tile.querySelector("[data-file-kind]")?.textContent)).toEqual(["jpg", "xlsx", "pdf"])
     expect(tiles[1].querySelector('a[title="Ecodenta Black Friday.xlsx"]')?.getAttribute("href")).toBe("/uploads/tasks/2.xlsx")
     for (const id of ["task-file-pick", "task-file-download", "task-file-remove"]) expect(tiles[1].querySelector(`[data-testid="${id}"]`), id).not.toBeNull()
   })
