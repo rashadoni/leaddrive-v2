@@ -157,6 +157,9 @@ describe("the session the station is given", () => {
     expect(answer.prompt).toContain("s1: Stomatoloq müayinəsi, 30 min, 30 AZN; s2: Kardioloq, 40 min.")
     expect(answer.prompt).toContain("Today is Sunday 2026-11-22, now 14:00.")
     expect(answer.prompt).toContain("Mon 11-23, Tue 11-24, Wed 11-25, Thu 11-26")
+    // The caller hears the transcript of the model's speech: "11:00-a" was voiced "on bir:sıfıra".
+    expect(answer.prompt).toContain("never as digits and never with the word sıfır")
+    expect(answer.prompt).toContain("15:00 saat üç")
     expect(JSON.stringify(answer)).not.toContain("page-dentist")
     // The call's own record: what a tool is later run with.
     expect(f.dependencies.mark).toHaveBeenCalledWith(expect.objectContaining({ id: "call-row" }), marked())
