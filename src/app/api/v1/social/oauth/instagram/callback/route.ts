@@ -1,3 +1,4 @@
+import { adoptOrphanConversations } from "@/lib/inbox/adopt-orphan-conversations"
 import { NextRequest, NextResponse } from "next/server"
 import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
@@ -263,6 +264,9 @@ export async function GET(req: NextRequest) {
     })
     wiredChannelId = row.id
   }
+
+  // The account connected again after its row was deleted: its conversations come back with it.
+  if (!staged) await adoptOrphanConversations({ id: wiredChannelId, organizationId: payload.orgId, channelType: "instagram", pageId: userId })
 
   // 5) Intentionally NO SocialAccount(instagram) row. Social Monitoring's poll-all cron iterates
   //    SocialAccount(instagram) and polls graph.facebook.com/{handle}/media with a Facebook-page-token
