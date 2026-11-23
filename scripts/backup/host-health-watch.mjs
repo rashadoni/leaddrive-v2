@@ -52,9 +52,26 @@ const PAGE_SLOW_MS = Number(process.env.LD_HOST_WATCH_PAGE_SLOW_MS ?? 6_000)
 // the day its activation is finished; the runbook's own stop conditions
 // require all four to be loaded, enabled and active before that gate counts
 // as closed.
+//
+// `recordedBy`: where the job's last result is written down apart from systemd.
+// systemd keeps a service's exit time in memory, so after any restart of the
+// server the unit reads as never having run, until its next scheduled run. On
+// 2026-11-23 Contabo's host migration restarted production at 18:34, and this
+// watch called a backup taken that same morning «ни разу не отработал», with a
+// reminder every hour through the night.
 export const WATCHED_JOBS = [
-  { unit: 'leaddrive-wal-backup', what: 'бэкап pgBackRest', warnHours: 30, critHours: 50 },
+  { unit: 'leaddrive-wal-backup', what: 'бэкап pgBackRest', warnHours: 30, critHours: 50, recordedBy: 'pgbackrest' },
 ]
+
+// The newest backup in the repository as "<stop epoch> <1 if it has errors>".
+// Asked only while systemd has no answer: this read goes to object storage,
+// and the probe runs every five minutes. --log-level-console=info because at the
+// production config's `warn` pgBackRest prints nothing for `info`.
+const PGBACKREST_NEWEST = [
+  'import json, sys',
+  'b = sorted((x["timestamp"]["stop"], int(bool(x.get("error", False)))) for s in json.load(sys.stdin) for x in s.get("backup", []))',
+  'print(*b[-1]) if b else None',
+].join('\n')
 
 // The backup the owner actually relies on is made by a host script
 // (/usr/local/sbin/leaddrive-backup.sh, since 2026-10-23) and lands here,
@@ -143,11 +160,17 @@ export function probeProgram(jobs = WATCHED_JOBS, mounts = WATCHED_MOUNTS, backu
     '  stamp="$(systemctl show -p ExecMainExitTimestamp --value "$unit.service" 2>/dev/null || true)"',
     '  finished=""',
     '  if [ -n "$stamp" ]; then finished="$(date -d "$stamp" +%s 2>/dev/null || true)"; fi',
-    "  printf 'unit=%s load=%s enabled=%s result=%s finished=%s\\n' \"$unit\" \\",
+    '  recorded=""',
+    ...jobs.filter((job) => job.recordedBy === 'pgbackrest').flatMap((job) => [
+      `  if [ -z "$finished" ] && [ "$unit" = "${job.unit}" ]; then`,
+      `    recorded="$(timeout 15 sudo -n -u postgres pgbackrest --log-level-console=info --output=json info 2>/dev/null | python3 -I -c '${PGBACKREST_NEWEST}' 2>/dev/null || true)"`,
+      '  fi',
+    ]),
+    "  printf 'unit=%s load=%s enabled=%s result=%s finished=%s recorded=%s recordederror=%s\\n' \"$unit\" \\",
     '    "$(systemctl show -p LoadState --value "$unit.timer" 2>/dev/null || echo unknown)" \\',
     '    "$(systemctl show -p UnitFileState --value "$unit.timer" 2>/dev/null || echo unknown)" \\',
     '    "$(systemctl show -p Result --value "$unit.service" 2>/dev/null || echo unknown)" \\',
-    '    "$finished"',
+    '    "$finished" "${recorded%% *}" "${recorded##* }"',
     'done',
     `for mount in ${mounts.join(' ')}; do`,
     '  df -P -- "$mount" 2>/dev/null | awk -v m="$mount" \'NR==2 {printf "disk=%s fs=%s total=%s avail=%s\\n", m, $1, $2, $4}\'',
@@ -226,14 +249,23 @@ export function assessJobs(probe, jobs = WATCHED_JOBS) {
       problems.push({ key, critical: true, text: `${job.what}: таймер ${job.unit}.timer не включён (${seen.enabled || 'пусто'}) — расписания нет` })
       continue
     }
-    const finished = Number(seen.finished) * 1000
+    let finished = Number(seen.finished) * 1000
     if (!seen.finished || !Number.isFinite(finished) || finished <= 0) {
-      // A unit that never ran reports Result=success, so the timestamp is the
-      // only thing that tells the difference between healthy and never tried.
-      problems.push({ key, critical: true, text: `${job.what}: ${job.unit}.service ни разу не отработал` })
-      continue
-    }
-    if (seen.result !== 'success') {
+      // A unit that never ran reports Result=success, and so does one whose
+      // server restarted since its last run: systemd has forgotten it. The
+      // job's own record tells the two apart, and its age is then judged by the
+      // same thresholds, so a backup that really stopped still alarms.
+      const recorded = Number(seen.recorded) * 1000
+      if (!seen.recorded || !Number.isFinite(recorded) || recorded <= 0) {
+        problems.push({ key, critical: true, text: `${job.what}: ${job.unit}.service ни разу не отработал` })
+        continue
+      }
+      if (seen.recordederror !== '0') {
+        problems.push({ key, critical: true, text: `${job.what}: последний бэкап в хранилище записан с ошибками (${hours(now - recorded)} ч назад)` })
+        continue
+      }
+      finished = recorded
+    } else if (seen.result !== 'success') {
       problems.push({ key, critical: true, text: `${job.what}: последний запуск завершился как ${seen.result} (${hours(now - finished)} ч назад)` })
       continue
     }

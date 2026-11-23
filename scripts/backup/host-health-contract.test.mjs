@@ -9,7 +9,9 @@
 // this machine's own systemd and df, the page check against a local server.
 import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
-import { readFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -51,7 +53,7 @@ function probe({ jobs = [], disks = [], files = [], dir = '', newest = '', offsi
       ...(dir ? [`backupdir=${dir}`] : []),
       ...(newest ? [`newest=${newest}`] : []),
       ...files.map((f) => `file=${f.key} found=${f.found ?? ''}`),
-      ...jobs.map((j) => `unit=${j.unit} load=${j.load ?? 'loaded'} enabled=${j.enabled ?? 'enabled'} result=${j.result ?? 'success'} finished=${j.finished ?? ''}`),
+      ...jobs.map((j) => `unit=${j.unit} load=${j.load ?? 'loaded'} enabled=${j.enabled ?? 'enabled'} result=${j.result ?? 'success'} finished=${j.finished ?? ''} recorded=${j.recorded ?? ''} recordederror=${j.recordederror ?? ''}`),
       ...disks.map((d) => `disk=${d.mount} fs=${d.fs} total=${d.total} avail=${d.avail}`),
       '',
     ].join('\n'),
@@ -105,6 +107,85 @@ test('a unit that is not there is an alarm, however healthy systemd calls it', (
   const never = assessJobs(probe({ jobs: [job({ result: 'success', finished: '' })] }));
   assert.equal(never[0].critical, true);
   assert.match(never[0].text, /ни разу не отработал/);
+});
+
+// The real probe program over a stubbed systemd and pgBackRest: what production
+// answers after a restart is the shape under test, and neither exists here.
+function probeOnHost({ systemdFinished = '', repository = null, repositoryFails = false }) {
+  const dir = mkdtempSync(path.join(tmpdir(), 'host-watch-'));
+  const asked = path.join(dir, 'repository-asked');
+  const stub = (name, body) => {
+    const file = path.join(dir, name);
+    writeFileSync(file, `#!/bin/bash\n${body}\n`);
+    chmodSync(file, 0o755);
+  };
+  stub('systemctl', `case "$*" in
+  *ExecMainExitTimestamp*) printf '%s\\n' '${systemdFinished}' ;;
+  *LoadState*) echo loaded ;;
+  *UnitFileState*) echo enabled ;;
+  *Result*) echo success ;;
+esac`);
+  // Every argument is checked: a probe that asked for anything but `info`
+  // would be running something on production's backup repository.
+  stub('sudo', `: > ${asked}
+[ "$*" = "-n -u postgres pgbackrest --log-level-console=info --output=json info" ] || exit 9
+${repositoryFails ? 'exit 1' : `cat <<'JSON'\n${JSON.stringify(repository)}\nJSON`}`);
+  try {
+    const out = execFileSync('bash', ['-c', probeProgram()], {
+      encoding: 'utf8',
+      env: { ...process.env, PATH: `${dir}:${process.env.PATH}` },
+    });
+    return { probe: parseProbe(out), repositoryAsked: existsSync(asked) };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const backupRow = (type, stopSeconds, error = false) => ({ type, timestamp: { start: stopSeconds - 600, stop: stopSeconds }, error });
+const hoursBeforeNow = (h) => Math.round((Date.now() - h * HOUR) / 1000);
+
+test('a restart of the server is not a backup that never ran', () => {
+  const { probe: after, repositoryAsked } = probeOnHost({
+    repository: [{ name: 'leaddrive', backup: [backupRow('full', hoursBeforeNow(60)), backupRow('diff', hoursBeforeNow(17))] }],
+  });
+  assert.equal(repositoryAsked, true);
+  assert.deepEqual(assessJobs(after), []);
+});
+
+test('after a restart a backup that really stopped still alarms, by the same thresholds', () => {
+  const at = (h) => assessJobs(probeOnHost({ repository: [{ name: 'leaddrive', backup: [backupRow('diff', hoursBeforeNow(h))] }] }).probe);
+  assert.equal(at(31)[0].critical, false);
+  assert.match(at(31)[0].text, /не делался 31 ч/);
+  assert.equal(at(51)[0].critical, true);
+});
+
+test('after a restart the newest backup decides, and one written with errors is an alarm', () => {
+  const problems = assessJobs(probeOnHost({
+    repository: [{ name: 'leaddrive', backup: [backupRow('diff', hoursBeforeNow(5), true), backupRow('full', hoursBeforeNow(29))] }],
+  }).probe);
+  assert.equal(problems[0].critical, true);
+  assert.match(problems[0].text, /записан с ошибками \(5 ч назад\)/);
+});
+
+test('with no answer from systemd or the repository it stays an alarm', () => {
+  for (const host of [
+    { repositoryFails: true },
+    { repository: [] },
+    { repository: [{ name: 'leaddrive', backup: [] }] },
+  ]) {
+    const problems = assessJobs(probeOnHost(host).probe);
+    assert.equal(problems[0]?.critical, true, JSON.stringify(host));
+    assert.match(problems[0].text, /ни разу не отработал/);
+  }
+});
+
+test('while systemd remembers the run, the repository is not asked', () => {
+  const { probe: running, repositoryAsked } = probeOnHost({
+    systemdFinished: new Date(Date.now() - 2 * HOUR).toUTCString(),
+    repository: [{ name: 'leaddrive', backup: [backupRow('diff', hoursBeforeNow(200))] }],
+  });
+  assert.equal(repositoryAsked, false, 'object storage would be read every five minutes');
+  assert.deepEqual(assessJobs(running), []);
 });
 
 test('a failed last run is named by its result', () => {
