@@ -178,8 +178,8 @@ export function CommentsScreen() {
                   <span className="min-w-0 flex-1">
                     <span className="line-clamp-2 text-sm font-medium">{post.caption || t(post.isReel ? "reelNoCaption" : "postNoCaption")}</span>
                     <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                      <ChannelIcon channel="instagram" className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{post.channelName ?? "Instagram"}</span>
+                      <ChannelIcon channel={post.platform} className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{post.channelName ?? (post.platform === "facebook" ? "Facebook" : "Instagram")}</span>
                     </span>
                     <span className={cn("mt-0.5 block text-xs", post.unanswered > 0 ? "font-semibold text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400")}>
                       {post.unanswered > 0 ? t("postUnanswered", { unanswered: post.unanswered, total: post.total }) : t("postAllAnswered", { total: post.total })}
@@ -236,7 +236,7 @@ function PostPicture({ post }: { post: BoardPost }) {
   }
   return (
     <span className="flex h-14 w-11 shrink-0 items-center justify-center rounded-md bg-muted-foreground/10 text-muted-foreground">
-      {post.isReel ? <Play className="h-4 w-4" aria-hidden="true" /> : <ChannelIcon channel="instagram" className="h-4 w-4" />}
+      {post.isReel ? <Play className="h-4 w-4" aria-hidden="true" /> : <ChannelIcon channel={post.platform} className="h-4 w-4" />}
     </span>
   )
 }
@@ -249,27 +249,40 @@ function CommentCard({ comment, onSent }: { comment: BoardComment; onSent: () =>
   const [drafting, setDrafting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const isFacebook = comment.platform === "facebook"
+  // Facebook has no ordinary message to fall back on here: the person's thread is the Messenger one.
+  const canWriteDirect = !isFacebook || comment.privateReplyAvailable
   const open = (next: Mode) => { setMode(next); setError(null) }
 
   const send = async () => {
-    if (!mode || !text.trim() || !comment.conversationId) return
+    if (!mode || !text.trim() || (!isFacebook && !comment.conversationId)) return
     setBusy(true)
     setError(null)
     try {
-      const res = await fetch("/api/v1/inbox", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: comment.author,
-          body: text.trim(),
-          channel: "instagram",
-          conversationId: comment.conversationId,
-          commentReply: { messageId: comment.id, mode },
-        }),
-      })
+      // Facebook has its own route: a Page comment is not a row of a conversation.
+      const res = isFacebook
+        ? await fetch(`/api/v1/inbox/comments/facebook/${encodeURIComponent(comment.id)}/reply`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode: mode === "direct" ? "private" : "public", body: text.trim() }),
+          })
+        : await fetch("/api/v1/inbox", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: comment.author,
+              body: text.trim(),
+              channel: "instagram",
+              conversationId: comment.conversationId,
+              commentReply: { messageId: comment.id, mode },
+            }),
+          })
       if (!res.ok) {
         const json = (await res.json().catch(() => null)) as { error?: string } | null
-        setError(json?.error ? t("sendFailedReason", { reason: json.error }) : t("sendFailed"))
+        const code = json?.error
+        setError(code === "private_reply_used" || code === "facebook_not_connected"
+          ? t(`sendError_${code}`)
+          : code ? t("sendFailedReason", { reason: code }) : t("sendFailed"))
         return
       }
       setText("")
@@ -314,10 +327,10 @@ function CommentCard({ comment, onSent }: { comment: BoardComment; onSent: () =>
         <div key={reply.id} className="mt-2 rounded-lg bg-muted px-3 py-2 text-sm" data-testid="inbox-comments-reply">
           <span className="block text-xs text-muted-foreground">
             {reply.keyword
-              ? t("replyByRule", { keyword: reply.keyword })
+              ? t(isFacebook ? "replyByRuleMessenger" : "replyByRule", { keyword: reply.keyword })
               : reply.mode === "public"
-                ? (reply.fromApp ? t("replyPublicFromApp") : t("replyPublicBy", { name: reply.authorName ?? t("someone") }))
-                : t("replyDirectBy", { name: reply.authorName ?? t("someone") })}
+                ? (reply.fromApp ? t(isFacebook ? "replyPublicFromFacebook" : "replyPublicFromApp") : t("replyPublicBy", { name: reply.authorName ?? t("someone") }))
+                : t(isFacebook ? "replyMessengerBy" : "replyDirectBy", { name: reply.authorName ?? t("someone") })}
             {" · "}{when(reply.createdAt)}
           </span>
           <span className="whitespace-pre-wrap break-words">{reply.text}</span>
@@ -331,11 +344,13 @@ function CommentCard({ comment, onSent }: { comment: BoardComment; onSent: () =>
               <Globe className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> {comment.answered ? t("replyPublicAgain") : t("replyPublic")}
             </Button>
           </Hint>
-          <Hint text={comment.privateReplyAvailable ? t("replyDirectHint") : t("replyDirectUsedHint")}>
-            <Button variant="outline" size="sm" onClick={() => open("direct")} data-testid="inbox-comments-reply-direct">
-              <Mail className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> {t("replyDirect")}
-            </Button>
-          </Hint>
+          {canWriteDirect && (
+            <Hint text={comment.privateReplyAvailable ? t("replyDirectHint") : t("replyDirectUsedHint")}>
+              <Button variant="outline" size="sm" onClick={() => open("direct")} data-testid="inbox-comments-reply-direct">
+                <Mail className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> {isFacebook ? t("replyMessenger") : t("replyDirect")}
+              </Button>
+            </Hint>
+          )}
           {comment.conversationId && (
             <Hint text={t("openConversationHint")}>
               <Link href={`/inbox?conversation=${encodeURIComponent(comment.conversationId)}`} className="inline-flex h-9 items-center rounded-lg border border-border px-3 text-sm font-medium hover:bg-muted">
@@ -347,7 +362,7 @@ function CommentCard({ comment, onSent }: { comment: BoardComment; onSent: () =>
       ) : (
         <div className="mt-2.5" data-testid="inbox-comments-composer">
           <p className="mb-1 text-xs text-muted-foreground">
-            {mode === "public" ? t("composerPublic") : comment.privateReplyAvailable ? t("composerDirect") : t("composerDirectUsed")}
+            {mode === "public" ? t("composerPublic") : isFacebook ? t("composerMessenger") : comment.privateReplyAvailable ? t("composerDirect") : t("composerDirectUsed")}
           </p>
           <Textarea
             rows={3}
@@ -361,7 +376,7 @@ function CommentCard({ comment, onSent }: { comment: BoardComment; onSent: () =>
           <div className="mt-2 flex flex-wrap gap-2">
             <Button size="sm" disabled={busy || !text.trim()} onClick={() => void send()} data-testid="inbox-comments-send">
               {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-              {mode === "public" ? t("sendPublic") : t("sendDirect")}
+              {mode === "public" ? t("sendPublic") : isFacebook ? t("sendMessenger") : t("sendDirect")}
             </Button>
             <Hint text={t("draftHint")}>
               <Button variant="outline" size="sm" disabled={drafting} onClick={() => void draft()} data-testid="inbox-comments-draft">

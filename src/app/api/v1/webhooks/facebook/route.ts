@@ -1,3 +1,5 @@
+import { facebookCommentEvents } from "@/lib/social/facebook-comments"
+import { ingestFacebookComment } from "@/lib/inbox/facebook-comment-ingest"
 import { getSharedMessengerApp } from "@/lib/social/shared-messenger-app"
 import { fetchAndStoreMetaMedia } from "@/lib/inbox/meta-media"
 import { NextRequest, NextResponse } from "next/server"
@@ -449,6 +451,18 @@ export async function POST(req: NextRequest) {
             metadata: messageMetadata,
             source: platform === "instagram" ? "Instagram" : "Facebook",
           })
+        }
+      }
+      // Comments under the Page's posts (field `feed`): a table of their own, answered by a person or
+      // a keyword rule, never by the AI (lib/inbox/facebook-comment-ingest). One that fails must not
+      // cost the others in this delivery.
+      if (body.object === "page" && channel.channelType === "facebook") {
+        for (const event of facebookCommentEvents(entry)) {
+          try {
+            await ingestFacebookComment({ channel, pageId: String(pageId), event })
+          } catch (e) {
+            console.error("[FB Webhook] comment ingest failed:", e)
+          }
         }
       }
       }) // end runWithTenant (per-entry tenant scope)

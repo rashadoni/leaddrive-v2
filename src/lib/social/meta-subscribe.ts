@@ -19,6 +19,9 @@ const META_GRAPH_BASE = process.env.META_GRAPH_BASE || "https://graph.facebook.c
 // `messaging_postbacks` covers button/quick-reply taps; `message_echoes` reports what the team
 // answered in Messenger itself, so the thread shows it (lib/inbox/meta-dm-app-echo).
 const DM_SUBSCRIBED_FIELDS = "messages,messaging_postbacks,message_echoes"
+// `feed` carries comments under the Page's posts (lib/social/facebook-comments). Only for a Page whose
+// token holds the reading permissions: asking without them could refuse the whole call, Messenger with it.
+const DM_AND_COMMENT_FIELDS = `${DM_SUBSCRIBED_FIELDS},feed`
 
 /**
  * `options.fields` narrows what the Page sends us. The demo's own Page
@@ -29,7 +32,7 @@ const DM_SUBSCRIBED_FIELDS = "messages,messaging_postbacks,message_echoes"
 export async function subscribePageToMessages(
   pageId: string,
   pageAccessToken: string,
-  options: { fields?: "messages" } = {},
+  options: { fields?: "messages"; comments?: boolean } = {},
 ): Promise<{ success: boolean; error?: string }> {
   if (!pageId || !pageAccessToken) return { success: false, error: "missing pageId or token" }
   try {
@@ -37,7 +40,7 @@ export async function subscribePageToMessages(
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        subscribed_fields: options.fields ?? DM_SUBSCRIBED_FIELDS,
+        subscribed_fields: options.fields ?? (options.comments ? DM_AND_COMMENT_FIELDS : DM_SUBSCRIBED_FIELDS),
         access_token: pageAccessToken,
       }),
       signal: AbortSignal.timeout(10_000),

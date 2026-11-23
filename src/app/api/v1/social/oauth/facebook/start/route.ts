@@ -6,6 +6,7 @@ import { getTenantMetaApp, getPinnedMetaApp } from "@/lib/social/tenant-meta-app
 import { getSharedMessengerApp } from "@/lib/social/shared-messenger-app"
 import { normalizeOAuthReturnKey } from "@/lib/social/oauth-return"
 import { resolveOAuthReturnChannel } from "@/lib/social/oauth-return-channel"
+import { FACEBOOK_COMMENT_CONNECT_SCOPES } from "@/lib/social/facebook-comments"
 
 /**
  * Start Facebook (Meta Graph) OAuth flow. The same token covers Instagram
@@ -72,6 +73,13 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   if (messenger && !messenger.ready) {
     return NextResponse.json({ error: "Shared Messenger connection is not configured completely." }, { status: 503 })
   }
+  // `?comments=1`: comments under the Page's posts (lib/social/facebook-comments). Until Meta approves
+  // the three Page permissions this link is for accounts with a role on the app, so an ordinary connect
+  // keeps asking for exactly what it asked for. Only the shared app has those permissions enabled.
+  const wantsComments = new URL(req.url).searchParams.get("comments") === "1"
+  if (wantsComments && !messenger) {
+    return NextResponse.json({ error: "comments=1 is only available on the shared connection, from=channels-facebook." }, { status: 400 })
+  }
   const appId = pinnedApp?.appId || tenantApp?.appId || messenger?.appId || process.env.FACEBOOK_APP_ID
   const redirectUri = process.env.FACEBOOK_REDIRECT_URI
   if (!appId || !redirectUri) {
@@ -92,6 +100,7 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   const payloadFields: Record<string, unknown> = { orgId, state, ts: Date.now() }
   if (returnKey) payloadFields.ret = returnKey
   if (pinnedApp) payloadFields.app = pinnedApp.configId
+  if (wantsComments) payloadFields.comments = true
   // Bind the shared provider and exact app identity to the callback; never re-resolve a new tenant app.
   if (messenger) payloadFields.messengerAppId = messenger.appId
   // Signed like everything else here, and still re-checked against the org on the way back.
@@ -165,9 +174,11 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
     "instagram_basic",
     "instagram_manage_comments",
   ]
-  const scopes = pinnedApp
-    ? (stagedSurface === "monitoring" ? stagedMonitoringScopes : stagedMessengerScopes).join(",")
-    : [...monitoringScopes, ...(usesSocialInbox ? inboxScopes : [])].join(",")
+  const scopes = wantsComments
+    ? FACEBOOK_COMMENT_CONNECT_SCOPES.join(",")
+    : pinnedApp
+      ? (stagedSurface === "monitoring" ? stagedMonitoringScopes : stagedMessengerScopes).join(",")
+      : [...monitoringScopes, ...(usesSocialInbox ? inboxScopes : [])].join(",")
 
   const url = new URL("https://www.facebook.com/v21.0/dialog/oauth")
   url.searchParams.set("client_id", appId)
@@ -187,7 +198,8 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   // Messenger one. Honouring it on a monitoring flow would open a dialog for the wrong permissions —
   // and a screencast of the wrong consent screen is exactly what the first two submissions were
   // rejected over. The scope request below is what the monitoring evidence needs.
-  const loginConfigId = stagedSurface === "monitoring"
+  // The Login configuration's fixed list has no comment permissions either, for the same reason.
+  const loginConfigId = stagedSurface === "monitoring" || wantsComments
     ? null
     : pinnedApp?.loginConfigId || messenger?.loginConfigId
   if (loginConfigId) {

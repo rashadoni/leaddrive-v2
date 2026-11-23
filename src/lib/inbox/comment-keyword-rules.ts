@@ -64,7 +64,7 @@ export async function saveCommentKeywordRules(
   const channelIds = [...new Set(rules.map((r) => r.channelConfigId).filter((id): id is string => !!id))]
   if (channelIds.length > 0) {
     const owned = await prisma.channelConfig.count({
-      where: { organizationId, id: { in: channelIds }, channelType: "instagram" },
+      where: { organizationId, id: { in: channelIds }, channelType: { in: ["instagram", "facebook"] } },
     })
     if (owned !== channelIds.length) return { ok: false, error: "unknown_channel" }
   }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { commentHasKeyword, matchCommentKeywordRule, readCommentKeywordRules, type CommentKeywordRule } from "@/lib/inbox/comment-keyword-model"
 import { buildCommentsBoard, type CommentRow, type ReplyRow } from "@/lib/inbox/comments-board"
+import { facebookCommentEvents } from "@/lib/social/facebook-comments"
 
 /** Which comment carries a rule's word, and when the section calls a comment answered. */
 describe("a rule's word in a comment", () => {
@@ -86,5 +87,30 @@ describe("the comments board", () => {
 
   it("ignores a row that is not a comment", () => {
     expect(build([{ ...row("a", "r", 1), metadata: {} }])).toEqual([])
+  })
+})
+
+describe("what a Page's `feed` webhook carries", () => {
+  const entry = (value: Record<string, unknown>, field = "feed") => ({ id: "page", changes: [{ field, value }] })
+
+  it("reads a comment directly under the post as having no parent", () => {
+    const [event] = facebookCommentEvents(entry({
+      item: "comment", verb: "add", comment_id: "c1", post_id: "page_1", parent_id: "page_1", message: "Salam",
+      created_time: 1795412400, from: { id: "u1", name: "Fərid" }, post: { permalink_url: "https://www.facebook.com/x" },
+    }))
+    expect(event).toMatchObject({ commentId: "c1", postId: "page_1", parentId: null, fromId: "u1", fromName: "Fərid", text: "Salam", permalink: "https://www.facebook.com/x" })
+    expect(event.commentedAt.toISOString()).toBe(new Date(1795412400 * 1000).toISOString())
+  })
+
+  it("keeps the parent of an answer to a comment, and takes a comment without an author", () => {
+    const [event] = facebookCommentEvents(entry({ item: "comment", verb: "add", comment_id: "c2", post_id: "page_1", parent_id: "c1", message: "x" }))
+    expect(event).toMatchObject({ parentId: "c1", fromId: null, fromName: null })
+  })
+
+  it("ignores posts, likes and other fields", () => {
+    expect(facebookCommentEvents(entry({ item: "status", verb: "add", post_id: "p" }))).toEqual([])
+    expect(facebookCommentEvents(entry({ item: "reaction", verb: "add", post_id: "p" }))).toEqual([])
+    expect(facebookCommentEvents(entry({ item: "comment", comment_id: "c" }, "mention"))).toEqual([])
+    expect(facebookCommentEvents({ id: "page", messaging: [{}] })).toEqual([])
   })
 })
