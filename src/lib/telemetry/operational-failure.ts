@@ -5,6 +5,7 @@ const OPERATIONS = new Set([
   "audit-persist", "application-render", "tenant-data-key-load",
   "shell-events-watch",
   "ai-gateway-access", "ai-gateway-budget", "ai-gateway-usage",
+  "voice-station-live-token",
 ] as const)
 
 type Operation = typeof OPERATIONS extends Set<infer T> ? T : never

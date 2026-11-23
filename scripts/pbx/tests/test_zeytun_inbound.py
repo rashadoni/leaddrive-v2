@@ -85,6 +85,86 @@ class TransportTests(unittest.TestCase):
     def handle(self, body):
         return self.bridge.handle(body, self.send, lambda: self.current)
 
+    LIVE_TOKEN = "auth_tokens/3f1c9a7e5b2d4c6f8a0b1c2d3e4f5a6b7c8d9e0f"
+
+    def opened_with(self, *answers, announce_answered=None):
+        """A bridge whose session requests get these answers, in order."""
+        replies = list(answers)
+        return bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, lambda body: replies.pop(0), lambda: self.now,
+                                                  announce_answered=announce_answered)
+
+    def test_a_session_with_the_crms_live_token_keeps_it_and_reads_the_rest_as_before(self):
+        # Owner, 2026-11-23: an organization's own Gemini key. The session is the same session.
+        session = {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": "Test rules",
+                   "opening": "Test greeting", "maxSeconds": 60}
+        plain = self.opened_with(dict(session))
+        own = self.opened_with({**session, "liveToken": self.LIVE_TOKEN})
+        self.assertEqual(own.open(), plain.open())
+        self.assertIsNone(plain.live_token())
+        self.assertIsNone(plain.auth_usage())
+        self.assertEqual(own.live_token(), self.LIVE_TOKEN)
+        self.assertEqual(own.auth_usage(), {"auth": "token"})
+
+    def test_a_call_that_is_not_the_lines_runs_the_ordinary_way_with_its_token(self):
+        # The plain «not ours» answer is compared whole: with a token in it the call still
+        # goes the ordinary way, and its conversation still opens on the token.
+        bridge = self.opened_with({"enabled": False, "liveToken": self.LIVE_TOKEN})
+        self.assertIsNone(bridge.open())
+        self.assertEqual(bridge.live_token(), self.LIVE_TOKEN)
+        self.assertEqual(bridge.auth_usage(), {"auth": "token"})
+        self.assertIsNone(bridge.call_usage()["live"] if "live" in bridge.call_usage() else None)
+        self.assertEqual(bridge.call_usage(), {"auth": "token"})
+
+    def test_the_token_of_the_answer_after_the_ack_is_the_one_kept_and_a_refusal_there_still_stops(self):
+        session = {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": "Test rules",
+                   "opening": "Test greeting", "maxSeconds": 60, "liveToken": self.LIVE_TOKEN}
+        waiting = {"enabled": False, "status": "awaiting_answered"}
+        bridge = self.opened_with(dict(waiting), session, announce_answered=lambda: True)
+        self.assertEqual(bridge.open()["prompt"], "Test rules")
+        self.assertEqual(bridge.live_token(), self.LIVE_TOKEN)
+        # After the ACK a «not ours» is a revoked call, token or no token: it stops, as before.
+        revoked = self.opened_with(dict(waiting), {"enabled": False, "liveToken": self.LIVE_TOKEN}, announce_answered=lambda: True)
+        with self.assertRaises(bridge_module.ZeytunPilotUnavailable):
+            revoked.open()
+
+    def test_anything_that_is_not_a_token_is_dropped_and_the_call_runs_on_the_stations_key(self):
+        session = {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": "Test rules",
+                   "opening": "Test greeting", "maxSeconds": 60}
+        for bad in ("", "AIzaSyA-a-raw-api-key-is-not-a-token-000000", "auth_tokens/", "auth_tokens/abc",
+                    "auth_tokens/with space and more", "auth_tokens/x?key=y&z=1", "https://example.com/auth_tokens/abcdefgh",
+                    "auth_tokens/" + "a" * 401, None, 7, {"name": self.LIVE_TOKEN}):
+            bridge = self.opened_with({**session, "liveToken": bad})
+            self.assertEqual(bridge.open()["prompt"], "Test rules", repr(bad))
+            self.assertIsNone(bridge.live_token(), repr(bad))
+            self.assertIsNone(bridge.auth_usage(), repr(bad))
+
+    def test_a_token_the_provider_refused_is_given_up_once_and_the_call_is_no_longer_the_tokens(self):
+        bridge = self.opened_with({"enabled": False, "liveToken": self.LIVE_TOKEN})
+        bridge.open()
+        self.assertTrue(bridge.live_token_refused())
+        self.assertFalse(bridge.live_token_refused())
+        self.assertIsNone(bridge.live_token())
+        # The CRM journals such a call as the platform's: the result says nothing of a token.
+        self.assertIsNone(bridge.auth_usage())
+        self.assertIsNone(bridge.call_usage())
+        # A bridge that never had a token has nothing to give up.
+        self.assertFalse(self.bridge.live_token_refused())
+
+    def test_the_station_says_it_can_take_a_token_on_every_request(self):
+        self.assertEqual(bridge_module.ZEYTUN_STATION_CAPS, "tools-1, live-token-1")
+        seen = {}
+
+        class Opened:
+            def __init__(self, req, timeout):
+                seen["caps"] = {key.lower(): value for key, value in req.headers.items()}.get("x-voice-agent-caps")
+            def __enter__(self): return self
+            def __exit__(self, *exc): return False
+            def read(self, size): return b'{"enabled": false}'
+
+        with patch.object(bridge_module.ZEYTUN_HTTP, "open", lambda req, timeout: Opened(req, timeout)):
+            bridge_module.zeytun_post_json(URL, "t" * 48, {"action": "session", "callId": CALL}, 2)
+        self.assertEqual(seen["caps"], "tools-1, live-token-1")
+
     def test_tools_and_result_are_narrow_and_bounded(self):
         declaration = self.bridge.tools()[0]["functionDeclarations"][0]
         self.assertEqual(declaration["name"], "search_pharmacy_catalog")
@@ -2523,6 +2603,79 @@ class ResumeTests(unittest.TestCase):
         self.assertEqual(allowed([], 8, 100.0)[0], False)
 
     @unittest.skipUnless(os.environ.get("ZEYTUN_INSPECTED_CORE"), "private inspected core is not available in CI")
+    def test_the_patched_core_opens_live_on_the_crms_token_and_falls_back_to_its_own_key(self):
+        # Owner, 2026-11-23: an organization's own Gemini key. Every Live socket of a call —
+        # the first, a resume, a fresh session — is opened by this one method.
+        source = Path(os.environ["ZEYTUN_INSPECTED_CORE"]).read_bytes()
+        generated = builder.build(source, (ROOT / "fanum-zeytun-inbound.py").read_text())
+        session_class = next(node for node in ast.parse(generated).body
+                             if isinstance(node, ast.ClassDef) and node.name == "GeminiLiveSession")
+        methods = [node for node in session_class.body if isinstance(node, ast.FunctionDef)
+                   and node.name in ("_open_gemini_websocket", "_pharmacy_live_token", "_pharmacy_live_token_refused")]
+        self.assertEqual(len(methods), 3)
+        opened, logged, refuse = [], [], []
+
+        class Socket:
+            def __init__(self, host, path, headers, timeout=None, handshake_deadline=None):
+                opened.append((host, path))
+                if refuse and "access_token=" in path:
+                    raise OSError("handshake refused")
+
+        import urllib.parse
+        scope = {"time": time, "urllib": urllib, "RealtimeWebSocket": Socket, "GEMINI_KEY": "station key/+",
+                 "GEMINI_LIVE_SETUP_TIMEOUT_SECONDS": 5.0,
+                 "latency": lambda event, call_id, **fields: logged.append((event, fields))}
+        exec(compile(ast.Module(body=methods, type_ignores=[]), "isolated-live-open", "exec"), scope)
+        path = "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
+        session = SimpleNamespace(call_id="c", GEMINI_HOST="generativelanguage.googleapis.com", GEMINI_PATH=path, pharmacy_bridge=None)
+        for method in methods:
+            setattr(session, method.name, (lambda f: lambda *a, **k: f(session, *a, **k))(scope[method.name]))
+        on_key = (session.GEMINI_HOST, path + "?key=station%20key%2F%2B")
+
+        # No bridge, or a bridge with no token: the station's key, as before.
+        session._open_gemini_websocket()
+        session.pharmacy_bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, lambda body: {"enabled": False}, lambda: 100)
+        session.pharmacy_bridge.open()
+        session._open_gemini_websocket()
+        self.assertEqual(opened, [on_key, on_key])
+
+        # With the CRM's token: the provider's token endpoint, the token in place of the key.
+        token = "auth_tokens/3f1c9a7e5b2d4c6f8a0b1c2d3e4f5a6b7c8d9e0f"
+        session.pharmacy_bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL,
+            lambda body: {"enabled": False, "liveToken": token}, lambda: 100)
+        session.pharmacy_bridge.open()
+        del opened[:]
+        session._open_gemini_websocket()
+        session._open_gemini_websocket(timeout_seconds=1.0)  # a resume: the same token
+        on_token = (session.GEMINI_HOST, path + "Constrained?access_token=auth_tokens%2F3f1c9a7e5b2d4c6f8a0b1c2d3e4f5a6b7c8d9e0f")
+        self.assertEqual(opened, [on_token, on_token])
+        self.assertNotIn("station", opened[0][1])
+        self.assertEqual(session.pharmacy_bridge.auth_usage(), {"auth": "token"})
+
+        # The token does not open a socket: the same call, once, on the station's key — and
+        # every socket after it; the result no longer says the call was the token's.
+        del opened[:]
+        refuse.append(True)
+        session._open_gemini_websocket()
+        session._open_gemini_websocket()
+        self.assertEqual(opened, [on_token, on_key, on_key])
+        self.assertEqual(logged, [("zeytun_live_auth", {"status": "fallback"})])
+        self.assertIsNone(session.pharmacy_bridge.auth_usage())
+
+        # The station's own key failing is the core's failure, as before: no second try.
+        del opened[:]
+
+        class Dead:
+            def __init__(self, *args, **kwargs):
+                opened.append(args[:2])
+                raise OSError("down")
+
+        scope["RealtimeWebSocket"] = Dead
+        with self.assertRaises(OSError):
+            session._open_gemini_websocket()
+        self.assertEqual(opened, [on_key])
+
+    @unittest.skipUnless(os.environ.get("ZEYTUN_INSPECTED_CORE"), "private inspected core is not available in CI")
     def test_the_patched_core_resumes_the_dropped_session_and_continues_the_turn(self):
         source = Path(os.environ["ZEYTUN_INSPECTED_CORE"]).read_bytes()
         generated = builder.build(source, (ROOT / "fanum-zeytun-inbound.py").read_text())
@@ -2794,6 +2947,24 @@ class ArtifactTests(unittest.TestCase):
         self.assertEqual(recover.count("5.0 if self.pharmacy_preview"), 2)
         self.assertEqual(ast.dump(ast.parse(recover).body[0]), ast.dump(new_methods["_fresh_recover_gemini"]))
         differences.discard("_fresh_recover_gemini")
+        # Owner, 2026-11-23: Live on an organization's own key. Only the socket's address
+        # changes — the provider's token endpoint when the CRM gave the call a token — and
+        # one retry on the station's own key; the timeouts stay the core's.
+        opened = textwrap.dedent(ast.get_source_segment(text, old_methods["_open_gemini_websocket"], padded=True)).replace(
+            '    path = self.GEMINI_PATH + "?key=" + urllib.parse.quote(GEMINI_KEY, safe="")\n',
+            '    own_key_path = self.GEMINI_PATH + "?key=" + urllib.parse.quote(GEMINI_KEY, safe="")\n'
+            '    live_token = self._pharmacy_live_token()\n'
+            '    path = (self.GEMINI_PATH + "Constrained?access_token=" + urllib.parse.quote(live_token, safe="")\n'
+            '            if live_token else own_key_path)\n', 1).replace(
+            '    return RealtimeWebSocket(\n        self.GEMINI_HOST,\n        path,\n        {},\n'
+            '        timeout=timeout_seconds,\n        handshake_deadline=deadline,\n    )',
+            '    try:\n        return RealtimeWebSocket(self.GEMINI_HOST, path, {}, timeout=timeout_seconds, handshake_deadline=deadline)\n'
+            '    except Exception:\n        if not (live_token and self._pharmacy_live_token_refused()):\n            raise\n'
+            '    return RealtimeWebSocket(self.GEMINI_HOST, own_key_path, {}, timeout=timeout_seconds, handshake_deadline=deadline)', 1)
+        self.assertEqual(opened.count("RealtimeWebSocket("), 2)
+        self.assertIn("Constrained?access_token=", opened)
+        self.assertEqual(ast.dump(ast.parse(opened).body[0]), ast.dump(new_methods["_open_gemini_websocket"]))
+        differences.discard("_open_gemini_websocket")
         for name in differences - allowed:
             original = ast.unparse(old_methods[name])
             expected = original.replace("self.is_demo_call", "(self.is_demo_call or self.pharmacy_preview)")
@@ -2801,7 +2972,7 @@ class ArtifactTests(unittest.TestCase):
         self.assertEqual(set(new_methods) - set(old_methods), {
             "_send_pharmacy_result", "_pharmacy_open_early", "_pharmacy_take_early", "_pharmacy_drop_early",
             "_pharmacy_kill_switch", "_pharmacy_await_kill_switch", "_pharmacy_speech_relay", "_pharmacy_tool_progress",
-            "_pharmacy_wait_filler", "_pharmacy_resume"})
+            "_pharmacy_wait_filler", "_pharmacy_resume", "_pharmacy_live_token", "_pharmacy_live_token_refused"})
         # A lookup or save the model calls after an interruption is progress,
         # not a wedged session; a pharmacy call gets the core's 5 s ceiling.
         # A pharmacy call's CRM record keeps what the caller heard; any other
@@ -2870,9 +3041,10 @@ class ArtifactTests(unittest.TestCase):
         self.assertEqual(globals_["_setup_event"](obj, "resume-handle")["setup"]["inputAudioTranscription"],
                          {"languageCodes": ["az-AZ"]})
         # The early socket and the kill switch, as patched.
-        early_functions = ast.Module(body=[new_methods[name] for name in (
-            "_pharmacy_open_early", "_pharmacy_take_early", "_pharmacy_drop_early",
-            "_pharmacy_kill_switch", "_pharmacy_await_kill_switch")], type_ignores=[])
+        early_names = ("_pharmacy_open_early", "_pharmacy_take_early", "_pharmacy_drop_early",
+                       "_pharmacy_kill_switch", "_pharmacy_await_kill_switch",
+                       "_pharmacy_live_token", "_pharmacy_live_token_refused")
+        early_functions = ast.Module(body=[new_methods[name] for name in early_names], type_ignores=[])
         class Disabled(Exception):
             pass
         class Socket:
@@ -2886,9 +3058,8 @@ class ArtifactTests(unittest.TestCase):
         def early():
             return {"lock": threading.Lock(), "ws": None, "closed": False, "thread": None, "kill": None, "kill_error": None}
         sock = Socket()
-        session = SimpleNamespace(call_id="c", _open_gemini_websocket=lambda: sock)
-        for name in ("_pharmacy_open_early", "_pharmacy_take_early", "_pharmacy_drop_early",
-                     "_pharmacy_kill_switch", "_pharmacy_await_kill_switch"):
+        session = SimpleNamespace(call_id="c", _open_gemini_websocket=lambda: sock, pharmacy_bridge=None)
+        for name in early_names:
             setattr(session, name, (lambda f: lambda *a: f(session, *a))(scope[name]))
         state = early()
         state["thread"] = threading.Thread(target=session._pharmacy_open_early, args=(state,))
@@ -2903,6 +3074,26 @@ class ArtifactTests(unittest.TestCase):
         self.assertTrue(late.closed)
         # Without the early socket the core opens its own, as before.
         self.assertIsNone(session._pharmacy_take_early(early()))
+        # Owner, 2026-11-23: a call with the CRM's token does not talk on the socket that was
+        # opened early on the station's key: that one is closed, and the core opens the token's.
+        own = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, lambda body: {
+            "enabled": False, "liveToken": "auth_tokens/3f1c9a7e5b2d4c6f8a0b1c2d3e4f5a6b7c8d9e0f"}, lambda: 100)
+        own.open()
+        on_key, state = Socket(), early()
+        session._open_gemini_websocket = lambda: on_key
+        session._pharmacy_open_early(state)
+        session.pharmacy_bridge = own
+        self.assertIsNone(session._pharmacy_take_early(state))
+        self.assertTrue(on_key.closed)
+        # A token the provider refused: the early socket on the station's key is the call's again.
+        self.assertTrue(session._pharmacy_live_token_refused())
+        self.assertIn((("zeytun_live_auth", "c"), {"status": "fallback"}), logged)
+        self.assertFalse(session._pharmacy_live_token_refused())
+        kept, state = Socket(), early()
+        session._open_gemini_websocket = lambda: kept
+        session._pharmacy_open_early(state)
+        self.assertIs(session._pharmacy_take_early(state), kept)
+        session.pharmacy_bridge = None
         # A disabled agent stops the call before the greeting.
         state = early()
         scope["instruction_for_call"] = lambda: (_ for _ in ()).throw(Disabled("voice agent disabled"))

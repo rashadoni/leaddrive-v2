@@ -1180,13 +1180,20 @@ class ZeytunSpeechRelay:
 # know the header ignores it, so the pharmacy line is answered as before by
 # either.
 ZEYTUN_AGENT_CAPABILITY = "tools-1"
+# Owner, 2026-11-23: an organization that entered its own Gemini key has its calls'
+# conversation on that key. The key stays in the CRM: the session's answer carries a
+# short-lived Live token of it (`liveToken`), and Live is opened with the token instead of
+# the station's key. The CRM gives one only to a station that says so here — a core before
+# this compares the answer {"enabled": false} whole, and a field more would refuse the call.
+ZEYTUN_LIVE_TOKEN_CAPABILITY = "live-token-1"
+ZEYTUN_STATION_CAPS = ZEYTUN_AGENT_CAPABILITY + ", " + ZEYTUN_LIVE_TOKEN_CAPABILITY
 
 
 def zeytun_post_json(url, token, body, timeout):
     req = urllib.request.Request(url,
         data=json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
         headers={"Authorization": "Bearer " + token, "Content-Type": "application/json",
-                 "X-Voice-Agent-Caps": ZEYTUN_AGENT_CAPABILITY}, method="POST")
+                 "X-Voice-Agent-Caps": ZEYTUN_STATION_CAPS}, method="POST")
     with ZEYTUN_HTTP.open(req, timeout) as response:
         raw = response.read(32769)
         if len(raw) > 32768:
@@ -1827,9 +1834,44 @@ class ZeytunInboundBridge:
         result = self._post_json(self.lifecycle_url, body, timeout=self.ANSWER_ACK_TIMEOUT_SECONDS)
         return isinstance(result, dict) and result.get("success") is True
 
+    # As the provider names a token; nothing else goes into the Live URL.
+    LIVE_TOKEN = re.compile(r"^auth_tokens/[A-Za-z0-9._-]{8,400}$")
+
+    def take_live_token(self, value):
+        """A session answer without its `liveToken`; the token is kept when it is one.
+        The rest of the answer is read exactly as before, so a session with a token and
+        one without are told apart by nothing else."""
+        if not isinstance(value, dict) or "liveToken" not in value:
+            return value
+        token = value["liveToken"]
+        if isinstance(token, str) and self.LIVE_TOKEN.match(token):
+            with self.lock:
+                self.live = {"token": token, "refused": False}
+        return {key: item for key, item in value.items() if key != "liveToken"}
+
+    def live_token(self):
+        """The CRM's token for this call's Live sessions; None — the station's own key."""
+        live = self.__dict__.get("live")
+        return live["token"] if live and not live["refused"] else None
+
+    def live_token_refused(self):
+        """The provider did not take the token: every Live session of the call from now on
+        is opened with the station's own key. True when there was a token to give up."""
+        with self.lock:
+            live = self.__dict__.get("live")
+            if not live or live["refused"]:
+                return False
+            live["refused"] = True
+        return True
+
+    def auth_usage(self):
+        """For the call's result: its conversation ran on the CRM's token from the first
+        session to the last. None — the station's key, or a call that fell back to it."""
+        return {"auth": "token"} if self.live_token() else None
+
     def open(self):
         try:
-            value = self.request({"action": "session", "callId": self.call_id})
+            value = self.take_live_token(self.request({"action": "session", "callId": self.call_id}))
             if value == {"enabled": False}:
                 return None
             if value == {"enabled": False, "status": "awaiting_answered"}:
@@ -1837,7 +1879,7 @@ class ZeytunInboundBridge:
                     raise ValueError()
                 # Exactly one new authorization after the lifecycle ACK. A
                 # closed/revoked/still-unanswered call stops; no AAC fallback.
-                value = self.request({"action": "session", "callId": self.call_id})
+                value = self.take_live_token(self.request({"action": "session", "callId": self.call_id}))
             if (not isinstance(value, dict) or value.get("enabled") is not True
                     or value.get("variant") not in ("pharmacy_inbound_preview", self.AGENT_VARIANT)):
                 raise ValueError()
@@ -2520,6 +2562,8 @@ class ZeytunInboundBridge:
             if isinstance(model, str) and self.USAGE_MODEL.match(model):
                 speech["model"] = model
             usage["tts"] = speech
+        # Whose key the conversation ran on; the speech is the station's either way.
+        usage.update(self.auth_usage() or {})
         return usage or None
 
     def agent_result(self, value):

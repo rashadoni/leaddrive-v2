@@ -201,6 +201,53 @@ describe("a call an organization's phone agent served", () => {
   })
 })
 
+describe("a call whose conversation ran on the organization's own Gemini key", () => {
+  // Owner, 2026-11-23: «если клиент говорит „я сам буду платить“ — заменять на его ключ».
+  // The station says the leg's Live sessions were all opened with the CRM's token.
+  function journaledBoth(spend: typeof journalLineCallSpend, call: Parameters<typeof journalLineCallSpend>[1]) {
+    const platform = vi.fn()
+    const own = vi.fn()
+    spend("org-1", call, platform, NOVEMBER, own)
+    const rows = (journal: typeof platform) => journal.mock.calls.map((row) => ({ feature: row[2], model: row[3].model, costUsd: row[3].costUsd, estimated: row[3].estimated }))
+    return { platform: rows(platform), own: rows(own) }
+  }
+  const live = counted(stand.orderLine62s.turns)
+  const tts = { requests: 6, chars: 410, audioSeconds: 60 }
+
+  it("journals the conversation as the organization's own spend and the speech as the platform's", () => {
+    for (const [spend, feature] of [[journalLineCallSpend, "phone-line"], [journalPhoneAgentCallSpend, "phone-agent"]] as const) {
+      const rows = journaledBoth(spend, { durationSeconds: 62, usage: { auth: "token", live, tts } })
+      expect(rows.own, feature).toEqual([{ feature, model: STATION_LIVE_MODEL, costUsd: expect.closeTo(0.06864, 9), estimated: undefined }])
+      // A Live token opens nothing but Live: the voice is still the platform's to pay.
+      expect(rows.platform, feature).toEqual([{ feature, model: STATION_SPEECH_MODEL, costUsd: expect.closeTo(0.0135, 12), estimated: undefined }])
+    }
+  })
+
+  it("journals a call with no counters the same way: its estimate is the organization's own spend", () => {
+    const rows = journaledBoth(journalAiCallSpend, { durationSeconds: 120, usage: { auth: "token" } })
+    expect(rows.own).toEqual([{ feature: "ai-call", model: STATION_LIVE_MODEL, costUsd: expect.closeTo(0.08, 12), estimated: true }])
+    expect(rows.platform).toEqual([])
+  })
+
+  it("journals everything as the platform's when the station says nothing of a token — the default", () => {
+    for (const usage of [{ live, tts }, undefined]) {
+      const rows = journaledBoth(journalLineCallSpend, { durationSeconds: 62, usage })
+      expect(rows.own).toEqual([])
+      expect(rows.platform.length).toBe(usage ? 2 : 1)
+    }
+  })
+
+  it("is said by the station with one word, and nothing else passes for it", () => {
+    expect(voiceAgentLineUsageSchema.safeParse({ auth: "token" }).success).toBe(true)
+    expect(voiceAgentLineUsageSchema.safeParse({ auth: "token", live: { ...live } }).success).toBe(true)
+    for (const bad of ["key", "tenant", true, 1, null, ""]) {
+      expect(voiceAgentLineUsageSchema.safeParse({ auth: bad }).success, String(bad)).toBe(false)
+    }
+    // The bridge sends exactly this word.
+    expect(readFileSync("scripts/pbx/fanum-zeytun-inbound.py", "utf8")).toContain('return {"auth": "token"} if self.live_token() else None')
+  })
+})
+
 describe("the station's usage report", () => {
   const live = { textIn: 1, audioIn: 2, textOut: 3, audioOut: 4, turns: 1 }
 

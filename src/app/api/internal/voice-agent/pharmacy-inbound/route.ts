@@ -2,6 +2,7 @@ import { createInboundPilotHandler } from "@/lib/voice-agent/pharmacy/zeytun-inb
 import { zeytunLineHost } from "@/lib/voice-agent/pharmacy/zeytun-line-host"
 import { PHONE_AGENT_CAPS_HEADER } from "@/lib/voice-agent/phone-agent/handler"
 import { phoneAgentRoute } from "@/lib/voice-agent/phone-agent/host"
+import { createStationLiveTokens } from "@/lib/voice-agent/station-live-token"
 import { withStationTiming } from "@/lib/station-timing"
 
 export const dynamic = "force-dynamic"
@@ -20,5 +21,15 @@ const handler = createInboundPilotHandler(process.env.FANUM_VOICE_RUNTIME_TOKEN 
 // everything else reaches the line's handler as the same request, unread.
 const agent = phoneAgentRoute(() => zeytunLineHost().loadConfig())
 
-export const POST = withStationTiming("pharmacy-inbound", async (request: Request) =>
-  (request.headers.has(PHONE_AGENT_CAPS_HEADER) ? await agent(request.clone()) : null) ?? handler(request))
+// Owner, 2026-11-23: an organization with its own Gemini key has its calls'
+// conversation on that key. The token is minted beside the handlers, not after
+// them, and goes into the answer of a session — the line's, the agent's or the
+// plain «not ours» — for a station that said it can use one. No own key, an
+// older station, any failure: the answer is the handler's, untouched.
+const liveTokens = createStationLiveTokens(process.env.FANUM_VOICE_RUNTIME_TOKEN ?? "")
+
+export const POST = withStationTiming("pharmacy-inbound", async (request: Request) => {
+  const token = liveTokens.begin(request)
+  const answer = (request.headers.has(PHONE_AGENT_CAPS_HEADER) ? await agent(request.clone()) : null) ?? await handler(request)
+  return liveTokens.attach(answer, token)
+})

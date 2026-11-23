@@ -422,6 +422,47 @@ function schemaWithoutEmbeddings(): string {
     expect(row.costUsd).toBeCloseTo(0.06864, 9)
   })
 
+  it("journals a phone call that ran on the organization's own Gemini key as its own spend, outside the platform's limit", async () => {
+    // Owner, 2026-11-23: «если клиент говорит „я сам буду платить“ — заменять на его ключ».
+    const spend = await import("@/lib/voice-agent/call-spend")
+    const live = { textIn: 48_434, audioIn: 5_156, otherIn: 4_484, textOut: 1_140, audioOut: 596, otherOut: 267, turns: 4 }
+    const tts = { requests: 6, chars: 410, audioSeconds: 60 }
+    const at = new Date("2026-11-22T12:00:00Z")
+    await rls.runWithRlsBypass(() => prisma.organization.update({ where: { id: ORG }, data: { settings: { aiDailyBudgetUsd: 0.05 } } }))
+
+    // The station says the conversation ran on the CRM's token, but the organization holds no key:
+    // a station's word alone makes nothing «own».
+    spend.journalLineCallSpend(ORG, { durationSeconds: 62, usage: { auth: "token", live } }, undefined, at)
+    await settle()
+    await settle()
+    expect((await usageRows(ORG)).map((row) => row.keySource)).toEqual(["platform"])
+    await rls.runWithRlsBypass(() => prisma.aiUsage.deleteMany({}))
+
+    // With its own key: the conversation is its own spend, the speech is still the platform's.
+    await gateway.saveTenantAiCredential({ orgId: ORG, provider: "gemini", secret: "org-own-gemini-key-000001" })
+    spend.journalLineCallSpend(ORG, { durationSeconds: 62, usage: { auth: "token", live, tts } }, undefined, at)
+    spend.journalAiCallSpend(ORG, { durationSeconds: 120, usage: { auth: "token" } }, undefined, at)
+    // A call of the same organization that ran on the station's key (an older core, or a token Google refused).
+    spend.journalPhoneAgentCallSpend(ORG, { durationSeconds: 62, usage: { live } }, undefined, at)
+    await settle()
+    await settle()
+    const rows = (await usageRows(ORG))
+      .map(({ feature, model, keySource, costUsd, estimated }) => ({ feature, model, keySource, costUsd: Math.round(costUsd * 1e5) / 1e5, estimated }))
+      .sort((a, b) => `${a.feature}${a.model}`.localeCompare(`${b.feature}${b.model}`))
+    expect(rows).toEqual([
+      { feature: "ai-call", model: "gemini-3.8-live", keySource: "tenant", costUsd: 0.08, estimated: true },
+      { feature: "phone-agent", model: "gemini-3.8-live", keySource: "platform", costUsd: 0.06864, estimated: false },
+      { feature: "phone-line", model: "gemini-3.8-flash-tts", keySource: "platform", costUsd: 0.0135, estimated: false },
+      { feature: "phone-line", model: "gemini-3.8-live", keySource: "tenant", costUsd: 0.06864, estimated: false },
+    ])
+    // The platform's daily limit counts the platform's rows alone: $0.06864 + $0.0135, not the $0.14864 on the own key.
+    const budget_ = await rls.runWithTenant(ORG, () => budget.checkAiBudget(ORG))
+    expect(budget_.spent).toBeCloseTo(0.082, 3)
+    // And the report says whose key each row ran on.
+    const report = await gateway.aiSpendReport(ORG, { granularity: "day", range: "7d", timeZone: "Asia/Baku" })
+    expect(report.rows.filter((row) => row.keySource === "tenant").map((row) => row.feature).sort()).toEqual(["ai-call", "phone-line"])
+  })
+
   it("journals a phone call the station counted no tokens for as an estimate, in a report row of its own", async () => {
     const spend = await import("@/lib/voice-agent/call-spend")
     // An organization's own AI call of three minutes, and one the day the station counts its tokens.

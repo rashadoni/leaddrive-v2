@@ -14,11 +14,17 @@
  * that runs on the station's bridge — the order line's and a phone agent's —
  * and for no other call yet.
  *
- * Platform keys either way, so the spend counts toward the organization's
- * daily AI limit when it set one, like Chirp; the station itself is never
- * stopped by the limit.
+ * The platform's keys by default, so the spend counts toward the
+ * organization's daily AI limit when it set one, like Chirp; the station
+ * itself is never stopped by the limit.
+ *
+ * An organization with its own Gemini key (owner, 2026-11-23) has the
+ * conversation on that key: the station says so (`usage.auth`), and the Live
+ * row is journaled as the organization's own spend — outside the platform's
+ * limit, «Ваш ключ» on the page — while it still holds a key. The speech
+ * stays the platform's: a Live token opens nothing but Live.
  */
-import { journalPlatformAiCall } from "@/lib/ai/gateway/access"
+import { journalAiCallOnCurrentKey, journalPlatformAiCall } from "@/lib/ai/gateway/access"
 import type { AiFeature } from "@/lib/ai/gateway/features"
 import {
   aiCallLiveEstimateUsd, geminiSpeechMinuteUsd, liveTokenTotals, liveUsageCostUsd, perMinuteCostUsd, UNIT_PRICING,
@@ -32,6 +38,15 @@ export const STATION_SPEECH_MODEL = "gemini-3.8-flash-tts"
 type Journal = typeof journalPlatformAiCall
 export type AiLegSpend = { durationSeconds: number; usage?: VoiceAgentLineUsage }
 
+/**
+ * For a conversation that ran on the organization's own key: its own spend
+ * while it still holds a key for the provider, the platform's otherwise —
+ * a station cannot make a row «own» for an organization that has no key.
+ */
+const journalOnOwnKey: Journal = (organizationId, provider, feature, entry, agentId = null) => {
+  void journalAiCallOnCurrentKey(organizationId, provider, feature, entry, agentId)
+}
+
 function journalLegSpend(
   organizationId: string,
   feature: AiFeature,
@@ -40,16 +55,19 @@ function journalLegSpend(
   call: AiLegSpend,
   journal: Journal,
   at: Date,
+  journalOwn: Journal,
 ): void {
   const live = call.usage?.live
+  // The conversation, on whichever key it ran; the speech below is always the platform's.
+  const journalLive = call.usage?.auth === "token" ? journalOwn : journal
   if (live) {
-    journal(organizationId, "gemini", feature, {
+    journalLive(organizationId, "gemini", feature, {
       model: live.model ?? STATION_LIVE_MODEL,
       ...liveTokenTotals(live),
       costUsd: liveUsageCostUsd(live),
     })
   } else if (call.durationSeconds > 0) {
-    journal(organizationId, "gemini", feature, {
+    journalLive(organizationId, "gemini", feature, {
       model: STATION_LIVE_MODEL,
       costUsd: estimateUsd(call.durationSeconds),
       estimated: true,
@@ -74,9 +92,10 @@ export function journalLineCallSpend(
   call: AiLegSpend,
   journal: Journal = journalPlatformAiCall,
   at: Date = new Date(),
+  journalOwn: Journal = journalOnOwnKey,
 ): void {
   journalLegSpend(organizationId, "phone-line",
-    (seconds) => perMinuteCostUsd(UNIT_PRICING.phoneLineLiveMinute, seconds), call, journal, at)
+    (seconds) => perMinuteCostUsd(UNIT_PRICING.phoneLineLiveMinute, seconds), call, journal, at, journalOwn)
 }
 
 /**
@@ -91,9 +110,10 @@ export function journalPhoneAgentCallSpend(
   call: AiLegSpend,
   journal: Journal = journalPlatformAiCall,
   at: Date = new Date(),
+  journalOwn: Journal = journalOnOwnKey,
 ): void {
   journalLegSpend(organizationId, "phone-agent",
-    (seconds) => perMinuteCostUsd(UNIT_PRICING.phoneAgentLiveMinute, seconds), call, journal, at)
+    (seconds) => perMinuteCostUsd(UNIT_PRICING.phoneAgentLiveMinute, seconds), call, journal, at, journalOwn)
 }
 
 /**
@@ -110,6 +130,7 @@ export function journalAiCallSpend(
   call: AiLegSpend,
   journal: Journal = journalPlatformAiCall,
   at: Date = new Date(),
+  journalOwn: Journal = journalOnOwnKey,
 ): void {
-  journalLegSpend(organizationId, "ai-call", aiCallLiveEstimateUsd, call, journal, at)
+  journalLegSpend(organizationId, "ai-call", aiCallLiveEstimateUsd, call, journal, at, journalOwn)
 }

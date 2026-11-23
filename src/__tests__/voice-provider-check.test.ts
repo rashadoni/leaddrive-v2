@@ -5,9 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { geminiLiveModel } from "@/lib/ai/voice/gemini-live"
 import {
   checkGeminiLiveProvider,
+  checkStationLiveToken,
   providerCheckPassed,
+  stationTokenCheckPassed,
   type ProviderCheckConnect,
   type ProviderCheckSession,
+  type StationCheckConnect,
 } from "@/lib/ai/voice/provider-check"
 
 const NEXT = geminiLiveModel("gemini-3.8-live")
@@ -332,5 +335,87 @@ describe("POST /api/cron/voice-provider-check", () => {
     const { POST } = await import("@/app/api/cron/voice-provider-check/route")
     const body = await (await POST(request())).json()
     expect(body).toMatchObject({ model: "gemini-3.8-live", current: true })
+  })
+
+  it("asks Google for the station's kind of token when told to: no setup locked in it, several uses", async () => {
+    // Owner, 2026-11-23: an organization's own Gemini key for its phone calls.
+    vi.stubEnv("VOICE_GEMINI_LIVE_MODEL", "gemini-3.8-live")
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response("{}", { status: 403 }))
+    vi.stubGlobal("fetch", fetchMock)
+    const { POST } = await import("@/app/api/cron/voice-provider-check/route")
+    const response = await POST(request("?station=1"))
+    const body = await response.json()
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({ configured: true, ok: false, station: true, model: "gemini-3.8-live", sessions: 0,
+      failure: "station Live token mint failed (403)" })
+    expect(JSON.stringify(body)).not.toContain("server-only-key")
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const sent = JSON.parse(String(fetchMock.mock.calls[0]![1]?.body))
+    expect(Object.keys(sent).sort()).toEqual(["expireTime", "newSessionExpireTime", "uses"])
+    expect(sent.uses).toBeGreaterThan(1)
+  })
+})
+
+/**
+ * The PBX station's kind of token (owner, 2026-11-23: an organization's own
+ * Gemini key for its phone calls). What only the real provider can say is
+ * whether a token that is not locked to a setup opens a session — twice.
+ */
+describe("the station's token against the provider", () => {
+  const TOKEN = "auth_tokens/3f1c9a7e5b2d4c6f8a0b1c2d3e4f5a6b7c8d9e0f"
+
+  function station(script: (attempt: number, send: (message: unknown) => void, fail: (reason: string) => void) => void, reject?: string) {
+    const seen = { tokens: [] as string[], models: [] as string[], closed: 0 }
+    const connect: StationCheckConnect = async ({ token, model, onmessage, onfailure }) => {
+      if (reject) throw new Error(reject)
+      seen.tokens.push(token)
+      seen.models.push(model)
+      const attempt = seen.tokens.length
+      queueMicrotask(() => script(attempt, (message) => onmessage(message as LiveServerMessage), onfailure))
+      return { close: () => { seen.closed += 1 } }
+    }
+    return { connect, seen }
+  }
+  const run = async (check: Promise<Awaited<ReturnType<typeof checkStationLiveToken>>>) => {
+    await vi.runAllTimersAsync()
+    return check
+  }
+
+  it("passes when the one token opens two sessions to setupComplete, and closes both", async () => {
+    const mintStation = vi.fn(async () => TOKEN)
+    const { connect, seen } = station((_attempt, send) => send({ setupComplete: {} }))
+    const check = await run(checkStationLiveToken({ apiKey: "key", model: "gemini-3.8-live", connect, mint: mintStation }))
+    expect(check).toMatchObject({ model: "gemini-3.8-live", sessions: 2, failure: null })
+    expect(stationTokenCheckPassed(check)).toBe(true)
+    expect(mintStation).toHaveBeenCalledExactlyOnceWith("key")
+    // The same token both times: a call that lost its session opens a fresh one with it.
+    expect(seen.tokens).toEqual([TOKEN, TOKEN])
+    expect(seen.closed).toBe(2)
+  })
+
+  it("fails when the second session is refused: one use is not enough for a call", async () => {
+    const { connect } = station((attempt, send, fail) => (attempt === 1 ? send({ setupComplete: {} }) : fail("closed: 1008 token already used")))
+    const check = await run(checkStationLiveToken({ apiKey: "key", model: "gemini-3.8-live", connect, mint: async () => TOKEN }))
+    expect(check.sessions).toBe(1)
+    expect(check.failure).toBe("session 2: closed: 1008 token already used")
+    expect(stationTokenCheckPassed(check)).toBe(false)
+  })
+
+  it("fails in the provider's words, never with the token in them, when no session opens", async () => {
+    const { connect } = station(() => {}, `refused access_token=${TOKEN} for ${TOKEN}`)
+    const refused = await run(checkStationLiveToken({ apiKey: "key", model: "gemini-3.8-live", connect, mint: async () => TOKEN }))
+    expect(refused.sessions).toBe(0)
+    expect(refused.failure).toContain("session 1: refused access_token=...")
+    expect(refused.failure).not.toContain("3f1c9a7e")
+    expect(stationTokenCheckPassed(refused)).toBe(false)
+
+    const silent = station(() => {})
+    const timedOut = await run(checkStationLiveToken({ apiKey: "key", model: "gemini-3.8-live", connect: silent.connect, mint: async () => TOKEN, timeoutMs: 1_000 }))
+    expect(timedOut).toMatchObject({ sessions: 0, failure: "session 1: setupComplete timed out" })
+    expect(silent.seen.closed).toBe(1)
+
+    const noToken = await run(checkStationLiveToken({ apiKey: "key", model: "gemini-3.8-live", connect: silent.connect,
+      mint: async () => { throw new Error("station Live token mint failed (403)") } }))
+    expect(noToken).toMatchObject({ sessions: 0, failure: "station Live token mint failed (403)" })
   })
 })

@@ -96,7 +96,31 @@ def build(source, bridge):
             early["ws"] = ws
         latency("gemini_early_open", self.call_id, status="open", ms=round((time.monotonic() - opened) * 1000))
 
+    def _pharmacy_live_token(self):
+        # Owner, 2026-11-23: an organization's own Gemini key. The CRM gave this call a
+        # Live token of it; None is the station's own key - the default and the fallback.
+        bridge = getattr(self, "pharmacy_bridge", None)
+        try:
+            return bridge.live_token() if bridge is not None else None
+        except Exception:
+            return None
+
+    def _pharmacy_live_token_refused(self):
+        bridge = getattr(self, "pharmacy_bridge", None)
+        try:
+            refused = bridge is not None and bridge.live_token_refused()
+        except Exception:
+            return False
+        if refused:
+            latency("zeytun_live_auth", self.call_id, status="fallback")
+        return refused
+
     def _pharmacy_take_early(self, early):
+        if self._pharmacy_live_token():
+            # The early socket was opened on the station's key before the CRM answered:
+            # this call's conversation belongs on the token.
+            self._pharmacy_drop_early(early)
+            return None
         if early["thread"] is not None:
             early["thread"].join(GEMINI_LIVE_SETUP_TIMEOUT_SECONDS)
         with early["lock"]:
@@ -222,7 +246,19 @@ def build(source, bridge):
 ''', '''        ws = None
         try:
             ws = self._pharmacy_take_early(early) or self._open_gemini_websocket()
-            self._await_setup(ws)
+            try:
+                self._await_setup(ws)
+            except Exception:
+                # The provider opened the socket for the CRM's token and refused the
+                # session: the call goes on, on the station's own key.
+                if not self._pharmacy_live_token_refused():
+                    raise
+                ws.close()
+                ws = None
+                ws = self._open_gemini_websocket()
+                self._await_setup(ws)
+            if self._pharmacy_live_token():
+                latency("zeytun_live_auth", self.call_id, status="token")
             self._pharmacy_await_kill_switch(early)
         except Exception:
             if ws is not None:
@@ -230,6 +266,41 @@ def build(source, bridge):
             self._pharmacy_drop_early(early)
             raise
         self.setup_complete = True
+''')
+    # Owner, 2026-11-23: Live on the organization's own key. With a token of the CRM's the
+    # socket is the provider's token endpoint; the token is never logged, like the key.
+    replace('''        path = self.GEMINI_PATH + "?key=" + urllib.parse.quote(GEMINI_KEY, safe="")
+''', '''        own_key_path = self.GEMINI_PATH + "?key=" + urllib.parse.quote(GEMINI_KEY, safe="")
+        live_token = self._pharmacy_live_token()
+        path = (self.GEMINI_PATH + "Constrained?access_token=" + urllib.parse.quote(live_token, safe="")
+                if live_token else own_key_path)
+''')
+    replace('''        return RealtimeWebSocket(
+            self.GEMINI_HOST,
+            path,
+            {},
+            timeout=timeout_seconds,
+            handshake_deadline=deadline,
+        )
+''', '''        try:
+            return RealtimeWebSocket(
+                self.GEMINI_HOST,
+                path,
+                {},
+                timeout=timeout_seconds,
+                handshake_deadline=deadline,
+            )
+        except Exception:
+            # The token did not open a socket: once, on the station's own key.
+            if not (live_token and self._pharmacy_live_token_refused()):
+                raise
+        return RealtimeWebSocket(
+            self.GEMINI_HOST,
+            own_key_path,
+            {},
+            timeout=timeout_seconds,
+            handshake_deadline=deadline,
+        )
 ''')
     # The opening is fixed text: the caller hears it now, not after the model
     # has said it and the TTS has voiced it again (about two seconds).
@@ -562,11 +633,13 @@ def build(source, bridge):
             )
 ''')
     replace("class GeminiLiveSession(RealtimeSession):", '''def zeytun_leg_usage(session):
-    """A pharmacy leg's spend for its result; None for every other call, and never a raise."""
-    if getattr(session, "pharmacy_preview", False) is not True:
-        return None
+    """A pharmacy leg's spend for its result. For every other call only whose key its
+    conversation ran on, when that was the CRM's token (2026-11-23), else None. Never a raise."""
     try:
-        return session.pharmacy_bridge.call_usage()
+        bridge = getattr(session, "pharmacy_bridge", None)
+        if getattr(session, "pharmacy_preview", False) is True:
+            return bridge.call_usage()
+        return bridge.auth_usage() if bridge is not None else None
     except Exception:
         return None
 

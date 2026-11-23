@@ -83,6 +83,7 @@ export type HelpSlug =
   | "inbox-analytics"
   | "inbox-ai-agent"
   | "inbox-ai-training"
+  | "ai-own-key"
   | "loyalty-builder"
   | "invoices"
   | "subscriptions"
@@ -610,6 +611,19 @@ export const HELP_REGISTRY: Record<HelpSlug, ArticleEntry> = {
       en: lazy(() => import("./inbox-ai-agent/en")),
       ru: lazy(() => import("./inbox-ai-agent/ru")),
       az: lazy(() => import("./inbox-ai-agent/az")),
+    },
+  },
+  "ai-own-key": {
+    title: { en: "Your own Gemini key", ru: "Свой ключ Gemini", az: "Öz Gemini açarı" },
+    subtitle: {
+      en: "For administrators: get a key from Google, turn billing on and enter it — step by step.",
+      ru: "Для администраторов: получить ключ у Google, включить оплату и ввести его — по шагам.",
+      az: "Administratorlar üçün: Google-dan açar almaq, ödənişi qoşmaq və onu daxil etmək — addım-addım.",
+    },
+    content: {
+      en: lazy(() => import("./ai-own-key/en")),
+      ru: lazy(() => import("./ai-own-key/ru")),
+      az: lazy(() => import("./ai-own-key/az")),
     },
   },
   "inbox-ai-training": {

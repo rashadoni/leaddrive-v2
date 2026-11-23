@@ -35,8 +35,16 @@ const stationModel = z.string().regex(/^[a-z0-9][a-z0-9.-]{0,63}$/)
  * (`liveUsageCostUsd`). This schema is strict, so the fields are accepted
  * here before any core sends them — the other order would answer 400 to every
  * call result and lose its transcript.
+ *
+ * `auth: "token"` (2026-11-23): every Live session of the leg was opened with
+ * the token the CRM gave the station — the organization's own Gemini key
+ * (src/lib/voice-agent/station-live-token.ts). Absent: the station's key. A
+ * leg that began on the token and fell back to the station's key says nothing,
+ * and is journaled as the platform's. Sent for any call, also one with no
+ * counters of its own.
  */
 export const voiceAgentLineUsageSchema = z.object({
+  auth: z.literal("token").optional(),
   live: z.object({
     model: stationModel.optional(),
     textIn: stationTokenCount,

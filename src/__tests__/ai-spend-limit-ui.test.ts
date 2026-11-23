@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import AiSpendPage from "@/app/(dashboard)/settings/ai-spend/page"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 /**
  * «Настройки → ИИ и расходы», the daily limit card. Owner, 2026-11-11: «зачем
@@ -38,8 +39,10 @@ const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
 let container: HTMLDivElement
 let root: Root
 async function render() {
-  await act(async () => root.render(createElement(NextIntlClientProvider, { locale: "ru", timeZone: "Asia/Baku", messages: ru },
-    createElement(AiSpendPage))))
+  // The dashboard layout mounts the one TooltipProvider; the page's help button needs it.
+  const intl = { locale: "ru", timeZone: "Asia/Baku", messages: ru } as Parameters<typeof NextIntlClientProvider>[0]
+  await act(async () => root.render(createElement(NextIntlClientProvider, intl,
+    createElement(TooltipProvider, null, createElement(AiSpendPage)))))
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
 }
 const card = () => [...container.querySelectorAll("section")].find((section) => section.textContent?.includes(s.limitTitle))!

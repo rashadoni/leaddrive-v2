@@ -41,7 +41,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { NextRequest } from "next/server"
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { geminiSpeechMinuteUsd } from "@/lib/ai/gateway/pricing"
 
 const adminUrl = process.env.PHONE_AGENT_BOOKING_TEST_DATABASE_URL
@@ -99,7 +99,7 @@ const ROOT = process.cwd()
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
 const RLS_TABLES = [
   "call_logs", "call_events", "channel_configs", "bookings", "booking_pages", "booking_secrets", "booking_offers",
-  "booking_host_schedules", "booking_resources", "booking_reminders", "ai_usage", "leads", "contacts", "tasks", "notifications",
+  "booking_host_schedules", "booking_resources", "booking_reminders", "ai_usage", "tenant_ai_credentials", "leads", "contacts", "tasks", "notifications",
 ]
 
 const CLINIC = "org-pab-clinic"
@@ -671,6 +671,99 @@ except module.ZeytunPilotUnavailable:
     expect((await endCall(call)).status).toBe(200)
     expect(await leads(CLINIC)).toHaveLength(1)
     expect((await callRow(call.id)).leadId).toBe(fromMeeting[0].id)
+  })
+
+  describe("an organization with its own Gemini key (owner, 2026-11-23)", () => {
+    // «По умолчанию мой ключ; если клиент говорит „я сам буду платить“ — заменять на его.»
+    // The real station route and the real key store; Google's token endpoint is the one stand-in.
+    const OWN_KEY = "own-gemini-key-of-the-clinic-000000001" // gitleaks:allow — not a key
+    const LIVE_TOKEN = "auth_tokens/3f1c9a7e5b2d4c6f8a0b1c2d3e4f5a6b7c8d9e0f"
+    const NEW_CAPS = "tools-1, live-token-1"
+    let minted: Array<{ key: string | null; body: Record<string, unknown> }> = []
+    let credentials!: typeof import("@/lib/ai/gateway/credentials")
+    let restoreFetch = () => {}
+
+    /** A session request as the station's own client sends it: the length stated. */
+    const stationAsks = (callId: string, caps: string) => {
+      const body = JSON.stringify({ action: "session", callId })
+      return ask({ action: "session", callId }, { "x-voice-agent-caps": caps, "content-length": String(Buffer.byteLength(body)) })
+    }
+
+    beforeAll(async () => {
+      credentials = await import("@/lib/ai/gateway/credentials")
+    })
+    beforeEach(async () => {
+      minted = []
+      const stub = vi.mocked(globalThis.fetch)
+      const before = stub.getMockImplementation()
+      stub.mockImplementation(async (url, init) => {
+        if (String(url) !== "https://generativelanguage.googleapis.com/v1beta/auth_tokens") return before!(url, init)
+        minted.push({ key: new Headers(init?.headers).get("x-goog-api-key"), body: JSON.parse(String(init?.body)) })
+        return new Response(JSON.stringify({ name: LIVE_TOKEN }), { status: 200 })
+      })
+      restoreFetch = () => { stub.mockImplementation(before!) }
+      await credentials.saveTenantAiCredential({ orgId: CLINIC, provider: "gemini", secret: OWN_KEY })
+      await credentials.saveTenantAiCredential({ orgId: QUIET, provider: "gemini", secret: OWN_KEY })
+      credentials.forgetTenantAiAccess()
+    })
+    afterEach(async () => {
+      restoreFetch()
+      await bypass(() => prisma.tenantAiCredential.deleteMany({}))
+      credentials.forgetTenantAiAccess()
+    })
+
+    it("gets its call's session with a Live token of that key, minted with the key and never showing it", async () => {
+      const call = await liveCall(CLINIC, CLINIC_VOIP, ELVIN)
+      const session = await stationAsks(call.callId, NEW_CAPS)
+      expect(session.status).toBe(200)
+      expect(session.body).toMatchObject({ enabled: true, variant: "agent_tools", liveToken: LIVE_TOKEN })
+      expect(JSON.stringify(session.body)).not.toContain(OWN_KEY)
+      // The key was read from the organization's own, sealed, row; the token is locked to no setup.
+      expect(minted.map((mint) => mint.key)).toEqual([OWN_KEY])
+      expect(Object.keys(minted[0].body).sort()).toEqual(["expireTime", "newSessionExpireTime", "uses"])
+      const [stored] = await bypass(() => prisma.$queryRaw<Array<{ secret: string }>>`SELECT secret FROM tenant_ai_credentials WHERE "organizationId" = ${CLINIC}`)
+      expect(stored.secret).not.toContain(OWN_KEY)
+    })
+
+    it("gets the token for a call the agent does not serve too: it runs the ordinary way, on its own key", async () => {
+      const call = await liveCall(QUIET, QUIET_VOIP, ELVIN)
+      const session = await stationAsks(call.callId, NEW_CAPS)
+      expect(session.body).toEqual({ enabled: false, liveToken: LIVE_TOKEN })
+    })
+
+    it("an organization without a key of its own, and a station that cannot use a token, get the session as it always was", async () => {
+      const salon = await liveCall(SALON, SALON_VOIP, ELVIN)
+      const onPlatform = await stationAsks(salon.callId, NEW_CAPS)
+      expect(onPlatform.body).toMatchObject({ enabled: true, variant: "agent_tools" })
+      expect(onPlatform.body).not.toHaveProperty("liveToken")
+      // The core installed before this compares {"enabled": false} whole: it must get exactly that.
+      const clinic = await liveCall(CLINIC, CLINIC_VOIP, ELVIN)
+      expect((await stationAsks(clinic.callId, "tools-1")).body).not.toHaveProperty("liveToken")
+      const quiet = await liveCall(QUIET, QUIET_VOIP, ELVIN)
+      expect((await stationAsks(quiet.callId, "tools-1")).body).toEqual({ enabled: false })
+      expect(minted).toEqual([])
+    })
+
+    it("has the conversation journaled as its own spend, and the speech as the platform's", async () => {
+      const call = await answeredCall()
+      await bypass(() => prisma.callLog.update({ where: { id: call.id }, data: { status: "completed", endedAt: new Date(), duration: 62 } }))
+      const usage = { auth: "token", live: { model: "gemini-3.8-live", textIn: 48_434, audioIn: 5_156, otherIn: 4_484, textOut: 1_140, audioOut: 596, otherOut: 267, turns: 4 },
+        tts: { model: "gemini-3.8-flash-tts", requests: 6, chars: 410, audioSeconds: 60 } }
+      const response = await result.POST(new NextRequest("http://localhost:3000/api/internal/voice-agent/call-result", {
+        method: "POST", headers: { authorization: `Bearer ${TOKEN}`, "content-type": "application/json" },
+        body: JSON.stringify({ callId: call.callId, durationSeconds: 62, providerOutcome: "connected", usage,
+          turns: [{ role: "agent", text: "Qeydiyyat, salam! Buyurun." }, { role: "customer", text: "Sabah saat on birə yazın." }] }),
+      }))
+      expect(response.status).toBe(200)
+      await expect.poll(async () => (await spend(CLINIC)).length, { timeout: 5_000 }).toBe(2)
+      const rows = (await spend(CLINIC)).map((row: { feature: string; model: string; keySource: string; costUsd: number }) =>
+        ({ feature: row.feature, model: row.model, keySource: row.keySource, costUsd: Math.round(row.costUsd * 1e5) / 1e5 }))
+        .sort((a: { model: string }, b: { model: string }) => a.model.localeCompare(b.model))
+      expect(rows).toEqual([
+        { feature: "phone-agent", model: "gemini-3.8-flash-tts", keySource: "platform", costUsd: Math.round(geminiSpeechMinuteUsd(new Date()) * 1e5) / 1e5 },
+        { feature: "phone-agent", model: "gemini-3.8-live", keySource: "tenant", costUsd: 0.06864 },
+      ])
+    })
   })
 
   it("writes no agent spend for a call the agent never served", async () => {
