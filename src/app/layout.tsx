@@ -6,6 +6,7 @@ import { IntlCatalogProvider } from "@/components/intl-catalog-provider"
 import { Providers } from "@/components/providers"
 import type { Locale } from "@/i18n/routing"
 import { BASEMAP_PROVIDER_META, basemapProviderFromEnv, serializeBasemapProvider } from "@/lib/mtm/basemap-provider"
+import { readSessionForDocument } from "@/lib/session-seed"
 import { Toaster } from "sonner"
 import "./globals.css"
 
@@ -96,6 +97,11 @@ export default async function RootLayout({
   children: React.ReactNode
 }>) {
   const hdrs = await headers()
+  // Who is signed in comes with the page: the browser used to ask for it after
+  // the page had loaded, and every page waited for that answer before asking
+  // for anything of its own (lib/session-seed.ts). Started here so the read
+  // runs beside the catalog's; it never rejects.
+  const sessionRead = readSessionForDocument(hdrs.get("x-request-pathname"))
   const locale = await getLocale()
   // next-intl's server provider used to fill this in by itself; the client
   // provider is told it, so dates on screen stay in the same zone.
@@ -105,6 +111,7 @@ export default async function RootLayout({
     await getMessages() as AbstractIntlMessages,
   )
   const nonce = hdrs.get("x-nonce") ?? undefined
+  const session = await sessionRead
   // Whose tiles the maps fall back to, as the running deployment says it now
   // — read here, on the server, so that changing it needs no build
   // (src/lib/mtm/basemap-provider.ts). Nothing is written while no backup is named.
@@ -121,7 +128,7 @@ export default async function RootLayout({
       <body className="font-sans antialiased">
         {/* src/i18n/request.ts only ever answers with one of the locales. */}
         <IntlCatalogProvider locale={locale as Locale} timeZone={timeZone} messages={messages}>
-          <Providers nonce={nonce}>{children}</Providers>
+          <Providers nonce={nonce} session={session}>{children}</Providers>
           <Toaster richColors position="top-right" />
         </IntlCatalogProvider>
       </body>
