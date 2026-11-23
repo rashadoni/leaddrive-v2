@@ -13,6 +13,7 @@ import {
   createMtmRouteChangeEvidence,
 } from "@/lib/mtm/route-change-evidence"
 import { enqueueMtmRouteNotification } from "@/lib/mtm/route-notification-outbox"
+import { enqueueAgentRouteActivity } from "@/lib/mtm/agent-activity-notify"
 
 /**
  * Опубликовать черновик маршрута — одна функция на экран
@@ -210,6 +211,17 @@ export async function publishMtmRouteInTransaction(
       body: `Route for ${route.date.toISOString().slice(0, 10)} is ready.`,
       type: "task",
       metadata: { routeId: route.id, publishedVersion, event: "route_published" },
+    })
+  }
+
+  if (actor.role === "AGENT" && actor.agentId) {
+    await enqueueAgentRouteActivity(tx, {
+      organizationId,
+      agentId: actor.agentId,
+      routeId: route.id,
+      version: publishedVersion,
+      routeDate: route.date,
+      event: "agent_route_published",
     })
   }
 

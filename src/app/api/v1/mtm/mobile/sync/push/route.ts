@@ -28,6 +28,7 @@ import { MTM_CHECK_IN_ERROR, checkInConflict, type MtmCheckInErrorCode, type Mtm
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, createOutsideZoneCheckInReader, mtmVisitPlaceSnapshot, waitingLocationRequestCovers, type WaitingLocationPlace } from "@/lib/mtm/check-in-geofence"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { enqueueAgentVisitActivity } from "@/lib/mtm/agent-activity-notify"
 import { attachJointManagerToVisit } from "@/lib/mtm/joint-visit"
 import { attachPlannedJointManager } from "@/lib/mtm/joint-visit-plan"
 import { BrandPotentialCreateSchema, BrandPotentialEndSchema, VisitActionResultSchema } from "@/lib/mtm-validators"
@@ -1414,6 +1415,23 @@ export const POST = withMobileRls(async (req, auth) => {
                         }
                       : {}),
                 }])
+                // The agent went somewhere his route did not send him next:
+                // his manager reads who, where and when (owner, 2026-11-23).
+                if (auth.role === "AGENT") {
+                  const noticeSettings = await getMtmSettings(orgId)
+                  await enqueueAgentVisitActivity(tx, {
+                    organizationId: orgId,
+                    agentId,
+                    visitId: visit.id,
+                    customerId: visit.customerId,
+                    contactId: visit.contactId,
+                    routePointId: visit.routePointId,
+                    routeId: visit.routeId,
+                    checkInAt: visit.checkInAt,
+                    timezone: noticeSettings.timezone,
+                    distanceMeters: outsideZoneMeta?.distanceMeters ?? null,
+                  })
+                }
                 if (routePoint) {
                   const participants = routePoint.route.assignments.filter((assignment) => assignment.agentId !== agentId)
                   if (participants.length > 0) {
