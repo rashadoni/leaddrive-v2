@@ -1,5 +1,6 @@
 import { createInboundPilotHandler } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { zeytunLineHost } from "@/lib/voice-agent/pharmacy/zeytun-line-host"
+import { PHONE_AGENT_CAPS_HEADER } from "@/lib/voice-agent/phone-agent/handler"
 import { phoneAgentRoute } from "@/lib/voice-agent/phone-agent/host"
 import { withStationTiming } from "@/lib/station-timing"
 
@@ -20,4 +21,4 @@ const handler = createInboundPilotHandler(process.env.FANUM_VOICE_RUNTIME_TOKEN 
 const agent = phoneAgentRoute(() => zeytunLineHost().loadConfig())
 
 export const POST = withStationTiming("pharmacy-inbound", async (request: Request) =>
-  (await agent(request.clone())) ?? handler(request))
+  (request.headers.has(PHONE_AGENT_CAPS_HEADER) ? await agent(request.clone()) : null) ?? handler(request))

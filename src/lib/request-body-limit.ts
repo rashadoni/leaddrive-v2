@@ -37,7 +37,10 @@ async function readBytesWithinLimit(
       if (!value) continue
       total += value.byteLength
       if (total > maxBytes) {
-        await reader.cancel("request body too large").catch(() => undefined)
+        // Not awaited: on a request.clone() the two copies share one stream, and
+        // cancelling one settles only once the other is cancelled too — which
+        // the holder of the other copy, about to read it, never does.
+        void reader.cancel("request body too large").catch(() => undefined)
         return { ok: false, reason: "too_large" }
       }
       chunks.push(value)
