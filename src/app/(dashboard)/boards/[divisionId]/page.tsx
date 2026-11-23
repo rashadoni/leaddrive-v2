@@ -58,6 +58,7 @@ import { HelpButton } from "@/components/help/help-button"
 import { CreateTaskDialog } from "@/components/boards/create-task-dialog"
 import { mayDeleteTask, mayManageTask } from "@/lib/tasks/task-ownership"
 import { boardListOrder } from "@/lib/tasks/board-list-order"
+import { TASK_PARAM, useTaskInAddress } from "@/lib/tasks/task-in-address"
 
 // Shared CRM surfaces; stage and priority colors retain their meaning.
 const C = {
@@ -270,6 +271,8 @@ function BoardInner() {
     // Debounced so typing in the search box writes one history entry, not one
     // per keystroke (filtering itself stays instant — it reads `search` state).
     const id = setTimeout(() => {
+      // While a card is open the address is that card's link (task-in-address.ts).
+      if (new URLSearchParams(window.location.search).has(TASK_PARAM)) return
       const q = new URLSearchParams()
       if (search) q.set("q", search)
       if (type) q.set("type", type)
@@ -286,7 +289,7 @@ function BoardInner() {
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
     }, 300)
     return () => clearTimeout(id)
-  }, [search, type, priority, assignee, eventType, mine, mineCreated, pathname, router])
+  }, [search, type, priority, assignee, eventType, mine, mineCreated, pathname, router, openTaskId])
 
   // Edits show on the board at once and go to the server behind it
   // (owner, 2026-11-09); a load never paints over one still on its way —
@@ -645,11 +648,21 @@ function BoardInner() {
     color: active ? C.text : C.sub,
   })
 
+  // A link to a card: this page shows it once it knows it is a board the person
+  // sees (a folder has its own view). Someone the task was given to who is not on
+  // the board still gets the card, on «Mənim işlərim».
+  useTaskInAddress(openTaskId, setOpenTaskId, !loading && !!division && !division.isDepartment)
+  const linkedTask = sp.get(TASK_PARAM)
+  useEffect(() => {
+    if (!loading && !division && linkedTask) router.replace(`/boards/mine?${TASK_PARAM}=${encodeURIComponent(linkedTask)}`)
+  }, [loading, division, linkedTask, router])
+
   // Access gate: once loaded, if this board isn't in the user's accessible set
   // (the divisions API filters by BoardPermission), `division` stays null → show
   // a denial instead of an empty board. The tasks API is also access-scoped, so
   // this is UX on top of a server-enforced boundary.
   if (!loading && !division) {
+    if (linkedTask) return null
     return (
       <div style={{ background: C.page, minHeight: "100%", color: C.text }} className="flex flex-col items-center justify-center gap-2 p-10 text-center">
         <h1 className="text-lg font-semibold">{t("noAccessTitle")}</h1>

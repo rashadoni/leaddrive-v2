@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { signIn } from "@/lib/auth-signin"
 import { useRouter, useSearchParams } from "next/navigation"
 import { enterSignedInApp } from "@/lib/enter-signed-in-app"
+import { rememberLoginReturn } from "@/lib/login-return-path"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
@@ -120,6 +121,8 @@ export default function LoginPage() {
       setError(t("invalidCredentials"))
     } else {
       storeRememberedLogin(rememberMe, email)
+      // Back to the link that brought them here, through a 2FA step if there is one.
+      rememberLoginReturn(searchParams.get("callbackUrl"))
       // The button keeps spinning: the page is about to be replaced.
       enterSignedInApp()
     }

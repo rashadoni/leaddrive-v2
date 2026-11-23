@@ -17,6 +17,7 @@ import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
 import { InlineTasksTable, type InlineTask, type InlineUser } from "@/components/tasks/inline-tasks-table"
 import { BOARD_TASKS_PAGE } from "@/lib/tasks/fetch-board-tasks"
 import { boardListOrder } from "@/lib/tasks/board-list-order"
+import { useTaskInAddress } from "@/lib/tasks/task-in-address"
 import type { TeamDTO } from "@/lib/tasks/board-teams"
 
 interface TeamTask {
@@ -50,6 +51,7 @@ export default function TeamPage() {
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<View>("tasks")
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
+  useTaskInAddress(openTaskId, setOpenTaskId)
   const [users, setUsers] = useState<InlineUser[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [sort, setSort] = useState("")

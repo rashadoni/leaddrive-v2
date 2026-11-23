@@ -31,6 +31,7 @@ import { TaskPanel } from "@/components/tasks/task-panel/task-panel"
 import { InlineTasksTable, type InlineTask, type InlineUser } from "@/components/tasks/inline-tasks-table"
 import { fetchAllFolderTasks } from "@/lib/tasks/fetch-board-tasks"
 import { boardListOrder } from "@/lib/tasks/board-list-order"
+import { useTaskInAddress } from "@/lib/tasks/task-in-address"
 
 interface DeptDivision { id: string; key: string; name: string; color: string | null }
 interface SectionLite { id: string; key: string; name: string; color: string | null; parentDivisionId?: string | null; _count?: { tasks: number } }
@@ -77,6 +78,7 @@ export function DepartmentBoardView({ division }: { division: DeptDivision }) {
   // The «Hesabatlar» tab is per person (lib/tasks/board-reports-access.ts).
   const [reportsOpen, setReportsOpen] = useState(true)
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
+  useTaskInAddress(openTaskId, setOpenTaskId)
 
   const TASK_CAP = 200 // GET /tasks rejects limit > 200 unless the request names one board
 

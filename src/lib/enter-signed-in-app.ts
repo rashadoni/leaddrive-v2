@@ -1,3 +1,5 @@
+import { signInDestination } from "@/lib/login-return-path"
+
 /**
  * Going from a sign-in page into the CRM is a full page load, on purpose.
  *
@@ -8,7 +10,10 @@
  * document, so everyone who had just signed in got "the browser did not allow
  * the microphone" until they happened to reload, whatever the site permission
  * said (owner, 2026-11-22, on two organizations in a row).
+ *
+ * It goes to the page the person was on the way to (lib/login-return-path.ts),
+ * the home page when there was none.
  */
 export function enterSignedInApp(location: Pick<Location, "assign"> = window.location): void {
-  location.assign("/")
+  location.assign(signInDestination())
 }

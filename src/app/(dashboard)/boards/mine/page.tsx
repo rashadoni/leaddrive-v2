@@ -23,6 +23,7 @@ import {
 } from "@/lib/tasks/my-work"
 import { dueNote } from "@/lib/tasks/my-work-calendar"
 import { rememberBoardNames } from "@/lib/tasks/board-names-cache"
+import { useTaskInAddress } from "@/lib/tasks/task-in-address"
 import { BOARD_TASKS_PAGE } from "@/lib/tasks/fetch-board-tasks"
 import { MyWorkCalendar, type CalendarTask } from "@/components/boards/my-work-calendar"
 import { keepOwnDays } from "@/lib/tasks/my-work-calendar"
@@ -111,6 +112,7 @@ export default function MyWorkPage() {
   }, [])
   const [busy, setBusy] = useState<Set<string>>(new Set())
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
+  useTaskInAddress(openTaskId, setOpenTaskId)
   // «Yeni tapşırıq» here too (owner, 2026-11-12: «в разделе мои задачи нет кнопки создать задачу»).
   const [creating, setCreating] = useState(false)
   const { data: session } = useSession()
