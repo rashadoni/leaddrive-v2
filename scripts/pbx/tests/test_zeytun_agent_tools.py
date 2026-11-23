@@ -296,7 +296,7 @@ class StationCapabilityTests(unittest.TestCase):
 
     def test_every_request_tells_the_crm_this_station_runs_crm_named_tools(self):
         seen, answer = self.post({"action": "session", "callId": CALL})
-        self.assertEqual({key.lower(): value for key, value in seen["headers"].items()}["x-voice-agent-caps"], "tools-1")
+        self.assertEqual({key.lower(): value for key, value in seen["headers"].items()}["x-voice-agent-caps"], "tools-1, live-token-1")
         # The body is the one the CRM's strict schema already takes: nothing new in it.
         self.assertEqual(seen["body"], {"action": "session", "callId": CALL})
         self.assertEqual(answer, {"enabled": False})
