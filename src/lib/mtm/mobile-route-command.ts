@@ -40,6 +40,7 @@ import {
 } from "@/lib/mtm/mobile-route-command-receipt"
 import type { MtmMobileRouteCommandInput } from "@/lib/mtm-validators"
 import { enqueueMtmRouteNotification } from "@/lib/mtm/route-notification-outbox"
+import { enqueueAgentRouteActivity } from "@/lib/mtm/agent-activity-notify"
 import { resolveWorkCalendarDay, type WorkCalendarOverride } from "@/lib/mtm/work-calendar"
 import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
 import { isValidTimezone } from "@/lib/timezone"
@@ -731,6 +732,16 @@ async function applyPublish(
     type: "task",
     metadata: { routeId: route.id, publishedVersion, event: "route_published" },
   })
+  if (input.actor.role === "AGENT") {
+    await enqueueAgentRouteActivity(tx, {
+      organizationId: input.auth.orgId,
+      agentId: input.auth.agentId,
+      routeId: route.id,
+      version: publishedVersion,
+      routeDate: route.date,
+      event: "agent_route_published",
+    })
+  }
   return applied(200, {
     id: route.id,
     status: "PLANNED",
@@ -959,6 +970,18 @@ async function applyUpdatePublished(
     type: "task",
     metadata: { routeId: route.id, publishedVersion: version, event: "route_updated" },
   })
+  if (input.actor.role === "AGENT") {
+    await enqueueAgentRouteActivity(tx, {
+      organizationId: input.auth.orgId,
+      agentId: input.auth.agentId,
+      routeId: route.id,
+      version,
+      routeDate: route.date,
+      event: "agent_route_updated",
+      keptPointIds: diff.kept.map((point) => point.id),
+      removedPointIds: diff.removed.map((point) => point.id),
+    })
+  }
   return applied(200, {
     id: route.id,
     status: route.status,

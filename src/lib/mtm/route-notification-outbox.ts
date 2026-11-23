@@ -8,6 +8,7 @@ import { logMtmRouteObservability } from "@/lib/mtm/route-observability"
 import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
 import { MTM_TEAM_MESSAGES_PUSH_CHANNEL, notifyAgents } from "@/lib/mtm/push-notify"
 import { isRouteNoticeEvent, routeNotice, routeNoticeLocale } from "@/lib/mtm/route-notice"
+import { agentActivityPush } from "@/lib/mtm/agent-activity-notice"
 
 const ROUTE_FIELD_CAPABILITY = "route-field"
 const OUTBOX_LEASE_MS = 60_000
@@ -254,6 +255,20 @@ export async function drainMtmRouteNotificationOutbox(
           title: words.title,
           body: words.body,
           data: { routeId: words.routeId },
+          channelId: MTM_TEAM_MESSAGES_PUSH_CHANNEL,
+        }).catch(() => undefined)
+      }
+      // A manager's notice about his agent: the bell line has the clients, the
+      // push only who and how many (agent-activity-notice.ts).
+      const managerPush = delivered && !words ? agentActivityPush(candidate.title, candidate.metadata) : null
+      if (managerPush) {
+        await notifyAgents({
+          client: prisma,
+          organizationId: candidate.organizationId,
+          agentIds: [candidate.agentId],
+          title: managerPush.title,
+          body: managerPush.body,
+          data: { event: managerPush.event },
           channelId: MTM_TEAM_MESSAGES_PUSH_CHANNEL,
         }).catch(() => undefined)
       }
