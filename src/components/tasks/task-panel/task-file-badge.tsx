@@ -1,10 +1,10 @@
 import { fileKindOf, type FileKind } from "@/lib/tasks/file-kind"
 
-// The colours people know these programs by; pictures stay quiet, being most of
+// The colours people know these programs by (Excel: the green of Bordio's sheet); pictures stay quiet, being most of
 // what a card holds (Zeytun: 3 700 of 4 900 files), so a sheet stands out.
 // One set for both themes: white text on each of them is readable on either.
 const FILL: Record<FileKind, string> = {
-  excel: "#1D7A46",
+  excel: "#5E8E32",
   word: "#185FA5",
   powerpoint: "#C2410C",
   pdf: "#C8332F",
@@ -23,11 +23,11 @@ export function TaskFileBadge({ name, mimeType, size = "tile" }: { name: string;
     <span
       aria-hidden="true"
       data-file-kind={kind}
-      style={{ background: FILL[kind] }}
-      className={size === "tile"
-        ? "flex h-11 w-9 shrink-0 items-end justify-center rounded-[4px_11px_4px_4px] pb-1.5 text-[10px] font-semibold leading-none text-white"
-        : "flex h-[34px] w-7 shrink-0 items-end justify-center rounded-[3px_8px_3px_3px] pb-1 text-[9px] font-semibold leading-none text-white"}
+      style={{ background: FILL[kind], clipPath: "polygon(0 0, 68% 0, 100% 24%, 100% 100%, 0 100%)" }}
+      className={`relative flex shrink-0 items-end justify-center leading-none text-white ${size === "tile" ? "h-[42px] w-[34px] pb-1.5 text-[11px]" : "h-[34px] w-7 pb-1 text-[9px] font-medium"}`}
     >
+      {/* The folded corner of the sheet. */}
+      <span className="absolute right-0 top-0 h-[24%] w-[32%] bg-black/30" style={{ clipPath: "polygon(0 0, 100% 100%, 0 100%)" }} />
       {label}
     </span>
   )

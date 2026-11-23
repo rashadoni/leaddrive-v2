@@ -23,12 +23,9 @@ const KINDS: Record<Exclude<FileKind, "other">, readonly string[]> = {
 const KIND_OF_EXTENSION = new Map<string, FileKind>(
   Object.entries(KINDS).flatMap(([kind, extensions]) => extensions.map((extension) => [extension, kind as FileKind] as const)),
 )
-// One word per program, whichever of its versions the file was saved in.
-const LABELS: Record<string, string> = {
-  xlsx: "XLS", xlsm: "XLS", xlsb: "XLS", docx: "DOC", pptx: "PPT", pps: "PPT", ppsx: "PPT", jpeg: "JPG", tiff: "TIF", heif: "HEIC", oga: "OGG", indd: "INDD",
-}
+// For a file with no usable extension. A file that has one is labelled with it, as Bordio does («xlsx»).
 const KIND_LABEL: Record<FileKind, string> = {
-  excel: "XLS", word: "DOC", powerpoint: "PPT", pdf: "PDF", image: "IMG", video: "VID", audio: "AUD", design: "DSN", archive: "ZIP", other: "FILE",
+  excel: "xlsx", word: "docx", powerpoint: "pptx", pdf: "pdf", image: "img", video: "video", audio: "audio", design: "dsn", archive: "zip", other: "file",
 }
 
 function kindOfMime(mimeType: string): FileKind {
@@ -47,9 +44,9 @@ function kindOfMime(mimeType: string): FileKind {
 export function fileKindOf(name: string, mimeType?: string | null): { kind: FileKind; label: string } {
   const extension = /\.([a-z0-9]{1,6})$/iu.exec(name.trim())?.[1]?.toLowerCase()
   const known = extension ? KIND_OF_EXTENSION.get(extension) : undefined
-  if (known && extension) return { kind: known, label: LABELS[extension] ?? extension.toUpperCase() }
+  if (known && extension) return { kind: known, label: extension }
   const kind = mimeType ? kindOfMime(mimeType) : "other"
   if (kind !== "other") return { kind, label: KIND_LABEL[kind] }
   // A kind we have no colour for still says what it is, when that fits the mark.
-  return { kind, label: extension && extension.length <= 4 ? extension.toUpperCase() : KIND_LABEL.other }
+  return { kind, label: extension && extension.length <= 4 ? extension : KIND_LABEL.other }
 }

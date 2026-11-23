@@ -717,25 +717,25 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                   )}
                   {saveNote && <p role="alert" className="mb-2 text-xs text-destructive" data-testid="task-files-save-note">{saveNote}</p>}
                   {/* Tiles, each in its program's colour (Zeytun, 2026-11-23: an Excel sheet was lost among the visuals). */}
-                  <ul className="grid grid-cols-[repeat(auto-fill,minmax(7.25rem,1fr))] gap-2" data-testid="task-files-grid">
+                  <ul className="grid grid-cols-[repeat(auto-fill,8.25rem)] gap-3.5" data-testid="task-files-grid">
                     {task.attachments.map((file) => (
                       <li
                         key={file.id}
-                        className={`group relative min-w-0 rounded-lg border transition-colors hover:bg-muted/50 ${pickedFiles.has(file.id) ? "border-primary bg-primary/5" : ""}`}
+                        className={`group relative h-[8.25rem] min-w-0 rounded-lg border transition-colors ${pickedFiles.has(file.id) ? "border-primary bg-primary/5" : "border-border/70 bg-muted/60 hover:bg-muted"}`}
                         data-testid="task-file"
                       >
-                        <a href={`/uploads/tasks/${file.fileName}`} target="_blank" rel="noreferrer" title={file.originalName} className="flex h-full flex-col items-center gap-1.5 rounded-lg px-2 pb-2 pt-3 text-center">
+                        <a href={`/uploads/tasks/${file.fileName}`} target="_blank" rel="noreferrer" title={file.originalName} className="flex h-full flex-col items-center gap-2 rounded-lg px-2.5 pt-[23px] text-center">
                           <TaskFileBadge name={file.originalName} mimeType={file.mimeType} />
-                          <span className="line-clamp-2 w-full text-xs leading-4 [overflow-wrap:anywhere]">{file.originalName}</span>
+                          <span className="line-clamp-2 w-full text-[13px] leading-[18px] [overflow-wrap:anywhere]">{file.originalName}</span>
                         </a>
                         {canEdit && (
                           <input type="checkbox" aria-label={file.originalName} data-testid="task-file-pick" checked={pickedFiles.has(file.id)} onChange={() => togglePicked(file.id)} className="absolute left-1.5 top-1.5" />
                         )}
                         <span className="absolute right-1 top-1 flex flex-col items-center gap-0.5">
-                          <a href={fileDownloadUrl(file)} download={file.originalName} aria-label={`${t("downloadFile")}: ${file.originalName}`} title={t("downloadFile")} className="rounded bg-background/80 p-0.5 text-muted-foreground hover:text-foreground" data-testid="task-file-download"><Download className="h-3.5 w-3.5" /></a>
+                          <a href={fileDownloadUrl(file)} download={file.originalName} aria-label={`${t("downloadFile")}: ${file.originalName}`} title={t("downloadFile")} className="rounded p-0.5 text-muted-foreground hover:bg-background hover:text-foreground" data-testid="task-file-download"><Download className="h-3.5 w-3.5" /></a>
                           {/* Zeytun, 2026-11-12: «əlavə olunanları da silmək olmur» — a file is removed in two clicks. */}
                           {canEdit && removing !== file.id && (
-                            <button type="button" aria-label={`${t("removeFile")}: ${file.originalName}`} title={t("removeFile")} onClick={() => setRemoving(file.id)} className="rounded bg-background/80 p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100" data-testid="task-file-remove"><Trash2 className="h-3.5 w-3.5" /></button>
+                            <button type="button" aria-label={`${t("removeFile")}: ${file.originalName}`} title={t("removeFile")} onClick={() => setRemoving(file.id)} className="rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100" data-testid="task-file-remove"><Trash2 className="h-3.5 w-3.5" /></button>
                           )}
                         </span>
                         {canEdit && removing === file.id && (
