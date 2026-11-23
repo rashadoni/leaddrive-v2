@@ -219,9 +219,14 @@ describe("files in the card, as in Bordio", () => {
       // The picture is saved from the card under its own name, without opening a tab.
       const save = container.querySelector('[data-testid="feed-picture-download"]') as HTMLAnchorElement
       expect([save.getAttribute("href"), save.getAttribute("download")]).toEqual(["/uploads/tasks/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg?download=1", "11.11.26 Stories-1.jpg"])
-      const links = [...container.querySelectorAll('[data-testid="feed-message-files"] a')].map((a) => a.getAttribute("href"))
+      const links = [...container.querySelectorAll('[data-testid="feed-file-open"]')].map((a) => a.getAttribute("href"))
       expect(links).toEqual(["/uploads/tasks/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.pdf"])
-      expect(container.querySelector('[data-testid="feed-message-files"]')?.textContent).toContain("köhnə.png")
+      // A file in a message is a card: its program's sheet, its name, its own download.
+      const card = container.querySelector('[data-testid="feed-file-card"]')
+      expect(card?.querySelector("[data-file-kind]")?.getAttribute("data-file-kind")).toBe("pdf")
+      expect(card?.querySelector('[data-testid="feed-file-download"]')?.hasAttribute("download")).toBe(true)
+      expect(container.querySelector('[data-testid="feed-file-missing"]')?.textContent).toContain("köhnə.png")
+      expect(container.querySelector('[data-testid="feed-file-missing"] a')).toBeNull()
       expect(container.textContent).not.toContain("📎")
     } finally { restore() }
   })

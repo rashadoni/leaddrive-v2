@@ -268,7 +268,7 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
             <ul className="mb-2 flex flex-wrap gap-1.5" data-testid="feed-pending-files">
               {pending.map((file, index) => (
                 <li key={`${file.name}-${index}`} className="inline-flex items-center gap-1 rounded-md border bg-muted/50 px-2 py-0.5 text-xs">
-                  <TaskFileBadge name={file.name} mimeType={file.type} size="tag" />{file.name}
+                  <Paperclip className="h-3 w-3" />{file.name}
                   <button type="button" aria-label={t("remove")} onClick={() => setPending((list) => list.filter((_, i) => i !== index))}><X className="h-3 w-3" /></button>
                 </li>
               ))}
@@ -374,14 +374,31 @@ function MessageBody({ text, matched }: { text: string; matched: ReadonlyArray<{
         </span>
       )}
       {others.length > 0 && (
-        <span className="mt-1 flex flex-col gap-0.5" data-testid="feed-message-files">
+        <span className="mt-1.5 flex flex-col gap-1.5" data-testid="feed-message-files">
           {others.map(({ name, file }, index) =>
             file ? (
-              <a key={file.id} href={fileUrl(file)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                <TaskFileBadge name={file.originalName} mimeType={file.mimeType} size="tag" />{name}
-              </a>
+              <span key={file.id} className="flex w-80 max-w-full items-center gap-2.5 rounded-lg border bg-card px-2.5 py-1.5 transition-colors hover:bg-muted/50" data-testid="feed-file-card">
+                <a href={fileUrl(file)} target="_blank" rel="noreferrer" title={name} data-testid="feed-file-open" className="flex min-w-0 flex-1 items-center gap-2.5 text-foreground">
+                  <TaskFileBadge name={file.originalName} mimeType={file.mimeType} size="card" />
+                  <span className="truncate">{name}</span>
+                </a>
+                <a
+                  href={fileDownloadUrl(file)}
+                  download={file.originalName}
+                  aria-label={`${t("downloadFile")}: ${name}`}
+                  title={t("downloadFile")}
+                  data-testid="feed-file-download"
+                  className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <Download className="h-4 w-4" />
+                </a>
+              </span>
             ) : (
-              <span key={`${name}-${index}`} className="inline-flex items-center gap-1 text-xs text-muted-foreground"><TaskFileBadge name={name} size="tag" />{name}</span>
+              // A file of a finished Bordio task that was not carried over: its name, nothing to open.
+              <span key={`${name}-${index}`} title={name} className="flex w-80 max-w-full items-center gap-2.5 rounded-lg border border-dashed px-2.5 py-1.5 text-muted-foreground" data-testid="feed-file-missing">
+                <TaskFileBadge name={name} size="card" />
+                <span className="truncate">{name}</span>
+              </span>
             ),
           )}
         </span>
