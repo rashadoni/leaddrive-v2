@@ -9529,30 +9529,49 @@ pm2 start "$PM2_CONFIG" 2>/dev/null || {
 pm2 save 2>/dev/null || fatal "cannot persist PM2 application state"
 harden_pm2_reboot_dump || fatal "cannot harden persisted PM2 application state"
 
+# The routes the phone station calls in the middle of a call. A process that
+# has just started loads a route's module on that route's first request, so each
+# is asked once here before a call can be: unauthenticated, answered 401 before
+# anything is read. One list for every process that answers the station - the
+# web process (Step 6) and the line's own slot (Step 7c). Until 2026-11-23 only
+# the web process got it, while the station had been answered by the line's slot
+# since 2026-10-28: the first call after every deploy loaded these modules itself
+# (10:39 UTC that day: 1.4 s for the first request, 6 s before the greeting).
+# Started in the background; the caller waits for WARM_PIDS.
+warm_station_route_modules() {
+  local base="$1" warm_route
+  for warm_route in \
+    "POST /api/internal/asterisk/call-lifecycle" \
+    "POST /api/internal/asterisk/inbound-handoff" \
+    "POST /api/internal/asterisk/inbound-browser-ready" \
+    "POST /api/internal/asterisk/station-heartbeat" \
+    "POST /api/internal/asterisk/call-recording" \
+    "POST /api/internal/voice-agent/pharmacy-inbound" \
+    "POST /api/internal/voice-agent/call-result" \
+    "GET /api/internal/voice-agent/runtime-config" \
+    "GET /api/internal/voice-agent/call-source" \
+    "GET /api/internal/voice-agent/call-continuation"; do
+    curl -s -o /dev/null --max-time 20 -X "${warm_route%% *}" "$base${warm_route#* }" 2>/dev/null &
+    WARM_PIDS+=("$!")
+  done
+}
+
 # ── Step 6: Health check (5 retries, longer warmup) ──────
 log "Health check (waiting for startup)..."
 # nginx sends traffic to the new process the moment it listens, so the first
 # requests after the restart are real calls, not this check. Wait for the port
 # (it opened ~2 s after `pm2 start` on 2026-10-28), then load the modules of the
-# routes the phone station calls in the middle of a call, so the first of those
-# does not pay for loading them. Unauthenticated: each answers 401 before it
-# reads anything. The old fixed 15 + 5 s wait stays as the outer bound.
+# routes the phone station calls (warm_station_route_modules: the web process is
+# the station's fallback when the line's slot does not take a connection) and of
+# the two pages people open first. The old fixed 15 + 5 s wait stays as the
+# outer bound.
 for _ in $(seq 1 80); do
   ss -tln | grep -q ":3001 " && break
   sleep 0.25
 done
 WARM_PIDS=()
+warm_station_route_modules "$HEALTH_URL"
 for warm_route in \
-  "POST /api/internal/asterisk/call-lifecycle" \
-  "POST /api/internal/asterisk/inbound-handoff" \
-  "POST /api/internal/asterisk/inbound-browser-ready" \
-  "POST /api/internal/asterisk/station-heartbeat" \
-  "POST /api/internal/asterisk/call-recording" \
-  "POST /api/internal/voice-agent/pharmacy-inbound" \
-  "POST /api/internal/voice-agent/call-result" \
-  "GET /api/internal/voice-agent/runtime-config" \
-  "GET /api/internal/voice-agent/call-source" \
-  "GET /api/internal/voice-agent/call-continuation" \
   "GET /api/v1/ping" \
   "GET /login"; do
   curl -s -o /dev/null --max-time 20 -X "${warm_route%% *}" "$HEALTH_URL${warm_route#* }" 2>/dev/null &
@@ -9719,11 +9738,18 @@ line_ready() {
   [ "$ping" = "200" ] || { log "WARNING: new line slot at $url never answered ping"; return 1; }
   key="$(curl -s --max-time 10 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" "$url/api/cron/pii-key-check" 2>/dev/null || true)"
   [ "$key" = '{"ok":true,"source":"file"}' ] || { log "WARNING: new line slot at $url: PII key check said ${key:-nothing}"; return 1; }
-  # The catalog must be in memory before the first call reaches this slot.
+  # This slot, not the web process, answers the station: its routes' modules are
+  # loaded here, before nginx sends it a call (warm_station_route_modules).
+  local WARM_PIDS=()
+  warm_station_route_modules "$url"
+  wait "${WARM_PIDS[@]}" || true
+  # The catalog must be in memory before the first call reaches this slot, and
+  # so must everything else a call's first answer reads: the same request
+  # rehearses one (`session` and `route` in its answer; warmZeytunLine).
   warm="$(curl -s --max-time 180 -X POST -H "x-cron-secret: ${CRON_SECRET:-}" "$url/api/cron/zeytun-line-warm" 2>/dev/null || true)"
   printf '%s\n' "$warm" | grep -Eq '"outcome":"(warm|not_configured)"' \
     || { log "WARNING: new line slot at $url did not load the catalog: ${warm:-no response}"; return 1; }
-  log "Line slot at $url: ping 200, PII key from its env file, catalog $warm"
+  log "Line slot at $url: ping 200, PII key from its env file, station routes loaded, catalog $warm"
 }
 
 # Point nginx's station upstream at a port. Only where the station routes are

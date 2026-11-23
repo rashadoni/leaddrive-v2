@@ -140,7 +140,11 @@ describe("the deploy's stop and start", () => {
       .join("\n")
     const called = new Set(station.match(/\/api\/internal\/[a-z\-/]+[a-z]/g))
     expect(called.size).toBeGreaterThan(0)
-    for (const path of called) expect(step6).toContain(` ${path}"`)
+    // One list for every process that answers the station (2026-11-23: the
+    // line's slot had none, and the first call after a deploy loaded them).
+    const routes = /^warm_station_route_modules\(\) \{\n[\s\S]*?\n\}$/m.exec(deploy)?.[0] ?? ""
+    for (const path of called) expect(routes).toContain(` ${path}"`)
+    expect(step6).toContain('warm_station_route_modules "$HEALTH_URL"')
     // Waited on by pid: a bare `wait` would also wait for a Fund cutover's
     // background lock holder, up to 180 s.
     expect(step6).toContain('wait "${WARM_PIDS[@]}"')

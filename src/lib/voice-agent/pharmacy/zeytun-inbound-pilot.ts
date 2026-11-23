@@ -1,4 +1,4 @@
-import { createHash, randomUUID, timingSafeEqual } from "node:crypto"
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto"
 import { z } from "zod"
 import { readJsonRequestWithinLimit } from "../../request-body-limit"
 import { zeytunBalanceQuerySchema } from "./zeytun-available-balances"
@@ -633,6 +633,60 @@ function catalogServes(catalog: InboundPilotCatalog, config: InboundPilotConfig,
   return catalog.organizationId === config.approvedSource.organizationId && catalog.scopeKey === config.approvedSource.scopeKey &&
     (isLineGrant(config) || catalog.version === config.approvedSource.catalogVersion) && catalog.source === "live" &&
     Number.isFinite(age) && age >= 0 && age <= 24 * 60 * 60_000
+}
+
+/** The caller of a rehearsed session: a number no pharmacy has, so nothing of a real one is read. */
+const REHEARSAL_CALLER = "+994000000000"
+const REHEARSAL_PHARMACY = "00000000-0000-0000-0000-000000000000"
+const REHEARSAL_TIMEOUT_MS = 20_000
+export type SessionRehearsal = { status: number | "failed"; ms: number }
+/**
+ * One answered session nobody called, through the handler itself.
+ *
+ * Owner, 2026-11-23: the first call after every deploy waited 2-6 s for the
+ * greeting (10:39 UTC: the two session requests took 1.4 s and 3.4 s on a line
+ * process eleven minutes old; the calls after it, 0.06 s and 0.42 s). A deploy
+ * starts a new line process and warmed only its catalog and pharmacy list: the
+ * lookup of the call, the organization's line speech, the second ear's key, the
+ * learned names and everything else a session composes ran for the first time
+ * on the first pharmacy's call - which says «Alo» into that silence.
+ *
+ * The handler's own code runs here, so a read a session gains later is warmed
+ * without a second list of them to keep. Only the call is made up: the lookup
+ * is asked once for an id no call has (that is the query a session makes), then
+ * answered with a call of this grant that is being talked on. Nothing is
+ * claimed, written or sent to the station; the answer is dropped.
+ */
+export async function rehearseInboundSession(config: InboundPilotConfig, dependencies: InboundPilotDependencies): Promise<SessionRehearsal> {
+  const clock = dependencies.clock ?? Date.now
+  const started = clock()
+  const callId = randomUUID(), token = randomBytes(32).toString("hex")
+  const timeout = AbortSignal.timeout(REHEARSAL_TIMEOUT_MS)
+  try {
+    await dependencies.loadCall(config, callId).catch(() => null)
+    const call: InboundPilotCall = {
+      id: `rehearsal-${callId}`, organizationId: config.organizationId, channelConfigId: config.channelConfigId, providerCallId: callId,
+      provider: "asterisk", direction: "inbound", callMode: "ai", status: "in-progress", wasAnswered: true, endedAt: null,
+      startedAt: new Date(Math.max(Date.parse(config.issuedAt), started - 1000)).toISOString(), fromNumber: REHEARSAL_CALLER,
+      targetPhoneE164: "", handoffState: null, callbackMarker: null,
+    }
+    const handler = createInboundPilotHandler(token, { ...dependencies, clock, loadConfig: async () => config, loadCall: async () => call,
+      claim: async () => true, isClaimed: async () => true })
+    const response = await Promise.race([
+      handler(new Request("http://line.rehearsal/session", { method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ action: "session", callId }) })),
+      new Promise<never>((_, reject) => timeout.addEventListener("abort", () => reject(timeout.reason), { once: true })),
+    ])
+    // A made-up number has no pharmacy, so the session above never asks what came back in stock for one.
+    if (isLineGrant(config) && dependencies.pharmacyArrivals) {
+      await withinMs(dependencies.pharmacyArrivals(config, call, await dependencies.loadCatalog(config), REHEARSAL_PHARMACY), 5_000)
+        .catch(() => null)
+    }
+    return { status: response.status, ms: clock() - started }
+  } catch {
+    return { status: "failed", ms: clock() - started }
+  }
 }
 
 export type LineHealth = { ok: boolean; checks: { grant: boolean; catalog: boolean; database: boolean }; station: StationState }
