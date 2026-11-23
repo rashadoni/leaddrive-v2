@@ -10,7 +10,7 @@ import { browserSoftphoneAllowed } from "@/lib/voip/browser-softphone"
 import { organizationHoldsLine } from "@/lib/voip/line-numbers"
 
 import { createInboundPilotHost } from "./zeytun-inbound-host"
-import { inboundPilotConfigSchema, isLineGrant } from "./zeytun-inbound-pilot"
+import { inboundPilotConfigSchema, isLineGrant, rehearseInboundSession } from "./zeytun-inbound-pilot"
 
 type Host = ReturnType<typeof createInboundPilotHost>
 const KEY = Symbol.for("leaddrive.zeytunLineHost")
@@ -96,5 +96,7 @@ export async function warmZeytunLine(host: Host = zeytunLineHost()) {
   const arrived = await (host.markWaitlistArrivals?.(parsed.data) ?? Promise.resolve(0))
     .catch((error: unknown) => { console.warn("[zeytun-line] waitlist arrivals not marked", error instanceof Error ? error.name : typeof error); return 0 })
   if (arrived) console.log("[zeytun-line] waitlist arrived", JSON.stringify({ items: arrived }))
-  return { outcome: "warm" as const, ms: Date.now() - started }
+  // Everything else a call's first answer reads (owner, 2026-11-23: the first call after a deploy waited 2-6 s).
+  const session = await rehearseInboundSession(parsed.data, host)
+  return { outcome: "warm" as const, ms: Date.now() - started, session }
 }

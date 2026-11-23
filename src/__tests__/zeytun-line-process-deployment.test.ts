@@ -174,6 +174,8 @@ describe.skipIf(!hasTools)("cron-trigger.sh warms the line where the station is 
 describe("the deploy replaces the line without a gap", () => {
   const deploy = readFileSync(join(ROOT, "scripts/server-deploy.sh"), "utf8")
   const step7c = deploy.slice(deploy.indexOf("# ── Step 7c:"), deploy.indexOf("# ── Step 8:"))
+  /** The one list of station routes, defined before Step 6 and used by Step 7c's line_ready. */
+  const stationRoutes = /^warm_station_route_modules\(\) \{\n[\s\S]*?\n\}$/m.exec(deploy)?.[0] ?? ""
   const dirs: string[] = []
   afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }) })
 
@@ -246,7 +248,7 @@ exit 0`)
 case "$url" in
   */api/v1/ping) printf 200 ;;
   */api/cron/pii-key-check) printf '{"ok":true,"source":"file"}' ;;
-  */api/cron/zeytun-line-warm) printf '%s' '${options.warm ?? '{"outcome":"warm","ms":5}'}' ;;
+  */api/cron/zeytun-line-warm) printf '%s' '${options.warm ?? '{"outcome":"warm","ms":5,"session":{"status":200,"ms":3},"route":{"status":403,"ms":2}}'}' ;;
 esac`)
     stub("nginx", "exit 0")
     stub("systemctl", "exit 0")
@@ -266,6 +268,7 @@ esac`)
       `LINE_SLOT_A_PROCESS=leaddrive-v2-line-a`, `LINE_SLOT_B_PROCESS=leaddrive-v2-line-b`,
       `LINE_SLOT_A_PORT=3004`, `LINE_SLOT_B_PORT=3005`,
       `LINE_RELEASES_DIR="${app}/line-releases"`, `LINE_ACTIVE_PORT_FILE="${state}"`, `LINE_NGINX_UPSTREAM="${upstream}"`, `WEB_NGINX_UPSTREAM="${web}"`,
+      stationRoutes,
       step7c,
       `echo "STATUS $LINE_STATUS"`,
     ].join("\n")
@@ -279,6 +282,35 @@ esac`)
       releases: existsSync(join(app, "line-releases")) ? readdirSync(join(app, "line-releases")) : [],
     }
   }
+
+  // Owner, 2026-11-23: the first call after every deploy waited 2-6 s for the
+  // greeting. The station is answered by the line's slot, and the deploy loaded
+  // the station routes' modules only into the web process.
+  it.skipIf(!hasBash)("loads every route the station calls into the new slot before nginx sends it a call", () => {
+    const run = runStep7c({ online: ["leaddrive-v2-line-a"], activePort: "3004" })
+    expect(run.out).toContain("STATUS ok")
+    const dir = join(ROOT, "scripts/pbx")
+    const station = readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isFile())
+      .map((entry) => readFileSync(join(dir, entry.name), "utf8")).join("\n")
+    const called = [...new Set(station.match(/\/api\/internal\/[a-z\-/]+[a-z]/g))]
+    expect(called.length).toBeGreaterThan(5)
+    const at = (needle: string) => run.calls.findIndex((c) => c.includes(needle))
+    const warm = at("/api/cron/zeytun-line-warm"), reload = at("systemctl reload nginx")
+    for (const path of called) {
+      // Asked of the new slot itself (b, :3005), without the station's token: 401 before anything is read.
+      const asked = run.calls.filter((c) => c.startsWith("curl ") && c.endsWith(`http://127.0.0.1:3005${path}`))
+      expect(asked, path).toHaveLength(1)
+      expect(asked[0]).not.toMatch(/authorization|x-cron-secret/i)
+      expect(at(`http://127.0.0.1:3005${path}`)).toBeGreaterThan(at("pm2 start"))
+      // Before the rehearsal of a call's first answer, which needs the route loaded, and before the switch.
+      expect(at(`http://127.0.0.1:3005${path}`)).toBeLessThan(warm)
+    }
+    expect(warm).toBeLessThan(reload)
+    // Nothing is asked of the slot that is still answering calls.
+    expect(run.calls.filter((c) => c.includes("127.0.0.1:3004/api/internal/"))).toEqual([])
+    // What the rehearsal measured is in the deploy's log, beside the catalog.
+    expect(run.out).toMatch(/Line slot at http:\/\/127\.0\.0\.1:3005: ping 200, .*station routes loaded, catalog .*"session":\{"status":200/)
+  })
 
   it.skipIf(!hasBash)("hands the station from slot a to b: start, warm, nginx, then stop a", () => {
     const run = runStep7c({ online: ["leaddrive-v2-line-a"], activePort: "3004" })
