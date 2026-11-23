@@ -9,6 +9,7 @@ import audioop
 import base64
 import collections
 from decimal import Decimal
+import hashlib
 import http.client
 import io
 import json
@@ -16,6 +17,7 @@ import math
 import os
 import re
 import ssl
+import struct
 import threading
 import time
 import urllib.error
@@ -526,6 +528,151 @@ class ZeytunGeminiTts:
 # need not wait for the model to say it or for the TTS to voice it again.
 ZEYTUN_OPENING_AUDIO = {}
 ZEYTUN_OPENING_AUDIO_MAX = 4
+# Openings being voiced in the background after a caller cut them (ZeytunSpeechRelay._warm_opening).
+ZEYTUN_OPENING_WARMING = set()
+ZEYTUN_OPENING_WARM_LOCK = threading.Lock()
+
+
+def zeytun_remember_opening(key, chunks):
+    if key not in ZEYTUN_OPENING_AUDIO and len(ZEYTUN_OPENING_AUDIO) >= ZEYTUN_OPENING_AUDIO_MAX:
+        ZEYTUN_OPENING_AUDIO.clear()
+    ZEYTUN_OPENING_AUDIO[key] = tuple(chunks)
+
+
+class ZeytunOpeningStore:
+    """The voiced opening on the station's disk: a restart of the core does not lose it.
+
+    Owner, 2026-11-23: «начинает с aha». The opening lived in the process only,
+    and every install of the core restarts the process. The first caller after
+    one waited about a second while the opening was voiced again; a caller who
+    said «Alo» into that second cut it, heard "Aha." in its place, and - a cut
+    opening is never kept - left the next caller the same start.
+
+    One file per (voice, model, text), in a folder of the order spool (the one
+    place the core's unit may write), written whole and atomically. A file that
+    is not exactly what was written is no opening. Nothing here raises: without
+    the disk a call starts as it did before.
+    """
+    FOLDER = "opening"
+    MAGIC = b"ZOA1"
+    MAX_FILES = 8
+    MAX_BYTES = 4 * 1024 * 1024
+    MAX_CHUNKS = 4096
+    STALE_TEMPORARY_SECONDS = 60
+
+    def __init__(self, directory):
+        self.directory = directory
+        self.lock = threading.Lock()
+        self.ready = None  # not known until the first use
+
+    def _usable(self):
+        if self.ready is None:
+            try:
+                os.makedirs(self.directory, mode=0o700, exist_ok=True)
+                self.ready = os.access(self.directory, os.R_OK | os.W_OK | os.X_OK)
+            except (OSError, TypeError, ValueError):
+                self.ready = False
+        return self.ready
+
+    @staticmethod
+    def digest(key):
+        return hashlib.sha256(json.dumps([str(part) for part in key], ensure_ascii=False).encode("utf-8")).hexdigest()
+
+    @classmethod
+    def encode(cls, digest, chunks):
+        body = b"".join(struct.pack(">I", len(chunk)) + chunk for chunk in chunks)
+        return cls.MAGIC + bytes.fromhex(digest) + struct.pack(">I", len(chunks)) + body + hashlib.sha256(body).digest()
+
+    @classmethod
+    def decode(cls, raw, digest):
+        """The chunks a whole file of this opening holds; None for anything else."""
+        head = len(cls.MAGIC) + 32 + 4
+        if (len(raw) > cls.MAX_BYTES or len(raw) < head + 32 or raw[:len(cls.MAGIC)] != cls.MAGIC
+                or raw[len(cls.MAGIC):head - 4] != bytes.fromhex(digest)):
+            return None
+        count = struct.unpack(">I", raw[head - 4:head])[0]
+        body = raw[head:-32]
+        if not 1 <= count <= cls.MAX_CHUNKS or hashlib.sha256(body).digest() != raw[-32:]:
+            return None
+        chunks, position = [], 0
+        for _ in range(count):
+            if position + 4 > len(body):
+                return None
+            size = struct.unpack(">I", body[position:position + 4])[0]
+            position += 4
+            if size < 1 or position + size > len(body):
+                return None
+            chunks.append(body[position:position + size])
+            position += size
+        return tuple(chunks) if position == len(body) else None
+
+    def load(self, key):
+        if not self._usable():
+            return None
+        digest = self.digest(key)
+        try:
+            with open(os.path.join(self.directory, digest + ".pcm"), "rb") as handle:
+                raw = handle.read(self.MAX_BYTES + 1)
+            return self.decode(raw, digest)
+        except Exception:
+            return None
+
+    def save(self, key, chunks):
+        """Write the whole opening; False when it is not on the disk."""
+        if not self._usable():
+            return False
+        digest = self.digest(key)
+        temporary = os.path.join(self.directory, ".%s.%s.tmp" % (digest[:16], uuid.uuid4().hex))
+        with self.lock:
+            try:
+                chunks = tuple(chunks)
+                data = self.encode(digest, chunks)
+                if not 1 <= len(chunks) <= self.MAX_CHUNKS or not all(chunks) or len(data) > self.MAX_BYTES:
+                    return False
+                self._make_room(digest + ".pcm")
+                fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                try:
+                    view = memoryview(data)
+                    while view:
+                        view = view[os.write(fd, view):]
+                    os.fsync(fd)
+                finally:
+                    os.close(fd)
+                os.replace(temporary, os.path.join(self.directory, digest + ".pcm"))
+                return True
+            except Exception:
+                try:
+                    os.unlink(temporary)
+                except OSError:
+                    pass
+                return False
+
+    def _make_room(self, keep):
+        """The newest openings stay (MAX_FILES with the one being written); a crashed write's leftover goes."""
+        now, kept = time.time(), []
+        for name in os.listdir(self.directory):
+            path = os.path.join(self.directory, name)
+            if name.endswith(".tmp"):
+                if now - os.stat(path).st_mtime > self.STALE_TEMPORARY_SECONDS:
+                    os.unlink(path)
+            elif name.endswith(".pcm") and name != keep:
+                kept.append((os.stat(path).st_mtime, name))
+        for _, name in sorted(kept, reverse=True)[self.MAX_FILES - 1:]:
+            os.unlink(os.path.join(self.directory, name))
+
+
+_ZEYTUN_OPENING_STORE = None
+_ZEYTUN_OPENING_STORE_LOCK = threading.Lock()
+
+
+def zeytun_opening_store():
+    """The process-wide store, beside the order spool (ZEYTUN_OPENING_DIR names another folder)."""
+    global _ZEYTUN_OPENING_STORE
+    with _ZEYTUN_OPENING_STORE_LOCK:
+        if _ZEYTUN_OPENING_STORE is None:
+            _ZEYTUN_OPENING_STORE = ZeytunOpeningStore(os.environ.get("ZEYTUN_OPENING_DIR") or os.path.join(
+                os.environ.get("ZEYTUN_ORDER_SPOOL_DIR") or ZeytunOrderSpool.DIRECTORY, ZeytunOpeningStore.FOLDER))
+        return _ZEYTUN_OPENING_STORE
 # Owner's call 2026-10-30 (Tetrasiklin): 28 s of silence while the agent
 # looked a product up. A lookup still running after a second gets this, in the
 # call's voice, voiced once per process like the opening.
@@ -1138,6 +1285,12 @@ class ZeytunSpeechRelay:
             return self.tts.stream(text, on_pcm, keep_going)
         key = (getattr(self.tts, "voice", None), getattr(self.tts, "url", "").split("?")[0], text)
         cached = ZEYTUN_OPENING_AUDIO.get(key)
+        if not cached:
+            # A process that has just started (an install of the core restarts it): from the disk.
+            cached = zeytun_opening_store().load(key)
+            if cached:
+                zeytun_remember_opening(key, cached)
+                self.log("opening_disk")
         if cached:
             self.log("opening_cached")
             for pcm in cached:
@@ -1145,14 +1298,54 @@ class ZeytunSpeechRelay:
                     break
                 on_pcm(pcm)
             return sum(len(pcm) for pcm in cached)
-        chunks = []
-        produced = self.tts.stream(text, lambda pcm: (chunks.append(pcm), on_pcm(pcm)), keep_going)
-        # Only a whole opening is kept: a cut one would be cut on every call.
-        if produced and chunks and keep_going():
-            if len(ZEYTUN_OPENING_AUDIO) >= ZEYTUN_OPENING_AUDIO_MAX:
-                ZEYTUN_OPENING_AUDIO.clear()
-            ZEYTUN_OPENING_AUDIO[key] = tuple(chunks)
-        return produced
+        chunks, whole = [], False
+        try:
+            produced = self.tts.stream(text, lambda pcm: (chunks.append(pcm), on_pcm(pcm)), keep_going)
+            # Only a whole opening is kept: a cut one would be cut on every call.
+            whole = bool(produced and chunks and keep_going())
+            return produced
+        finally:
+            if whole:
+                zeytun_remember_opening(key, chunks)
+                threading.Thread(target=self._save_opening, args=(key, tuple(chunks)),
+                                 name="zeytun-opening-save", daemon=True).start()
+            elif not keep_going():
+                # Cut by the caller, or the call ended under it: voiced whole apart
+                # from the call, so the next caller does not wait for it again.
+                self._warm_opening(key, text)
+
+    def _save_opening(self, key, chunks):
+        if not zeytun_opening_store().save(key, chunks):
+            self.log("opening_disk_unavailable")
+
+    # The reply to the phrase that cut the opening is voiced first: the warm-up
+    # must not take the connection that reply would reuse.
+    OPENING_WARM_AFTER_SECONDS = 4.0
+
+    def _warm_opening(self, key, text):
+        """Voice an opening nobody heard to its end, once, in the background, and keep it."""
+        with ZEYTUN_OPENING_WARM_LOCK:
+            if key in ZEYTUN_OPENING_AUDIO or key in ZEYTUN_OPENING_WARMING:
+                return False
+            ZEYTUN_OPENING_WARMING.add(key)
+
+        def voice():
+            chunks = []
+            try:
+                time.sleep(self.OPENING_WARM_AFTER_SECONDS)
+                if key in ZEYTUN_OPENING_AUDIO:
+                    return
+                if self.tts.stream(text, chunks.append, lambda: True) and chunks:
+                    zeytun_remember_opening(key, chunks)
+                    self.log("opening_warmed", disk=zeytun_opening_store().save(key, chunks))
+            except Exception as error:
+                self.log("opening_warm_failed", reason=str(error) if isinstance(error, ZeytunPilotUnavailable)
+                         else type(error).__name__)
+            finally:
+                with ZEYTUN_OPENING_WARM_LOCK:
+                    ZEYTUN_OPENING_WARMING.discard(key)
+        threading.Thread(target=voice, name="zeytun-opening-warm", daemon=True).start()
+        return True
 
     def _fallback(self, turn, reason):
         # Nothing of the TTS was heard: the caller hears the model instead.

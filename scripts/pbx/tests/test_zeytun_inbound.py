@@ -1241,6 +1241,49 @@ class FakeTts:
             on_pcm(b"\x01\x00" * 480)
 
 
+class VoicedTts(FakeTts):
+    """A TTS that answers like the station's: the bytes it produced. Chunks of uneven sizes."""
+    voice, url = "Sulafat", "https://example/tts?key=secret"
+    CHUNKS = (b"\x01\x00" * 480, b"\x02\x00" * 333, b"\x03\x00" * 480, b"\x04" * 7)
+
+    def stream(self, text, on_pcm, keep_going):
+        self.texts.append(text)
+        sent = 0
+        for chunk in self.CHUNKS:
+            if not keep_going():
+                return sent
+            on_pcm(chunk)
+            sent += len(chunk)
+        return sent
+
+
+class OtherVoiceTts(VoicedTts):
+    voice = "Kore"
+
+
+class CutOnceTts(FakeTts):
+    """Its first voicing waits after one chunk until the caller has cut it; later ones run whole."""
+    voice, url = "Sulafat", "https://example/tts"
+    WHOLE = tuple(bytes([index + 1, 0]) * 480 for index in range(6))
+    hold = None
+
+    def stream(self, text, on_pcm, keep_going):
+        self.texts.append(text)
+        first, sent = len(self.texts) == 1 and self.hold is None, 0
+        if self.hold is not None:
+            self.hold.wait(3)
+        for index, chunk in enumerate(self.WHOLE):
+            if first and index == 1:
+                deadline = time.monotonic() + 3
+                while keep_going() and time.monotonic() < deadline:
+                    time.sleep(0.005)
+            if not keep_going():
+                return sent
+            on_pcm(chunk)
+            sent += len(chunk)
+        return sent
+
+
 class SpeechRelayTests(unittest.TestCase):
     MODEL_AUDIO = {"inlineData": {"mimeType": "audio/pcm;rate=24000", "data": "AQABAA=="}}
 
@@ -1250,9 +1293,13 @@ class SpeechRelayTests(unittest.TestCase):
         bridge_module.ZeytunGeminiTts.eu_paused_until = 0.0
         self.injected, self.speak, self.live = [], True, True
         self.lock = threading.Lock()
+        # No test writes an opening to this machine's disk unless it names a folder (opening_store).
+        bridge_module._ZEYTUN_OPENING_STORE = bridge_module.ZeytunOpeningStore(None)
+        bridge_module.ZEYTUN_OPENING_WARMING.clear()
 
     def tearDown(self):
         self.live = False
+        bridge_module._ZEYTUN_OPENING_STORE = None
 
     def relay(self, tts):
         def inject(event):
@@ -1260,7 +1307,60 @@ class SpeechRelayTests(unittest.TestCase):
                 self.injected.append(event)
         relay = bridge_module.ZeytunSpeechRelay(tts, inject, lambda: self.speak, lambda: self.live)
         relay.TAIL_GRACE_SECONDS = 0.05
+        relay.OPENING_WARM_AFTER_SECONDS = 0
         return relay
+
+    def opening_store(self):
+        """A station disk for this test: the folder the core would write the opening to."""
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        store = bridge_module.ZeytunOpeningStore(os.path.join(folder.name, "spool", "opening"))
+        bridge_module._ZEYTUN_OPENING_STORE = store
+        return store
+
+    def restart(self):
+        """What an install of the core does to the process: its memory is gone, the disk is not."""
+        bridge_module.ZEYTUN_OPENING_AUDIO.clear()
+        bridge_module.ZEYTUN_OPENING_WARMING.clear()
+        with self.lock:
+            self.injected.clear()
+
+    def call(self, tts, opening, logs=None):
+        """One call up to the end of its opening; the audio the caller heard, in order."""
+        relay = self.relay(tts)
+        if logs is not None:
+            relay.log = lambda status, **fields: logs.append((status, fields))
+        self.assertTrue(relay.prefill(opening, epoch=1))
+        relay.filter(self.content(turnComplete=True), epoch=1)
+        self.assertTrue(self.wait_for(lambda events: any(e["serverContent"].get("turnComplete") for e in events)))
+        return self.heard()
+
+    def heard(self):
+        with self.lock:
+            events = list(self.injected)
+        return [base64.b64decode(part["inlineData"]["data"]) for event in events
+                for part in event["serverContent"].get("modelTurn", {}).get("parts", [])]
+
+    @staticmethod
+    def kept(store):
+        """The openings on the disk; a write still in progress is not one."""
+        try:
+            return sorted(name for name in os.listdir(store.directory) if name.endswith(".pcm"))
+        except OSError:
+            return []
+
+    @staticmethod
+    def opening_logs(logs):
+        return [status for status, _ in logs if status.startswith("opening_")]
+
+    @staticmethod
+    def until(predicate, seconds=3):
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline:
+            if predicate():
+                return True
+            time.sleep(0.01)
+        return False
 
     def wait_for(self, predicate, seconds=3):
         until = time.monotonic() + seconds
@@ -1921,6 +2021,200 @@ class SpeechRelayTests(unittest.TestCase):
         relay.filter(self.content(interrupted=True), epoch=1)
         time.sleep(0.2)
         self.assertEqual(bridge_module.ZEYTUN_OPENING_AUDIO, {})
+
+    # Owner, 2026-11-23: «начинает с aha» - the first call after an install of the
+    # core. The opening was in the process only; the caller spoke into the second
+    # it took to voice it again, and heard "Aha." where the greeting belonged.
+    OPENING = "Salam! Zeytunun köməkçisiyəm. Hansı aptekdən zəng edirsiniz?"
+
+    def test_the_opening_outlives_a_restart_of_the_core(self):
+        store = self.opening_store()
+        self.restart()
+        first, logs = VoicedTts(), []
+        heard = self.call(first, self.OPENING, logs)
+        self.assertEqual(first.texts, [bridge_module.zeytun_speakable_text(self.OPENING)])
+        self.assertTrue(self.until(lambda: len(self.kept(store)) == 1))
+        self.assertEqual(self.opening_logs(logs), [])
+        # One file, named by a digest: neither the greeting's words nor the key's.
+        name, = os.listdir(store.directory)
+        self.assertRegex(name, r"^[0-9a-f]{64}\.pcm$")
+        self.assertEqual(os.stat(os.path.join(store.directory, name)).st_mode & 0o777, 0o600)
+        with open(os.path.join(store.directory, name), "rb") as handle:
+            self.assertNotIn(b"secret", handle.read())
+
+        self.restart()
+        second, logs = VoicedTts(), []
+        again = self.call(second, self.OPENING, logs)
+        self.assertEqual(second.texts, [])  # no request to the TTS: the caller does not wait for one
+        self.assertEqual(again, heard)  # the same audio, chunk for chunk
+        self.assertEqual(self.opening_logs(logs), ["opening_disk", "opening_cached"])
+        # The third call of that process takes it from memory, as before.
+        with self.lock:
+            self.injected.clear()
+        third, logs = VoicedTts(), []
+        self.assertEqual(self.call(third, self.OPENING, logs), heard)
+        self.assertEqual((third.texts, self.opening_logs(logs)), ([], ["opening_cached"]))
+
+    def test_another_greeting_or_voice_is_never_played_from_the_disk(self):
+        store = self.opening_store()
+        self.restart()
+        self.call(VoicedTts(), self.OPENING)
+        self.assertTrue(self.until(lambda: len(self.kept(store)) == 1))
+        for tts, opening in ((VoicedTts(), "Salam! Başqa salamlama."), (OtherVoiceTts(), self.OPENING)):
+            self.restart()
+            self.call(tts, opening)
+            self.assertEqual(tts.texts, [bridge_module.zeytun_speakable_text(opening)])
+        self.assertTrue(self.until(lambda: len(self.kept(store)) == 3))
+
+    def test_an_opening_the_caller_cut_is_voiced_whole_for_the_next_call(self):
+        store = self.opening_store()
+        self.restart()
+        tts, logs = CutOnceTts(), []
+        relay = self.relay(tts)
+        relay.log = lambda status, **fields: logs.append((status, fields))
+        relay.prefill(self.OPENING, epoch=1)
+        self.assertTrue(self.wait_for(lambda events: len(events) >= 1, seconds=1))
+        relay.filter(self.content(interrupted=True), epoch=1)  # the caller: «Alo»
+        text = bridge_module.zeytun_speakable_text(self.OPENING)
+        key = ("Sulafat", "https://example/tts", text)
+        self.assertTrue(self.until(lambda: ("opening_warmed", {"disk": True}) in logs))
+        # Voiced twice: what the caller cut, and the whole of it apart from the call.
+        self.assertEqual(tts.texts, [text, text])
+        self.assertEqual(bridge_module.ZEYTUN_OPENING_AUDIO[key], CutOnceTts.WHOLE)
+        self.assertEqual(store.load(key), CutOnceTts.WHOLE)
+        # The caller who cut it heard its first chunk and nothing of the second voicing.
+        self.assertEqual(len(self.heard()), 1)
+
+        self.restart()
+        after = CutOnceTts()
+        heard = self.call(after, self.OPENING)
+        self.assertEqual(after.texts, [])
+        self.assertEqual(b"".join(heard[:len(CutOnceTts.WHOLE)])[-960 * 5:], b"".join(CutOnceTts.WHOLE)[-960 * 5:])
+
+    def test_an_opening_is_warmed_once_however_many_callers_cut_it(self):
+        self.opening_store()
+        self.restart()
+        tts = CutOnceTts()
+        tts.hold = threading.Event()
+        relays = []
+        for _ in range(3):
+            relay = self.relay(tts)
+            relays.append(relay)
+            key = ("Sulafat", "https://example/tts", bridge_module.zeytun_speakable_text(self.OPENING))
+            relay._warm_opening(key, key[2])
+        time.sleep(0.1)
+        tts.hold.set()
+        self.assertTrue(self.until(lambda: key in bridge_module.ZEYTUN_OPENING_AUDIO))
+        time.sleep(0.1)
+        self.assertEqual(len(tts.texts), 1)
+        # Once it is kept, a later cut asks for nothing.
+        self.assertFalse(relays[0]._warm_opening(key, key[2]))
+
+    def test_a_warm_up_the_tts_refused_changes_nothing(self):
+        store = self.opening_store()
+        self.restart()
+        tts, logs = FakeTts(fail=bridge_module.ZeytunPilotUnavailable("tts_http_429")), []
+        relay = self.relay(tts)
+        relay.log = lambda status, **fields: logs.append((status, fields))
+        key = (None, "", "Salam!")
+        self.assertTrue(relay._warm_opening(key, "Salam!"))
+        self.assertTrue(self.until(lambda: ("opening_warm_failed", {"reason": "tts_http_429"}) in logs))
+        self.assertTrue(self.until(lambda: not bridge_module.ZEYTUN_OPENING_WARMING))
+        self.assertEqual((bridge_module.ZEYTUN_OPENING_AUDIO, self.kept(store)), ({}, []))
+
+    def test_a_file_that_is_not_a_whole_opening_is_never_played(self):
+        store = self.opening_store()
+        key = ("Sulafat", "https://example/tts", bridge_module.zeytun_speakable_text(self.OPENING))
+        other = ("Sulafat", "https://example/tts", "Salam! Başqa salamlama.")
+        self.assertTrue(store.save(key, VoicedTts.CHUNKS))
+        self.assertTrue(store.save(other, [b"\x09\x00" * 400]))
+        path = os.path.join(store.directory, store.digest(key) + ".pcm")
+        with open(path, "rb") as handle:
+            good = handle.read()
+        with open(os.path.join(store.directory, store.digest(other) + ".pcm"), "rb") as handle:
+            another = handle.read()
+        self.assertEqual(store.load(key), VoicedTts.CHUNKS)
+        flipped = bytearray(good)
+        flipped[len(good) // 2] ^= 0x01
+        huge = good + b"\x00" * store.MAX_BYTES
+        for bad in (b"", b"ZOA1", good[:-1], good[:len(good) // 2], bytes(flipped), another, good + b"\x00", huge,
+                    b"RIFF" + good[4:]):
+            with open(path, "wb") as handle:
+                handle.write(bad)
+            self.assertIsNone(store.load(key), len(bad))
+        # Such a file costs one voicing: the call asks the TTS, and a whole file replaces it.
+        self.restart()
+        tts = VoicedTts()
+        self.call(tts, self.OPENING)
+        self.assertEqual(tts.texts, [key[2]])
+        self.assertTrue(self.until(lambda: store.load(key) == VoicedTts.CHUNKS))
+
+    def test_without_a_folder_to_write_the_call_starts_as_it_did(self):
+        with tempfile.NamedTemporaryFile() as blocker:
+            # A folder under a file cannot exist: what a unit with no write path looks like.
+            bridge_module._ZEYTUN_OPENING_STORE = bridge_module.ZeytunOpeningStore(os.path.join(blocker.name, "opening"))
+            self.restart()
+            first, logs = VoicedTts(), []
+            heard = self.call(first, self.OPENING, logs)
+            self.assertEqual(len(first.texts), 1)
+            self.assertTrue(self.until(lambda: "opening_disk_unavailable" in [status for status, _ in logs]))
+            # Still once per process, from memory.
+            with self.lock:
+                self.injected.clear()
+            second = VoicedTts()
+            self.assertEqual(self.call(second, self.OPENING), heard)
+            self.assertEqual(second.texts, [])
+            # And after a restart it is voiced again, as before this store.
+            self.restart()
+            third = VoicedTts()
+            self.call(third, self.OPENING)
+            self.assertEqual(len(third.texts), 1)
+
+    def test_the_store_keeps_the_newest_openings_and_clears_a_crashed_write(self):
+        store = self.opening_store()
+        store.MAX_FILES = 3
+        keys = [("Sulafat", "https://example/tts", "Salam %d" % index) for index in range(5)]
+        for index, key in enumerate(keys):
+            self.assertTrue(store.save(key, [bytes([index + 1]) * 64]))
+            stamp = 1_700_000_000 + index
+            os.utime(os.path.join(store.directory, store.digest(key) + ".pcm"), (stamp, stamp))
+        self.assertEqual([store.load(key) is not None for key in keys], [False, False, True, True, True])
+        crashed, fresh = (os.path.join(store.directory, name) for name in (".dead.tmp", ".live.tmp"))
+        for path in (crashed, fresh):
+            with open(path, "wb") as handle:
+                handle.write(b"x")
+        os.utime(crashed, (time.time() - 3600, time.time() - 3600))
+        self.assertTrue(store.save(keys[0], [b"\x01" * 64]))
+        self.assertEqual((os.path.exists(crashed), os.path.exists(fresh)), (False, True))
+        # Nothing but whole openings: no chunk, an empty chunk and an oversized one are refused.
+        for bad in ([], [b""], [b"\x01" * 8, b""], [b"\x00" * (store.MAX_BYTES + 1)]):
+            self.assertFalse(store.save(("v", "u", "t"), bad))
+        self.assertIsNone(store.load(("v", "u", "t")))
+
+    def test_the_store_sits_in_the_order_spool_and_the_spool_does_not_see_it(self):
+        with tempfile.TemporaryDirectory() as folder:
+            spool_dir = os.path.join(folder, "spool")
+            for name, value in (("ZEYTUN_ORDER_SPOOL_DIR", spool_dir), ("ZEYTUN_OPENING_DIR", "")):
+                previous = os.environ.get(name)
+                os.environ[name] = value
+                self.addCleanup(lambda name=name, previous=previous: os.environ.pop(name, None) if previous is None
+                                else os.environ.__setitem__(name, previous))
+            bridge_module._ZEYTUN_OPENING_STORE = None
+            store = bridge_module.zeytun_opening_store()
+            self.assertEqual(store.directory, os.path.join(spool_dir, "opening"))
+            self.assertIs(bridge_module.zeytun_opening_store(), store)
+            logs = []
+            spool = bridge_module.ZeytunOrderSpool(spool_dir, lambda body: {"status": "saved"},
+                log=lambda status, call_id=None, **fields: logs.append(status))
+            self.assertTrue(store.save(("Sulafat", "u", "Salam!"), [b"\x01\x00" * 480]))
+            call = "5a2c7f0e-33d4-4f2c-9a51-0c9c8d2b7e11"
+            order = [{"quantity": 2, "unit": "qutu", "spoken": "iki qutu noşpa"}]
+            self.assertTrue(spool.keep(call, 1, order))
+            self.assertEqual(sorted(os.listdir(spool_dir)), [call + ".json", "failed", "opening"])
+            spool.settle(call, 1)
+            self.assertEqual(sorted(os.listdir(spool_dir)), ["failed", "opening"])
+            self.assertEqual(store.load(("Sulafat", "u", "Salam!")), (b"\x01\x00" * 480,))
+            self.assertEqual(logs, [])
 
     def test_a_reply_in_english_is_never_voiced_and_is_asked_again_once(self):
         # Owner, 2026-11-03: «только чтоб говорил на азербайджанском».
