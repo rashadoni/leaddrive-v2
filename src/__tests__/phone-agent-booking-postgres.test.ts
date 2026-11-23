@@ -543,6 +543,23 @@ except module.ZeytunPilotUnavailable:
     expect((await ask({ action: "tool", callId: call.callId, name: "book_appointment", args: {}, id: "x" }, {})).status).toBe(400)
   })
 
+  it("passes a long phrase of the line through the real route whole, even when the request does not say its length", async () => {
+    const text = JSON.stringify({ action: "utterance", callId: randomUUID(), seq: 1, audio: Buffer.alloc(240_000, 7).toString("base64") })
+    const bytes = new TextEncoder().encode(text)
+    const request = new NextRequest("http://localhost:3000/api/internal/voice-agent/pharmacy-inbound", {
+      method: "POST", duplex: "half",
+      headers: { authorization: `Bearer ${TOKEN}`, "content-type": "application/json", "x-voice-agent-caps": "tools-1" },
+      body: new ReadableStream({ start(controller) {
+        for (let at = 0; at < bytes.length; at += 8192) controller.enqueue(bytes.subarray(at, at + 8192))
+        controller.close()
+      } }),
+    } as ConstructorParameters<typeof NextRequest>[1])
+    const answer = await Promise.race([station.POST(request), new Promise<"hung">((resolve) => setTimeout(() => resolve("hung"), 5_000))])
+    expect(answer).not.toBe("hung")
+    // The line is off here, so its handler refuses the phrase: having read all of it. A cut body would be a 400.
+    expect((answer as Response).status).toBe(403)
+  })
+
   it("runs no tool for a call that never got the agent's session, or that is over", async () => {
     const args = { service: "s1", date: bakuDate(1), time: "11:00", name: "Elvin" }
     const unopened = await liveCall(CLINIC, CLINIC_VOIP, ELVIN)

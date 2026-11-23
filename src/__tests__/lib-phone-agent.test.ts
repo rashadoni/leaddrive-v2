@@ -96,6 +96,25 @@ describe("whose call the phone agent takes", () => {
     expect(f.dependencies.mark).not.toHaveBeenCalled()
   })
 
+  it("hands a long phrase of the line on at once, whole, even when the request does not say its length", async () => {
+    const f = fixture()
+    const text = JSON.stringify({ action: "utterance", callId: CALL_ID, seq: 1, audio: "A".repeat(320_000) })
+    const bytes = new TextEncoder().encode(text)
+    const original = new Request("https://app.leaddrivecrm.org/api/internal/voice-agent/pharmacy-inbound", {
+      method: "POST", duplex: "half",
+      headers: { authorization: `Bearer ${TOKEN}`, "content-type": "application/json", [PHONE_AGENT_CAPS_HEADER]: PHONE_AGENT_CAPABILITY },
+      body: new ReadableStream({ start(controller) {
+        for (let at = 0; at < bytes.length; at += 8192) controller.enqueue(bytes.subarray(at, at + 8192))
+        controller.close()
+      } }),
+    } as RequestInit)
+    // The route gives the agent a copy and the line's handler the request itself.
+    const answer = await Promise.race([f.route(original.clone()), new Promise<"hung">((resolve) => setTimeout(() => resolve("hung"), 1_000))])
+    expect(answer).toBeNull()
+    expect(f.dependencies.loadCall).not.toHaveBeenCalled()
+    expect(await original.text()).toBe(text)
+  })
+
   it("leaves a call to the handler that answered before when its channel has no switch, or is the pharmacy line's own", async () => {
     const off = fixture(liveCall({ settings: { ...SETTINGS, phoneBookingEnabled: false } }))
     expect(await off.route(request(session))).toBeNull()

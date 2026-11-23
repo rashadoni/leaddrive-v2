@@ -50,4 +50,27 @@ describe("bounded request body parsing", () => {
     expect(parsed.ok).toBe(true)
     if (parsed.ok) expect((parsed.value.get("file") as File).name).toBe("a.png")
   })
+  it("gives up on an oversized copy of a request at once, and leaves the request itself whole", async () => {
+    // A copy shares its stream with the original, and cancelling one of the two
+    // settles only when the other is cancelled as well. Waiting for that, the
+    // reader of a copy never answered (the phone agent's route, 2026-11-23).
+    const text = JSON.stringify({ audio: "a".repeat(100_000) })
+    const bytes = new TextEncoder().encode(text)
+    const request = new Request("https://app.leaddrivecrm.org/x", {
+      method: "POST",
+      duplex: "half",
+      body: new ReadableStream({ start(controller) {
+        for (let at = 0; at < bytes.length; at += 8192) controller.enqueue(bytes.subarray(at, at + 8192))
+        controller.close()
+      } }),
+    } as RequestInit)
+
+    const answer = await Promise.race([
+      readJsonRequestWithinLimit(request.clone(), 16 * 1024),
+      new Promise<"hung">((resolve) => setTimeout(() => resolve("hung"), 1_000)),
+    ])
+
+    expect(answer).toEqual({ ok: false, reason: "too_large" })
+    expect(await request.text()).toBe(text)
+  })
 })
