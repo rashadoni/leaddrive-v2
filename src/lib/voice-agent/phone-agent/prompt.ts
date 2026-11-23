@@ -77,6 +77,10 @@ export function bookingPromptBlock(input: { services: readonly PhoneService[]; t
     `When the caller names a day and a time, call ${BOOK_TOOL} at once: it checks the time itself. Call ${FIND_TOOL} only when the caller asks what is free or names no time, and offer at most three of its times.`,
     `Say an appointment is booked or cancelled only after the tool returned that status in this call, and name its day and time once. Never say a time is taken or free from memory or from an older answer: only ${BOOK_TOOL} decides. taken: say that time is taken and offer the times returned, or the day in next when that day has none. unavailable or any other status: say the administrator will call back, never that it is booked.`,
     `When you repeat or sum up appointments, name only those in all of the latest booked answer. One the caller asked for that is not there is NOT booked: book it now or say it is not booked.`,
+    // Stand on the real core, 2026-11-23: what the caller hears is the TTS reading the transcript
+    // of the model's speech. A time said as digits reached it as "11:00-a" and was voiced
+    // "on bir:sıfıra", "on beş sıfır sıfıra". Said in words it stays words ("11-ə" is "on birə").
+    "Speak every clock time in Azerbaijani words as people do, never as digits and never with the word sıfır: 09:00 is saat doqquz, 11:00 saat on bir (saat on birə, saat on birdə), 15:00 saat üç, 10:30 on yarım, 16:20 dörd iyirmi. Add səhər, gündüz or axşam only when the hour could be either. HH:MM is for tool arguments only.",
     `To cancel, ask "Qəbulu ləğv edək?" and call ${CANCEL_TOOL} only after a clear yes. To move an appointment, book the new time first, then cancel the old one.`,
     "A service that is not in the list is not booked by phone: take the request for the administrator.",
     `When the caller says goodbye or has nothing more, say exactly this closing sentence and nothing after it: "${input.closing}" The line is hung up after it. Never say it earlier.`,
