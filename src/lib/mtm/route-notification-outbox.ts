@@ -15,18 +15,8 @@ const OUTBOX_LEASE_MS = 60_000
 const OUTBOX_MAX_ATTEMPTS = 5
 const OUTBOX_MAX_BATCH_SIZE = 100
 
-export type MtmRouteNotificationType = "info" | "warning" | "alert" | "task"
-
-export interface MtmRouteNotificationMessage {
-  organizationId: string
-  agentId: string
-  /** Stable business-event identity, unique inside one tenant. */
-  dedupeKey: string
-  title: string
-  body?: string | null
-  type?: MtmRouteNotificationType
-  metadata?: Record<string, unknown>
-}
+export { enqueueMtmRouteNotification } from "@/lib/mtm/route-notification-enqueue"
+export type { MtmRouteNotificationMessage, MtmRouteNotificationType } from "@/lib/mtm/route-notification-enqueue"
 
 export interface MtmRouteNotificationOutboxDrainOptions {
   organizationId?: string
@@ -41,44 +31,6 @@ export interface MtmRouteNotificationOutboxDrainResult {
   suppressed: number
   deferred: number
   failed: number
-}
-
-type OutboxTransaction = Pick<Prisma.TransactionClient, "mtmRouteNotificationOutbox">
-
-function validateMessage(message: MtmRouteNotificationMessage) {
-  if (!message.organizationId || !message.agentId || !message.dedupeKey || !message.title) {
-    throw new Error("MTM route notification outbox requires organization, agent, dedupe key, and title")
-  }
-}
-
-/**
- * Call only from the business transaction that made the source change. The
- * no-op update preserves the first committed notification text and makes a
- * retried business request idempotent without rewriting delivery evidence.
- */
-export async function enqueueMtmRouteNotification(
-  tx: OutboxTransaction,
-  message: MtmRouteNotificationMessage,
-) {
-  validateMessage(message)
-  return tx.mtmRouteNotificationOutbox.upsert({
-    where: {
-      organizationId_dedupeKey: {
-        organizationId: message.organizationId,
-        dedupeKey: message.dedupeKey,
-      },
-    },
-    create: {
-      organizationId: message.organizationId,
-      agentId: message.agentId,
-      dedupeKey: message.dedupeKey,
-      title: message.title,
-      body: message.body ?? null,
-      type: message.type ?? "info",
-      metadata: message.metadata as Prisma.InputJsonValue | undefined,
-    },
-    update: {},
-  })
 }
 
 function retryAt(now: Date, attempts: number): Date {

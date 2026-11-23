@@ -8,7 +8,7 @@ import {
   type AgentActivityWords,
 } from "@/lib/mtm/agent-activity-notice"
 import { AGENT_LANGUAGE_SELECT, agentLanguage } from "@/lib/mtm/agent-language"
-import { enqueueMtmRouteNotification } from "@/lib/mtm/route-notification-outbox"
+import { enqueueMtmRouteNotification } from "@/lib/mtm/route-notification-enqueue"
 
 /**
  * Queues the manager's notice inside the transaction that made the change, so
