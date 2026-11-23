@@ -19,7 +19,7 @@ let root: Root
 let calls: Array<{ url: string; method: string; body: unknown }>
 
 const comment = (id: string, text: string, extra: Partial<BoardComment> = {}): BoardComment => ({
-  id, conversationId: `conv-${id}`, author: `@${id}`, text, createdAt: "2026-11-22T10:00:00.000Z",
+  id, platform: "instagram", conversationId: `conv-${id}`, author: `@${id}`, text, createdAt: "2026-11-22T10:00:00.000Z",
   isThreadReply: false, answered: false, privateReplyAvailable: true, keyword: null, replies: [], ...extra,
 })
 const post = (key: string, caption: string, comments: BoardComment[]): BoardPost => ({
@@ -146,6 +146,34 @@ describe("the «Комментарии» section of Omni-Channel", () => {
 
     expect(card.querySelector('[role="alert"]')?.textContent).toBe("Ответ не отправлен: outside the customer's messaging window")
     expect(card.querySelector("textarea")!.value).toBe("Salam")
+  })
+
+  it("answers a Facebook comment through its own route, in Messenger's words", async () => {
+    const fb = comment("farid", "Qiymət?", { platform: "facebook", conversationId: null })
+    answer({ ...BOARD, posts: [{ ...post("page_1", "Facebook post", [fb]), platform: "facebook" }] }, {
+      "POST /api/v1/inbox/comments/facebook/farid/reply": { status: 201, body: { success: true } },
+    })
+    await render()
+    const card = all("inbox-comments-comment")[0]
+    // No thread yet: nothing to open.
+    expect(card.textContent).not.toContain("Открыть диалог")
+    await press(button("Написать в Messenger", card))
+    expect(card.textContent).toContain("Facebook даёт один такой ответ")
+    await type(card.querySelector("textarea")!, "Salam")
+    await press(card.querySelector('[data-testid="inbox-comments-send"]')!)
+
+    const sent = calls.find((c) => c.method === "POST")!
+    expect(sent.url).toBe("/api/v1/inbox/comments/facebook/farid/reply")
+    expect(sent.body).toEqual({ mode: "private", body: "Salam" })
+  })
+
+  it("does not offer Messenger once the Facebook comment's private reply is spent", async () => {
+    const fb = comment("farid", "Qiymət?", { platform: "facebook", conversationId: "conv-1", privateReplyAvailable: false })
+    answer({ ...BOARD, posts: [{ ...post("page_1", "Facebook post", [fb]), platform: "facebook" }] })
+    await render()
+    const card = all("inbox-comments-comment")[0]
+    expect(button("Написать в Messenger", card)).toBeUndefined()
+    expect(card.textContent).toContain("Открыть диалог")
   })
 
   it("saves the keyword rules as the administrator left them", async () => {

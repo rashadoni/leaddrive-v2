@@ -15,6 +15,7 @@
 import { prisma } from "@/lib/prisma"
 import { privateReplyAvailable, storedInstagramComment } from "@/lib/social/instagram-comments"
 import { matchCommentKeywordRule, type CommentKeywordRule } from "@/lib/inbox/comment-keyword-rules"
+import { facebookPrivateReplyAvailable, storedFacebookReplies } from "@/lib/inbox/facebook-comment-reply"
 
 /** How far back the section looks, and how many comments it carries at most. */
 export const COMMENTS_BOARD_DAYS = 30
@@ -43,8 +44,10 @@ export type BoardReply = {
 }
 
 export type BoardComment = {
-  /** The inbound message row — what an answer names. */
+  /** The stored row — what an answer names. */
   id: string
+  platform: "instagram" | "facebook"
+  /** Facebook: null until a private reply has told us the person's Messenger thread. */
   conversationId: string | null
   author: string
   text: string
@@ -61,7 +64,7 @@ export type BoardComment = {
 
 export type BoardPost = {
   key: string
-  platform: "instagram"
+  platform: "instagram" | "facebook"
   channelConfigId: string | null
   channelName: string | null
   caption: string | null
@@ -166,6 +169,7 @@ export function buildCommentsBoard(input: {
     const answered = replies.length > 0 || Boolean(stored.privateReplyAt)
     post.comments.push({
       id: row.id,
+      platform: "instagram",
       conversationId: row.conversationId,
       author: stored.username ? `@${stored.username}` : row.from,
       text: row.body,
@@ -184,6 +188,83 @@ export function buildCommentsBoard(input: {
   const list = [...posts.values()]
   for (const post of list) post.comments.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   return list.sort((a, b) => b.lastCommentAt.localeCompare(a.lastCommentAt))
+}
+
+export type FacebookCommentRow = {
+  id: string
+  channelConfigId: string | null
+  commentId: string
+  postId: string | null
+  parentId: string | null
+  fromId: string | null
+  fromName: string | null
+  body: string
+  commentedAt: Date
+  caption: string | null
+  permalink: string | null
+  imageUrl: string | null
+  isVideo: boolean
+  privateReplyAt: Date | null
+  conversationId: string | null
+  replies: unknown
+}
+
+/** Facebook's rows in the board's shape: answered once any answer is stored or the private reply went. */
+export function buildFacebookPosts(input: {
+  comments: readonly FacebookCommentRow[]
+  channelNames: ReadonlyMap<string, string>
+  rules: readonly CommentKeywordRule[]
+  now?: number
+}): BoardPost[] {
+  const posts = new Map<string, BoardPost>()
+  for (const row of input.comments) {
+    const key = `${row.channelConfigId ?? "-"}:${row.postId ?? "unknown"}`
+    const at = row.commentedAt.toISOString()
+    let post = posts.get(key)
+    if (!post) {
+      post = {
+        key,
+        platform: "facebook",
+        channelConfigId: row.channelConfigId,
+        channelName: row.channelConfigId ? input.channelNames.get(row.channelConfigId) ?? null : null,
+        caption: row.caption,
+        permalink: row.permalink,
+        imageUrl: row.imageUrl,
+        isReel: row.isVideo,
+        lastCommentAt: at,
+        total: 0,
+        unanswered: 0,
+        comments: [],
+      }
+      posts.set(key, post)
+    }
+    post.caption ??= row.caption
+    post.permalink ??= row.permalink
+    post.imageUrl ??= row.imageUrl
+    const replies: BoardReply[] = storedFacebookReplies(row.replies)
+      .map((r) => ({ id: r.id, text: r.text, mode: r.mode, createdAt: r.at, authorName: r.authorName, keyword: r.keyword, fromApp: r.fromApp }))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    const answered = replies.length > 0 || Boolean(row.privateReplyAt)
+    post.comments.push({
+      id: row.id,
+      platform: "facebook",
+      conversationId: row.conversationId,
+      author: row.fromName || "Facebook",
+      text: row.body,
+      createdAt: at,
+      isThreadReply: Boolean(row.parentId),
+      answered,
+      privateReplyAvailable: facebookPrivateReplyAvailable(row, input.now),
+      keyword: matchCommentKeywordRule(input.rules, row.body, row.channelConfigId)?.keyword ?? null,
+      replies,
+    })
+    post.total += 1
+    if (!answered) post.unanswered += 1
+    if (at > post.lastCommentAt) post.lastCommentAt = at
+  }
+  const list = [...posts.values()]
+  for (const post of list) post.comments.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  return list
 }
 
 export type CommentsBoardChannel = { id: string; name: string }
@@ -211,17 +292,22 @@ export async function loadCommentsBoard(params: {
   const since = new Date(now - COMMENTS_BOARD_DAYS * 24 * 60 * 60 * 1000)
   const hidden = [...hiddenChannelIds]
 
-  const channelRows: Array<{ id: string; configName: string | null }> = await prisma.channelConfig.findMany({
+  const channelRows: Array<{ id: string; configName: string | null; channelType: string; settings: unknown }> = await prisma.channelConfig.findMany({
     where: {
       organizationId,
-      channelType: "instagram",
+      channelType: { in: ["instagram", "facebook"] },
       isActive: true,
       ...(hidden.length ? { id: { notIn: hidden } } : {}),
     },
-    select: { id: true, configName: true },
+    select: { id: true, configName: true, channelType: true, settings: true },
     orderBy: { createdAt: "asc" },
   })
-  const channels = channelRows.map((c) => ({ id: c.id, name: c.configName || "Instagram" }))
+  // A Facebook Page is offered only once it was connected with the comment permissions.
+  const channels = channelRows
+    .filter((c) => c.channelType === "instagram" || rec(c.settings).commentsGranted === true)
+    .map((c) => ({ id: c.id, name: c.configName || (c.channelType === "facebook" ? "Facebook" : "Instagram") }))
+  // Names for rows of a Page that has since lost the permission: its stored comments still show.
+  const channelNames = new Map(channelRows.map((c) => [c.id, c.configName || "Facebook"]))
 
   const visible = hidden.length
     ? { OR: [{ channelConfigId: null }, { channelConfigId: { notIn: hidden } }] }
@@ -257,15 +343,27 @@ export async function loadCommentsBoard(params: {
     select: { id: true, body: true, status: true, createdAt: true, metadata: true },
   })
 
-  return {
-    posts: buildCommentsBoard({
-      comments,
-      replies,
-      channelNames: new Map(channels.map((c) => [c.id, c.name])),
+  const facebookRows: FacebookCommentRow[] = await prisma.facebookPageComment.findMany({
+    where: { organizationId, removedAt: null, commentedAt: { gte: since }, ...visible },
+    orderBy: { commentedAt: "desc" },
+    take: COMMENTS_BOARD_LIMIT + 1,
+    select: {
+      id: true, channelConfigId: true, commentId: true, postId: true, parentId: true, fromId: true, fromName: true,
+      body: true, commentedAt: true, caption: true, permalink: true, imageUrl: true, isVideo: true,
+      privateReplyAt: true, conversationId: true, replies: true,
+    },
+  })
+  const facebookTruncated = facebookRows.length > COMMENTS_BOARD_LIMIT
+
+  const posts = [
+    ...buildCommentsBoard({ comments, replies, channelNames, rules: params.rules, now }),
+    ...buildFacebookPosts({
+      comments: facebookTruncated ? facebookRows.slice(0, COMMENTS_BOARD_LIMIT) : facebookRows,
+      channelNames,
       rules: params.rules,
       now,
     }),
-    channels,
-    truncated,
-  }
+  ].sort((a, b) => b.lastCommentAt.localeCompare(a.lastCommentAt))
+
+  return { posts, channels, truncated: truncated || facebookTruncated }
 }

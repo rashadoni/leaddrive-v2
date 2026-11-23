@@ -62,6 +62,7 @@ model Organization {
   inboxLearnedItems     InboxLearnedItem[]
   inboxLearningSamples  InboxLearningSample[]
   whatsappHistoryChunks WhatsAppHistoryChunk[]
+  facebookPageComments FacebookPageComment[]
   purchaseRequests      PurchaseRequest[]
   purchaseRequestItems  PurchaseRequestItem[]
   supplierQuotes        SupplierQuote[]
@@ -3996,6 +3997,7 @@ model ChannelConfig {
   learnedItems       InboxLearnedItem[]
   learningSamples    InboxLearningSample[]
   historyChunks      WhatsAppHistoryChunk[]
+  facebookPageComments FacebookPageComment[]
 
   @@index([organizationId])
   @@map("channel_configs")
@@ -4208,6 +4210,46 @@ model ChannelMessage {
 /// only stores the row and the importer works through it after the response. The sync cannot be
 /// requested twice, which is why a chunk is kept until it is imported rather than retried by Meta;
 /// the payload is dropped once it is, and the row stays as the progress record.
+/// A comment under a Facebook Page's post (lib/inbox/facebook-comment-ingest). Not a ChannelMessage: its
+/// author id is not a Messenger PSID, so it has no conversation, and readers of inbound rows would take
+/// it for a DM. `conversationId` is set once the private reply has told us the person's PSID.
+model FacebookPageComment {
+  id              String         @id @default(cuid())
+  organizationId  String
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  channelConfigId String?
+  channelConfig   ChannelConfig? @relation(fields: [channelConfigId], references: [id], onDelete: SetNull)
+  pageId          String
+  commentId       String
+  postId          String?
+  parentId        String?
+  /// Meta leaves `from` out for some authors; such a comment still shows and can be answered.
+  fromId          String?
+  fromName        String?
+  body            String
+  commentedAt     DateTime
+  caption         String?
+  permalink       String?
+  /// Our own stored copy of the post's picture.
+  imageUrl        String?
+  isVideo         Boolean        @default(false)
+  /// Meta takes one private reply per comment, within 7 days.
+  privateReplyAt  DateTime?
+  conversationId  String?
+  /// [{ id, text, mode: public|private, at, authorName, keyword, ruleId, fromApp }]
+  replies         Json           @default("[]")
+  /// The author deleted it, or the Page hid it.
+  removedAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([organizationId, commentId])
+  @@index([organizationId, commentedAt])
+  @@index([organizationId, fromId, commentedAt])
+  @@index([organizationId, postId])
+  @@map("facebook_page_comments")
+}
+
 model WhatsAppHistoryChunk {
   id              String        @id @default(cuid())
   organizationId  String

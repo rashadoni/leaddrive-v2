@@ -1,3 +1,4 @@
+import { tokenHoldsFacebookCommentScopes } from "@/lib/social/facebook-comments"
 import { NextRequest, NextResponse } from "next/server"
 import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
@@ -115,6 +116,7 @@ export async function GET(req: NextRequest) {
     app?: string
     messengerAppId?: string
     channelId?: unknown
+    comments?: boolean
   }
   // First point where the payload is HMAC-verified, so this is the first place `ret` may be trusted.
   // Re-normalising on the consuming side keeps the whitelist authoritative even if the issuing side
@@ -234,6 +236,11 @@ export async function GET(req: NextRequest) {
     )
   }
 
+  // `?comments=1` connect: the person may have unticked a permission in Meta's dialog, so what counts
+  // is what the token holds, never what was asked for.
+  const commentsGranted = payload.comments === true && Boolean(messenger)
+    && await tokenHoldsFacebookCommentScopes(longJson.access_token)
+
   // Pages / Instagram accounts this round trip wired. The channel card reads them as "was anything
   // connected", so a staged connect counts the staged inbox rows it wired even though it writes no
   // SocialAccount.
@@ -304,7 +311,7 @@ export async function GET(req: NextRequest) {
     if (monitoringOnly) {
       if (originChannelId && page.id === originPageId) wiredForReturnCard.push(originChannelId)
     } else {
-      const pageChannel = await ensureInboxChannelForPage(payload.orgId, "facebook", page.id, page.name, page.access_token, { staged })
+      const pageChannel = await ensureInboxChannelForPage(payload.orgId, "facebook", page.id, page.name, page.access_token, { staged, ...(commentsGranted ? { comments: true } : {}) })
       if (returnCardType === "facebook" && pageChannel.channelId) wiredForReturnCard.push(pageChannel.channelId)
     }
 

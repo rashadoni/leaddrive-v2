@@ -38,6 +38,11 @@ export type EnsureInboxChannelOptions = {
    * For the same reason the Facebook callback writes no SocialAccount at all on a staged connect.
    */
   staged?: boolean
+  /**
+   * This connect was granted the Page-comment permissions (lib/social/facebook-comments): the Page is
+   * subscribed to `feed` too. A later ordinary reconnect keeps it — see `settings.commentsGranted`.
+   */
+  comments?: boolean
 }
 
 export async function ensureInboxChannelForPage(
@@ -70,12 +75,26 @@ export async function ensureInboxChannelForPage(
   // re-connect when a real subscribe fails (a missing pages_messaging scope).
   //
   // A STAGED connect subscribes nothing at all — see EnsureInboxChannelOptions.staged.
-  const sub: { success: boolean; error?: string } =
-    staged
-      ? { success: false, error: "staged: subscription deferred to an explicit action" }
-      : channelType === "instagram"
-        ? { success: true }
-        : await subscribePageToMessages(pageId, pageToken)
+  // Whether the Page's token can read and answer comments is a property of THIS grant: an ordinary
+  // reconnect is a Messenger-only consent, and its token cannot, so it clears `commentsGranted` below.
+  const wantsComments = !staged && channelType === "facebook" && options.comments === true
+  let commentsSubscribed = false
+  let sub: { success: boolean; error?: string }
+  if (staged) {
+    sub = { success: false, error: "staged: subscription deferred to an explicit action" }
+  } else if (channelType === "instagram") {
+    sub = { success: true }
+  } else if (wantsComments) {
+    sub = await subscribePageToMessages(pageId, pageToken, { comments: true })
+    commentsSubscribed = sub.success
+    // Comments must never cost the Page its Messenger.
+    if (!sub.success) {
+      console.warn(`[inbox-channel] feed subscribe refused for page ${pageId}: ${sub.error}`)
+      sub = await subscribePageToMessages(pageId, pageToken)
+    }
+  } else {
+    sub = await subscribePageToMessages(pageId, pageToken)
+  }
   if (!sub.success && !staged) {
     console.warn(`[inbox-channel] subscribe failed for ${channelType} page ${pageId}: ${sub.error}`)
   }
@@ -106,6 +125,8 @@ export async function ensureInboxChannelForPage(
       ? (existing.settings as Record<string, unknown>)
       : {}
   const settings: Record<string, unknown> = { ...prevSettings, inboxSubscribed: sub.success }
+  if (wantsComments) settings.commentsGranted = commentsSubscribed
+  else if (!staged) delete settings.commentsGranted
   if (staged) {
     settings.appReviewOnly = true
     // Distinguishes "Meta refused the subscription" from "we deliberately did not ask". Every channel

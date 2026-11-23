@@ -22,7 +22,14 @@ export type MetaDmAttachmentType = "image" | "video" | "audio" | "file"
  * owner — Zeytun got «Сообщение отправлено за пределами допустимого окна» on an Azerbaijani screen —
  * so the caller decides from this flag, not from the words.
  */
-export type MetaDmSendResult = { ok: boolean; messageId: string | null; error: string | null; outsideWindow?: true }
+export type MetaDmSendResult = {
+  ok: boolean
+  messageId: string | null
+  error: string | null
+  outsideWindow?: true
+  /** Who Meta delivered it to. A private reply to a Facebook comment is how we learn the person's PSID. */
+  recipientId?: string
+}
 
 const OUTSIDE_WINDOW_SUBCODES = new Set([2534022, 2018278])
 
@@ -85,11 +92,13 @@ async function post(params: {
       }
     }
     let messageId: string | null = null
+    let recipientId: string | null = null
     try {
-      const id = (JSON.parse(raw) as { message_id?: unknown }).message_id
-      messageId = typeof id === "string" && id ? id : null
+      const json = JSON.parse(raw) as { message_id?: unknown; recipient_id?: unknown }
+      messageId = typeof json.message_id === "string" && json.message_id ? json.message_id : null
+      recipientId = typeof json.recipient_id === "string" && json.recipient_id ? json.recipient_id : null
     } catch { /* a 2xx without a body is still a send */ }
-    return { ok: true, messageId, error: null }
+    return { ok: true, messageId, error: null, ...(recipientId ? { recipientId } : {}) }
   } catch (e) {
     const text = redactOAuthProviderText(e instanceof Error ? `${e.name}: ${e.message}` : String(e))
     console.error("[meta-dm] send error:", text)

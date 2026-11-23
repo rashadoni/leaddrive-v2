@@ -49,12 +49,15 @@ export const POST = withSocialConnectAuth("write", async (req, auth) => {
     )
   }
 
-  const result = await subscribePageToMessages(cfg.pageId, cfg.apiKey)
-
   const prevSettings =
     cfg.settings && typeof cfg.settings === "object" && !Array.isArray(cfg.settings)
       ? (cfg.settings as Record<string, unknown>)
       : {}
+  // Re-subscribing a Page that gets its comments must not narrow what it sends us.
+  const result = prevSettings.commentsGranted === true
+    ? await subscribePageToMessages(cfg.pageId, cfg.apiKey, { comments: true })
+    : await subscribePageToMessages(cfg.pageId, cfg.apiKey)
+
   const nextSettings: Record<string, unknown> = { ...prevSettings, inboxSubscribed: result.success }
   // Clear the "we never asked" marker once we actually have asked, whatever the answer — leaving it
   // set would keep the card claiming the subscription is merely pending after Meta has refused it.
@@ -65,7 +68,7 @@ export const POST = withSocialConnectAuth("write", async (req, auth) => {
     success: result.success,
     configId: cfg.id,
     pageId: cfg.pageId,
-    subscribedFields: ["messages", "messaging_postbacks"],
+    subscribedFields: prevSettings.commentsGranted === true ? ["messages", "messaging_postbacks", "feed"] : ["messages", "messaging_postbacks"],
     ...(result.success ? {} : { error: result.error }),
   }, { status: result.success ? 200 : 502 })
 }, { channel: true })
