@@ -369,4 +369,61 @@ function schemaWithoutEmbeddings(): string {
     const disputed = await inOrg(() => blocks.learnedPromptBlocks({ organizationId: ORG, channelConfigId: FULL }))
     expect(disputed.knowledge).not.toContain("- Педикюр: 30 ₼")
   })
+
+  it("gives a reconnected channel back its own conversations, and nobody else's", async () => {
+    const NEW = "cfg-ig-reconnected"
+    const SIBLING = "cfg-ig-sibling"
+    await bypass(async () => {
+      await prisma.channelConfig.createMany({
+        data: [
+          { id: NEW, organizationId: ORG, channelType: "instagram", configName: "back.again", pageId: "ig-account-a", settings: {} },
+          { id: SIBLING, organizationId: ORG, channelType: "instagram", configName: "sibling", pageId: "ig-account-b", settings: {} },
+        ],
+      })
+      const conversation = (id: string, organizationId: string, channelConfigId: string | null, platform = "instagram") => ({
+        id, organizationId, platform, externalId: `ext-${id}`, contactName: id, channelConfigId, lastMessageAt: min(30),
+      })
+      await prisma.socialConversation.createMany({
+        data: [
+          conversation("orph-mine", ORG, null),
+          conversation("orph-other-account", ORG, null),
+          conversation("orph-no-inbound", ORG, null),
+          conversation("bound-elsewhere", ORG, SIBLING),
+          conversation("orph-other-org", OTHER, null),
+          conversation("orph-facebook", ORG, null, "facebook"),
+        ],
+      })
+      const inbound = (id: string, organizationId: string, conversationId: string, to: string, channelType = "instagram") => ({
+        id, organizationId, conversationId, direction: "inbound", channelType, from: `ext-${conversationId}`, to, body: "Salam", metadata: {}, createdAt: min(30),
+      })
+      await prisma.channelMessage.createMany({
+        data: [
+          inbound("a1", ORG, "orph-mine", "ig-account-a"),
+          inbound("a2", ORG, "orph-other-account", "ig-account-b"),
+          inbound("a3", ORG, "bound-elsewhere", "ig-account-a"),
+          inbound("a4", OTHER, "orph-other-org", "ig-account-a"),
+          inbound("a5", ORG, "orph-facebook", "ig-account-a", "facebook"),
+          { id: "a6", organizationId: ORG, conversationId: "orph-no-inbound", direction: "outbound", channelType: "instagram", from: "ig-account-a", to: "x", body: "Salam", metadata: {}, createdAt: min(30) },
+        ],
+      })
+    })
+    const channel = { id: NEW, organizationId: ORG, channelType: "instagram", pageId: "ig-account-a" }
+    const { adoptOrphanConversations } = await import("@/lib/inbox/adopt-orphan-conversations")
+    expect(await inOrg(() => adoptOrphanConversations(channel))).toBe(1)
+    const bindings = await bypass<Array<{ id: string; channelConfigId: string | null }>>(() => prisma.socialConversation.findMany({
+      where: { id: { in: ["orph-mine", "orph-other-account", "orph-no-inbound", "bound-elsewhere", "orph-other-org", "orph-facebook"] } },
+      select: { id: true, channelConfigId: true },
+    }))
+    expect(Object.fromEntries(bindings.map((b) => [b.id, b.channelConfigId]))).toEqual({
+      "orph-mine": NEW,
+      // Another account of the same organization: unbound, not guessed onto this one.
+      "orph-other-account": null,
+      "orph-no-inbound": null,
+      "bound-elsewhere": SIBLING,
+      "orph-other-org": null,
+      "orph-facebook": null,
+    })
+    // A second pass has nothing left to do.
+    expect(await inOrg(() => adoptOrphanConversations(channel))).toBe(0)
+  })
 })

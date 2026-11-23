@@ -27,6 +27,7 @@ import {
 import { compareAnswers, extractCharacter, extractKnowledge, measuredCharacter } from "@/lib/inbox/learning/judge"
 import { planMerge } from "@/lib/inbox/learning/merge"
 import { readLearningStart } from "@/lib/inbox/learning/settings"
+import { adoptOrphanConversations } from "@/lib/inbox/adopt-orphan-conversations"
 
 /** A person's turn may come in several messages; read it once they stopped typing. */
 const SETTLE_MS = 2 * 60_000
@@ -52,13 +53,13 @@ export type LearningRunSummary = {
   stopped: string[]
 }
 
-type Channel = { id: string; organizationId: string; channelType: string; settings: unknown }
+type Channel = { id: string; organizationId: string; channelType: string; pageId: string | null; isActive: boolean; settings: unknown }
 
 export async function runInboxLearning(options: { now?: Date } = {}): Promise<LearningRunSummary> {
   const now = options.now ?? new Date()
   const channels: Channel[] = await runWithRlsBypass(() => prisma.channelConfig.findMany({
     where: { settings: { path: ["replyMode"], equals: LEARNING_REPLY_MODE } },
-    select: { id: true, organizationId: true, channelType: true, settings: true },
+    select: { id: true, organizationId: true, channelType: true, pageId: true, isActive: true, settings: true },
     orderBy: { id: "asc" },
   }))
   const summary: LearningRunSummary = { channels: channels.length, samples: 0, drafts: 0, extracted: 0, character: 0, stopped: [] }
@@ -121,6 +122,8 @@ async function learnChannel(channel: Channel, now: Date, summary: LearningRunSum
   const organizationId = channel.organizationId
   const started = readLearningStart(channel.settings) ?? now
   const since = new Date(Math.max(started.getTime() - LEARNING_BACKFILL_DAYS * 86_400_000, now.getTime() - 21 * 86_400_000))
+  // A channel connected again after its row was deleted: its earlier conversations are its to learn from.
+  if (channel.isActive) await adoptOrphanConversations(channel)
 
   // ── 1. answers → samples, in the order they were given ──────────────────────────────────────────
   const last = await prisma.inboxLearningSample.findFirst({

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { subscribePageToMessages } from "./meta-subscribe"
+import { adoptOrphanConversations } from "@/lib/inbox/adopt-orphan-conversations"
 import { isAppReviewOnly } from "./tenant-meta-app"
 
 /**
@@ -170,6 +171,9 @@ export async function ensureInboxChannelForPage(
     channelId = row.id
     created = true
   }
+
+  // The same Page connected again after its row was deleted: its conversations come back with it.
+  if (!staged) await adoptOrphanConversations({ id: channelId, organizationId, channelType, pageId })
 
   return {
     created,
