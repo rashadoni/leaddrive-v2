@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/notifications"
 import type { AiQualityMetadata } from "@/lib/ai/response-scorer"
 import type { AiDraftReason } from "@/lib/inbox/ai-reply-gate"
+import { AI_DRAFT_NOTICE_TITLE } from "@/lib/inbox/ai-draft-telegram-settings"
 
 export type ConversationAiDraft = {
   text: string
@@ -30,6 +31,8 @@ export type ConversationAiDraft = {
   createdAt: string
   /** The customer message the draft answers (preview for the review UI). */
   inboundPreview?: string
+  /** What the employee must check: the AI named a price or benefit the facts do not back. */
+  reviewNote?: "unverified_offer"
 }
 
 /** Read the pending draft off a conversation metadata blob (null when none). */
@@ -80,7 +83,7 @@ export async function saveConversationAiDraft(opts: {
             organizationId,
             userId,
             type: "info",
-            title: "AI подготовил черновик ответа",
+            title: AI_DRAFT_NOTICE_TITLE,
             message: `Черновик AI-ответа (${draft.channel}) ждёт проверки — откройте диалог, чтобы отправить или изменить`,
             entityType: "inbox_message",
             entityId: conversationId,
@@ -91,6 +94,15 @@ export async function saveConversationAiDraft(opts: {
       )
     } catch {
       /* notification failure must not undo the saved draft */
+    }
+    // «Черновики в Telegram»: the employee gets the draft with buttons at once (owner 2026-11-24).
+    // Loaded on demand — the bot pulls in the tenant crypto chain the many importers of this file
+    // do not need. Best-effort: Telegram down leaves the draft in the CRM, as before.
+    try {
+      const { announceAiDraftToTelegram } = await import("@/lib/inbox/ai-draft-telegram")
+      await announceAiDraftToTelegram({ organizationId, conversationId, draft })
+    } catch (e) {
+      console.error("[ai-draft] telegram announce failed:", e instanceof Error ? e.message : e)
     }
     return true
   } catch (e) {

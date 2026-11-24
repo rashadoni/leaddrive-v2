@@ -747,6 +747,14 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
         data: { lastMessage: body, lastMessageAt: new Date() },
       })
     }
+    // The customer has an answer: the cards in the employees' Telegram that still offer an AI draft
+    // for this conversation say so instead (lib/inbox/ai-draft-telegram). Not awaited — Telegram's
+    // latency is no part of a reply.
+    if (conversationId && status !== "failed") {
+      void import("@/lib/inbox/ai-draft-telegram")
+        .then((m) => m.settleAiDraftCards({ organizationId: orgId, conversationId, state: "answered" }))
+        .catch(() => undefined)
+    }
 
     if (status === "failed") {
       if (deliveryUnknown) {

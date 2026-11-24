@@ -108,7 +108,8 @@ export async function proposeAction(actor: StaffActor, linkId: string, toolName:
   }
 
   // One open proposal at a time: a new one replaces the one not yet pressed.
-  await prisma.telegramStaffAction.updateMany({ where: { organizationId: actor.orgId, linkId, status: "pending" }, data: { status: "cancelled", decidedAt: now } })
+  // (The AI draft cards on the same table — lib/inbox/ai-draft-telegram — are not proposals.)
+  await prisma.telegramStaffAction.updateMany({ where: { organizationId: actor.orgId, linkId, status: "pending", kind: { in: ["create_lead", "create_task"] } }, data: { status: "cancelled", decidedAt: now } })
   const row = await prisma.telegramStaffAction.create({
     data: { organizationId: actor.orgId, linkId, kind, payload: payload as object, expiresAt: new Date(now.getTime() + ACTION_TTL_MS) },
     select: { id: true },
@@ -163,7 +164,7 @@ export type DecideOutcome =
 /** «Təsdiqlə» or «Ləğv et» on a proposal, by the employee whose link made it. */
 export async function decideAction(actor: StaffActor, linkId: string, actionId: string, confirm: boolean, now = new Date()): Promise<DecideOutcome> {
   const row = await prisma.telegramStaffAction.findFirst({ where: { id: actionId, organizationId: actor.orgId }, select: { id: true, linkId: true, kind: true, payload: true, status: true, expiresAt: true } })
-  if (!row) return { status: "gone" }
+  if (!row || (row.kind !== "create_lead" && row.kind !== "create_task")) return { status: "gone" }
   if (row.linkId !== linkId) return { status: "not_yours" }
   if (row.status !== "pending") return { status: "gone" }
   if (!confirm) {

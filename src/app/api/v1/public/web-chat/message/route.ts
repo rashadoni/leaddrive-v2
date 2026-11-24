@@ -209,6 +209,8 @@ export async function POST(req: NextRequest) {
                 draftMode: widget.aiDraftMode === true,
                 aiThreshold: typeof widget.aiThreshold === "number" ? widget.aiThreshold : null,
                 aiRolloutPercent: null, // rollout is enforced above, before generation
+                // The widget has no channel row; «Черновики в Telegram» is a channel's switch.
+                telegramDrafts: false,
               },
               reply.quality,
             )

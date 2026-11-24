@@ -197,6 +197,25 @@ describe("generateChannelAiReply", () => {
     expect(r.escalate).toBe(true)
   })
 
+  // «Черновики в Telegram» (owner 2026-11-24): an employee reads the unsure reply before it goes, so the
+  // AI never tells the customer to wait for a manager, and the price rule does not rewrite the reply —
+  // the employee sees the model's words with a warning.
+  it("REVIEWED: tells the model not to hand off and keeps an unbacked price for the employee", async () => {
+    anthropicCreate.mockClear()
+    anthropicCreate.mockResolvedValue({ content: [{ type: "text", text: "5 nəfər üçün ayda 120 AZN-dir. [ESCALATE]" }] })
+    const r = await generateChannelAiReply({ orgId: "o1", channel: "instagram", externalId: "u1", userMessage: "CRM neçəyədir?", senderName: "X", reviewedByPerson: true })
+    expect(anthropicCreate.mock.calls[0][0].system).toContain("ПРОВЕРКА СОТРУДНИКОМ")
+    expect(r.reply).toBe("5 nəfər üçün ayda 120 AZN-dir.")
+    expect(r.unverifiedOffer).toBe(true)
+    expect(r.escalate).toBe(true)
+
+    anthropicCreate.mockClear()
+    const live = await generateChannelAiReply({ orgId: "o1", channel: "instagram", externalId: "u1", userMessage: "CRM neçəyədir?", senderName: "X" })
+    expect(anthropicCreate.mock.calls[0][0].system).not.toContain("ПРОВЕРКА СОТРУДНИКОМ")
+    expect(live.reply).not.toContain("120 AZN")
+    expect(live.unverifiedOffer).toBeUndefined()
+  })
+
   it("PERSONA: uses the inbox agent's custom prompt/model/temperature when configured", async () => {
     vi.mocked(prisma.aiAgentConfig.findFirst).mockResolvedValue({
       systemPrompt: "Ты — дружелюбный бот магазина обуви.",

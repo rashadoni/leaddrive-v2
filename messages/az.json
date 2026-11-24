@@ -5063,6 +5063,8 @@
     "aiModeLearning": "Öyrənmə",
     "aiModeLearningHint": "Əməkdaşlar cavab verir, AI səssizcə onların cavablarından öyrənir.",
     "aiModeLearningOpen": "Öyrənməni aç",
+    "aiTelegramDrafts": "Qaralamalar Telegram-da",
+    "aiTelegramDraftsHint": "AI əmin olmayanda qaralama dərhal yazışmaya baxan əməkdaşın (və ya adminlərin) Telegram-ına düymələrlə gəlir: göndər, düzəlt, özüm yazacam. Müştəriyə «menecerə ötürürəm» yazılmır. Əməkdaş botu (Ayarlar → Kanallar → Telegram bot) və profildə bağlı Telegram lazımdır.",
     "aiTuneRollout": "Dialoqların payı",
     "aiTuneCaution": "Ehtiyat",
     "aiCautionCareful": "Ehtiyatlı",

@@ -13,8 +13,14 @@
  *
  * Escalation replies bypass the gate: the customer must hear the "передаю менеджеру" hand-off
  * immediately (the team is notified in the same breath), otherwise the promise dies in a draft.
+ *
+ * Except on a channel with «Черновики в Telegram» (telegramDrafts, owner 2026-11-24: «клиенту не
+ * нужно ждать… если он скажет "я перевожу кому-то", всё, теряю клиента»): there an employee gets the
+ * draft in Telegram at once, so a reply the AI is not sure of — a hand-off included — is drafted
+ * (reason "handoff") instead of telling the customer to wait for a manager.
  */
 import type { AiQualityMetadata } from "@/lib/ai/response-scorer"
+import { telegramDraftsEnabled } from "@/lib/inbox/ai-draft-telegram-settings"
 
 export type AiReplyPolicy = {
   draftMode: boolean
@@ -22,6 +28,8 @@ export type AiReplyPolicy = {
   aiThreshold: number | null
   /** A3 — share of inbound conversations the AI handles (0..100); null = everyone (pre-A3 behavior). */
   aiRolloutPercent: number | null
+  /** «Черновики в Telegram» — every draft goes to an employee's Telegram (lib/inbox/ai-draft-telegram). */
+  telegramDrafts: boolean
 }
 
 export type AiDraftReason =
@@ -30,6 +38,7 @@ export type AiDraftReason =
   | "clarifying_question"
   | "scoring_failed"
   | "commitment_guard"
+  | "handoff"
 
 export type AiReplyGateDecision = { action: "send" } | { action: "draft"; reason: AiDraftReason }
 
@@ -44,6 +53,7 @@ export function readAiReplyPolicy(settings: unknown): AiReplyPolicy {
       typeof s.aiRolloutPercent === "number" && Number.isInteger(s.aiRolloutPercent) && s.aiRolloutPercent >= 0 && s.aiRolloutPercent <= 100
         ? s.aiRolloutPercent
         : null,
+    telegramDrafts: telegramDraftsEnabled(s),
   }
 }
 
@@ -72,7 +82,7 @@ export function decideAiReplyAction(
   quality: AiQualityMetadata | undefined,
   opts?: { escalate?: boolean },
 ): AiReplyGateDecision {
-  if (opts?.escalate) return { action: "send" }
+  if (opts?.escalate) return policy.telegramDrafts ? { action: "draft", reason: "handoff" } : { action: "send" }
   if (policy.draftMode) return { action: "draft", reason: "draft_mode" }
   if (policy.aiThreshold === null) return { action: "send" }
   if (!quality || "scoringFailed" in quality) return { action: "draft", reason: "scoring_failed" }

@@ -99,6 +99,14 @@ const SYSTEM_PROMPT = `Ты — ИИ-ассистент компании, отв
 8. Понимай частые опечатки и транслитерацию: например ölçü / olcu / olchu означают размер. Отвечай на намерение клиента, а не исправляй его написание.
 9. Никогда не придумывай факты. База знаний ниже — единственный источник данных о товарах, ценах, наличии и условиях.`
 
+/**
+ * «Черновики в Telegram» (lib/inbox/ai-draft-telegram, owner 2026-11-24: «клиенту не нужно ждать…
+ * если он скажет "я перевожу кому-то", всё, теряю клиента»). Every reply the AI is unsure of reaches
+ * an employee at once, so the customer is never told to wait for a manager: the AI writes the answer
+ * itself and leaves a blank where a fact is missing; the employee fills it in before sending.
+ */
+export const REVIEWED_BY_PERSON_RULE = `\n\nПРОВЕРКА СОТРУДНИКОМ (главнее правил выше о передаче менеджеру): если ты не уверен в ответе, его перед отправкой прочитает сотрудник компании и отправит сам. Поэтому НИКОГДА не пиши клиенту, что передаёшь вопрос менеджеру, оператору или коллеге, что кто-то уточнит или свяжется с ним. Всегда пиши готовый ответ по существу — тот, который клиент должен получить. Если нужного факта (цены, срока, условия) нет в Базе знаний, не выдумывай его: поставь на его место «___», сотрудник впишет сам. Маркер [ESCALATE] ставь как раньше — он только помечает ответ для сотрудника, клиент его не видит.`
+
 const AUTONOMOUS_SALES_RULES = `\n\nОБЯЗАТЕЛЬНЫЙ ХАРАКТЕР СОТРУДНИКА И АВТОНОМНЫЙ СБОР ЛИДА:
 - Общайся как живой сотрудник компании: спокойно, доброжелательно и по делу. Не называй себя ИИ, ботом или виртуальным помощником.
 - Сначала ответь на вопрос клиента по Базе знаний. Не начинай разговор с требования номера телефона.
@@ -293,6 +301,11 @@ export type AiReplyResult = {
   logId?: string
   /** The price rule (lib/ai/offer-grounding) removed a promise the facts do not back and handed off. */
   guardForcedHandoff?: boolean
+  /**
+   * «Черновики в Telegram»: the price rule found a price or benefit the facts do not back, and the
+   * reply was kept as the model wrote it for the employee to check (the card warns about it).
+   */
+  unverifiedOffer?: boolean
 }
 export type AiReplyClaimResult =
   | { claimed: true; token: string; claimedUntil: Date }
@@ -478,10 +491,16 @@ export async function generateChannelAiReply(opts: {
    * caller sends nothing. `history` is the conversation as it stood when the person answered.
    */
   shadow?: { history: Array<{ role: "user" | "assistant"; content: string }>; asOf: Date }
+  /**
+   * The channel sends unsure replies to an employee's Telegram (ChannelConfig.settings.telegramDrafts):
+   * the AI never promises a manager, and a reply the price rule would rewrite is kept for the employee.
+   */
+  reviewedByPerson?: boolean
 }): Promise<AiReplyResult> {
   const { orgId, channel, externalId, userMessage, senderName, contactId, conversationId } = opts
   const shadow = opts.shadow ?? null
   const persistAssistant = opts.persistAssistant !== false && !shadow
+  const reviewedByPerson = opts.reviewedByPerson === true && !shadow
   if (!orgId || !externalId || !userMessage?.trim()) return { reply: null, escalate: false, skipped: "missing_input" }
   if (!(await anthropicAvailable(orgId))) return { reply: null, escalate: false, skipped: "no_api_key" }
 
@@ -595,7 +614,8 @@ export async function generateChannelAiReply(opts: {
   const effectiveRules =
     configuredRules +
     learned.character +
-    (agent?.autoLeadEnabled ? AUTONOMOUS_SALES_RULES : "")
+    (agent?.autoLeadEnabled ? AUTONOMOUS_SALES_RULES : "") +
+    (reviewedByPerson ? REVIEWED_BY_PERSON_RULE : "")
   const basePrompt =
     composeInboxAgentInstruction({
       prompt: effectiveRules,
@@ -783,7 +803,7 @@ export async function generateChannelAiReply(opts: {
     // A reply that hands the customer to a human must not also collect a phone
     // number: the person taking over asks for what they need, and an intake
     // question under an apology is exactly the tone the guard above avoids.
-    if (escalate && containsPhoneRequest(raw)) {
+    if (escalate && !reviewedByPerson && containsPhoneRequest(raw)) {
       const locale = phoneRequestLocale(userMessage, agent?.replyLanguage)
       raw = withoutPhoneRequestSentences(raw) || {
         az: "Bu məsələni həmkarım dəqiqləşdirəcək.",
@@ -805,8 +825,11 @@ export async function generateChannelAiReply(opts: {
       facts: basePrompt + kbContext,
     })
     const guardForcedHandoff = commitmentGuard.forceHandoff
+    // Reviewed by a person: the employee sees the model's own words with a warning and decides —
+    // the replacement «цену подтвердит менеджер» is exactly the hand-off the channel avoids.
+    const unverifiedOffer = reviewedByPerson && commitmentGuard.forceHandoff
     if (commitmentGuard.forceHandoff) {
-      raw = commitmentGuard.text
+      if (!unverifiedOffer) raw = commitmentGuard.text
       escalate = true
     }
     // The model is not authoritative for whether the CRM already knows the
@@ -902,7 +925,7 @@ export async function generateChannelAiReply(opts: {
     if (escalate && session) {
       await prisma.aiChatSession.update({ where: { id: session.id }, data: { status: "escalated" } }).catch(() => {})
     }
-    return { reply: raw, escalate, sessionId: session?.id, quality, logId: logRow?.id, guardForcedHandoff }
+    return { reply: raw, escalate, sessionId: session?.id, quality, logId: logRow?.id, guardForcedHandoff, ...(unverifiedOffer ? { unverifiedOffer } : {}) }
   } catch (e) {
     console.error(`[ai-autoreply ${channel}]`, e instanceof Error ? e.message : e)
     return { reply: null, escalate: false, skipped: "error" }
@@ -1184,6 +1207,7 @@ export async function maybeAiAutoReply(opts: {
       conversationId: opts.conversationId,
       channelConfigId: opts.channelConfigId,
       persistAssistant: false,
+      reviewedByPerson: policy.telegramDrafts,
     })
     if (!ai.reply) {
       const retryable = ai.skipped === "error" || ai.skipped === "empty_reply"
@@ -1223,6 +1247,7 @@ export async function maybeAiAutoReply(opts: {
           logId: ai.logId,
           createdAt: new Date().toISOString(),
           inboundPreview: opts.userMessage.slice(0, 300),
+          ...(ai.unverifiedOffer ? { reviewNote: "unverified_offer" as const } : {}),
         },
       })
       return finishTerminal({ replied: false, escalated: ai.escalate, skipped: "drafted" })

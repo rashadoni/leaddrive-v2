@@ -34,6 +34,7 @@ export const AI_DRAFT_PANEL_COPY: Record<Loc, Record<string, string>> = {
     clarifying_question: "clarifying question",
     scoring_failed: "quality scoring failed",
     commitment_guard: "unsupported promise blocked",
+    handoff: "the AI is not sure — needs a person",
   },
   ru: {
     title: "Черновик AI — нужна проверка",
@@ -46,6 +47,7 @@ export const AI_DRAFT_PANEL_COPY: Record<Loc, Record<string, string>> = {
     clarifying_question: "уточняющий вопрос",
     scoring_failed: "скоринг качества не сработал",
     commitment_guard: "неподтверждённое обещание заблокировано",
+    handoff: "ИИ не уверен — нужен человек",
   },
   az: {
     title: "AI qaralaması — yoxlama lazımdır",
@@ -58,6 +60,7 @@ export const AI_DRAFT_PANEL_COPY: Record<Loc, Record<string, string>> = {
     clarifying_question: "dəqiqləşdirici sual",
     scoring_failed: "keyfiyyət balı alınmadı",
     commitment_guard: "təsdiqlənməmiş vəd bloklandı",
+    handoff: "AI əmin deyil — insan lazımdır",
   },
 }
 

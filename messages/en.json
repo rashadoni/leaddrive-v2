@@ -5063,6 +5063,8 @@
     "aiModeLearning": "Training",
     "aiModeLearningHint": "Your team answers; the AI reads how and stays silent.",
     "aiModeLearningOpen": "Open training",
+    "aiTelegramDrafts": "Drafts in Telegram",
+    "aiTelegramDraftsHint": "When the AI is not sure, the draft goes straight to the Telegram of the person on the conversation (or the admins) with buttons: send, correct, I will write myself. The customer is never told to wait for a manager. Needs the employee bot (Settings → Channels → Telegram bot) and a linked Telegram in the profile.",
     "aiTuneRollout": "Handles conversations",
     "aiTuneCaution": "Caution",
     "aiCautionCareful": "Careful",
