@@ -211,7 +211,20 @@ export function AiTrainingScreen() {
     && (source === "all" || i.source === source),
   )
 
-  const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })
+  // The page scrolls inside the dashboard's <main>, not the window. A section lands just under the
+  // sticky bar, whatever its height: one row on a laptop, two rows (tabs, then search) on a phone.
+  const bar = useRef<HTMLDivElement>(null)
+  const jump = (id: string) => {
+    const section = document.getElementById(id)
+    if (!section) return
+    section.style.scrollMarginTop = `${(bar.current?.offsetHeight ?? 0) + 16}px`
+    section.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+  const jumpTop = () => {
+    const main = bar.current?.closest("main")
+    if (main) main.scrollTo({ top: 0, behavior: "smooth" })
+    else window.scrollTo({ top: 0, behavior: "smooth" })
+  }
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-5">
@@ -256,8 +269,12 @@ export function AiTrainingScreen() {
               )}
             </div>
 
-            <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-2 border-b bg-background/95 px-1 py-2 backdrop-blur">
-              <SectionTab onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>{t("tabReadiness")}</SectionTab>
+            {/* Sticks to the very top of the scrolling <main>: a negative top equal to main's padding
+                (p-3 / sm:p-4 / lg:p-8), or the cards showed through the padding band above it. The
+                background is opaque — a translucent blurred one showed the white cards beneath as a
+                shifted grey box (owner, 2026-11-24: «исправь ui»). Same width as the cards below. */}
+            <div ref={bar} data-testid="learning-section-bar" className="sticky -top-3 z-20 flex flex-wrap items-center gap-2 border-b bg-background py-2 sm:-top-4 lg:-top-8">
+              <SectionTab onClick={jumpTop}>{t("tabReadiness")}</SectionTab>
               {waiting.length > 0 && (
                 <SectionTab onClick={() => jump("learning-waiting")} count={waiting.length} warn>{t("tabWaiting")}</SectionTab>
               )}
