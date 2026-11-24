@@ -208,6 +208,26 @@ describe("files in the card, as in Bordio", () => {
     return () => { task.attachments = was.attachments; feed.items = was.items }
   }
 
+  it("a file removed from the card says so in its message; removing a file a message shows warns first (Ulviyyə, 2026-11-24)", async () => {
+    const restore = await withFiles([
+      { kind: "message", id: "m9", at: "2026-11-24T13:04:00.000Z", user: { id: "u", name: "Ulviyya" }, text: "Şikayət yönləndirildi\n📎 plan.pdf, Screenshot 2026-11-24 170405.png, bordio.png", mentions: [], system: false },
+      { kind: "event", id: "e9", at: "2026-11-24T14:28:00.000Z", user: { id: "u", name: "Ulviyya" }, action: "file_removed", oldValue: "Screenshot 2026-11-24 170405.png", newValue: null },
+    ])
+    try {
+      await open()
+      const notes = Object.fromEntries([...container.querySelectorAll('[data-testid="feed-file-missing"]')].map((card) =>
+        [card.getAttribute("title"), card.querySelector('[data-testid="feed-file-missing-note"]')?.textContent]))
+      expect(notes).toEqual({ "Screenshot 2026-11-24 170405.png": "Файл удалён", "bordio.png": "Файла нет" })
+
+      const tile = (name: string) => [...container.querySelectorAll('[data-testid="task-file"]')].find((el) => el.textContent?.includes(name))!
+      await click(tile("plan.pdf").querySelector('[data-testid="task-file-remove"]'))
+      expect(tile("plan.pdf").querySelector('[data-testid="task-file-remove-confirm"]')?.textContent).toContain("Удалится и из сообщения")
+      await click(tile("Stories-1.jpg").querySelector('[data-testid="task-file-remove"]'))
+      const confirm = tile("Stories-1.jpg").querySelector('[data-testid="task-file-remove-confirm"]')
+      expect(confirm?.textContent).toBe("Удалить?")
+    } finally { restore() }
+  })
+
   it("a message that names files shows them — the picture as a picture — and a name the task has no file for as a name", async () => {
     const restore = await withFiles([
       { kind: "message", id: "m9", at: "2026-11-11T08:46:00.000Z", user: { id: "x", name: "Khayala" }, text: "Baxın\n📎 11.11.26 Stories-1.jpg, plan.pdf, köhnə.png", mentions: [], system: false },

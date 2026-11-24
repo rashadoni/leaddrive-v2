@@ -257,6 +257,8 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
   }
 
   const [removing, setRemoving] = useState<string | null>(null)
+  // Files a message shows: removing one takes it out of the message too, and the card says so first.
+  const [messageFileIds, setMessageFileIds] = useState<ReadonlySet<string>>(() => new Set())
   // Several files at once (Xayala, 2026-11-12: «qrup halında silmək imkanı olsun»).
   const [pickedFiles, setPickedFiles] = useState<ReadonlySet<string>>(new Set())
   // Several files saved at one press: how far it has got, and what it could not save.
@@ -705,6 +707,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                       {confirmBulk ? (
                         <span className="ml-auto flex items-center gap-1.5">
                           {t("confirmRemoveFiles", { count: String(pickedFiles.size) })}
+                          {[...pickedFiles].some((id) => messageFileIds.has(id)) && <span data-testid="task-files-bulk-in-message">{t("alsoInMessages")}</span>}
                           <button type="button" data-testid="task-files-bulk-yes" onClick={() => void removePicked()} className="rounded border border-destructive px-2 py-0.5">{t("yes")}</button>
                           <button type="button" onClick={() => setConfirmBulk(false)} className="rounded border px-2 py-0.5 text-foreground">{t("no")}</button>
                         </span>
@@ -739,7 +742,10 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                           )}
                         </span>
                         {canEdit && removing === file.id && (
-                          <button type="button" onClick={() => void removeFile(file.id)} className="absolute inset-x-1 bottom-1 rounded-md bg-destructive px-1 py-1 text-xs font-medium text-white" data-testid="task-file-remove-confirm">{t("confirmRemoveFile")}</button>
+                          <button type="button" onClick={() => void removeFile(file.id)} className="absolute inset-x-1 bottom-1 rounded-md bg-destructive px-1 py-1 text-xs font-medium leading-tight text-white" data-testid="task-file-remove-confirm">
+                            {messageFileIds.has(file.id) && <span className="block text-[11px] font-normal" data-testid="task-file-in-message">{t("alsoInMessage")}</span>}
+                            {t("confirmRemoveFile")}
+                          </button>
                         )}
                       </li>
                     ))}
@@ -755,7 +761,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
             </div>
 
             <div className="min-h-0">
-              <TaskPanelFeed taskId={task.id} people={people4mention} statusLabel={statusLabel} reloadKey={reloadKey} files={task.attachments} canAttach={canEditBoard} onChanged={() => { reload(); onMutated() }} />
+              <TaskPanelFeed taskId={task.id} people={people4mention} statusLabel={statusLabel} reloadKey={reloadKey} files={task.attachments} canAttach={canEditBoard} onMessageFileIds={setMessageFileIds} onChanged={() => { reload(); onMutated() }} />
             </div>
           </div>
         )}

@@ -33443,6 +33443,10 @@
     "nothingToFill": "Everything is already filled in — nothing was changed."
   },
   "taskPanel": {
+    "fileDeleted": "File deleted",
+    "fileUnavailable": "File not here",
+    "alsoInMessage": "It leaves the message too",
+    "alsoInMessages": "Some of them leave the messages too.",
     "linkCopied": "Link copied",
     "noAccess": "You have no access to this task, or it was deleted.",
     "board": "Board",

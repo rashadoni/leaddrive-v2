@@ -7,7 +7,7 @@ import { AtSign, Bell, BellOff, Download, Loader2, Paperclip, Pencil, Send, Tras
 import { formatDate, formatTime } from "@/lib/format-date"
 import type { FeedItem, FeedPerson } from "@/lib/tasks/task-feed"
 import { describeFeedEvent } from "@/lib/tasks/feed-text"
-import { assignMessageFiles, fileDownloadUrl, fileUrl, isImageFile, joinMessageFiles, splitMessageFiles, type MessageFile } from "@/lib/tasks/message-files"
+import { assignMessageFiles, fileDownloadUrl, fileNameKey, fileUrl, isImageFile, joinMessageFiles, splitMessageFiles, type MessageFile } from "@/lib/tasks/message-files"
 import { insertMention, mentionCandidates, mentionQueryAt, mentionedIds, type MentionPerson } from "@/lib/tasks/mentions"
 import { sendTaskFile } from "@/lib/tasks/task-file-upload"
 
@@ -23,7 +23,7 @@ interface FeedData { items: FeedItem[]; followers: FeedPerson[]; following: bool
  * the task and names them in the message; a message shows the files it names,
  * a picture as a picture (lib/tasks/message-files.ts).
  */
-export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChanged, files = [], canAttach = false }: {
+export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChanged, files = [], canAttach = false, onMessageFileIds }: {
   taskId: string
   people: readonly MentionPerson[]
   statusLabel: (value: string) => string
@@ -33,6 +33,8 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
   files?: readonly MessageFile[]
   /** May attach files to the task (and so to a message). */
   canAttach?: boolean
+  /** Which of `files` a message shows — removing one of them takes it out of that message too. */
+  onMessageFileIds?: (ids: ReadonlySet<string>) => void
 }) {
   const t = useTranslations("taskPanel")
   const locale = useLocale()
@@ -90,6 +92,13 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
     (data?.items ?? []).flatMap((item) => (item.kind === "message" ? [{ id: item.id, text: item.text ?? "" }] : [])),
     files,
   ), [data, files])
+  useEffect(() => {
+    onMessageFileIds?.(new Set([...messageFiles.values()].flat().flatMap((entry) => (entry.file ? [entry.file.id] : []))))
+  }, [messageFiles, onMessageFileIds])
+  // Names of files removed from the card (Ulviyyə, 2026-11-24: «sağ tərəfdəki şəkillər açılmır» — she had
+  // removed them from «Fayllar» an hour earlier, and the message showed only a name that opened nothing).
+  const removedNames = useMemo(() => new Set((data?.items ?? []).flatMap((item) =>
+    item.kind === "event" && item.action === "file_removed" && item.oldValue ? [fileNameKey(item.oldValue)] : [])), [data])
   const query = mentionQueryAt(text, caret)
   const candidates = useMemo(() => (query ? mentionCandidates(people, query.query) : []), [people, query])
 
@@ -239,7 +248,7 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
                     </div>
                   ) : (
                     <div className={`whitespace-pre-wrap rounded-xl border bg-background px-3 py-2 text-sm ${item.system ? "text-muted-foreground" : ""}`}>
-                      <MessageBody text={item.text ?? ""} matched={messageFiles.get(item.id) ?? []} />
+                      <MessageBody text={item.text ?? ""} matched={messageFiles.get(item.id) ?? []} removed={removedNames} />
                       <span className="float-right ml-2 mt-1 text-[11px] text-muted-foreground">{formatTime(item.at, locale)}</span>
                     </div>
                   )}
@@ -342,7 +351,7 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
 }
 
 /** A message's text and, below it, the files it names — pictures shown, others as links. */
-function MessageBody({ text, matched }: { text: string; matched: ReadonlyArray<{ name: string; file: MessageFile | null }> }) {
+function MessageBody({ text, matched, removed }: { text: string; matched: ReadonlyArray<{ name: string; file: MessageFile | null }>; removed: ReadonlySet<string> }) {
   const t = useTranslations("taskPanel")
   const { body, names } = splitMessageFiles(text)
   if (names.length === 0) return <>{text}</>
@@ -394,10 +403,12 @@ function MessageBody({ text, matched }: { text: string; matched: ReadonlyArray<{
                 </a>
               </span>
             ) : (
-              // A file of a finished Bordio task that was not carried over: its name, nothing to open.
+              // Removed from the card later, or a file of a finished Bordio task that was not carried over:
+              // its name and which of the two, nothing to open.
               <span key={`${name}-${index}`} title={name} className="flex w-80 max-w-full items-center gap-2.5 rounded-lg border border-dashed px-2.5 py-1.5 text-muted-foreground" data-testid="feed-file-missing">
                 <TaskFileBadge name={name} size="card" />
-                <span className="truncate">{name}</span>
+                <span className="min-w-0 flex-1 truncate">{name}</span>
+                <span className="shrink-0 text-xs" data-testid="feed-file-missing-note">{t(removed.has(fileNameKey(name)) ? "fileDeleted" : "fileUnavailable")}</span>
               </span>
             ),
           )}
