@@ -1,0 +1,171 @@
+# Переезд прода на выделенные ядра (Cloud VDS)
+
+План от 2026-11-24, владелец: «Да, готовь план». Ничего из этого ещё не сделано.
+
+## Почему
+
+Прод — Cloud VPS 6 у Contabo, ядра общие с соседями. Хост регулярно не даёт им
+работать (`docs/prod-host-cpu-stalls.md`). Три переноса на другие хосты:
+
+| Проба 13 мин | Ядро стоит, в среднем | Середина минуты | Самая длинная остановка |
+|---|---|---|---|
+| 13.11, исходный хост | 12,6 % | 2–6 % | 1457 мс |
+| 14.11, после 1-го переноса | 2,5 % | 0,2–1,7 % | 445 мс |
+| 23.11, после 2-го | 37,2 % | 36,6 % | 819 мс |
+| 24.11, после 3-го | 31,6 % | 30,2 % | 747 мс |
+
+Каждый перенос Contabo — перезагрузка и до 21 минуты простоя; просьбу о ночном
+окне они не выполнили (24.11 прод и линия лежали 10:26–10:47 по Баку). Писать им
+ещё раз бессмысленно: общий хост — лотерея.
+
+Cloud VDS S: 6 выделенных ядер, 24 ГБ, 180 ГБ NVMe (у прода занято 28 ГБ).
+$65 в месяц помесячно, $52 при контракте на 24 месяца, без НДС.
+
+## Решения, на которых держится план
+
+1. **Сначала мерить машину, потом переезжать.** Новый сервер заказывается
+   помесячно; та же проба (`~/inbox/prod-stall-probe.py`, 13 мин) вечером и в
+   будний день утром. Порог — меньше 5 % в среднем и в середине минуты. Не
+   прошёл — отказаться в первый месяц.
+2. **Клонировать машину, а не собирать заново.** Тот же Ubuntu 24.04, те же
+   пакеты, каталоги состояния копируются как есть. Режимы `recovery-bootstrap`
+   в `deploy.yml` — церемония для уже подготовленного хоста, не для пустого
+   (`docs/DEPLOYMENT.md`, раздел про bootstrap).
+3. **Ключи SSH хоста переносятся.** `/etc/ssh/ssh_host_*` копируются на новую
+   машину: доверие ко всем, кто к ней ходит (GitHub, dev-бокс, станция АТС),
+   остаётся прежним, меняется только адрес в их записях.
+4. **База — потоковая реплика.** `pg_basebackup` со старой машины, в окне —
+   повышение реплики. Тот же system identifier, поэтому pgBackRest продолжает
+   тот же stanza. Старый Postgres останавливается **до** повышения: два сервера,
+   пишущие WAL в одно хранилище, испортят архив.
+5. **Файлы — rsync заранее**, в окне докатывается только разница.
+6. **Окно — 02:00–04:00 по Баку** (22:00–00:00 UTC): звонков на линию нет, ночной
+   бэкап pgBackRest (01:10 UTC) и дамп владельца идут после. На время окна
+   мержи в `main` заморожены.
+7. **Старая машина не удаляется 7 дней** — откат.
+
+Сначала стоит спросить Contabo, можно ли перенести адрес `13.140.132.245` на новый
+сервер. Если да — шаги 4 и 5 ниже почти исчезают.
+
+## Что привязано к машине и адресу
+
+Найдено по репозиторию 2026-11-24.
+
+**Адрес в коде и проверках (одним PR, мержить после переключения):**
+- `.github/workflows/deploy.yml` — `EXPECTED_PRODUCTION_HOST`;
+  `.github/actions/setup-production-ssh/action.yml` — то же;
+- `[ "$SERVER_HOST" = 13.140.132.245 ]` в девяти workflow MTM, Swissmed,
+  `set-voice-provider-registry-cutover.yml`; `identity-runtime-commission.yml`
+  читает `clients/registry.json`;
+- `scripts/server-deploy.sh` — `EXPECTED_SHARED_SERVER_IP`, деплой сверяет его с
+  `SHARED_SERVER_IP` в `/etc/leaddrive/app.env` и иначе падает;
+- фразы подтверждения `…_ON_13_140_132_245` в `commission-production-backup.*`,
+  `owner-recovery-proof.yml`, `provision-postgres-restore-scratch.yml`,
+  `docs/BACKUP_RUNBOOK.md`;
+- `src/lib/cloudflare-dns.ts`, `src/lib/tenant-provisioning.ts`, `.env.example`,
+  `nginx/leaddrive.conf`, `clients/registry.json`;
+- сторожа и инструменты dev-бокса: `scripts/backup/host-health-watch.mjs`,
+  `wal-archive-watch.mjs`, `scripts/ops/*-remote.sh`, `scripts/zeytun-line/*`
+  (стенды, `fetch-catalog-snapshot.sh`, `quality-report.sh`);
+- `scripts/pbx/wa-relay/pjsip-wa-relay.conf`, `install.sh`;
+- тесты, которые сверяют адрес: `scripts/ci/test-event-platform-assets.mjs`,
+  `src/__tests__/support-ux-browser-evidence-contract.test.ts`,
+  `scripts/backup/*.test.mjs`;
+- `CLAUDE.md`, `AGENTS.md`, `docs/DEPLOYMENT.md`, `docs/DELIVERY-ARCHITECTURE.md`.
+  Журналы сессий и `docs/evidence/*` — история, их не править.
+
+**Секреты GitHub:** `SERVER_HOST`, `SERVER_SSH_KNOWN_HOSTS` (новая строка с тем же
+ключом хоста).
+
+**Состояние машины вне релиза (копируется):**
+- `/etc/leaddrive/` целиком: `app.env` с главным ключом PII, `backup.env`,
+  `migration.env`, `wal-archive.env`, `uploads-offsite.env`, `*.pgpass`,
+  `backup-evidence/`;
+- `/var/lib/leaddrive-v2/` (файлы клиентов ~8,5 ГиБ, разрешение линии и файлы
+  1С Зейтуна, `line-active-port`, пульс станции), `/var/lib/leaddrive-v2-logs`,
+  `/var/lib/leaddrive-*` (состояния бэкапов, копии файлов, журналов);
+- `/opt/leaddrive-v2` (с `web-releases`, `line-releases` и легаси-чекаутом, без
+  которого деплой падает), `/opt/leaddrive-v2-backups`,
+  `/usr/local/lib/leaddrive-v2` (программы `ops/current`);
+- `/var/backups/leaddrive`, `/usr/local/sbin/leaddrive-backup.sh` и
+  `leaddrive-daily-backup.{service,timer}` — бэкап владельца;
+- юниты `/etc/systemd/system/leaddrive-*`, logrotate, управляемый блок crontab;
+- nginx: `sites-enabled`, `conf.d/leaddrive-*-upstream.conf`, `snippets`,
+  сертификаты Let's Encrypt и Cloudflare origin (`/etc/ssl/cloudflare`);
+- `/etc/pgbackrest/`, настройки `archive_command` в `/etc/postgresql/16/main`;
+- Asterisk для звонков WhatsApp: `/etc/asterisk`, `/etc/asterisk-secrets`,
+  сертификат `wa-sip` с хуком certbot, ufw 5061/tcp и 20000–20398/udp;
+- redis, Docker с OSRM (`/opt/mtm-osrm`), Node 24 из nodesource, pm2 и его дамп;
+- `/root/.ssh/authorized_keys` (в нём ключ туннеля софтфона с `permitopen`),
+  `/etc/ssh/ssh_host_*`, drop-in `01-leaddrive-hardening.conf`, правила ufw.
+
+**Снаружи, кто знает адрес:**
+- Cloudflare: `app` и A-запись каждого тенанта (проксируются, меняются сразу);
+  `wa-sip` без прокси — меняется с задержкой TTL;
+- станция АТС Fanum: ACL `crm-source-access.conf` пускает ровно один адрес /32,
+  `pjsip-wa-relay.conf` звонит на адрес, туннели `fanum-ari-tunnel` и
+  `fanum-softphone-tunnel` идут на прод. Правка — sudo с паролем владельца;
+- Meta (SIP `wa-sip.leaddrivecrm.org`) — по имени, ничего не менять;
+- 1С Зейтуна: список разрешённых адресов в документах не найден — спросить их
+  программиста до окна. SPF адреса не содержит.
+
+## Порядок
+
+### 0. Владелец (5 минут)
+- Спросить Contabo про перенос адреса `13.140.132.245` на новый сервер.
+- Заказать Cloud VDS S помесячно, регион EU, Ubuntu 24.04, оплата картой.
+  Новый адрес прислать в сессию.
+
+### 1. Проверка машины (1–2 дня, прод не затронут)
+- Проба 13 минут вечером и в будний день утром. Порог — меньше 5 %.
+- Не прошла — отказ в первый месяц, план стоит.
+
+### 2. Подготовка новой машины (прод не затронут)
+- Пакеты и версии как на проде (сверить по списку с прода), Node 24, pm2,
+  Postgres 16 с pgBackRest, nginx, redis, Asterisk, Docker.
+- Ключи хоста, `authorized_keys`, sshd, ufw — с прода.
+- `pg_basebackup` в потоковую реплику; rsync всех каталогов из списка выше.
+- Ничего не запускать: ни pm2, ни cron, ни таймеры бэкапа.
+
+### 3. Репетиция (вечер накануне, прод не затронут)
+- Повысить копию базы во временном каталоге, запустить только веб на
+  127.0.0.1 без cron, без процесса задач и без линии. Проверить `/api/v1/ping`,
+  `/login`, `/api/cron/pii-key-check` → `{"ok":true,"source":"file"}`.
+- Остановить, удалить копию; реплика продолжает догонять прод.
+- Подготовить PR со сменой адреса (не мержить) и проверить его CI.
+
+### 4. Окно (02:00–04:00 по Баку, простой 15–30 минут)
+1. Заморозить мержи в `main`. Убедиться, что реплика догнала.
+2. Старая машина: остановить cron, pm2 (веб, задачи, линию), Asterisk.
+3. Докатить разницу файлов rsync.
+4. Остановить Postgres на старой машине; повысить реплику на новой.
+5. Новая машина: `SHARED_SERVER_IP` в `app.env`; запустить pm2 (веб, задачи,
+   слот линии), nginx, Asterisk, crontab, таймеры бэкапа.
+6. Cloudflare: `app`, все записи тенантов, `wa-sip`.
+7. Станция АТС: ACL, адрес в `pjsip-wa-relay.conf`, цель туннелей.
+8. GitHub: `SERVER_HOST`, `SERVER_SSH_KNOWN_HOSTS`; смержить PR адреса — его
+   деплой на новую машину и есть проверка выкатки.
+9. dev-бокс: `known_hosts`, переустановить сторожей.
+
+Проверки до конца окна: вход в CRM, `line-health` с `station: ok`, пробный
+звонок на линию, пробный звонок в WhatsApp, `pgbackrest check` и бэкап,
+архив WAL без ошибок, сторожа зелёные.
+
+### 5. После
+- Неделю: старая машина выключена, но не удалена. Проба на новой в часы пик.
+- Утром — ночной бэкап владельца и его копия на dev-боксе на месте.
+- Через 7 дней владелец отменяет старый VPS.
+
+## Откат
+
+- До переключения Cloudflare: запустить всё на старой машине, её база не тронута.
+- После, в пределах окна: вернуть записи Cloudflare и станцию, запустить старый
+  Postgres. Записанное на новой машине после повышения потеряется — ночью
+  это почти ничего.
+- После окна откат — только новым переездом обратно.
+
+## Что нужно лично от владельца
+
+Заказ и оплата сервера, вопрос Contabo про адрес, пароль sudo на станции АТС,
+согласие на смену секретов GitHub, вопрос программисту 1С про список адресов,
+отмена старого VPS через неделю.
