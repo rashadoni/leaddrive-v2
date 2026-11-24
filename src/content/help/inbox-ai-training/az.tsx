@@ -30,7 +30,7 @@ export default function InboxAiTrainingHelpAz() {
               <p>
                 Başlamaq üçün kanalı seçin və <HelpKey>Öyrənməyə başla</HelpKey> düyməsini basın. Eyni ayar{" "}
                 <HelpKey>AI agent → Hər kanalda kim cavab verir</HelpKey> bölməsində, <HelpKey>Öyrənmə</HelpKey>{" "}
-                variantıdır. AI dərhal son 7 günün yazışmalarını oxuyacaq.
+                variantıdır. AI dərhal son 21 günün yazışmalarını oxuyacaq.
               </p>
             </>
           ),

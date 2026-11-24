@@ -30,7 +30,9 @@ export const READINESS_TARGET = 80
 /** How many frequent topics the second figure counts. */
 export const TOPICS_SHOWN = 13
 /** Days of history a channel reads when training starts. */
-export const LEARNING_BACKFILL_DAYS = 7
+// Owner 2026-11-24: «21 день» — a channel turned to training a week after its last busy day had
+// nothing to read; 21 is also the hard ceiling the run already applied.
+export const LEARNING_BACKFILL_DAYS = 21
 
 /** Verdicts that come from comparing an AI draft with the person's answer. */
 export const COMPARED_VERDICTS = ["same", "almost", "different", "handoff"] as const

@@ -29,7 +29,7 @@ export default function InboxAiTrainingHelpEn() {
               <p>
                 To begin, pick a channel and press <HelpKey>Start training</HelpKey>. The same setting is in{" "}
                 <HelpKey>AI Agent → Who replies on each channel</HelpKey>, option <HelpKey>Training</HelpKey>. The AI
-                reads the last 7 days of conversations at once.
+                reads the last 21 days of conversations at once.
               </p>
             </>
           ),
