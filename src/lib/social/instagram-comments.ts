@@ -109,9 +109,14 @@ export function instagramCommentEvents(entry: unknown): InstagramCommentEvent[] 
  * A comment with nothing to answer: only @-tags of friends, emoji and punctuation («@leyla 😍»,
  * «🔥🔥🔥»). A giveaway post collects hundreds of them; each would open a conversation waiting for an
  * answer nobody gives. They stay in Instagram and are not brought into the inbox.
+ *
+ * A «+» is not noise. Under an ad in Azerbaijan it means «interested, write to me» (owner 2026-11-25:
+ * two «+» under the Visitor Analytics reel never reached the inbox), so a comment with a plus is a
+ * comment to answer, whatever else it carries.
  */
 export function isNoiseComment(text: string): boolean {
   const withoutTags = text.replace(/@[\p{L}\p{N}._]+/gu, " ")
+  if (withoutTags.includes("+")) return false
   return !/[\p{L}\p{N}]/u.test(withoutTags)
 }
 

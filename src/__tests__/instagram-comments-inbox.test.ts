@@ -432,8 +432,15 @@ describe("the rules underneath", () => {
     expect(isNoiseComment("Qiyməti?")).toBe(false)
     expect(isNoiseComment("@leyla bax, əla krem")).toBe(false)
     expect(isNoiseComment("Сколько стоит?")).toBe(false)
-    expect(isNoiseComment("+")).toBe(true)
     expect(isNoiseComment("5")).toBe(false)
+  })
+
+  it("a «+» under an ad is a request, not noise", () => {
+    expect(isNoiseComment("+")).toBe(false)
+    expect(isNoiseComment(" ++ ")).toBe(false)
+    expect(isNoiseComment("+🙏")).toBe(false)
+    expect(isNoiseComment("@leyla +")).toBe(false)
+    expect(isNoiseComment("🔥🔥🔥")).toBe(true)
   })
 
   it("a private reply is offered once, within 7 days of the comment", () => {
