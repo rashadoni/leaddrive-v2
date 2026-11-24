@@ -3,6 +3,9 @@
  * price list as it is — from Word, WhatsApp, a site — and gets one card per package to check before
  * anything is saved. Adding prices one knowledge row at a time was too hard for the owner himself.
  *
+ * A package listed under a service is named «Service — Package» (owner 2026-11-24, «Да, добавлять»): the
+ * owner's own list has a «Start» in four services, and a bare «Start» would let the AI quote the wrong one.
+ *
  * The model only arranges what is pasted. A package whose price names a number the pasted text does
  * not contain is dropped: a parser that «helpfully» rounded 159 to 160 would teach the AI a price the
  * company never set. Nothing is saved here; the person saves the cards through the ordinary «Добавить
@@ -29,7 +32,10 @@ export type PriceListResult =
 const SYSTEM = `Ты раскладываешь прайс-лист компании на пакеты (тарифы, услуги с ценой, товары с ценой).
 Правила:
 - Только то, что есть в тексте. Ничего не придумывай, не пересчитывай, не округляй и не переводи валюты.
-- title — название пакета или услуги, как в тексте.
+- title — название пакета или услуги, как в тексте. Если пакеты стоят под названием услуги или раздела
+  (заголовок над ними, «Аренда авто: ...», «AI zəngləri ...»), title = «Услуга — Пакет», например
+  «AI zəngləri — Start»: у компании может быть «Start» в нескольких услугах, и покупатель должен понять, о какой речь.
+  Если раздела нет — только название пакета.
 - price — цена ровно как в тексте, с валютой и периодом, если они есть ("160 AZN / ay", "25 ₼", "от 40 манат").
 - includes — что входит, коротко, отдельными пунктами, как в тексте; если не указано — пустой список.
 - Пиши на языке текста.
