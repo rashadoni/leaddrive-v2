@@ -20,6 +20,7 @@ import {
 } from "@/lib/inbox/learning/model"
 import type { ChannelDetail, ChannelSummary, DifferenceView, LearnedItemView, LearningProgress } from "@/lib/inbox/learning/service"
 import { startVisibleInterval } from "@/lib/client/visible-interval"
+import { PriceListDialog } from "@/components/inbox-learning/price-list-dialog"
 
 /**
  * «Обучение ИИ» (owner 2026-11-15, by the approved mock-up — «Давай»). One channel at a time: how
@@ -59,6 +60,7 @@ export function AiTrainingScreen() {
   const [source, setSource] = useState<SourceFilter>("all")
   const [editing, setEditing] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [pasting, setPasting] = useState(false)
   const [removed, setRemoved] = useState<LearnedItemView[]>([])
   const [flash, setFlash] = useState<string | null>(null)
   const [handover, setHandover] = useState(false)
@@ -344,8 +346,20 @@ export function AiTrainingScreen() {
             <section id="learning-knowledge" className="scroll-mt-20 space-y-3">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <SectionHead title={t("knowledgeTitle")} text={t("knowledgeText", { name: channel.name })} />
-                <Button onClick={() => { setAdding(true); setEditing(null) }}><Plus className="mr-1 h-4 w-4" />{t("add")}</Button>
+                <div className="flex flex-wrap gap-2">
+                  <Hint text={t("pricePasteHint")}>
+                    <Button variant="outline" onClick={() => setPasting(true)} data-testid="price-list-open">{t("pricePaste")}</Button>
+                  </Hint>
+                  <Button onClick={() => { setAdding(true); setEditing(null) }}><Plus className="mr-1 h-4 w-4" />{t("add")}</Button>
+                </div>
               </div>
+              {pasting && selected && (
+                <PriceListDialog
+                  channelId={selected}
+                  onClose={() => setPasting(false)}
+                  onSaved={() => { setPasting(false); toast.success(t("toastPricesSaved")); void refresh() }}
+                />
+              )}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("filterType")}>
                   {(["all", "money", "service", "qa", "place", "rule"] as const).map((f) => (
