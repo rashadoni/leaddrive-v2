@@ -7,6 +7,7 @@ import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
 import { dedicatedChannelTypeError, isDedicatedChannelType } from "@/lib/channels/dedicated-channel-types"
 import { LEARNING_REPLY_MODE } from "@/lib/inbox/reply-mode"
 import { LEARNING_STARTED_KEY } from "@/lib/inbox/learning/settings"
+import { TELEGRAM_DRAFTS_KEY, telegramDraftsEnabled } from "@/lib/inbox/ai-draft-telegram-settings"
 
 /**
  * Per-channel reply routing settings — the data layer behind the "AI vs agent"
@@ -18,6 +19,7 @@ import { LEARNING_STARTED_KEY } from "@/lib/inbox/learning/settings"
  *   afterHoursAi     boolean   — AI only outside business hours (agent in-hours)
  *   outOfOffice      { enabled, message }                — auto-reply outside hours
  *   draftMode        boolean   — AI drafts a suggestion, agent sends (no auto-send)
+ *   telegramDrafts   boolean   — drafts also go to an employee's Telegram with buttons (ai-draft-telegram)
  *   escalateKeywords string[]  — words that hand the conversation to a human
  *
  * IMPORTANT: PATCH MERGES into the existing settings — it must never clobber a
@@ -65,6 +67,9 @@ function readReplyPolicy(settings: unknown, channelType?: string) {
     modeSource: explicitMode !== null ? "explicit" : channelType === "whatsapp" ? "whatsapp_default_ai" : "default_agent",
     afterHoursAi: s.afterHoursAi === true,
     draftMode: s.draftMode === true,
+    // «Черновики в Telegram» — every draft also goes to an employee's Telegram with buttons
+    // (lib/inbox/ai-draft-telegram); a hand-off is drafted instead of told to the customer.
+    telegramDrafts: telegramDraftsEnabled(s),
     // A2 — auto-send confidence threshold (A1 judge total). null = gating off (send everything,
     // pre-A2 behavior). Presets: Cautious 0.85 / Balanced 0.70 / Bold 0.55, any 0..1 accepted.
     aiThreshold: typeof s.aiThreshold === "number" && s.aiThreshold >= 0 && s.aiThreshold <= 1 ? s.aiThreshold : null,
@@ -110,6 +115,7 @@ const patchSchema = z.object({
   mode: z.enum(REPLY_MODES).optional(),
   afterHoursAi: z.boolean().optional(),
   draftMode: z.boolean().optional(),
+  telegramDrafts: z.boolean().optional(),
   aiThreshold: z.number().min(0).max(1).nullable().optional(),
   aiRolloutPercent: z.number().int().min(0).max(100).nullable().optional(),
   outOfOffice: z.object({ enabled: z.boolean(), message: z.string().max(2000).optional() }).optional(),
@@ -131,7 +137,7 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   }
-  const { configId, mode, afterHoursAi, draftMode, aiThreshold, aiRolloutPercent, outOfOffice, escalateKeywords } = parsed.data
+  const { configId, mode, afterHoursAi, draftMode, telegramDrafts, aiThreshold, aiRolloutPercent, outOfOffice, escalateKeywords } = parsed.data
 
   // Org-scope guard (belt-and-braces over RLS): the config must belong to this org.
   const cfg = await prisma.channelConfig.findFirst({
@@ -153,6 +159,7 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
   if (mode === LEARNING_REPLY_MODE && typeof current[LEARNING_STARTED_KEY] !== "string") next.learningStartedAt = new Date().toISOString()
   if (afterHoursAi !== undefined) next.afterHoursAi = afterHoursAi
   if (draftMode !== undefined) next.draftMode = draftMode
+  if (telegramDrafts !== undefined) next[TELEGRAM_DRAFTS_KEY] = telegramDrafts
   if (aiThreshold !== undefined) {
     // null unsets (gating off); a number arms threshold gating for this channel.
     if (aiThreshold === null) delete next.aiThreshold

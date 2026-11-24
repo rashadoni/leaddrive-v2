@@ -40,6 +40,7 @@ export const META_SERVER_OWNED_SETTING_KEYS = [
   "aiSchedule",
   "outOfOffice",
   "draftMode",
+  "telegramDrafts",
   "escalateKeywords",
   "aiThreshold",
   "aiRolloutPercent",

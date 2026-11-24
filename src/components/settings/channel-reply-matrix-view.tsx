@@ -24,6 +24,8 @@ export interface ChannelReplyRow {
     aiThreshold?: number | null
     /** A3 — share of inbound conversations the AI handles; null = everyone. */
     aiRolloutPercent?: number | null
+    /** «Черновики в Telegram» — unsure replies go to an employee's Telegram (lib/inbox/ai-draft-telegram). */
+    telegramDrafts?: boolean
   }
 }
 
@@ -67,6 +69,8 @@ export interface ChannelReplyMatrixViewProps {
   onUiModeChange: (row: ChannelReplyRow, ui: UiMode) => void
   onRolloutChange: (row: ChannelReplyRow, raw: string) => void
   onThresholdChange: (row: ChannelReplyRow, raw: string) => void
+  /** «Черновики в Telegram»; without it (the guided demo) the switch is not shown. */
+  onTelegramDraftsChange?: (row: ChannelReplyRow, on: boolean) => void
   /** Extra attributes for one mode button — the demo points its guide at one. */
   targetFor?: (row: ChannelReplyRow, mode: UiMode) => { "data-demo-target"?: string } | undefined
 }
@@ -78,6 +82,7 @@ export function ChannelReplyMatrixView({
   onUiModeChange,
   onRolloutChange,
   onThresholdChange,
+  onTelegramDraftsChange,
   targetFor,
 }: ChannelReplyMatrixViewProps) {
   const t = useTranslations("settings")
@@ -185,6 +190,18 @@ export function ChannelReplyMatrixView({
                         )}
                       </Select>
                     </label>
+                    {onTelegramDraftsChange && (
+                      <label className="flex items-center gap-1.5" title={t("aiTelegramDraftsHint")}>
+                        <input
+                          type="checkbox"
+                          checked={row.reply.telegramDrafts === true}
+                          disabled={busy}
+                          onChange={(e) => onTelegramDraftsChange(row, e.target.checked)}
+                          className="h-3.5 w-3.5 accent-violet-600"
+                        />
+                        {t("aiTelegramDrafts")}
+                      </label>
+                    )}
                     {value === "ai" && (
                       <label className="flex items-center gap-1.5" title={t("aiThresholdHint")}>
                         {t("aiTuneCaution")}

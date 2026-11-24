@@ -89,6 +89,9 @@ export function ChannelReplyMatrix() {
     return patchRow(row, { aiRolloutPercent }, { aiRolloutPercent })
   }
 
+  const setTelegramDrafts = (row: ChannelReplyRow, telegramDrafts: boolean) =>
+    patchRow(row, { telegramDrafts }, { telegramDrafts })
+
   return (
     <ChannelReplyMatrixView
       rows={rows}
@@ -97,6 +100,7 @@ export function ChannelReplyMatrix() {
       onUiModeChange={setUiMode}
       onRolloutChange={setRollout}
       onThresholdChange={setThreshold}
+      onTelegramDraftsChange={setTelegramDrafts}
     />
   )
 }

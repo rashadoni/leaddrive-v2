@@ -561,7 +561,7 @@ jobs:
 
       - name: Telegram staff bot database gate
         # Same gate as in pr-checks: the employee Telegram bot (see the test's header).
-        run: npx vitest run src/__tests__/telegram-staff-postgres.test.ts
+        run: npx vitest run src/__tests__/telegram-staff-postgres.test.ts src/__tests__/inbox-ai-draft-telegram-postgres.test.ts
         env:
           TELEGRAM_STAFF_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           TELEGRAM_STAFF_DB_GATE: required

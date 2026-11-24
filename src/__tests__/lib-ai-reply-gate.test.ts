@@ -15,11 +15,11 @@ const failure: AiQualityMetadata = { scoringFailed: true, error: "api_error", sc
 
 describe("readAiReplyPolicy", () => {
   it("defaults to gating off", () => {
-    expect(readAiReplyPolicy(null)).toEqual({ draftMode: false, aiThreshold: null, aiRolloutPercent: null })
-    expect(readAiReplyPolicy({ replyMode: "ai" })).toEqual({ draftMode: false, aiThreshold: null, aiRolloutPercent: null })
+    expect(readAiReplyPolicy(null)).toEqual({ draftMode: false, aiThreshold: null, aiRolloutPercent: null, telegramDrafts: false })
+    expect(readAiReplyPolicy({ replyMode: "ai" })).toEqual({ draftMode: false, aiThreshold: null, aiRolloutPercent: null, telegramDrafts: false })
   })
   it("reads draftMode and a valid threshold", () => {
-    expect(readAiReplyPolicy({ draftMode: true, aiThreshold: 0.7 })).toEqual({ draftMode: true, aiThreshold: 0.7, aiRolloutPercent: null })
+    expect(readAiReplyPolicy({ draftMode: true, aiThreshold: 0.7 })).toEqual({ draftMode: true, aiThreshold: 0.7, aiRolloutPercent: null, telegramDrafts: false })
   })
   it("rejects out-of-range / non-numeric thresholds", () => {
     expect(readAiReplyPolicy({ aiThreshold: 1.5 }).aiThreshold).toBeNull()
@@ -66,8 +66,8 @@ describe("isInAiRollout (A3)", () => {
 })
 
 describe("decideAiReplyAction", () => {
-  const off = { draftMode: false, aiThreshold: null, aiRolloutPercent: null }
-  const armed = { draftMode: false, aiThreshold: 0.7, aiRolloutPercent: null }
+  const off = { draftMode: false, aiThreshold: null, aiRolloutPercent: null, telegramDrafts: false }
+  const armed = { draftMode: false, aiThreshold: 0.7, aiRolloutPercent: null, telegramDrafts: false }
 
   it("no policy → send, even with a low score or no score (pre-A2 behavior preserved)", () => {
     expect(decideAiReplyAction(off, q(0.1))).toEqual({ action: "send" })
@@ -75,8 +75,16 @@ describe("decideAiReplyAction", () => {
     expect(decideAiReplyAction(off, failure)).toEqual({ action: "send" })
   })
 
+  it("«Черновики в Telegram»: a hand-off is drafted for the employee, not sent to the customer", () => {
+    expect(readAiReplyPolicy({ telegramDrafts: true }).telegramDrafts).toBe(true)
+    expect(readAiReplyPolicy({ telegramDrafts: "yes" }).telegramDrafts).toBe(false)
+    expect(decideAiReplyAction({ ...off, telegramDrafts: true }, q(1), { escalate: true })).toEqual({ action: "draft", reason: "handoff" })
+    expect(decideAiReplyAction(off, q(1), { escalate: true })).toEqual({ action: "send" })
+    expect(decideAiReplyAction({ ...off, telegramDrafts: true }, q(1))).toEqual({ action: "send" })
+  })
+
   it("draftMode → always draft (even a perfect score)", () => {
-    expect(decideAiReplyAction({ draftMode: true, aiThreshold: null, aiRolloutPercent: null }, q(1))).toEqual({ action: "draft", reason: "draft_mode" })
+    expect(decideAiReplyAction({ draftMode: true, aiThreshold: null, aiRolloutPercent: null, telegramDrafts: false }, q(1))).toEqual({ action: "draft", reason: "draft_mode" })
   })
 
   it("threshold armed: below → draft, at/above → send", () => {
@@ -95,7 +103,7 @@ describe("decideAiReplyAction", () => {
   })
 
   it("escalation hand-off bypasses the gate — customer must hear it now", () => {
-    expect(decideAiReplyAction({ draftMode: true, aiThreshold: null, aiRolloutPercent: null }, q(0.1), { escalate: true })).toEqual({ action: "send" })
+    expect(decideAiReplyAction({ draftMode: true, aiThreshold: null, aiRolloutPercent: null, telegramDrafts: false }, q(0.1), { escalate: true })).toEqual({ action: "send" })
     expect(decideAiReplyAction(armed, failure, { escalate: true })).toEqual({ action: "send" })
   })
 })

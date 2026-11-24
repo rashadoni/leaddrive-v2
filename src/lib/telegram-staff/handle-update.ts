@@ -12,6 +12,7 @@ import { consumeLinkToken } from "./linking"
 import { loadStaffActor } from "./actor"
 import { actionPreview, decideAction } from "./actions"
 import { runStaffAgent, trimTurns, type Turn } from "./agent"
+import { pressDraftCard, takeDraftCorrection } from "@/lib/inbox/ai-draft-telegram"
 
 /**
  * The bot's own phrases. Azerbaijani always (owner 2026-10-25: «пусть говорит
@@ -57,6 +58,21 @@ export async function handleStaffUpdate(bot: StaffBotRow, update: TelegramUpdate
 
   if (update.callback_query) {
     const query = update.callback_query
+    const draftPress = /^d:([A-Za-z0-9_-]{1,40}):(s|e|x)$/.exec(query.data ?? "")
+    if (draftPress) {
+      // An AI reply draft card (lib/inbox/ai-draft-telegram): «Göndər», «Düzəlt», «Özüm yazacam».
+      const link = await prisma.telegramStaffLink.findFirst({ where: { organizationId: orgId, botId: bot.id, telegramUserId: String(query.from.id) } })
+      if (!link || query.message?.chat.type !== "private") {
+        await answerCallbackQuery(token, query.id, link ? T.gone : T.notLinked)
+        return
+      }
+      const result = await pressDraftCard({ link, actionId: draftPress[1], choice: draftPress[2] as "s" | "e" | "x", now })
+      await answerCallbackQuery(token, query.id, result.toast).catch(() => undefined)
+      if (result.card) {
+        await editMessageText(token, String(query.message.chat.id), query.message.message_id, result.card.text, result.card.buttons).catch(() => undefined)
+      }
+      return
+    }
     const match = /^a:([A-Za-z0-9_-]{1,40}):(ok|no)$/.exec(query.data ?? "")
     const link = await prisma.telegramStaffLink.findFirst({ where: { organizationId: orgId, botId: bot.id, telegramUserId: String(query.from.id) } })
     if (!match || !link || query.message?.chat.type !== "private") {
@@ -113,6 +129,16 @@ export async function handleStaffUpdate(bot: StaffBotRow, update: TelegramUpdate
   }
   if (!text || start) {
     await sendMessage(token, chatId, start ? T.linked.replace("{name}", "") : T.onlyText)
+    return
+  }
+
+  // After «Düzəlt» on an AI draft card, the employee's next message is the answer to the customer.
+  const correction = await takeDraftCorrection({ link, text, now })
+  if (correction) {
+    if (correction.card && correction.messageId) {
+      await editMessageText(token, correction.chatId, correction.messageId, correction.card.text, correction.card.buttons).catch(() => undefined)
+    }
+    if (correction.reply) await sendMessage(token, chatId, correction.reply)
     return
   }
 

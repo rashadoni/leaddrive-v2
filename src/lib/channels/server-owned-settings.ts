@@ -39,6 +39,8 @@ export const REPLY_POLICY_SETTING_KEYS = [
   "aiSchedule",
   "outOfOffice",
   "draftMode",
+  // «Черновики в Telegram» (lib/inbox/ai-draft-telegram-settings).
+  "telegramDrafts",
   "escalateKeywords",
   "aiThreshold",
   "aiRolloutPercent",

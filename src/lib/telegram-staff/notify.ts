@@ -14,6 +14,7 @@ import { runWithTenant } from "@/lib/rls-context"
 import { APP_URL } from "@/lib/domains"
 import { sendMessage } from "./bot-api"
 import { decryptBotToken } from "./bot-config"
+import { AI_DRAFT_NOTICE_TITLE, telegramDraftsEnabled } from "@/lib/inbox/ai-draft-telegram-settings"
 
 export interface StaffNotice {
   organizationId: string
@@ -51,6 +52,12 @@ export async function staffNoticeText(notice: StaffNotice): Promise<string | nul
     const lead = await prisma.lead.findFirst({ where: { id: entityId, organizationId: orgId }, select: { contactName: true, companyName: true, assignedTo: true } })
     if (!lead || lead.assignedTo !== userId) return null
     return `Sizə lid təyin edildi: «${lead.contactName}»${lead.companyName ? ` (${lead.companyName})` : ""}`
+  }
+  // A waiting AI draft on a channel with «Черновики в Telegram» already came as a card with buttons
+  // (lib/inbox/ai-draft-telegram); the bell's plain copy would only repeat it.
+  if (entityType === "inbox_message" && entityId && notice.title === AI_DRAFT_NOTICE_TITLE) {
+    const conversation = await prisma.socialConversation.findFirst({ where: { id: entityId, organizationId: orgId }, select: { channelConfig: { select: { settings: true } } } })
+    if (telegramDraftsEnabled(conversation?.channelConfig?.settings)) return null
   }
   return [notice.title, notice.message].filter((part) => part?.trim()).join("\n")
 }
