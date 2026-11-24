@@ -29,7 +29,8 @@ export function joinMessageFiles(body: string, names: readonly string[]): string
 }
 
 // Same name whatever the case and Unicode form — «İ» lower-cased by a browser is «i» + a dot.
-const key = (name: string) => name.normalize("NFD").replace(/\u0307/gu, "").trim().toLowerCase()
+export const fileNameKey = (name: string) => name.normalize("NFD").replace(/\u0307/gu, "").trim().toLowerCase()
+const key = fileNameKey
 
 /**
  * Each named file with the attachment it is, or null when the task has no file
