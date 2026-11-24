@@ -12,7 +12,7 @@ import { MessageCircle } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Hint } from "@/components/hint"
 import { cn } from "@/lib/utils"
-import { OFFER_HOLD_MINUTES, type WhatsAppBookingMode, type WhatsAppBookingSetting } from "@/lib/booking/whatsapp-setting"
+import { DEFAULT_REMINDERS, OFFER_HOLD_MINUTES, REMINDER_MAX_HOURS, REMINDER_MIN_HOURS, type WhatsAppBookingMode, type WhatsAppBookingSetting } from "@/lib/booking/whatsapp-setting"
 import { BookingWhatsAppRules, type RuleService } from "./booking-whatsapp-rules"
 
 interface Channel {
@@ -148,6 +148,11 @@ export function BookingWhatsAppCard({ services, hosts }: { services: RuleService
           defaultOpen={setting.rules.serviceIds !== null || setting.rules.hostIds !== null || setting.rules.hours !== null || setting.rules.maxPrice !== null}
           onChange={(rules) => void save({ ...setting, rules })}
         /> : null}
+        {setting.mode === "book" ? <BookingReminderHours
+          setting={setting}
+          disabled={saving}
+          onChange={(reminders) => void save({ ...setting, reminders })}
+        /> : null}
         {setting.mode === "book" ? <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3 text-sm">
           <span className="text-muted-foreground">{t("waFlowTitle")}</span>
           {/* What a client actually sees today, in a sentence — the two
@@ -217,4 +222,94 @@ export function BookingWhatsAppCard({ services, hosts }: { services: RuleService
       </CardContent>
     </Card>
   )
+}
+
+/**
+ * When the client hears from the salon before the visit — two reminders, each
+ * one switchable and each with its own hours.
+ *
+ * It lives on this card rather than in a settings page of its own because the
+ * question it answers is the same one the card above answers: what the number
+ * says to clients by itself. The hours are typed, not picked from a list: a
+ * dentist reminds a day ahead, a barber two hours, and nobody's list of
+ * presets would have fitted both.
+ */
+function BookingReminderHours({ setting, disabled, onChange }: {
+  setting: WhatsAppBookingSetting
+  disabled: boolean
+  onChange: (reminders: WhatsAppBookingSetting["reminders"]) => void
+}) {
+  const t = useTranslations("booking")
+  const { firstHours, secondHours } = setting.reminders
+  // What is in the box while it is being typed. Saving on every keystroke
+  // would write «2» on the way to «24», so the number is committed when the
+  // field is left — and the box is re-seeded whenever the stored value
+  // changes, including when the server reorders the pair.
+  const [draft, setDraft] = useState({ first: text(firstHours), second: text(secondHours) })
+  useEffect(() => { setDraft({ first: text(firstHours), second: text(secondHours) }) }, [firstHours, secondHours])
+
+  const rows = [
+    { key: "first" as const, field: "firstHours" as const, hours: firstHours, fallback: DEFAULT_REMINDERS.firstHours, label: t("waReminderFirst") },
+    { key: "second" as const, field: "secondHours" as const, hours: secondHours, fallback: DEFAULT_REMINDERS.secondHours, label: t("waReminderSecond") },
+  ]
+
+  return (
+    <div className="mt-3 border-t pt-3 text-sm" data-testid="booking-reminder-hours">
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="font-medium">{t("waRemindersTitle")}</span>
+        <span className="text-xs text-muted-foreground">{t("waRemindersHint")}</span>
+      </div>
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        {rows.map((row) => (
+          <div key={row.key} className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={row.hours !== null}
+                disabled={disabled}
+                aria-label={row.label}
+                onChange={(event) => onChange({
+                  ...setting.reminders,
+                  // Switching one back on restores what it said before, or the
+                  // default if it never said anything.
+                  [row.field]: event.target.checked ? (Number(draft[row.key]) || row.fallback) : null,
+                })}
+              />
+              <span>{row.label}</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={REMINDER_MIN_HOURS}
+                max={REMINDER_MAX_HOURS}
+                className="h-9 w-20 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50"
+                value={draft[row.key]}
+                disabled={disabled || row.hours === null}
+                aria-label={`${row.label} — ${t("waReminderHoursSuffix")}`}
+                onChange={(event) => setDraft((current) => ({ ...current, [row.key]: event.target.value }))}
+                onBlur={() => {
+                  const typed = Math.round(Number(draft[row.key]))
+                  // Nonsense in the box is not a reason to change anything:
+                  // the stored hours stay and the box goes back to showing them.
+                  if (!Number.isFinite(typed) || typed < REMINDER_MIN_HOURS) {
+                    setDraft((current) => ({ ...current, [row.key]: text(row.hours) }))
+                    return
+                  }
+                  const hours = Math.min(typed, REMINDER_MAX_HOURS)
+                  if (hours !== row.hours) onChange({ ...setting.reminders, [row.field]: hours })
+                }}
+              />
+              <span className="text-muted-foreground">{t("waReminderHoursSuffix")}</span>
+            </label>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function text(hours: number | null): string {
+  return hours === null ? "" : String(hours)
 }

@@ -2,15 +2,15 @@
  * «Запись через WhatsApp» on the services screen: whether the booking agent
  * answers clients on WhatsApp (src/lib/booking/whatsapp-agent.ts), and on which
  * number. One key in organizations.settings, set in place.
- *   GET → { setting: { mode, channelConfigId }, channels: [{ id, name }] }
- *   PUT { mode, channelConfigId } → the setting as stored
+ *   GET → { setting: { mode, channelConfigId, reminders, … }, channels: [{ id, name }] }
+ *   PUT { mode, channelConfigId, … } → the setting as stored
  */
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { bookingDb as prisma } from "@/lib/booking/db"
 import { withRlsAuth } from "@/lib/with-rls"
 import { bookingAccess } from "@/lib/booking/access"
-import { readWhatsAppBookingSetting, WHATSAPP_BOOKING_SETTING } from "@/lib/booking/whatsapp-setting"
+import { readReminderSchedule, readWhatsAppBookingSetting, REMINDER_MAX_HOURS, WHATSAPP_BOOKING_SETTING } from "@/lib/booking/whatsapp-setting"
 import { readAutonomyRules } from "@/lib/booking/whatsapp-rules"
 
 async function whatsappChannels(orgId: string) {
@@ -50,6 +50,13 @@ const body = z.object({
   reminderTemplate: z.string().max(200).nullable().optional(),
   changeTemplate: z.string().max(200).nullable().optional(),
   cancelTemplate: z.string().max(200).nullable().optional(),
+  // How far before the visit each reminder goes out; null = that one is off.
+  // A screen that does not know about them leaves the key out and keeps what
+  // is stored — the same rule as the templates above.
+  reminders: z.object({
+    firstHours: z.number().min(0).max(REMINDER_MAX_HOURS).nullable(),
+    secondHours: z.number().min(0).max(REMINDER_MAX_HOURS).nullable(),
+  }).optional(),
 })
 
 export const PUT = withRlsAuth("bookings", "write", async (req, auth) => {
@@ -83,6 +90,9 @@ export const PUT = withRlsAuth("bookings", "write", async (req, auth) => {
     reminderTemplate: keep(parsed.data.reminderTemplate, stored.reminderTemplate),
     changeTemplate: keep(parsed.data.changeTemplate, stored.changeTemplate),
     cancelTemplate: keep(parsed.data.cancelTemplate, stored.cancelTemplate),
+    // Read through the schedule's own reader: what is stored is what the cron
+    // will obey, including the ordering it puts the pair in.
+    reminders: parsed.data.reminders === undefined ? stored.reminders : readReminderSchedule(parsed.data.reminders),
     // Written by the form's own route, never by this screen: carrying it over
     // is the whole reason this object is built by hand.
     flowId: stored.flowId,

@@ -2030,6 +2030,51 @@ pgDescribe("online booking on a real Postgres", () => {
     })
   })
 
+  it("WhatsApp: the salon's own hours decide which meetings are due, and a reminder switched off is never sent", async () => {
+    /**
+     * The same meeting the scenario above reminds — a day out, with the
+     * client's window open — under two settings a salon can choose. Every
+     * delivered reminder is money since Meta started charging per message, so
+     * «off» has to mean nothing goes out at all, and the hours have to move
+     * which meetings a run even looks at.
+     */
+    async function meetingADayOut(title: string, name: string) {
+      const slug = await newPage({ title, durationMinutes: 30, maxDaysAhead: 2 })
+      const startsAt = await slotWithin(slug, 18 * 3600_000, 24 * 3600_000)
+      expect((await book(slug, startsAt, name)).status).toBe(201)
+      const booking = await bypass(() => prisma.booking.findFirstOrThrow({
+        where: { organizationId: ORG, bookingPage: { slug }, startsAt: new Date(startsAt) },
+      }))
+      // The client's own message keeps Meta's 24-hour window open, so an
+      // ordinary message with buttons could go out: nothing but the schedule
+      // is standing in the way.
+      await conversationWith(phoneDigitsOf(booking.phone), name, "Salam")
+      return booking
+    }
+    const remindedHere = (bookingId: string) =>
+      whatsapp.buttons.some((message) => message.buttons.some((button) => button.id === `rm:confirm:${bookingId}`))
+
+    // The first reminder switched off: silence, and no mark either — a
+    // meeting recorded as reminded would never be reminded again.
+    await withWhatsAppBooking(async () => {
+      const booking = await meetingADayOut("Pedikür", "Leyla")
+      whatsapp.buttons = []
+      expect((await remindersPost(cronJson())).status).toBe(200)
+      expect(remindedHere(booking.id)).toBe(false)
+      expect(await bypass(() => prisma.bookingReminder.findUnique({ where: { bookingId: booking.id } }))).toBeNull()
+    }, { bookingWhatsApp: { reminders: { firstHours: null, secondHours: 2 } } })
+
+    // Two days ahead instead of one: the same meeting is no longer due, and
+    // the run that would have reminded it by default says nothing.
+    await withWhatsAppBooking(async () => {
+      const booking = await meetingADayOut("Saç düzümü", "Nigar")
+      whatsapp.buttons = []
+      expect((await remindersPost(cronJson())).status).toBe(200)
+      expect(remindedHere(booking.id)).toBe(false)
+      expect(await bypass(() => prisma.bookingReminder.findUnique({ where: { bookingId: booking.id } }))).toBeNull()
+    }, { bookingWhatsApp: { reminders: { firstHours: 48, secondHours: null } } })
+  })
+
   it("WhatsApp: «Ləğv etmək» frees the chair at once, and «vaxtı dəyişmək» moves the meeting only when a new time is taken", async () => {
     await withWhatsAppBooking(async () => {
       // A master of this scenario's own, two hours' notice, and the tap takes

@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { requireCronAuth } from "@/lib/cron-auth"
-import { REMINDER_WINDOWS, sendReminder, type ReminderKind } from "@/lib/booking/whatsapp-reminders"
+import { plannedReminders, sendReminder } from "@/lib/booking/whatsapp-reminders"
 import { readWhatsAppBookingSetting } from "@/lib/booking/whatsapp-setting"
 
 /**
- * Reminders before a visit: the day before, and two hours before.
+ * Reminders before a visit — by default the day before and two hours before,
+ * and whatever the organization set instead (`reminders` in its settings).
  *
  * Runs across all tenants, hence the bypass scope; every send then happens
  * inside the meeting's own organization. A booking is marked as reminded only
@@ -30,8 +31,9 @@ export async function POST(req: NextRequest) {
   for (const organization of organizations) {
     const setting = readWhatsAppBookingSetting(organization.settings)
     if (setting.mode !== "book") continue
-    for (const kind of ["day", "hour"] as ReminderKind[]) {
-      const { leadMinutes, openMinutes } = REMINDER_WINDOWS[kind]
+    // Which reminders this organization sends, and how far ahead, is its own
+    // setting; one switched off produces no run at all.
+    for (const { kind, leadMinutes, openMinutes } of plannedReminders(setting.reminders)) {
       // The window is «this far ahead, give or take», so a late run still
       // reminds rather than skipping the meeting entirely.
       const from = new Date(now.getTime() + (leadMinutes - openMinutes) * 60_000)

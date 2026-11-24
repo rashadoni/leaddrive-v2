@@ -29,6 +29,12 @@ export interface WhatsAppBookingSetting {
   changeTemplate: string | null
   cancelTemplate: string | null
   /**
+   * When the client is reminded before the visit, and whether at all.
+   * Two reminders at most, because a meeting carries two marks and a third
+   * message before a haircut is spam the salon pays for.
+   */
+  reminders: ReminderSchedule
+  /**
    * The published WhatsApp form this number shows instead of a list of times
    * — Meta's own id, written when the form is published and cleared when it
    * is not. Empty means the list, which is what every number had before and
@@ -58,8 +64,63 @@ export function readWhatsAppBookingSetting(settings: unknown): WhatsAppBookingSe
     reminderTemplate: template(value.reminderTemplate),
     changeTemplate: template(value.changeTemplate),
     cancelTemplate: template(value.cancelTemplate),
+    // A setting nobody has opened keeps what every organization had before
+    // this screen existed: a day before, and two hours before.
+    reminders: "reminders" in value ? readReminderSchedule(value.reminders) : DEFAULT_REMINDERS,
     flowId: template(value.flowId),
   }
+}
+
+/**
+ * When a client hears from the salon before the visit.
+ *
+ * Both reminders cost money now: since 2026-10-01 Meta charges per delivered
+ * message beyond 1,000 service messages a month per number, and a reminder
+ * sent outside the 24-hour window is a paid utility template from the first
+ * one. So this is not decoration — a salon that wants one reminder instead of
+ * two halves that bill, and the hours decide whether the answer still leaves
+ * time to sell the slot.
+ */
+export interface ReminderSchedule {
+  /** Hours before the visit for the earlier reminder; null = it is not sent. */
+  firstHours: number | null
+  /** The later one, always closer to the visit than the first; null = off. */
+  secondHours: number | null
+}
+
+export const DEFAULT_REMINDERS: ReminderSchedule = { firstHours: 24, secondHours: 2 }
+/** An hour is the shortest useful warning; a week is as far ahead as a salon plans. */
+export const REMINDER_MIN_HOURS = 1
+export const REMINDER_MAX_HOURS = 24 * 7
+
+function hours(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null
+  const whole = Math.round(value)
+  if (whole < REMINDER_MIN_HOURS) return null
+  return Math.min(whole, REMINDER_MAX_HOURS)
+}
+
+/**
+ * Reads the pair and puts it in order. The two slots are «earlier» and
+ * «later», not two independent numbers: a form that sends 2 and 24 means the
+ * same schedule as 24 and 2, so they are swapped rather than refused. Equal
+ * values are one reminder, and the later one is dropped — two identical
+ * messages in the same minute is a bug the client pays for twice.
+ *
+ * A slot switched off stays switched off, and the other one does NOT move
+ * into it: a salon that unticks the first reminder would otherwise watch the
+ * screen rearrange itself under its hands, and the meeting would start being
+ * marked in the other column.
+ */
+export function readReminderSchedule(value: unknown): ReminderSchedule {
+  const raw = value && typeof value === "object" ? value as Record<string, unknown> : {}
+  let first = hours(raw.firstHours)
+  let second = hours(raw.secondHours)
+  if (first !== null && second !== null) {
+    if (second > first) [first, second] = [second, first]
+    if (second === first) second = null
+  }
+  return { firstHours: first, secondHours: second }
 }
 
 function template(value: unknown): string | null {
