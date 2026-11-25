@@ -12,6 +12,8 @@ import { ArrowLeft, Pencil, Trash2, FileText, Calendar, DollarSign, Hash, Clock,
 import { ColorStatCard } from "@/components/color-stat-card"
 import { InfoHint } from "@/components/info-hint"
 import { EsignSignatureSheet } from "@/components/contract-esign-signature-sheet"
+import { ContractDocumentsChain } from "@/components/contracts/contract-documents-chain"
+import { checkPermission, type Role } from "@/lib/permissions"
 import { ContractForm } from "@/components/contract-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import {
@@ -1622,6 +1624,13 @@ export default function ContractDetailPage() {
           </div>
         )
       })()}
+
+      {/* ── Document chain: contract → price protocol → invoices → acts ── */}
+      <ContractDocumentsChain
+        contractId={contract.id}
+        canWrite={Boolean(userRole && checkPermission(userRole as Role, "contracts", "write"))}
+        canInvoice={isFinanceUser}
+      />
 
       <AdvisorRecordWidget entityType="contract" entityId={contract.id} orgId={orgId ? String(orgId) : undefined} title="Advisor risk" />
 

@@ -158,6 +158,40 @@ export default function ContractDetailHelpEn() {
           </HelpCallout>
         </HelpStep>
       </HelpSection>
+      <HelpSection title="Step by step: the document chain — protocol, invoice, act">
+        <HelpStep n={1}>
+          <p>
+            At the top of the card is the <strong>Document chain</strong>: contract → price agreement protocol → invoices →
+            acceptance acts. The missing link is highlighted. Click <HelpKey>Prepare a protocol</HelpKey>.
+          </p>
+          <HelpCallout kind="see" label="What you'll see">
+            «Appendix No. 1» opens: lines come from the deal (at the discounted price) and are added with{" "}
+            <HelpKey>From catalogue</HelpKey> and <HelpKey>Line</HelpKey>. Prices exclude VAT; one VAT rate per document.
+            Quantity is optional in a protocol. When prices change — <HelpKey>New protocol</HelpKey>, the next appendix; the
+            earlier one stays in the history.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={2}>
+          <p>
+            Click <HelpKey>Create an invoice</HelpKey> — lines and prices come from the protocol in force, VAT on top.
+          </p>
+          <HelpCallout kind="see" label="What you'll see">
+            If an invoice's price differs from the protocol, a yellow warning shows both prices. Restore the price or record
+            the reason — it goes to the invoice's history.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={3}>
+          <p>
+            Click <HelpKey>Create an act</HelpKey> next to the invoice in the chain, or <HelpKey>Acceptance act</HelpKey> on the
+            invoice itself.
+          </p>
+          <HelpCallout kind="see" label="What you'll see">
+            The act opens with the invoice's lines; if only part was delivered, lower the quantity. Its text comes from the
+            contract: parties, number, date. <HelpKey>PDF</HelpKey> has signature places for both sides. A draft can be{" "}
+            <HelpKey>Cancel</HelpKey>led — its number is not reused.
+          </HelpCallout>
+        </HelpStep>
+      </HelpSection>
 
       <HelpSection title="Step by step: amend the contract (new version)">
         <HelpStep n={1}>
