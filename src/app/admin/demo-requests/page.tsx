@@ -9,6 +9,8 @@ import { demoCenterCounters } from "@/lib/demo-center/admin-counters"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { isSuperAdminSession } from "@/lib/superadmin-guard"
+import { DEMO_PARTNER_SITES, getSitePartnerSetting, type DemoPartnerSite } from "@/lib/demo-center/site-partner"
+import { SitePartnerForm } from "./site-partner-form"
 
 const statusStyle: Record<string, string> = {
   SUBMITTED: "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200",
@@ -38,6 +40,8 @@ export default async function DemoRequestsPage() {
     ),
     demoCenterCounters(),
   ])
+  const partnerSites = Object.keys(DEMO_PARTNER_SITES) as DemoPartnerSite[]
+  const partners = await Promise.all(partnerSites.map(async (site) => ({ site, setting: await getSitePartnerSetting(site) })))
 
   const stats = [
     { label: t("awaitingReview"), value: submitted, icon: Inbox },
@@ -74,6 +78,16 @@ export default async function DemoRequestsPage() {
             </div>
           )
         })}
+      </section>
+
+      <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900" aria-labelledby="site-partner-title">
+        <h2 id="site-partner-title" className="text-base font-semibold text-zinc-950 dark:text-zinc-50">{t("sitePartnerTitle")}</h2>
+        <p className="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">{t("sitePartnerBody")}</p>
+        <div className="mt-4 space-y-4">
+          {partners.map(({ site, setting }) => setting.available
+            ? <SitePartnerForm key={site} site={site} initialEmail={setting.email} />
+            : <p key={site} className="text-sm text-amber-800 dark:text-amber-300">{t("sitePartnerUnavailable")}</p>)}
+        </div>
       </section>
 
       {requests.length === 0 ? (

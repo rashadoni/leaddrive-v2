@@ -14,14 +14,16 @@ function singleLine(value: string): string {
   return value.replace(/[\r\n]+/gu, " ").trim()
 }
 
-function emailFrame(content: string): string {
+const DEFAULT_FOOTER = "Bu məktub yalnız sizin korporativ ünvanınıza göndərilib. Linki paylaşmayın."
+
+function emailFrame(content: string, footer: string = DEFAULT_FOOTER): string {
   return `
     <div style="background:#f5f3ee;padding:32px 16px;font-family:Arial,sans-serif;color:#17221d">
       <div style="max-width:600px;margin:0 auto;background:#fffdf8;border:1px solid #dfddd4;border-radius:18px;overflow:hidden">
         <div style="padding:22px 28px;border-bottom:1px solid #ebe8df;font-weight:700;color:#c84b1b">LeadDrive</div>
         <div style="padding:30px 28px">${content}</div>
         <div style="padding:18px 28px;background:#f3f0e8;color:#667069;font-size:12px;line-height:1.5">
-          Bu məktub yalnız sizin korporativ ünvanınıza göndərilib. Linki paylaşmayın.
+          ${escapeHtml(footer)}
         </div>
       </div>
     </div>`
@@ -112,5 +114,46 @@ export async function sendDemoRequestNotification(input: {
       </table>
       <p style="margin:24px 0 0"><a href="${escapeHtml(adminUrl)}" style="color:#c84b1b;font-weight:700">Sorğunu Demo Center-də aç</a></p>
     `),
+  })
+}
+
+/**
+ * «Saytdan yeni demo sorğusu» for the partner who runs the site the form sits
+ * on (src/lib/demo-center/site-partner.ts). It leaves the moment the request is
+ * stored, so the prospect's address is not confirmed yet, and it says so. No
+ * link into LeadDrive: the partner has no access there; «Reply» goes to the
+ * prospect.
+ */
+export async function sendDemoRequestPartnerNotification(input: {
+  to: string
+  site: string
+  name: string
+  company: string
+  email: string
+  phone?: string | null
+  jobTitle?: string | null
+  message?: string | null
+  requestedModuleNames: string[]
+}) {
+  const row = (label: string, value: string) => `<tr><td style="padding:6px 14px 6px 0;color:#667069">${label}</td><td style="padding:6px 0;font-weight:600">${escapeHtml(value)}</td></tr>`
+  const site = singleLine(input.site)
+  return sendEmail({
+    to: input.to,
+    subject: `${site} — yeni demo sorğusu: ${singleLine(input.company)}`,
+    transactional: true,
+    replyTo: input.email,
+    html: emailFrame(`
+      <h1 style="margin:0 0 12px;font-size:24px">Saytdan yeni demo sorğusu</h1>
+      <p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:#667069">${escapeHtml(site)} saytındakı formadan göndərilib. Müştərinin e-poçtu hələ təsdiqlənməyib: demo linki ona ayrıca məktubla gedib. Bu məktuba cavab müştəriyə gedəcək.</p>
+      <table style="border-collapse:collapse;font-size:14px">
+        ${row("Ad", input.name)}
+        ${row("Şirkət", input.company)}
+        ${row("Vəzifə", input.jobTitle || "—")}
+        ${row("E-poçt", input.email)}
+        ${row("Telefon", input.phone || "—")}
+        ${row("Maraqlandığı həllər", input.requestedModuleNames.join(", ") || "Göstərilməyib")}
+        ${row("Mesaj", input.message || "—")}
+      </table>
+    `, `Bu məktub ${site} saytının demo formasından avtomatik göndərilib.`),
   })
 }

@@ -9,7 +9,8 @@ import {
   DEMO_REQUEST_PREFLIGHT_MAX_AGE_SECONDS,
   withDemoRequestCors,
 } from "@/lib/demo-request-cors"
-import { sendDemoRequestNotification } from "@/lib/demo-center/email"
+import { sendDemoRequestNotification, sendDemoRequestPartnerNotification } from "@/lib/demo-center/email"
+import { demoPartnerSiteForOrigin, getSitePartnerSetting } from "@/lib/demo-center/site-partner"
 import { verifyDemoFormSolution } from "@/lib/demo-center/form-challenge"
 import { emailDomain } from "@/lib/demo-center/security"
 import { demoRequestSchema } from "@/lib/demo-center/validation"
@@ -125,6 +126,36 @@ export async function POST(request: Request) {
       { success: false, error: "Sorğunu hazırda saxlaya bilmədik. Bir qədər sonra yenidən cəhd edin." },
       { status: 503 },
     )
+  }
+
+  // A request from a partner's own site (biznesdoktoru.az) reaches that
+  // partner now, unconfirmed (owner, 2026-11-25): she follows the lead up
+  // herself. The address is set in Demo Center, not in code. A missing address
+  // or a mail outage never costs the prospect the request.
+  const partnerSite = demoPartnerSiteForOrigin(request.headers.get("Origin"))
+  if (partnerSite) {
+    try {
+      const partner = await getSitePartnerSetting(partnerSite)
+      if (partner.available && partner.email) {
+        const sent = await sendDemoRequestPartnerNotification({
+          to: partner.email,
+          site: partnerSite,
+          name: created.name,
+          company: created.company,
+          email: created.email,
+          phone: created.phone,
+          jobTitle: created.jobTitle,
+          message: created.message,
+          requestedModuleNames: requestedModuleNames(created.requestedModules),
+        })
+        const outcome = sent as { success?: boolean; error?: unknown } | null | undefined
+        if (outcome?.success === false) {
+          console.error("[demo-request] partner notification not sent", { requestId: created.id, site: partnerSite, error: outcome.error })
+        }
+      }
+    } catch (error) {
+      console.error("[demo-request] partner notification failed", { requestId: created.id, site: partnerSite }, error)
+    }
   }
 
   // The owner is not told yet: anyone can type any address into the form.
