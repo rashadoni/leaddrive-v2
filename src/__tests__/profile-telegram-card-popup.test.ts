@@ -78,3 +78,47 @@ describe("Profile → Telegram: the bot link opens on a phone", () => {
     expect(document.querySelector(`a[href="${LINK}"]`)).not.toBeNull()
   })
 })
+
+// Owner 2026-11-25: on a Mac without the Telegram app, t.me's «START BOT» did nothing — «я не буду делать
+// кустарно». On a computer the link is a QR code for the phone, and the card notices the «Start» by itself.
+describe("Profile → Telegram: on a computer the link is a QR code for the phone", () => {
+  it("opens no tab, draws the code for the link, and turns into «linked» once the phone pressed Start", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout"] })
+    try {
+      vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(pointer: fine)", media: query, addEventListener() {}, removeEventListener() {} }))
+      const open = vi.spyOn(window, "open")
+      let linked = false
+      ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+      vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+        const payload = init?.method === "POST"
+          ? { success: true, data: { url: LINK } }
+          : { success: true, data: { ...view, linked, telegramUsername: linked ? "rashad" : null } }
+        return { json: async () => payload } as Response
+      }))
+      const el = document.createElement("div")
+      document.body.appendChild(el)
+      root = createRoot(el)
+      await act(async () => {
+        root!.render(React.createElement(TooltipProvider, null, React.createElement(ProfileTelegramCard)))
+      })
+      const button = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes("link"))!
+      await act(async () => button.click())
+      await act(async () => {})
+
+      expect(open).not.toHaveBeenCalled()
+      const img = document.querySelector("img[alt='qrAlt']") as HTMLImageElement | null
+      expect(img?.src.startsWith("data:image/png")).toBe(true)
+      expect(document.body.textContent).toContain("scanQr")
+      expect(document.querySelector(`a[href="${LINK}"]`)?.textContent).toBe("openHere")
+
+      linked = true
+      await act(async () => { vi.advanceTimersByTime(3100) })
+      await act(async () => {})
+      expect(document.querySelector("img[alt='qrAlt']")).toBeNull()
+      expect(document.body.textContent).toContain("linkedAs")
+    } finally {
+      vi.useRealTimers()
+      vi.unstubAllGlobals()
+    }
+  })
+})
