@@ -50,8 +50,11 @@ export interface SignatureSheetSigner {
 export interface SignatureSheet {
   sentAt: Date | null
   completedAt: Date | null
-  /** The immutable version the envelope produced when the last signer signed. */
-  versionNo: number
+  /**
+   * The immutable contract version the envelope produced when the last signer
+   * signed; null for a price protocol or act, which has no versions.
+   */
+  versionNo: number | null
   contentHash: string
   signers: SignatureSheetSigner[]
 }
@@ -221,7 +224,7 @@ export function signatureSheetContent(
   const time = (d: Date | null) => (d ? formatSheetTime(d, timeZone) : "—")
   const facts: Array<[string, string]> = [
     [w.document, `${document.contractNumber} · ${document.title}`],
-    [w.version, `№ ${sheet.versionNo}`],
+    ...(sheet.versionNo !== null ? ([[w.version, `№ ${sheet.versionNo}`]] as Array<[string, string]>) : []),
     [w.fingerprint, sheet.contentHash],
     [w.sent, time(sheet.sentAt)],
     [w.completed, time(sheet.completedAt)],

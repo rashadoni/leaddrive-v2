@@ -280,3 +280,34 @@ export function quantityText(quantity: number | null): string {
   if (quantity === null) return "—"
   return String(Math.round(quantity * 10000) / 10000).replace(".", ",")
 }
+
+/**
+ * The document as text — what the signing page shows and what is frozen and
+ * hashed when the document goes for signing. Built from the same words and
+ * numbers as the PDF, so the two say the same thing.
+ */
+export function documentSigningText(facts: DocumentFacts, lines: DocumentLine[], currency: string, lang: DocLang): string {
+  const w = documentWords(facts, lang)
+  const totals = documentTotals(lines, facts.vatRate)
+  const rows = lines.map((line, i) => {
+    const qty = line.quantity === null ? "" : ` — ${quantityText(line.quantity)}${line.unit ? ` ${line.unit}` : ""}`
+    const amount = line.quantity === null ? "" : ` = ${moneyText(lineAmount(line))} ${currency}`
+    return `${i + 1}. ${line.name}${qty} × ${moneyText(line.unitPrice)} ${currency}${line.quantity === null && line.unit ? ` / ${line.unit}` : ""}${amount}`
+  })
+  const sums = lines.some((l) => l.quantity !== null)
+    ? [`${w.subtotal}: ${moneyText(totals.subtotal)} ${currency}`, `${w.vat}: ${moneyText(totals.vatAmount)} ${currency}`, `${w.total}: ${moneyText(totals.totalAmount)} ${currency}`].join("\n")
+    : ""
+  const side = (label: string, party: { name: string; director: string | null }) => [label, party.name, party.director ? `${w.director}: ${party.director}` : ""].filter(Boolean).join("\n")
+  return [
+    `${w.title}\n${w.subtitle}`,
+    [w.city, w.validity].filter(Boolean).join(" · "),
+    w.intro,
+    rows.join("\n"),
+    sums,
+    w.closing,
+    side(w.sideA, facts.our),
+    side(w.sideB, facts.counterparty),
+  ]
+    .filter((block) => block.trim().length > 0)
+    .join("\n\n")
+}

@@ -2596,11 +2596,16 @@ model ContractDocument {
   totalAmount    Decimal      @default(0) @db.Decimal(18, 2)
   note           String?
   signedAt       DateTime?
+  /// The text frozen when the document went for signing — what the signers see and sign.
+  signedBody     String?
+  /// SHA-256 of signedBody; the envelope carries the same as boundContentHash.
+  contentHash    String?
   createdBy      String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  lines ContractDocumentLine[]
+  lines     ContractDocumentLine[]
+  envelopes EsignEnvelope[]
 
   @@unique([contractId, kind, number])
   @@index([organizationId, contractId])
@@ -15418,6 +15423,13 @@ model EsignEnvelope {
    */
   providerConfigId   String?
   providerConfig     EsignProviderConfig? @relation(fields: [providerConfigId], references: [id], onDelete: SetNull)
+  /**
+   * A price protocol or acceptance act this envelope signs instead of the contract itself
+   * (contract-documents.ts). NULL for a contract envelope. The body is the document's frozen
+   * signedBody, bound by boundContentHash; completion signs the document, never the contract.
+   */
+  documentId         String?
+  document           ContractDocument?    @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   metadata  Json     @default("{}")
   createdBy String?
@@ -15432,6 +15444,7 @@ model EsignEnvelope {
   @@index([organizationId, expiresAt])
   @@index([contractVersionId])
   @@index([providerConfigId])
+  @@index([documentId])
   @@map("esign_envelopes")
 }
 

@@ -97,6 +97,8 @@ async function verifyAndLoad(rawToken: string): Promise<
       }
       /** The body the signer should see — from the bound version, or live contract (legacy). */
       signingBody: string
+      /** The price protocol / acceptance act a document envelope signs; null for the contract's own. */
+      document: { id: string; kind: string; number: number } | null
     }
   | NextResponse
 > {
@@ -127,6 +129,8 @@ async function verifyAndLoad(rawToken: string): Promise<
     contract?: { id: string; organizationId: string; title: string; contractNumber: string; renderedBody: string | null; status: string; createdBy: string | null } | null
     contractVersionId?: string | null
     boundContentHash?: string | null
+    documentId?: string | null
+    document?: { id: string; kind: string; number: number; status: string; signedBody: string | null; contentHash: string | null } | null
   }) | null
 
   try {
@@ -169,6 +173,10 @@ async function verifyAndLoad(rawToken: string): Promise<
             createdBy: true,
           },
         },
+        // A price protocol or acceptance act this envelope signs (contract-documents.ts).
+        document: {
+          select: { id: true, kind: true, number: true, status: true, signedBody: true, contentHash: true },
+        },
       },
     }) as typeof envelope
 
@@ -193,7 +201,26 @@ async function verifyAndLoad(rawToken: string): Promise<
   //   (existing behaviour, preserved for backward-compat).
   let signingBody: string
 
-  if (envelope.contractVersionId) {
+  if (envelope.documentId) {
+    // ── DOCUMENT path: the document's text frozen at send, strict fail-closed ──
+    // Never the contract's body: a document envelope signs only the document.
+    // The frozen text must be there, hash to its stored contentHash, and that
+    // hash must be the one the envelope was bound to at send.
+    const doc = envelope.document
+    const frozen = doc?.signedBody ?? null
+    if (
+      !doc ||
+      frozen === null ||
+      !doc.contentHash ||
+      !envelope.boundContentHash ||
+      doc.contentHash !== envelope.boundContentHash ||
+      createHash("sha256").update(frozen).digest("hex") !== doc.contentHash
+    ) {
+      console.error(`[sign] Document envelope ${envelope.id} has no intact frozen text — failing closed`)
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    }
+    signingBody = frozen
+  } else if (envelope.contractVersionId) {
     // ── BOUND path: strict fail-closed ──────────────────────────────────────
     let boundVersion: { renderedBody: string | null; contentHash: string } | null = null
     try {
@@ -257,6 +284,10 @@ async function verifyAndLoad(rawToken: string): Promise<
       contractVersionId: (envelope as any).contractVersionId ?? null,
       boundContentHash: (envelope as any).boundContentHash ?? null,
     },
+    document:
+      envelope.documentId && envelope.document
+        ? { id: envelope.document.id, kind: envelope.document.kind, number: envelope.document.number }
+        : null,
     contract: (envelope as any).contract as {
       id: string
       organizationId: string
@@ -288,7 +319,7 @@ export async function GET(
   const loaded = await verifyAndLoad(rawToken)
   if (loaded instanceof NextResponse) return loaded
 
-  const { signer, envelope, contract, signingBody } = loaded
+  const { signer, envelope, contract, signingBody, document } = loaded
 
   // State guard: envelope must not be terminal
   const terminalEnvelopeStatuses: EnvelopeStatus[] = ["completed", "voided", "expired"]
@@ -429,7 +460,8 @@ export async function GET(
         expiresAt: envelope.expiresAt,
       },
       contract: {
-        title: contract.title,
+        // A document envelope's subject names the document (protocol / act) and the contract.
+        title: document ? envelope.subject : contract.title,
         contractNumber: contract.contractNumber,
         renderedBody: signingBody,
       },
@@ -450,7 +482,7 @@ export async function POST(
   const loaded = await verifyAndLoad(rawToken)
   if (loaded instanceof NextResponse) return loaded
 
-  const { signer, envelope, contract, signingBody } = loaded
+  const { signer, envelope, contract, signingBody, document } = loaded
 
   // FIX 3 (MED): CC/copy signers must not produce a signature. Only role="signer"
   // may submit a signature payload. CC/copy can still GET/view the document.
@@ -643,6 +675,39 @@ export async function POST(
           }
         }
 
+        if (suggestedEnvelopeStatus === "completed" && document) {
+          // ── Document envelope: the protocol / act is signed; the contract is
+          // not touched — no status change, no signedAt, no version minted.
+          // The document must still be the frozen one this envelope was bound to.
+          const docCompletedAudit = buildAuditEvent({
+            organizationId: signer.organizationId,
+            envelopeId: envelope.id,
+            signerId: null,
+            eventType: "envelope_completed",
+            actorType: "system",
+            actorId: null,
+            metadata: { triggeredBySignerId: signer.id, documentId: document.id },
+            at: now,
+          })
+          if (!docCompletedAudit.ok) {
+            throw new Error("buildAuditEvent envelope_completed failed: " + docCompletedAudit.error)
+          }
+          await tx.esignEnvelope.update({
+            where: { id: envelope.id },
+            data: { status: "completed", completedAt: now },
+          })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await tx.esignAuditEvent.create({ data: docCompletedAudit.record as any })
+          const signedDoc = await tx.contractDocument.updateMany({
+            where: { id: document.id, status: "in_signing", contentHash: envelope.boundContentHash ?? "" },
+            data: { status: "signed", signedAt: now },
+          })
+          if (signedDoc.count !== 1) {
+            throw new SignConflictError("The document changed while it was being signed")
+          }
+          return { conflict: false, completed: true } as const
+        }
+
         if (suggestedEnvelopeStatus === "completed") {
           const freshContract = await tx.contract.findFirst({
             where: { id: contract.id, organizationId: contract.organizationId },
@@ -797,7 +862,20 @@ export async function POST(
 
   // Best-effort: notify the contract owner on envelope completion.
   // NEVER block the public sign response on a notification error.
-  if (envelopeCompleted && contract.createdBy) {
+  if (envelopeCompleted && document && contract.createdBy) {
+    // A protocol or act fully signed: tell whoever made the contract; the
+    // contract's own alerts («contract.signed») are not for a document.
+    const subject = envelope.subject
+    createNotification({
+      organizationId: contract.organizationId,
+      userId: contract.createdBy,
+      type: "success",
+      title: `Document fully signed: ${subject}`,
+      message: `All signers have signed «${subject}».`,
+      entityType: "contract",
+      entityId: contract.id,
+    }).catch(() => {})
+  } else if (envelopeCompleted && contract.createdBy) {
     ;(async () => {
       try {
         await createNotification({

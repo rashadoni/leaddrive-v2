@@ -191,6 +191,17 @@ export default function ContractDetailHelpEn() {
             <HelpKey>Cancel</HelpKey>led — its number is not reused.
           </HelpCallout>
         </HelpStep>
+        <HelpStep n={4}>
+          <p>
+            On the protocol's or act's page, in the <strong>Signature</strong> block, click{" "}
+            <HelpKey>Send for signing</HelpKey>. The people who signed the contract are filled in.
+          </p>
+          <HelpCallout kind="see" label="What you'll see">
+            The document's text is frozen and links go to the signers — it cannot change, only be{" "}
+            <HelpKey>Recall from signing</HelpKey>ed. When everyone has signed, the document is «Signed» with a signature
+            sheet and a signed PDF. If someone declines, it becomes a draft again.
+          </HelpCallout>
+        </HelpStep>
       </HelpSection>
 
       <HelpSection title="Step by step: amend the contract (new version)">

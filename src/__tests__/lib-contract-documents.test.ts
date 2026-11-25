@@ -9,6 +9,7 @@ import { describe, it, expect } from "vitest"
 import {
   activeProtocol,
   documentTotals,
+  documentSigningText,
   documentWords,
   lineAmount,
   linesFromDeal,
@@ -144,6 +145,25 @@ describe("the documents' words", () => {
       expect(text).not.toMatch(/İnformasiya|информацион|information technology|İT xidmət|ИТ услуг|IT services|15 \(/)
       expect(t.actIntroTemplate).toContain("{contractNumber}")
     }
+  })
+})
+
+describe("the text that is signed", () => {
+  it("says what the PDF says — lines, sums with VAT, both sides — and is the same text every time", () => {
+    const lines = [
+      { productId: null, name: "Taxta palet", unit: "ədəd", quantity: 400, unitPrice: 96 },
+      { productId: null, name: "Çatdırılma", unit: "reys", quantity: 4, unitPrice: 75 },
+    ]
+    const text = documentSigningText(facts, lines, "AZN", "az")
+    expect(text).toContain("TƏHVİL-TƏSLİM AKTI № 1")
+    expect(text).toContain("1. Taxta palet — 400 ədəd × 96,00 AZN = 38 400,00 AZN")
+    expect(text).toContain("Yekun: 45 666,00 AZN")
+    expect(text).toContain("Kaspi Logistika MMC")
+    expect(documentSigningText(facts, lines, "AZN", "az")).toBe(text)
+    // a protocol line without a quantity names the price per unit and no amount
+    expect(documentSigningText({ ...facts, kind: "price_protocol" }, [{ productId: null, name: "Saat", unit: "saat", quantity: null, unitPrice: 40 }], "AZN", "en")).toContain(
+      "1. Saat × 40,00 AZN / saat",
+    )
   })
 })
 
