@@ -23,7 +23,7 @@ interface FeedData { items: FeedItem[]; followers: FeedPerson[]; following: bool
  * the task and names them in the message; a message shows the files it names,
  * a picture as a picture (lib/tasks/message-files.ts).
  */
-export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChanged, files = [], canAttach = false, onMessageFileIds }: {
+export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChanged, files = [], canAttach = false }: {
   taskId: string
   people: readonly MentionPerson[]
   statusLabel: (value: string) => string
@@ -33,8 +33,6 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
   files?: readonly MessageFile[]
   /** May attach files to the task (and so to a message). */
   canAttach?: boolean
-  /** Which of `files` a message shows — removing one of them takes it out of that message too. */
-  onMessageFileIds?: (ids: ReadonlySet<string>) => void
 }) {
   const t = useTranslations("taskPanel")
   const locale = useLocale()
@@ -92,9 +90,6 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
     (data?.items ?? []).flatMap((item) => (item.kind === "message" ? [{ id: item.id, text: item.text ?? "" }] : [])),
     files,
   ), [data, files])
-  useEffect(() => {
-    onMessageFileIds?.(new Set([...messageFiles.values()].flat().flatMap((entry) => (entry.file ? [entry.file.id] : []))))
-  }, [messageFiles, onMessageFileIds])
   // Names of files removed from the card (Ulviyyə, 2026-11-24: «sağ tərəfdəki şəkillər açılmır» — she had
   // removed them from «Fayllar» an hour earlier, and the message showed only a name that opened nothing).
   const removedNames = useMemo(() => new Set((data?.items ?? []).flatMap((item) =>
@@ -211,7 +206,7 @@ export function TaskPanelFeed({ taskId, people, statusLabel, reloadKey, onChange
                     {mayChange(item) && editing?.id !== item.id && (
                       removing === item.id ? (
                         <span className="ml-auto flex items-center gap-1.5">
-                          <span className="text-muted-foreground">{t("confirmRemoveMessage")}</span>
+                          <span className="text-muted-foreground">{t((messageFiles.get(item.id) ?? []).some((entry) => entry.file) ? "confirmRemoveMessageWithFiles" : "confirmRemoveMessage")}</span>
                           <button type="button" data-testid="task-feed-message-remove-yes" onClick={() => void removeMessage(item.id)} className="rounded border border-destructive/50 px-1.5 text-destructive">{t("yes")}</button>
                           <button type="button" onClick={() => setRemoving(null)} className="rounded border px-1.5">{t("no")}</button>
                         </span>

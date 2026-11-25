@@ -12,6 +12,7 @@ import { resolveRelated } from "@/lib/resolve-related"
 import { recalcProjectCompletion } from "@/lib/project-rollup"
 import { bookingTaskConflict } from "@/lib/booking/task-reference"
 import { mayDeleteTask, mayManageTask, NOT_YOUR_TASK_TO_DELETE } from "@/lib/tasks/task-ownership"
+import { messageFileIds } from "@/lib/tasks/message-files"
 
 export const GET = withRls(async (_req, { orgId, session }, { params }: { params: Promise<{ id: string }> }) => {
   const role = session?.role || "admin"
@@ -80,7 +81,12 @@ export const GET = withRls(async (_req, { orgId, session }, { params }: { params
     collaboratorIds: (task.collaborators ?? []).map((c) => c.user.id),
   }
   const you = { mayManage: mayManageTask(role, session?.userId, people), mayDelete: mayDeleteTask(role, session?.userId, people) }
-  return NextResponse.json({ success: true, data: { ...filteredTask, you } })
+  // A file a message shows is that message's; the card's «Fayllar» lists the others (as Bordio kept them apart).
+  type AttachmentRow = { id: string; fileName: string; originalName: string; mimeType: string | null }
+  const files: AttachmentRow[] = task.attachments ?? []
+  const inMessages = messageFileIds([...(task.comments ?? [])].reverse().map((c: { id: string; content: string }) => ({ id: c.id, text: c.content })), files)
+  const attachments = files.map((file: AttachmentRow) => ({ ...file, inMessage: inMessages.has(file.id) }))
+  return NextResponse.json({ success: true, data: { ...filteredTask, ...(task.attachments ? { attachments } : {}), you } })
 })
 
 export const PATCH = withRlsAuth("tasks", "write", async (req: NextRequest, authResult, { params }: { params: Promise<{ id: string }> }) => {
