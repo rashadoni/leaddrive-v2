@@ -105,13 +105,8 @@ describe("demo request from a partner site", () => {
     expect(mocks.sendPartner).toHaveBeenCalledWith({
       to: PARTNER,
       site: "biznesdoktoru.az",
-      name: created.name,
       company: created.company,
-      email: created.email,
-      phone: created.phone,
-      jobTitle: created.jobTitle,
-      message: created.message,
-      requestedModuleNames: expect.any(Array),
+      at: expect.any(Date),
     })
     // the address is read from the sales organisation, nowhere else
     expect(mocks.findOrganization).toHaveBeenCalledWith(expect.objectContaining({ where: { id: SALES_ORG, isActive: true } }))

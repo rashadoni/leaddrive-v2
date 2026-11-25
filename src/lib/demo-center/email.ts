@@ -124,36 +124,37 @@ export async function sendDemoRequestNotification(input: {
  * link into LeadDrive: the partner has no access there; «Reply» goes to the
  * prospect.
  */
+/**
+ * A heads-up to the partner whose site the request came from: which site,
+ * which company, when. Nothing about the person — no name, email, phone or
+ * message, and no reply-to them (owner, 2026-11-25: the partner "just wants to
+ * know when someone sends a request through her site"). The prospect is
+ * followed up from Demo Center, as every other request.
+ */
 export async function sendDemoRequestPartnerNotification(input: {
   to: string
   site: string
-  name: string
   company: string
-  email: string
-  phone?: string | null
-  jobTitle?: string | null
-  message?: string | null
-  requestedModuleNames: string[]
+  at: Date
 }) {
-  const row = (label: string, value: string) => `<tr><td style="padding:6px 14px 6px 0;color:#667069">${label}</td><td style="padding:6px 0;font-weight:600">${escapeHtml(value)}</td></tr>`
   const site = singleLine(input.site)
+  const company = singleLine(input.company)
+  const when = new Intl.DateTimeFormat("az-AZ", {
+    timeZone: "Asia/Baku",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(input.at)
   return sendEmail({
     to: input.to,
-    subject: `${site} — yeni demo sorğusu: ${singleLine(input.company)}`,
+    subject: `${site} — yeni demo sorğusu`,
     transactional: true,
-    replyTo: input.email,
     html: emailFrame(`
       <h1 style="margin:0 0 12px;font-size:24px">Saytdan yeni demo sorğusu</h1>
-      <p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:#667069">${escapeHtml(site)} saytındakı formadan göndərilib. Müştərinin e-poçtu hələ təsdiqlənməyib: demo linki ona ayrıca məktubla gedib. Bu məktuba cavab müştəriyə gedəcək.</p>
-      <table style="border-collapse:collapse;font-size:14px">
-        ${row("Ad", input.name)}
-        ${row("Şirkət", input.company)}
-        ${row("Vəzifə", input.jobTitle || "—")}
-        ${row("E-poçt", input.email)}
-        ${row("Telefon", input.phone || "—")}
-        ${row("Maraqlandığı həllər", input.requestedModuleNames.join(", ") || "Göstərilməyib")}
-        ${row("Mesaj", input.message || "—")}
-      </table>
+      <p style="margin:0;font-size:15px;line-height:1.6">${escapeHtml(site)} saytındakı formadan <strong>${escapeHtml(company)}</strong> şirkəti demo istədi — ${escapeHtml(when)} (Bakı vaxtı).</p>
     `, `Bu məktub ${site} saytının demo formasından avtomatik göndərilib.`),
   })
 }

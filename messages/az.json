@@ -16262,10 +16262,10 @@
   "admin": {
     "demoCenter": {
       "sitePartnerTitle": "Partnyor saytlarından sorğular",
-      "sitePartnerBody": "Partnyor saytının formasından gələn hər demo sorğusu müştəri e-poçtunu təsdiqləməmiş dərhal bu ünvana məktubla gedir. Məktuba cavab müştəriyə gedəcək.",
+      "sitePartnerBody": "Partnyor saytının formasından demo sorğusu gələndə bu ünvana dərhal qısa bildiriş gedir: hansı sayt, hansı şirkət və nə vaxt. Müştərinin əlaqə məlumatları orada olmur.",
       "sitePartnerLabel": "{site} sorğuları kimə gəlsin",
       "sitePartnerSave": "Yadda saxla",
-      "sitePartnerSaveHint": "{site} saytından hər yeni sorğu dərhal bu ünvana məktubla gələcək.",
+      "sitePartnerSaveHint": "{site} saytından hər yeni sorğu barədə bu ünvana dərhal qısa bildiriş gələcək.",
       "sitePartnerClear": "Göndərmə",
       "sitePartnerClearHint": "Sorğular Demo Center-də qalacaq, amma heç kimə məktub getməyəcək.",
       "sitePartnerCurrent": "İndi {email} ünvanına gedir.",
