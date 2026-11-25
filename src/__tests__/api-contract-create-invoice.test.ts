@@ -30,6 +30,7 @@ const mockInvoiceCount = vi.fn()
 const mockInvoiceCreate = vi.fn()
 const mockInvoiceFindFirst = vi.fn()
 const mockAccountingFindFirst = vi.fn()
+const mockProtocolFindMany = vi.fn()
 const mockInvoiceNumber = vi.fn()
 const mockPushInvoiceToErp = vi.fn()
 const mockRequireAuth = vi.fn()
@@ -47,6 +48,9 @@ vi.mock("@/lib/prisma", () => ({
     },
     accountingIntegration: {
       findFirst: (...args: unknown[]) => mockAccountingFindFirst(...args),
+    },
+    contractDocument: {
+      findMany: (...args: unknown[]) => mockProtocolFindMany(...args),
     },
   },
   // Prisma.Decimal used in the route for zero values
@@ -101,7 +105,9 @@ vi.mock("@/lib/prisma-decimal", () => ({
   })),
 }))
 
-vi.mock("@/lib/invoice-calculations", () => ({
+vi.mock("@/lib/invoice-calculations", async (importOriginal) => ({
+  // The real arithmetic for protocol lines; only the due date is pinned.
+  ...(await importOriginal<typeof import("@/lib/invoice-calculations")>()),
   calculateDueDate: vi.fn(() => new Date("2026-07-08T00:00:00.000Z")),
 }))
 
@@ -210,6 +216,44 @@ describe("POST /api/v1/contracts/:id/create-invoice", () => {
     mockInvoiceNumber.mockResolvedValue("INV-2026-00001")
     mockInvoiceCreate.mockResolvedValue(createdInvoice)
     mockPushInvoiceToErp.mockResolvedValue({ skipped: true })
+    mockProtocolFindMany.mockResolvedValue([]) // default: no price protocol — one line for the value
+  })
+
+  // ── Price protocol (owner 2026-11-25, mock «Протокол цены и акт») ─────────
+
+  it("takes the lines and prices of the protocol in force, with its VAT on top", async () => {
+    mockProtocolFindMany.mockResolvedValue([
+      {
+        id: "pp-1", number: 1, status: "signed", validFrom: new Date("2026-01-01"), validTo: null, documentDate: new Date("2026-01-01"), vatRate: "0.18",
+        lines: [
+          { productId: "prod-palet", name: "Taxta palet", unit: "ədəd", quantity: "400", unitPrice: "96" },
+          { productId: null, name: "Çatdırılma", unit: "reys", quantity: null, unitPrice: "60" },
+        ],
+      },
+    ])
+    const res = await POST(makePOSTReq(), makeParams())
+    expect(res.status).toBe(201)
+    // only protocols of this contract and organisation, never a cancelled one
+    expect(mockProtocolFindMany.mock.calls[0][0].where).toEqual({ organizationId: ORG_ID, contractId: CONTRACT_ID, kind: "price_protocol", status: { not: "cancelled" } })
+    const data = mockInvoiceCreate.mock.calls[0][0].data
+    expect(data.items.create.map((i: { name: string; quantity: number; unitPrice: { toString(): string }; productId?: string }) => [i.name, i.quantity, i.unitPrice.toString(), i.productId])).toEqual([
+      ["Taxta palet", 400, "96", "prod-palet"],
+      ["Çatdırılma", 1, "60", undefined], // the protocol fixed no quantity: 1 to start with
+    ])
+    expect(data.taxRate).toBe(0.18)
+    expect(data.includeVat).toBe(true)
+    expect(data.subtotal.toString()).toBe("38460")
+    expect(data.taxAmount.toString()).toBe("6922.8")
+    expect(data.totalAmount.toString()).toBe("45382.8")
+    expect(data.balanceDue.toString()).toBe("45382.8")
+    expect((await res.json()).protocol).toEqual({ number: 1, signed: true })
+  })
+
+  it("keeps one line for the contract's value when the contract has no protocol", async () => {
+    await POST(makePOSTReq(), makeParams())
+    const data = mockInvoiceCreate.mock.calls[0][0].data
+    expect(data.items.create).toHaveLength(1)
+    expect(data.taxRate).toBe(0)
   })
 
   // ── Auth ──────────────────────────────────────────────────────────────────

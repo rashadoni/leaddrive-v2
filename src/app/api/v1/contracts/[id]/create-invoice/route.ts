@@ -26,7 +26,8 @@ import { requireAuth, isAuthError } from "@/lib/api-auth"
 import { getMobileAuth } from "@/lib/mobile-auth"
 import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { generateInvoiceNumber } from "@/lib/invoice-number"
-import { calculateDueDate } from "@/lib/invoice-calculations"
+import { calculateDueDate, calculateInvoiceTotals, calculateItemTotal } from "@/lib/invoice-calculations"
+import { activeProtocol, toNumber, type ProtocolRow } from "@/lib/clm/contract-documents"
 import { normalizeInvoiceRow, normalizeInvoiceItemRow } from "@/lib/prisma-decimal"
 import { pushInvoiceToErp } from "@/lib/integrations/erp/provider"
 import { Prisma } from "@prisma/client"
@@ -98,6 +99,95 @@ export async function POST(
     const contractValue: Prisma.Decimal =
       contract.valueAmount ?? new Prisma.Decimal(0)
 
+    // ── The price protocol, when the contract has one: its lines and prices ──
+    // (owner 2026-11-25, mock «Протокол цены и акт»). Quantities a protocol
+    // leaves empty start at 1 for a person to set on the invoice.
+    type ProtocolWithLines = ProtocolRow & {
+      vatRate: unknown
+      lines: Array<{ productId: string | null; name: string; unit: string | null; quantity: unknown; unitPrice: unknown }>
+    }
+    const protocols: ProtocolWithLines[] = await prisma.contractDocument.findMany({
+      where: { organizationId: orgId, contractId, kind: "price_protocol", status: { not: "cancelled" } },
+      select: {
+        id: true,
+        number: true,
+        status: true,
+        validFrom: true,
+        validTo: true,
+        documentDate: true,
+        vatRate: true,
+        lines: { orderBy: { position: "asc" }, select: { productId: true, name: true, unit: true, quantity: true, unitPrice: true } },
+      },
+    })
+    const active = activeProtocol(protocols, new Date())
+    const protocolLines = active?.protocol.lines ?? []
+    const fromProtocol = protocolLines.length > 0
+    const vatRate = fromProtocol ? toNumber(active!.protocol.vatRate) ?? 0 : 0
+    const protocolItems = protocolLines.map((line: { productId: string | null; name: string; unit: string | null; quantity: unknown; unitPrice: unknown }, index: number) => {
+      const quantity = toNumber(line.quantity) ?? 1
+      const unitPrice = toNumber(line.unitPrice) ?? 0
+      return {
+        productId: line.productId ?? undefined,
+        name: line.name,
+        description: line.unit ?? undefined,
+        quantity,
+        unitPrice: new Prisma.Decimal(unitPrice),
+        discount: 0,
+        taxRate: null,
+        total: new Prisma.Decimal(calculateItemTotal({ quantity, unitPrice, discount: 0 })),
+        sortOrder: index,
+      }
+    })
+    const protocolTotals = fromProtocol
+      ? calculateInvoiceTotals(
+          protocolItems.map((i: { quantity: number; unitPrice: Prisma.Decimal }) => ({ quantity: i.quantity, unitPrice: Number(i.unitPrice), discount: 0 })),
+          "percentage",
+          0,
+          vatRate,
+          vatRate > 0,
+        )
+      : null
+
+    // Without a protocol, as before: one line for the contract's value, no VAT.
+    const money = protocolTotals
+      ? {
+          subtotal: new Prisma.Decimal(protocolTotals.subtotal),
+          discountType: "percentage",
+          discountValue: new Prisma.Decimal(0),
+          discountAmount: new Prisma.Decimal(0),
+          taxRate: vatRate,
+          includeVat: vatRate > 0,
+          taxAmount: new Prisma.Decimal(protocolTotals.taxAmount),
+          totalAmount: new Prisma.Decimal(protocolTotals.totalAmount),
+          paidAmount: new Prisma.Decimal(0),
+          balanceDue: new Prisma.Decimal(protocolTotals.totalAmount),
+        }
+      : {
+          subtotal: contractValue,
+          discountType: "percentage",
+          discountValue: new Prisma.Decimal(0),
+          discountAmount: new Prisma.Decimal(0),
+          taxRate: 0,
+          taxAmount: new Prisma.Decimal(0),
+          totalAmount: contractValue,
+          paidAmount: new Prisma.Decimal(0),
+          balanceDue: contractValue,
+        }
+    const items = fromProtocol
+      ? protocolItems
+      : [
+          {
+            name: contract.title,
+            description: `Contract ${contract.contractNumber ?? contract.id}`,
+            quantity: 1,
+            unitPrice: contractValue,
+            discount: 0,
+            taxRate: null,
+            total: contractValue,
+            sortOrder: 0,
+          },
+        ]
+
     const invoiceNumber = await generateInvoiceNumber(orgId)
     const issueDate = new Date()
     const dueDate = calculateDueDate(issueDate, "net30")
@@ -115,35 +205,14 @@ export async function POST(
         contactId: contract.contactId ?? undefined,
         currency: contract.currency,
         // Money — pass Decimal directly; Prisma handles precision.
-        subtotal: contractValue,
-        discountType: "percentage",
-        discountValue: new Prisma.Decimal(0),
-        discountAmount: new Prisma.Decimal(0),
-        taxRate: 0,
-        taxAmount: new Prisma.Decimal(0),
-        totalAmount: contractValue,
-        paidAmount: new Prisma.Decimal(0),
-        balanceDue: contractValue,
+        ...money,
         paymentTerms: "net30",
         issueDate,
         dueDate,
         // Carry over contract number into the invoice document details field.
         contractNumber: contract.contractNumber ?? undefined,
         viewToken: crypto.randomUUID(),
-        items: {
-          create: [
-            {
-              name: contract.title,
-              description: `Contract ${contract.contractNumber ?? contract.id}`,
-              quantity: 1,
-              unitPrice: contractValue,
-              discount: 0,
-              taxRate: null,
-              total: contractValue,
-              sortOrder: 0,
-            },
-          ],
-        },
+        items: { create: items },
       },
       include: {
         items: true,
@@ -163,6 +232,7 @@ export async function POST(
           ...normalizeInvoiceRow(invoice),
           items: invoice.items.map(normalizeInvoiceItemRow),
         },
+        ...(active && fromProtocol ? { protocol: { number: active.protocol.number, signed: active.signed } } : {}),
         ...(existingCount > 0
           ? {
               warning: `This contract already has ${existingCount} invoice(s). A new draft was created.`,

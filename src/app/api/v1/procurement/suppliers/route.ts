@@ -108,6 +108,11 @@ export const POST = withRlsAuth("procurement", "write", async (req, { orgId, use
     },
     select: SUPPLIER_SELECT,
   })
-  logAudit(orgId, "create", "company", supplier.id, supplier.name, { newValue: { category: SUPPLIER_CATEGORY }, userId })
+  // Awaited: the supplier's «created» row is in the history by the time the
+  // answer says it exists. logAudit never throws (it reports its own failure),
+  // so this costs one insert and cannot fail the request. Fire-and-forget left
+  // procurement-suppliers-postgres reading the history before the row landed
+  // (static-checks on #1757: 2 rows of 3).
+  await logAudit(orgId, "create", "company", supplier.id, supplier.name, { newValue: { category: SUPPLIER_CATEGORY }, userId })
   return NextResponse.json({ success: true, data: supplier }, { status: 201 })
 })

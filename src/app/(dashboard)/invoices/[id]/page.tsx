@@ -20,6 +20,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select } from "@/components/ui/select"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { toast } from "sonner"
+import { Hint } from "@/components/hint"
+import { InvoiceProtocolCheck } from "@/components/contracts/invoice-protocol-check"
 import {
   ArrowLeft,
   FileSpreadsheet,
@@ -59,6 +62,7 @@ import { InvoicePayLinkButton } from "@/components/invoices/invoice-pay-link-but
 
 interface InvoiceItem {
   id: string
+  productId?: string | null
   name: string
   description: string | null
   quantity: number
@@ -83,6 +87,28 @@ interface AuditEntry {
   details: string | null
   createdAt: string
   user: { name: string | null; email: string } | null
+}
+
+/**
+ * /api/v1/audit-log answers `{ data: { logs } }` with the actor as
+ * actorName/actorEmail; this page was written for `{ entries }` with `user`,
+ * so its history never showed an audit row. Read both shapes.
+ */
+function auditEntries(body: unknown): AuditEntry[] {
+  const b = body as { entries?: AuditEntry[]; data?: { logs?: Array<Record<string, unknown>> } } | AuditEntry[]
+  if (Array.isArray(b)) return b
+  if (b?.entries) return b.entries
+  return (b?.data?.logs ?? []).map((log) => {
+    const newValue = (log.newValue ?? null) as Record<string, unknown> | null
+    return {
+      id: String(log.id),
+      action: String(log.action),
+      // A price that differs from the contract's protocol carries the reason written for it.
+      details: log.action === "price_deviation" && typeof newValue?.reason === "string" ? newValue.reason : null,
+      createdAt: String(log.createdAt),
+      user: log.actorName || log.actorEmail ? { name: (log.actorName as string | null) ?? null, email: String(log.actorEmail ?? "") } : null,
+    }
+  })
 }
 
 interface Invoice {
@@ -118,6 +144,8 @@ interface Invoice {
     phone: string | null
   } | null
   deal: { id: string; name: string } | null
+  /** The contract this invoice bills — its price protocol and acts (contract-documents.ts). */
+  contract?: { id: string; title: string; contractNumber: string } | null
   items: InvoiceItem[]
   payments: Payment[]
 }
@@ -313,6 +341,7 @@ export default function InvoiceDetailPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const t = useTranslations("invoices")
+  const tdoc = useTranslations("contractDocuments")
   const tc = useTranslations("common")
 
   const orgId = (session?.user as { organizationId?: string })?.organizationId
@@ -424,7 +453,7 @@ export default function InvoiceDetailPage() {
       )
       if (res.ok) {
         const data = await res.json()
-        setAuditLog(Array.isArray(data) ? data : data.entries || [])
+        setAuditLog(auditEntries(data))
       }
     } catch {
       // ignore
@@ -752,8 +781,24 @@ export default function InvoiceDetailPage() {
     window.open(url, "_blank")
   }
 
-  function handleDownloadAct() {
-    window.open(`/api/v1/invoices/${invoiceId}/act?format=html`, "_blank")
+  async function handleDownloadAct() {
+    // An invoice of a contract gets a real acceptance act — a document of the
+    // contract with its own lines, status and PDF (contract-documents.ts); the
+    // invoice's open act is returned instead of a second one. Without a
+    // contract, the printable page as before.
+    const contractId = invoice?.contract?.id
+    if (!contractId) {
+      window.open(`/api/v1/invoices/${invoiceId}/act?format=html`, "_blank")
+      return
+    }
+    const res = await fetch(`/api/v1/contracts/${encodeURIComponent(contractId)}/documents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "acceptance_act", invoiceId }),
+    }).catch(() => null)
+    const json = res ? await res.json().catch(() => null) : null
+    if (json?.success && json.data?.id) router.push(`/contracts/${contractId}/documents/${json.data.id}`)
+    else toast.error(tdoc("errCreate"))
   }
 
   async function handleRecordPayment() {
@@ -897,10 +942,12 @@ export default function InvoiceDetailPage() {
             <Download className="h-4 w-4 mr-1" />
             {t("downloadPdfNoStamp")}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleDownloadAct}>
-            <FileText className="h-4 w-4 mr-1" />
-            Akt
-          </Button>
+          <Hint text={invoice.contract ? tdoc("invoiceActHint") : null}>
+            <Button variant="outline" size="sm" onClick={handleDownloadAct} data-testid="invoice-act">
+              <FileText className="h-4 w-4 mr-1" />
+              {invoice.contract ? tdoc("invoiceAct") : "Akt"}
+            </Button>
+          </Hint>
           <Button variant="outline" size="sm" onClick={handleDuplicate}>
             <Copy className="h-4 w-4 mr-1" />
             {t("duplicate")}
@@ -924,6 +971,15 @@ export default function InvoiceDetailPage() {
       <KpiCards invoice={invoice} t={t} />
 
       <AdvisorRecordWidget entityType="invoice" entityId={invoice.id} orgId={orgId} title="Advisor risk" />
+
+      {invoice.contract && (
+        <InvoiceProtocolCheck
+          invoiceId={invoice.id}
+          contractId={invoice.contract.id}
+          items={invoice.items.map((i) => ({ productId: i.productId ?? null, name: i.name, unitPrice: Number(i.unitPrice) }))}
+          onRecorded={fetchAuditLog}
+        />
+      )}
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -1379,7 +1435,7 @@ export default function InvoiceDetailPage() {
                   items.push({
                     id: entry.id,
                     icon: <Clock className="h-3.5 w-3.5 text-muted-foreground" />,
-                    label: `${entry.user?.name || entry.user?.email || t("system")}: ${entry.action}`,
+                    label: `${entry.user?.name || entry.user?.email || t("system")}: ${entry.action === "price_deviation" ? tdoc("activityPriceDeviation") : entry.action}`,
                     detail: entry.details || undefined,
                     date: entry.createdAt,
                   })

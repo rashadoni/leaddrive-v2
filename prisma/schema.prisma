@@ -123,6 +123,8 @@ model Organization {
 
   planRequests               PlanRequest[]
   invoices                   Invoice[]
+  contractDocuments          ContractDocument[]
+  contractDocumentLines      ContractDocumentLine[]
   invoicePayments            InvoicePayment[]
   recurringInvoices          RecurringInvoice[]
   budgetPlans                BudgetPlan[]
@@ -2553,12 +2555,80 @@ model Contract {
   embedding              ContractEmbedding?
   // CLM Slice 6d: AI semantic redlines between two ContractVersions.
   redlines               ContractRedline[]
+  // Price protocols and acceptance acts that follow the contract (contract-documents.ts).
+  documents              ContractDocument[]
 
   @@index([organizationId])
   @@index([templateId])
   @@index([renewalSourceContractId])
   @@index([signedAt])
   @@map("contracts")
+}
+
+/// A document that follows a contract (owner 2026-11-25, mock «Протокол цены и акт»):
+/// the price agreement protocol («Qiymət razılaşdırma protokolu», annex Əlavə №N) and the
+/// acceptance act («Təhvil-təslim aktı», made from an invoice). See src/lib/clm/contract-documents.ts.
+/// Prices are without VAT and the document has one VAT rate (a fraction), as invoices do.
+model ContractDocument {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contractId     String
+  contract       Contract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  /// price_protocol | acceptance_act — DB CHECK
+  kind           String
+  /// Per contract and kind: Əlavə №1, №2…; Akt №1, №2…
+  number         Int
+  /// draft | in_signing | signed | cancelled — DB CHECK
+  status         String       @default("draft")
+  documentDate   DateTime
+  /// The protocol's prices hold in this period.
+  validFrom      DateTime?
+  validTo        DateTime?
+  /// The invoice an act closes.
+  invoiceId      String?
+  invoice        Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  currency       String       @default("AZN")
+  /// 0.18 = 18 %.
+  vatRate        Decimal      @default(0) @db.Decimal(6, 4)
+  subtotal       Decimal      @default(0) @db.Decimal(18, 2)
+  vatAmount      Decimal      @default(0) @db.Decimal(18, 2)
+  totalAmount    Decimal      @default(0) @db.Decimal(18, 2)
+  note           String?
+  signedAt       DateTime?
+  createdBy      String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  lines ContractDocumentLine[]
+
+  @@unique([contractId, kind, number])
+  @@index([organizationId, contractId])
+  @@index([invoiceId])
+  @@map("contract_documents")
+}
+
+model ContractDocumentLine {
+  id             String           @id @default(cuid())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentId     String
+  document       ContractDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  position       Int
+  productId      String?
+  product        Product?         @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name           String
+  unit           String?
+  /// A protocol fixes prices; its quantity may stay empty.
+  quantity       Decimal?         @db.Decimal(18, 4)
+  unitPrice      Decimal          @db.Decimal(18, 4)
+  amount         Decimal          @default(0) @db.Decimal(18, 2)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([organizationId, documentId])
+  @@index([productId])
+  @@map("contract_document_lines")
 }
 
 model ContractFile {
@@ -4820,6 +4890,8 @@ model Product {
   cost ProductCost?
 
   @@index([organizationId])
+  contractDocumentLines ContractDocumentLine[]
+
   @@map("products")
 }
 
@@ -4936,6 +5008,9 @@ model Invoice {
   @@index([organizationId, companyId])
   @@index([dealId])
   @@index([contractId])
+  /// Acceptance acts made from this invoice.
+  contractDocuments ContractDocument[]
+
   @@map("invoices")
 }
 

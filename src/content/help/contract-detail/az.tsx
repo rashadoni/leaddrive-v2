@@ -161,6 +161,39 @@ export default function ContractDetailHelpAz() {
           </HelpCallout>
         </HelpStep>
       </HelpSection>
+      <HelpSection title="Addım-addım: sənəd zənciri — protokol, hesab-faktura, akt">
+        <HelpStep n={1}>
+          <p>
+            Kartın yuxarısında <strong>Sənəd zənciri</strong> durur: müqavilə → qiymət razılaşdırma protokolu →
+            hesab-fakturalar → təhvil-təslim aktları. Çatışmayan halqa rənglə seçilir. <HelpKey>Protokol hazırla</HelpKey> basın.
+          </p>
+          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
+            «Əlavə № 1» açılır: sətirlər sövdələşmədən gəlir (endirimli qiymətlə), <HelpKey>Kataloqdan</HelpKey> və{" "}
+            <HelpKey>Sətir</HelpKey> ilə əlavə olunur. Qiymətlər ƏDV-siz, ƏDV sənədə bir dəfə seçilir. Miqdar protokolda
+            vacib deyil. Qiymətlər dəyişəndə <HelpKey>Yeni protokol</HelpKey> — növbəti Əlavə, əvvəlki tarixçədə qalır.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={2}>
+          <p>
+            <HelpKey>Hesab-faktura yarat</HelpKey> basın — sətirlər və qiymətlər qüvvədə olan protokoldan gəlir, ƏDV üstünə.
+          </p>
+          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
+            Hesab-fakturada qiymət protokoldan fərqlidirsə, sarı xəbərdarlıq hər iki qiyməti göstərir. Qiyməti qaytarın və ya
+            səbəbi yazın — səbəb hesab-fakturanın tarixçəsinə düşür.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={3}>
+          <p>
+            Zəncirdə hesab-fakturanın yanında <HelpKey>Akt yarat</HelpKey> və ya hesab-fakturanın özündə{" "}
+            <HelpKey>Təhvil-təslim aktı</HelpKey> basın.
+          </p>
+          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
+            Akt hesab-fakturanın sətirləri ilə açılır; qismən təhvil verilibsə, miqdarı azaldın. Mətn müqavilədən gəlir:
+            tərəflər, nömrə, tarix. <HelpKey>PDF</HelpKey> hər iki tərəfin imza yeri ilə açılır. Qaralamanı{" "}
+            <HelpKey>Ləğv et</HelpKey> ilə ləğv etmək olar — nömrəsi təkrar istifadə olunmur.
+          </HelpCallout>
+        </HelpStep>
+      </HelpSection>
 
       <HelpSection title="Addım-addım: müqaviləyə düzəliş et (yeni versiya)">
         <HelpStep n={1}>
