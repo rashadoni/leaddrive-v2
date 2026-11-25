@@ -3731,6 +3731,18 @@
     "viewDocumentEmpty": "Bu müqavilənin hələ mətni yoxdur. Şablondan yaradın və ya fayl yükləyin.",
     "redlineEmptyBodies": "Hər iki versiya boşdur — müqayisə ediləcək heç nə yoxdur.",
     "esignNotConfigured": "Elektron imza konfiqurasiya edilməyib (gizli açar yoxdur).",
+    "esignSheetTitle": "İmza vərəqi",
+    "esignSignedPdf": "İmzalanmış PDF",
+    "esignSignedPdfHint": "Müqavilənin imzalanmış mətni, son səhifədə imza vərəqi: kim, nə vaxt və hansı ünvandan imzalayıb.",
+    "esignSimpleSignature": "Sadə imza",
+    "esignSimpleSignatureHint": "Çəkilmiş və ya yazılmış elektron imza. Qanunla əl imzasına bərabər olan yalnız gücləndirilmiş elektron imzadır — ASAN İmza və ya SİMA.",
+    "esignMethodDrawn": "Əl ilə çəkilib",
+    "esignMethodTyped": "Ad yazılıb",
+    "esignMethodUploaded": "Şəkil yüklənib",
+    "esignSignedFromIp": "IP ünvanı",
+    "esignNotSigned": "İmzalamayıb",
+    "esignFingerprint": "Sənədin izi, versiya {version}",
+    "esignFingerprintHint": "İmzalanmış mətnin SHA-256 izi. Mətndə bir hərf dəyişsə, iz də dəyişir — belə yoxlanılır ki, imzalanan mətn sonradan dəyişdirilməyib.",
     "versionsDownloadPdf": "PDF yüklə"
   },
   "campaigns": {

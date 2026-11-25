@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Pencil, Trash2, FileText, Calendar, DollarSign, Hash, Clock, AlertTriangle, CheckSquare, Plus, X, Sparkles, GitBranch, PenLine, Send, RefreshCw, Copy, Check, Users, ThumbsUp, ThumbsDown, FilePen, ShieldAlert, ListChecks, Flag, TrendingUp, ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react"
 import { ColorStatCard } from "@/components/color-stat-card"
 import { InfoHint } from "@/components/info-hint"
+import { EsignSignatureSheet } from "@/components/contract-esign-signature-sheet"
 import { ContractForm } from "@/components/contract-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import {
@@ -49,6 +50,9 @@ interface EsignSigner {
   signedAt: string | null
   declinedAt: string | null
   viewedAt: string | null
+  /** drawn | typed | uploaded — set once the signer has signed. */
+  signatureMethod?: string | null
+  signedIpAddress?: string | null
 }
 
 interface EsignEnvelope {
@@ -60,7 +64,28 @@ interface EsignEnvelope {
   completedAt: string | null
   expiresAt: string | null
   createdAt: string
+  /** The immutable text a completed envelope bound its signers to. */
+  signedVersion?: { versionNo: number; contentHash: string } | null
   signers: EsignSigner[]
+}
+
+/**
+ * The contract PDF in the screen's language. `envelopeId` asks for the signed
+ * copy: the text that envelope's signers signed plus the signature sheet,
+ * with times in this browser's zone.
+ */
+function contractPdfUrl(contractId: string, locale: string, envelopeId?: string): string {
+  const q = new URLSearchParams({ download: "1", lang: locale })
+  if (envelopeId) {
+    q.set("signed", "1")
+    q.set("envelope", envelopeId)
+    try {
+      q.set("tz", Intl.DateTimeFormat().resolvedOptions().timeZone)
+    } catch {
+      // no zone known: the sheet prints UTC
+    }
+  }
+  return `/api/v1/contracts/${encodeURIComponent(contractId)}/pdf?${q.toString()}`
 }
 
 interface SigningLink {
@@ -147,6 +172,7 @@ const defaultLevel = (): ApprovalLevelInput => ({
 export default function ContractDetailPage() {
   const t = useTranslations("contracts")
   const tc = useTranslations("common")
+  const locale = useLocale()
 
   // ── AI panel label helpers ────────────────────────────────────────────────
   const categoryLabel = (c: string) => {
@@ -2327,6 +2353,14 @@ export default function ContractDetailPage() {
                       ))}
                     </div>
                   )}
+                  {/* Signature sheet — the same facts as the last page of the signed PDF */}
+                  {env.status === "completed" && env.signedVersion && (
+                    <EsignSignatureSheet
+                      envelope={env}
+                      signedVersion={env.signedVersion}
+                      pdfUrl={contractPdfUrl(String(params.id), locale, env.id)}
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -3556,7 +3590,7 @@ export default function ContractDetailPage() {
             {tc("cancel")}
           </Button>
           <Button
-            onClick={() => window.open(`/api/v1/contracts/${params.id}/pdf?download=1`, "_blank")}
+            onClick={() => window.open(contractPdfUrl(String(params.id), locale), "_blank")}
           >
             {t("versionsDownloadPdf")}
           </Button>
@@ -3661,7 +3695,7 @@ export default function ContractDetailPage() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => { window.open(`/api/v1/contracts/${params.id}/pdf?download=1`, "_blank") }}
+                onClick={() => { window.open(contractPdfUrl(String(params.id), locale), "_blank") }}
               >
                 {t("versionsDownloadPdf")}
               </Button>
@@ -3705,3 +3739,4 @@ export default function ContractDetailPage() {
     </div>
   )
 }
+

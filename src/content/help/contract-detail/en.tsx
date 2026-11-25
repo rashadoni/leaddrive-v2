@@ -145,6 +145,18 @@ export default function ContractDetailHelpEn() {
             envelopes with the <HelpKey>↻</HelpKey> button.
           </HelpCallout>
         </HelpStep>
+        <HelpStep n={4}>
+          <p>
+            Once everyone has signed, a <strong>Signature sheet</strong> appears under the envelope: who
+            signed, how, when and from which IP address, and the fingerprint (SHA-256) of the signed text.{" "}
+            <HelpKey>Signed PDF</HelpKey> downloads the signed text with the signature sheet as its last page.
+          </p>
+          <HelpCallout kind="see" label="What you'll see">
+            Each signer carries a <strong>Simple signature</strong> tag: a drawn or typed electronic
+            signature. By law only a qualified signature — ASAN İmza or SİMA — equals a handwritten one.
+            The PDF shows the text of the signed version, not edits made after signing.
+          </HelpCallout>
+        </HelpStep>
       </HelpSection>
 
       <HelpSection title="Step by step: amend the contract (new version)">

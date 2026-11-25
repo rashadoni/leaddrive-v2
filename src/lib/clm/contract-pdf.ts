@@ -17,6 +17,14 @@
 import jsPDF from "jspdf"
 import { registerUnicodeFont } from "@/lib/pdf/unicode-font"
 import type { Prisma } from "@prisma/client"
+import {
+  drawSignatureSheet,
+  sheetLang,
+  sheetTimeZone,
+  signatureSheetContent,
+  type SheetLang,
+  type SignatureSheet,
+} from "@/lib/clm/signature-sheet"
 
 export interface ContractPdfInput {
   contract: {
@@ -36,6 +44,78 @@ export interface ContractPdfInput {
     logo: string | null
     branding: Prisma.JsonValue
   }
+  /** az (default) | ru | en — the labels; the contract text stays as written. */
+  lang?: string | null
+  /** IANA zone for the signature sheet's times; UTC when absent or unknown. */
+  timeZone?: string | null
+  /**
+   * The signed copy: `renderedBody` is then the signed version's text and the
+   * sheet is appended as the last page.
+   */
+  signatureSheet?: SignatureSheet | null
+}
+
+const WORDS: Record<SheetLang, Record<string, string>> = {
+  az: {
+    title: "MÜQAVİLƏ",
+    type: "Növ",
+    start: "Başlanğıc",
+    end: "Bitmə",
+    value: "Məbləğ",
+    partyA: "TƏRƏF A (İCRAÇI)",
+    partyB: "TƏRƏF B (SİFARİŞÇİ)",
+    noBody: "[Müqavilənin mətni yoxdur — şablon hələ doldurulmayıb]",
+    generated: "Tərtib edilib",
+    contract: "Müqavilə",
+    page: "səhifə",
+  },
+  ru: {
+    title: "ДОГОВОР",
+    type: "Тип",
+    start: "Начало",
+    end: "Окончание",
+    value: "Сумма",
+    partyA: "СТОРОНА А (ИСПОЛНИТЕЛЬ)",
+    partyB: "СТОРОНА Б (ЗАКАЗЧИК)",
+    noBody: "[Текста договора нет — шаблон ещё не заполнен]",
+    generated: "Сформирован",
+    contract: "Договор",
+    page: "стр.",
+  },
+  en: {
+    title: "CONTRACT",
+    type: "Type",
+    start: "Start",
+    end: "End",
+    value: "Value",
+    partyA: "PARTY A (SERVICE PROVIDER)",
+    partyB: "PARTY B (CLIENT)",
+    noBody: "[No contract body — template has not been rendered]",
+    generated: "Generated",
+    contract: "Contract",
+    page: "page",
+  },
+}
+
+const TYPES: Record<SheetLang, Record<string, string>> = {
+  az: { service_agreement: "Xidmət müqaviləsi", nda: "NDA", maintenance: "Texniki xidmət", license: "Lisenziya", sla: "SLA", other: "Digər" },
+  ru: { service_agreement: "Договор услуг", nda: "NDA", maintenance: "Обслуживание", license: "Лицензия", sla: "SLA", other: "Другое" },
+  en: { service_agreement: "Service Agreement", nda: "NDA", maintenance: "Maintenance", license: "License", sla: "SLA", other: "Other" },
+}
+
+const STATUSES: Record<SheetLang, Record<string, string>> = {
+  az: {
+    draft: "QARALAMA", pending_approval: "TƏSDİQ GÖZLƏYİR", approved: "TƏSDİQLƏNİB", active: "QÜVVƏDƏ", renewing: "YENİLƏNİR",
+    renewed: "YENİLƏNİB", expired: "BİTİB", terminated: "XİTAM VERİLİB", rejected: "RƏDD EDİLİB", cancelled: "LƏĞV EDİLİB",
+  },
+  ru: {
+    draft: "ЧЕРНОВИК", pending_approval: "НА СОГЛАСОВАНИИ", approved: "СОГЛАСОВАН", active: "ДЕЙСТВУЕТ", renewing: "ПРОДЛЕНИЕ",
+    renewed: "ПРОДЛЁН", expired: "ИСТЁК", terminated: "РАСТОРГНУТ", rejected: "ОТКЛОНЁН", cancelled: "ОТМЕНЁН",
+  },
+  en: {
+    draft: "DRAFT", pending_approval: "PENDING APPROVAL", approved: "APPROVED", active: "ACTIVE", renewing: "RENEWING",
+    renewed: "RENEWED", expired: "EXPIRED", terminated: "TERMINATED", rejected: "REJECTED", cancelled: "CANCELLED",
+  },
 }
 
 interface BrandingShape {
@@ -62,7 +142,7 @@ function parseHexColor(hex: string | undefined): [number, number, number] | null
 
 function fmtDate(d: Date | null): string {
   if (!d) return "—"
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+  return d.toISOString().slice(0, 10).split("-").reverse().join(".")
 }
 
 function fmtMoney(value: Prisma.Decimal | number | null, currency: string): string {
@@ -72,21 +152,10 @@ function fmtMoney(value: Prisma.Decimal | number | null, currency: string): stri
   return `${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`
 }
 
-/** Human-readable contract type label. */
-function fmtType(type: string): string {
-  const map: Record<string, string> = {
-    service_agreement: "Service Agreement",
-    nda: "NDA",
-    maintenance: "Maintenance",
-    license: "License",
-    sla: "SLA",
-    other: "Other",
-  }
-  return map[type] ?? type
-}
-
 export function generateContractPdf(input: ContractPdfInput): Uint8Array {
   const { contract, organization } = input
+  const lang = sheetLang(input.lang)
+  const w = WORDS[lang]
   const branding = readBranding(organization.branding)
   const accent = parseHexColor(branding.primaryColor) ?? [60, 60, 60]
   const sellerName = branding.companyName ?? organization.name
@@ -108,7 +177,7 @@ export function generateContractPdf(input: ContractPdfInput): Uint8Array {
   doc.setFontSize(22)
   doc.setFont(FONT, "bold")
   doc.setTextColor(20, 20, 20)
-  doc.text("CONTRACT", margin, y + 4)
+  doc.text(w.title, margin, y + 4)
 
   // Contract number + status (right-aligned)
   doc.setFontSize(10)
@@ -116,7 +185,8 @@ export function generateContractPdf(input: ContractPdfInput): Uint8Array {
   doc.text(contract.contractNumber, pageWidth - margin, y, { align: "right" })
   doc.setTextColor(accent[0], accent[1], accent[2])
   doc.setFont(FONT, "bold")
-  doc.text(contract.status.toUpperCase().replace("_", " "), pageWidth - margin, y + 6, { align: "right" })
+  const statusLabel = STATUSES[lang][contract.status] ?? contract.status.toUpperCase().replace(/_/g, " ")
+  doc.text(statusLabel, pageWidth - margin, y + 6, { align: "right" })
   doc.setTextColor(20, 20, 20)
 
   y += 18
@@ -126,12 +196,12 @@ export function generateContractPdf(input: ContractPdfInput): Uint8Array {
   doc.setFontSize(9)
   doc.setTextColor(120, 120, 120)
   const metaParts: string[] = [
-    `Type: ${fmtType(contract.type)}`,
-    `Start: ${fmtDate(contract.startDate)}`,
-    `End: ${fmtDate(contract.endDate)}`,
+    `${w.type}: ${TYPES[lang][contract.type] ?? contract.type}`,
+    `${w.start}: ${fmtDate(contract.startDate)}`,
+    `${w.end}: ${fmtDate(contract.endDate)}`,
   ]
   if (contract.valueAmount !== null) {
-    metaParts.push(`Value: ${fmtMoney(contract.valueAmount, contract.currency)}`)
+    metaParts.push(`${w.value}: ${fmtMoney(contract.valueAmount, contract.currency)}`)
   }
   doc.text(metaParts.join("   ·   "), margin, y)
   y += 8
@@ -150,8 +220,8 @@ export function generateContractPdf(input: ContractPdfInput): Uint8Array {
   doc.setFont(FONT, "bold")
   doc.setFontSize(9)
   doc.setTextColor(120, 120, 120)
-  doc.text("PARTY A (SERVICE PROVIDER)", margin, y)
-  doc.text("PARTY B (CLIENT)", pageWidth / 2 + 4, y)
+  doc.text(w.partyA, margin, y)
+  doc.text(w.partyB, pageWidth / 2 + 4, y)
   y += 5
 
   doc.setFont(FONT, "normal")
@@ -180,7 +250,7 @@ export function generateContractPdf(input: ContractPdfInput): Uint8Array {
   doc.setDrawColor(220, 220, 220)
   doc.setLineWidth(0.2)
 
-  const bodyText = contract.renderedBody || "[No contract body — template has not been rendered]"
+  const bodyText = contract.renderedBody || w.noBody
 
   // Split the body into paragraphs (blank-line separated), then wrap each.
   const paragraphs = bodyText.split(/\n{2,}/)
@@ -239,17 +309,29 @@ export function generateContractPdf(input: ContractPdfInput): Uint8Array {
     y += 4 // paragraph gap
   }
 
-  // ── Footer (all pages) ──────────────────────────────────────────────
-  // jsPDF doesn't natively loop pages for footer; we write it on the
-  // last page (the current page when rendering ends). For multi-page
-  // contracts this gives footer only on the last page — a common
-  // convention for legal docs. Slice-3 can add per-page footers.
+  // ── Signature sheet (signed copy only) ──────────────────────────────
+  if (input.signatureSheet) {
+    const content = signatureSheetContent(
+      input.signatureSheet,
+      { contractNumber: contract.contractNumber, title: contract.title },
+      lang,
+      sheetTimeZone(input.timeZone),
+    )
+    drawSignatureSheet(doc, FONT, content)
+  }
+
+  // ── Footer on every page, with «page N / M» ─────────────────────────
+  // On a signed copy the count shows a missing or added page at a glance.
   const footerY = pageHeight - 8
-  doc.setFontSize(8)
-  doc.setTextColor(150, 150, 150)
-  doc.setFont(FONT, "normal")
-  const footer = `Generated ${new Date().toLocaleDateString("en-GB")} · ${sellerName} · Contract ${contract.contractNumber}`
-  doc.text(footer, pageWidth / 2, footerY, { align: "center" })
+  const pages = doc.getNumberOfPages()
+  const footer = `${w.generated} ${fmtDate(new Date())} · ${sellerName} · ${w.contract} ${contract.contractNumber}`
+  for (let page = 1; page <= pages; page++) {
+    doc.setPage(page)
+    doc.setFontSize(8)
+    doc.setTextColor(150, 150, 150)
+    doc.setFont(FONT, "normal")
+    doc.text(`${footer} · ${w.page} ${page} / ${pages}`, pageWidth / 2, footerY, { align: "center" })
+  }
 
   return new Uint8Array(doc.output("arraybuffer"))
 }

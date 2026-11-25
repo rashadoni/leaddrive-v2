@@ -3731,6 +3731,18 @@
     "viewDocumentEmpty": "This contract has no document text yet. Generate it from a template or upload a file.",
     "redlineEmptyBodies": "Both versions have empty bodies — nothing to compare.",
     "esignNotConfigured": "E-signature is not configured (missing secret).",
+    "esignSheetTitle": "Signature sheet",
+    "esignSignedPdf": "Signed PDF",
+    "esignSignedPdfHint": "The signed text of the contract, with the signature sheet as the last page: who signed, when and from which address.",
+    "esignSimpleSignature": "Simple signature",
+    "esignSimpleSignatureHint": "A drawn or typed electronic signature. In Azerbaijan only a qualified electronic signature — ASAN İmza or SİMA — equals a handwritten one by law.",
+    "esignMethodDrawn": "Drawn by hand",
+    "esignMethodTyped": "Typed name",
+    "esignMethodUploaded": "Uploaded image",
+    "esignSignedFromIp": "IP address",
+    "esignNotSigned": "Not signed",
+    "esignFingerprint": "Document fingerprint, version {version}",
+    "esignFingerprintHint": "SHA-256 of the signed text. Change one letter and the fingerprint changes: this is how you check the signed text was not altered later.",
     "versionsDownloadPdf": "Download PDF"
   },
   "campaigns": {
