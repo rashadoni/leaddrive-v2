@@ -72,6 +72,15 @@ export function assignMessageFiles(
   return out
 }
 
+/**
+ * The files the task's messages show — they belong to their messages, not to
+ * the card's «Fayllar» (Ulviyyə, 2026-11-25: «sol tərəfdən silinən sağ tərəfə
+ * təsir etməsin… bordioda elə idi»; owner: «Давай как в бордио»).
+ */
+export function messageFileIds(messages: readonly { id: string; text: string }[], files: readonly MessageFile[]): Set<string> {
+  return new Set([...assignMessageFiles(messages, files).values()].flat().flatMap((entry) => (entry.file ? [entry.file.id] : [])))
+}
+
 export function isImageFile(file: MessageFile): boolean {
   if (file.mimeType) return file.mimeType.startsWith("image/")
   return /\.(png|jpe?g|gif|webp)$/iu.test(file.originalName)

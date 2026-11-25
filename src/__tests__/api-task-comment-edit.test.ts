@@ -9,6 +9,8 @@ import { NextRequest } from "next/server"
 const state = vi.hoisted(() => ({
   who: { orgId: "org-z", userId: "ulviyya", role: "sales" },
   comments: [] as Array<{ id: string; taskId: string; organizationId: string; userId: string | null; isSystem: boolean; content: string; editedAt: Date | null }>,
+  attachments: [] as Array<{ id: string; taskId: string; organizationId: string; fileName: string; originalName: string; mimeType: string | null }>,
+  removed: [] as string[],
 }))
 vi.mock("@/lib/with-rls", () => ({
   withRlsAuth: (_m: string, _a: string, handler: (req: NextRequest, auth: unknown, ctx: unknown) => Promise<Response>) =>
@@ -28,6 +30,20 @@ vi.mock("@/lib/prisma", () => ({
         return { id: row.id, content: row.content, editedAt: row.editedAt }
       }),
       deleteMany: vi.fn(async ({ where }: { where: { id: string } }) => { state.comments = state.comments.filter((c) => c.id !== where.id) }),
+      // In time order, as the card's feed reads them.
+      findMany: vi.fn(async ({ where }: { where: { taskId: string } }) =>
+        state.comments.filter((c) => c.taskId === where.taskId).map((c) => ({ id: c.id, content: c.content }))),
+    },
+    taskAttachment: {
+      // Newest first.
+      findMany: vi.fn(async ({ where }: { where: { taskId: string } }) => state.attachments.filter((a) => a.taskId === where.taskId)),
+      deleteMany: vi.fn(async ({ where }: { where: { id: { in: string[] } } }) => {
+        state.attachments = state.attachments.filter((a) => !where.id.in.includes(a.id))
+        return { count: where.id.in.length }
+      }),
+    },
+    taskActivity: {
+      createMany: vi.fn(async ({ data }: { data: Array<{ action: string; oldValue: string }> }) => { state.removed.push(...data.map((d) => d.oldValue)); return { count: data.length } }),
     },
   },
 }))
@@ -45,6 +61,11 @@ beforeEach(() => {
     { id: "hers", taskId: "t1", organizationId: "org-z", userId: "madina", isSystem: false, content: "Qəbul etdim", editedAt: null },
     { id: "history", taskId: "t1", organizationId: "org-z", userId: "ulviyya", isSystem: true, content: "Bordio: moved", editedAt: null },
   ]
+  state.attachments = [
+    { id: "f-card", taskId: "t1", organizationId: "org-z", fileName: `${"c".repeat(32)}.xlsx`, originalName: "kart.xlsx", mimeType: null },
+    { id: "f-a", taskId: "t1", organizationId: "org-z", fileName: `${"a".repeat(32)}.jpg`, originalName: "a.jpg", mimeType: "image/jpeg" },
+  ]
+  state.removed = []
 })
 
 describe("a task message: its author changes or removes it", () => {
@@ -54,6 +75,14 @@ describe("a task message: its author changes or removes it", () => {
     const row = state.comments.find((c) => c.id === "mine")!
     expect(row.content).toBe("Ağdaş nömrəsi müştəriyə göndərildi\n📎 a.jpg")
     expect(row.editedAt).toBeInstanceOf(Date)
+  })
+
+  it("a message removed takes its own files along, as in Bordio — and only them (Ulviyyə, 2026-11-25)", async () => {
+    const res = await del("mine")
+    expect(res.status).toBe(200)
+    expect((await res.json()).data.removedFiles).toBe(1)
+    expect(state.attachments.map((a) => a.id)).toEqual(["f-card"])
+    expect(state.removed).toEqual(["a.jpg"])
   })
 
   it("the author removes it", async () => {

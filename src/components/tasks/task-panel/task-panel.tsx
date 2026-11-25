@@ -59,7 +59,8 @@ interface PanelTask {
   recurrenceRule: string | null
   customFields: Record<string, unknown> | null
   checklist: Subtask[]
-  attachments: { id: string; fileName: string; originalName: string; mimeType?: string | null }[]
+  /** `inMessage`: shown by a message, and so that message's — not one of the card's «Fayllar». */
+  attachments: { id: string; fileName: string; originalName: string; mimeType?: string | null; inMessage?: boolean }[]
   createdAt: string
   /** What the reader may do with it — the server's rule (lib/tasks/task-ownership.ts). */
   you?: { mayManage: boolean; mayDelete: boolean }
@@ -91,6 +92,8 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
   const locale = useLocale()
   const { types } = useTaskTypes(true)
   const [task, setTask] = useState<PanelTask | null>(null)
+  // The card's own files: those sent in a message live in it, as in Bordio (Ulviyyə, 2026-11-25).
+  const cardFiles = useMemo(() => (task?.attachments ?? []).filter((file) => !file.inMessage), [task])
   const [failed, setFailed] = useState(false)
   // 404: deleted, or on a board this person is not on (the API does not say which).
   const [noAccess, setNoAccess] = useState(false)
@@ -257,8 +260,6 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
   }
 
   const [removing, setRemoving] = useState<string | null>(null)
-  // Files a message shows: removing one takes it out of the message too, and the card says so first.
-  const [messageFileIds, setMessageFileIds] = useState<ReadonlySet<string>>(() => new Set())
   // Several files at once (Xayala, 2026-11-12: «qrup halında silmək imkanı olsun»).
   const [pickedFiles, setPickedFiles] = useState<ReadonlySet<string>>(new Set())
   // Several files saved at one press: how far it has got, and what it could not save.
@@ -266,7 +267,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
   const [saveNote, setSaveNote] = useState<string | null>(null)
   const saveFiles = async () => {
     if (!task || saving) return
-    const chosen = pickedFiles.size > 0 ? task.attachments.filter((file) => pickedFiles.has(file.id)) : task.attachments
+    const chosen = pickedFiles.size > 0 ? cardFiles.filter((file) => pickedFiles.has(file.id)) : cardFiles
     setSaveNote(null)
     setSaving({ done: 0, total: chosen.length })
     const result = await saveTaskFiles(chosen, { onProgress: (done, total) => setSaving({ done, total }) })
@@ -670,12 +671,12 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                 )
               })()}
 
-              {task.attachments.length > 0 && (
+              {cardFiles.length > 0 && (
                 <section className="border-t py-3">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-semibold">{t("files")} <span className="font-normal text-muted-foreground">{task.attachments.length}</span></h3>
+                    <h3 className="text-sm font-semibold">{t("files")} <span className="font-normal text-muted-foreground">{cardFiles.length}</span></h3>
                     {/* Güllü, 2026-11-13: the visuals of one post are saved at one press, each under its own name. */}
-                    {task.attachments.length > 1 && (
+                    {cardFiles.length > 1 && (
                       <button
                         type="button"
                         data-testid="task-files-download-all"
@@ -689,13 +690,13 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                           : pickedFiles.size > 0 ? t("downloadSelectedFiles", { count: String(pickedFiles.size) }) : t("downloadAllFiles")}
                       </button>
                     )}
-                    {canEdit && task.attachments.length > 1 && (
+                    {canEdit && cardFiles.length > 1 && (
                       <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <input
                           type="checkbox"
                           data-testid="task-files-select-all"
-                          checked={task.attachments.every((file) => pickedFiles.has(file.id))}
-                          onChange={(e) => setPickedFiles(e.target.checked ? new Set(task.attachments.map((file) => file.id)) : new Set())}
+                          checked={cardFiles.every((file) => pickedFiles.has(file.id))}
+                          onChange={(e) => setPickedFiles(e.target.checked ? new Set(cardFiles.map((file) => file.id)) : new Set())}
                         />
                         {t("selectAllFiles")}
                       </label>
@@ -707,7 +708,6 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                       {confirmBulk ? (
                         <span className="ml-auto flex items-center gap-1.5">
                           {t("confirmRemoveFiles", { count: String(pickedFiles.size) })}
-                          {[...pickedFiles].some((id) => messageFileIds.has(id)) && <span data-testid="task-files-bulk-in-message">{t("alsoInMessages")}</span>}
                           <button type="button" data-testid="task-files-bulk-yes" onClick={() => void removePicked()} className="rounded border border-destructive px-2 py-0.5">{t("yes")}</button>
                           <button type="button" onClick={() => setConfirmBulk(false)} className="rounded border px-2 py-0.5 text-foreground">{t("no")}</button>
                         </span>
@@ -721,7 +721,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                   {saveNote && <p role="alert" className="mb-2 text-xs text-destructive" data-testid="task-files-save-note">{saveNote}</p>}
                   {/* Tiles, each in its program's colour (Zeytun, 2026-11-23: an Excel sheet was lost among the visuals). */}
                   <ul className="grid grid-cols-[repeat(auto-fill,8.25rem)] gap-3.5" data-testid="task-files-grid">
-                    {task.attachments.map((file) => (
+                    {cardFiles.map((file) => (
                       <li
                         key={file.id}
                         className={`group relative h-[8.25rem] min-w-0 rounded-lg border transition-colors ${pickedFiles.has(file.id) ? "border-primary bg-primary/5" : "border-border/70 bg-muted/60 hover:bg-muted"}`}
@@ -743,7 +743,6 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
                         </span>
                         {canEdit && removing === file.id && (
                           <button type="button" onClick={() => void removeFile(file.id)} className="absolute inset-x-1 bottom-1 rounded-md bg-destructive px-1 py-1 text-xs font-medium leading-tight text-white" data-testid="task-file-remove-confirm">
-                            {messageFileIds.has(file.id) && <span className="block text-[11px] font-normal" data-testid="task-file-in-message">{t("alsoInMessage")}</span>}
                             {t("confirmRemoveFile")}
                           </button>
                         )}
@@ -761,7 +760,7 @@ export function TaskPanel({ taskId, columns: givenColumns, path: givenPath, canE
             </div>
 
             <div className="min-h-0">
-              <TaskPanelFeed taskId={task.id} people={people4mention} statusLabel={statusLabel} reloadKey={reloadKey} files={task.attachments} canAttach={canEditBoard} onMessageFileIds={setMessageFileIds} onChanged={() => { reload(); onMutated() }} />
+              <TaskPanelFeed taskId={task.id} people={people4mention} statusLabel={statusLabel} reloadKey={reloadKey} files={task.attachments} canAttach={canEditBoard} onChanged={() => { reload(); onMutated() }} />
             </div>
           </div>
         )}

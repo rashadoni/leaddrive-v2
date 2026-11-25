@@ -89,6 +89,7 @@ pgDescribe("Bordio-style task card on a real Postgres", () => {
   let prisma!: Prisma
   let bypass!: typeof import("@/lib/rls-context").runWithRlsBypass
   let comments!: typeof import("@/app/api/v1/tasks/[id]/comments/route")
+  let oneComment!: typeof import("@/app/api/v1/tasks/[id]/comments/[commentId]/route")
   let feed!: typeof import("@/app/api/v1/tasks/[id]/feed/route")
   let followers!: typeof import("@/app/api/v1/tasks/[id]/followers/route")
   let checklist!: typeof import("@/app/api/v1/tasks/[id]/checklist/route")
@@ -114,6 +115,7 @@ pgDescribe("Bordio-style task card on a real Postgres", () => {
     prisma = (await import("@/lib/prisma")).prisma
     bypass = (await import("@/lib/rls-context")).runWithRlsBypass
     comments = await import("@/app/api/v1/tasks/[id]/comments/route")
+    oneComment = await import("@/app/api/v1/tasks/[id]/comments/[commentId]/route")
     feed = await import("@/app/api/v1/tasks/[id]/feed/route")
     followers = await import("@/app/api/v1/tasks/[id]/followers/route")
     checklist = await import("@/app/api/v1/tasks/[id]/checklist/route")
@@ -158,6 +160,35 @@ pgDescribe("Bordio-style task card on a real Postgres", () => {
     as("outsider", "sales")
     expect((await readFeed()).status).toBe(404)
     expect((await call(comments.POST(request("POST", "/api/v1/tasks/task-1/comments", { content: "x" }), onTask("task-1")))).status).toBe(404)
+  })
+
+  it("a file sent in a message is that message's: «Fayllar» does not list it, and removing the message takes it along (as in Bordio)", async () => {
+    await bypass(async () => {
+      await prisma.task.create({ data: { id: "task-files", organizationId: ORG, divisionId: BOARD, taskKey: "CARD-FILES", title: "Şikayət", status: "todo", createdBy: "sabina", assignedTo: "sabina" } })
+      const file = (id: string, name: string, at: string) => prisma.taskAttachment.create({ data: {
+        id, organizationId: ORG, taskId: "task-files", fileName: `${id.padEnd(32, "0")}.png`, originalName: name, fileSize: 1, mimeType: "image/png", uploadedBy: "sabina", createdAt: new Date(at),
+      } })
+      await file("cardfile", "kart.png", "2026-11-24T12:00:00Z")
+      await file("chatfile", "Screenshot 170405.png", "2026-11-24T13:04:00Z")
+      await prisma.taskComment.create({ data: { id: "msg-files", organizationId: ORG, taskId: "task-files", userId: "sabina", content: "Şikayət yönləndirildi\n📎 Screenshot 170405.png", createdAt: new Date("2026-11-24T13:04:01Z") } })
+    })
+    as("sabina", "sales")
+    const read = await call(taskRoute.GET(request("GET", "/api/v1/tasks/task-files"), onTask("task-files")))
+    expect(read.status).toBe(200)
+    expect(Object.fromEntries(read.body.data.attachments.map((a: { originalName: string; inMessage: boolean }) => [a.originalName, a.inMessage])))
+      .toEqual({ "kart.png": false, "Screenshot 170405.png": true })
+
+    // Someone else's message stays, with its file.
+    as("nazrin", "sales")
+    const ctx = { params: Promise.resolve({ id: "task-files", commentId: "msg-files" }) }
+    expect((await oneComment.DELETE(request("DELETE", "/api/v1/tasks/task-files/comments/msg-files"), ctx)).status).toBe(403)
+    as("sabina", "sales")
+    const removed = await call(oneComment.DELETE(request("DELETE", "/api/v1/tasks/task-files/comments/msg-files"), { params: Promise.resolve({ id: "task-files", commentId: "msg-files" }) }))
+    expect(removed).toMatchObject({ status: 200, body: { data: { removedFiles: 1 } } })
+    const left = await bypass(() => prisma.taskAttachment.findMany({ where: { taskId: "task-files" }, select: { originalName: true } }))
+    expect(left.map((a: { originalName: string }) => a.originalName)).toEqual(["kart.png"])
+    const history = await bypass(() => prisma.taskActivity.findMany({ where: { taskId: "task-files", action: "file_removed" }, select: { oldValue: true, userId: true } }))
+    expect(history).toEqual([{ oldValue: "Screenshot 170405.png", userId: "sabina" }])
   })
 
   it("follows and unfollows oneself", async () => {

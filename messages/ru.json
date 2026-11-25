@@ -33450,10 +33450,9 @@
     "nothingToFill": "Всё уже заполнено — ничего не изменено."
   },
   "taskPanel": {
+    "confirmRemoveMessageWithFiles": "Удалить сообщение вместе с файлами?",
     "fileDeleted": "Файл удалён",
     "fileUnavailable": "Файла нет",
-    "alsoInMessage": "Удалится и из сообщения",
-    "alsoInMessages": "Часть из них удалится и из сообщений.",
     "linkCopied": "Ссылка скопирована",
     "noAccess": "У вас нет доступа к этой задаче, или она удалена.",
     "board": "Доска",

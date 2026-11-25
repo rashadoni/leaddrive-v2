@@ -3,13 +3,14 @@ import { prisma } from "@/lib/prisma"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { withRlsAuth } from "@/lib/with-rls"
 import { refusedTaskIds, NOT_YOUR_TASK } from "@/lib/tasks/task-ownership"
-import { writeFile, mkdir, unlink } from "fs/promises"
+import { writeFile, mkdir } from "fs/promises"
 import path from "path"
 import crypto from "crypto"
 import { validateUploadBytes } from "@/lib/upload-security"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
 import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 import { TASK_FILE_EXTENSIONS, TASK_FILE_TYPES, taskFileExtension, taskFileStoredType } from "@/lib/tasks/task-file-rules"
+import { removeTaskFiles } from "@/lib/tasks/remove-task-files"
 
 // Task file attachments — mirrors the ContractFile route's security model
 // (src/app/api/v1/contracts/[id]/files/route.ts). Stored on disk as
@@ -123,16 +124,7 @@ export const DELETE = withRlsAuth("tasks", "write", async (req, auth, { params }
       && (await refusedTaskIds(prisma, auth.orgId, auth.role, auth.userId, [id], "manage")).length > 0) {
       return NextResponse.json({ error: "Forbidden", message: NOT_YOUR_TASK }, { status: 403 })
     }
-    await prisma.taskAttachment.deleteMany({ where: { id: { in: files.map((file) => file.id) }, taskId: id, organizationId: auth.orgId } })
-    for (const file of files) {
-      // The stored name is ours (32 hex + a whitelisted extension), never a path.
-      if (/^[0-9a-f]{32}\.[a-z0-9]{1,5}$/u.test(file.fileName)) {
-        await unlink(path.join(runtimePublicUploadDirectory("tasks"), file.fileName)).catch(() => {})
-      }
-    }
-    await prisma.taskActivity.createMany({
-      data: files.map((file) => ({ organizationId: auth.orgId, taskId: id, userId: auth.userId, action: "file_removed", oldValue: file.originalName })),
-    }).catch(() => {})
+    await removeTaskFiles(prisma, { organizationId: auth.orgId, taskId: id, userId: auth.userId, files })
     return NextResponse.json({ success: true, data: { removed: files.length } })
   } catch (e) {
     console.error("[task-files DELETE]", e)

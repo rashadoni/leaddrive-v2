@@ -208,23 +208,23 @@ describe("files in the card, as in Bordio", () => {
     return () => { task.attachments = was.attachments; feed.items = was.items }
   }
 
-  it("a file removed from the card says so in its message; removing a file a message shows warns first (Ulviyyə, 2026-11-24)", async () => {
+  it("«Fayllar» lists the card's own files; a message's file lives in the message, and a removed one says so (Ulviyyə, 2026-11-24/25)", async () => {
     const restore = await withFiles([
       { kind: "message", id: "m9", at: "2026-11-24T13:04:00.000Z", user: { id: "u", name: "Ulviyya" }, text: "Şikayət yönləndirildi\n📎 plan.pdf, Screenshot 2026-11-24 170405.png, bordio.png", mentions: [], system: false },
       { kind: "event", id: "e9", at: "2026-11-24T14:28:00.000Z", user: { id: "u", name: "Ulviyya" }, action: "file_removed", oldValue: "Screenshot 2026-11-24 170405.png", newValue: null },
     ])
+    // The server marks the file a message shows (GET /tasks/[id]).
+    const task = TASK as unknown as { attachments: Array<Record<string, unknown>> }
+    task.attachments = task.attachments.map((file) => ({ ...file, inMessage: file.originalName === "plan.pdf" }))
     try {
       await open()
+      const tiles = [...container.querySelectorAll('[data-testid="task-file"]')].map((tile) => tile.querySelector("a[title]")?.getAttribute("title"))
+      expect(tiles).toEqual(["11.11.26 Stories-1.jpg"])
+      expect(container.querySelector('[data-testid="feed-file-card"] a[title="plan.pdf"]')).not.toBeNull()
+
       const notes = Object.fromEntries([...container.querySelectorAll('[data-testid="feed-file-missing"]')].map((card) =>
         [card.getAttribute("title"), card.querySelector('[data-testid="feed-file-missing-note"]')?.textContent]))
       expect(notes).toEqual({ "Screenshot 2026-11-24 170405.png": "Файл удалён", "bordio.png": "Файла нет" })
-
-      const tile = (name: string) => [...container.querySelectorAll('[data-testid="task-file"]')].find((el) => el.textContent?.includes(name))!
-      await click(tile("plan.pdf").querySelector('[data-testid="task-file-remove"]'))
-      expect(tile("plan.pdf").querySelector('[data-testid="task-file-remove-confirm"]')?.textContent).toContain("Удалится и из сообщения")
-      await click(tile("Stories-1.jpg").querySelector('[data-testid="task-file-remove"]'))
-      const confirm = tile("Stories-1.jpg").querySelector('[data-testid="task-file-remove-confirm"]')
-      expect(confirm?.textContent).toBe("Удалить?")
     } finally { restore() }
   })
 

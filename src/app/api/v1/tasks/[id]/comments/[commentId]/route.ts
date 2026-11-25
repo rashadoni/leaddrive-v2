@@ -3,6 +3,8 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { openTaskFor } from "@/lib/tasks/task-access"
+import { assignMessageFiles } from "@/lib/tasks/message-files"
+import { removeTaskFiles } from "@/lib/tasks/remove-task-files"
 
 /**
  * One message of a task: its author changes or removes it (Ulviyya, 2026-11-12:
@@ -48,6 +50,16 @@ export const DELETE = withRlsAuth("tasks", "read", async (_req, auth, { params }
   const { id: taskId, commentId } = await params
   const found = await ownComment(auth, taskId, commentId)
   if (found.error) return found.error
+  // Its files go with it, as in Bordio: they are the message's, and left behind they would turn up in
+  // the card's «Fayllar» as files nobody put there.
+  const [comments, attachments] = await Promise.all([
+    prisma.taskComment.findMany({ where: { taskId, organizationId: auth.orgId }, orderBy: { createdAt: "asc" }, select: { id: true, content: true } }),
+    prisma.taskAttachment.findMany({ where: { taskId, organizationId: auth.orgId }, orderBy: { createdAt: "desc" }, select: { id: true, fileName: true, originalName: true, mimeType: true } }),
+  ])
+  type Row = (typeof attachments)[number]
+  const own = (assignMessageFiles(comments.map((c: { id: string; content: string }) => ({ id: c.id, text: c.content })), attachments).get(commentId) ?? [])
+    .flatMap((entry) => (entry.file ? [entry.file as Row] : []))
   await prisma.taskComment.deleteMany({ where: { id: commentId, taskId, organizationId: auth.orgId } })
-  return NextResponse.json({ success: true })
+  const removedFiles = await removeTaskFiles(prisma, { organizationId: auth.orgId, taskId, userId: auth.userId, files: own })
+  return NextResponse.json({ success: true, data: { removedFiles } })
 })

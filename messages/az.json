@@ -33446,10 +33446,9 @@
     "nothingToFill": "Hər şey artıq doldurulub — heç nə dəyişmədi."
   },
   "taskPanel": {
+    "confirmRemoveMessageWithFiles": "Mesaj faylları ilə birlikdə silinsin?",
     "fileDeleted": "Fayl silinib",
     "fileUnavailable": "Fayl yoxdur",
-    "alsoInMessage": "Mesajdan da silinəcək",
-    "alsoInMessages": "Bəziləri mesajdan da silinəcək.",
     "linkCopied": "Link kopyalandı",
     "noAccess": "Bu tapşırığa girişiniz yoxdur və ya o silinib.",
     "board": "Lövhə",
