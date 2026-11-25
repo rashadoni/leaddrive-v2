@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Hint } from "@/components/hint"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
+import { ContractDocumentSigning } from "@/components/contracts/contract-document-signing"
 import { documentTotals, lineAmount, moneyText } from "@/lib/clm/contract-documents"
 
 interface EditLine {
@@ -151,6 +152,8 @@ export function ContractDocumentEditor({ contractId, docId }: { contractId: stri
         return
       }
       setDirty(false)
+      setSaved(true)
+      await load()
       setSaved(true)
     } finally {
       setSaving(false)
@@ -355,6 +358,17 @@ export function ContractDocumentEditor({ contractId, docId }: { contractId: stri
           </Hint>
         )}
       </div>
+
+      {doc.status !== "cancelled" && (
+        <ContractDocumentSigning
+          contractId={contractId}
+          docId={docId}
+          status={doc.status}
+          hasLines={doc.lines.length > 0}
+          unsaved={dirty}
+          onChanged={() => void load()}
+        />
+      )}
 
       <ConfirmDialog
         open={confirmCancel}

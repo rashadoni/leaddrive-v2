@@ -218,6 +218,17 @@ export async function POST(
             data: { status: suggestedEnvelopeStatus },
           })
 
+          // A declined price protocol / acceptance act goes back to a draft:
+          // it is corrected and sent again (contract-documents.ts). Its frozen
+          // text is dropped — the next send freezes the corrected one.
+          const documentId = (envelope as { documentId?: string | null }).documentId
+          if (suggestedEnvelopeStatus === "declined" && documentId) {
+            await tx.contractDocument.updateMany({
+              where: { id: documentId, status: "in_signing" },
+              data: { status: "draft", signedBody: null, contentHash: null },
+            })
+          }
+
           if (envAuditBuild.ok) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await tx.esignAuditEvent.create({ data: envAuditBuild.record as any })

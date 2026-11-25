@@ -193,6 +193,17 @@ export default function ContractDetailHelpAz() {
             <HelpKey>Ləğv et</HelpKey> ilə ləğv etmək olar — nömrəsi təkrar istifadə olunmur.
           </HelpCallout>
         </HelpStep>
+        <HelpStep n={4}>
+          <p>
+            Protokolun və ya aktın səhifəsində <strong>İmza</strong> bölməsində <HelpKey>İmzaya göndər</HelpKey> basın.
+            Müqaviləni imzalayanlar artıq yazılıb.
+          </p>
+          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
+            Sənədin mətni dondurulur, imzalayanlara link gedir — dəyişmək olmaz, yalnız{" "}
+            <HelpKey>İmzadan geri çağır</HelpKey>. Hamı imzalayanda sənəd «İmzalanıb» olur, imza vərəqi və imzalanmış PDF
+            görünür. İmtina edilərsə, sənəd yenidən qaralama olur.
+          </HelpCallout>
+        </HelpStep>
       </HelpSection>
 
       <HelpSection title="Addım-addım: müqaviləyə düzəliş et (yeni versiya)">

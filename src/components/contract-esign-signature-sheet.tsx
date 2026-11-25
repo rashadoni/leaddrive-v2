@@ -31,7 +31,8 @@ export function EsignSignatureSheet({
   pdfUrl,
 }: {
   envelope: { signers: SheetSigner[] }
-  signedVersion: { versionNo: number; contentHash: string }
+  /** versionNo is null for a price protocol or act, which has no versions. */
+  signedVersion: { versionNo: number | null; contentHash: string }
   pdfUrl: string
 }) {
   const t = useTranslations("contracts")
@@ -90,7 +91,7 @@ export function EsignSignatureSheet({
         ))}
       </div>
       <div className="text-xs text-muted-foreground">
-        {t("esignFingerprint", { version: signedVersion.versionNo })}:{" "}
+        {signedVersion.versionNo === null ? t("esignFingerprintPlain") : t("esignFingerprint", { version: signedVersion.versionNo })}:{" "}
         <HintValue text={t("esignFingerprintHint")} className="font-mono">
           {`${hash.slice(0, 8)}…${hash.slice(-8)}`}
         </HintValue>

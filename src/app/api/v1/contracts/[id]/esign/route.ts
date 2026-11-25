@@ -192,7 +192,8 @@ export const GET = withRls(async (_req, { orgId, session }, { params }: { params
     }
 
     const envelopes = await prisma.esignEnvelope.findMany({
-      where: { contractId, organizationId: orgId },
+      // The contract's own envelopes: a protocol's or an act's live on that document's page.
+      where: { contractId, organizationId: orgId, documentId: null },
       orderBy: { createdAt: "desc" },
       include: {
         signers: {

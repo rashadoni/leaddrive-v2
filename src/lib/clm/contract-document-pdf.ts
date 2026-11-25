@@ -6,6 +6,7 @@
  */
 import jsPDF from "jspdf"
 import { registerUnicodeFont } from "@/lib/pdf/unicode-font"
+import { drawSignatureSheet, sheetTimeZone, signatureSheetContent, type SignatureSheet } from "@/lib/clm/signature-sheet"
 import {
   documentTotals,
   documentWords,
@@ -22,6 +23,10 @@ export interface DocumentPdfInput {
   lines: DocumentLine[]
   currency: string
   lang: DocLang
+  /** The signed copy: who signed, how and when, as the last page (signature-sheet.ts). */
+  signatureSheet?: SignatureSheet | null
+  /** IANA zone for the sheet's times; UTC when absent or unknown. */
+  timeZone?: string | null
 }
 
 export function generateContractDocumentPdf(input: DocumentPdfInput): Uint8Array {
@@ -171,6 +176,16 @@ export function generateContractDocumentPdf(input: DocumentPdfInput): Uint8Array
   }
   side(margin, w.sideA, facts.our)
   side(margin + half + 4, w.sideB, facts.counterparty)
+
+  if (input.signatureSheet) {
+    const content = signatureSheetContent(
+      input.signatureSheet,
+      { contractNumber: facts.contractNumber, title: w.title },
+      lang,
+      sheetTimeZone(input.timeZone),
+    )
+    drawSignatureSheet(doc, FONT, content)
+  }
 
   const pages = doc.getNumberOfPages()
   for (let page = 1; page <= pages; page++) {
