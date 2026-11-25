@@ -655,6 +655,21 @@ export default function ContractDetailPage() {
     if (params.id) fetchContract()
   }, [params.id, session?.user?.id, session?.user?.organizationId])
 
+  // «Təsdiqə göndər» in the contract wizard lands here with ?approve=1: the
+  // approval chain is chosen in this page's dialog, so it opens by itself once,
+  // for a draft without unresolved {{fields}}, and the address forgets it.
+  useEffect(() => {
+    if (!contract || typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    if (url.searchParams.get("approve") !== "1") return
+    url.searchParams.delete("approve")
+    window.history.replaceState(null, "", url.pathname + (url.search ? url.search : "") + url.hash)
+    if (contract.status === "draft" && findResidualVars(contract.renderedBody).length === 0) {
+      setApprovalOpen(true)
+      setApprovalError(null)
+    }
+  }, [contract])
+
   useEffect(() => {
     if (params.id && orgId) fetchVersions()
   }, [params.id, orgId])

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
 import { formatSlaHours } from "@/lib/format-sla"
 import { VoenField, type TaxpayerCardView } from "@/components/companies/voen-field"
+import { BANK_FIELDS, type BankField } from "@/lib/companies/bank-requisites"
 
 interface CompanyFormData {
   name: string
@@ -27,6 +28,12 @@ interface CompanyFormData {
   creditCurrency: string
   voen: string
   director: string
+  bankName: string
+  bankCode: string
+  bankSwift: string
+  bankAccount: string
+  bankVoen: string
+  bankCorrAccount: string
 }
 
 interface SlaPolicyOption {
@@ -48,6 +55,7 @@ export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }:
   const t = useTranslations("forms")
   const tc = useTranslations("common")
   const tv = useTranslations("companyVoen")
+  const tb = useTranslations("companyBank")
   const isEdit = !!initialData?.id
   // A company from an outside register (1C): its name, phone, city and address are edited there.
   const sourceLocked = Boolean(initialData?.externalSource)
@@ -67,6 +75,7 @@ export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }:
     creditCurrency: (initialData as any)?.creditCurrency || "",
     voen: initialData?.voen || "",
     director: initialData?.director || "",
+    ...bankForm(initialData),
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -90,6 +99,7 @@ export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }:
         creditCurrency: (initialData as any)?.creditCurrency || "",
         voen: initialData?.voen || "",
         director: initialData?.director || "",
+        ...bankForm(initialData),
       })
       setError("")
       // Fetch SLA policies
@@ -209,6 +219,18 @@ export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }:
               <Label htmlFor="address">{tc("address")}</Label>
               <Input id="address" value={form.address} onChange={(e) => update("address", e.target.value)} disabled={sourceLocked} />
             </div>
+            <fieldset className="grid gap-3 rounded-md border p-3" data-testid="company-bank-requisites">
+              <legend className="px-1 text-sm font-medium">{tb("title")}</legend>
+              <p className="text-xs text-muted-foreground">{tb("hint")}</p>
+              <div className="grid grid-cols-2 gap-3">
+                {BANK_FIELDS.map((field) => (
+                  <div key={field}>
+                    <Label htmlFor={field}>{tb(field)}</Label>
+                    <Input id={field} value={form[field]} onChange={(e) => update(field, e.target.value)} />
+                  </div>
+                ))}
+              </div>
+            </fieldset>
             <div>
               <Label htmlFor="slaPolicy">{t("slaPolicy")}</Label>
               <Select
@@ -261,4 +283,9 @@ export function CompanyForm({ open, onOpenChange, onSaved, initialData, orgId }:
       </form>
     </Dialog>
   )
+}
+
+/** The bank fields of the form, from a company that may not have them yet. */
+function bankForm(initial: Partial<Record<BankField, string | null>> | undefined): Record<BankField, string> {
+  return Object.fromEntries(BANK_FIELDS.map((field) => [field, initial?.[field] || ""])) as Record<BankField, string>
 }

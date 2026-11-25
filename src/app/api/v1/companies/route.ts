@@ -17,6 +17,7 @@ import {
 import { applyRecordFilter } from "@/lib/sharing-rules"
 import { nonNegativeFinancialAmountSchema } from "@/lib/validation/numeric"
 import { voenInput } from "@/lib/companies/az-taxpayer-registry"
+import { companyBankFields } from "@/lib/companies/bank-requisites"
 import { NON_CUSTOMER_COMPANY_CATEGORIES } from "@/lib/procurement/suppliers"
 
 const createCompanySchema = z.object({
@@ -35,6 +36,7 @@ const createCompanySchema = z.object({
   creditCurrency: z.string().max(10).nullable().optional(),
   voen: z.string().max(40).nullable().optional(),
   director: z.string().max(200).nullable().optional(),
+  ...companyBankFields,
 })
 
 /** What a company card on the list screen shows — and nothing else (`view=list`). */

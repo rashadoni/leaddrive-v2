@@ -18,7 +18,6 @@
  */
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import crypto from "crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
@@ -27,6 +26,7 @@ import type { TemplateClause, TemplateVariable } from "@/lib/contract-lifecycle/
 import { normalizeContractRow } from "@/lib/prisma-decimal"
 import { detectDeviations } from "@/lib/contract-lifecycle/deviation-detector"
 import { nonNegativeFinancialAmountSchema } from "@/lib/validation/numeric"
+import { createContractDraft, generateContractNumber } from "@/lib/clm/create-contract-draft"
 
 // ─── Request schema ───────────────────────────────────────────────────────────
 
@@ -47,28 +47,6 @@ const generateContractSchema = z.object({
   valueAmount: nonNegativeFinancialAmountSchema.optional(),
   currency: z.string().optional(),
 })
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** sha256 hex digest of a UTF-8 string. */
-function sha256hex(text: string): string {
-  return crypto.createHash("sha256").update(text, "utf8").digest("hex")
-}
-
-/** Deterministic contract number: CONTRACT-<YYYYMMDDHHmmss>-<4 random hex chars>. */
-function generateContractNumber(): string {
-  const now = new Date()
-  const ts = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-    String(now.getHours()).padStart(2, "0"),
-    String(now.getMinutes()).padStart(2, "0"),
-    String(now.getSeconds()).padStart(2, "0"),
-  ].join("")
-  const suffix = crypto.randomBytes(2).toString("hex").toUpperCase()
-  return `CONTRACT-${ts}-${suffix}`
-}
 
 // ─── POST /api/v1/contract-templates/:id/generate ────────────────────────────
 
@@ -149,7 +127,6 @@ export const POST = withRlsAuth("contracts", "write", async (req: NextRequest, a
     }
 
     const renderedBody = result.renderedBody
-    const contentHash = sha256hex(renderedBody)
 
     // 4. Build contract fields.
     const contractNumber = parsed.data.contractNumber ?? generateContractNumber()
@@ -157,49 +134,26 @@ export const POST = withRlsAuth("contracts", "write", async (req: NextRequest, a
     const contractType = template.defaultContractType ?? "service_agreement"
 
     // 5. Atomic transaction: Contract + ContractVersion v1.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [contract] = await prisma.$transaction(async (tx: any) => {
-      const newContract = await tx.contract.create({
-        data: {
-          organizationId: orgId,
-          contractNumber,
-          title,
-          type: contractType,
-          status: "draft",
-          templateId: template.id,
-          templateVersion: template.version,
-          renderedBody,
-          ...(parsed.data.companyId ? { companyId: parsed.data.companyId } : {}),
-          ...(parsed.data.dealId ? { dealId: parsed.data.dealId } : {}),
-          ...(parsed.data.contactId ? { contactId: parsed.data.contactId } : {}),
-          // startDate/endDate are already Date objects from z.coerce.date() — no re-parse needed.
-          ...(parsed.data.startDate ? { startDate: parsed.data.startDate } : {}),
-          ...(parsed.data.endDate ? { endDate: parsed.data.endDate } : {}),
-          ...(parsed.data.valueAmount !== undefined ? { valueAmount: parsed.data.valueAmount } : {}),
-          ...(parsed.data.currency ? { currency: parsed.data.currency } : {}),
-          ...(userId ? { createdBy: userId } : {}),
-        },
-        include: {
-          company: { select: { id: true, name: true } },
-          deal: { select: { id: true, name: true } },
-          contact: { select: { id: true, fullName: true } },
-        },
-      })
-
-      await tx.contractVersion.create({
-        data: {
-          organizationId: orgId,
-          contractId: newContract.id,
-          versionNo: 1,
-          renderedBody,
-          contentHash,
-          source: "draft",
-          ...(userId ? { createdBy: userId } : {}),
-        },
-      })
-
-      return [newContract]
-    })
+    const [contract] = await prisma.$transaction(async (tx: Prisma.TransactionClient) => [
+      await createContractDraft(tx, {
+        organizationId: orgId,
+        userId,
+        contractNumber,
+        title,
+        type: contractType,
+        templateId: template.id,
+        templateVersion: template.version,
+        renderedBody,
+        companyId: parsed.data.companyId,
+        dealId: parsed.data.dealId,
+        contactId: parsed.data.contactId,
+        // startDate/endDate are already Date objects from z.coerce.date() — no re-parse needed.
+        startDate: parsed.data.startDate,
+        endDate: parsed.data.endDate,
+        valueAmount: parsed.data.valueAmount,
+        currency: parsed.data.currency,
+      }),
+    ])
 
     // 6. Best-effort deviation detection — MUST NOT break the hardened generate tx above.
     //    Runs after the contract is already persisted.  Any failure here is logged and swallowed.

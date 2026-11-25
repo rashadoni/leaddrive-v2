@@ -30,6 +30,7 @@ import { DealForm } from "@/components/deal-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { QuickActionBar, type DealContact } from "@/components/deals/quick-action-bar"
 import { ActivityTimeline } from "@/components/deals/activity-timeline"
+import { DealContracts } from "@/components/deals/deal-contracts"
 import { DealMeddpicc } from "@/components/deals/deal-meddpicc"
 import { AiSuggestions } from "@/components/deals/ai-suggestions"
 import { NextBestOffers } from "@/components/deals/next-best-offers"
@@ -314,6 +315,7 @@ type InlinePanel =
 export default function DealDetailPage() {
   const t = useTranslations("deals")
   const td = useTranslations("dealPage")
+  const tcw = useTranslations("contractWizard")
   const tl = useTranslations("dealLines")
   const tc = useTranslations("common")
   const locale = useLocale()
@@ -673,6 +675,9 @@ export default function DealDetailPage() {
         { id: "offers", label: t("offers"), count: offersCount, render: () => (
           <OffersTab dealId={id} orgId={orgId} companyId={deal.company?.id} contactId={deal.contactId} contactEmail={deal.contact?.email} currency={deal.currency} valueAmount={deal.valueAmount} />
         ) },
+        ...(may("contracts", "read") ? [{ id: "contracts", label: tcw("dealPart"), render: () => (
+          <DealContracts dealId={id} canCreate={may("contracts", "write")} />
+        ) }] : []),
         { id: "terms", label: td("partTerms"), render: () => (
           <DealFacts
             empty={td("notSet")}
