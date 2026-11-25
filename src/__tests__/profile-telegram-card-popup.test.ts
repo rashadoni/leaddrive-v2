@@ -103,7 +103,14 @@ describe("Profile → Telegram: on a computer the link is a QR code for the phon
       })
       const button = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes("link"))!
       await act(async () => button.click())
-      await act(async () => {})
+      // The QR is a PNG made by `qrcode`, whose Node build deflates through zlib on libuv's thread
+      // pool: it lands after real event-loop turns, not after one React flush. One flush was enough
+      // on an idle box and not under CI's full run (#1752 failed twice on it), so wait for the
+      // picture itself, bounded. setImmediate and Date are not among the faked timers here.
+      const deadline = Date.now() + 5000
+      while (!document.querySelector("img[alt='qrAlt']") && Date.now() < deadline) {
+        await act(async () => { await new Promise((resolve) => setImmediate(resolve)) })
+      }
 
       expect(open).not.toHaveBeenCalled()
       const img = document.querySelector("img[alt='qrAlt']") as HTMLImageElement | null
