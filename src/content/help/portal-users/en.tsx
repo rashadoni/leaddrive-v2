@@ -189,6 +189,43 @@ export default function PortalUsersHelpEn() {
         </HelpStep>
       </HelpSection>
 
+      <HelpSection title="Step by step: open «Documents» to a counterparty">
+        <p>
+          A contact of the counterparty company can see its contracts in the portal: price
+          agreement protocols, invoices, acceptance acts and everything that awaits their signature
+          — and download their PDFs. Only their company's contracts that are already agreed are
+          shown; drafts of contracts and documents never are.
+        </p>
+        <HelpStep n={1}>
+          <p>
+            Give the contact portal access and check that their card names a company. Then turn on
+            the <HelpKey>Documents</HelpKey> switch in their row.
+          </p>
+          <HelpCallout kind="see" label="What you will see">
+            The message «… now sees the company&apos;s documents in the portal». If the switch is
+            inactive, hovering over it says why: no portal access, or the contact has no company.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={2}>
+          <p>
+            The contact signs in to the portal and opens <HelpKey>Documents</HelpKey>.
+          </p>
+          <HelpCallout kind="see" label="What you will see">
+            At the top, «Awaiting your signature» cards with a <HelpKey>Sign</HelpKey> button: it
+            opens the same signing page as the link in the e-mail. Below, the company&apos;s
+            contracts; inside a contract, the chain «contract → protocols → invoices → acts» with
+            PDFs, the signed ones as a copy with the signature sheet.
+          </HelpCallout>
+        </HelpStep>
+        <HelpCallout kind="security">
+          <p>
+            From the portal one can sign only as the signer whose e-mail matches the contact&apos;s
+            e-mail. Turn the switch off and the section disappears from the portal the next time the
+            page is opened. Turning it on and off is recorded in the audit log.
+          </p>
+        </HelpCallout>
+      </HelpSection>
+
       <HelpCallout kind="tip">
         <p>
           The status badges are for a quick read: <strong>Pending</strong> (yellow) means you have

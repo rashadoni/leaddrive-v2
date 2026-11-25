@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { Hint } from "@/components/hint"
 import { cn } from "@/lib/utils"
 import {
   portalAccessState,
@@ -411,6 +412,40 @@ export default function PortalUsersPage() {
 
   const selectCheckbox = (contact: PortalContactRecord) => <SelectionCheckbox checked={selected.has(contact.id)} onChange={() => setSelected((current) => togglePortalSelection(current, contact.id))} ariaLabel={t("portalSelectUser", { name: contact.fullName })} testId="portal-user-select" />
 
+  const runDocumentsChange = async (contact: PortalContactRecord, enabled: boolean) => {
+    if (busyAction) return
+    setBusyAction(`documents:${contact.id}`)
+    setNotice(null)
+    try {
+      const result = await portalPatch<{ auditRecorded: boolean }>({ contactId: contact.id, portalDocumentsEnabled: enabled })
+      setContacts((current) => current.map((item) => item.id === contact.id ? { ...item, portalDocumentsEnabled: enabled } : item))
+      announceSuccess(t(enabled ? "portalDocumentsEnabledSuccess" : "portalDocumentsDisabledSuccess", { name: contact.fullName }), result.auditRecorded)
+    } catch (error) {
+      setNotice({ kind: "error", text: t("portalActionFailed") })
+      throw error
+    } finally {
+      setBusyAction("")
+    }
+  }
+
+  // «Sənədlər»: the company's contracts and documents in the portal (portal-documents.ts).
+  // Only for a contact with portal access and a company; the hint says why otherwise.
+  const documentsSwitch = (contact: PortalContactRecord) => {
+    const blocker = !contact.portalAccessEnabled ? t("portalDocumentsNeedAccess") : !contact.hasCompany ? t("portalDocumentsNeedCompany") : null
+    const checked = Boolean(contact.portalDocumentsEnabled)
+    return <Hint text={blocker ?? t("portalDocumentsHint")} wrap>
+      <label className="flex min-h-11 items-center gap-2 text-xs" data-testid="portal-user-documents">
+        <span>{t("portalDocuments")}</span>
+        <Switch
+          checked={checked}
+          disabled={Boolean(blocker) && !checked || Boolean(busyAction) || refreshing}
+          aria-label={t("portalDocumentsFor", { name: contact.fullName })}
+          onCheckedChange={(next) => void runDocumentsChange(contact, next).catch(() => {})}
+        />
+      </label>
+    </Hint>
+  }
+
   const accessButton = (contact: PortalContactRecord) => {
     const needsEmail = !contact.portalAccessEnabled && portalEnableBlocker(contact) === "email"
     return <div className="flex max-w-64 flex-col items-end gap-1">
@@ -475,13 +510,13 @@ export default function PortalUsersPage() {
         : <>
           <div className="hidden min-w-0 overflow-hidden rounded-lg border xl:block" aria-busy={refreshing} data-testid="portal-users-desktop-table">
             <table className="w-full text-sm"><thead><tr className="border-b bg-muted/30"><th className="w-14 p-1"><SelectionCheckbox inputRef={desktopSelectAllRef} checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : selectAllVisible(contacts))} ariaLabel={t("portalSelectAllVisible", { count: contacts.length })} testId="portal-users-select-all-desktop" /></th><th className="p-3 text-left font-medium">{tc("fullName")}</th><th className="p-3 text-left font-medium">{tc("company")}</th><th className="p-3 text-left font-medium">{t("portalStatus")}</th><th className="p-3 text-left font-medium">{t("portalLastLogin")}</th><th className="p-3 text-right font-medium">{tc("actions")}</th></tr></thead>
-              <tbody>{contacts.map((contact) => <tr key={contact.id} className="border-b last:border-b-0" data-testid="portal-user-row" data-contact-id={contact.id} data-access-state={portalAccessState(contact)}><td className="p-3">{selectCheckbox(contact)}</td><td className="p-3"><strong className="block font-medium">{contact.fullName}</strong><span className="text-xs text-muted-foreground">{contact.email || t("portalNoEmail")}</span></td><td className="p-3 text-muted-foreground">{contact.companyName || "—"}</td><td className="p-3"><span className="text-xs font-medium">{stateLabel(contact)}</span>{recoveryHint(contact) && <span className="mt-1 block max-w-56 text-xs text-muted-foreground">{recoveryHint(contact)}</span>}</td><td className="p-3 text-xs text-muted-foreground">{formatDate(contact.portalLastLoginAt)}</td><td className="p-3"><div className="flex items-center justify-end gap-1">{accessButton(contact)}{actionMenu(contact)}</div></td></tr>)}</tbody>
+              <tbody>{contacts.map((contact) => <tr key={contact.id} className="border-b last:border-b-0" data-testid="portal-user-row" data-contact-id={contact.id} data-access-state={portalAccessState(contact)}><td className="p-3">{selectCheckbox(contact)}</td><td className="p-3"><strong className="block font-medium">{contact.fullName}</strong><span className="text-xs text-muted-foreground">{contact.email || t("portalNoEmail")}</span></td><td className="p-3 text-muted-foreground">{contact.companyName || "—"}</td><td className="p-3"><span className="text-xs font-medium">{stateLabel(contact)}</span>{recoveryHint(contact) && <span className="mt-1 block max-w-56 text-xs text-muted-foreground">{recoveryHint(contact)}</span>}</td><td className="p-3 text-xs text-muted-foreground">{formatDate(contact.portalLastLoginAt)}</td><td className="p-3"><div className="flex items-center justify-end gap-1">{documentsSwitch(contact)}{accessButton(contact)}{actionMenu(contact)}</div></td></tr>)}</tbody>
             </table>
           </div>
 
           <div className="min-w-0 space-y-2 xl:hidden" aria-busy={refreshing} data-testid="portal-users-mobile-list">
             <div className="flex min-h-11 items-center gap-1 rounded-lg border px-1 text-sm font-medium"><SelectionCheckbox inputRef={mobileSelectAllRef} checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : selectAllVisible(contacts))} ariaLabel={t("portalSelectAllVisible", { count: contacts.length })} testId="portal-users-select-all-mobile" /><span>{t("portalSelectAllVisible", { count: contacts.length })}</span></div>
-            {contacts.map((contact) => <article key={contact.id} className="rounded-lg border p-3" data-testid="portal-user-card" data-contact-id={contact.id} data-access-state={portalAccessState(contact)}><div className="flex items-start gap-3">{selectCheckbox(contact)}<div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{contact.fullName}</h2><p className="truncate text-xs text-muted-foreground">{contact.email || t("portalNoEmail")}</p></div>{actionMenu(contact)}</div><dl className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs"><div><dt className="text-muted-foreground">{tc("company")}</dt><dd className="mt-1 truncate">{contact.companyName || "—"}</dd></div><div><dt className="text-muted-foreground">{t("portalStatus")}</dt><dd className="mt-1 font-medium">{stateLabel(contact)}</dd></div><div className="col-span-2"><dt className="text-muted-foreground">{t("portalLastLogin")}</dt><dd className="mt-1">{formatDate(contact.portalLastLoginAt)}</dd></div>{recoveryHint(contact) && <div className="col-span-2 rounded border p-2"><dt className="sr-only">{t("portalRecoveryState")}</dt><dd>{recoveryHint(contact)}</dd></div>}</dl><div className="mt-3 flex justify-end">{accessButton(contact)}</div></article>)}
+            {contacts.map((contact) => <article key={contact.id} className="rounded-lg border p-3" data-testid="portal-user-card" data-contact-id={contact.id} data-access-state={portalAccessState(contact)}><div className="flex items-start gap-3">{selectCheckbox(contact)}<div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{contact.fullName}</h2><p className="truncate text-xs text-muted-foreground">{contact.email || t("portalNoEmail")}</p></div>{actionMenu(contact)}</div><dl className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs"><div><dt className="text-muted-foreground">{tc("company")}</dt><dd className="mt-1 truncate">{contact.companyName || "—"}</dd></div><div><dt className="text-muted-foreground">{t("portalStatus")}</dt><dd className="mt-1 font-medium">{stateLabel(contact)}</dd></div><div className="col-span-2"><dt className="text-muted-foreground">{t("portalLastLogin")}</dt><dd className="mt-1">{formatDate(contact.portalLastLoginAt)}</dd></div>{recoveryHint(contact) && <div className="col-span-2 rounded border p-2"><dt className="sr-only">{t("portalRecoveryState")}</dt><dd>{recoveryHint(contact)}</dd></div>}</dl><div className="mt-3 flex flex-wrap items-center justify-end gap-2">{documentsSwitch(contact)}{accessButton(contact)}</div></article>)}
           </div>
         </>}
 

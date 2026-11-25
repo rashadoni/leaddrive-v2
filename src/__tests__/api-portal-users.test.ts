@@ -209,6 +209,34 @@ describe("PATCH /api/v1/portal-users", () => {
     expect(prisma.contact.updateMany).not.toHaveBeenCalled()
   })
 
+  it("switches «Sənədlər» on only for a portal contact with a company, and audits it", async () => {
+    vi.mocked(prisma.contact.findFirst).mockResolvedValue({ ...contact, portalAccessEnabled: false, companyId: "co-1" } as never)
+    let res = await PATCH(request({ contactId: contact.id, portalDocumentsEnabled: true }))
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe("PORTAL_ACCESS_REQUIRED")
+
+    vi.mocked(prisma.contact.findFirst).mockResolvedValue({ ...contact, companyId: null } as never)
+    res = await PATCH(request({ contactId: contact.id, portalDocumentsEnabled: true }))
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe("PORTAL_COMPANY_REQUIRED")
+    expect(prisma.contact.updateMany).not.toHaveBeenCalled()
+
+    vi.mocked(prisma.contact.findFirst).mockResolvedValue({ ...contact, companyId: "co-1" } as never)
+    res = await PATCH(request({ contactId: contact.id, portalDocumentsEnabled: true }))
+    expect(await res.json()).toEqual({ success: true, auditRecorded: true })
+    expect(prisma.contact.updateMany).toHaveBeenCalledWith({ where: { id: contact.id, organizationId: "org-1" }, data: { portalDocumentsEnabled: true } })
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "portal_documents_enabled", userId: "admin-1" }) }))
+  })
+
+  it("switches «Sənədlər» off whatever the contact's state, and not together with another action", async () => {
+    vi.mocked(prisma.contact.findFirst).mockResolvedValue({ ...contact, portalAccessEnabled: false, companyId: null } as never)
+    const res = await PATCH(request({ contactId: contact.id, portalDocumentsEnabled: false }))
+    expect(res.status).toBe(200)
+    expect(prisma.contact.updateMany).toHaveBeenCalledWith({ where: { id: contact.id, organizationId: "org-1" }, data: { portalDocumentsEnabled: false } })
+    const both = await PATCH(request({ contactId: contact.id, portalDocumentsEnabled: true, portalAccessEnabled: true }))
+    expect(both.status).toBe(400)
+  })
+
   it("audits bulk scope and returns the actual updated count", async () => {
     vi.mocked(prisma.contact.updateMany).mockResolvedValue({ count: 2 } as never)
     const res = await PATCH(request({ contactIds: ["c1", "c2"], action: "disable" }))

@@ -191,6 +191,43 @@ export default function PortalUsersHelpAz() {
         </HelpStep>
       </HelpSection>
 
+      <HelpSection title="Addım-addım: kontragentə «Sənədlər»i açmaq">
+        <p>
+          Kontragent şirkətin kontaktı portalda öz müqavilələrini görə bilər: qiymət razılaşdırma
+          protokollarını, hesab-fakturaları, təhvil-təslim aktlarını və imzasını gözləyən hər şeyi —
+          və onların PDF-ini yükləyə bilər. Yalnız onun şirkətinin artıq razılaşdırılmış müqavilələri
+          görünür; müqavilə və sənəd qaralamaları heç vaxt görünmür.
+        </p>
+        <HelpStep n={1}>
+          <p>
+            Kontakta portala girişi açın və kartında şirkətin göstərildiyini yoxlayın. Sonra onun
+            sətrində <HelpKey>Sənədlər</HelpKey> açarını yandırın.
+          </p>
+          <HelpCallout kind="see" label="Nə görəcəksiniz">
+            «… artıq portalda şirkətin sənədlərini görür» bildirişi. Açar aktiv deyilsə, üzərinə
+            gətirəndə səbəbi yazılır: portala giriş yoxdur və ya kontaktın şirkəti yoxdur.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={2}>
+          <p>
+            Kontakt portala daxil olur və <HelpKey>Sənədlər</HelpKey> bölməsini açır.
+          </p>
+          <HelpCallout kind="see" label="Nə görəcəksiniz">
+            Yuxarıda <HelpKey>İmzala</HelpKey> düyməsi ilə «İmzanızı gözləyir» kartları: düymə
+            məktubdakı keçidlə eyni imza səhifəsini açır. Aşağıda şirkətin müqavilələri; müqavilənin
+            içində PDF-ləri ilə «müqavilə → protokollar → hesab-fakturalar → aktlar» zənciri,
+            imzalananlar — imza vərəqi ilə nüsxə.
+          </HelpCallout>
+        </HelpStep>
+        <HelpCallout kind="security">
+          <p>
+            Portaldan yalnız e-poçtu kontaktın e-poçtu ilə eyni olan imzalayan kimi imzalamaq olar.
+            Açarı söndürsəniz, bölmə səhifə növbəti dəfə açılanda portaldan yox olur. Yandırma və
+            söndürmə jurnala yazılır.
+          </p>
+        </HelpCallout>
+      </HelpSection>
+
       <HelpCallout kind="tip">
         <p>
           Status nişanları sürətli baxış üçündür: <strong>Gözləyir</strong> (sarı) o deməkdir ki, siz
