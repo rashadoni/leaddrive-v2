@@ -356,6 +356,22 @@ type MetaCall = { url: string; body: Record<string, unknown>; raw: string }
     expect(comment(await board(), "gecələr işləyirsiniz?")).toMatchObject({ answered: false, keyword: null })
   })
 
+  // Owner 2026-11-25: reels ask to comment «+»; the rule refused the sign as «empty» and never matched it.
+  it("saves «+» as a word and answers a comment that is just «+», not «5+3»", async () => {
+    as(ORG, ADMIN)
+    const keep = { keyword: "GECƏ", message: "Salam! Gecə növbəsi haqqında məlumat göndəririk." }
+    const saved = await saveRules([keep, { keyword: "+", message: "Salam! Linki göndəririk." }])
+    expect(saved.status, await saved.clone().text()).toBe(200)
+    const before = privateReplies().length
+    await arrives(ORG, IG_MAIN, "leaddrive.az", "plus-one", "+", REEL)
+    expect(privateReplies()).toHaveLength(before + 1)
+    expect(privateReplies().at(-1)!.body).toMatchObject({ message: { text: "Salam! Linki göndəririk." } })
+    await arrives(ORG, IG_MAIN, "leaddrive.az", "math-fan", "5+3", REEL)
+    expect(privateReplies()).toHaveLength(before + 1)
+    as(ORG, ADMIN)
+    expect((await saveRules([keep])).status).toBe(200)
+  })
+
   it("stays silent where automatic replies are switched off, and for another organization's page", async () => {
     await arrives(ORG, IG_MAIN, "leaddrive.az", "quiet", "salam", REEL)
     await bypass(() => prisma.socialConversation.updateMany({

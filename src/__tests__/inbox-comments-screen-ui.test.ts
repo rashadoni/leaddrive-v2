@@ -92,6 +92,31 @@ async function type(el: HTMLTextAreaElement | HTMLInputElement, value: string) {
 }
 
 describe("the «Комментарии» section of Omni-Channel", () => {
+  // Owner 2026-11-25: «я ведь не вижу правило» — the rules lived only behind a button.
+  it("shows every rule on the page — word, page, on or off — and opens the editor from it", async () => {
+    answer({ ...BOARD, rules: [
+      { id: "rule-1", keyword: "GECƏ", message: "Salam!", channelConfigId: null, enabled: true },
+      { id: "rule-2", keyword: "+", message: "Linki göndəririk", channelConfigId: "ig-1", enabled: false },
+    ] })
+    await render()
+
+    const strip = all("inbox-comments-rules-strip")[0]
+    expect(strip.textContent).toContain("Автоматическое сообщение в Direct за слово в комментарии")
+    expect(all("inbox-comments-rule-card").map((c) => c.textContent)).toEqual([
+      expect.stringMatching(/«GECƏ» → Direct.*включено/),
+      expect.stringMatching(/«\+» → Direct.*@leaddrive\.az.*выключено/),
+    ])
+    await press(all("inbox-comments-rule-card")[0])
+    expect(document.body.textContent).toContain("Linki göndəririk")
+  })
+
+  it("says there are no rules yet and offers to add one", async () => {
+    answer({ ...BOARD, rules: [] })
+    await render()
+    expect(all("inbox-comments-rules-strip")[0].textContent).toContain("Правил пока нет")
+    expect(button("Добавить правило", all("inbox-comments-rules-strip")[0])).toBeDefined()
+  })
+
   it("opens on what still waits for an answer, grouped by post", async () => {
     answer(BOARD)
     await render()
@@ -104,7 +129,7 @@ describe("the «Комментарии» section of Omni-Channel", () => {
     // «Без ответа» is the first view: the comment the rule already answered is not in it.
     expect(all("inbox-comments-comment").map((c) => c.textContent)).toEqual([expect.stringContaining("Qiymət nə qədərdir?")])
     expect(container.textContent).toContain("Без ответа · 2")
-    expect(container.textContent).toContain("С ключевым словом · 1")
+    expect(container.textContent).toContain("Ответ по правилу · 1")
     expect(all("inbox-comments-rule-banner")[0].textContent).toContain("Слово «GECƏ» в комментарии")
   })
 

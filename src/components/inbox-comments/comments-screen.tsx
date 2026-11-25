@@ -110,6 +110,10 @@ export function CommentsScreen() {
         )}
       </div>
 
+      {board && (board.rules.length > 0 || board.canManageRules) && (
+        <RulesStrip rules={board.rules} channels={board.channels} canManage={board.canManageRules} onOpen={() => setRulesOpen(true)} />
+      )}
+
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {(board?.channels.length ?? 0) > 1 && (
           <Select aria-label={t("pageFilter")} className="h-9 w-auto min-w-48" value={channel} onChange={(e) => { setChannel(e.target.value); setSelected(null) }}>
@@ -490,5 +494,59 @@ function RulesDialog({ rules, channels, onClose, onSaved }: {
         <Button disabled={busy} onClick={() => void save()} data-testid="inbox-comments-rules-save">{t("rulesSave")}</Button>
       </DialogFooter>
     </Dialog>
+  )
+}
+
+/**
+ * The rules, on the page itself (owner 2026-11-25: «я ведь не вижу правило»): they were behind the
+ * «Açar sözlər» button only, and the filter tab «Açar sözlə · 0» read like «no rules». Each rule is
+ * a card — the word, where the message goes, the page, on or off; a click opens the editor.
+ */
+function RulesStrip({ rules, channels, canManage, onOpen }: {
+  rules: CommentKeywordRule[]
+  channels: CommentsBoardChannel[]
+  canManage: boolean
+  onOpen: () => void
+}) {
+  const t = useTranslations("inboxComments")
+  const pageName = (id: string | null) => (id ? channels.find((c) => c.id === id)?.name ?? t("rulesStripOnePage") : t("allPages"))
+  return (
+    <section className="mb-4 rounded-xl border border-border bg-card p-3" data-testid="inbox-comments-rules-strip" aria-label={t("rulesStripTitle")}>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-sm font-semibold"><KeyRound className="h-4 w-4" aria-hidden="true" /> {t("rulesStripTitle")}</p>
+        {canManage && (
+          <Hint text={t("rulesHint")}>
+            <Button variant="outline" size="sm" onClick={onOpen}>
+              <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {rules.length ? t("rulesStripEdit") : t("rulesStripAdd")}
+            </Button>
+          </Hint>
+        )}
+      </div>
+      {rules.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("rulesStripEmpty")}</p>
+      ) : (
+        <ul className="flex flex-wrap gap-2">
+          {rules.map((rule) => (
+            <li key={rule.id}>
+              <Hint text={rule.message}>
+                <button
+                  type="button"
+                  onClick={canManage ? onOpen : undefined}
+                  disabled={!canManage}
+                  data-testid="inbox-comments-rule-card"
+                  className={cn(
+                    "flex max-w-xs flex-col items-start rounded-lg border px-3 py-2 text-left text-sm transition-colors",
+                    rule.enabled ? "border-border hover:bg-muted" : "border-dashed border-border text-muted-foreground",
+                  )}
+                >
+                  <span className="font-semibold">«{rule.keyword}» → Direct</span>
+                  <span className="text-xs text-muted-foreground">{pageName(rule.channelConfigId)} · {rule.enabled ? t("rulesStripOn") : t("rulesStripOff")}</span>
+                </button>
+              </Hint>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
