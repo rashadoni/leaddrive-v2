@@ -34,11 +34,24 @@ describe("a rule's word in a comment", () => {
 
   it("prefers the page's own rule, and skips a rule that is off or another page's", () => {
     const rule = (id: string, extra: Partial<CommentKeywordRule> = {}): CommentKeywordRule =>
-      ({ id, keyword: "GECƏ", message: id, channelConfigId: null, enabled: true, ...extra })
+      ({ id, keyword: "GECƏ", message: id, channelConfigId: null, postId: null, postLabel: null, enabled: true, ...extra })
     const rules = [rule("all"), rule("page", { channelConfigId: "ig-1" }), rule("off", { keyword: "SAY", enabled: false }), rule("other", { keyword: "SAY", channelConfigId: "ig-2" })]
     expect(matchCommentKeywordRule(rules, "gece", "ig-1")?.id).toBe("page")
     expect(matchCommentKeywordRule(rules, "gece", "ig-3")?.id).toBe("all")
     expect(matchCommentKeywordRule(rules, "say", "ig-1")).toBeNull()
+  })
+
+  // Owner 2026-11-25: «каждая публикация может отличаться».
+  it("takes a rule for one post before the page's and everyone's, and never under another post", () => {
+    const rule = (id: string, extra: Partial<CommentKeywordRule> = {}): CommentKeywordRule =>
+      ({ id, keyword: "+", message: id, channelConfigId: "ig-1", postId: null, postLabel: null, enabled: true, ...extra })
+    const rules = [rule("all", { channelConfigId: null }), rule("page"), rule("reel-a", { postId: "111" }), rule("reel-b", { postId: "222" })]
+    expect(matchCommentKeywordRule(rules, "+", "ig-1", "111")?.id).toBe("reel-a")
+    expect(matchCommentKeywordRule(rules, "+", "ig-1", "222")?.id).toBe("reel-b")
+    expect(matchCommentKeywordRule(rules, "+", "ig-1", "333")?.id).toBe("page")
+    expect(matchCommentKeywordRule(rules, "+", "ig-1")?.id).toBe("page")
+    expect(matchCommentKeywordRule(rules, "+", "ig-9", "111")?.id).toBe("all")
+    expect(matchCommentKeywordRule([rule("reel-a", { postId: "111" })], "+", "ig-1", "333")).toBeNull()
   })
 
   it("drops stored rules it cannot trust rather than half-applying them", () => {
@@ -48,7 +61,7 @@ describe("a rule's word in a comment", () => {
       { id: "no-message", keyword: "x", message: " " },
       { id: "long", keyword: "x".repeat(41), message: "y" },
       "junk",
-    ] })).toEqual([{ id: "ok", keyword: "GECƏ", message: "Salam", channelConfigId: null, enabled: true }])
+    ] })).toEqual([{ id: "ok", keyword: "GECƏ", message: "Salam", channelConfigId: null, postId: null, postLabel: null, enabled: true }])
     expect(readCommentKeywordRules(null)).toEqual([])
   })
 })

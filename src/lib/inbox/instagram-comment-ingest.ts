@@ -276,6 +276,7 @@ export async function ingestInstagramComment(params: {
     recipientId: comment.fromId,
     inboundMessageId: stored.id,
     commentId: comment.commentId,
+    postId: comment.mediaId,
     text: comment.text,
   })
   return "stored"

@@ -15,6 +15,8 @@ const bodySchema = z.strictObject({
     keyword: z.string().trim().min(1).max(COMMENT_KEYWORD_MAX_CHARS),
     message: z.string().trim().min(1).max(COMMENT_KEYWORD_MESSAGE_MAX_CHARS),
     channelConfigId: z.string().min(1).max(64).nullable().optional(),
+    postId: z.string().trim().min(1).max(64).regex(/^[0-9_]+$/).nullable().optional(),
+    postLabel: z.string().max(200).nullable().optional(),
     enabled: z.boolean().optional(),
   })).max(COMMENT_KEYWORD_RULES_MAX),
 })
@@ -35,7 +37,7 @@ export const PUT = withInboxSessionWrite(async (req, auth) => {
   if (!saved.ok) return NextResponse.json({ error: saved.error }, { status: 400 })
   void logAudit(auth.orgId, "update", "organization", auth.orgId, "comment keyword rules", {
     userId: auth.userId,
-    newValue: { rules: saved.rules.map((r) => ({ id: r.id, keyword: r.keyword, channelConfigId: r.channelConfigId, enabled: r.enabled })) },
+    newValue: { rules: saved.rules.map((r) => ({ id: r.id, keyword: r.keyword, channelConfigId: r.channelConfigId, postId: r.postId, enabled: r.enabled })) },
   })
   return NextResponse.json({ success: true, data: { rules: saved.rules } })
 })

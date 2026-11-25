@@ -177,7 +177,7 @@ export function buildCommentsBoard(input: {
       isThreadReply: Boolean(stored.parentId),
       answered,
       privateReplyAvailable: privateReplyAvailable(row, input.now),
-      keyword: matchCommentKeywordRule(input.rules, row.body, row.channelConfigId)?.keyword ?? null,
+      keyword: matchCommentKeywordRule(input.rules, row.body, row.channelConfigId, stored.mediaId)?.keyword ?? null,
       replies,
     })
     post.total += 1
@@ -255,7 +255,7 @@ export function buildFacebookPosts(input: {
       isThreadReply: Boolean(row.parentId),
       answered,
       privateReplyAvailable: facebookPrivateReplyAvailable(row, input.now),
-      keyword: matchCommentKeywordRule(input.rules, row.body, row.channelConfigId)?.keyword ?? null,
+      keyword: matchCommentKeywordRule(input.rules, row.body, row.channelConfigId, row.postId)?.keyword ?? null,
       replies,
     })
     post.total += 1

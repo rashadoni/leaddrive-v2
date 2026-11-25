@@ -372,6 +372,28 @@ type MetaCall = { url: string; body: Record<string, unknown>; raw: string }
     expect((await saveRules([keep])).status).toBe(200)
   })
 
+  // Owner 2026-11-25: «каждая публикация может отличаться» — under each reel its own text.
+  it("sends a post's own message for the word under that post, and the page's elsewhere", async () => {
+    as(ORG, ADMIN)
+    const keep = { keyword: "GECƏ", message: "Salam! Gecə növbəsi haqqında məlumat göndəririk." }
+    const forPost = await saveRules([{ keyword: "+", message: "Bütün postlar üçün", channelConfigId: IG_MAIN }])
+    expect(forPost.status).toBe(200)
+    expect((await saveRules([{ keyword: "+", message: "x", postId: "1790001" }])).status).toBe(400)
+    const saved = await saveRules([
+      keep,
+      { keyword: "+", message: "Bütün postlar üçün", channelConfigId: IG_MAIN },
+      { keyword: "+", message: "Gecə reels-i üçün mətn", channelConfigId: IG_MAIN, postId: "1790001", postLabel: "Gecə 23:47" },
+    ])
+    expect(saved.status, await saved.clone().text()).toBe(200)
+    const before = privateReplies().length
+    await arrives(ORG, IG_MAIN, "leaddrive.az", "reel-fan", "+", "1790001")
+    await arrives(ORG, IG_MAIN, "leaddrive.az", "post-fan", "+", "1790002")
+    expect(privateReplies().slice(before).map((r) => (r.body as { message: { text: string } }).message.text)).toEqual(["Gecə reels-i üçün mətn", "Bütün postlar üçün"])
+    as(ORG, ADMIN)
+    expect((await board()).rules.find((r) => r.postId)).toMatchObject({ postId: "1790001", postLabel: "Gecə 23:47" })
+    expect((await saveRules([keep])).status).toBe(200)
+  })
+
   it("stays silent where automatic replies are switched off, and for another organization's page", async () => {
     await arrives(ORG, IG_MAIN, "leaddrive.az", "quiet", "salam", REEL)
     await bypass(() => prisma.socialConversation.updateMany({

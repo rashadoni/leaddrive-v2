@@ -32,6 +32,13 @@ export type CommentKeywordRule = {
   message: string
   /** One connected page, or null for every page of the organization. */
   channelConfigId: string | null
+  /**
+   * One post or reel of that page (Instagram media id / Facebook post id), or null for every post.
+   * Owner 2026-11-25: «каждая публикация может отличаться» — one word, another text under each post.
+   */
+  postId: string | null
+  /** How the post reads on the screen (the start of its caption), kept with the rule. */
+  postLabel: string | null
   enabled: boolean
 }
 
@@ -97,6 +104,8 @@ export function readCommentKeywordRules(orgSettings: unknown): CommentKeywordRul
       keyword,
       message,
       channelConfigId: typeof r.channelConfigId === "string" && r.channelConfigId ? r.channelConfigId : null,
+      postId: typeof r.postId === "string" && r.postId ? r.postId : null,
+      postLabel: typeof r.postLabel === "string" && r.postLabel ? r.postLabel : null,
       enabled: r.enabled !== false,
     })
     if (out.length >= COMMENT_KEYWORD_RULES_MAX) break
@@ -104,14 +113,22 @@ export function readCommentKeywordRules(orgSettings: unknown): CommentKeywordRul
   return out
 }
 
-/** The first enabled rule the comment matches on this page; a rule for one page beats a rule for all. */
+/**
+ * The first enabled rule the comment matches: a rule for this very post beats a rule for its page,
+ * which beats a rule for every page. A rule for another post never matches.
+ */
 export function matchCommentKeywordRule(
   rules: readonly CommentKeywordRule[],
   text: string,
   channelConfigId: string | null | undefined,
+  postId?: string | null,
 ): CommentKeywordRule | null {
-  const live = rules.filter((r) => r.enabled && (!r.channelConfigId || r.channelConfigId === channelConfigId))
-  const ordered = [...live.filter((r) => r.channelConfigId), ...live.filter((r) => !r.channelConfigId)]
+  const live = rules.filter((r) =>
+    r.enabled
+    && (!r.channelConfigId || r.channelConfigId === channelConfigId)
+    && (!r.postId || (!!postId && r.postId === postId)))
+  const rank = (r: CommentKeywordRule) => (r.postId ? 0 : r.channelConfigId ? 1 : 2)
+  const ordered = [...live].sort((a, b) => rank(a) - rank(b))
   return ordered.find((r) => commentHasKeyword(text, r.keyword)) ?? null
 }
 
