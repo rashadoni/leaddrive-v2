@@ -84,7 +84,7 @@ async function ingestOwnComment(channel: FacebookCommentChannel, event: Facebook
 async function runKeywordRule(channel: FacebookCommentChannel, rowId: string, event: FacebookCommentEvent): Promise<void> {
   try {
     if (!event.fromId) return
-    const rule = matchCommentKeywordRule(await loadCommentKeywordRules(channel.organizationId), event.text, channel.id)
+    const rule = matchCommentKeywordRule(await loadCommentKeywordRules(channel.organizationId), event.text, channel.id, event.postId)
     if (!rule) return
     const earlier = await prisma.facebookPageComment.findMany({
       where: {

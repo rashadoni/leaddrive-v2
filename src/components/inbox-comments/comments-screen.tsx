@@ -37,7 +37,8 @@ type Board = {
 }
 type Filter = "unanswered" | "all" | "keyword"
 type Mode = "public" | "direct"
-type DraftRule = { id: string | null; keyword: string; message: string; channelConfigId: string; enabled: boolean }
+type DraftRule = { id: string | null; keyword: string; message: string; channelConfigId: string; postId: string; postLabel: string; enabled: boolean }
+type RulePostOption = { id: string; label: string; isReel: boolean }
 
 function when(iso: string): string {
   const d = new Date(iso)
@@ -404,8 +405,22 @@ function RulesDialog({ rules, channels, onClose, onSaved }: {
 }) {
   const t = useTranslations("inboxComments")
   const [drafts, setDrafts] = useState<DraftRule[]>(() => rules.map((r) => ({
-    id: r.id, keyword: r.keyword, message: r.message, channelConfigId: r.channelConfigId ?? "", enabled: r.enabled,
+    id: r.id, keyword: r.keyword, message: r.message, channelConfigId: r.channelConfigId ?? "", postId: r.postId ?? "", postLabel: r.postLabel ?? "", enabled: r.enabled,
   })))
+  // The page's latest posts, read from Meta once per page the dialog shows (lib/inbox/comment-rule-posts).
+  const [posts, setPosts] = useState<Record<string, RulePostOption[] | "loading" | "failed">>({})
+  useEffect(() => {
+    for (const id of new Set(drafts.map((r) => r.channelConfigId).filter(Boolean))) {
+      if (posts[id]) continue
+      setPosts((m) => ({ ...m, [id]: "loading" }))
+      void fetch(`/api/v1/inbox/comments/posts?channel=${encodeURIComponent(id)}`)
+        .then(async (res) => {
+          const json = (await res.json().catch(() => null)) as { data?: { posts?: RulePostOption[] } } | null
+          setPosts((m) => ({ ...m, [id]: res.ok && json?.data?.posts ? json.data.posts : "failed" }))
+        })
+        .catch(() => setPosts((m) => ({ ...m, [id]: "failed" })))
+    }
+  }, [drafts, posts])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -426,6 +441,8 @@ function RulesDialog({ rules, channels, onClose, onSaved }: {
             keyword: r.keyword.trim(),
             message: r.message.trim(),
             channelConfigId: r.channelConfigId || null,
+            postId: r.channelConfigId && r.postId ? r.postId : null,
+            postLabel: r.channelConfigId && r.postId ? r.postLabel || null : null,
             enabled: r.enabled,
           })),
         }),
@@ -433,7 +450,7 @@ function RulesDialog({ rules, channels, onClose, onSaved }: {
       if (!res.ok) {
         const json = (await res.json().catch(() => null)) as { error?: string } | null
         const code = json?.error
-        setError(code === "duplicate_keyword" || code === "too_long" || code === "empty" || code === "too_many" ? t(`rulesError_${code}`) : t("rulesError"))
+        setError(code === "duplicate_keyword" || code === "too_long" || code === "empty" || code === "too_many" || code === "post_needs_page" ? t(`rulesError_${code}`) : t("rulesError"))
         return
       }
       onSaved()
@@ -460,11 +477,36 @@ function RulesDialog({ rules, channels, onClose, onSaved }: {
                   {t("ruleKeyword")}
                   <Input className="mt-1" value={rule.keyword} maxLength={COMMENT_KEYWORD_MAX_CHARS} placeholder="GECƏ" onChange={(e) => patch(index, { keyword: e.target.value })} data-testid="inbox-comments-rule-keyword" />
                 </label>
-                <Select label={t("rulePage")} value={rule.channelConfigId} onChange={(e) => patch(index, { channelConfigId: e.target.value })}>
+                <Select label={t("rulePage")} value={rule.channelConfigId} onChange={(e) => patch(index, { channelConfigId: e.target.value, postId: "", postLabel: "" })}>
                   <option value="">{t("allPages")}</option>
                   {channels.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </Select>
               </div>
+              {rule.channelConfigId && (() => {
+                const list = posts[rule.channelConfigId]
+                const options = Array.isArray(list) ? list : []
+                const known = !rule.postId || options.some((p) => p.id === rule.postId)
+                return (
+                  <div className="mt-3">
+                    <Select
+                      label={t("rulePost")}
+                      value={rule.postId}
+                      data-testid="inbox-comments-rule-post"
+                      onChange={(e) => {
+                        const picked = options.find((p) => p.id === e.target.value)
+                        patch(index, { postId: e.target.value, postLabel: picked?.label ?? "" })
+                      }}
+                    >
+                      <option value="">{t("allPosts")}</option>
+                      {!known && <option value={rule.postId}>{rule.postLabel || rule.postId}</option>}
+                      {options.map((p) => <option key={p.id} value={p.id}>{p.isReel ? "🎬 " : ""}{p.label}</option>)}
+                    </Select>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {list === "loading" ? t("rulePostLoading") : list === "failed" ? t("rulePostFailed") : t("rulePostHint")}
+                    </p>
+                  </div>
+                )
+              })()}
               <label className="mt-3 block text-sm font-medium">
                 {t("ruleMessage")}
                 <Textarea className="mt-1" rows={3} value={rule.message} maxLength={COMMENT_KEYWORD_MESSAGE_MAX_CHARS} placeholder={t("ruleMessagePlaceholder")} onChange={(e) => patch(index, { message: e.target.value })} data-testid="inbox-comments-rule-message" />
@@ -481,7 +523,7 @@ function RulesDialog({ rules, channels, onClose, onSaved }: {
             </div>
           ))}
           {drafts.length < COMMENT_KEYWORD_RULES_MAX && (
-            <Button variant="outline" className="self-start" onClick={() => setDrafts((list) => [...list, { id: null, keyword: "", message: "", channelConfigId: "", enabled: true }])} data-testid="inbox-comments-rule-add">
+            <Button variant="outline" className="self-start" onClick={() => setDrafts((list) => [...list, { id: null, keyword: "", message: "", channelConfigId: "", postId: "", postLabel: "", enabled: true }])} data-testid="inbox-comments-rule-add">
               <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" /> {t("ruleAdd")}
             </Button>
           )}
@@ -541,6 +583,7 @@ function RulesStrip({ rules, channels, canManage, onOpen }: {
                 >
                   <span className="font-semibold">«{rule.keyword}» → Direct</span>
                   <span className="text-xs text-muted-foreground">{pageName(rule.channelConfigId)} · {rule.enabled ? t("rulesStripOn") : t("rulesStripOff")}</span>
+                  <span className="max-w-full truncate text-xs text-muted-foreground">{rule.postId ? t("rulesStripPost", { post: rule.postLabel || rule.postId }) : t("allPosts")}</span>
                 </button>
               </Hint>
             </li>

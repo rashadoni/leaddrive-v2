@@ -41,7 +41,7 @@ const BOARD = {
   ],
   channels: [{ id: "ig-1", name: "@leaddrive.az" }],
   truncated: false,
-  rules: [{ id: "rule-1", keyword: "GECƏ", message: "Salam!", channelConfigId: null, enabled: true }],
+  rules: [{ id: "rule-1", keyword: "GECƏ", message: "Salam!", channelConfigId: null, postId: null, postLabel: null, enabled: true }],
   canManageRules: true,
 }
 
@@ -95,8 +95,8 @@ describe("the «Комментарии» section of Omni-Channel", () => {
   // Owner 2026-11-25: «я ведь не вижу правило» — the rules lived only behind a button.
   it("shows every rule on the page — word, page, on or off — and opens the editor from it", async () => {
     answer({ ...BOARD, rules: [
-      { id: "rule-1", keyword: "GECƏ", message: "Salam!", channelConfigId: null, enabled: true },
-      { id: "rule-2", keyword: "+", message: "Linki göndəririk", channelConfigId: "ig-1", enabled: false },
+      { id: "rule-1", keyword: "GECƏ", message: "Salam!", channelConfigId: null, postId: null, postLabel: null, enabled: true },
+      { id: "rule-2", keyword: "+", message: "Linki göndəririk", channelConfigId: "ig-1", postId: "1790001", postLabel: "Gecə 23:47. Ofisdə heç kim yoxdur", enabled: false },
     ] })
     await render()
 
@@ -104,7 +104,7 @@ describe("the «Комментарии» section of Omni-Channel", () => {
     expect(strip.textContent).toContain("Автоматическое сообщение в Direct за слово в комментарии")
     expect(all("inbox-comments-rule-card").map((c) => c.textContent)).toEqual([
       expect.stringMatching(/«GECƏ» → Direct.*включено/),
-      expect.stringMatching(/«\+» → Direct.*@leaddrive\.az.*выключено/),
+      expect.stringMatching(/«\+» → Direct.*@leaddrive\.az.*выключено.*пост: «Gecə 23:47\. Ofisdə heç kim yoxdur»/),
     ])
     await press(all("inbox-comments-rule-card")[0])
     expect(document.body.textContent).toContain("Linki göndəririk")
@@ -215,10 +215,36 @@ describe("the «Комментарии» section of Omni-Channel", () => {
     const saved = calls.find((c) => c.method === "PUT")!
     expect(saved.body).toEqual({
       rules: [
-        { id: "rule-1", keyword: "GECƏ", message: "Salam!", channelConfigId: null, enabled: true },
-        { id: null, keyword: "SAY", message: "Salam, SAY üçün təşəkkürlər", channelConfigId: null, enabled: true },
+        { id: "rule-1", keyword: "GECƏ", message: "Salam!", channelConfigId: null, postId: null, postLabel: null, enabled: true },
+        { id: null, keyword: "SAY", message: "Salam, SAY üçün təşəkkürlər", channelConfigId: null, postId: null, postLabel: null, enabled: true },
       ],
     })
+  })
+
+  it("ties a rule to one post of the page — chosen from the page's latest posts — and saves it", async () => {
+    answer(BOARD, {
+      "GET /api/v1/inbox/comments/posts?channel=ig-1": { body: { success: true, data: { posts: [
+        { id: "1790001", label: "Gecə 23:47. Ofisdə heç kim yoxdur", isReel: true },
+        { id: "1790002", label: "Qiymətlər", isReel: false },
+      ] } } },
+      "PUT /api/v1/inbox/comments/keyword-rules": { body: { success: true, data: { rules: [] } } },
+    })
+    await render()
+    await press(button("Ключевые слова"))
+    const rule = document.querySelector<HTMLElement>('[data-testid="inbox-comments-rule"]')!
+    expect(rule.querySelector('[data-testid="inbox-comments-rule-post"]')).toBeNull()
+
+    const page = rule.querySelector<HTMLSelectElement>("select")!
+    await act(async () => { page.value = "ig-1"; page.dispatchEvent(new Event("change", { bubbles: true })) })
+    await flush()
+    const post = rule.querySelector<HTMLSelectElement>('[data-testid="inbox-comments-rule-post"]')!
+    expect(Array.from(post.options).map((o) => o.textContent)).toEqual(["Все посты", "🎬 Gecə 23:47. Ofisdə heç kim yoxdur", "Qiymətlər"])
+    await act(async () => { post.value = "1790001"; post.dispatchEvent(new Event("change", { bubbles: true })) })
+    await press(document.querySelector('[data-testid="inbox-comments-rules-save"]')!)
+
+    expect(calls.find((c) => c.method === "PUT")!.body).toEqual({ rules: [
+      { id: "rule-1", keyword: "GECƏ", message: "Salam!", channelConfigId: "ig-1", postId: "1790001", postLabel: "Gecə 23:47. Ofisdə heç kim yoxdur", enabled: true },
+    ] })
   })
 
   it("does not offer the rules to somebody who may not change them, and explains an empty section", async () => {

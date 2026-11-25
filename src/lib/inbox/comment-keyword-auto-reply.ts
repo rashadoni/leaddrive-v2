@@ -30,13 +30,15 @@ export async function runCommentKeywordAutoReply(params: {
   recipientId: string
   inboundMessageId: string
   commentId: string
+  /** The post or reel the comment is under (Instagram media id): a rule may be for that post only. */
+  postId?: string | null
   text: string
   now?: number
   send?: typeof sendConversationReply
 }): Promise<CommentKeywordAutoReplyResult> {
   const { organizationId, channelConfigId, conversationId } = params
   try {
-    const rule = matchCommentKeywordRule(await loadCommentKeywordRules(organizationId), params.text, channelConfigId)
+    const rule = matchCommentKeywordRule(await loadCommentKeywordRules(organizationId), params.text, channelConfigId, params.postId ?? null)
     if (!rule) return "no_rule"
     if (await autoReplyOff(organizationId, conversationId)) return "auto_reply_off"
     const since = new Date((params.now ?? Date.now()) - COMMENT_KEYWORD_REPEAT_MS)

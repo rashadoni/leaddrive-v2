@@ -30,12 +30,14 @@ export type CommentKeywordRuleInput = {
   keyword: string
   message: string
   channelConfigId?: string | null
+  postId?: string | null
+  postLabel?: string | null
   enabled?: boolean
 }
 
 export type SaveCommentKeywordRulesResult =
   | { ok: true; rules: CommentKeywordRule[] }
-  | { ok: false; error: "too_many" | "empty" | "too_long" | "duplicate_keyword" | "unknown_channel" }
+  | { ok: false; error: "too_many" | "empty" | "too_long" | "duplicate_keyword" | "unknown_channel" | "post_needs_page" }
 
 /**
  * Replaces the organization's rule list. Two rules for the same word on the same page are refused:
@@ -59,10 +61,14 @@ export async function saveCommentKeywordRules(
       return { ok: false, error: "too_long" }
     }
     const channelConfigId = item.channelConfigId || null
-    const key = `${channelConfigId ?? "*"}|${words.length ? words.join(" ") : keyword}`
+    const postId = item.postId?.trim() || null
+    // A post belongs to one page: a rule for a post names that page too.
+    if (postId && !channelConfigId) return { ok: false, error: "post_needs_page" }
+    const postLabel = postId ? (item.postLabel?.trim().slice(0, 120) || null) : null
+    const key = `${channelConfigId ?? "*"}|${postId ?? "*"}|${words.length ? words.join(" ") : keyword}`
     if (seen.has(key)) return { ok: false, error: "duplicate_keyword" }
     seen.add(key)
-    rules.push({ id: item.id || randomUUID(), keyword, message, channelConfigId, enabled: item.enabled !== false })
+    rules.push({ id: item.id || randomUUID(), keyword, message, channelConfigId, postId, postLabel, enabled: item.enabled !== false })
   }
   const channelIds = [...new Set(rules.map((r) => r.channelConfigId).filter((id): id is string => !!id))]
   if (channelIds.length > 0) {
