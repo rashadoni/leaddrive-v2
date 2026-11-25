@@ -33,6 +33,8 @@ const portalUsersPatchSchema = z.object({
   // clearing the hash and leaving the customer without a recovery path.
   resetPassword: z.boolean().optional(),
   portalAccessEnabled: z.boolean().optional(),
+  /** «Sənədlər» in the portal (portal-documents.ts). */
+  portalDocumentsEnabled: z.boolean().optional(),
   clearChatHistory: z.boolean().optional(),
   removeFromPortal: z.boolean().optional(),
 }).strict()
@@ -94,6 +96,8 @@ export const GET = withRlsSessionAuth(async (req, auth) => {
     companyName: c.company?.name || null,
     isActive: c.isActive,
     portalAccessEnabled: c.portalAccessEnabled,
+    portalDocumentsEnabled: c.portalDocumentsEnabled,
+    hasCompany: Boolean(c.companyId),
     hasPassword: !!c.portalPasswordHash,
     portalLastLoginAt: c.portalLastLoginAt,
     recoveryExpiresAt: c.portalVerificationExpires,
@@ -198,6 +202,7 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
     administratorPassword,
     resetPassword,
     portalAccessEnabled,
+    portalDocumentsEnabled,
     clearChatHistory,
     removeFromPortal,
   } = parsed.data
@@ -217,8 +222,33 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
       Boolean(clearChatHistory),
       Boolean(removeFromPortal),
       typeof portalAccessEnabled === "boolean",
+      typeof portalDocumentsEnabled === "boolean",
     ].filter(Boolean).length
     if (requestedActions !== 1) return NextResponse.json({ error: "Choose one portal action" }, { status: 400 })
+
+    // «Sənədlər»: the company's contracts and documents in the portal. Only for a
+    // contact who has portal access and a company — there is nothing to show otherwise.
+    if (typeof portalDocumentsEnabled === "boolean") {
+      if (portalDocumentsEnabled && !target.portalAccessEnabled) {
+        return NextResponse.json({ error: "Enable portal access first", code: "PORTAL_ACCESS_REQUIRED" }, { status: 409 })
+      }
+      if (portalDocumentsEnabled && !target.companyId) {
+        return NextResponse.json({ error: "The contact has no company", code: "PORTAL_COMPANY_REQUIRED" }, { status: 409 })
+      }
+      const updated = await prisma.contact.updateMany({
+        where: { id: contactId, organizationId: orgId },
+        data: { portalDocumentsEnabled },
+      })
+      if (updated.count !== 1) return NextResponse.json({ error: "Contact not found" }, { status: 404 })
+      const auditRecorded = await writePortalAudit({
+        orgId,
+        action: portalDocumentsEnabled ? "portal_documents_enabled" : "portal_documents_disabled",
+        contactId,
+        contactName: target.fullName,
+        actorUserId: auth.userId,
+      })
+      return NextResponse.json({ success: true, auditRecorded })
+    }
 
     if (profile) {
       if (profile.portalAccessEnabled && !profile.email) {

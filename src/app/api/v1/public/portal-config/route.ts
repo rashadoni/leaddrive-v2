@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { getPortalUser } from "@/lib/portal-auth"
 import { SUPPORT_AI_DISABLED_FEATURE } from "@/lib/ai/feature-keys"
+import { orgHasModule } from "@/lib/api-auth"
 
 // Returns the tenant-level feature flags and lightweight facet lists the portal UI
 // needs to decide which optional fields to render (e.g. the "this is a complaint"
@@ -35,6 +36,12 @@ export async function GET() {
   const complaintsEnabled = arr.includes("complaints_register")
   const loyaltyEnabled = arr.includes("loyalty_portal")
   const supportAiEnabled = !arr.includes(SUPPORT_AI_DISABLED_FEATURE)
+  // «Sənədlər» (portal-documents.ts): this contact's switch, a company, and the Contracts module.
+  const contactFlags = await prisma.contact.findFirst({
+    where: { id: user.contactId, organizationId: user.organizationId },
+    select: { portalDocumentsEnabled: true, companyId: true },
+  })
+  const documentsEnabled = Boolean(contactFlags?.portalDocumentsEnabled && contactFlags.companyId) && (await orgHasModule(user.organizationId, "contracts"))
 
   let brands: string[] = []
   let productCategories: string[] = []
@@ -64,7 +71,7 @@ export async function GET() {
   return NextResponse.json({
     success: true,
     data: {
-      features: { complaints_register: complaintsEnabled, loyalty: loyaltyEnabled, supportAi: supportAiEnabled },
+      features: { complaints_register: complaintsEnabled, loyalty: loyaltyEnabled, supportAi: supportAiEnabled, documents: documentsEnabled },
       brands,
       productCategories,
     },

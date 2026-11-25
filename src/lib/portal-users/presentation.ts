@@ -6,6 +6,10 @@ export interface PortalContactRecord {
   companyName: string | null
   isActive: boolean
   portalAccessEnabled: boolean
+  /** «Sənədlər»: the company's contracts and documents in the portal. */
+  portalDocumentsEnabled?: boolean
+  /** A contact without a company has no contracts to show. */
+  hasCompany?: boolean
   hasPassword: boolean
   portalLastLoginAt: string | null
   recoveryExpiresAt: string | null

@@ -1657,6 +1657,8 @@ model Contact {
   // Portal access
   portalPasswordHash        String?
   portalAccessEnabled       Boolean   @default(false)
+  /// «Sənədlər» in the portal: the company's contracts and their documents (portal-documents.ts). Off by default.
+  portalDocumentsEnabled    Boolean   @default(false)
   portalLastLoginAt         DateTime?
   portalVerificationToken   String?
   portalVerificationExpires DateTime?

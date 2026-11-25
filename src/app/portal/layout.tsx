@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { BookOpen, Loader2, LogOut, MessageCircle, Sparkles, Ticket } from "lucide-react"
+import { BookOpen, FileText, Loader2, LogOut, MessageCircle, Sparkles, Ticket } from "lucide-react"
 import { PortalChatWidget } from "@/components/portal-chat-widget"
 import { ThemeProvider } from "@/components/theme-provider"
 
@@ -44,6 +44,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const [user, setUser] = useState<PortalUser | null>(null)
   const [loyaltyEnabled, setLoyaltyEnabled] = useState(false)
   const [supportAiEnabled, setSupportAiEnabled] = useState(false)
+  const [documentsEnabled, setDocumentsEnabled] = useState(false)
   // An invoice link (/portal/invoice/<token>) is opened by a customer with no
   // portal account; the token is its credential.
   const isPublicPage = PUBLIC_PORTAL_PATHS.has(pathname) || pathname.startsWith("/portal/invoice/")
@@ -70,10 +71,12 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         if (!body) return
         setLoyaltyEnabled(body?.data?.features?.loyalty === true)
         setSupportAiEnabled(body?.data?.features?.supportAi === true)
+        setDocumentsEnabled(body?.data?.features?.documents === true)
       })
       .catch(() => {
         setLoyaltyEnabled(false)
         setSupportAiEnabled(false)
+        setDocumentsEnabled(false)
       })
   }, [isPublicPage, pathname, router])
 
@@ -100,6 +103,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   const navItems = [
     { href: "/portal/tickets", label: t("myTickets"), icon: Ticket, active: pathname === "/portal" || pathname.startsWith("/portal/tickets") },
+    // «Sənədlər»: the company's contracts and documents, for a contact the CRM let see them.
+    ...(documentsEnabled ? [{ href: "/portal/documents", label: t("documents.nav"), icon: FileText, active: pathname.startsWith("/portal/documents") }] : []),
     { href: "/portal/knowledge-base", label: t("knowledgeBase"), icon: BookOpen, active: pathname.startsWith("/portal/knowledge-base") },
     { href: "/portal/chat", label: t("chatNav"), icon: MessageCircle, active: pathname.startsWith("/portal/chat") },
     ...(loyaltyEnabled ? [{ href: "/portal/loyalty", label: t("loyalty.title"), icon: Sparkles, active: pathname.startsWith("/portal/loyalty") }] : []),
