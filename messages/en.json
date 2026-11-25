@@ -16266,10 +16266,10 @@
   "admin": {
     "demoCenter": {
       "sitePartnerTitle": "Requests from partner sites",
-      "sitePartnerBody": "Every demo request sent from a partner site's form goes to this address at once, before the prospect confirms their email. The reply goes to the prospect.",
+      "sitePartnerBody": "When someone sends a demo request from a partner site's form, a short notice goes to this address at once: which site, which company and when. The prospect's contact details are not in it.",
       "sitePartnerLabel": "Who gets requests from {site}",
       "sitePartnerSave": "Save",
-      "sitePartnerSaveHint": "Each new request from {site} will be emailed to this address right away.",
+      "sitePartnerSaveHint": "Each new request from {site} will send a short notice to this address right away.",
       "sitePartnerClear": "Stop sending",
       "sitePartnerClearHint": "Requests stay in Demo Center, but nobody gets an email about them.",
       "sitePartnerCurrent": "Now sent to {email}.",

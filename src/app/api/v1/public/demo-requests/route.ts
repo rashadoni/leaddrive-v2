@@ -129,9 +129,10 @@ export async function POST(request: Request) {
   }
 
   // A request from a partner's own site (biznesdoktoru.az) reaches that
-  // partner now, unconfirmed (owner, 2026-11-25): she follows the lead up
-  // herself. The address is set in Demo Center, not in code. A missing address
-  // or a mail outage never costs the prospect the request.
+  // partner now, unconfirmed (owner, 2026-11-25), as a heads-up only: site,
+  // company and time, nothing about the person. The address is set in Demo
+  // Center, not in code. A missing address or a mail outage never costs the
+  // prospect the request.
   const partnerSite = demoPartnerSiteForOrigin(request.headers.get("Origin"))
   if (partnerSite) {
     try {
@@ -140,13 +141,8 @@ export async function POST(request: Request) {
         const sent = await sendDemoRequestPartnerNotification({
           to: partner.email,
           site: partnerSite,
-          name: created.name,
           company: created.company,
-          email: created.email,
-          phone: created.phone,
-          jobTitle: created.jobTitle,
-          message: created.message,
-          requestedModuleNames: requestedModuleNames(created.requestedModules),
+          at: new Date(),
         })
         const outcome = sent as { success?: boolean; error?: unknown } | null | undefined
         if (outcome?.success === false) {
