@@ -208,11 +208,32 @@ export const GET = withRls(async (_req, { orgId, session }, { params }: { params
             declinedAt: true,
             viewedAt: true,
             createdAt: true,
+            // The signature sheet in the contract card: how and from where.
+            signatureMethod: true,
+            signedIpAddress: true,
             // tokenHash and signaturePayload explicitly excluded
           },
         },
       },
     })
+
+    // The text each completed envelope bound its signers to: the sign route
+    // mints it as a `signed` version created by `esign:<envelopeId>`.
+    const completedMarks = envelopes
+      .filter((env: { status: string }) => env.status === "completed")
+      .map((env: { id: string }) => `esign:${env.id}`)
+    const signedVersions = completedMarks.length
+      ? await prisma.contractVersion.findMany({
+          where: { organizationId: orgId, contractId, source: "signed", createdBy: { in: completedMarks } },
+          select: { versionNo: true, contentHash: true, createdBy: true },
+        })
+      : []
+    const signedVersionByEnvelope = new Map(
+      signedVersions.map((v: { versionNo: number; contentHash: string; createdBy: string | null }) => [
+        v.createdBy,
+        { versionNo: v.versionNo, contentHash: v.contentHash },
+      ]),
+    )
 
     return NextResponse.json({
       success: true,
@@ -229,8 +250,9 @@ export const GET = withRls(async (_req, { orgId, session }, { params }: { params
         completedAt: env.completedAt,
         createdAt: env.createdAt,
         updatedAt: env.updatedAt,
+        signedVersion: signedVersionByEnvelope.get(`esign:${env.id}`) ?? null,
         // Explicitly whitelist signer fields — tokenHash and signaturePayload never exposed
-        signers: env.signers.map((s: { id: string; fullName: string; email: string; order: number; role: string; status: string; signedAt: Date | null; declinedAt: Date | null; viewedAt: Date | null; createdAt: Date }) => ({
+        signers: env.signers.map((s: { id: string; fullName: string; email: string; order: number; role: string; status: string; signedAt: Date | null; declinedAt: Date | null; viewedAt: Date | null; createdAt: Date; signatureMethod?: string | null; signedIpAddress?: string | null }) => ({
           id: s.id,
           fullName: s.fullName,
           email: s.email,
@@ -241,6 +263,8 @@ export const GET = withRls(async (_req, { orgId, session }, { params }: { params
           declinedAt: s.declinedAt,
           viewedAt: s.viewedAt,
           createdAt: s.createdAt,
+          signatureMethod: s.signatureMethod ?? null,
+          signedIpAddress: s.signedIpAddress ?? null,
         })),
       })),
     })

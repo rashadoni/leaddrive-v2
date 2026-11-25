@@ -3731,6 +3731,18 @@
     "viewDocumentEmpty": "У этого договора пока нет текста. Сгенерируйте из шаблона или загрузите файл.",
     "redlineEmptyBodies": "Обе версии без текста — нечего сравнивать.",
     "esignNotConfigured": "Электронная подпись не настроена (отсутствует секрет).",
+    "esignSheetTitle": "Лист подписей",
+    "esignSignedPdf": "Подписанный PDF",
+    "esignSignedPdfHint": "Подписанный текст договора, последней страницей — лист подписей: кто, когда и с какого адреса подписал.",
+    "esignSimpleSignature": "Простая подпись",
+    "esignSimpleSignatureHint": "Нарисованная или введённая электронная подпись. В Азербайджане собственноручной по закону равна только усиленная электронная подпись — ASAN İmza или SİMA.",
+    "esignMethodDrawn": "Нарисована от руки",
+    "esignMethodTyped": "Введено имя",
+    "esignMethodUploaded": "Загружено изображение",
+    "esignSignedFromIp": "IP-адрес",
+    "esignNotSigned": "Не подписал",
+    "esignFingerprint": "Отпечаток документа, версия {version}",
+    "esignFingerprintHint": "SHA-256 подписанного текста. Изменится одна буква — изменится и отпечаток: так проверяют, что подписанный текст потом не меняли.",
     "versionsDownloadPdf": "Скачать PDF"
   },
   "campaigns": {

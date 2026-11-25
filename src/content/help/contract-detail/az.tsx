@@ -148,6 +148,18 @@ export default function ContractDetailHelpAz() {
             Konvertləri <HelpKey>↻</HelpKey> (yenilə) düyməsi ilə təzələyə bilərsiniz.
           </HelpCallout>
         </HelpStep>
+        <HelpStep n={4}>
+          <p>
+            Hamı imzalayandan sonra konvertin altında <strong>İmza vərəqi</strong> görünür: kim, hansı üsulla,
+            nə vaxt və hansı IP ünvanından imzalayıb, həmçinin imzalanmış mətnin izi (SHA-256).{" "}
+            <HelpKey>İmzalanmış PDF</HelpKey> düyməsi imzalanmış mətni yükləyir, son səhifəsi imza vərəqidir.
+          </p>
+          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
+            Hər imzalayanın yanında <strong>Sadə imza</strong> nişanı durur: bu, çəkilmiş və ya yazılmış
+            elektron imzadır. Qanunla əl imzasına bərabər olan yalnız gücləndirilmiş elektron imzadır —
+            ASAN İmza və ya SİMA. PDF imzalanmış versiyanın mətnini göstərir, sonradan edilən düzəlişləri yox.
+          </HelpCallout>
+        </HelpStep>
       </HelpSection>
 
       <HelpSection title="Addım-addım: müqaviləyə düzəliş et (yeni versiya)">
