@@ -51,12 +51,15 @@ export async function saveCommentKeywordRules(
   for (const item of input) {
     const keyword = item.keyword.trim()
     const message = item.message.trim()
-    if (!keyword || !message || keywordWords(keyword).length === 0) return { ok: false, error: "empty" }
+    // A sign such as «+» is a keyword too (commentHasKeyword matches it as a whole token), but one
+    // with a space inside could never be one token.
+    const words = keywordWords(keyword)
+    if (!keyword || !message || (words.length === 0 && /\s/u.test(keyword))) return { ok: false, error: "empty" }
     if (keyword.length > COMMENT_KEYWORD_MAX_CHARS || message.length > COMMENT_KEYWORD_MESSAGE_MAX_CHARS) {
       return { ok: false, error: "too_long" }
     }
     const channelConfigId = item.channelConfigId || null
-    const key = `${channelConfigId ?? "*"}|${keywordWords(keyword).join(" ")}`
+    const key = `${channelConfigId ?? "*"}|${words.length ? words.join(" ") : keyword}`
     if (seen.has(key)) return { ok: false, error: "duplicate_keyword" }
     seen.add(key)
     rules.push({ id: item.id || randomUUID(), keyword, message, channelConfigId, enabled: item.enabled !== false })

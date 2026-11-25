@@ -60,10 +60,19 @@ export function keywordWords(text: string): string[] {
   return foldKeyword(text).split(/[^\p{L}\p{N}]+/u).filter(Boolean)
 }
 
-/** Does the comment carry the rule's word (or phrase) as whole words? «GECƏLƏR» is not «GECƏ». */
+/**
+ * Does the comment carry the rule's word (or phrase) as whole words? «GECƏLƏR» is not «GECƏ».
+ *
+ * A keyword of signs only — «+», «++», «?» — is matched as a whole token between spaces (owner
+ * 2026-11-25: reels ask to comment «+»): «+» and «+ maraqlıdır» carry it, «5+3» and «a+» do not.
+ */
 export function commentHasKeyword(text: string, keyword: string): boolean {
   const needle = keywordWords(keyword)
-  if (needle.length === 0) return false
+  if (needle.length === 0) {
+    const sign = keyword.trim()
+    if (!sign) return false
+    return text.trim().split(/\s+/u).some((token) => token === sign)
+  }
   const hay = keywordWords(text)
   for (let i = 0; i + needle.length <= hay.length; i++) {
     if (needle.every((w, j) => hay[i + j] === w)) return true

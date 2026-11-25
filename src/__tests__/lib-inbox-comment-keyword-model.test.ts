@@ -20,6 +20,13 @@ describe("a rule's word in a comment", () => {
     expect(commentHasKeyword("🔥🔥", "SAY")).toBe(false)
   })
 
+  // Owner 2026-11-25: reels ask to comment «+».
+  it("takes a sign-only keyword such as «+» as a whole token", () => {
+    for (const text of ["+", " + ", "+ maraqlıdır", "çox maraqlı +"]) expect(commentHasKeyword(text, "+"), text).toBe(true)
+    for (const text of ["5+3", "a+", "++", "salam"]) expect(commentHasKeyword(text, "+"), text).toBe(false)
+    expect(commentHasKeyword("++", "++")).toBe(true)
+  })
+
   it("takes a phrase only in its own order", () => {
     expect(commentHasKeyword("mənə pulsuz sınaq lazımdır", "pulsuz sınaq")).toBe(true)
     expect(commentHasKeyword("sınaq pulsuz?", "pulsuz sınaq")).toBe(false)
