@@ -31,6 +31,8 @@ export const GET = withRlsAuth("contracts", "read", async (req: NextRequest, aut
   const limit = parseInt(searchParams.get("limit") || "50")
   const status = searchParams.get("status")
   const companyId = searchParams.get("companyId")
+  // The deal page lists its own contracts (src/components/deals/deal-contracts.tsx).
+  const dealId = searchParams.get("dealId")
   const type = searchParams.get("type") || undefined
   const sortBy = searchParams.get("sortBy") || "date_desc"
 
@@ -96,6 +98,7 @@ export const GET = withRlsAuth("contracts", "read", async (req: NextRequest, aut
         : {}),
       ...(status ? { status } : {}),
       ...(companyId ? { companyId } : {}),
+      ...(dealId ? { dealId } : {}),
       ...(type ? { type } : {}),
       // Tag filter: contract must have ANY of the specified tags
       ...(tagIds.length > 0

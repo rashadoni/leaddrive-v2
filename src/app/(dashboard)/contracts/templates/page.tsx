@@ -29,6 +29,8 @@ import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
 import { DidYouKnow } from "@/components/did-you-know"
+import { Hint } from "@/components/hint"
+import { STANDARD_FIELD_NAMES } from "@/lib/clm/standard-fields"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -97,6 +99,15 @@ function newClauseBlock(): ClauseBlock {
 
 function newVariable(): VariableDef {
   return { name: "", type: "string", required: false }
+}
+
+/** «Qarşı tərəf · VÖEN» for `counterparty_voen`: the side, then the field. */
+function standardFieldLabel(name: string, t: ReturnType<typeof useTranslations>): string {
+  const [side, ...rest] = name.split("_")
+  const part = rest.join("_")
+  const sideKey = side === "our" ? "stdSideOur" : side === "counterparty" ? "stdSideCounterparty" : "stdSideContract"
+  const partKey = `stdPart_${part}`
+  return `${t(sideKey)} · ${t.has(partKey) ? t(partKey) : part} — {{${name}}}`
 }
 
 // Translate a defaultContractType enum through the existing typeXxx keys; an
@@ -256,10 +267,33 @@ function TemplateEditor({ open, onClose, initial, onSaved }: TemplateEditorProps
           <div>
             <div className="flex items-center justify-between mb-2">
               <Label className="text-sm font-medium">{t("variables")}</Label>
-              <Button variant="outline" size="sm" onClick={() => setVariables((v) => [...v, newVariable()])}>
-                <Plus className="h-3 w-3 mr-1" />
-                {t("addVariable")}
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Standard fields: the contract wizard fills them from the parties and the deal. */}
+                <Hint text={t("standardFieldHint", { example: "{{counterparty_voen}}" })}>
+                  <select
+                    aria-label={t("addStandardField")}
+                    value=""
+                    onChange={(e) => {
+                      const name = e.target.value
+                      if (!name) return
+                      setVariables((prev) => (prev.some((v) => v.name === name) ? prev : [...prev, { name, type: "string", required: true }]))
+                    }}
+                    className="h-8 rounded-md border border-input bg-transparent px-2 text-xs"
+                    data-testid="template-add-standard-field"
+                  >
+                    <option value="">{t("addStandardField")}</option>
+                    {STANDARD_FIELD_NAMES.filter((name) => !variables.some((v) => v.name === name)).map((name) => (
+                      <option key={name} value={name}>
+                        {standardFieldLabel(name, t)}
+                      </option>
+                    ))}
+                  </select>
+                </Hint>
+                <Button variant="outline" size="sm" onClick={() => setVariables((v) => [...v, newVariable()])}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  {t("addVariable")}
+                </Button>
+              </div>
             </div>
             {variables.length === 0 && (
               <p className="text-xs text-muted-foreground py-2">{t("noVariables")}</p>

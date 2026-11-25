@@ -10,6 +10,7 @@ import {
   nonNegativeFinancialAmountSchema,
 } from "@/lib/validation/numeric"
 import { voenInput } from "@/lib/companies/az-taxpayer-registry"
+import { companyBankFields } from "@/lib/companies/bank-requisites"
 import { PHARMACY_SOURCE_FIELDS } from "@/lib/pharmacy-orders/pharmacy-source"
 import { pharmacyListSyncedAt, pharmacySyncedAt } from "@/lib/pharmacy-orders/pharmacy-companies"
 
@@ -39,6 +40,7 @@ const updateCompanySchema = z.object({
   creditCurrency: z.string().max(10).nullable().optional(),
   voen: z.string().max(40).nullable().optional(),
   director: z.string().max(200).nullable().optional(),
+  ...companyBankFields,
   managerId: z.string().max(64).nullable().optional(),
 })
 

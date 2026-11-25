@@ -178,25 +178,45 @@ export default function ContractsHelpAz() {
         </HelpCallout>
       </HelpSection>
 
-      <HelpSection title="Addım-addım: sıfırdan yeni müqavilə yarat">
+      <HelpSection title="Addım-addım: VÖEN ilə yeni müqavilə (usta)">
         <HelpStep n={1}>
           <p>
-            Sağ yuxarıdakı <HelpKey>Yeni kontrakt</HelpKey> düyməsini basın.
+            Sağ yuxarıdakı <HelpKey>Yeni kontrakt</HelpKey> düyməsini basın və ya sövdələşmənin «Satış → Müqavilələr»
+            bölməsində <HelpKey>Müqavilə hazırla</HelpKey> basın — onda şirkət, məbləğ və valyuta sövdələşmədən gəlir.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Müqavilə forması açılır. Burada müqavilə nömrəsi, ad, şirkət, sövdələşmə, kontakt, növ,
-            status, başlama/bitmə tarixləri, məbləğ, valyuta və qeydlər kimi sahələri doldura
-            bilərsiniz.
+            Dörd addımlı usta açılır: <strong>Şablon → Tərəflər → Şərtlər → Yoxlama</strong>. Birinci addımda
+            «Şablonlar» kitabxanasından şablon və ya <strong>Boş müqavilə</strong> seçilir.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
           <p>
-            Sahələri doldurub formanı yadda saxlayın.
+            <strong>Tərəflər</strong> addımında qarşı tərəfin VÖEN-ini yazıb <HelpKey>VÖEN ilə doldur</HelpKey> basın.
+            Bizim tərəf «Ayarlar → Hesab-faktura»-dan gəlir; bank hesabını siyahıdan seçin.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Forma bağlanır, yeni müqavilə cədvəlin başında görünür və yuxarıdakı statistika kartları
-            (<strong>Cəmi</strong>, statusuna görə isə <strong>Aktiv</strong>/<strong>Ümumi məbləğ</strong>)
-            uyğun olaraq yenilənir.
+            Vergi reyestrindən ad, hüquqi ünvan, direktor, ƏDV ödəyicisi olub-olmadığı gəlir. Şirkət CRM-də artıq
+            varsa, kartındakı bank rekvizitləri də dolur. Bankı bir dəfə yazıb «Şirkət kartında saxla» qeyd
+            etsəniz, növbəti müqavilədə özü dolacaq. Kartın adı heç vaxt dəyişdirilmir.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={3}>
+          <p>
+            <strong>Şərtlər</strong> addımında yalnız şablonun öz sahələrini doldurun (məsələn, predmet, təhvil
+            müddəti). Tərəflərin rekvizitləri, tarix, məbləğ və valyuta avtomatik dolur.
+          </p>
+          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
+            «N sahədən M-i doldu» yazısı və boş qalan sahələrin siyahısı. Boş məcburi sahə ilə müqavilə yaradılmır.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={4}>
+          <p>
+            <strong>Yoxlama</strong> addımında müqavilənin mətnini oxuyun və <HelpKey>Qaralama kimi saxla</HelpKey>{" "}
+            və ya <HelpKey>Təsdiqə göndər</HelpKey> basın.
+          </p>
+          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
+            Mətnin sonunda «Tərəflərin rekvizitləri» bölməsi durur. Müqavilə qaralama kimi yaradılır və kartı
+            açılır; «Təsdiqə göndər» seçilibsə, kartda təsdiq zəncirini seçmək pəncərəsi özü açılır.
           </HelpCallout>
         </HelpStep>
       </HelpSection>

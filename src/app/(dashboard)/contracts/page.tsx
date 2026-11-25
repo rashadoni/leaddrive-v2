@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/data-table"
 import { ColorStatCard } from "@/components/color-stat-card"
+import Link from "next/link"
 import { ContractForm } from "@/components/contract-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Select } from "@/components/ui/select"
@@ -772,8 +773,11 @@ export default function ContractsPage() {
             <Button variant="outline" onClick={openFromTemplate}>
               <Layers className="h-4 w-4 mr-1" /> {t("newFromTemplate")}
             </Button>
-            <Button onClick={() => { setEditData(undefined); setShowForm(true) }} data-tour-id="contracts-new">
-              <Plus className="h-4 w-4 mr-1" /> {t("newContract")}
+            {/* A new contract is made by the wizard (template → parties by VÖEN → terms → check); the form stays for editing. */}
+            <Button asChild data-tour-id="contracts-new">
+              <Link href="/contracts/new">
+                <Plus className="h-4 w-4 mr-1" /> {t("newContract")}
+              </Link>
             </Button>
           </>
         }

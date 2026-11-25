@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useTranslations, useLocale } from "next-intl"
+import { BANK_FIELDS } from "@/lib/companies/bank-requisites"
 import { formatDate } from "@/lib/format-date"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -39,6 +40,12 @@ interface CompanyDetail {
   description: string | null
   voen: string | null
   director: string | null
+  bankName?: string | null
+  bankCode?: string | null
+  bankSwift?: string | null
+  bankAccount?: string | null
+  bankVoen?: string | null
+  bankCorrAccount?: string | null
   slaPolicyId: string | null
   creditLimit: number | null
   creditCurrency: string | null
@@ -98,6 +105,7 @@ export default function CompanyDetailPage() {
   const t = useTranslations("companies")
   const tc = useTranslations("common")
   const tv = useTranslations("companyVoen")
+  const tb = useTranslations("companyBank")
   const tp = useTranslations("pharmacyPhoneOrders")
   const locale = useLocale()
   const [company, setCompany] = useState<CompanyDetail | null>(null)
@@ -291,6 +299,8 @@ export default function CompanyDetailPage() {
                   {[
                     isVisible("voen") ? ["VÖEN", company.voen || "—"] : null,
                     isVisible("director") ? [tv("director"), company.director || "—"] : null,
+                    // The bank only when there is one: «—» in six rows says nothing.
+                    ...BANK_FIELDS.map((field) => (company[field] ? [tb(field), company[field]] : null)),
                     isVisible("address") ? [tc("address"), company.address || "—"] : null,
                     isVisible("industry") ? [tc("industry"), company.industry || "—"] : null,
                     isVisible("employeeCount") ? [tc("employees"), company.employeeCount?.toString() || "—"] : null,
@@ -631,6 +641,7 @@ export default function CompanyDetailPage() {
           status: company.status, description: company.description || "",
           // Everything the form saves, or saving from here would clear it.
           voen: company.voen || "", director: company.director || "",
+          ...Object.fromEntries(BANK_FIELDS.map((field) => [field, company[field] || ""])),
           slaPolicyId: company.slaPolicyId,
           creditLimit: company.creditLimit != null ? String(company.creditLimit) : "",
           creditCurrency: company.creditCurrency || "",

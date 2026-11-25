@@ -178,24 +178,45 @@ export default function ContractsHelpEn() {
         </HelpCallout>
       </HelpSection>
 
-      <HelpSection title="Step by step: create a contract from scratch">
+      <HelpSection title="Step by step: a new contract by VÖEN (wizard)">
         <HelpStep n={1}>
           <p>
-            Click the <HelpKey>New Contract</HelpKey> button at the top-right.
+            Click <HelpKey>New Contract</HelpKey> at the top-right, or <HelpKey>Prepare a contract</HelpKey> in a
+            deal's «Sale → Contracts» section — then the company, amount and currency come from the deal.
           </p>
           <HelpCallout kind="see" label="What you'll see">
-            The contract form opens. There you can fill in fields like contract number, name, company,
-            deal, contact, type, status, start/end dates, amount, currency, and notes.
+            A four-step wizard opens: <strong>Template → Parties → Terms → Check</strong>. The first step picks a
+            template from the «Templates» library, or a <strong>Blank contract</strong>.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
           <p>
-            Fill in the fields and save the form.
+            On <strong>Parties</strong>, type the counterparty's VÖEN and click <HelpKey>Fill by VÖEN</HelpKey>. Our
+            side comes from «Settings → Invoices»; pick the bank account from the list.
           </p>
           <HelpCallout kind="see" label="What you'll see">
-            The form closes, the new contract appears at the top of the table, and the stat cards at the
-            top (<strong>Total</strong>, and depending on status <strong>Active</strong>/
-            <strong>Total Amount</strong>) update accordingly.
+            The tax registry gives the name, legal address, director and whether the company pays VAT. If the CRM
+            already has the company, its card's bank details fill in too. Type the bank once and tick «Save on the
+            company card» — the next contract fills it by itself. The card's name is never changed.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={3}>
+          <p>
+            On <strong>Terms</strong>, fill only the template's own fields (for example the subject or the delivery
+            term). The parties' details, the date, the amount and the currency fill themselves.
+          </p>
+          <HelpCallout kind="see" label="What you'll see">
+            «Fields filled: M of N» and a list of the empty ones. A contract is not made while a required field is empty.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={4}>
+          <p>
+            On <strong>Check</strong>, read the contract's text and click <HelpKey>Save as draft</HelpKey> or{" "}
+            <HelpKey>Send for approval</HelpKey>.
+          </p>
+          <HelpCallout kind="see" label="What you'll see">
+            The text ends with «Details of the parties». The contract is made as a draft and its card opens; with
+            «Send for approval» the card opens the window to choose the approval chain by itself.
           </HelpCallout>
         </HelpStep>
       </HelpSection>
