@@ -45,7 +45,7 @@ concurrency:
 jobs:
   browser:
     name: Contracts authenticated browser and database
-    if: ${{ true }} # ITERATING-IN-DRAFT
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
