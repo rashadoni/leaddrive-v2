@@ -1,0 +1,8 @@
+# Installed by scripts/tiktok/install-watch.sh. Speaks when the watch itself dies,
+# so a watcher that stopped watching is not mistaken for «nothing happened».
+[Unit]
+Description=Tell Telegram that the TikTok access watch failed
+
+[Service]
+Type=oneshot
+ExecStart=@NOTIFY@ "TikTok-сторож: прогон упал (ld-tiktok-watch). Пока это так, об открытии заявок никто не скажет."

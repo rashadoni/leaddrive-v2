@@ -1,0 +1,16 @@
+# Installed by scripts/tiktok/install-watch.sh.
+[Unit]
+Description=Read TikTok's Business Messaging pages once a day
+
+[Timer]
+# Daily, not weekly: TikTok publishes its changelog weekly, but the day the
+# application form opens is the day we want to submit, and two page renders
+# cost nothing. 09:07 rather than 09:00 — nothing else on this box starts then.
+OnCalendar=*-*-* 09:07:00
+AccuracySec=5min
+RandomizedDelaySec=10min
+Persistent=true
+Unit=ld-tiktok-watch.service
+
+[Install]
+WantedBy=timers.target
