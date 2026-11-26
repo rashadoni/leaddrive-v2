@@ -87,6 +87,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh (\/api\/cron\/)?esign-reminders([ ?]|$)/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?ai-auto-actions([ ?]|$)/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?ai-renewal([ ?]|$)/ { next }
+  /cron-trigger\.sh (\/api\/cron\/)?contract-embeddings([ ?]|$)/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?ai-daily-briefing([ ?]|$)/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?ai-anomaly-detection([ ?]|$)/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?lead-scoring([ ?]|$)/ { next }
@@ -268,6 +269,11 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # proposals for contracts ending in 28-32 days, once a day at night.
   printf '%s\n' "2-59/10 * * * * $TRIGGER /api/cron/ai-auto-actions >> $LOG 2>&1"
   printf '%s\n' "35 2 * * * $TRIGGER /api/cron/ai-renewal >> $LOG 2>&1"
+  # Contract vectors for «Ağıllı axtarış»: contracts new or changed since their
+  # vector was made, for organizations that switched it on. The search itself
+  # brings ten up to date; this catches the rest within the hour. It was in no
+  # schedule until 2026-11-26.
+  printf '%s\n' "45 * * * * $TRIGGER /api/cron/contract-embeddings >> $LOG 2>&1"
   # The other three switches of the AI settings, gone with the same move and
   # turned back on the same day (owner: «Включить все три»). Measured
   # 2026-11-26: the briefing last went out 2026-09-04, neither of the other two

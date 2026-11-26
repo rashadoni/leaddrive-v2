@@ -171,9 +171,12 @@ export default function ContractsHelpEn() {
         </HelpStep>
         <HelpCallout kind="warning">
           <p>
-            AI search works when the AI feature is enabled for your organization. If it's off or the
-            budget is exhausted, a red error appears under the panel — in that case use the regular
-            status/tag/advanced filters instead.
+            An admin turns smart search on: <HelpKey>Settings</HelpKey> → <HelpKey>AI automation</HelpKey>{" "}
+            → the <strong>Copilot</strong> group → «Contracts: search by meaning». While it is off, the
+            panel says where to turn it on. A new or changed contract is searchable from the next search
+            or within the hour. Without a Voyage key, or with the daily AI limit spent, the search goes
+            by words (in the title, number, company and text) — the results say so and show no
+            similarity percentage.
           </p>
         </HelpCallout>
       </HelpSection>

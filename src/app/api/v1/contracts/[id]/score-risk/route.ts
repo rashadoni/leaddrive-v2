@@ -112,7 +112,7 @@ export const POST = withRlsAuth("contracts", "write", async (_req, auth, { param
   const featureEnabled = await isAiFeatureEnabled(orgId, "ai_risk_scoring")
   if (!featureEnabled) {
     return NextResponse.json(
-      { error: "AI risk scoring is not enabled for your organization." },
+      { error: "AI risk scoring is not enabled for your organization.", errorKey: "aiRiskScoreFeatureDisabled" },
       { status: 403 },
     )
   }

@@ -179,6 +179,10 @@ const AI_FEATURE_KEYS: { key: AiAutomationFlag; labelKey: string; descKey: strin
   { key: "ai_daily_briefing", labelKey: "dailyBriefing", descKey: "dailyBriefingDesc", category: "analytics" },
   { key: "ai_anomaly_detection", labelKey: "anomalyDetection", descKey: "anomalyDetectionDesc", category: "analytics" },
   { key: "ai_lead_scoring", labelKey: "leadScoring", descKey: "leadScoringDesc", category: "analytics" },
+  { key: "ai_semantic_search", labelKey: "contractSemanticSearch", descKey: "contractSemanticSearchDesc", category: "copilot" },
+  { key: "ai_clause_extraction", labelKey: "contractClauseExtraction", descKey: "contractClauseExtractionDesc", category: "copilot" },
+  { key: "ai_risk_scoring", labelKey: "contractRiskScoring", descKey: "contractRiskScoringDesc", category: "copilot" },
+  { key: "ai_redline", labelKey: "contractRedline", descKey: "contractRedlineDesc", category: "copilot" },
   { key: "ai_auto_acknowledge_shadow", labelKey: "autoAcknowledgeShadow", descKey: "autoAcknowledgeShadowDesc", category: "autopilot", scenario: "acknowledge", mode: "shadow" },
   { key: "ai_auto_followup_shadow", labelKey: "autoFollowupShadow", descKey: "autoFollowupShadowDesc", category: "autopilot", scenario: "followup", mode: "shadow" },
   { key: "ai_auto_payment_reminder_shadow", labelKey: "paymentReminderShadow", descKey: "paymentReminderShadowDesc", category: "autopilot", scenario: "payment", mode: "shadow" },
@@ -1117,13 +1121,15 @@ export default function AiAutomationPage() {
 
       {/* Feature Toggles */}
       <div data-tour-id="ai-toggles" className="space-y-6 mb-8">
-        {grouped.analytics.length > 0 && (
-          <div>
-            <h2 className="text-sm font-semibold flex items-center gap-1.5 mb-3 text-blue-600">
-              <Eye className="h-4 w-4" /> {t("analytics")}
+        {/* Analytics, then the copilot: tools a person calls on a record (the contract's AI buttons
+            and its smart search) — the same one switch per row. */}
+        {([["analytics", Eye, "text-blue-600"], ["copilot", Sparkles, "text-violet-600"]] as const).map(([group, GroupIcon, groupColor]) => grouped[group].length > 0 && (
+          <div key={group} data-testid={`ai-group-${group}`}>
+            <h2 className={`text-sm font-semibold flex items-center gap-1.5 mb-3 ${groupColor}`}>
+              <GroupIcon className="h-4 w-4" /> {t(group)}
             </h2>
             <div className="grid gap-2">
-              {grouped.analytics.map(f => {
+              {grouped[group].map(f => {
                 const previewKey = ANALYTICS_PREVIEW_KEYS[f.key]
                 const isFeatExpanded = expandedFeature === f.key
                 return (
@@ -1179,7 +1185,7 @@ export default function AiAutomationPage() {
               })}
             </div>
           </div>
-        )}
+        ))}
 
         {grouped.autopilot.length > 0 && (
           <div>

@@ -1,570 +1,141 @@
 /**
- * CLM Slice 6c — Semantic Contract Search + Reindex + Backfill Cron
- *
- * Coverage (updated 2026-06-08 for Codex hardening):
- *   SEARCH POST — requireAuth read
- *   SEARCH POST — org-scoped ($queryRawUnsafe includes organizationId = orgId BOTH sides)
- *   SEARCH POST — empty query → 400
- *   SEARCH POST — rate-limited → 429
- *   SEARCH POST — feature flag disabled → 403
- *   SEARCH POST — budget exceeded → 429
- *   SEARCH POST — returns ranked results filtered by threshold
- *   SEARCH POST — logs AiInteractionLog (embedding spend) on success (FIX 1)
- *   REINDEX POST — requireAuth write
- *   REINDEX POST — generates embedding + atomic ON CONFLICT upsert (FIX 4)
- *   REINDEX POST — no contract body → 400
- *   REINDEX POST — contract not in org → 404
- *   REINDEX POST — logs AiInteractionLog on success (FIX 1)
- *   CRON POST — CRON_SECRET required (401 without)
- *   CRON POST — indexes missing contracts + returns {indexed, skipped, errors}
- *   CRON POST — skips org with feature flag OFF (FIX 3)
- *   CRON POST — skips org with budget exceeded (FIX 3)
- *   CRON POST — stale contract (version changed) selected by query (FIX 5)
+ * «Ağıllı axtarış» on the contracts page, at the routes (owner 2026-11-26:
+ * «Довести до работы»). The SQL — vectors, staleness, tenant isolation, the
+ * search by words — is proven on a real Postgres with pgvector in
+ * contract-search-postgres.test.ts; here the routes' decisions:
+ *   - switched off → 403 SEMANTIC_SEARCH_OFF, which the page turns into words;
+ *   - no Voyage vector for the query → a search by words, said so (mode: words),
+ *     and nothing indexed — never a vector made of character codes again;
+ *   - with Voyage → up to ten contracts brought up to date, then by meaning;
+ *   - the card's reindex: 404, 503 VOYAGE_UNAVAILABLE without storing, or done;
+ *   - the hourly job: only organizations with the switch on, a cap per run.
  */
-
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextRequest, NextResponse } from "next/server"
 
-// ── Prisma mock ────────────────────────────────────────────────────────────────
-
-// Production uses tagged parameterized calls; keep legacy assertions compatible
-// by sharing the same mock implementation with the old unsafe names.
-const queryRawMock = vi.hoisted(() => vi.fn())
-const executeRawMock = vi.hoisted(() => vi.fn())
-
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    contract: {
-      findFirst: vi.fn(),
-    },
-    contractEmbedding: {
-      findUnique: vi.fn(),
-    },
-    aiInteractionLog: {
-      create: vi.fn(),
-    },
-    $queryRaw: queryRawMock,
-    $queryRawUnsafe: queryRawMock,
-    $executeRaw: executeRawMock,
-    $executeRawUnsafe: executeRawMock,
+    organization: { findMany: vi.fn() },
+    $queryRaw: vi.fn(),
+    $executeRaw: vi.fn(),
   },
 }))
-
-// ── Auth mock ──────────────────────────────────────────────────────────────────
-
 vi.mock("@/lib/api-auth", () => ({
   requireAuth: vi.fn(),
   isAuthError: vi.fn((v) => v instanceof NextResponse),
 }))
-
-// ── Budget + feature flag mocks ───────────────────────────────────────────────
-
-vi.mock("@/lib/ai/budget", () => ({
-  isAiFeatureEnabled: vi.fn(),
-  checkAiBudget:      vi.fn(),
+vi.mock("@/lib/ai/budget", () => ({ isAiFeatureEnabled: vi.fn() }))
+vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: vi.fn(() => true), RATE_LIMIT_CONFIG: { ai: {} } }))
+vi.mock("@/lib/cron-auth", () => ({ requireCronAuth: vi.fn(() => null) }))
+vi.mock("@/lib/cron/job-lease", () => ({
+  withJobLease: vi.fn(async (_options: unknown, job: () => Promise<unknown>) => ({ status: "completed", value: await job() })),
 }))
-
-// ── Rate-limit mock ───────────────────────────────────────────────────────────
-
-vi.mock("@/lib/rate-limit", () => ({
-  checkRateLimit:    vi.fn(),
-  RATE_LIMIT_CONFIG: { ai: {} },
+vi.mock("@/lib/ai/voyage-embedding", () => ({ voyageEmbedding: vi.fn(), VOYAGE_MODEL: "voyage-3-lite" }))
+vi.mock("@/lib/clm/contract-search-index", () => ({
+  indexContracts: vi.fn(),
+  indexOneContract: vi.fn(),
+  searchByMeaning: vi.fn(),
+  searchByWords: vi.fn(),
 }))
-
-// ── embedding-spend mock ──────────────────────────────────────────────────────
-
-vi.mock("@/lib/ai/embedding-spend", () => ({
-  logEmbeddingSpend: vi.fn().mockResolvedValue(undefined),
-}))
-
-// ── Import routes AFTER vi.mock calls ─────────────────────────────────────────
 
 import { POST as searchPOST } from "@/app/api/v1/contracts/search/semantic/route"
 import { POST as reindexPOST } from "@/app/api/v1/contracts/[id]/reindex/route"
 import { POST as cronPOST } from "@/app/api/cron/contract-embeddings/route"
 import { prisma } from "@/lib/prisma"
 import { requireAuth } from "@/lib/api-auth"
-import { isAiFeatureEnabled, checkAiBudget } from "@/lib/ai/budget"
-import { checkRateLimit } from "@/lib/rate-limit"
-import { logEmbeddingSpend } from "@/lib/ai/embedding-spend"
+import { isAiFeatureEnabled } from "@/lib/ai/budget"
+import { voyageEmbedding } from "@/lib/ai/voyage-embedding"
+import { indexContracts, indexOneContract, searchByMeaning, searchByWords } from "@/lib/clm/contract-search-index"
 
-// ── Test data ──────────────────────────────────────────────────────────────────
-
-const ORG_ID      = "org-test-1"
-const ORG_ID_2    = "org-test-2"
-const CONTRACT_ID = "ctr-test-1"
-const USER_ID     = "user-test-1"
-
-const GOOD_AUTH = { orgId: ORG_ID, userId: USER_ID }
-
-// Canned search results from $queryRawUnsafe (as pgvector would return)
-const CANNED_SEARCH_ROWS = [
-  {
-    contractId:     "ctr-a",
-    contractNumber: "CTR-001",
-    title:          "Master Services Agreement",
-    status:         "active",
-    valueAmount:    "50000.0000",
-    currency:       "USD",
-    similarity:     "0.92",
-  },
-  {
-    contractId:     "ctr-b",
-    contractNumber: "CTR-002",
-    title:          "NDA — Germany Office",
-    status:         "active",
-    valueAmount:    null,
-    currency:       "EUR",
-    similarity:     "0.61",
-  },
-  {
-    // below threshold 0.3
-    contractId:     "ctr-c",
-    contractNumber: "CTR-003",
-    title:          "Old contract",
-    status:         "expired",
-    valueAmount:    "1000.0000",
-    currency:       "USD",
-    similarity:     "0.10",
-  },
-]
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-function makeSearchReq(body: Record<string, unknown>): NextRequest {
-  return new NextRequest("http://localhost/api/v1/contracts/search/semantic", {
-    method:  "POST",
-    headers: { "Content-Type": "application/json", "x-organization-id": ORG_ID },
-    body:    JSON.stringify(body),
-  })
-}
-
-function makeReindexReq(contractId = CONTRACT_ID): NextRequest {
-  return new NextRequest(`http://localhost/api/v1/contracts/${contractId}/reindex`, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json", "x-organization-id": ORG_ID },
-  })
-}
-
-function makeReindexParams(id = CONTRACT_ID) {
-  return { params: Promise.resolve({ id }) }
-}
-
-function makeCronReq(secret: string | null = "correct-secret"): NextRequest {
-  const headers: Record<string, string> = { "Content-Type": "application/json" }
-  if (secret) headers["x-cron-secret"] = secret
-  return new NextRequest("http://localhost/api/cron/contract-embeddings", {
-    method: "POST",
-    headers,
-  })
-}
-
-function mockVoyageFetch() {
-  const calls: unknown[] = []
-  vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
-    calls.push(JSON.parse(String(init?.body || "{}")))
-    return {
-      json: async () => ({ data: [{ embedding: Array.from({ length: 512 }, () => 0.02) }] }),
-    } as Response
-  }))
-  return calls
-}
-
-// ── Default mock setup ─────────────────────────────────────────────────────────
+const ORG = "org-1"
+const hit = { contractId: "c1", contractNumber: "AS/1", title: "Alğı-satqı", status: "active", valueAmount: null, currency: "AZN", similarity: 0.82 }
+const search = (body: unknown) =>
+  searchPOST(new NextRequest("http://localhost/api/v1/contracts/search/semantic", { method: "POST", body: JSON.stringify(body) }))
+const reindex = (id = "c1") =>
+  reindexPOST(new NextRequest(`http://localhost/api/v1/contracts/${id}/reindex`, { method: "POST" }), { params: Promise.resolve({ id }) })
 
 beforeEach(() => {
-  vi.unstubAllGlobals()
   vi.clearAllMocks()
-
-  // Default: auth OK
-  vi.mocked(requireAuth).mockResolvedValue(GOOD_AUTH as any)
-
-  // Default: rate-limit OK
-  vi.mocked(checkRateLimit).mockReturnValue(true)
-
-  // Default: feature enabled
+  vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, userId: "u1", role: "admin", email: "a@x.az", name: "A" } as never)
   vi.mocked(isAiFeatureEnabled).mockResolvedValue(true)
-
-  // Default: budget OK
-  vi.mocked(checkAiBudget).mockResolvedValue({
-    allowed: true,
-    spent: 0.1,
-    limit: 5.0,
-    remaining: 4.9,
-  } as any)
-
-  // Default: search returns canned rows
-  vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue(CANNED_SEARCH_ROWS as any)
-
-  // Default: no existing embedding
-  vi.mocked(prisma.contractEmbedding.findUnique).mockResolvedValue(null as any)
-
-  // Default: contract found with body
-  vi.mocked(prisma.contract.findFirst).mockResolvedValue({
-    id:               CONTRACT_ID,
-    organizationId:   ORG_ID,
-    renderedBody:     "This contract governs services in Germany with uncapped liability.",
-    contractVersions: [],
-  } as any)
-
-  // Default: executeRaw succeeds
-  vi.mocked(prisma.$executeRawUnsafe).mockResolvedValue(1 as any)
-
-  // Default: aiInteractionLog.create succeeds
-  vi.mocked(prisma.aiInteractionLog.create).mockResolvedValue({} as any)
-
-  // Set cron secret
-  process.env.CRON_SECRET      = "correct-secret"
-  process.env.VOYAGE_API_KEY   = ""  // force fallback embedding in tests
+  vi.mocked(indexContracts).mockResolvedValue({ indexed: 3, unavailable: false })
+  vi.mocked(searchByMeaning).mockResolvedValue([hit])
+  vi.mocked(searchByWords).mockResolvedValue([{ ...hit, similarity: 1 }])
 })
 
-// ── SEARCH tests ──────────────────────────────────────────────────────────────
-
-describe("POST /api/v1/contracts/search/semantic", () => {
-  it("requireAuth read — returns 401 when unauthenticated", async () => {
-    vi.mocked(requireAuth).mockResolvedValue(
-      NextResponse.json({ error: "Unauthorized" }, { status: 401 }) as any,
-    )
-    const res = await searchPOST(makeSearchReq({ query: "uncapped liability" }))
-    expect(res.status).toBe(401)
-  })
-
-  it("empty query → 400", async () => {
-    const res = await searchPOST(makeSearchReq({ query: "" }))
-    expect(res.status).toBe(400)
-    const json = await res.json()
-    expect(json.error).toBeTruthy()
-  })
-
-  it("missing query → 400", async () => {
-    const res = await searchPOST(makeSearchReq({}))
-    expect(res.status).toBe(400)
-  })
-
-  it("rate-limited → 429", async () => {
-    vi.mocked(checkRateLimit).mockReturnValue(false)
-    const res = await searchPOST(makeSearchReq({ query: "uncapped liability" }))
-    expect(res.status).toBe(429)
-  })
-
-  it("feature flag disabled → 403", async () => {
+describe("the search", () => {
+  it("switched off: a code the page can say in words, and no paid call", async () => {
     vi.mocked(isAiFeatureEnabled).mockResolvedValue(false)
-    const res = await searchPOST(makeSearchReq({ query: "uncapped liability" }))
+    const res = await search({ query: "icarə" })
     expect(res.status).toBe(403)
+    expect((await res.json()).code).toBe("SEMANTIC_SEARCH_OFF")
+    expect(voyageEmbedding).not.toHaveBeenCalled()
   })
 
-  it("budget exceeded → 429", async () => {
-    vi.mocked(checkAiBudget).mockResolvedValue({ allowed: false, spent: 5.0, limit: 5.0, remaining: 0 } as any)
-    const res = await searchPOST(makeSearchReq({ query: "uncapped liability" }))
-    expect(res.status).toBe(429)
-  })
-
-  it("FIX 2 — org-scoped: $queryRawUnsafe SQL org-scopes BOTH sides (ce AND c)", async () => {
-    await searchPOST(makeSearchReq({ query: "uncapped liability" }))
-    const [sql, ...args] = vi.mocked(prisma.$queryRawUnsafe).mock.calls[0]
-    const sqlStr = String(sql)
-    // Both the embedding row (ce) and the joined contract (c) must be org-scoped
-    expect(sqlStr).toContain('ce."organizationId"')
-    expect(sqlStr).toContain('c."organizationId"')
-    expect(args).toContain(ORG_ID)
-  })
-
-  it("FIX 1 — logs embedding spend (logEmbeddingSpend) after successful search", async () => {
-    await searchPOST(makeSearchReq({ query: "uncapped liability in Germany" }))
-    expect(logEmbeddingSpend).toHaveBeenCalledTimes(1)
-    const [orgArg, , , contextArg] = vi.mocked(logEmbeddingSpend).mock.calls[0]
-    expect(orgArg).toBe(ORG_ID)
-    expect(contextArg).toContain("[contract-search]")
-  })
-
-  it("masks query PII before Voyage and spend logging", async () => {
-    process.env.VOYAGE_API_KEY = "voyage-test-key"
-    const calls = mockVoyageFetch()
-
-    await searchPOST(makeSearchReq({ query: "Find contract for aysel@example.com, call +994 50 123 45 67" }))
-
-    const input = (calls[0] as { input: string[] }).input[0]
-    const [, loggedText] = vi.mocked(logEmbeddingSpend).mock.calls[0]
-    expect(input).toContain("[EMAIL_")
-    expect(input).toContain("[PHONE_")
-    expect(input).not.toContain("aysel@example.com")
-    expect(input).not.toContain("+994 50 123 45 67")
-    expect(String(loggedText)).not.toContain("aysel@example.com")
-  })
-
-  it("returns ranked results filtered above threshold (default 0.3)", async () => {
-    const res = await searchPOST(makeSearchReq({ query: "uncapped liability in Germany" }))
-    expect(res.status).toBe(200)
+  it("with Voyage: brings ten contracts up to date, then searches by meaning", async () => {
+    vi.mocked(voyageEmbedding).mockResolvedValue([0.1, 0.2])
+    const res = await search({ query: "ofis icarəsi Fərid +994501234567" })
     const json = await res.json()
-    expect(json.success).toBe(true)
-    // CANNED_SEARCH_ROWS[2] has similarity 0.10 which is < 0.3 → filtered out
-    expect(json.results).toHaveLength(2)
-    expect(json.results[0].contractId).toBe("ctr-a")
-    expect(json.results[0].similarity).toBeCloseTo(0.92, 1)
-    expect(json.results[1].contractId).toBe("ctr-b")
+    expect(json).toMatchObject({ success: true, mode: "meaning", count: 1, indexedNow: 3 })
+    expect(vi.mocked(indexContracts).mock.calls[0][0]).toBe(ORG)
+    expect(vi.mocked(indexContracts).mock.calls[0][1]).toMatchObject({ limit: 10 })
+    expect(searchByMeaning).toHaveBeenCalledWith(ORG, [0.1, 0.2], 10, 0.3)
+    // the query goes out with personal data masked
+    expect(vi.mocked(voyageEmbedding).mock.calls[0][1]).not.toContain("+994501234567")
+    expect(searchByWords).not.toHaveBeenCalled()
   })
 
-  it("respects custom threshold", async () => {
-    const res = await searchPOST(makeSearchReq({ query: "Germany", threshold: 0.8 }))
-    const json = await res.json()
-    // only ctr-a (0.92) passes threshold 0.8
-    expect(json.results).toHaveLength(1)
-    expect(json.results[0].contractId).toBe("ctr-a")
+  it("without a Voyage vector: by words, said so, and nothing is indexed", async () => {
+    vi.mocked(voyageEmbedding).mockResolvedValue(null)
+    const json = await (await search({ query: "Kaspi icarə", limit: 5 })).json()
+    expect(json).toMatchObject({ success: true, mode: "words", count: 1 })
+    expect(searchByWords).toHaveBeenCalledWith(ORG, "Kaspi icarə", 5)
+    expect(indexContracts).not.toHaveBeenCalled()
+    expect(searchByMeaning).not.toHaveBeenCalled()
   })
 
-  it("returns success: true with count", async () => {
-    const res = await searchPOST(makeSearchReq({ query: "uncapped liability" }))
-    const json = await res.json()
-    expect(json.success).toBe(true)
-    expect(typeof json.count).toBe("number")
-    expect(json.query).toBe("uncapped liability")
+  it("a custom threshold reaches the search", async () => {
+    vi.mocked(voyageEmbedding).mockResolvedValue([0.3])
+    await search({ query: "x", threshold: 0.5, limit: 3 })
+    expect(searchByMeaning).toHaveBeenCalledWith(ORG, [0.3], 3, 0.5)
+  })
+
+  it("a bad body is a 400, before anything is paid for", async () => {
+    expect((await search({ query: "" })).status).toBe(400)
+    expect(voyageEmbedding).not.toHaveBeenCalled()
   })
 })
 
-// ── REINDEX tests ─────────────────────────────────────────────────────────────
-
-describe("POST /api/v1/contracts/[id]/reindex", () => {
-  it("requireAuth write — returns 401 when unauthenticated", async () => {
-    vi.mocked(requireAuth).mockResolvedValue(
-      NextResponse.json({ error: "Unauthorized" }, { status: 401 }) as any,
-    )
-    const res = await reindexPOST(makeReindexReq(), makeReindexParams())
-    expect(res.status).toBe(401)
-  })
-
-  it("contract not found in org → 404", async () => {
-    vi.mocked(prisma.contract.findFirst).mockResolvedValue(null as any)
-    const res = await reindexPOST(makeReindexReq(), makeReindexParams())
-    expect(res.status).toBe(404)
-  })
-
-  it("no contract body → 400", async () => {
-    vi.mocked(prisma.contract.findFirst).mockResolvedValue({
-      id:               CONTRACT_ID,
-      organizationId:   ORG_ID,
-      renderedBody:     "",
-      contractVersions: [],
-    } as any)
-    const res = await reindexPOST(makeReindexReq(), makeReindexParams())
-    expect(res.status).toBe(400)
-  })
-
-  it("rate-limited → 429", async () => {
-    vi.mocked(checkRateLimit).mockReturnValue(false)
-    const res = await reindexPOST(makeReindexReq(), makeReindexParams())
-    expect(res.status).toBe(429)
-  })
-
-  it("feature flag disabled → 403", async () => {
+describe("the card's reindex", () => {
+  it("switched off → 403 with the code", async () => {
     vi.mocked(isAiFeatureEnabled).mockResolvedValue(false)
-    const res = await reindexPOST(makeReindexReq(), makeReindexParams())
+    const res = await reindex()
     expect(res.status).toBe(403)
+    expect((await res.json()).code).toBe("SEMANTIC_SEARCH_OFF")
+    expect(indexOneContract).not.toHaveBeenCalled()
   })
 
-  it("FIX 4 — atomic upsert: uses ON CONFLICT (no findUnique-then-branch)", async () => {
-    const res = await reindexPOST(makeReindexReq(), makeReindexParams())
-    expect(res.status).toBe(200)
-    const json = await res.json()
-    expect(json.success).toBe(true)
-    // contractEmbedding.findUnique must NOT be called (old pattern)
-    expect(prisma.contractEmbedding.findUnique).not.toHaveBeenCalled()
-    // $executeRawUnsafe called with ON CONFLICT DO UPDATE
-    expect(prisma.$executeRawUnsafe).toHaveBeenCalledTimes(1)
-    const [sql] = vi.mocked(prisma.$executeRawUnsafe).mock.calls[0]
-    const sqlStr = String(sql).toLowerCase()
-    expect(sqlStr).toContain("insert into")
-    expect(sqlStr).toContain("on conflict")
-    expect(sqlStr).toContain("do update")
-    expect(sqlStr).toContain("contract_embeddings")
-  })
-
-  it("FIX 1 — logs embedding spend (logEmbeddingSpend) after successful reindex", async () => {
-    await reindexPOST(makeReindexReq(), makeReindexParams())
-    expect(logEmbeddingSpend).toHaveBeenCalledTimes(1)
-    const [orgArg, , , contextArg] = vi.mocked(logEmbeddingSpend).mock.calls[0]
-    expect(orgArg).toBe(ORG_ID)
-    expect(contextArg).toContain("[contract-reindex]")
-  })
-
-  it("masks contract body PII before Voyage and embedding storage on reindex", async () => {
-    process.env.VOYAGE_API_KEY = "voyage-test-key"
-    const calls = mockVoyageFetch()
-    vi.mocked(prisma.contract.findFirst).mockResolvedValue({
-      id: CONTRACT_ID,
-      organizationId: ORG_ID,
-      renderedBody: "Contract for aysel@example.com. Phone +994 50 123 45 67. INN 1234567890.",
-      contractVersions: [],
-    } as any)
-
-    await reindexPOST(makeReindexReq(), makeReindexParams())
-
-    const input = (calls[0] as { input: string[] }).input[0]
-    const storedContent = vi.mocked(prisma.$executeRawUnsafe).mock.calls[0][5]
-    expect(input).toContain("[EMAIL_")
-    expect(input).toContain("[PHONE_")
-    expect(input).toContain("[TAXID_")
-    expect(input).not.toContain("aysel@example.com")
-    expect(input).not.toContain("+994 50 123 45 67")
-    expect(String(storedContent)).not.toContain("aysel@example.com")
-  })
-
-  it("returns contentLength and model", async () => {
-    const res = await reindexPOST(makeReindexReq(), makeReindexParams())
-    const json = await res.json()
-    expect(json.data.model).toBe("voyage-3-lite")
-    expect(typeof json.data.contentLength).toBe("number")
-    expect(json.data.contentLength).toBeGreaterThan(0)
+  it("404 for a contract that is not this organization's; 503 without Voyage; done otherwise", async () => {
+    vi.mocked(indexOneContract).mockResolvedValueOnce("not_found")
+    expect((await reindex("foreign")).status).toBe(404)
+    vi.mocked(indexOneContract).mockResolvedValueOnce("unavailable")
+    const unavailable = await reindex()
+    expect(unavailable.status).toBe(503)
+    expect((await unavailable.json()).code).toBe("VOYAGE_UNAVAILABLE")
+    vi.mocked(indexOneContract).mockResolvedValueOnce("indexed")
+    expect(await (await reindex()).json()).toEqual({ success: true, contractId: "c1" })
+    expect(vi.mocked(indexOneContract).mock.calls.every(([org]) => org === ORG)).toBe(true)
   })
 })
 
-// ── CRON tests ─────────────────────────────────────────────────────────────────
-
-describe("POST /api/cron/contract-embeddings", () => {
-  it("CRON_SECRET required — wrong secret → 401", async () => {
-    const res = await cronPOST(makeCronReq("wrong-secret"))
-    expect(res.status).toBe(401)
-  })
-
-  it("CRON_SECRET required — no secret header → 401", async () => {
-    const res = await cronPOST(makeCronReq(null))
-    expect(res.status).toBe(401)
-  })
-
-  it("indexes missing contracts — returns {indexed, skipped, errors}", async () => {
-    // Simulate 2 contracts without embeddings (ce.id IS NULL → latestCanonicalVersionId null too)
-    vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([
-      { id: "ctr-x", organizationId: ORG_ID, renderedBody: "Service agreement text.",         embeddedVersionId: null, latestCanonicalVersionId: null },
-      { id: "ctr-y", organizationId: ORG_ID, renderedBody: "NDA agreement text for Germany.", embeddedVersionId: null, latestCanonicalVersionId: null },
-    ] as any)
-    vi.mocked(prisma.$executeRawUnsafe).mockResolvedValue(1 as any)
-
-    const res = await cronPOST(makeCronReq())
-    expect(res.status).toBe(200)
-    const json = await res.json()
-    expect(typeof json.indexed).toBe("number")
-    expect(typeof json.skipped).toBe("number")
-    expect(Array.isArray(json.errors)).toBe(true)
-    expect(json.indexed).toBe(2)
-  })
-
-  it("masks contract body PII before Voyage and embedding storage in cron backfill", async () => {
-    process.env.VOYAGE_API_KEY = "voyage-test-key"
-    const calls = mockVoyageFetch()
-    vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([
-      {
-        id: "ctr-pii",
-        organizationId: ORG_ID,
-        renderedBody: "Contract contact aysel@example.com, phone +994 50 123 45 67, INN 1234567890.",
-        embeddedVersionId: null,
-        latestCanonicalVersionId: null,
-      },
-    ] as any)
-    vi.mocked(prisma.$executeRawUnsafe).mockResolvedValue(1 as any)
-
-    const res = await cronPOST(makeCronReq())
-    const json = await res.json()
-    const input = (calls[0] as { input: string[] }).input[0]
-    const storedContent = vi.mocked(prisma.$executeRawUnsafe).mock.calls[0][5]
-
-    expect(res.status).toBe(200)
-    expect(json.indexed).toBe(1)
-    expect(input).toContain("[EMAIL_")
-    expect(input).toContain("[PHONE_")
-    expect(input).toContain("[TAXID_")
-    expect(input).not.toContain("aysel@example.com")
-    expect(input).not.toContain("+994 50 123 45 67")
-    expect(String(storedContent)).not.toContain("aysel@example.com")
-  })
-
-  it("skips contracts with empty renderedBody", async () => {
-    vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([
-      { id: "ctr-z", organizationId: ORG_ID, renderedBody: "", embeddedVersionId: null, latestCanonicalVersionId: null },
-    ] as any)
-    const res = await cronPOST(makeCronReq())
-    const json = await res.json()
-    expect(json.indexed).toBe(0)
-    expect(json.skipped).toBe(1)
-  })
-
-  it("correct CRON_SECRET → 200", async () => {
-    vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([] as any)
-    const res = await cronPOST(makeCronReq("correct-secret"))
-    expect(res.status).toBe(200)
-    const json = await res.json()
-    expect(json.indexed).toBe(0)
-  })
-
-  it("FIX 3 — skips org with ai_semantic_search feature OFF", async () => {
-    vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([
-      { id: "ctr-x", organizationId: ORG_ID, renderedBody: "Service text.", embeddedVersionId: null, latestCanonicalVersionId: null },
-    ] as any)
-    vi.mocked(isAiFeatureEnabled).mockResolvedValue(false)
-
-    const res = await cronPOST(makeCronReq())
-    const json = await res.json()
-    expect(json.indexed).toBe(0)
-    expect(json.skipped).toBe(1)
-    // $executeRawUnsafe must NOT be called (no embed for opted-out org)
-    expect(prisma.$executeRawUnsafe).not.toHaveBeenCalled()
-  })
-
-  it("FIX 3 — skips org with budget exceeded", async () => {
-    vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([
-      { id: "ctr-x", organizationId: ORG_ID, renderedBody: "Service text.", embeddedVersionId: null, latestCanonicalVersionId: null },
-    ] as any)
-    vi.mocked(checkAiBudget).mockResolvedValue({ allowed: false, spent: 5.0, limit: 5.0, remaining: 0 } as any)
-
-    const res = await cronPOST(makeCronReq())
-    const json = await res.json()
-    expect(json.indexed).toBe(0)
-    expect(json.skipped).toBe(1)
-    expect(prisma.$executeRawUnsafe).not.toHaveBeenCalled()
-  })
-
-  it("FIX 3 — two orgs: one enabled, one disabled — only enabled org's contracts indexed", async () => {
-    vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([
-      { id: "ctr-x", organizationId: ORG_ID,   renderedBody: "Enabled org contract.",   embeddedVersionId: null, latestCanonicalVersionId: null },
-      { id: "ctr-y", organizationId: ORG_ID_2,  renderedBody: "Disabled org contract.",  embeddedVersionId: null, latestCanonicalVersionId: null },
-    ] as any)
-    // ORG_ID enabled, ORG_ID_2 disabled
-    vi.mocked(isAiFeatureEnabled).mockImplementation(async (orgId) => orgId === ORG_ID)
-    vi.mocked(checkAiBudget).mockResolvedValue({ allowed: true, spent: 0.1, limit: 5.0, remaining: 4.9 } as any)
-
-    const res = await cronPOST(makeCronReq())
-    const json = await res.json()
-    expect(json.indexed).toBe(1)
-    expect(json.skipped).toBe(1)
-  })
-
-  it("FIX 5 — stale contract (version changed) is included in candidates SQL", async () => {
-    // Stale: embeddedVersionId != latestCanonicalVersionId
-    vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([
-      {
-        id: "ctr-stale",
-        organizationId: ORG_ID,
-        renderedBody: "Updated contract body after amendment.",
-        embeddedVersionId: "ver-old",
-        latestCanonicalVersionId: "ver-new",
-      },
-    ] as any)
-
-    const res = await cronPOST(makeCronReq())
-    const json = await res.json()
-    // Cron should embed the stale contract (version differs)
-    expect(json.indexed).toBe(1)
-    // Verify ON CONFLICT used for the stale upsert
-    const [sql] = vi.mocked(prisma.$executeRawUnsafe).mock.calls[0]
-    expect(String(sql).toLowerCase()).toContain("on conflict")
-  })
-
-  it("FIX 5 — cron candidate SQL uses LATERAL + IS DISTINCT FROM for stale detection", async () => {
-    vi.mocked(prisma.$queryRawUnsafe).mockResolvedValue([] as any)
-    await cronPOST(makeCronReq())
-    const [sql] = vi.mocked(prisma.$queryRawUnsafe).mock.calls[0]
-    const sqlStr = String(sql)
-    // SQL must contain the IS DISTINCT FROM clause for stale detection
-    expect(sqlStr).toContain("IS DISTINCT FROM")
-    // And the LATERAL join for the latest canonical version
-    expect(sqlStr).toContain("LATERAL")
+describe("the hourly job", () => {
+  it("indexes only for organizations with the switch on, and counts who had no Voyage", async () => {
+    vi.mocked(prisma.organization.findMany).mockResolvedValue([{ id: "on-1" }, { id: "off" }, { id: "on-2" }] as never)
+    vi.mocked(isAiFeatureEnabled).mockImplementation(async (orgId) => orgId !== "off")
+    vi.mocked(indexContracts).mockResolvedValueOnce({ indexed: 5, unavailable: false }).mockResolvedValueOnce({ indexed: 0, unavailable: true })
+    const json = await (await cronPOST(new NextRequest("http://localhost/api/cron/contract-embeddings", { method: "POST" }))).json()
+    expect(json.data).toEqual({ status: "completed", value: { indexed: 5, organizations: 2, unavailable: 1 } })
+    expect(vi.mocked(indexContracts).mock.calls.map(([org]) => org)).toEqual(["on-1", "on-2"])
+    expect(vi.mocked(indexContracts).mock.calls[1][1]).toMatchObject({ limit: 195 })
   })
 })
