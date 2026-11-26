@@ -161,6 +161,27 @@ export default function ContractDetailHelpAz() {
           </HelpCallout>
         </HelpStep>
       </HelpSection>
+      <HelpSection title="Addım-addım: kağızda imzalanmış müqavilə">
+        <HelpStep n={1}>
+          <p>
+            Müqaviləni kağızda, möhürlə imzalamısınız? <strong>Elektron İmza</strong> kartında{" "}
+            <HelpKey>Kağızda imzalanıb</HelpKey> düyməsini basın. Düymə təsdiqlənmiş müqavilədə olur. Qaralamada —
+            CRM-dən əvvəl imzalanmış müqavilədə — onu yalnız administrator görür: belə müqavilə təsdiqdən keçmir.
+          </p>
+        </HelpStep>
+        <HelpStep n={2}>
+          <p>
+            <strong>İmzalanma tarixini</strong> göstərin və imzalanmış müqavilənin <strong>skanını</strong> yükləyin —
+            PDF, JPG və ya PNG, 10 MB-a qədər. <HelpKey>İmzalanmış kimi qeyd et</HelpKey> düyməsini basın.
+          </p>
+          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
+            Müqavilə «Aktiv» olacaq. Kartda «Kağızda imzalanıb · qeyd edən: …» sətri və{" "}
+            <HelpKey>Skanı aç</HelpKey> düyməsi görünəcək. Uzatma xatırlatmaları bitmə tarixindən 90, 60, 30, 14 və 7
+            gün əvvəl gələcək, ondan sonrakı gün isə müqavilə «Bitib» olacaq. Müqavilə elektron imzaya göndərilibsə,
+            dəvət ləğv olunacaq və keçidlər işləməyəcək. Skanı müqavilənin fayllarından silmək olmaz.
+          </HelpCallout>
+        </HelpStep>
+      </HelpSection>
       <HelpSection title="Addım-addım: sənəd zənciri — protokol, hesab-faktura, akt">
         <HelpStep n={1}>
           <p>

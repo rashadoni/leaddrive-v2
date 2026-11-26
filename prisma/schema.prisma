@@ -2649,6 +2649,11 @@ model ContractFile {
   fileSize       Int
   mimeType       String
   uploadedBy     String?
+  /// "attachment" — any file a person attached; "signed_copy" — the scan of the
+  /// contract signed on paper, the evidence behind «Подписан на бумаге»
+  /// (POST /api/v1/contracts/[id]/paper-signature). A signed copy is not
+  /// deleted from the files list. DB CHECK keeps the two values.
+  purpose        String   @default("attachment")
   createdAt      DateTime @default(now())
 
   // F-41 cross-tenant guard hot path

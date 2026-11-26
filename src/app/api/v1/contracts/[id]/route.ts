@@ -8,6 +8,7 @@ import { CONTRACT_STATUSES } from "@/lib/contract-lifecycle/types"
 import { upsertRenewalAlerts } from "@/lib/contract-lifecycle/upsert-renewal-alerts"
 import { withRlsAuth } from "@/lib/with-rls"
 import { nonNegativeFinancialAmountSchema } from "@/lib/validation/numeric"
+import { SIGNED_COPY_PURPOSE, paperSignerUserId } from "@/lib/clm/paper-signature"
 
 const updateContractSchema = z.object({
   contractNumber: z.string().optional(),
@@ -72,7 +73,23 @@ export const GET = withRlsAuth("contracts", "read", async (req, auth, { params }
       take: PAGE_SIZE.DEFAULT,
     })
 
-    return NextResponse.json({ success: true, data: { ...normalizeContractRow(contract), history } })
+    // «Подписан на бумаге»: who recorded it and the scan (src/lib/clm/paper-signature.ts).
+    const paperSignerId = paperSignerUserId(contract.signedBy)
+    const paperSignature = paperSignerId && contract.signedAt
+      ? await (async () => {
+        const [signer, scan] = await Promise.all([
+          prisma.user.findFirst({ where: { id: paperSignerId, organizationId: orgId }, select: { name: true, email: true } }),
+          prisma.contractFile.findFirst({
+            where: { contractId: id, organizationId: orgId, purpose: SIGNED_COPY_PURPOSE },
+            orderBy: { createdAt: "desc" },
+            select: { id: true, fileName: true, originalName: true, mimeType: true },
+          }),
+        ])
+        return { signedAt: contract.signedAt, recordedBy: signer?.name || signer?.email || null, file: scan }
+      })()
+      : null
+
+    return NextResponse.json({ success: true, data: { ...normalizeContractRow(contract), history, paperSignature } })
   } catch (e) {
     console.error(e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

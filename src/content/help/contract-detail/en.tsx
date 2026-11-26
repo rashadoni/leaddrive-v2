@@ -158,6 +158,27 @@ export default function ContractDetailHelpEn() {
           </HelpCallout>
         </HelpStep>
       </HelpSection>
+      <HelpSection title="Step by step: a contract signed on paper">
+        <HelpStep n={1}>
+          <p>
+            Signed the contract on paper with a stamp? In the <strong>E-Signature</strong> card click{" "}
+            <HelpKey>Signed on paper</HelpKey>. The button is on an approved contract. On a draft — a contract signed
+            before the CRM — only an administrator sees it: such a contract skips approval.
+          </p>
+        </HelpStep>
+        <HelpStep n={2}>
+          <p>
+            Enter the <strong>date signed</strong> and upload the <strong>scan</strong> of the signed contract — PDF, JPG
+            or PNG up to 10 MB. Click <HelpKey>Mark as signed</HelpKey>.
+          </p>
+          <HelpCallout kind="see" label="What you'll see">
+            The contract becomes Active. The card shows «Signed on paper · recorded by …» and an{" "}
+            <HelpKey>Open scan</HelpKey> button. Renewal reminders come 90, 60, 30, 14 and 7 days before the end date,
+            and the day after it the contract becomes Expired. If the contract had been sent for e-signature, that
+            invitation is cancelled and its links stop working. The scan can't be deleted from the contract's files.
+          </HelpCallout>
+        </HelpStep>
+      </HelpSection>
       <HelpSection title="Step by step: the document chain — protocol, invoice, act">
         <HelpStep n={1}>
           <p>
