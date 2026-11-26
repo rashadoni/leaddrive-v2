@@ -105,6 +105,8 @@ describe("GET /api/v1/public/field-app/latest", () => {
   it("tells the app the newest version and the stable download address", async () => {
     vi.resetModules()
     vi.doMock("@/lib/mtm/field-app-release", () => ({
+      FIELD_APP_PLAY_RELEASE: null,
+      FIELD_APP_STORE_URL: "https://play.google.com/store/apps/details?id=com.mtmobileapp",
       latestFieldAppRelease: async () => ({
         versionName: "3.11.32", versionCode: 1634, apkUrl: `${DL}/t/a.apk`, publishedAt: "2026-10-18T20:08:28Z", sha256: null, tag: "t",
       }),
@@ -120,9 +122,48 @@ describe("GET /api/v1/public/field-app/latest", () => {
     vi.doUnmock("@/lib/mtm/field-app-release")
   })
 
+  it("names the store's version, not a newer build of main, once the app is in Google Play", async () => {
+    // A build of main that Google has not reviewed yet must not make the app
+    // ask people to update to something the store does not offer.
+    vi.resetModules()
+    const latest = vi.fn(async () => ({
+      versionName: "3.11.95", versionCode: 2080, apkUrl: `${DL}/t/a.apk`, publishedAt: "2026-11-30T10:00:00Z", sha256: null, tag: "t",
+    }))
+    vi.doMock("@/lib/mtm/field-app-release", () => ({
+      FIELD_APP_PLAY_RELEASE: { versionName: "3.11.90", versionCode: 2068 },
+      FIELD_APP_STORE_URL: "https://play.google.com/store/apps/details?id=com.mtmobileapp",
+      latestFieldAppRelease: latest,
+    }))
+    const { GET } = await import("@/app/api/v1/public/field-app/latest/route")
+    const response = await GET()
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      versionName: "3.11.90",
+      versionCode: 2068,
+      storeUrl: "https://play.google.com/store/apps/details?id=com.mtmobileapp",
+    })
+    // GitHub is not even asked: an outage there must not hide the store's answer.
+    expect(latest).not.toHaveBeenCalled()
+    vi.doUnmock("@/lib/mtm/field-app-release")
+  })
+
+  it("pins a store version the app accepts", async () => {
+    const { FIELD_APP_PLAY_RELEASE, FIELD_APP_STORE_URL } = await vi.importActual<typeof import("@/lib/mtm/field-app-release")>("@/lib/mtm/field-app-release")
+    // The app trusts only this address and a «x.y.z» name (field-app-update-policy.ts).
+    expect(FIELD_APP_STORE_URL).toBe("https://play.google.com/store/apps/details?id=com.mtmobileapp")
+    if (FIELD_APP_PLAY_RELEASE) {
+      expect(FIELD_APP_PLAY_RELEASE.versionName).toMatch(/^\d+\.\d+\.\d+$/)
+      expect(Number.isSafeInteger(FIELD_APP_PLAY_RELEASE.versionCode)).toBe(true)
+    }
+  })
+
   it("says unavailable instead of inventing a version", async () => {
     vi.resetModules()
-    vi.doMock("@/lib/mtm/field-app-release", () => ({ latestFieldAppRelease: async () => null }))
+    vi.doMock("@/lib/mtm/field-app-release", () => ({
+      FIELD_APP_PLAY_RELEASE: null,
+      FIELD_APP_STORE_URL: "https://play.google.com/store/apps/details?id=com.mtmobileapp",
+      latestFieldAppRelease: async () => null,
+    }))
     const { GET } = await import("@/app/api/v1/public/field-app/latest/route")
     const response = await GET()
     expect(response.status).toBe(503)

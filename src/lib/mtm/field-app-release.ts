@@ -17,6 +17,24 @@
 
 export const FIELD_APP_RELEASES_REPO = "rashadoni/leaddrive-mtm"
 
+export const FIELD_APP_STORE_URL = "https://play.google.com/store/apps/details?id=com.mtmobileapp"
+
+/**
+ * The build in Google Play production now (owner, 2026-11-26: «Да, включи» —
+ * the app's «update» question for copies installed from Play). With it set the
+ * app sends everybody to the store, so it must name what the store has, not the
+ * newest build of main: a build that has not passed Google's review would ask
+ * people to update to something the store does not offer yet.
+ *
+ * Raise it in the same change that records a Play release as published;
+ * forgetting only means the question comes one release late. `null` turns the
+ * store off and the app goes back to the APK link.
+ */
+export const FIELD_APP_PLAY_RELEASE: { versionName: string; versionCode: number } | null = {
+  versionName: "3.11.90",
+  versionCode: 2068,
+}
+
 export type FieldAppRelease = {
   versionName: string
   versionCode: number
