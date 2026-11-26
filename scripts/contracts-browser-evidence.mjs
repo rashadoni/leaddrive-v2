@@ -147,10 +147,12 @@ function watch(page) {
     const text = message.text()
     // A font the sign page imports from Google cannot load in CI; it is not the page's error.
     if (/fonts\.googleapis|fonts\.gstatic|ERR_NAME_NOT_RESOLVED|Failed to load resource: net::/.test(text)) return
+    // `next dev` asks for eval() under the app's CSP; production builds do not. Refused requests are listed with their address below.
+    if (/eval\(\) is not supported|Failed to load resource: the server responded with a status of/.test(text)) return
     consoleErrors.push({ step: current, url: page.url().replace(/\/sign\/[^/?#]+/, '/sign/<token>'), text: text.slice(0, 300) })
   })
   page.on('response', (response) => {
-    if (response.status() >= 500) serverErrors.push({ step: current, status: response.status(), url: new URL(response.url()).pathname.replace(/\/sign\/[^/?#]+/, '/sign/<token>') })
+    if (response.status() === 403 || response.status() >= 500) serverErrors.push({ step: current, status: response.status(), url: new URL(response.url()).pathname.replace(/\/sign\/[^/?#]+/, '/sign/<token>') })
   })
   return page
 }
@@ -283,7 +285,7 @@ async function main() {
     assert.match(text, /ofis avadanlığı/)
     await shoot(page, '05-wizard-check')
     await page.getByTestId('wizard-save-draft').click()
-    await page.waitForURL(/\/contracts\/[^/]+$/, { timeout: 180000 })
+    await page.waitForURL((url) => /^\/contracts\/[^/]+$/.test(url.pathname) && url.pathname !== '/contracts/new', { timeout: 180000 })
     state.contractId = new URL(page.url()).pathname.split('/').pop()
     await settle(page)
     await shoot(page, '06-contract-draft')
@@ -521,7 +523,7 @@ function report() {
     '',
     ...[...new Map(consoleErrors.map((e) => [`${e.url} ${e.text}`, e])).values()].slice(0, 40).map((e) => `- [${e.step}] ${e.url}: ${e.text}`),
     '',
-    `## Server errors (${serverErrors.length})`,
+    `## Refused (403) and server errors (${serverErrors.length})`,
     '',
     ...serverErrors.slice(0, 40).map((e) => `- [${e.step}] ${e.status} ${e.url}`),
   ]
