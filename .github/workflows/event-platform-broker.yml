@@ -98,6 +98,12 @@ jobs:
         if: steps.cache-prisma-client.outputs.cache-hit != 'true'
         run: npx prisma generate --schema prisma/schema.prisma
       - name: Strictly typecheck the combined fixture against the actual client
+        # Node 20's default heap is ~2 GiB on GitHub's AWS-hosted runners
+        # (15.7 GB RAM); this tsc died there at 2043 MB on 2026-11-26, the
+        # first AWS run to get past the Prisma generate. 4 GiB is Node 24's
+        # default, which every other PR check gets.
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: >-
           npx tsc --noEmit --skipLibCheck --strict --target ES2017 --lib ESNext
           --module commonjs --moduleResolution node --esModuleInterop --types node
