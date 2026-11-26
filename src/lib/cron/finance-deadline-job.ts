@@ -4,6 +4,7 @@ import { withJobLease } from "@/lib/cron/job-lease"
 import { APP_URL } from "@/lib/domains"
 import { financeTelegramTarget, readFinanceNotifSettings } from "@/lib/finance/notification-settings"
 import { sendFinanceTelegram } from "@/lib/finance/telegram-send"
+import { expireEndedContracts } from "@/lib/contract-lifecycle/expire-ended"
 
 export interface FinanceDeadlineSummary {
   overdueBills: number
@@ -46,14 +47,9 @@ async function executeFinanceDeadlineJob(): Promise<FinanceDeadlineSummary> {
     summary.overdueBills += bills.count
     summary.overdueInvoices += invoices.count
 
-    const expiredContracts = await prisma.contract.updateMany({
-      where: {
-        organizationId: org.id,
-        endDate: { lt: now },
-        status: { in: ["active", "renewing", "expiring"] },
-      },
-      data: { status: "expired" },
-    })
+    // A contract is over once its last day has passed, not when that day begins
+    // (src/lib/contract-lifecycle/expire-ended.ts).
+    const expiredContracts = { count: await expireEndedContracts(org.id, now) }
     summary.expiredContracts += expiredContracts.count
 
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)

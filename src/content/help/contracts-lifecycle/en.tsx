@@ -203,6 +203,16 @@ export default function ContractsLifecycleHelpEn() {
         </p>
       </HelpCallout>
 
+      <HelpCallout kind="tip">
+        <p>
+          When a contract&apos;s term is over, the system moves it to{" "}
+          <strong>Expired</strong> by itself — on the day after its end date (the
+          end date is the contract&apos;s last valid day). Only contracts in force
+          move: Active and Renewing. Each such move is written to the audit log
+          with the reason «term ended».
+        </p>
+      </HelpCallout>
+
       <HelpCallout kind="warning">
         <p>
           <strong>Reject</strong> rejects the whole contract and stops the

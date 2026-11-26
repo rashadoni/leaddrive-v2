@@ -207,6 +207,16 @@ export default function ContractsLifecycleHelpAz() {
         </p>
       </HelpCallout>
 
+      <HelpCallout kind="tip">
+        <p>
+          Müqavilənin müddəti bitəndə sistem onu özü{" "}
+          <strong>Bitib</strong> statusuna keçirir — bitmə tarixindən
+          sonrakı gün (bitmə tarixi müqavilənin son qüvvədə olan günüdür). Yalnız
+          qüvvədə olan müqavilələr keçirilir: «Aktiv» və «Yenilənir». Hər keçid
+          audit jurnalına «müddət bitib» səbəbi ilə yazılır.
+        </p>
+      </HelpCallout>
+
       <HelpCallout kind="warning">
         <p>
           <strong>Rədd</strong> bütün müqaviləni rədd edir və təsdiq zəncirini
