@@ -1157,6 +1157,21 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
         intents: await prisma.aiActionIntent.count({ where: { organizationId: ORG } }),
       }))
 
+      // «Kadr uçotu» answers only where the tenant has Personnel and the
+      // attendance switch is on - both read from the database, not the module
+      // mock. Switched on for this pass and put back after it: the personnel
+      // scenario further down creates the same setting itself.
+      const orgBefore = await bypass(() => prisma.organization.findUniqueOrThrow({
+        where: { id: ORG }, select: { features: true, modules: true },
+      }))
+      await bypass(async () => {
+        await prisma.organization.update({
+          where: { id: ORG },
+          data: { features: ["route-field", "personnel"], modules: { mtm: true } },
+        })
+        await prisma.mtmSetting.create({ data: { organizationId: ORG, key: "attendanceEnabled", value: true } })
+      })
+
       const answered: string[] = []
       const refused: Record<string, string> = {}
       for (const tool of VOICE_TOOL_NAMES) {
@@ -1178,6 +1193,17 @@ pgDescribe("the voice assistant without a microphone, on a real Postgres", () =>
         else if (error) refused[tool] = error
         else answered.push(tool)
       }
+      await bypass(async () => {
+        await prisma.mtmSetting.deleteMany({ where: { organizationId: ORG, key: "attendanceEnabled" } })
+        await prisma.organization.update({
+          where: { id: ORG },
+          data: {
+            // Read back from the same columns a moment ago; never null (both have defaults).
+            features: orgBefore.features as never,
+            modules: orgBefore.modules as never,
+          },
+        })
+      })
 
       // Каждый инструмент из реестра доходит до своего читателя — реестр и
       // реализация не расходятся. Раньше это ловилось только там, где кто-то
