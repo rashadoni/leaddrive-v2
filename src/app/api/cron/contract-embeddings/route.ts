@@ -1,189 +1,50 @@
 /**
- * CLM Slice 6c — Backfill cron: generate + upsert embeddings for contracts
- * that have a renderedBody but no ContractEmbedding yet (missing), OR whose
- * embedding is STALE (contractVersionId differs from the contract's latest
- * canonical signed version).
+ * Contract vectors for «Ağıllı axtarış», hourly (scripts/install-resilience-crons.sh).
  *
- * POST /api/cron/contract-embeddings
- *   Auth: x-cron-secret header (mirrors loyalty-expiry cron pattern).
- *   Capped at 100 contracts per run to stay within Voyage free-tier + cron timeout.
- *   Returns: { indexed, skipped, errors }
+ * POST /api/cron/contract-embeddings   (x-cron-secret)
+ *   For every organization with the switch on (ai_semantic_search — Settings →
+ *   AI automation), makes vectors for contracts that have none or changed after
+ *   theirs was made: src/lib/clm/contract-search-index.ts, the same text and
+ *   rule the search uses. At most PER_RUN contracts per run in all.
  *
- * FIX 1 (2026-06-08): logs embedding spend per org via logEmbeddingSpend() so
- *   checkAiBudget() meters the Voyage calls this cron makes.
- * FIX 3 (2026-06-08): groups candidates by org; skips the entire org's batch if
- *   (a) ai_semantic_search feature flag is off, OR (b) budget is exceeded.
- *   Opted-out / over-budget tenants no longer incur paid embedding work.
- * FIX 5 (2026-06-08): candidate query now also selects STALE embeddings —
- *   those whose contractVersionId differs from the contract's latest canonical
- *   signed version (ce."contractVersionId" IS DISTINCT FROM cv.id).
- *
- * [P2-ops] Crontab entry needed on the Hetzner box:
- *   0 3 * * * curl -X POST https://app.leaddrivecrm.org/api/cron/contract-embeddings \
- *        -H "x-cron-secret: $CRON_SECRET"
- * Revisit: after Slice 7 (integrations) or when VOYAGE_API_KEY is confirmed on prod.
+ * Until 2026-11-26 this job was in no schedule, read only the signed version's
+ * id to judge staleness (a draft edited after indexing stayed stale for ever),
+ * and without a Voyage key stored a «vector» made of character codes.
+ * Without Voyage now nothing is stored and the search goes by words.
  */
-
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireCronAuth } from "@/lib/cron-auth"
-import { isAiFeatureEnabled, checkAiBudget } from "@/lib/ai/budget"
-import { logEmbeddingSpend } from "@/lib/ai/embedding-spend"
-import { PiiMasker } from "@/lib/ai/pii-masker"
-import { voyageEmbedding } from "@/lib/ai/voyage-embedding"
+import { isAiFeatureEnabled } from "@/lib/ai/budget"
 import { runWithRlsBypass } from "@/lib/rls-context"
+import { withJobLease } from "@/lib/cron/job-lease"
+import { indexContracts } from "@/lib/clm/contract-search-index"
 
 export const dynamic = "force-dynamic"
 
-const BATCH_CAP = 100   // max contracts indexed per run
-const MAX_EMBED_CHARS = 32_000
-
-function maskEmbeddingText(text: string): string {
-  return new PiiMasker().mask(text)
-}
-
-async function generateEmbedding(orgId: string, text: string): Promise<number[]> {
-  const safeText = maskEmbeddingText(text)
-  const voyage = await voyageEmbedding(orgId, safeText, "contracts")
-  if (voyage) return voyage
-
-  // Fallback: deterministic hash-based pseudo-embedding
-  const DIMS = 512
-  const result = new Array(DIMS).fill(0)
-  for (let i = 0; i < DIMS; i++) {
-    const charCode = safeText.charCodeAt(i % safeText.length) || 0
-    result[i] = ((charCode * 2654435761) % 1000) / 1000 - 0.5
-  }
-  return result
-}
+const PER_RUN = 200
+const RUN_MS = 4 * 60_000
 
 export async function POST(req: NextRequest) {
-  return runWithRlsBypass(async () => {
   const cronError = requireCronAuth(req)
   if (cronError) return cronError
-
-  let indexed = 0
-  let skipped = 0
-  const errors: string[] = []
-
-  try {
-    // FIX 5: Candidate query selects BOTH missing AND stale embeddings.
-    //
-    // Missing: ce.id IS NULL (no embedding row at all).
-    // Stale:   ce.id IS NOT NULL but contractVersionId differs from the contract's
-    //          latest canonical signed ContractVersion (cv.id).
-    //          If no canonical signed version exists, we use cv.id IS NULL
-    //          (the existing embedding has a non-null versionId but no canonical
-    //          version → also stale; or if both are null it's already fresh).
-    //
-    // We LEFT JOIN contract_versions cv on the latest canonical signed version
-    // so we can compare ce."contractVersionId" IS DISTINCT FROM cv.id.
-    const candidates = await prisma.$queryRaw<Array<{
-      id: string
-      organizationId: string
-      renderedBody: string | null
-      embeddedVersionId: string | null
-      latestCanonicalVersionId: string | null
-    }>>`
-      SELECT
-        c.id,
-        c."organizationId",
-        c."renderedBody",
-        ce."contractVersionId" AS "embeddedVersionId",
-        cv.id                  AS "latestCanonicalVersionId"
-      FROM contracts c
-      LEFT JOIN contract_embeddings ce ON ce."contractId" = c.id
-      LEFT JOIN LATERAL (
-        SELECT id
-        FROM contract_versions cv2
-        WHERE cv2."contractId" = c.id
-          AND cv2."isCanonicalSigned" = true
-        ORDER BY cv2."createdAt" DESC
-        LIMIT 1
-      ) cv ON true
-      WHERE c."renderedBody" IS NOT NULL
-        AND c."renderedBody" != ''
-        AND (
-          ce.id IS NULL
-          OR ce."contractVersionId" IS DISTINCT FROM cv.id
-        )
-      LIMIT ${BATCH_CAP}
-    `
-
-    // FIX 3: Group candidates by org so we can gate per-org once.
-    const byOrg = new Map<string, typeof candidates>()
-    for (const row of candidates) {
-      const existing = byOrg.get(row.organizationId) ?? []
-      existing.push(row)
-      byOrg.set(row.organizationId, existing)
-    }
-
-    for (const [orgId, rows] of byOrg) {
-      // FIX 3: Check feature flag + budget ONCE per org before embedding any of its contracts.
-      const featureOn = await isAiFeatureEnabled(orgId, "ai_semantic_search")
-      if (!featureOn) {
-        // Org opted out — skip all contracts for this org
-        skipped += rows.length
-        continue
+  const run = await runWithRlsBypass(() =>
+    withJobLease({ name: "contract-embeddings", ttlMs: 10 * 60_000 }, async () => {
+      const deadline = Date.now() + RUN_MS
+      const orgs = await prisma.organization.findMany({ where: { isActive: true }, select: { id: true } })
+      let indexed = 0
+      let organizations = 0
+      let unavailable = 0
+      for (const org of orgs as Array<{ id: string }>) {
+        if (indexed >= PER_RUN || Date.now() > deadline) break
+        if (!(await isAiFeatureEnabled(org.id, "ai_semantic_search"))) continue
+        organizations++
+        const result = await indexContracts(org.id, { limit: PER_RUN - indexed, deadline })
+        indexed += result.indexed
+        if (result.unavailable) unavailable++
       }
-
-      const budget = await checkAiBudget(orgId)
-      if (!budget.allowed) {
-        // Over budget — skip all contracts for this org
-        skipped += rows.length
-        continue
-      }
-
-      for (const row of rows) {
-        const rawBody = (row.renderedBody ?? "").trim()
-        if (!rawBody) { skipped++; continue }
-
-        const embeddingText = maskEmbeddingText(rawBody).slice(0, MAX_EMBED_CHARS)
-
-        try {
-          const embedStart = Date.now()
-          const vector = await generateEmbedding(orgId, embeddingText)
-          const embedLatencyMs = Date.now() - embedStart
-
-          const vectorStr = `[${vector.join(",")}]`
-          const id = `cemb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-
-          // Upsert: ON CONFLICT covers both the missing AND stale paths cleanly.
-          // The stale path hits the DO UPDATE branch (existing row, different versionId).
-          await prisma.$executeRaw`
-            INSERT INTO "contract_embeddings"
-              ("id", "organizationId", "contractId", "contractVersionId", "content",
-               "embedding", "model", "createdAt", "updatedAt")
-            VALUES (${id}, ${orgId}, ${row.id}, ${row.latestCanonicalVersionId}, ${embeddingText}, ${vectorStr}::vector, 'voyage-3-lite', NOW(), NOW())
-            ON CONFLICT ("contractId") DO UPDATE
-              SET "content" = EXCLUDED."content",
-                  "embedding" = EXCLUDED."embedding",
-                  "model" = EXCLUDED."model",
-                  "contractVersionId" = EXCLUDED."contractVersionId",
-                  "updatedAt" = NOW()
-          `
-
-          // FIX 1: log embedding spend so checkAiBudget meters this cron call
-          void logEmbeddingSpend(orgId, embeddingText, embedLatencyMs, "[contract-cron]")
-
-          indexed++
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err)
-          console.error(`[cron/contract-embeddings] contract ${row.id} failed: ${msg}`)
-          errors.push(`${row.id}: ${msg.slice(0, 100)}`)
-          skipped++
-        }
-      }
-    }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error("[cron/contract-embeddings] query failed:", msg)
-    return NextResponse.json(
-      { indexed, skipped, errors: [msg] },
-      { status: 500 },
-    )
-  }
-
-  return NextResponse.json({ indexed, skipped, errors })
-  })
+      return { indexed, organizations, unavailable }
+    }),
+  )
+  return NextResponse.json({ success: true, data: run })
 }

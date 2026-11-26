@@ -114,7 +114,7 @@ export const POST = withRlsAuth("contracts", "write", async (req: NextRequest, a
   const featureEnabled = await isAiFeatureEnabled(orgId, "ai_redline")
   if (!featureEnabled) {
     return NextResponse.json(
-      { error: "AI redline is not enabled for your organization." },
+      { error: "AI redline is not enabled for your organization.", errorKey: "aiRedlineFeatureDisabled" },
       { status: 403 },
     )
   }

@@ -439,7 +439,7 @@ export default function ContractDetailPage() {
       if (json.success) {
         toast.success(t("reindexSuccess"))
       } else {
-        toast.error(json.error ?? t("reindexError"))
+        toast.error(json.errorKey ? t(json.errorKey) : (json.error ?? t("reindexError")))
       }
     } catch (err) {
       console.error(err)
@@ -485,7 +485,7 @@ export default function ContractDetailPage() {
         // Refresh deviation flags panel since new flags may have been auto-created
         fetchDeviations()
       } else {
-        setAiScoringError(json.error ?? t("aiRiskScoreError"))
+        setAiScoringError(json.errorKey ? t(json.errorKey) : (json.error ?? t("aiRiskScoreError")))
       }
     } catch (err) {
       console.error(err)

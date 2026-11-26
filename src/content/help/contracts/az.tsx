@@ -171,9 +171,12 @@ export default function ContractsHelpAz() {
         </HelpStep>
         <HelpCallout kind="warning">
           <p>
-            AI axtarış təşkilatınız üçün AI funksiyası aktiv olduqda işləyir. Aktiv deyilsə və ya
-            büdcə bitibsə, panelin altında qırmızı xəta mesajı görünür — bu halda adi status/teq/ətraflı
-            filtrlərdən istifadə edin.
+            Ağıllı axtarışı admin yandırır: <HelpKey>Parametrlər</HelpKey> → <HelpKey>AI avtomatlaşdırma</HelpKey>{" "}
+            → <strong>Kopaylot</strong> bloku → «Müqavilələr: mənaya görə axtarış». Söndürülü olanda
+            panelin altında harada yandırıldığı yazılır. Yeni və ya dəyişdirilmiş müqavilə növbəti
+            axtarışda və ya bir saat ərzində axtarışa düşür. Voyage açarı yoxdursa və ya günlük AI limiti
+            bitibsə, axtarış sözlərə görə gedir (adda, nömrədə, şirkətdə və mətndə) — nəticələrin
+            üstündə bu yazılır və oxşarlıq faizi göstərilmir.
           </p>
         </HelpCallout>
       </HelpSection>

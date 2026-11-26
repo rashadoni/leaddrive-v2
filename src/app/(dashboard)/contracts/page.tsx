@@ -169,12 +169,18 @@ export default function ContractsPage() {
   }> | null>(null)
   const [semanticLoading, setSemanticLoading] = useState(false)
   const [semanticError, setSemanticError] = useState<string | null>(null)
+  /** «meaning» — by Voyage vectors; «words» — no Voyage for this organization now, so by words, and the page says so. */
+  const [semanticFoundBy, setSemanticFoundBy] = useState<"meaning" | "words" | null>(null)
+  /** The switch is off: the page says where an admin turns it on. */
+  const [semanticOff, setSemanticOff] = useState(false)
 
   const handleSemanticSearch = async () => {
     if (!semanticQuery.trim()) return
     setSemanticLoading(true)
     setSemanticError(null)
     setSemanticResults(null)
+    setSemanticFoundBy(null)
+    setSemanticOff(false)
     try {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -187,9 +193,11 @@ export default function ContractsPage() {
       })
       const json = await res.json()
       if (!res.ok) {
-        setSemanticError(json.error || t("semanticSearchError"))
+        if (json.code === "SEMANTIC_SEARCH_OFF") setSemanticOff(true)
+        setSemanticError(json.errorKey ? t(json.errorKey) : t("semanticSearchError"))
         return
       }
+      setSemanticFoundBy(json.mode === "words" ? "words" : "meaning")
       setSemanticResults(json.results || [])
     } catch {
       setSemanticError(t("semanticSearchError"))
@@ -1074,7 +1082,18 @@ export default function ContractsPage() {
               }
             </Button>
           </div>
-          {semanticError && <p className="text-xs text-destructive">{semanticError}</p>}
+          {semanticError && (
+            <p className="text-xs text-destructive" data-testid="semantic-search-error">
+              {semanticError}
+              {semanticOff && (
+                <>
+                  {" "}
+                  <Link href="/settings/ai-automation" className="font-medium underline">{t("semanticOpenSettings")}</Link>
+                </>
+              )}
+            </p>
+          )}
+          {semanticFoundBy === "words" && <p className="text-xs text-amber-700 dark:text-amber-300" data-testid="semantic-search-by-words">{t("semanticByWords")}</p>}
           {semanticResults !== null && (
             <div className="space-y-2">
               {semanticResults.length === 0 ? (
@@ -1088,8 +1107,10 @@ export default function ContractsPage() {
                         key={r.contractId}
                         className="w-full text-left flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-muted/30 transition-colors"
                         onClick={() => {
+                          // A hit may be on another page of the list: then open its card by address.
                           const c = contracts.find(x => x.id === r.contractId)
                           if (c) openDetail(c)
+                          else router.push(`/contracts/${encodeURIComponent(r.contractId)}`)
                         }}
                       >
                         <div className="min-w-0">
@@ -1097,9 +1118,11 @@ export default function ContractsPage() {
                           <p className="text-xs text-muted-foreground">{r.contractNumber} · {statusLabels[r.status] || r.status}</p>
                         </div>
                         <div className="shrink-0 text-right">
-                          <span className="text-xs font-medium text-primary">
-                            {Math.round(r.similarity * 100)}% {t("semanticSearchSimilarity")}
-                          </span>
+                          {semanticFoundBy === "meaning" && (
+                            <span className="text-xs font-medium text-primary">
+                              {Math.round(r.similarity * 100)}% {t("semanticSearchSimilarity")}
+                            </span>
+                          )}
                           {r.valueAmount && (
                             <p className="text-xs text-muted-foreground">
                               {r.valueAmount.toLocaleString()} {r.currency}

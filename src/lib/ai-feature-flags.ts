@@ -39,6 +39,12 @@ export const AI_AUTOMATION_FLAGS = [
   "ai_daily_briefing",
   "ai_anomaly_detection",
   "ai_lead_scoring",
+  // Contract tools a person calls on a contract (2026-11-26: they had no switch anywhere,
+  // so «Ağıllı axtarış», «Bəndləri çıxar», the playbook risk and redline answered 403 to everyone).
+  "ai_semantic_search",
+  "ai_clause_extraction",
+  "ai_risk_scoring",
+  "ai_redline",
   "ai_auto_acknowledge_shadow",
   "ai_auto_acknowledge",
   "ai_auto_followup_shadow",

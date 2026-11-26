@@ -619,6 +619,17 @@ jobs:
           FINANCE_TELEGRAM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           FINANCE_TELEGRAM_DB_GATE: required
 
+      - name: Contract search database gate
+        # «Ağıllı axtarış» on a real Postgres with pgvector: which contracts get
+        # a vector, that phones and e-mails never reach Voyage, the order by
+        # meaning, another organization's contract never comes back, and the
+        # search by words without Voyage. Not in the deploy: its database has
+        # no pgvector (the deploy gate of #518 stopped deploys for that).
+        run: npx vitest run src/__tests__/contract-search-postgres.test.ts
+        env:
+          CONTRACT_SEARCH_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          CONTRACT_SEARCH_DB_GATE: required
+
       - name: Contract expiry database gate
         # A contract becomes «Истёк» once its last day is over, not when that
         # day begins (until 2026-11-26 it ran out on its own last day at 04:05
