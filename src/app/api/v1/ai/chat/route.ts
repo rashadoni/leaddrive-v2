@@ -357,9 +357,16 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
     const voiceChatToolNames = (VOICE_SUMMARY_TOOLS as readonly string[]).filter(
       (name) => name !== "get_sales_in_period" && name !== "explain_section",
     )
-    const voiceChatTools = crmReadsOffered
+    // The attendance summary is the exception: the attendance report narrows
+    // the employees to the ones this person may see (HR with the grant: all;
+    // a manager: their own people), so it goes to everyone who may open
+    // Personnel, HR included whatever their role. The executor checks the rest.
+    const attendanceOffered = canRead(session.role, "mtm") && hasModule(orgCtx, "mtm")
+    const voiceChatOffered = (name: string) => voiceChatToolNames.includes(name)
+      && (crmReadsOffered || (name === "get_attendance_summary" && attendanceOffered))
+    const voiceChatTools = crmReadsOffered || attendanceOffered
       ? voiceTools(undefined, forceLang === "Russian" ? "ru" : forceLang === "English" ? "en" : "az")
-          .filter((t) => voiceChatToolNames.includes(t.name))
+          .filter((t) => voiceChatOffered(t.name))
           .map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters }))
       : []
 
@@ -584,7 +591,10 @@ Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown
           })
           continue
         }
-        const isVoiceReadTool = voiceChatToolNames.includes(toolBlock.name)
+        // Only a tool this caller was offered runs: a name the model produced
+        // for a summary it was not given (a salesperson naming the pipeline)
+        // falls through to the ordinary unknown-tool path.
+        const isVoiceReadTool = voiceChatTools.some((tool) => tool.name === toolBlock.name)
         if (isVoiceReadTool) {
           const out = await executeVoiceReadTool({
             toolName: toolBlock.name as VoiceToolName,

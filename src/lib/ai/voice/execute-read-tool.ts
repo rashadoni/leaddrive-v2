@@ -80,6 +80,7 @@ import {
   type MissedPhoneOrdersAccess,
 } from "@/lib/ai/voice/missed-summary"
 import { hiddenChannelIdsFor } from "@/lib/inbox/channel-access"
+import { buildAttendanceSummary } from "@/lib/ai/voice/attendance-summary"
 
 export type VoiceReadOutcome = { status?: number; body: Record<string, unknown> }
 
@@ -425,6 +426,27 @@ export async function executeVoiceReadTool(params: {
     }
     const period = (parsed.data as { period?: "today" | "tomorrow" | "week" }).period ?? "today"
     return { body: { data: await buildVoiceBookingsSummary(access, period, now, timezone) } }
+  }
+  if (toolName === "get_attendance_summary") {
+    let timezone: string
+    try {
+      timezone = await loadVoiceReportingTimezone(auth.orgId, auth.userId)
+    } catch {
+      return { body: { data: { error: "REPORTING_TIMEZONE_UNAVAILABLE" } } }
+    }
+    const range = parsed.data as { from?: string; to?: string }
+    return { body: {
+      data: await buildAttendanceSummary({
+        orgId: auth.orgId,
+        userId: auth.userId,
+        role: auth.role as Role,
+        hiddenModules: auth.hiddenModules,
+        timezone,
+        now,
+        from: range.from,
+        to: range.to,
+      }),
+    } }
   }
   if (toolName === "get_missed_summary") {
     const role = auth.role as Role

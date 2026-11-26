@@ -39,7 +39,9 @@ describe("chat/voice parity", () => {
     // 2026-11-26); the record lists are narrowed per person by the executor.
     // Behaviour is pinned in api-ai-chat-current-state.test.ts.
     expect(CHAT_ROUTE).toMatch(/const crmReadsOffered = isManagerOrAbove\(session\.role\)/)
-    expect(CHAT_ROUTE).toMatch(/const voiceChatTools = crmReadsOffered/)
+    expect(CHAT_ROUTE).toMatch(/crmReadsOffered \|\| \(name === "get_attendance_summary" && attendanceOffered\)/)
+    // Only an offered tool runs.
+    expect(CHAT_ROUTE).toMatch(/const isVoiceReadTool = voiceChatTools\.some\(/)
     expect(CHAT_ROUTE).not.toMatch(/ai_smart_search"\]/)
   })
 

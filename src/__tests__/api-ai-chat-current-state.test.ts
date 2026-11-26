@@ -312,6 +312,41 @@ describe("reading the CRM without the old smart-search flag", () => {
     expect(offeredTools()).not.toContain("list_invoices")
   })
 
+  it("offers attendance to anyone who may open Personnel, and runs no summary that was not offered", async () => {
+    const { getOrgModuleContext } = await import("@/lib/api-auth")
+    vi.mocked(getOrgModuleContext).mockResolvedValue({
+      ...WITHOUT_FLAG, modules: { ...WITHOUT_FLAG.modules, mtm: true },
+    } as never)
+    const SALES = { ...SESSION, role: "sales" }
+    vi.mocked(getSession).mockResolvedValue(SALES as never)
+    vi.mocked(requireAuth).mockResolvedValue(SALES as never)
+    // The model names a summary it was not given.
+    anthropicCreate.mockImplementation(async () => anthropicCreate.mock.calls.length === 1
+      ? { content: [{ type: "tool_use", id: "tu_1", name: "get_pipeline_by_stage", input: {} }], usage: { input_tokens: 1, output_tokens: 1 } }
+      : { content: [{ type: "text", text: "Bunu görə bilmirəm." }], usage: { input_tokens: 1, output_tokens: 1 } })
+
+    await ask("Hansı sövdələşmələrimiz var")
+
+    const offered = offeredTools()
+    expect(offered).toContain("get_attendance_summary")
+    expect(offered).not.toContain("get_pipeline_by_stage")
+    expect(executeVoiceReadToolMock).not.toHaveBeenCalled()
+  })
+
+  it("does not offer attendance to a role without MTM", async () => {
+    const { getOrgModuleContext } = await import("@/lib/api-auth")
+    vi.mocked(getOrgModuleContext).mockResolvedValue({
+      ...WITHOUT_FLAG, modules: { ...WITHOUT_FLAG.modules, mtm: true },
+    } as never)
+    const TICKETING = { ...SESSION, role: "ticketing" }
+    vi.mocked(getSession).mockResolvedValue(TICKETING as never)
+    vi.mocked(requireAuth).mockResolvedValue(TICKETING as never)
+    anthropicCreate.mockResolvedValue({ content: [{ type: "text", text: "Salam" }], usage: { input_tokens: 1, output_tokens: 1 } })
+
+    await ask("Salam")
+    expect(offeredTools()).not.toContain("get_attendance_summary")
+  })
+
   it("offers a salesperson the record lists, but not the organization-wide summaries", async () => {
     const SALES = { ...SESSION, role: "sales" }
     vi.mocked(getSession).mockResolvedValue(SALES as never)

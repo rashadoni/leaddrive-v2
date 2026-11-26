@@ -83,6 +83,9 @@ export function voiceFieldEntitiesForTool(
     case "get_bookings_summary": return []
     // Says the names of the people who asked for this user, from leads and contacts.
     case "get_missed_summary": return ["lead", "contact"]
+    // Employee cards have no configurable fields (not in ENTITY_FIELDS); who may
+    // see whom is the attendance report's own scope.
+    case "get_attendance_summary": return []
     case "get_workload_by_person": {
       const focus = typeof filter.focus === "string" ? filter.focus : "all"
       const type = { tasks: "task", leads: "lead", deals: "deal", tickets: "ticket" }[focus]

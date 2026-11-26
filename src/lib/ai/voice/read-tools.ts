@@ -41,6 +41,7 @@ export const VOICE_SUMMARY_TOOLS = [
   "read_record",
   "get_bookings_summary",
   "get_missed_summary",
+  "get_attendance_summary",
 ] as const
 
 export type VoiceToolName = (typeof VOICE_LIST_TOOLS)[number] | (typeof VOICE_SUMMARY_TOOLS)[number]
@@ -91,6 +92,9 @@ export const VOICE_TOOL_MODULE: Record<VoiceToolName, ModuleId> = {
   // Spans telephony, the inbox and bookings, each bought separately: the route
   // checks every part on its own and answers for the parts this person can see.
   get_missed_summary: "ai",
+  // «Kadr uçotu» lives in MTM; the executor also checks the Personnel
+  // capability, the attendance switch and who this person may see.
+  get_attendance_summary: "mtm",
 }
 
 /**
@@ -112,6 +116,11 @@ export const VOICE_TOOL_SCHEMAS: Record<VoiceToolName, z.ZodTypeAny> = {
   // No period on purpose: "since the last working day ended" is the question,
   // and the server works it out from the organization's hours.
   get_missed_summary: z.object({}).strict(),
+  // One day by default (today in the user's timezone); a range up to 31 days.
+  get_attendance_summary: z.object({
+    from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  }).strict(),
   // «Сегодня», «завтра» и «неделя» — то, о чём спрашивают про записи. Месяца
   // здесь нет намеренно: день салона читают вслух, а месяц — нет.
   get_bookings_summary: z.object({
