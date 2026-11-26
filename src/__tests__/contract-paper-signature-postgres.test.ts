@@ -48,12 +48,14 @@ const scratch = vi.hoisted(() => {
   process.env.TENANT_PII_MASTER_KEY = "0123456789abcdef".repeat(4) // gitleaks:allow — synthetic test key
   return { name, role, adminDb: db.toString() }
 })
-// Uploads go to a scratch runtime directory, never the checkout's (read on every call, before any route loads).
-if (scratch) {
-  process.env.LEADDRIVE_RUNTIME_DIR = mkdtempSync(path.join(tmpdir(), "paper-sign-runtime-"))
-  // An external runtime directory wants its logs outside the checkout too.
-  process.env.LEADDRIVE_LOG_DIR = mkdtempSync(path.join(tmpdir(), "paper-sign-logs-"))
-}
+// Uploads go to a scratch directory, never the checkout's. Only where they go is replaced: a real
+// LEADDRIVE_RUNTIME_DIR under /tmp is refused by runtime-paths (an ephemeral path), and that is right.
+vi.mock("@/lib/runtime-paths", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/runtime-paths")>()
+  const nodePath = await import("node:path")
+  return { ...actual, runtimePublicUploadDirectory: (subdir: string) => nodePath.join(process.env.PAPER_SIGN_UPLOAD_ROOT!, subdir) }
+})
+if (scratch) process.env.PAPER_SIGN_UPLOAD_ROOT = mkdtempSync(path.join(tmpdir(), "paper-sign-uploads-"))
 
 /** The browser session the routes see. */
 const browser = vi.hoisted(() => ({
