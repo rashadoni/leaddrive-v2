@@ -394,6 +394,8 @@ async function applyCreateDraft(
     date: routeDate,
     agentIds: [input.auth.agentId],
   })
+  const ownDraft = await joinOwnDraftOfDay(tx, { ...input, routeDate })
+  if (ownDraft) return ownDraft
   const duplicate = await tx.mtmRoute.findFirst({
     where: { organizationId: input.auth.orgId, dedupeKey, deletedAt: null },
     select: { id: true },
@@ -446,6 +448,115 @@ async function applyCreateDraft(
       command: "CREATE_DRAFT",
     },
   })
+}
+
+/**
+ * One draft per day for the agent's own planner (Zeytun, 2026-11-26). A save
+ * made without network is queued as CREATE_DRAFT, and the planner, which has
+ * no route id yet, cannot publish it; the agent sees nothing happen and saves
+ * again — a second CREATE_DRAFT for the same day. Both reached the server
+ * when the phone came back online: two drafts on one day, and the planner
+ * refuses to touch a day with two drafts («Bu günün marşrutunu burada dəyişmək
+ * olmur»). So a CREATE_DRAFT for a day that already has the agent's own draft
+ * adds its clients to that draft instead: the draft keeps its stops, order and
+ * times, the new clients follow, and the answer names the existing draft, so
+ * the phone goes on with the route it already has.
+ */
+async function joinOwnDraftOfDay(
+  tx: Prisma.TransactionClient,
+  input: {
+    auth: ExecuteMtmMobileRouteCommandInput["auth"]
+    command: Extract<MtmMobileRouteCommandInput, { command: "CREATE_DRAFT" }>
+    now: Date
+    routeDate: Date
+  },
+): Promise<CommandApplicationOutcome | null> {
+  const drafts = await tx.mtmRoute.findMany({
+    where: {
+      organizationId: input.auth.orgId,
+      agentId: input.auth.agentId,
+      date: input.routeDate,
+      status: "DRAFT",
+      deletedAt: null,
+    },
+    orderBy: { createdAt: "asc" },
+    include: {
+      assignments: { where: { removedAt: null }, select: { agentId: true } },
+      points: {
+        where: { deletedAt: null },
+        select: { customerId: true, contactId: true, plannedTime: true, orderIndex: true },
+        orderBy: { orderIndex: "asc" },
+      },
+    },
+  })
+  const draft = drafts.find((route) => isSelfManagedRoute(route, input.auth.agentId))
+  if (!draft) return null
+
+  const present = new Set(draft.points.map(mtmRouteTargetKey))
+  const added: typeof input.command.payload.points = []
+  for (const point of input.command.payload.points) {
+    const key = mtmRouteTargetKey(point)
+    if (present.has(key)) continue
+    present.add(key)
+    added.push(point)
+  }
+  const answer = (version: number, totalPoints: number) => applied(200, {
+    id: draft.id,
+    status: "DRAFT",
+    version,
+    publishedVersion: draft.publishedVersion,
+    publishedAt: draft.publishedAt?.toISOString() ?? null,
+  }, {
+    action: "ROUTE_UPDATE",
+    routeId: draft.id,
+    agentId: input.auth.agentId,
+    oldData: { status: draft.status, version: draft.version, totalPoints: draft.totalPoints },
+    newData: { status: "DRAFT", version, totalPoints, command: "CREATE_DRAFT", joinedDraft: true },
+  })
+  if (added.length === 0) return answer(draft.version, draft.points.length)
+
+  const merged = [
+    ...draft.points.map((point) => ({
+      customerId: point.customerId,
+      contactId: point.contactId,
+      plannedTime: point.plannedTime?.toISOString() ?? null,
+    })),
+    ...added,
+  ]
+  const dedupeKey = buildMtmRouteDedupeKey({
+    date: input.routeDate,
+    primaryAgentId: input.auth.agentId,
+    assignments: [{ agentId: input.auth.agentId, role: "PRIMARY" as const }],
+    points: merged,
+  })
+  const duplicate = await tx.mtmRoute.findFirst({
+    where: { organizationId: input.auth.orgId, dedupeKey, deletedAt: null, id: { not: draft.id } },
+    select: { id: true },
+  })
+  if (duplicate) return conflict("ROUTE_DUPLICATE", "An identical route already exists")
+  if (detectMtmRouteInternalScheduleConflicts(merged).length > 0) {
+    return conflict("ROUTE_POINT_TIME_CONFLICT", "Two route stops cannot use the same meeting time")
+  }
+
+  const updated = await tx.mtmRoute.updateMany({
+    where: { id: draft.id, organizationId: input.auth.orgId, status: "DRAFT", version: draft.version, deletedAt: null },
+    data: { dedupeKey, totalPoints: merged.length, version: { increment: 1 } },
+  })
+  if (updated.count !== 1) {
+    return conflict("ROUTE_VERSION_CONFLICT", "This route was changed by another user. Reload it before saving.")
+  }
+  const nextIndex = draft.points.reduce((max, point) => Math.max(max, point.orderIndex), -1) + 1
+  await tx.mtmRoutePoint.createMany({
+    data: added.map((point, index) => ({
+      organizationId: input.auth.orgId,
+      routeId: draft.id,
+      customerId: point.customerId,
+      contactId: point.contactId ?? null,
+      orderIndex: nextIndex + index,
+      plannedTime: point.plannedTime ? new Date(point.plannedTime) : null,
+    })),
+  })
+  return answer(draft.version + 1, merged.length)
 }
 
 async function applyUpdateDraft(
@@ -629,8 +740,25 @@ async function applyPublish(
   if (!route) return routeNotFound()
   if (!isSelfManagedRoute(route, input.auth.agentId)) return forbidden()
   if (route.status === "PLANNED") {
-    // A completed PUBLISH normally finds its original receipt. A different
-    // operation against an already-published route is a terminal conflict.
+    // A completed PUBLISH normally finds its original receipt. A second
+    // PUBLISH of the very version that was published asks for what is already
+    // true: the phone publishes a save that went out while offline, and the
+    // planner that saved it may publish it too (Zeytun, 2026-11-26). Anything
+    // else against a published route is a terminal conflict.
+    if (route.publishedVersion === input.command.payload.expectedVersion + 1 && route.version === route.publishedVersion) {
+      return applied(200, {
+        id: route.id,
+        status: route.status,
+        version: route.version,
+        publishedVersion: route.publishedVersion,
+        publishedAt: route.publishedAt?.toISOString() ?? null,
+      }, {
+        action: "ROUTE_PUBLISH",
+        routeId: route.id,
+        agentId: input.auth.agentId,
+        newData: { status: route.status, version: route.version, command: "PUBLISH", alreadyPublished: true },
+      })
+    }
     return conflict("ROUTE_TRANSITION_INVALID", "Only draft routes may be published")
   }
   if (route.status !== "DRAFT") {
