@@ -33961,6 +33961,7 @@
     "replyByRule": "Sent in Direct automatically for the word “{keyword}”",
     "replyPublicBy": "{name} — under the post",
     "replyPublicFromApp": "Reply under the post from the Instagram app",
+    "tiktokNoDirect": "TikTok does not allow a private message — only an answer under the video.",
     "replyDirectBy": "{name} — in Direct",
     "someone": "A teammate",
     "replyMessenger": "Message in Messenger",

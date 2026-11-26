@@ -125,6 +125,11 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # Inbox AI training (lib/inbox/learning): reads how people answered on channels in «Обучение»,
   # drafts every second answer silently and compares. Bounded per run, per day and by the AI budget.
   printf '%s\n' "4-59/5 * * * * $TRIGGER /api/cron/inbox-learning >> $LOG 2>&1"
+  # Comments under owned TikTok videos (lib/inbox/tiktok-comment-ingest). A quarter of an hour, not
+  # five minutes: every run asks TikTok for the account's videos and then for each video's comments,
+  # and TikTok's own comment webhook promises five minutes anyway. Minutes 6/21/36/51 — the only
+  # quarter slots where no minute of the day already starts fifteen jobs.
+  printf '%s\n' "6-59/15 * * * * $TRIGGER /api/cron/tiktok-comments >> $LOG 2>&1"
   # Backstop delayed/missed Chatwoot message_created webhooks. The endpoint is
   # bounded, exact-id idempotent and pinned to one configured TikTok inbox.
   printf '%s\n' "* * * * * $TRIGGER /api/cron/chatwoot-inbound-poll >> $LOG 2>&1"

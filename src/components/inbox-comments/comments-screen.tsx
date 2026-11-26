@@ -184,7 +184,7 @@ export function CommentsScreen() {
                     <span className="line-clamp-2 text-sm font-medium">{post.caption || t(post.isReel ? "reelNoCaption" : "postNoCaption")}</span>
                     <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                       <ChannelIcon channel={post.platform} className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{post.channelName ?? (post.platform === "facebook" ? "Facebook" : "Instagram")}</span>
+                      <span className="truncate">{post.channelName ?? (post.platform === "facebook" ? "Facebook" : post.platform === "tiktok" ? "TikTok" : "Instagram")}</span>
                     </span>
                     <span className={cn("mt-0.5 block text-xs", post.unanswered > 0 ? "font-semibold text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400")}>
                       {post.unanswered > 0 ? t("postUnanswered", { unanswered: post.unanswered, total: post.total }) : t("postAllAnswered", { total: post.total })}
@@ -255,17 +255,26 @@ function CommentCard({ comment, onSent }: { comment: BoardComment; onSent: () =>
   const [error, setError] = useState<string | null>(null)
 
   const isFacebook = comment.platform === "facebook"
+  const isTikTok = comment.platform === "tiktok"
   // Facebook has no ordinary message to fall back on here: the person's thread is the Messenger one.
-  const canWriteDirect = !isFacebook || comment.privateReplyAvailable
+  // TikTok has no private answer at all: its direct messages are the Business Messaging permission,
+  // which the platform has stopped issuing, so the button is absent and the card says why.
+  const canWriteDirect = !isTikTok && (!isFacebook || comment.privateReplyAvailable)
   const open = (next: Mode) => { setMode(next); setError(null) }
 
   const send = async () => {
-    if (!mode || !text.trim() || (!isFacebook && !comment.conversationId)) return
+    if (!mode || !text.trim() || (!isFacebook && !isTikTok && !comment.conversationId)) return
     setBusy(true)
     setError(null)
     try {
-      // Facebook has its own route: a Page comment is not a row of a conversation.
-      const res = isFacebook
+      // Facebook and TikTok have routes of their own: their comments are not rows of a conversation.
+      const res = isTikTok
+        ? await fetch(`/api/v1/inbox/comments/tiktok/${encodeURIComponent(comment.id)}/reply`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ body: text.trim() }),
+          })
+        : isFacebook
         ? await fetch(`/api/v1/inbox/comments/facebook/${encodeURIComponent(comment.id)}/reply`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -356,6 +365,7 @@ function CommentCard({ comment, onSent }: { comment: BoardComment; onSent: () =>
               </Button>
             </Hint>
           )}
+          {isTikTok && <span className="self-center text-xs text-muted-foreground">{t("tiktokNoDirect")}</span>}
           {comment.conversationId && (
             <Hint text={t("openConversationHint")}>
               <Link href={`/inbox?conversation=${encodeURIComponent(comment.conversationId)}`} className="inline-flex h-9 items-center rounded-lg border border-border px-3 text-sm font-medium hover:bg-muted">
@@ -372,7 +382,8 @@ function CommentCard({ comment, onSent }: { comment: BoardComment; onSent: () =>
           <Textarea
             rows={3}
             value={text}
-            maxLength={1000}
+            // TikTok refuses a longer comment; the others take a thousand.
+            maxLength={isTikTok ? 150 : 1000}
             placeholder={t("composerPlaceholder")}
             onChange={(e) => setText(e.target.value)}
             data-testid="inbox-comments-reply-text"

@@ -16,6 +16,7 @@ import { prisma } from "@/lib/prisma"
 import { privateReplyAvailable, storedInstagramComment } from "@/lib/social/instagram-comments"
 import { matchCommentKeywordRule, type CommentKeywordRule } from "@/lib/inbox/comment-keyword-rules"
 import { facebookPrivateReplyAvailable, storedFacebookReplies } from "@/lib/inbox/facebook-comment-reply"
+import { storedTikTokReplies } from "@/lib/inbox/tiktok-comment-reply"
 
 /** How far back the section looks, and how many comments it carries at most. */
 export const COMMENTS_BOARD_DAYS = 30
@@ -46,7 +47,7 @@ export type BoardReply = {
 export type BoardComment = {
   /** The stored row — what an answer names. */
   id: string
-  platform: "instagram" | "facebook"
+  platform: "instagram" | "facebook" | "tiktok"
   /** Facebook: null until a private reply has told us the person's Messenger thread. */
   conversationId: string | null
   author: string
@@ -64,7 +65,7 @@ export type BoardComment = {
 
 export type BoardPost = {
   key: string
-  platform: "instagram" | "facebook"
+  platform: "instagram" | "facebook" | "tiktok"
   channelConfigId: string | null
   channelName: string | null
   caption: string | null
@@ -267,6 +268,85 @@ export function buildFacebookPosts(input: {
   return list
 }
 
+export type TikTokCommentRow = {
+  id: string
+  socialAccountId: string | null
+  accountName: string | null
+  commentId: string
+  videoId: string
+  parentId: string | null
+  username: string | null
+  displayName: string | null
+  body: string
+  commentedAt: Date
+  caption: string | null
+  permalink: string | null
+  replies: unknown
+}
+
+/**
+ * TikTok's rows in the board's shape.
+ *
+ * Two things differ from the other platforms, and both are the same fact: TikTok direct messages
+ * need a permission the platform has stopped issuing. So a comment is never «answerable in Direct»
+ * (`privateReplyAvailable` is false, there is no conversation), and a keyword rule — which answers
+ * by writing privately — is not matched against it at all, because showing the word would promise a
+ * message nobody can send.
+ */
+export function buildTikTokPosts(input: {
+  comments: readonly TikTokCommentRow[]
+}): BoardPost[] {
+  const posts = new Map<string, BoardPost>()
+  for (const row of input.comments) {
+    const key = `tiktok:${row.socialAccountId ?? "-"}:${row.videoId}`
+    const at = row.commentedAt.toISOString()
+    let post = posts.get(key)
+    if (!post) {
+      post = {
+        key,
+        platform: "tiktok",
+        // TikTok accounts are not channel configs; the post is named by its account instead.
+        channelConfigId: null,
+        channelName: row.accountName,
+        caption: row.caption,
+        permalink: row.permalink,
+        imageUrl: null,
+        // Every TikTok post is a video.
+        isReel: true,
+        lastCommentAt: at,
+        total: 0,
+        unanswered: 0,
+        comments: [],
+      }
+      posts.set(key, post)
+    }
+    post.caption ??= row.caption
+    post.permalink ??= row.permalink
+    const replies: BoardReply[] = storedTikTokReplies(row.replies)
+      .map((r) => ({ id: r.id, text: r.text, mode: "public" as const, createdAt: r.at, authorName: r.authorName, keyword: null, fromApp: r.fromApp }))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    post.comments.push({
+      id: row.id,
+      platform: "tiktok",
+      conversationId: null,
+      author: row.username ? `@${row.username}` : row.displayName || "TikTok",
+      text: row.body,
+      createdAt: at,
+      isThreadReply: Boolean(row.parentId),
+      answered: replies.length > 0,
+      privateReplyAvailable: false,
+      keyword: null,
+      replies,
+    })
+    post.total += 1
+    if (replies.length === 0) post.unanswered += 1
+    if (at > post.lastCommentAt) post.lastCommentAt = at
+  }
+  const list = [...posts.values()]
+  for (const post of list) post.comments.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  return list
+}
+
 export type CommentsBoardChannel = { id: string; name: string }
 
 export type CommentsBoard = {
@@ -355,6 +435,39 @@ export async function loadCommentsBoard(params: {
   })
   const facebookTruncated = facebookRows.length > COMMENTS_BOARD_LIMIT
 
+  // TikTok comments hang off a social account, not a channel config, so the page filter does not
+  // reach them and neither does `hiddenChannelIds`: there is no page to hide.
+  type StoredTikTokRow = Omit<TikTokCommentRow, "accountName"> & { socialAccount: { displayName: string | null; handle: string } | null }
+  const tiktokStored: StoredTikTokRow[] = await prisma.tikTokVideoComment.findMany({
+    where: { organizationId, removedAt: null, commentedAt: { gte: since } },
+    orderBy: { commentedAt: "desc" },
+    take: COMMENTS_BOARD_LIMIT + 1,
+    select: {
+      id: true, socialAccountId: true, commentId: true, videoId: true, parentId: true,
+      username: true, displayName: true, body: true, commentedAt: true, caption: true, permalink: true, replies: true,
+      socialAccount: { select: { displayName: true, handle: true } },
+    },
+  })
+  const tiktokTruncated = tiktokStored.length > COMMENTS_BOARD_LIMIT
+  const tiktokRows: TikTokCommentRow[] = (tiktokTruncated ? tiktokStored.slice(0, COMMENTS_BOARD_LIMIT) : tiktokStored)
+    .map((row) => ({
+      id: row.id,
+      socialAccountId: row.socialAccountId,
+      // The stored handle is the account's `open_id`, which says nothing to a person; its display
+      // name is what the account calls itself.
+      accountName: row.socialAccount?.displayName ?? null,
+      commentId: row.commentId,
+      videoId: row.videoId,
+      parentId: row.parentId,
+      username: row.username,
+      displayName: row.displayName,
+      body: row.body,
+      commentedAt: row.commentedAt,
+      caption: row.caption,
+      permalink: row.permalink,
+      replies: row.replies,
+    }))
+
   const posts = [
     ...buildCommentsBoard({ comments, replies, channelNames, rules: params.rules, now }),
     ...buildFacebookPosts({
@@ -363,7 +476,8 @@ export async function loadCommentsBoard(params: {
       rules: params.rules,
       now,
     }),
+    ...buildTikTokPosts({ comments: tiktokRows }),
   ].sort((a, b) => b.lastCommentAt.localeCompare(a.lastCommentAt))
 
-  return { posts, channels, truncated: truncated || facebookTruncated }
+  return { posts, channels, truncated: truncated || facebookTruncated || tiktokTruncated }
 }
