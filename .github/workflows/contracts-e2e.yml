@@ -1,0 +1,155 @@
+name: Contracts authenticated E2E
+
+# The contract's whole path in a real browser, with a UI audit of every screen
+# (owner, 2026-11-26: «сделай UI, UX? E2E? аудиты на сайте»): the wizard,
+# approval, e-sign by link, the counterparty signing from the client portal,
+# the signature sheet and signed PDF, a price protocol, an invoice and an
+# acceptance act, and the portal's «Sənədlər». Each screen is shot at 1440 and
+# 390 px and measured. Disposable Postgres, made-up companies and people;
+# production is never touched. Scenarios: scripts/contracts-browser-evidence.mjs.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/contracts-e2e.yml'
+      - 'scripts/contracts-browser-evidence.mjs'
+      - 'src/app/(dashboard)/contracts/**'
+      - 'src/app/(dashboard)/invoices/**'
+      - 'src/app/api/v1/contracts/**'
+      - 'src/app/api/v1/sign/**'
+      - 'src/app/sign/**'
+      - 'src/app/portal/**'
+      - 'src/app/api/v1/public/portal-auth/**'
+      - 'src/app/api/v1/public/portal-config/**'
+      - 'src/app/api/v1/public/portal-documents/**'
+      - 'src/components/contracts/**'
+      - 'src/components/portal/**'
+      - 'src/components/contract-esign-signature-sheet.tsx'
+      - 'src/lib/clm/**'
+      - 'src/lib/esign/**'
+      - 'src/lib/contract-lifecycle/**'
+      - 'src/lib/portal-documents.ts'
+      - 'src/lib/portal-auth.ts'
+      - 'prisma/schema.prisma'
+      - 'messages/*.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contracts-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser:
+    name: Contracts authenticated browser and database
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      NODE_ENV: development
+      NODE_OPTIONS: --max-old-space-size=6144
+      CONTRACTS_E2E: '1'
+      LEADDRIVE_DISABLE_SERVICE_WORKER: '1'
+      NEXT_TELEMETRY_DISABLED: '1'
+      CONTRACTS_E2E_OUTPUT: artifacts/contracts-e2e
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: contracts_e2e
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: [5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d contracts_e2e"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Ephemeral loopback environment
+        env:
+          PG_PORT: ${{ job.services.postgres.ports['5432'] }}
+        run: |
+          APP_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')"
+          DB_PASSWORD="$(openssl rand -hex 24)"
+          AUTH_SECRET_VALUE="$(openssl rand -hex 32)"
+          PII_SECRET="$(openssl rand -hex 32)"
+          ESIGN_SECRET_VALUE="$(openssl rand -hex 32)"
+          echo "::add-mask::$DB_PASSWORD"
+          echo "::add-mask::$AUTH_SECRET_VALUE"
+          echo "::add-mask::$PII_SECRET"
+          echo "::add-mask::$ESIGN_SECRET_VALUE"
+          {
+            echo "ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/contracts_e2e"
+            echo "EVENT_PLATFORM_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:${PG_PORT}/contracts_e2e"
+            echo "DATABASE_URL=postgresql://contracts_e2e:${DB_PASSWORD}@127.0.0.1:${PG_PORT}/contracts_e2e"
+            echo "CONTRACTS_E2E_DATABASE_PASSWORD=$DB_PASSWORD"
+            echo "CONTRACTS_E2E_PORT=$APP_PORT"
+            echo "CONTRACTS_E2E_BASE_URL=http://localhost:${APP_PORT}"
+            echo "NEXTAUTH_URL=http://localhost:${APP_PORT}"
+            echo "AUTH_URL=http://localhost:${APP_PORT}"
+            echo "APP_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_APP_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_BASE_URL=http://localhost:${APP_PORT}"
+            echo "NEXT_PUBLIC_MARKETING_URL=http://localhost:${APP_PORT}"
+            echo "AUTH_SECRET=$AUTH_SECRET_VALUE"
+            echo "NEXTAUTH_SECRET=$AUTH_SECRET_VALUE"
+            echo "TENANT_PII_MASTER_KEY=$PII_SECRET"
+            echo "ESIGN_SECRET=$ESIGN_SECRET_VALUE"
+            echo "CONTRACTS_E2E_LOG=${RUNNER_TEMP}/contracts-e2e.log"
+            echo "LEADDRIVE_RUNTIME_DIR=${RUNNER_TEMP}/contracts-e2e-runtime"
+            echo "LEADDRIVE_LOG_DIR=${RUNNER_TEMP}/contracts-e2e-logs"
+          } >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Development log transport, pinned, for this runner only
+        # `next dev` makes the app's logger print through pino-pretty, which is
+        # not a product dependency: without it every route that logs answers 500
+        # here (and only here). Same pin and integrity as support-real-backend-evidence.yml.
+        run: |
+          set -euo pipefail
+          fixture_deps="$(mktemp -d "$RUNNER_TEMP/contracts-log-transport.XXXXXX")"
+          npm install --prefix "$fixture_deps" --ignore-scripts --no-audit --no-fund --save-exact pino-pretty@13.1.1
+          node -e 'const p=require(process.argv[1]);if(p.packages["node_modules/pino-pretty"].integrity!=="sha512-TNNEOg0eA0u+/WuqH0MH0Xui7uqVk9D74ESOpjtebSQYbNWJk/dIxCXIxFsNfeN53JmtWqYHP2OrIZjT/CBEnA==")process.exit(1)' "$fixture_deps/package-lock.json"
+          test ! -e node_modules/pino-pretty
+          ln -s "$fixture_deps/node_modules/pino-pretty" node_modules/pino-pretty
+          node -e 'const pino=require("pino");const log=pino({transport:{target:require.resolve("pino-pretty")}});log.flush()'
+      - name: Schema and tenant RLS on the disposable database
+        run: |
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
+          DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --skip-generate
+          npx prisma generate
+          node scripts/contracts-browser-evidence.mjs prepare
+      - run: npx playwright install --with-deps chromium
+      - name: The contract's path in a real browser, every screen audited
+        run: |
+          node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port "$CONTRACTS_E2E_PORT" > "$CONTRACTS_E2E_LOG" 2>&1 &
+          APP_PID=$!
+          cleanup() { kill "$APP_PID" 2>/dev/null || true; wait "$APP_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 90); do
+            if curl -fsS --max-time 5 "$CONTRACTS_E2E_BASE_URL/api/v1/ping" >/dev/null 2>&1; then break; fi
+            if ! kill -0 "$APP_PID" 2>/dev/null || [ "$attempt" -eq 90 ]; then
+              echo '::error::The isolated application failed to start'
+              tail -n 60 "$CONTRACTS_E2E_LOG" | grep -viE 'secret|password|token|cookie' || true
+              exit 1
+            fi
+            sleep 2
+          done
+          node scripts/contracts-browser-evidence.mjs
+      - name: Application errors seen during the run
+        if: failure()
+        run: grep -E 'Error|error:|⨯' "$CONTRACTS_E2E_LOG" | grep -viE 'secret|password|token|cookie|authorization' | tail -n 80 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: contracts-e2e-${{ github.sha }}-${{ github.run_attempt }}
+          path: artifacts/contracts-e2e
+          if-no-files-found: ignore
+          retention-days: 14

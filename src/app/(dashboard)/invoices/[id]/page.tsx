@@ -336,6 +336,9 @@ function KpiCards({
 
 // ---------- Main page ----------
 
+/** The placeholders a reminder text may use — code, not words, so not in the translations (ICU reads «{{…}}» as a broken argument). */
+const CHAIN_TEMPLATE_VARS = "{{recipient_name}}, {{invoice_number}}, {{amount}}, {{balance_due}}, {{due_date}}"
+
 export default function InvoiceDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -1676,7 +1679,7 @@ export default function InvoiceDetailPage() {
         {/* ===== Add Chain Step Dialog ===== */}
         <Dialog open={addStepOpen} onOpenChange={setAddStepOpen}>
           <DialogHeader>
-            <DialogTitle>{t("chainAddStepTitle").replace("{num}", String(chainSteps.length + 1))}</DialogTitle>
+            <DialogTitle>{t("chainAddStepTitle", { num: chainSteps.length + 1 })}</DialogTitle>
           </DialogHeader>
           <DialogContent>
             {/* Step type grid */}
@@ -1715,7 +1718,7 @@ export default function InvoiceDetailPage() {
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">
-                      {t("chainBodyLabel")} · {t("chainVarsHint")}
+                      {t("chainBodyLabel")} · {t("chainVarsHint", { vars: CHAIN_TEMPLATE_VARS })}
                     </Label>
                     <Textarea
                       value={newStepConfig.body || ""}
@@ -1729,7 +1732,7 @@ export default function InvoiceDetailPage() {
               {(newStepType === "sms" || newStepType === "send_whatsapp" || newStepType === "send_telegram") && (
                 <div>
                   <Label className="text-xs text-muted-foreground">
-                    {t("chainMessageLabel")} · {t("chainVarsHint")}
+                    {t("chainMessageLabel")} · {t("chainVarsHint", { vars: CHAIN_TEMPLATE_VARS })}
                   </Label>
                   <Textarea
                     value={newStepConfig.message || ""}

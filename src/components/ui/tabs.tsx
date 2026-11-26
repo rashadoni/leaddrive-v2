@@ -14,12 +14,14 @@ const TabsList = React.forwardRef<
     data-crm-tabs=""
     ref={ref}
     className={cn(
-      "inline-flex h-9 items-center justify-center rounded-xl bg-muted/50 p-1 text-muted-foreground border border-zinc-200/50 dark:border-zinc-700/50",
+      "inline-flex h-auto min-h-9 max-w-full flex-wrap items-center justify-center rounded-xl bg-muted/50 p-1 text-muted-foreground border border-zinc-200/50 dark:border-zinc-700/50",
       className
     )}
     {...props}
   />
 ))
+// On a narrow screen the tabs wrap onto a second row instead of running past the edge (contracts E2E, 2026-11-26):
+// a strip that scrolls inside the page is the inner scroll the owner does not want.
 TabsList.displayName = TabsPrimitive.List.displayName
 
 const TabsTrigger = React.forwardRef<

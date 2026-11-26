@@ -123,7 +123,7 @@ export function ContractDocumentsChain({ contractId, canWrite, canInvoice }: { c
         <h2 className="text-base font-semibold">{t("title")}</h2>
         <span className="text-xs text-muted-foreground">{t("subtitle")}</span>
       </div>
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <div className={linkClass(1, contractSigned)} data-testid="chain-contract">
           <span className="text-[11px] font-bold text-muted-foreground">1</span>
           <b className="text-sm">{t("linkContract")}</b>

@@ -1449,19 +1449,20 @@ export default function ContractDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/contracts")}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-4">
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => router.push("/contracts")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:flex">
               <FileText className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-2xl font-semibold tracking-tight leading-tight line-clamp-2" title={contract.title}>{contract.title}</h1>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>{contract.contractNumber || "—"}</span>
+              <h1 className="text-xl font-semibold tracking-tight leading-tight line-clamp-3 break-words sm:text-2xl sm:line-clamp-2" title={contract.title}>{contract.title}</h1>
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <span className="break-all">{contract.contractNumber || "—"}</span>
                 <Badge variant={statusColors[contract.status] || "secondary"}>{statusLabels[contract.status] || contract.status}</Badge>
                 <HelpButton slug="contract-detail" variant="label" />
               </div>
@@ -1482,8 +1483,9 @@ export default function ContractDetailPage() {
             </div>
           </div>
         </div>
+        </div>
         {/* ── Header actions: 1 primary CTA + View Doc + ••• overflow ── */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
           {/* Primary CTA — only "Submit for Approval" earns the filled slot */}
           {canSubmitForApproval && (
             <Button
@@ -1639,14 +1641,14 @@ export default function ContractDetailPage() {
           <CardTitle className="text-base flex items-center gap-1">{tc("details")} <InfoHint text={t("pageDescription")} size={12} /></CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="min-w-0">
               <span className="text-muted-foreground">{t("number")}:</span>
-              <span className="ml-2 font-medium">{contract.contractNumber || "—"}</span>
+              <span className="ml-2 font-medium break-all">{contract.contractNumber || "—"}</span>
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="text-muted-foreground">{tc("type")}:</span>
-              <span className="ml-2 font-medium">{contract.type || "—"}</span>
+              <span className="ml-2 font-medium">{contract.type ? (CONTRACT_TYPE_KEYS[contract.type] ? t(CONTRACT_TYPE_KEYS[contract.type]) : contract.type) : "—"}</span>
             </div>
             <div>
               <span className="text-muted-foreground">{tc("status")}:</span>
@@ -1748,9 +1750,9 @@ export default function ContractDetailPage() {
                     title={isWaitingTurn ? t("approvalWaitingTurn") : undefined}
                   >
                     {/* Level header */}
-                    <div className="flex items-center gap-2 px-3 py-2 text-sm border-b border-border/50">
+                    <div className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b border-border/50">
                       <span className="text-muted-foreground w-5 text-xs font-medium">{order}.</span>
-                      <span className="flex-1 font-medium">{firstStage.label}</span>
+                      <span className="min-w-0 flex-1 basis-32 font-medium break-words">{firstStage.label}</span>
                       {levelSize > 1 && (
                         <span className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Users className="h-3 w-3" /> {levelSize}
@@ -1800,9 +1802,9 @@ export default function ContractDetailPage() {
                         return (
                           <div
                             key={stage.id}
-                            className="flex items-center gap-2 px-3 py-2 text-sm pl-8"
+                            className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm pl-8"
                           >
-                            <span className="flex-1 text-xs text-muted-foreground">
+                            <span className="min-w-0 flex-1 basis-32 text-xs text-muted-foreground">
                               {stage.assigneeRole
                                 ? (APPROVAL_ROLE_KEYS[stage.assigneeRole] ? t(APPROVAL_ROLE_KEYS[stage.assigneeRole]) : stage.assigneeRole)
                                 : stage.assigneeUserId
@@ -2288,7 +2290,7 @@ export default function ContractDetailPage() {
       {/* ── E-Signature Section ──────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-base flex items-center gap-2">
               <PenLine className="h-4 w-4 text-muted-foreground" />
               {t("esignTitle")}
@@ -2428,20 +2430,23 @@ export default function ContractDetailPage() {
             <div className="space-y-2">
               <Label className="text-xs">{t("esignSignersLabel")} *</Label>
               {esignSigners.map((signer, idx) => (
-                <div key={idx} className="grid grid-cols-[1fr_1fr_auto_auto] gap-1.5 items-start">
-                  <div>
+                <div key={idx} className="grid grid-cols-[1fr_auto_auto] gap-1.5 items-start sm:grid-cols-[1fr_1fr_auto_auto]">
+                  {/* On a phone the name takes the whole row: four fields in 300 px left nothing readable. */}
+                  <div className="col-span-3 min-w-0 sm:col-span-1">
                     <Input
                       value={signer.fullName}
                       onChange={(e) => updateSigner(idx, "fullName", e.target.value)}
                       placeholder={t("esignSignerFullName")}
+                      aria-label={t("esignSignerFullName")}
                       className="h-8 text-sm"
                     />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <Input
                       value={signer.email}
                       onChange={(e) => updateSigner(idx, "email", e.target.value)}
                       placeholder={t("esignSignerEmail")}
+                      aria-label={t("esignSignerEmail")}
                       type="email"
                       className="h-8 text-sm"
                     />
@@ -2464,6 +2469,7 @@ export default function ContractDetailPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        aria-label={tc("delete")}
                         onClick={() => removeSigner(idx)}
                       >
                         <X className="h-4 w-4" />
@@ -2585,7 +2591,7 @@ export default function ContractDetailPage() {
         return (
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <ShieldAlert className="h-4 w-4 text-muted-foreground" />
                   {t("deviationsSectionTitle")}
@@ -2688,7 +2694,7 @@ export default function ContractDetailPage() {
       {isFinanceUser && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 {t("rrTitle")}
@@ -2906,7 +2912,7 @@ export default function ContractDetailPage() {
       {/* ── AI Insights Panel (Slice 6a) ────────────────────────────── */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-base flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-muted-foreground" />
               {t("aiInsightsTitle")}
@@ -3027,7 +3033,7 @@ export default function ContractDetailPage() {
       {/* ── Risk Score Panel (Slice 6b) ──────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-base flex items-center gap-2">
               <ShieldAlert className="h-4 w-4 text-muted-foreground" />
               {t("aiRiskScoreTitle")}
@@ -3166,7 +3172,7 @@ export default function ContractDetailPage() {
       {isFinanceUser && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <RefreshCw className="h-4 w-4 text-muted-foreground" />
                 {t("reindexTitle")}
@@ -3328,7 +3334,7 @@ export default function ContractDetailPage() {
       {/* ── Milestones Panel (Slice 5a) ──────────────────────────── */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-base flex items-center gap-2">
               <ListChecks className="h-4 w-4 text-muted-foreground" />
               {t("milestonesTitle")}
