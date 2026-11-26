@@ -16,7 +16,8 @@ import { Select } from "@/components/ui/select"
 import { InfoHint } from "@/components/info-hint"
 import { PageDescription } from "@/components/page-description"
 import { DidYouKnow } from "@/components/did-you-know"
-import { FileText, Plus, Pencil, Trash2, AlertTriangle, Clock, TrendingUp, Building2, History, X, Upload, Download, File, Loader2, Handshake, User, Receipt, CheckSquare, FileDown, Layers, Sparkles, Search, Eye } from "lucide-react"
+import { FileText, Plus, Pencil, Trash2, AlertTriangle, Clock, TrendingUp, Building2, History, X, Upload, Download, File, Loader2, Handshake, User, Receipt, CheckSquare, FileDown, Layers, Sparkles, Search, Eye, Lock } from "lucide-react"
+import { Hint } from "@/components/hint"
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,8 @@ interface ContractFile {
   fileSize: number
   mimeType: string
   createdAt: string
+  /** "signed_copy" — the scan behind «Подписан на бумаге»; the server refuses to delete it. */
+  purpose?: string
 }
 
 interface ContractTag {
@@ -571,10 +574,14 @@ export default function ContractsPage() {
   async function handleFileDelete(fileId: string) {
     if (!detailContract || !confirm("Delete file?")) return
     try {
-      await fetch(`/api/v1/contracts/${detailContract.id}/files/${fileId}`, {
+      const res = await fetch(`/api/v1/contracts/${detailContract.id}/files/${fileId}`, {
         method: "DELETE",
         headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
       })
+      if (!res.ok) {
+        toast.error(tc("errorDeleteFailed"))
+        return
+      }
       setDetailFiles(prev => prev.filter(f => f.id !== fileId))
     } catch (err) { console.error(err) }
   }
@@ -1519,12 +1526,20 @@ export default function ContractsPage() {
                           >
                             <Download className="h-3.5 w-3.5 text-muted-foreground" />
                           </a>
-                          <button
-                            onClick={() => handleFileDelete(f.id)}
-                            className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-red-400" />
-                          </button>
+                          {f.purpose === "signed_copy" ? (
+                            <Hint text={t("paperSignScanLocked")}>
+                              <span tabIndex={0} className="p-1" data-testid="signed-copy-lock">
+                                <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                              </span>
+                            </Hint>
+                          ) : (
+                            <button
+                              onClick={() => handleFileDelete(f.id)}
+                              className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>

@@ -12,6 +12,7 @@ import { ArrowLeft, Pencil, Trash2, FileText, Calendar, DollarSign, Hash, Clock,
 import { ColorStatCard } from "@/components/color-stat-card"
 import { InfoHint } from "@/components/info-hint"
 import { EsignSignatureSheet } from "@/components/contract-esign-signature-sheet"
+import { ContractPaperSignatureButton, ContractPaperSignatureRow, type PaperSignatureInfo } from "@/components/contracts/contract-paper-signature"
 import { ContractDocumentsChain } from "@/components/contracts/contract-documents-chain"
 import { checkPermission, type Role } from "@/lib/permissions"
 import { ContractForm } from "@/components/contract-form"
@@ -2315,14 +2316,24 @@ export default function ContractDetailPage() {
                 <Send className="h-3 w-3 mr-1" />
                 {t("esignSendForSignature")}
               </Button>
+              <ContractPaperSignatureButton
+                contractId={contract.id}
+                status={contract.status}
+                role={userRole}
+                endDate={contract.endDate ?? null}
+                onSigned={() => { void fetchContract(); void fetchEnvelopes() }}
+              />
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          {contract.paperSignature && (
+            <ContractPaperSignatureRow info={contract.paperSignature as PaperSignatureInfo} />
+          )}
           {envelopesLoading ? (
             <div className="animate-pulse h-8 bg-muted rounded" />
           ) : envelopes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("esignEmpty")}</p>
+            contract.paperSignature ? null : <p className="text-sm text-muted-foreground">{t("esignEmpty")}</p>
           ) : (
             <div className="space-y-3">
               {envelopes.map((env) => (

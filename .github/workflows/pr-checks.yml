@@ -629,6 +629,17 @@ jobs:
           CONTRACT_EXPIRY_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           CONTRACT_EXPIRY_DB_GATE: required
 
+      - name: Contract paper signature database gate
+        # «Подписан на бумаге»: an approved contract becomes «Активный» with the
+        # day on paper and the sealed scan, an e-sign invitation still out dies,
+        # a draft skips approval for an administrator only, and nothing in
+        # approval, in force or in another organization moves — the real route
+        # on a real Postgres under the tenant policy.
+        run: npx vitest run src/__tests__/contract-paper-signature-postgres.test.ts
+        env:
+          CONTRACT_PAPER_SIGNATURE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          CONTRACT_PAPER_SIGNATURE_DB_GATE: required
+
       - name: Procurement database gate
         # Purchasing for a customer order (docs/sales-procurement/README.md):
         # the module and the role decide who reads and adds suppliers, nothing
