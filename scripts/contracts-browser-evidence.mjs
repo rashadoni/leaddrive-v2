@@ -304,7 +304,8 @@ async function main() {
       await dialog.getByRole('button', { name: say('contracts.submitForApproval') }).click()
       await page.getByRole('button', { name: say('contracts.approvalApproveAction') }).first().waitFor({ timeout: 120000 })
       await page.getByRole('button', { name: say('contracts.approvalApproveAction') }).first().click()
-      await page.waitForTimeout(1500)
+      // `next dev` compiles the route on its first call: give the click time to land before judging it.
+      for (let i = 0; i < 90 && (await contract()).status !== 'approved'; i++) await page.waitForTimeout(1000)
     } catch (error) {
       uiFallback('approval', error)
       const submit = await api(`${C}/submit-for-approval`, { method: 'POST', body: { stages: [{ label: 'Hüquqşünas', approvers: [{}], mode: 'all' }] } })
@@ -408,8 +409,11 @@ async function main() {
     await page.waitForURL(/\/documents\/[^/]+$/, { timeout: 120000 })
     const docId = new URL(page.url()).pathname.split('/').pop()
     await page.getByTestId('document-status').waitFor({ timeout: 120000 })
+    // The editor fills itself from the server after it appears; a line added before that is wiped.
+    await settle(page)
     if (kind === 'price_protocol') {
       await page.getByTestId('add-line').click()
+      await page.getByLabel(say('contractDocuments.colName')).first().waitFor({ timeout: 30000 })
       await page.getByLabel(say('contractDocuments.colName')).last().fill('Ofis kreslosu')
       await page.getByLabel(say('contractDocuments.colUnit')).last().fill('ədəd')
       await page.getByLabel(say('contractDocuments.colPrice')).last().fill('250')
