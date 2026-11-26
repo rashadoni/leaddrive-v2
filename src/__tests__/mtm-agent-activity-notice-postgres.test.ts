@@ -346,6 +346,90 @@ pgDescribe("what a manager reads about his agent, on a real Postgres", () => {
     expect(await queued()).toHaveLength(before)
   })
 
+  it("adds a second save of the same day to the agent's draft instead of starting another", async () => {
+    // Zeytun, 2026-11-26: two saves made without network both reached the
+    // server as CREATE_DRAFT, and the planner refused a day with two drafts.
+    phoneOf(GATED_AGENT)
+    const day = bakuDay(3)
+    const first = await command({
+      operationId: "activity-offline-first",
+      command: "CREATE_DRAFT",
+      payload: { date: day, points: [{ customerId: CLINIC_A }, { customerId: CLINIC_B }] },
+    })
+    expect(first.status).toBe(201)
+    const second = await command({
+      operationId: "activity-offline-second",
+      command: "CREATE_DRAFT",
+      payload: { date: day, points: [{ customerId: CLINIC_B }, { customerId: CLINIC_C }] },
+    })
+    expect(second.status).toBe(200)
+    expect(second.body.data).toMatchObject({ id: first.body.data.id, status: "DRAFT", version: 2 })
+
+    const drafts = await bypass(() => prisma.mtmRoute.findMany({
+      where: { organizationId: ORG, agentId: GATED_AGENT, date: new Date(`${day}T00:00:00.000Z`), deletedAt: null },
+      include: { points: { where: { deletedAt: null }, orderBy: { orderIndex: "asc" }, select: { customerId: true } } },
+    }))
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0].points.map((point) => point.customerId)).toEqual([CLINIC_A, CLINIC_B, CLINIC_C])
+    expect(drafts[0].totalPoints).toBe(3)
+
+    // The same command again changes nothing; a save naming only known clients changes nothing.
+    const replay = await command({
+      operationId: "activity-offline-second",
+      command: "CREATE_DRAFT",
+      payload: { date: day, points: [{ customerId: CLINIC_B }, { customerId: CLINIC_C }] },
+    })
+    expect(replay.body.data).toMatchObject({ id: first.body.data.id, version: 2 })
+    const known = await command({
+      operationId: "activity-offline-third",
+      command: "CREATE_DRAFT",
+      payload: { date: day, points: [{ customerId: CLINIC_A }] },
+    })
+    expect(known.status).toBe(200)
+    expect(known.body.data).toMatchObject({ id: first.body.data.id, version: 2 })
+
+    // Another day is another draft.
+    const nextDay = await command({
+      operationId: "activity-offline-next-day",
+      command: "CREATE_DRAFT",
+      payload: { date: bakuDay(4), points: [{ customerId: CLINIC_A }] },
+    })
+    expect(nextDay.status).toBe(201)
+    expect(nextDay.body.data.id).not.toBe(first.body.data.id)
+  })
+
+  it("answers a second publish of the same version as done, not as an error", async () => {
+    // The phone publishes a save that went out offline, and the planner that
+    // saved it may publish it too (Zeytun, 2026-11-26).
+    phoneOf(FREE_AGENT)
+    const draft = await command({
+      operationId: "activity-twice-create",
+      command: "CREATE_DRAFT",
+      payload: { date: bakuDay(5), points: [{ customerId: CLINIC_D }] },
+    })
+    expect(draft.status).toBe(201)
+    const publish = (operationId: string) => command({
+      operationId,
+      command: "PUBLISH",
+      routeId: draft.body.data.id,
+      payload: { expectedVersion: draft.body.data.version },
+    })
+    const first = await publish("activity-twice-publish-1")
+    expect(first.status).toBe(200)
+    const second = await publish("activity-twice-publish-2")
+    expect(second.status).toBe(200)
+    expect(second.body.data).toMatchObject({ id: draft.body.data.id, status: "PLANNED", version: first.body.data.version })
+
+    // An older version is still a conflict: the route moved on since.
+    const stale = await command({
+      operationId: "activity-twice-publish-3",
+      command: "PUBLISH",
+      routeId: draft.body.data.id,
+      payload: { expectedVersion: draft.body.data.version - 1 || 99 },
+    })
+    expect(stale.status).toBe(409)
+  })
+
   it("lands in the manager's bell with the server's own words", async () => {
     await bypass(() => drain({ organizationId: ORG, limit: 100 }))
     phoneOf(BOSS, "MANAGER")
