@@ -85,6 +85,8 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh (\/api\/cron\/)?contract-approval-escalations([ ?]|$)/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?contract-milestone-reminders([ ?]|$)/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?esign-reminders([ ?]|$)/ { next }
+  /cron-trigger\.sh (\/api\/cron\/)?ai-auto-actions([ ?]|$)/ { next }
+  /cron-trigger\.sh (\/api\/cron\/)?ai-renewal([ ?]|$)/ { next }
   { print }
 ' "$CURRENT" > "$CLEAN"
 
@@ -244,6 +246,20 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   printf '%s\n' "15 * * * * $TRIGGER /api/cron/contract-approval-escalations >> $LOG 2>&1"
   printf '%s\n' "0 8 * * * $TRIGGER /api/cron/contract-milestone-reminders >> $LOG 2>&1"
   printf '%s\n' "0 9 * * * $TRIGGER /api/cron/esign-reminders >> $LOG 2>&1"
+  # «Настройки → ИИ-автоматизация»: every switch on that page is carried out
+  # only by these two endpoints, and they did not move with production in
+  # September 2026 — the last run on record is 2026-09-04 11:30 UTC, and for
+  # almost three months the page switched nothing. Measured 2026-11-26 before
+  # turning them back on (owner: «Включить крон»): no organization has a live
+  # flag that writes to customers (only the `_shadow` suggest-mode ones), and
+  # no approved action is waiting, so a first run sends nothing by itself.
+  # ai-auto-actions writes suggestions, runs the live flags and executes what
+  # an admin approved; every ten minutes is the cadence it was written for.
+  # Minutes 2, 12, 22…: the only ten-minute phase (with 6, 16…) that keeps
+  # every minute of the day at fifteen starts. ai-renewal drafts renewal
+  # proposals for contracts ending in 28-32 days, once a day at night.
+  printf '%s\n' "2-59/10 * * * * $TRIGGER /api/cron/ai-auto-actions >> $LOG 2>&1"
+  printf '%s\n' "35 2 * * * $TRIGGER /api/cron/ai-renewal >> $LOG 2>&1"
   # Social Monitoring, trimmed to what produces something (owner, 2026-11-08:
   # «максимально оптимизировать мусор в этом модуле»). Measured on prod for
   # 1-8 November, docs/social-monitoring-audit-2026-11-08.md:
