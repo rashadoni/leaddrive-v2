@@ -193,6 +193,19 @@ async function shoot(page, name) {
   return entry
 }
 
+
+/** A page with a live channel (SSE) never goes network-idle: wait until its text stops changing. */
+async function settle(page) {
+  await page.waitForLoadState('load', { timeout: 180000 })
+  let last = ''
+  for (let i = 0; i < 60; i++) {
+    await page.waitForTimeout(1000)
+    const text = await page.evaluate(() => document.body.innerText.length + ':' + document.querySelectorAll('.animate-spin').length)
+    if (text === last && text.endsWith(':0')) return // same text twice, no spinner left
+    last = text
+  }
+}
+
 const az = JSON.parse(readFileSync('messages/az.json', 'utf8'))
 const say = (key) => key.split('.').reduce((node, part) => node?.[part], az) ?? (() => { throw new Error(`no az text for ${key}`) })()
 
@@ -236,7 +249,7 @@ async function main() {
     const session = await (await crm.request.get('/api/auth/session')).json()
     assert.equal(session.user.id, f.admin.id)
     // Every page's «watch the video?» window already offered, as the prompt itself records it — so it does not stand over the clicks.
-    const slugs = [...readFileSync('src/content/help/video-assets.ts', 'utf8').matchAll(/slug: "([a-z0-9-]+)"/g)].map((m) => m[1])
+    const slugs = [...readFileSync('src/content/help/video-assets.ts', 'utf8').matchAll(/slug: "([a-z0-9-]+)"/g)].map((m) => m[1]).filter((slug) => /contract|invoice|portal|deal|compan/.test(slug)).slice(0, 50)
     const seen = await api('/api/v1/users/me/preferences', { method: 'PUT', body: { helpVideoSeen: slugs } })
     assert.equal(seen.status, 200, JSON.stringify(seen.json))
   })
@@ -244,7 +257,7 @@ async function main() {
 
   await step('the contracts list opens', async () => {
     await page.goto('/contracts', { timeout: 180000 })
-    await page.waitForLoadState('networkidle', { timeout: 180000 })
+    await settle(page)
     await shoot(page, '01-contracts-list')
   })
 
@@ -253,16 +266,16 @@ async function main() {
     await page.getByTestId(`wizard-template-${f.template.id}`).waitFor({ timeout: 180000 })
     await shoot(page, '02-wizard-template')
     await page.getByTestId(`wizard-template-${f.template.id}`).click()
-    await page.getByRole('button', { name: say('contractWizard.next') }).click()
+    await page.getByRole('button', { name: say('contractWizard.next') }).last().click()
     await page.locator('#wizard-voen').fill(f.company.voen)
     await page.locator('#wizard-name').fill(f.company.name)
     await page.locator('#wizard-address').fill('Bakı, Neftçilər pr. 5')
     await page.locator('#wizard-director').fill('Fərid Kaspiyev')
     await shoot(page, '03-wizard-parties')
-    await page.getByRole('button', { name: say('contractWizard.next') }).click()
+    await page.getByRole('button', { name: say('contractWizard.next') }).last().click()
     await page.locator('#wizard-var-subject').fill('ofis avadanlığı')
     await shoot(page, '04-wizard-terms')
-    await page.getByRole('button', { name: say('contractWizard.check') }).click()
+    await page.getByRole('button', { name: say('contractWizard.check') }).last().click()
     await page.getByTestId('wizard-document').waitFor({ timeout: 120000 })
     const text = await page.getByTestId('wizard-document').innerText()
     assert.match(text, /Kaspi Ticarət MMC/)
@@ -272,7 +285,7 @@ async function main() {
     await page.getByTestId('wizard-save-draft').click()
     await page.waitForURL(/\/contracts\/[^/]+$/, { timeout: 180000 })
     state.contractId = new URL(page.url()).pathname.split('/').pop()
-    await page.waitForLoadState('networkidle', { timeout: 180000 })
+    await settle(page)
     await shoot(page, '06-contract-draft')
     return { contractId: state.contractId }
   })
@@ -304,7 +317,7 @@ async function main() {
     }
     assert.equal(c.status, 'approved')
     await page.reload({ timeout: 180000 })
-    await page.waitForLoadState('networkidle', { timeout: 180000 })
+    await settle(page)
     await shoot(page, '08-contract-approved')
   })
 
@@ -438,7 +451,7 @@ async function main() {
     const issued = await api(`/api/v1/invoices/${state.invoiceId}`, { method: 'PUT', body: { status: 'sent' } })
     assert.ok(issued.status < 300, `issue ${issued.status} ${JSON.stringify(issued.json).slice(0, 300)}`)
     await page.goto(`/invoices/${state.invoiceId}`, { timeout: 180000 })
-    await page.waitForLoadState('networkidle', { timeout: 180000 })
+    await settle(page)
     await shoot(page, '18-invoice')
     const invoice = (await api(`/api/v1/invoices/${state.invoiceId}`)).json
     const total = Number(invoice?.data?.totalAmount ?? invoice?.totalAmount)
@@ -474,7 +487,7 @@ async function main() {
     }
     const invoiceHref = await portalPage.getByTestId('portal-chain-invoices').locator('a').first().getAttribute('href')
     await portalPage.goto(invoiceHref, { timeout: 180000 })
-    await portalPage.waitForLoadState('networkidle', { timeout: 180000 })
+    await settle(portalPage)
     await shoot(portalPage, '23-portal-invoice')
     return { pdfs: hrefs.length }
   })
