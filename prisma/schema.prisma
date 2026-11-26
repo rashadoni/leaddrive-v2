@@ -25155,6 +25155,3 @@ model DealChangeApproval {
   @@map("deal_change_approvals")
 }
 
-
-// TEMPORARY (CI probe 2 for PR claude/ci-prisma-generate-once): changes the schema hash so the
-// Prisma client cache misses; removed by the next commit of the same PR.
