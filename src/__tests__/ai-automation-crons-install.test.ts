@@ -23,6 +23,23 @@ import { runnableCronLines } from "./helpers/installed-cron"
 
 const AUTO_ACTIONS = "/api/cron/ai-auto-actions"
 const RENEWAL = "/api/cron/ai-renewal"
+// The page's other three switches lost their schedules in the same move.
+const BRIEFING = "/api/cron/ai-daily-briefing"
+const ANOMALIES = "/api/cron/ai-anomaly-detection"
+const LEAD_SCORING = "/api/cron/lead-scoring"
+
+const EXPECTED: Record<string, string> = {
+  [AUTO_ACTIONS]: "2-59/10 * * * *",
+  [RENEWAL]: "35 2 * * *",
+  // 08:00 in Baku.
+  [BRIEFING]: "0 4 * * *",
+  [ANOMALIES]: "5,35 * * * *",
+  [LEAD_SCORING]: "47 */6 * * *",
+}
+
+function scheduleOf(crontab: string) {
+  return Object.fromEntries(Object.keys(EXPECTED).map((endpoint) => [endpoint, activeSchedules(crontab, endpoint).join(" + ")]))
+}
 
 function installCrontab(initialCrontab: string) {
   const root = mkdtempSync(join(tmpdir(), "leaddrive-ai-automation-cron-"))
@@ -67,30 +84,26 @@ function activeSchedules(crontab: string, endpoint: string) {
 }
 
 describe("AI automation schedules on the production host", () => {
-  it("runs the automations every ten minutes and the renewal drafts nightly", () => {
-    const installed = installCrontab("")
-
-    expect(activeSchedules(installed, AUTO_ACTIONS)).toEqual(["2-59/10 * * * *"])
-    expect(activeSchedules(installed, RENEWAL)).toEqual(["35 2 * * *"])
+  it("schedules every endpoint behind the page's switches exactly once", () => {
+    expect(scheduleOf(installCrontab(""))).toEqual(EXPECTED)
   })
 
   it("keeps exactly one of each after the installer runs again", () => {
-    const reinstalled = installCrontab(installCrontab(""))
-
-    expect(activeSchedules(reinstalled, AUTO_ACTIONS)).toEqual(["2-59/10 * * * *"])
-    expect(activeSchedules(reinstalled, RENEWAL)).toEqual(["35 2 * * *"])
+    expect(scheduleOf(installCrontab(installCrontab("")))).toEqual(EXPECTED)
   })
 
   it("replaces a hand-installed copy left behind by an older host", () => {
     const installed = installCrontab([
       "*/10 * * * * /opt/old/cron-trigger.sh /api/cron/ai-auto-actions >> /var/log/old.log 2>&1",
       "0 2 * * * /opt/old/cron-trigger.sh ai-renewal >> /var/log/old.log 2>&1",
+      "0 8 * * * /opt/old/cron-trigger.sh /api/cron/ai-daily-briefing >> /var/log/old.log 2>&1",
+      "*/30 * * * * /opt/old/cron-trigger.sh ai-anomaly-detection >> /var/log/old.log 2>&1",
+      "0 */6 * * * /opt/old/cron-trigger.sh /api/cron/lead-scoring >> /var/log/old.log 2>&1",
       "",
     ].join("\n"))
 
     expect(installed).not.toContain("/opt/old/cron-trigger.sh")
-    expect(activeSchedules(installed, AUTO_ACTIONS)).toEqual(["2-59/10 * * * *"])
-    expect(activeSchedules(installed, RENEWAL)).toEqual(["35 2 * * *"])
+    expect(scheduleOf(installed)).toEqual(EXPECTED)
   })
 
   it("leaves unrelated lines of the crontab alone", () => {
@@ -100,7 +113,7 @@ describe("AI automation schedules on the production host", () => {
   })
 
   it("calls endpoints that exist and answer the trigger's POST", () => {
-    for (const endpoint of [AUTO_ACTIONS, RENEWAL]) {
+    for (const endpoint of Object.keys(EXPECTED)) {
       const route = readFileSync(join(process.cwd(), `src/app${endpoint}/route.ts`), "utf8")
       expect([endpoint, route.includes("export async function POST("), route.includes("requireCronAuth(req)")]).toEqual([endpoint, true, true])
     }

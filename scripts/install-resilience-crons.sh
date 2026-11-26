@@ -87,6 +87,9 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh (\/api\/cron\/)?esign-reminders([ ?]|$)/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?ai-auto-actions([ ?]|$)/ { next }
   /cron-trigger\.sh (\/api\/cron\/)?ai-renewal([ ?]|$)/ { next }
+  /cron-trigger\.sh (\/api\/cron\/)?ai-daily-briefing([ ?]|$)/ { next }
+  /cron-trigger\.sh (\/api\/cron\/)?ai-anomaly-detection([ ?]|$)/ { next }
+  /cron-trigger\.sh (\/api\/cron\/)?lead-scoring([ ?]|$)/ { next }
   { print }
 ' "$CURRENT" > "$CLEAN"
 
@@ -260,6 +263,22 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # proposals for contracts ending in 28-32 days, once a day at night.
   printf '%s\n' "2-59/10 * * * * $TRIGGER /api/cron/ai-auto-actions >> $LOG 2>&1"
   printf '%s\n' "35 2 * * * $TRIGGER /api/cron/ai-renewal >> $LOG 2>&1"
+  # The other three switches of the AI settings, gone with the same move and
+  # turned back on the same day (owner: «Включить все три»). Measured
+  # 2026-11-26: the briefing last went out 2026-09-04, neither of the other two
+  # ever ran on this host. All three act only inside the organization:
+  # - ai-daily-briefing: one AI summary a day by e-mail and in-app notice to
+  #   the organization's admins and managers (or its digest subscribers);
+  #   ten people in four organizations. 04:00 UTC is 08:00 in Baku — on the
+  #   old host it went out at 12:00 Baku time.
+  # - ai-anomaly-detection: rows in ai_alerts, shown only on «Da Vinci Центр»;
+  #   no AI call, the same alert at most once a day. Half-hourly as written.
+  # - lead-scoring: re-scores open leads for age and recency (saving a lead
+  #   scores it on the spot; this is the sweep for what moves on its own).
+  # Minutes chosen so no minute of the day starts more than fifteen jobs.
+  printf '%s\n' "0 4 * * * $TRIGGER /api/cron/ai-daily-briefing >> $LOG 2>&1"
+  printf '%s\n' "5,35 * * * * $TRIGGER /api/cron/ai-anomaly-detection >> $LOG 2>&1"
+  printf '%s\n' "47 */6 * * * $TRIGGER /api/cron/lead-scoring >> $LOG 2>&1"
   # Social Monitoring, trimmed to what produces something (owner, 2026-11-08:
   # «максимально оптимизировать мусор в этом модуле»). Measured on prod for
   # 1-8 November, docs/social-monitoring-audit-2026-11-08.md:
