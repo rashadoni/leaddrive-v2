@@ -699,6 +699,14 @@ jobs:
           CONTRACT_PAPER_SIGNATURE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
           CONTRACT_PAPER_SIGNATURE_DB_GATE: required
 
+      - name: Contract closing database gate
+        # Same gate as in pr-checks: a contract ends only by its rules (see the
+        # test's header).
+        run: npx vitest run src/__tests__/contract-closing-postgres.test.ts
+        env:
+          CONTRACT_CLOSING_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/event_platform_test
+          CONTRACT_CLOSING_DB_GATE: required
+
       - name: Procurement database gate
         # Same gate as in pr-checks: suppliers are read and added only with the
         # module and the right role, and stay out of the customer list (see the

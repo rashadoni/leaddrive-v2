@@ -179,6 +179,34 @@ export default function ContractDetailHelpEn() {
           </HelpCallout>
         </HelpStep>
       </HelpSection>
+      <HelpSection title="Step by step: terminate, cancel, return to draft">
+        <HelpStep n={1}>
+          <p>
+            <strong>Terminate</strong> an active contract: the <HelpKey>…</HelpKey> menu in the header →{" "}
+            <HelpKey>Terminate contract</HelpKey>. Enter the first day the contract no longer applies, the reason, a
+            comment and, if you have it, the scan of the termination agreement.
+          </p>
+          <HelpCallout kind="see" label="What you'll see">
+            Today or an earlier day — the contract is Terminated at once. A later day — it stays Active until then, with
+            a «Terminated from …» line under the header and a <HelpKey>Withdraw termination</HelpKey> button; on that
+            day the status changes by itself. Renewal reminders stop, and invitations to sign the contract, a protocol
+            or an act are cancelled when the contract becomes Terminated.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={2}>
+          <p>
+            <strong>Cancel</strong> a contract that hasn't taken effect (draft, in approval, approved): the{" "}
+            <HelpKey>…</HelpKey> menu → <HelpKey>Cancel contract</HelpKey>; the reason is required. The contract
+            becomes Cancelled and the approval still under way is closed.
+          </p>
+        </HelpStep>
+        <HelpStep n={3}>
+          <p>
+            A <strong>rejected</strong> contract: the <HelpKey>Return to draft</HelpKey> button in the header. Fix it
+            and send it for approval again — the previous round stays in the history.
+          </p>
+        </HelpStep>
+      </HelpSection>
       <HelpSection title="Step by step: the document chain — protocol, invoice, act">
         <HelpStep n={1}>
           <p>

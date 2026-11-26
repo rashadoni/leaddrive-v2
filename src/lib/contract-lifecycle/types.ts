@@ -70,7 +70,9 @@ export const CONTRACT_TRANSITIONS: Readonly<Record<ContractStatus, readonly Cont
   renewed: [],
   expired: [],
   terminated: [],
-  rejected: [],
+  // «Вернуть в черновик» (owner 2026-11-26): a rejected contract is fixed and
+  // sent for approval again; its old round is superseded, not deleted.
+  rejected: ["draft"],
   cancelled: [],
 }
 

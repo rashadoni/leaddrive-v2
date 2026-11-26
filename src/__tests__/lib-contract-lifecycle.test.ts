@@ -88,8 +88,8 @@ describe("M5 — state-machine", () => {
     }
   })
 
-  it("isTerminal identifies the 5 terminal states", () => {
-    const terminals = ["renewed", "expired", "terminated", "rejected", "cancelled"] as const
+  it("isTerminal identifies the 4 terminal states (a rejected contract goes back to draft)", () => {
+    const terminals = ["renewed", "expired", "terminated", "cancelled"] as const
     for (const s of CONTRACT_STATUSES) {
       expect(isTerminal(s)).toBe(terminals.includes(s as (typeof terminals)[number]))
     }
@@ -643,11 +643,15 @@ describe("M5 — registry drift guards", () => {
     }
   })
 
-  it("Terminal states are exactly 5", () => {
+  it("Terminal states are exactly 4", () => {
     const terminals = CONTRACT_STATUSES.filter((s) => CONTRACT_TRANSITIONS[s].length === 0)
     expect(terminals.sort()).toEqual(
-      ["cancelled", "expired", "rejected", "renewed", "terminated"].sort()
+      ["cancelled", "expired", "renewed", "terminated"].sort()
     )
+  })
+
+  it("a rejected contract may only go back to draft («Вернуть в черновик»)", () => {
+    expect(CONTRACT_TRANSITIONS.rejected).toEqual(["draft"])
   })
 
   it("approved → cancelled remains allowed (pre-countersign abandonment)", () => {

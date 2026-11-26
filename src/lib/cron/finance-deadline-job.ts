@@ -5,12 +5,14 @@ import { APP_URL } from "@/lib/domains"
 import { financeTelegramTarget, readFinanceNotifSettings } from "@/lib/finance/notification-settings"
 import { sendFinanceTelegram } from "@/lib/finance/telegram-send"
 import { expireEndedContracts } from "@/lib/contract-lifecycle/expire-ended"
+import { terminateScheduledContracts } from "@/lib/contract-lifecycle/terminate-scheduled"
 
 export interface FinanceDeadlineSummary {
   overdueBills: number
   overdueInvoices: number
   expiredContracts: number
   expiringContracts: number
+  terminatedContracts: number
 }
 
 async function executeFinanceDeadlineJob(): Promise<FinanceDeadlineSummary> {
@@ -21,6 +23,7 @@ async function executeFinanceDeadlineJob(): Promise<FinanceDeadlineSummary> {
     overdueInvoices: 0,
     expiredContracts: 0,
     expiringContracts: 0,
+    terminatedContracts: 0,
   }
 
   for (const org of orgs) {
@@ -46,6 +49,10 @@ async function executeFinanceDeadlineJob(): Promise<FinanceDeadlineSummary> {
     ])
     summary.overdueBills += bills.count
     summary.overdueInvoices += invoices.count
+
+    // A contract terminated from a later day is «Расторгнут» once that day comes
+    // (src/lib/contract-lifecycle/terminate-scheduled.ts) — before the expiry pass.
+    summary.terminatedContracts += await terminateScheduledContracts(org.id, now)
 
     // A contract is over once its last day has passed, not when that day begins
     // (src/lib/contract-lifecycle/expire-ended.ts).

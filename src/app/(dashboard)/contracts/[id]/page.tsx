@@ -8,11 +8,12 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Pencil, Trash2, FileText, Calendar, DollarSign, Hash, Clock, AlertTriangle, CheckSquare, Plus, X, Sparkles, GitBranch, PenLine, Send, RefreshCw, Copy, Check, Users, ThumbsUp, ThumbsDown, FilePen, ShieldAlert, ListChecks, Flag, TrendingUp, ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react"
+import { ArrowLeft, Pencil, Trash2, FileText, Calendar, DollarSign, Hash, Clock, AlertTriangle, CheckSquare, Plus, X, Sparkles, GitBranch, PenLine, Send, RefreshCw, Copy, Check, Users, ThumbsUp, ThumbsDown, FilePen, ShieldAlert, ListChecks, Flag, TrendingUp, ChevronDown, ChevronRight, MoreHorizontal, FileX, Ban } from "lucide-react"
 import { ColorStatCard } from "@/components/color-stat-card"
 import { InfoHint } from "@/components/info-hint"
 import { EsignSignatureSheet } from "@/components/contract-esign-signature-sheet"
 import { ContractPaperSignatureButton, ContractPaperSignatureRow, type PaperSignatureInfo } from "@/components/contracts/contract-paper-signature"
+import { ContractCancelDialog, ContractClosingBanner, ContractReopenButton, ContractTerminateDialog, canCancel, canTerminate, type ContractClosingInfo } from "@/components/contracts/contract-closing"
 import { ContractDocumentsChain } from "@/components/contracts/contract-documents-chain"
 import { checkPermission, type Role } from "@/lib/permissions"
 import { ContractForm } from "@/components/contract-form"
@@ -218,6 +219,9 @@ export default function ContractDetailPage() {
   const [loading, setLoading] = useState(true)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  // «Расторгнуть договор» / «Отменить договор» (src/components/contracts/contract-closing.tsx)
+  const [terminateOpen, setTerminateOpen] = useState(false)
+  const [cancelOpen, setCancelOpen] = useState(false)
   const orgId = session?.user?.organizationId
 
   // ── Create Invoice state (Slice 7c) ─────────────────────────────────────
@@ -1487,6 +1491,10 @@ export default function ContractDetailPage() {
         </div>
         {/* ── Header actions: 1 primary CTA + View Doc + ••• overflow ── */}
         <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+          {/* A rejected contract goes back to draft to be fixed and sent again. */}
+          {contract.status === "rejected" && (
+            <ContractReopenButton contractId={contract.id} onDone={() => { void fetchContract() }} />
+          )}
           {/* Primary CTA — only "Submit for Approval" earns the filled slot */}
           {canSubmitForApproval && (
             <Button
@@ -1579,6 +1587,28 @@ export default function ContractDetailPage() {
                 )
               )}
               <div className="my-1 h-px bg-border" />
+              {canTerminate(contract) && (
+                <PopoverClose asChild>
+                  <button
+                    onClick={() => setTerminateOpen(true)}
+                    data-testid="contract-terminate-open"
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <FileX className="h-4 w-4" /> {t("closing.terminateMenu")}
+                  </button>
+                </PopoverClose>
+              )}
+              {canCancel(contract) && (
+                <PopoverClose asChild>
+                  <button
+                    onClick={() => setCancelOpen(true)}
+                    data-testid="contract-cancel-open"
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <Ban className="h-4 w-4" /> {t("closing.cancelMenu")}
+                  </button>
+                </PopoverClose>
+              )}
               <PopoverClose asChild>
                 <button
                   onClick={() => setDeleteOpen(true)}
@@ -1591,6 +1621,32 @@ export default function ContractDetailPage() {
           </Popover>
         </div>
       </div>
+
+      <ContractClosingBanner
+        contractId={contract.id}
+        state={{
+          status: contract.status,
+          terminationDate: contract.terminationDate ?? null,
+          terminationReason: contract.terminationReason ?? null,
+          closeNote: contract.closeNote ?? null,
+          closedAt: contract.closedAt ?? null,
+        }}
+        info={(contract.closing as ContractClosingInfo | null) ?? null}
+        onChanged={() => { void fetchContract() }}
+      />
+      <ContractTerminateDialog
+        open={terminateOpen}
+        onOpenChange={setTerminateOpen}
+        contractId={contract.id}
+        endDate={contract.endDate ?? null}
+        onDone={() => { void fetchContract(); void fetchEnvelopes() }}
+      />
+      <ContractCancelDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        contractId={contract.id}
+        onDone={() => { void fetchContract(); void fetchEnvelopes() }}
+      />
 
       {(() => {
         const daysActive = contract.startDate

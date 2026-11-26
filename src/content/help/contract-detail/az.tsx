@@ -182,6 +182,34 @@ export default function ContractDetailHelpAz() {
           </HelpCallout>
         </HelpStep>
       </HelpSection>
+      <HelpSection title="Addım-addım: xitam ver, ləğv et, qaralamaya qaytar">
+        <HelpStep n={1}>
+          <p>
+            Qüvvədə olan müqaviləyə <strong>xitam vermək</strong>: başlıqdakı <HelpKey>…</HelpKey> menyusu →{" "}
+            <HelpKey>Müqaviləyə xitam ver</HelpKey>. Müqavilənin hansı gündən qüvvədə olmadığını, səbəbi, şərhi və
+            varsa, xitam haqqında sazişin skanını göstərin.
+          </p>
+          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
+            Bu gün və ya keçmiş tarix — müqavilə dərhal «Xitam verilib» olur. Gələcək tarix — həmin günədək «Aktiv»
+            qalır, başlığın altında «… tarixindən xitam verilir» sətri və <HelpKey>Xitamı geri götür</HelpKey> düyməsi
+            görünür; həmin gün status özü dəyişir. Uzatma xatırlatmaları dayanır, müqavilə «Xitam verilib» olanda
+            müqavilə, protokol və ya akt üçün imza dəvətləri ləğv olunur.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={2}>
+          <p>
+            Hələ qüvvəyə minməmiş müqaviləni (qaralama, razılaşmada, təsdiqlənib) <strong>ləğv etmək</strong>:{" "}
+            <HelpKey>…</HelpKey> menyusu → <HelpKey>Müqaviləni ləğv et</HelpKey>, səbəb məcburidir. Müqavilə «Ləğv
+            edildi» olur, tamamlanmamış razılaşma bağlanır.
+          </p>
+        </HelpStep>
+        <HelpStep n={3}>
+          <p>
+            <strong>Rədd edilmiş</strong> müqavilə: başlıqdakı <HelpKey>Qaralamaya qaytar</HelpKey> düyməsi. Onu
+            düzəldin və yenidən razılaşmaya göndərin — əvvəlki raund tarixçədə qalır.
+          </p>
+        </HelpStep>
+      </HelpSection>
       <HelpSection title="Addım-addım: sənəd zənciri — protokol, hesab-faktura, akt">
         <HelpStep n={1}>
           <p>
