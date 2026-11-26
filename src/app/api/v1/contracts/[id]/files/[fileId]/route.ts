@@ -5,6 +5,7 @@ import path from "path"
 import { withRlsAuth } from "@/lib/with-rls"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
 import { SIGNED_COPY_PURPOSE } from "@/lib/clm/paper-signature"
+import { TERMINATION_COPY_PURPOSE } from "@/lib/clm/contract-closing"
 
 export const DELETE = withRlsAuth("contracts", "delete", async (_req, authResult, { params }: { params: Promise<{ id: string; fileId: string }> }) => {
   const orgId = authResult.orgId
@@ -15,8 +16,8 @@ export const DELETE = withRlsAuth("contracts", "delete", async (_req, authResult
       where: { id: fileId, contractId: id, organizationId: orgId },
     })
     if (!file) return NextResponse.json({ error: "File not found" }, { status: 404 })
-    // The scan behind «Подписан на бумаге» is the evidence the contract is in force.
-    if (file.purpose === SIGNED_COPY_PURPOSE) {
+    // The scan behind «Подписан на бумаге» and the signed termination agreement are evidence.
+    if (file.purpose === SIGNED_COPY_PURPOSE || file.purpose === TERMINATION_COPY_PURPOSE) {
       return NextResponse.json({ error: "The signed copy cannot be deleted", code: "SIGNED_COPY_LOCKED" }, { status: 409 })
     }
 

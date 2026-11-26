@@ -9,6 +9,7 @@ import { upsertRenewalAlerts } from "@/lib/contract-lifecycle/upsert-renewal-ale
 import { withRlsAuth } from "@/lib/with-rls"
 import { nonNegativeFinancialAmountSchema } from "@/lib/validation/numeric"
 import { SIGNED_COPY_PURPOSE, paperSignerUserId } from "@/lib/clm/paper-signature"
+import { TERMINATION_COPY_PURPOSE } from "@/lib/clm/contract-closing"
 
 const updateContractSchema = z.object({
   contractNumber: z.string().optional(),
@@ -89,7 +90,24 @@ export const GET = withRlsAuth("contracts", "read", async (req, auth, { params }
       })()
       : null
 
-    return NextResponse.json({ success: true, data: { ...normalizeContractRow(contract), history, paperSignature } })
+    // Termination or cancellation: who recorded it and the signed agreement (src/lib/clm/contract-closing.ts).
+    const closing = contract.closedBy
+      ? await (async () => {
+        const [closer, agreement] = await Promise.all([
+          prisma.user.findFirst({ where: { id: contract.closedBy, organizationId: orgId }, select: { name: true, email: true } }),
+          contract.terminationDate
+            ? prisma.contractFile.findFirst({
+              where: { contractId: id, organizationId: orgId, purpose: TERMINATION_COPY_PURPOSE },
+              orderBy: { createdAt: "desc" },
+              select: { id: true, fileName: true, originalName: true, mimeType: true },
+            })
+            : null,
+        ])
+        return { recordedBy: closer?.name || closer?.email || null, file: agreement }
+      })()
+      : null
+
+    return NextResponse.json({ success: true, data: { ...normalizeContractRow(contract), history, paperSignature, closing } })
   } catch (e) {
     console.error(e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

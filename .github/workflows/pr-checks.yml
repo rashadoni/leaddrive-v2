@@ -651,6 +651,17 @@ jobs:
           CONTRACT_PAPER_SIGNATURE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           CONTRACT_PAPER_SIGNATURE_DB_GATE: required
 
+      - name: Contract closing database gate
+        # Termination (at once or from a later day, withdrawable until then,
+        # moved by the scheduled pass on that day), cancellation of a contract
+        # that never took effect, and «Вернуть в черновик» for a rejected one
+        # that then starts a clean approval chain — the real routes on a real
+        # Postgres under the tenant policy.
+        run: npx vitest run src/__tests__/contract-closing-postgres.test.ts
+        env:
+          CONTRACT_CLOSING_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          CONTRACT_CLOSING_DB_GATE: required
+
       - name: Procurement database gate
         # Purchasing for a customer order (docs/sales-procurement/README.md):
         # the module and the role decide who reads and adds suppliers, nothing

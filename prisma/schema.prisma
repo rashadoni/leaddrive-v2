@@ -2522,6 +2522,19 @@ model Contract {
   signedAt DateTime?
   signedBy String?
 
+  /// Termination and cancellation (owner 2026-11-26, mock «Расторжение»;
+  /// src/lib/clm/contract-closing.ts). `terminationDate` is the first day the
+  /// contract no longer applies: on or before today the contract is
+  /// «Расторгнут» at once, a later day keeps it in force until the finance
+  /// deadline job reaches it. `terminationReason` is a code (DB CHECK);
+  /// `closeNote` the comment of a termination or the reason of a cancellation;
+  /// `closedBy` / `closedAt` who recorded it and when.
+  terminationDate   DateTime?
+  terminationReason String?
+  closeNote         String?
+  closedBy          String?
+  closedAt          DateTime?
+
   /// S6 CPQ slice-3 piece-4: provenance pointer for contracts that
   /// were auto-spawned when a Quote transitioned to `accepted`. The
   /// `@unique` constraint guarantees one-to-one — a given Quote can
@@ -2651,8 +2664,9 @@ model ContractFile {
   uploadedBy     String?
   /// "attachment" — any file a person attached; "signed_copy" — the scan of the
   /// contract signed on paper, the evidence behind «Подписан на бумаге»
-  /// (POST /api/v1/contracts/[id]/paper-signature). A signed copy is not
-  /// deleted from the files list. DB CHECK keeps the two values.
+  /// (POST /api/v1/contracts/[id]/paper-signature); "termination_copy" — the
+  /// signed termination agreement (POST /api/v1/contracts/[id]/terminate).
+  /// Neither is deleted from the files list. DB CHECK keeps the three values.
   purpose        String   @default("attachment")
   createdAt      DateTime @default(now())
 

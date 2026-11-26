@@ -52,7 +52,8 @@ interface ContractFile {
   fileSize: number
   mimeType: string
   createdAt: string
-  /** "signed_copy" — the scan behind «Подписан на бумаге»; the server refuses to delete it. */
+  /** "signed_copy" — the scan behind «Подписан на бумаге», "termination_copy" — the signed
+   *  termination agreement; the server refuses to delete either. */
   purpose?: string
 }
 
@@ -1549,8 +1550,8 @@ export default function ContractsPage() {
                           >
                             <Download className="h-3.5 w-3.5 text-muted-foreground" />
                           </a>
-                          {f.purpose === "signed_copy" ? (
-                            <Hint text={t("paperSignScanLocked")}>
+                          {f.purpose === "signed_copy" || f.purpose === "termination_copy" ? (
+                            <Hint text={f.purpose === "signed_copy" ? t("paperSignScanLocked") : t("closing.agreementLocked")}>
                               <span tabIndex={0} className="p-1" data-testid="signed-copy-lock">
                                 <Lock className="h-3.5 w-3.5 text-muted-foreground" />
                               </span>

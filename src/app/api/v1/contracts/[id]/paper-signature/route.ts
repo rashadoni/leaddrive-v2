@@ -27,9 +27,7 @@ import { withRlsAuth } from "@/lib/with-rls"
 import { validateUploadBytes } from "@/lib/upload-security"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
 import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
-import { buildAuditEvent } from "@/lib/esign/audit-event-builder"
-import { canEnvelopeTransition } from "@/lib/esign/state-machine"
-import type { EnvelopeStatus } from "@/lib/esign/types"
+import { EnvelopeVoidConflict, voidOpenEnvelopes } from "@/lib/clm/void-open-envelopes"
 import { upsertRenewalAlerts } from "@/lib/contract-lifecycle/upsert-renewal-alerts"
 import {
   PAPER_SIGNED_BY_PREFIX,
@@ -106,37 +104,20 @@ export const POST = withRlsAuth("contracts", "write", async (req, auth, { params
       })
 
       // An invitation to e-sign the contract itself is moot once it is signed on paper.
-      const open = await tx.esignEnvelope.findMany({
-        where: { organizationId: orgId, contractId: id, documentId: null, status: { in: ["created", "sent", "in_progress"] } },
-        select: { id: true, status: true },
+      const voidedEnvelopes = await voidOpenEnvelopes(tx, {
+        orgId,
+        contractId: id,
+        scope: "contract",
+        reason: "signed_on_paper",
+        actorUserId: userId,
+        at: now,
+        ipAddress: req.headers.get("x-forwarded-for"),
+        userAgent: req.headers.get("user-agent"),
       })
-      for (const env of open) {
-        if (!canEnvelopeTransition(env.status as EnvelopeStatus, "voided").ok) continue
-        const voided = await tx.esignEnvelope.updateMany({
-          where: { id: env.id, status: env.status },
-          data: { status: "voided", voidedAt: now, voidedBy: userId, voidReason: "signed_on_paper" },
-        })
-        if (voided.count !== 1) throw new Conflict("The envelope changed concurrently")
-        await tx.esignSigner.updateMany({ where: { envelopeId: env.id, status: { in: ["pending", "sent", "viewed"] } }, data: { tokenHash: null } })
-        const event = buildAuditEvent({
-          organizationId: orgId,
-          envelopeId: env.id,
-          signerId: null,
-          eventType: "envelope_voided",
-          actorType: "user",
-          actorId: userId,
-          ipAddress: req.headers.get("x-forwarded-for") ?? null,
-          userAgent: req.headers.get("user-agent") ?? null,
-          metadata: { reason: "signed_on_paper" },
-          at: now,
-        })
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (event.ok) await tx.esignAuditEvent.create({ data: event.record as any })
-      }
 
       await logAudit(orgId, "update", "contract", id, contract.title, {
         oldValue: { status: { old: contract.status, new: "active" } },
-        newValue: { status: "active", reason: "signed_on_paper", signedAt: signedAt.day, fileId: scan.id, voidedEnvelopes: open.length },
+        newValue: { status: "active", reason: "signed_on_paper", signedAt: signedAt.day, fileId: scan.id, voidedEnvelopes },
         userId,
       }, tx)
       return scan
@@ -154,7 +135,7 @@ export const POST = withRlsAuth("contracts", "write", async (req, auth, { params
     })
   } catch (e) {
     await unlink(filePath).catch(() => {})
-    if (e instanceof Conflict) return refuse("CONFLICT", 409)
+    if (e instanceof Conflict || e instanceof EnvelopeVoidConflict) return refuse("CONFLICT", 409)
     console.error("[contracts/:id/paper-signature POST]", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
