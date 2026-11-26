@@ -174,11 +174,11 @@ export function ContractDocumentEditor({ contractId, docId }: { contractId: stri
 
   return (
     <div className="space-y-4" data-testid="contract-document-editor">
-      <Button asChild variant="ghost" size="sm">
-        <Link href={`/contracts/${contractId}`}>
-          <ArrowLeft className="mr-1 h-4 w-4" /> {doc.contract.contractNumber} · {doc.contract.title}
-        </Link>
-      </Button>
+      {/* A plain link, not a one-line button: the number and title of a contract are longer than a phone. */}
+      <Link href={`/contracts/${contractId}`} className="flex w-fit max-w-full items-start gap-1 rounded-md px-2 py-1 text-sm font-medium hover:bg-muted">
+        <ArrowLeft className="mt-0.5 h-4 w-4 shrink-0" />
+        <span className="min-w-0 break-words">{`${doc.contract.contractNumber} · ${doc.contract.title}`}</span>
+      </Link>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
         <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium" data-testid="document-status">
