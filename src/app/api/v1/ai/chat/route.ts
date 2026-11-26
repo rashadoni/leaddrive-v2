@@ -295,11 +295,12 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
     // read what: the role (below), the paid module and the role matrix per
     // tool, hidden fields, and RLS - all checked again by the executors.
     const orgCtx = moduleContextForUser(await orgModulesRead, session)
-    // The list and summary builders count across the whole organization and
-    // do not apply record-sharing rules yet (read-tool-executor.ts says the
-    // same and refuses lower roles itself), so a salesperson would read other
-    // people's deals. Lower roles get them once each builder filters by the
-    // same sharing rules as the screen.
+    // The record lists (list_*) are narrowed to what each person's own screen
+    // shows - sharing rules, board access, hidden fields (read-tool-executor's
+    // `visibleWhere`) - so every role that may read an entity gets its list.
+    // The summaries and record cards still count across the whole organization
+    // without those rules, so they stay with managers and above: a salesperson
+    // would otherwise hear other people's deals.
     const crmReadsOffered = isManagerOrAbove(session.role)
     let analyticsTimezone: string
     const timezone = await timezoneRead
@@ -331,22 +332,20 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
     // Reading is NOT a per-agent toolsEnabled setting: search must work on any
     // active (or default) agent without each agent listing the read tools. So
     // strip any read tools the agent config happened to include, then re-add
-    // the module-allowed ones for a role that may read organization-wide.
+    // the ones the caller's role and the tenant's modules allow.
     // Tenant scoping still holds (RLS + organizationId in every read builder).
     tools = tools.filter((t) => !READ_TOOL_NAMES.includes(t.name))
     // Пишущие действия — только те, на которые у роли есть право
     // (src/lib/ai/tool-permissions.ts). Исполнитель проверяет то же самое ещё
     // раз на каждом вызове; здесь — чтобы модель не предлагала недоступное.
     tools = tools.filter((t) => aiWriteToolOffered(session.role, t.name))
-    if (crmReadsOffered) {
-      const allowedReadTools = READ_TOOLS.filter((t) => {
-        const mod = READ_TOOL_MODULE[t.name]
-        const permission = READ_TOOL_PERMISSION[t.name]
-        return Boolean(permission && canRead(session.role, permission))
-          && (!mod || hasModule(orgCtx, mod))
-      })
-      tools = [...tools, ...allowedReadTools]
-    }
+    const allowedReadTools = READ_TOOLS.filter((t) => {
+      const mod = READ_TOOL_MODULE[t.name]
+      const permission = READ_TOOL_PERMISSION[t.name]
+      return Boolean(permission && canRead(session.role, permission))
+        && (!mod || hasModule(orgCtx, mod))
+    })
+    tools = [...tools, ...allowedReadTools]
     // The voice assistant's read tools, verbatim. For months the two surfaces
     // answered the same question differently because they had different tools;
     // now chat carries the voice set - briefings, pipeline, overdue, workload,

@@ -14,8 +14,10 @@
  */
 import { prisma, logAudit } from "@/lib/prisma"
 import { decimalToNumber } from "@/lib/prisma-decimal"
-import { isManagerOrAbove } from "@/lib/constants"
 import { canRead, type Role } from "@/lib/permissions"
+import { applyRecordFilter } from "@/lib/sharing-rules"
+import { buildTaskListWhere, parseTaskListFilters } from "@/lib/tasks/list-query"
+import { canUseVoiceDataFields } from "@/lib/ai/voice/field-access"
 import { localDateTimeToUtc } from "@/lib/timezone"
 import type { ToolResult } from "./tool-executor"
 import {
@@ -32,7 +34,50 @@ import {
 interface ReadCtx {
   orgId: string
   userId: string
+  role: Role
   timezone: string
+}
+
+/**
+ * Narrow a list to what this person's own screen shows (owner 2026-11-26:
+ * Da Vinci answers every employee "within their rights"). The rules are the
+ * screens' own, not a copy:
+ *  - deals and tickets: `applyRecordFilter` - own, assigned, the shared
+ *    intake queue and sharing-rule grants (managers and above: everything);
+ *  - tasks: `buildTaskListWhere`, the builder of the task list and its
+ *    export - sharing rules plus board access and department isolation,
+ *    which binds managers too;
+ *  - contacts: `applyRecordFilter` as well (today tenant-wide, as on screen);
+ *  - invoices: tenant-wide for every role that may read them, as on screen.
+ * Null means the screen would show nothing.
+ */
+async function visibleWhere(
+  entity: ReadEntityType,
+  where: Record<string, any>,
+  ctx: ReadCtx,
+): Promise<Record<string, any> | null> {
+  switch (entity) {
+    case "deal":
+    case "ticket":
+    case "contact":
+      return await applyRecordFilter(ctx.orgId, ctx.userId, ctx.role, entity, where) as Record<string, any>
+    case "task": {
+      const access = await buildTaskListWhere(ctx.orgId, ctx.userId, ctx.role, parseTaskListFilters(new URLSearchParams()))
+      if (access.blocked) return null
+      // AND-ed beside the list's own filters, which stay where they were.
+      return { ...where, AND: [...(Array.isArray(where.AND) ? where.AND : []), access.where] }
+    }
+    case "invoice":
+      return where
+  }
+}
+
+const READ_TOOL_ENTITY: Record<string, ReadEntityType> = {
+  list_invoices: "invoice",
+  list_deals: "deal",
+  list_tasks: "task",
+  list_tickets: "ticket",
+  list_contacts: "contact",
 }
 
 /** Defense-in-depth cap — the Zod schema has no max, so this is the live limit. */
@@ -109,15 +154,18 @@ async function listInvoices(input: any, ctx: ReadCtx): Promise<ReadResultData> {
   const amount = numberRange(input.minAmount, input.maxAmount)
   if (amount) where.totalAmount = amount
 
+  const scoped = await visibleWhere("invoice", where, ctx)
+  if (!scoped) return buildResult("invoice", [], 0, "/invoices")
+
   const take = clampLimit(input.limit)
   const [records, total] = await Promise.all([
     prisma.invoice.findMany({
-      where,
+      where: scoped,
       orderBy: { issueDate: "desc" },
       take,
       select: { id: true, invoiceNumber: true, status: true, totalAmount: true, currency: true, issueDate: true },
     }),
-    prisma.invoice.count({ where }),
+    prisma.invoice.count({ where: scoped }),
   ])
 
   const rows: ReadResultRow[] = records.map((r: any) => ({
@@ -146,15 +194,18 @@ async function listDeals(input: any, ctx: ReadCtx): Promise<ReadResultData> {
   const created = dateRange(input.dateFrom, input.dateTo, ctx.timezone)
   if (created) where.createdAt = created
 
+  const scoped = await visibleWhere("deal", where, ctx)
+  if (!scoped) return buildResult("deal", [], 0, "/deals")
+
   const take = clampLimit(input.limit)
   const [records, total] = await Promise.all([
     prisma.deal.findMany({
-      where,
+      where: scoped,
       orderBy: { createdAt: "desc" },
       take,
       select: { id: true, name: true, stage: true, valueAmount: true, currency: true, expectedClose: true },
     }),
-    prisma.deal.count({ where }),
+    prisma.deal.count({ where: scoped }),
   ])
 
   const rows: ReadResultRow[] = records.map((r: any) => ({
@@ -185,15 +236,18 @@ async function listTasks(input: any, ctx: ReadCtx): Promise<ReadResultData> {
   const due = dateRange(input.dueAfter, input.dueBefore, ctx.timezone)
   if (due) where.dueDate = due
 
+  const scoped = await visibleWhere("task", where, ctx)
+  if (!scoped) return buildResult("task", [], 0, "/tasks")
+
   const take = clampLimit(input.limit)
   const [records, total] = await Promise.all([
     prisma.task.findMany({
-      where,
+      where: scoped,
       orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
       take,
       select: { id: true, title: true, status: true, priority: true, dueDate: true },
     }),
-    prisma.task.count({ where }),
+    prisma.task.count({ where: scoped }),
   ])
 
   const rows: ReadResultRow[] = records.map((r: any) => ({
@@ -221,15 +275,18 @@ async function listTickets(input: any, ctx: ReadCtx): Promise<ReadResultData> {
   const created = dateRange(input.dateFrom, input.dateTo, ctx.timezone)
   if (created) where.createdAt = created
 
+  const scoped = await visibleWhere("ticket", where, ctx)
+  if (!scoped) return buildResult("ticket", [], 0, "/tickets")
+
   const take = clampLimit(input.limit)
   const [records, total] = await Promise.all([
     prisma.ticket.findMany({
-      where,
+      where: scoped,
       orderBy: { createdAt: "desc" },
       take,
       select: { id: true, ticketNumber: true, subject: true, status: true, priority: true },
     }),
-    prisma.ticket.count({ where }),
+    prisma.ticket.count({ where: scoped }),
   ])
 
   const rows: ReadResultRow[] = records.map((r: any) => ({
@@ -258,15 +315,18 @@ async function listContacts(input: any, ctx: ReadCtx): Promise<ReadResultData> {
     ]
   }
 
+  const scoped = await visibleWhere("contact", where, ctx)
+  if (!scoped) return buildResult("contact", [], 0, "/contacts")
+
   const take = clampLimit(input.limit)
   const [records, total] = await Promise.all([
     prisma.contact.findMany({
-      where,
+      where: scoped,
       orderBy: { createdAt: "desc" },
       take,
       select: { id: true, fullName: true, email: true, phone: true, category: true },
     }),
-    prisma.contact.count({ where }),
+    prisma.contact.count({ where: scoped }),
   ])
 
   const rows: ReadResultRow[] = records.map((r: any) => ({
@@ -299,12 +359,16 @@ export async function executeReadTool(
   if (!role || !permission || !canRead(role, permission)) {
     return { success: false, error: "This CRM list is not permitted for your role." }
   }
-  // These builders currently return tenant-wide rows and totals. Lower roles
-  // use entity-specific record-sharing rules in the canonical list APIs; until
-  // those filters are applied here exactly, fail closed rather than leak other
-  // employees' records through AI search.
-  if (!isManagerOrAbove(role)) {
-    return { success: false, error: "Organization-wide AI search requires a manager role." }
+  // A field the role must not see cannot be picked out of a row the model
+  // has already read, so a role with any hidden field on this entity gets no
+  // list at all - the same fail-closed rule as the voice reads.
+  const entity = READ_TOOL_ENTITY[toolName]
+  try {
+    if (!entity || !await canUseVoiceDataFields(orgId, role, [entity])) {
+      return { success: false, error: "ACCESS_SCOPE_UNAVAILABLE" }
+    }
+  } catch {
+    return { success: false, error: "ACCESS_SCOPE_UNAVAILABLE" }
   }
 
   const parsed = schema.safeParse(input ?? {})
@@ -313,7 +377,7 @@ export async function executeReadTool(
     return { success: false, error: `Invalid filter: ${msg}` }
   }
   const filter = parsed.data as any
-  const ctx: ReadCtx = { orgId, userId, timezone }
+  const ctx: ReadCtx = { orgId, userId, role, timezone }
 
   try {
     let data: ReadResultData
