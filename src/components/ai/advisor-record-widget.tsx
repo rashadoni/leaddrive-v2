@@ -657,6 +657,8 @@ export function AdvisorRecordWidget({ entityType, entityId, orgId, title = "Da V
   const [queueing, setQueueing] = useState<string | null>(null)
   const [queued, setQueued] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
+  /** The advisor is not this person's or this organization's (no AI module, no right): nothing was checked, so nothing is said. */
+  const [unavailable, setUnavailable] = useState(false)
 
   const headers = useMemo(() => ({
     "Content-Type": "application/json",
@@ -667,9 +669,17 @@ export function AdvisorRecordWidget({ entityType, entityId, orgId, title = "Da V
     let active = true
     setLoading(true)
     setFailed(false)
+    setUnavailable(false)
     const params = new URLSearchParams({ entityType, entityId })
     fetch(`/api/v1/ai/advisor/signals?${params.toString()}`, { headers })
-      .then((res) => res.json())
+      .then((res) => {
+        // A refusal is not «no risks»: «no risks» would claim a check that never ran.
+        if (res.status === 401 || res.status === 403) {
+          if (active) setUnavailable(true)
+          return null
+        }
+        return res.json()
+      })
       .then((json) => {
         if (active && json?.data) setPayload(json.data)
       })
@@ -707,6 +717,7 @@ export function AdvisorRecordWidget({ entityType, entityId, orgId, title = "Da V
 
   const displayTitle = title === "Advisor risk" || title === "Da Vinci Advisor" ? copy.title : title
 
+  if (unavailable) return null
   if (collapsed && (loading || failed || signals.length === 0)) return null
   if (collapsed && !expanded) {
     return (

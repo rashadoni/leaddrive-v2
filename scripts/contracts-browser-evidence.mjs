@@ -169,19 +169,27 @@ async function shoot(page, name) {
       const sticking = []
       for (const el of document.querySelectorAll('body *')) {
         const box = el.getBoundingClientRect()
-        if (!box.width || !box.height || (box.right <= width + 1 && box.left >= -1)) continue
+        // Only what a person sees cut by the screen's right edge: partly on screen, partly past it.
+        // A drawer parked off-screen is wholly outside and not counted.
+        if (!box.width || !box.height || box.left >= width - 1 || box.right <= width + 1) continue
+        if (el.closest('[aria-hidden="true"],[hidden],[inert],nextjs-portal') || getComputedStyle(el).visibility === 'hidden') continue
+        // Inside a container that scrolls sideways the rest is one swipe away — not lost.
         let scroller = el.parentElement
-        let contained = false
+        let scrolls = false
         while (scroller && scroller !== document.body) {
-          if (/(auto|scroll|hidden|clip)/.test(getComputedStyle(scroller).overflowX)) { contained = true; break }
+          if (/(auto|scroll)/.test(getComputedStyle(scroller).overflowX)) { scrolls = true; break }
           scroller = scroller.parentElement
         }
-        if (contained) continue
+        if (scrolls) continue
+        if (el.children.length && [...el.children].some((child) => child.getBoundingClientRect().right > width + 1)) continue
         const id = el.getAttribute('data-testid') ? `[data-testid=${el.getAttribute('data-testid')}]` : el.id ? `#${el.id}` : ''
         sticking.push(`${el.tagName.toLowerCase()}${id} +${Math.round(box.right - width)}px «${(el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 50)}»`)
         if (sticking.length >= 6) break
       }
-      const text = document.body.innerText
+      // A message next-intl could not read is printed as its key — in the text and in placeholders and hints too.
+      const attributes = [...document.querySelectorAll('[placeholder],[title],[aria-label]')]
+        .flatMap((el) => ['placeholder', 'title', 'aria-label'].map((name) => el.getAttribute(name) || ''))
+      const text = [document.body.innerText, ...attributes].join('\n')
       const rawKeys = [...new Set(text.match(/\b[a-z][a-zA-Z]+\.[a-z][a-zA-Z0-9]+[A-Z_][a-zA-Z0-9_]*\b/g) || [])].slice(0, 10)
       const truncated = [...document.querySelectorAll('button, a, th, label')]
         .filter((el) => el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflow !== 'visible' && el.getBoundingClientRect().width > 0)
@@ -261,6 +269,13 @@ async function main() {
     await page.goto('/contracts', { timeout: 180000 })
     await settle(page)
     await shoot(page, '01-contracts-list')
+  })
+
+  await step('the templates page opens', async () => {
+    await page.goto('/contracts/templates', { timeout: 180000 })
+    await page.getByText(f.template.name).first().waitFor({ timeout: 180000 })
+    await settle(page)
+    await shoot(page, '01-contract-templates')
   })
 
   await step('the wizard makes a draft from the template', async () => {
@@ -507,7 +522,8 @@ function report() {
   const findings = screens.flatMap((s) => ['desktop', 'phone'].flatMap((w) => {
     const m = s[w]
     const out = []
-    if (m.sideways > 0) out.push(`${s.name} · ${w}: the page scrolls sideways by ${m.sideways}px — ${m.sticking.join('; ') || 'element not found'}`)
+    if (m.sideways > 0) out.push(`${s.name} · ${w}: the page scrolls sideways by ${m.sideways}px`)
+    if (m.sticking.length) out.push(`${s.name} · ${w}: cut by the right edge — ${m.sticking.join('; ')}`)
     if (m.rawKeys.length) out.push(`${s.name} · ${w}: raw translation keys on screen — ${m.rawKeys.join(', ')}`)
     if (m.truncated.length) out.push(`${s.name} · ${w}: text cut off in — ${m.truncated.join(' | ')}`)
     return out

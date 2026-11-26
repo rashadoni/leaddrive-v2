@@ -395,8 +395,9 @@ export function ContractWizard({ dealId }: { dealId: string | null }) {
               <h3 className="font-semibold">{t("counterparty")}</h3>
               <div>
                 <Label htmlFor="wizard-voen">VÖEN</Label>
-                <div className="flex gap-2">
-                  <Input id="wizard-voen" inputMode="numeric" value={voen} onChange={(e) => setVoen(e.target.value)} placeholder="0000000000" />
+                {/* Ten digits must stay readable on a phone: the button drops under the field there. */}
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input id="wizard-voen" inputMode="numeric" className="min-w-[12ch] sm:flex-1" value={voen} onChange={(e) => setVoen(e.target.value)} placeholder="0000000000" />
                   <Hint text={t("lookupHint")} wrap>
                     <Button type="button" variant="outline" onClick={lookUp} disabled={lookup.state === "busy"} data-testid="wizard-lookup">
                       {lookup.state === "busy" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Search className="mr-1 h-4 w-4" />}

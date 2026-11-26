@@ -159,3 +159,13 @@ describe("Advisor card on a deal speaks the reader's language", () => {
     expect(signals[0]?.recommendedActions[0]?.payload.assignee).toBeUndefined()
   })
 })
+
+describe("Advisor card without the advisor", () => {
+  // 2026-11-26, contracts E2E: an organization without the AI module got «no risks» on every
+  // contract — a check that never ran, reported as passed.
+  it.each([401, 403])("a refusal (%i) shows nothing, not «no risks»", async (status) => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ status, json: async () => ({ error: "Forbidden" }) })))
+    const text = await renderWidget()
+    expect(text).toBe("")
+  })
+})
