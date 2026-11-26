@@ -28,7 +28,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import { contractListStats, daysUntilContractEnd, isContractExpiringSoon } from "@/lib/contract-lifecycle/list-stats"
+import { contractListStats, currencyFiguresText, daysUntilContractEnd, isContractExpiringSoon } from "@/lib/contract-lifecycle/list-stats"
 import { toast } from "sonner"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
@@ -633,7 +633,7 @@ export default function ContractsPage() {
   }
 
   // Stats — the arithmetic lives in list-stats.ts, shared with the guided demo.
-  const { activeCount, totalValue, avgValue, expiringSoon, mrr, statusCounts } = contractListStats(contracts)
+  const { activeCount, byCurrency, expiringSoon, statusCounts } = contractListStats(contracts)
 
   const columns = [
     {
@@ -806,9 +806,9 @@ export default function ContractsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" data-tour-id="contracts-stats">
         <ColorStatCard label={t("statTotal")} value={total} icon={<FileText className="h-4 w-4" />} hint={t("hintTotalContracts")} />
         <ColorStatCard label={t("statActive")} value={activeCount} icon={<FileText className="h-4 w-4" />} hint={t("hintActiveContracts")} />
-        <ColorStatCard label={t("statTotalAmount")} value={`${totalValue.toLocaleString()} ₼`} icon={<TrendingUp className="h-4 w-4" />} hint={t("hintContractValue")} />
-        <ColorStatCard label={t("statMrr")} value={`${Math.round(mrr).toLocaleString()} ₼`} icon={<TrendingUp className="h-4 w-4" />} />
-        <ColorStatCard label={t("statAvgValue")} value={`${avgValue.toLocaleString()} ₼`} icon={<TrendingUp className="h-4 w-4" />} />
+        <ColorStatCard label={t("statTotalAmount")} value={currencyFiguresText(byCurrency, "total")} icon={<TrendingUp className="h-4 w-4" />} hint={t("hintContractValue")} />
+        <ColorStatCard label={t("statMrr")} value={currencyFiguresText(byCurrency, "mrr")} icon={<TrendingUp className="h-4 w-4" />} />
+        <ColorStatCard label={t("statAvgValue")} value={currencyFiguresText(byCurrency, "avg")} icon={<TrendingUp className="h-4 w-4" />} />
         <ColorStatCard label={t("statExpiringSoon")} value={expiringSoon} icon={<AlertTriangle className="h-4 w-4" />} hint={t("hintExpiringSoon")} />
       </div>
 

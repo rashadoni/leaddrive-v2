@@ -34,6 +34,7 @@ import {
   loadInvoiceSettings,
 } from "@/lib/clm/contract-documents-server"
 import { toNumber } from "@/lib/clm/contract-documents"
+import { contractMoney } from "@/lib/clm/contract-money"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -52,7 +53,7 @@ export const GET = withRlsAuth("contracts", "read", async (_req, { orgId, role }
         ? prisma.invoice.findMany({
             where: { organizationId: orgId, contractId },
             orderBy: { createdAt: "asc" },
-            select: { id: true, invoiceNumber: true, status: true, totalAmount: true, currency: true, issueDate: true },
+            select: { id: true, invoiceNumber: true, status: true, totalAmount: true, paidAmount: true, balanceDue: true, currency: true, issueDate: true, dueDate: true },
           })
         : Promise.resolve(null),
     ])
@@ -69,6 +70,15 @@ export const GET = withRlsAuth("contracts", "read", async (_req, { orgId, role }
           })
         ).map(lineRow)
       : []
+    type InvoiceRead = { id: string; invoiceNumber: string; status: string; totalAmount: unknown; paidAmount: unknown; balanceDue: unknown; currency: string; issueDate: Date; dueDate: Date | null }
+    const invoiceRows = invoices
+      ? (invoices as InvoiceRead[]).map((inv) => ({
+          ...inv,
+          totalAmount: toNumber(inv.totalAmount) ?? 0,
+          paidAmount: toNumber(inv.paidAmount) ?? 0,
+          balanceDue: toNumber(inv.balanceDue) ?? 0,
+        }))
+      : null
     const acts = rows.filter((d: { kind: unknown; status: unknown }) => d.kind === "acceptance_act" && d.status !== "cancelled") as Array<{ invoiceId: string | null; id: string; status: string }>
     return NextResponse.json({
       success: true,
@@ -77,11 +87,15 @@ export const GET = withRlsAuth("contracts", "read", async (_req, { orgId, role }
         documents: rows,
         activeProtocol: active ? { id: active.protocol.id, number: active.protocol.number, signed: active.signed, vatRate: active.protocol.vatRate, lines: activeLines } : null,
         // null: this person does not see invoices — the chain says so instead of «0».
-        invoices: invoices
-          ? invoices.map((inv: { id: string; invoiceNumber: string; status: string; totalAmount: unknown; currency: string; issueDate: Date }) => {
+        invoices: invoiceRows
+          ? invoiceRows.map((inv) => {
               const act = acts.find((a) => a.invoiceId === inv.id)
-              return { ...inv, totalAmount: toNumber(inv.totalAmount) ?? 0, act: act ? { id: act.id, status: act.status } : null }
+              return { ...inv, act: act ? { id: act.id, status: act.status } : null }
             })
+          : null,
+        // «Деньги по договору» (src/lib/clm/contract-money.ts) — only for those who see invoices.
+        money: invoiceRows
+          ? contractMoney({ valueAmount: toNumber(contract.valueAmount), currency: contract.currency }, invoiceRows)
           : null,
       },
     })

@@ -4,16 +4,23 @@
  * Generates a draft Invoice pre-filled from a Contract:
  *   - contractId, companyId, dealId, contactId (all same-org via the contract)
  *   - title from contract.title
- *   - subtotal/totalAmount from contract.valueAmount (Decimal — no float coercion)
+ *   - with an active price protocol: its lines and prices, as before;
+ *   - without one: one line for what is LEFT of contract.valueAmount after every
+ *     invoice of the contract in its currency that counts (drafts included;
+ *     cancelled and refunded do not) — owner 2026-11-26, «Деньги по договору»:
+ *     it was the whole value on every press. Nothing left → 409 FULLY_INVOICED.
+ *     A contract without a value gets a 0 line to fill in, as before.
  *   - currency from contract
  *   - issueDate = now, dueDate = +30 days
- *   - one InvoiceItem for the contract value
+ *
+ * A contract that never took effect (draft, in approval, rejected, cancelled)
+ * is not invoiced → 409 CONTRACT_NOT_IN_FORCE (src/lib/clm/contract-money.ts).
+ * The left-over is read and the invoice written under the contract's row lock.
  *
  * Permission: the caller must have BOTH contracts:write (to act on the contract)
  * AND invoices:write (to create an invoice). If either check fails → 403.
  *
- * Multiple invoices per contract are allowed (the model supports it). A warning
- * is included in the response body when one already exists.
+ * A warning is included in the response body when invoices already exist.
  *
  * An ERP push is fired best-effort after invoice creation: a configured org
  * auto-syncs; an unconfigured org no-ops. An ERP push failure NEVER fails the
@@ -28,6 +35,7 @@ import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
 import { generateInvoiceNumber } from "@/lib/invoice-number"
 import { calculateDueDate, calculateInvoiceTotals, calculateItemTotal } from "@/lib/invoice-calculations"
 import { activeProtocol, toNumber, type ProtocolRow } from "@/lib/clm/contract-documents"
+import { countsTowardsValue, invoiceRefusal, nextInvoiceAmount } from "@/lib/clm/contract-money"
 import { normalizeInvoiceRow, normalizeInvoiceItemRow } from "@/lib/prisma-decimal"
 import { pushInvoiceToErp } from "@/lib/integrations/erp/provider"
 import { Prisma } from "@prisma/client"
@@ -81,16 +89,17 @@ export async function POST(
         contactId: true,
         valueAmount: true,
         currency: true,
+        status: true,
       },
     })
     if (!contract) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
-
-    // ── Idempotency advisory: warn if an invoice already exists ──────────────
-    const existingCount = await prisma.invoice.count({
-      where: { contractId, organizationId: orgId },
-    })
+    // A contract that never took effect is not invoiced (src/lib/clm/contract-money.ts).
+    const refusal = invoiceRefusal(contract.status)
+    if (refusal) {
+      return NextResponse.json({ error: refusal, code: refusal, status: contract.status }, { status: 409 })
+    }
 
     // ── Derive monetary values from contract.valueAmount (Decimal, no float) ─
     // contract.valueAmount is Prisma.Decimal | null.
@@ -148,7 +157,20 @@ export async function POST(
         )
       : null
 
-    // Without a protocol, as before: one line for the contract's value, no VAT.
+    // Without a protocol: one line for what is left of the contract's value, no VAT
+    // (owner 2026-11-26, «Деньги по договору»: it was the whole value every time).
+    // The left-over is read again under the contract's row lock, below.
+    const oneLineMoney = (value: Prisma.Decimal) => ({
+      subtotal: value,
+      discountType: "percentage",
+      discountValue: new Prisma.Decimal(0),
+      discountAmount: new Prisma.Decimal(0),
+      taxRate: 0,
+      taxAmount: new Prisma.Decimal(0),
+      totalAmount: value,
+      paidAmount: new Prisma.Decimal(0),
+      balanceDue: value,
+    })
     const money = protocolTotals
       ? {
           subtotal: new Prisma.Decimal(protocolTotals.subtotal),
@@ -162,17 +184,7 @@ export async function POST(
           paidAmount: new Prisma.Decimal(0),
           balanceDue: new Prisma.Decimal(protocolTotals.totalAmount),
         }
-      : {
-          subtotal: contractValue,
-          discountType: "percentage",
-          discountValue: new Prisma.Decimal(0),
-          discountAmount: new Prisma.Decimal(0),
-          taxRate: 0,
-          taxAmount: new Prisma.Decimal(0),
-          totalAmount: contractValue,
-          paidAmount: new Prisma.Decimal(0),
-          balanceDue: contractValue,
-        }
+      : oneLineMoney(contractValue)
     const items = fromProtocol
       ? protocolItems
       : [
@@ -188,12 +200,36 @@ export async function POST(
           },
         ]
 
-    const invoiceNumber = await generateInvoiceNumber(orgId)
     const issueDate = new Date()
     const dueDate = calculateDueDate(issueDate, "net30")
 
-    // ── Create invoice inside a transaction ──────────────────────────────────
-    const invoice = await prisma.invoice.create({
+    // ── Create the invoice under the contract's row lock ─────────────────────
+    // Two presses at once must not both see the same left-over and both invoice it.
+    const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.$queryRaw`SELECT id FROM "contracts" WHERE id = ${contractId} AND "organizationId" = ${orgId} FOR UPDATE`
+    const existing: Array<{ status: string; totalAmount: unknown; currency: string }> = await tx.invoice.findMany({
+      where: { contractId, organizationId: orgId },
+      select: { status: true, totalAmount: true, currency: true },
+    })
+    // The number too: a second press waiting on the lock reads the first one's number.
+    const invoiceNumber = await generateInvoiceNumber(orgId, tx)
+    let lineAmount = contractValue
+    if (!fromProtocol) {
+      const next = nextInvoiceAmount(
+        { valueAmount: toNumber(contract.valueAmount), currency: contract.currency },
+        existing.map((i) => ({ status: i.status, totalAmount: toNumber(i.totalAmount) ?? 0, currency: i.currency })),
+      )
+      if (!next.ok) return { refused: next.code } as const
+      // The left-over in Decimal arithmetic; with nothing counted yet, the value itself, exactly.
+      const counted = existing.filter((i) => countsTowardsValue(i, contract.currency))
+      if (next.amount !== null && counted.length > 0) {
+        lineAmount = counted.reduce(
+          (left: Prisma.Decimal, i: { totalAmount: unknown }) => left.minus(new Prisma.Decimal(String(i.totalAmount ?? 0))),
+          new Prisma.Decimal(String(contract.valueAmount)),
+        )
+      }
+    }
+    const invoice = await tx.invoice.create({
       data: {
         organizationId: orgId,
         invoiceNumber,
@@ -205,20 +241,26 @@ export async function POST(
         contactId: contract.contactId ?? undefined,
         currency: contract.currency,
         // Money — pass Decimal directly; Prisma handles precision.
-        ...money,
+        ...(fromProtocol ? money : oneLineMoney(lineAmount)),
         paymentTerms: "net30",
         issueDate,
         dueDate,
         // Carry over contract number into the invoice document details field.
         contractNumber: contract.contractNumber ?? undefined,
         viewToken: crypto.randomUUID(),
-        items: { create: items },
+        items: { create: fromProtocol ? items : [{ ...items[0], unitPrice: lineAmount, total: lineAmount }] },
       },
       include: {
         items: true,
         company: { select: { id: true, name: true } },
       },
     })
+    return { invoice, existingCount: existing.length } as const
+    })
+    if ("refused" in created) {
+      return NextResponse.json({ error: created.refused, code: created.refused }, { status: 409 })
+    }
+    const { invoice, existingCount } = created
 
     // ── Best-effort ERP push (never fails the response) ──────────────────────
     void pushInvoiceToErp(orgId, invoice.id).catch((err: unknown) => {

@@ -55,6 +55,7 @@ export async function loadContractForDocuments(orgId: string, contractId: string
       title: true,
       status: true,
       currency: true,
+      valueAmount: true,
       dealId: true,
       companyId: true,
       endDate: true,

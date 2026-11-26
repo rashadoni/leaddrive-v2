@@ -14,6 +14,8 @@ import { FileDown, FilePlus2, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Hint } from "@/components/hint"
 import { moneyText } from "@/lib/clm/contract-documents"
+import type { ContractMoney } from "@/lib/clm/contract-money"
+import { ContractMoneySummary } from "@/components/contracts/contract-money-summary"
 
 interface DocRow {
   id: string
@@ -33,6 +35,9 @@ interface InvoiceRow {
   invoiceNumber: string
   status: string
   totalAmount: number
+  paidAmount?: number
+  balanceDue?: number
+  dueDate?: string | null
   currency: string
   act: { id: string; status: DocRow["status"] } | null
 }
@@ -41,12 +46,15 @@ interface ChainData {
   documents: DocRow[]
   activeProtocol: { id: string; number: number; signed: boolean } | null
   invoices: InvoiceRow[] | null
+  /** «Деньги по договору»; null for those who do not see invoices. */
+  money?: ContractMoney | null
 }
 
 const day = (iso: string | null) => (iso ? new Date(iso).toISOString().slice(0, 10).split("-").reverse().join(".") : "…")
 
 export function ContractDocumentsChain({ contractId, canWrite, canInvoice }: { contractId: string; canWrite: boolean; canInvoice: boolean }) {
   const t = useTranslations("contractDocuments")
+  const tInvoices = useTranslations("invoices")
   const router = useRouter()
   const [data, setData] = useState<ChainData | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -87,7 +95,7 @@ export function ContractDocumentsChain({ contractId, canWrite, canInvoice }: { c
       const res = await fetch(`/api/v1/contracts/${encodeURIComponent(contractId)}/create-invoice`, { method: "POST" })
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.success) {
-        setError(t("errInvoice"))
+        setError(json?.code === "FULLY_INVOICED" ? t("errFullyInvoiced") : json?.code === "CONTRACT_NOT_IN_FORCE" ? t("errInvoiceNotInForce") : t("errInvoice"))
         return
       }
       router.push(`/invoices/${json.data.id}`)
@@ -108,6 +116,24 @@ export function ContractDocumentsChain({ contractId, canWrite, canInvoice }: { c
           ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
           : "bg-muted text-foreground"
 
+  // What an invoice is to the customer now: its status, or «Просрочен» once its due date has passed unpaid.
+  const invoiceState = (inv: InvoiceRow): string => {
+    const owed = (inv.balanceDue ?? 0) > 0
+    const past = inv.dueDate ? new Date(inv.dueDate).getTime() < new Date(new Date().toISOString().slice(0, 10)).getTime() : false
+    if (owed && past && ["sent", "viewed", "partially_paid"].includes(inv.status)) return "overdue"
+    return inv.status
+  }
+  const invoiceClass = (state: string) =>
+    state === "paid"
+      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
+      : state === "overdue"
+        ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200"
+        : state === "partially_paid"
+          ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+          : state === "cancelled" || state === "refunded"
+            ? "bg-muted text-muted-foreground line-through"
+            : "bg-muted text-foreground"
+
   const protocols = data.documents.filter((d) => d.kind === "price_protocol")
   const latestProtocol = protocols.find((p) => p.status !== "cancelled") ?? null
   const invoices = data.invoices
@@ -123,6 +149,7 @@ export function ContractDocumentsChain({ contractId, canWrite, canInvoice }: { c
         <h2 className="text-base font-semibold">{t("title")}</h2>
         <span className="text-xs text-muted-foreground">{t("subtitle")}</span>
       </div>
+      {data.money && <ContractMoneySummary money={data.money} />}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <div className={linkClass(1, contractSigned)} data-testid="chain-contract">
           <span className="text-[11px] font-bold text-muted-foreground">1</span>
@@ -211,7 +238,19 @@ export function ContractDocumentsChain({ contractId, canWrite, canInvoice }: { c
                     <Link href={`/invoices/${inv.id}`} className="font-medium hover:underline">
                       {inv.invoiceNumber}
                     </Link>
-                    <span className="text-xs tabular-nums text-muted-foreground">{`${moneyText(inv.totalAmount)} ${inv.currency}`}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      {[
+                        `${moneyText(inv.totalAmount)} ${inv.currency}`,
+                        inv.status === "partially_paid" && inv.paidAmount ? t("invoicePaidPart", { amount: `${moneyText(inv.paidAmount)} ${inv.currency}` }) : null,
+                        inv.dueDate && invoiceState(inv) !== "paid" && inv.status !== "draft" ? t("invoiceDue", { date: day(inv.dueDate) }) : null,
+                      ].filter(Boolean).join(" · ")}
+                    </span>
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] ${invoiceClass(invoiceState(inv))}`} data-testid={`chain-invoice-status-${inv.id}`}>
+                      {tInvoices(`status.${invoiceState(inv)}` as never)}
+                      {invoiceState(inv) !== "paid" && invoiceState(inv) !== "draft" && (inv.balanceDue ?? 0) > 0 && (inv.paidAmount ?? 0) > 0
+                        ? ` · ${t("invoiceDebt", { amount: `${moneyText(inv.balanceDue ?? 0)} ${inv.currency}` })}`
+                        : ""}
+                    </span>
                     {inv.act ? (
                       <Link href={`/contracts/${contractId}/documents/${inv.act.id}`}>
                         <span className={`rounded-full px-2 py-0.5 text-[11px] ${statusClass(inv.act.status)}`}>

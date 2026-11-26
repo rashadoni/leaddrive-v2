@@ -27,6 +27,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 const mockContractFindFirst = vi.fn()
 const mockInvoiceCount = vi.fn()
+const mockInvoiceFindMany = vi.fn()
 const mockInvoiceCreate = vi.fn()
 const mockInvoiceFindFirst = vi.fn()
 const mockAccountingFindFirst = vi.fn()
@@ -46,6 +47,14 @@ vi.mock("@/lib/prisma", () => ({
       create: (...args: unknown[]) => mockInvoiceCreate(...args),
       findFirst: (...args: unknown[]) => mockInvoiceFindFirst(...args),
     },
+    // The left-over is read and the invoice written under the contract's row lock.
+    $transaction: async (fn: (tx: unknown) => unknown) => fn({
+      $queryRaw: async () => [],
+      invoice: {
+        findMany: (...args: unknown[]) => mockInvoiceFindMany(...args),
+        create: (...args: unknown[]) => mockInvoiceCreate(...args),
+      },
+    }),
     accountingIntegration: {
       findFirst: (...args: unknown[]) => mockAccountingFindFirst(...args),
     },
@@ -213,6 +222,7 @@ describe("POST /api/v1/contracts/:id/create-invoice", () => {
     mockGetMobileAuth.mockReturnValue(null) // default: not a mobile caller
     mockContractFindFirst.mockResolvedValue(baseContract)
     mockInvoiceCount.mockResolvedValue(0)
+    mockInvoiceFindMany.mockResolvedValue([])
     mockInvoiceNumber.mockResolvedValue("INV-2026-00001")
     mockInvoiceCreate.mockResolvedValue(createdInvoice)
     mockPushInvoiceToErp.mockResolvedValue({ skipped: true })
@@ -373,7 +383,11 @@ describe("POST /api/v1/contracts/:id/create-invoice", () => {
   })
 
   it("includes warning in response when existing invoices already exist", async () => {
-    mockInvoiceCount.mockResolvedValue(2)
+    // Two cancelled invoices: they count for nothing, so the whole value is still left.
+    mockInvoiceFindMany.mockResolvedValue([
+      { status: "cancelled", totalAmount: "5000", currency: "AZN" },
+      { status: "refunded", totalAmount: "5000", currency: "AZN" },
+    ])
     const req = makePOSTReq()
     const res = await POST(req, makeParams())
     expect(res.status).toBe(201)
@@ -383,11 +397,45 @@ describe("POST /api/v1/contracts/:id/create-invoice", () => {
   })
 
   it("does NOT include warning when no existing invoices", async () => {
-    mockInvoiceCount.mockResolvedValue(0)
+    mockInvoiceFindMany.mockResolvedValue([])
     const req = makePOSTReq()
     const res = await POST(req, makeParams())
     const json = await res.json()
     expect(json.warning).toBeUndefined()
+  })
+
+  // ── «Деньги по договору» (owner 2026-11-26): the left-over, not the whole value ──
+
+  it("without a protocol, invoices what is left after the invoices and drafts that count", async () => {
+    mockInvoiceFindMany.mockResolvedValue([
+      { status: "paid", totalAmount: "2000", currency: "AZN" },
+      { status: "draft", totalAmount: "1000", currency: "AZN" },
+      { status: "cancelled", totalAmount: "4000", currency: "AZN" },
+      { status: "sent", totalAmount: "900", currency: "USD" },
+    ])
+    const res = await POST(makePOSTReq(), makeParams())
+    expect(res.status).toBe(201)
+    const data = mockInvoiceCreate.mock.calls[0][0].data
+    expect([data.totalAmount.toString(), data.balanceDue.toString(), data.items.create[0].unitPrice.toString()]).toEqual(["2000", "2000", "2000"])
+    // read under the contract's lock, every invoice of the contract in this organisation
+    expect(mockInvoiceFindMany.mock.calls[0][0].where).toEqual({ contractId: CONTRACT_ID, organizationId: ORG_ID })
+  })
+
+  it("a contract already fully invoiced gets no new invoice", async () => {
+    mockInvoiceFindMany.mockResolvedValue([{ status: "sent", totalAmount: "5000", currency: "AZN" }])
+    const res = await POST(makePOSTReq(), makeParams())
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe("FULLY_INVOICED")
+    expect(mockInvoiceCreate).not.toHaveBeenCalled()
+  })
+
+  it("a contract that never took effect is not invoiced", async () => {
+    for (const status of ["draft", "pending_approval", "rejected", "cancelled"]) {
+      mockContractFindFirst.mockResolvedValueOnce({ ...baseContract, status })
+      const res = await POST(makePOSTReq(), makeParams())
+      expect([status, res.status, (await res.json()).code]).toEqual([status, 409, "CONTRACT_NOT_IN_FORCE"])
+    }
+    expect(mockInvoiceCreate).not.toHaveBeenCalled()
   })
 
   // ── ERP push is best-effort ───────────────────────────────────────────────
