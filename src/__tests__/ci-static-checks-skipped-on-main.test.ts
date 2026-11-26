@@ -126,7 +126,14 @@ describe("pr-checks static-checks is redundant on a main push", () => {
     // be able to hold up a production deploy of somebody else's fix. The rule
     // tests themselves are ordinary `src/__tests__/erp-*.test.ts` files, so
     // the deploy still runs them inside "Unit tests vs baseline (BLOCKING)".
+    //
+    // The contract search gate is the other one, for a reason of the database:
+    // it proves vectors and the `<=>` search on pgvector, and the deploy's
+    // Postgres is a plain postgres:16 (a deploy gate that asked for `vector`
+    // stopped every deploy until #522). It runs on every pull request that
+    // reaches main, which is the only way its code can.
     expect(uncovered).toEqual([
+      "Contract search database gate",
       "PII column-wrap lint guard",
       "ERP rule tests",
       "ERP marks vs test report",
