@@ -33961,6 +33961,7 @@
     "replyByRule": "Отправлено в директ автоматически по слову «{keyword}»",
     "replyPublicBy": "{name} — под постом",
     "replyPublicFromApp": "Ответ под постом из приложения Instagram",
+    "tiktokNoDirect": "TikTok не даёт написать в директ — только ответ под видео.",
     "replyDirectBy": "{name} — в директ",
     "someone": "Сотрудник",
     "replyMessenger": "Написать в Messenger",

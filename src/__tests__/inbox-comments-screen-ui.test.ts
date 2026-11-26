@@ -133,6 +133,40 @@ describe("the «Комментарии» section of Omni-Channel", () => {
     expect(all("inbox-comments-rule-banner")[0].textContent).toContain("Слово «GECƏ» в комментарии")
   })
 
+  it("answers a TikTok comment under the video, and offers no direct message at all", async () => {
+    // TikTok direct messages need the Business Messaging permission, which the platform stopped
+    // issuing; the card must say so rather than show a button that cannot work.
+    const tiktokComment: BoardComment = {
+      id: "tt-row-1", platform: "tiktok", conversationId: null, author: "@aysel", text: "Qiymət neçədir?",
+      createdAt: "2026-11-26T10:00:00.000Z", isThreadReply: false, answered: false,
+      privateReplyAvailable: false, keyword: null, replies: [],
+    }
+    const tiktokPost: BoardPost = {
+      key: "tiktok:acc-1:v1", platform: "tiktok", channelConfigId: null, channelName: "Gobustone",
+      caption: "Yeni kolleksiya", permalink: "https://www.tiktok.com/@brand/video/1", imageUrl: null,
+      isReel: true, lastCommentAt: tiktokComment.createdAt, total: 1, unanswered: 1, comments: [tiktokComment],
+    }
+    answer({ ...BOARD, posts: [tiktokPost] }, {
+      "POST /api/v1/inbox/comments/tiktok/tt-row-1/reply": { status: 201, body: { success: true } },
+    })
+    await render()
+
+    const card = all("inbox-comments-comment")[0]
+    expect(card.textContent).toContain("TikTok не даёт написать в директ")
+    expect(card.querySelector('[data-testid="inbox-comments-reply-direct"]')).toBeNull()
+
+    await press(button("Ответить под постом", card))
+    await type(card.querySelector("textarea")!, "Salam! Qiymət 25 AZN")
+    await press(card.querySelector('[data-testid="inbox-comments-send"]')!)
+
+    // TikTok's own route, and only the words: there is no mode to choose.
+    const sent = calls.find((c) => c.method === "POST" && c.url.includes("/comments/tiktok/"))!
+    expect(sent).toMatchObject({ url: "/api/v1/inbox/comments/tiktok/tt-row-1/reply" })
+    expect(sent.body).toEqual({ body: "Salam! Qiymət 25 AZN" })
+    // A TikTok comment is never sent through the inbox's conversation route.
+    expect(calls.some((c) => c.method === "POST" && c.url === "/api/v1/inbox")).toBe(false)
+  })
+
   it("shows under an answered comment who answered it and how", async () => {
     answer(BOARD)
     await render()

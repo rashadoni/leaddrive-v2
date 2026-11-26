@@ -63,6 +63,7 @@ model Organization {
   inboxLearningSamples  InboxLearningSample[]
   whatsappHistoryChunks WhatsAppHistoryChunk[]
   facebookPageComments FacebookPageComment[]
+  tiktokVideoComments  TikTokVideoComment[]
   purchaseRequests      PurchaseRequest[]
   purchaseRequestItems  PurchaseRequestItem[]
   supplierQuotes        SupplierQuote[]
@@ -4334,6 +4335,46 @@ model FacebookPageComment {
   @@index([organizationId, fromId, commentedAt])
   @@index([organizationId, postId])
   @@map("facebook_page_comments")
+}
+
+/// A comment under an owned TikTok video (lib/inbox/tiktok-comment-ingest). Its own table for the same
+/// reason as the Facebook one: the commenter is named by an id that is not a messaging identity, the
+/// row has no conversation, and every reader of inbound TikTok rows would take it for a direct message.
+/// TikTok direct messages are a separate permission we do not have, so a comment here is answered only
+/// under the video.
+model TikTokVideoComment {
+  id              String         @id @default(cuid())
+  organizationId  String
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// The connected account whose video this is. TikTok accounts live in `social_accounts`, not in
+  /// `channel_configs`, so the board names the post by this account.
+  socialAccountId String?
+  socialAccount   SocialAccount? @relation(fields: [socialAccountId], references: [id], onDelete: SetNull)
+  /// `business_id` of the account — the `open_id` TikTok's comment endpoints take.
+  businessId      String
+  videoId         String
+  commentId       String
+  /// Set when this is a reply to another comment rather than a top-level one.
+  parentId        String?
+  username        String?
+  displayName     String?
+  body            String
+  commentedAt     DateTime
+  caption         String?
+  permalink       String?
+  likes           Int            @default(0)
+  /// [{ id, text, at, authorName, fromApp }] — answers under the video, ours and the ones typed in
+  /// the TikTok app.
+  replies         Json           @default("[]")
+  /// Gone from TikTok: deleted by its author or hidden by the account.
+  removedAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([organizationId, commentId])
+  @@index([organizationId, commentedAt])
+  @@index([organizationId, videoId])
+  @@map("tiktok_video_comments")
 }
 
 model WhatsAppHistoryChunk {
@@ -18846,6 +18887,7 @@ model SocialAccount {
   connectionCursors    SocialConnectionCursor[]
   replyIdentities      SocialReplyIdentity[]
   outboundReplies      OutboundSocialReply[]
+  videoComments        TikTokVideoComment[]
 
   @@unique([organizationId, id], map: "social_accounts_org_id_key")
   @@unique([organizationId, platform, handle])

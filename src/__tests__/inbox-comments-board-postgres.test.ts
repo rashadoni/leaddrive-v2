@@ -70,7 +70,7 @@ vi.mock("@/lib/api-auth", () => {
 
 const ROOT = process.cwd()
 const PRISMA_CLI = createRequire(import.meta.url).resolve("prisma/build/index.js")
-const RLS_TABLES = ["social_conversations", "channel_messages", "channel_configs", "audit_logs", "facebook_page_comments"]
+const RLS_TABLES = ["social_conversations", "channel_messages", "channel_configs", "audit_logs", "facebook_page_comments", "tiktok_video_comments"]
 
 const ORG = "org-comments"
 const OTHER = "org-comments-other"
@@ -87,6 +87,9 @@ const REEL = "media-reel-gece"
 const POST = "media-post-price"
 const SECOND_POST = "media-second-page"
 const OTHER_REEL = "media-other-org"
+const TT_ACCOUNT = "acc-cm-tiktok"
+const TT_OTHER_ACCOUNT = "acc-cm-tiktok-other"
+const TT_VIDEO = "tiktok-video-1"
 
 function cli(args: string[], env: NodeJS.ProcessEnv, input?: string) {
   const result = spawnSync(process.execPath, [PRISMA_CLI, ...args], { input, encoding: "utf8", env, timeout: 240_000, maxBuffer: 16 * 1024 * 1024 })
@@ -125,6 +128,8 @@ type MetaCall = { url: string; body: Record<string, unknown>; raw: string }
   let facebook!: typeof import("@/lib/social/facebook-comments")
   let fbIngest!: typeof import("@/lib/inbox/facebook-comment-ingest")
   let fbReplyRoute!: typeof import("@/app/api/v1/inbox/comments/facebook/[id]/reply/route")
+  let tiktok!: typeof import("@/lib/inbox/tiktok-comment-ingest")
+  let ttReplyRoute!: typeof import("@/app/api/v1/inbox/comments/tiktok/[id]/reply/route")
   let inboxChannel!: typeof import("@/lib/social/inbox-channel")
   let createdDb = false
   let createdRole = false
@@ -134,6 +139,8 @@ type MetaCall = { url: string; body: Record<string, unknown>; raw: string }
   let metaRefuses = false
   /** The Page subscription is refused when it asks for `feed` — a token without the permission. */
   let metaRefusesFeed = false
+  /** TikTok answers 200 with its own code; a test may make it refuse the reply. */
+  let tiktokRefuses = false
 
   const as = (orgId: string, userId: string, role = "admin", hiddenChannelConfigIds?: string[]) => {
     browser.current = { orgId, userId, role, email: `${userId}@example.test`, name: userId, principalType: "session", hiddenChannelConfigIds }
@@ -194,6 +201,41 @@ type MetaCall = { url: string; body: Record<string, unknown>; raw: string }
     { params: Promise.resolve({ id }) } as never,
   )
 
+  /** A comment under an owned TikTok video, through the real ingest, inside its organization. */
+  async function tiktokArrives(org: string, accountId: string, handle: string, accountName: string, input: {
+    text: string
+    videoId?: string
+    owner?: boolean
+    ownerReply?: string
+  }) {
+    const commentId = `tt-comment-${++seq}`
+    const videoId = input.videoId ?? TT_VIDEO
+    await rls.runWithTenant(org, () => tiktok.storeTikTokComments({
+      account: { id: accountId, organizationId: org, handle, displayName: accountName, accessToken: null, tokenExpiresAt: null },
+      video: { videoId, caption: `caption of ${videoId}`, shareUrl: `https://www.tiktok.com/@brand/video/${videoId}`, commentCount: 1 },
+      comments: [{
+        commentId,
+        parentId: null,
+        username: "aysel",
+        displayName: "Aysel",
+        text: input.text,
+        createdAt: new Date(),
+        likes: 0,
+        owner: input.owner === true,
+        replies: input.ownerReply
+          ? [{ commentId: `${commentId}-own`, parentId: commentId, username: null, displayName: null, text: input.ownerReply, createdAt: new Date(), likes: 0, owner: true, replies: [] }]
+          : [],
+      }],
+      counts: { videos: 0, stored: 0, updated: 0, replies: 0, removed: 0, skipped: 0, failed: 0 },
+    }))
+    return commentId
+  }
+  const ttReply = (id: string, text: string) => ttReplyRoute.POST(
+    request(`/api/v1/inbox/comments/tiktok/${id}/reply`, "POST", { body: text }),
+    { params: Promise.resolve({ id }) } as never,
+  )
+  const tiktokCalls = () => meta.filter((call) => call.url.includes("business-api.tiktok.com"))
+
   async function saveRules(rules: unknown[]) {
     return rulesRoute.PUT(request("/api/v1/inbox/comments/keyword-rules", "PUT", { rules }), undefined as never)
   }
@@ -213,6 +255,12 @@ type MetaCall = { url: string; body: Record<string, unknown>; raw: string }
       try { body = JSON.parse(String(init?.body ?? "{}")) } catch { /* not JSON */ }
       const raw = init?.body instanceof URLSearchParams ? init.body.toString() : String(init?.body ?? "")
       meta.push({ url: url.replace(/access_token=[^&]+/, "access_token=…"), body, raw })
+      if (url.includes("business-api.tiktok.com")) {
+        // TikTok answers 200 and says what happened in `code`; only 0 is a success.
+        return new Response(JSON.stringify(tiktokRefuses
+          ? { code: 40002, message: "User is not eligible for the Advanced Access tier" }
+          : { code: 0, data: { comment_id: `tt-reply-${meta.length}` } }), { status: 200 })
+      }
       if (url.includes("/subscribed_apps")) {
         return metaRefusesFeed && raw.includes("feed")
           ? new Response(JSON.stringify({ error: { message: "needs permission", code: 200 } }), { status: 403 })
@@ -232,6 +280,11 @@ type MetaCall = { url: string; body: Record<string, unknown>; raw: string }
     facebook = await import("@/lib/social/facebook-comments")
     fbIngest = await import("@/lib/inbox/facebook-comment-ingest")
     fbReplyRoute = await import("@/app/api/v1/inbox/comments/facebook/[id]/reply/route")
+    tiktok = await import("@/lib/inbox/tiktok-comment-ingest")
+    ttReplyRoute = await import("@/app/api/v1/inbox/comments/tiktok/[id]/reply/route")
+    // The grant's own token is encrypted in production; here the server token stands in for it, so
+    // the fixture tests the comment path and not the token store.
+    process.env.TIKTOK_BUSINESS_ACCESS_TOKEN = "tiktok-fixture-token"
     inboxChannel = await import("@/lib/social/inbox-channel")
 
     await bypass(async () => {
@@ -250,6 +303,13 @@ type MetaCall = { url: string; body: Record<string, unknown>; raw: string }
           { id: FB_OTHER, organizationId: OTHER, channelType: "facebook", configName: "Other Page", pageId: "page-other", apiKey: `token-${FB_OTHER}`, settings: { commentsGranted: true } },
         ],
       })
+      // TikTok accounts are not channel configs: they live in `social_accounts`.
+      await prisma.socialAccount.createMany({
+        data: [
+          { id: TT_ACCOUNT, organizationId: ORG, platform: "tiktok", handle: "open-id-main", displayName: "Gobustone" },
+          { id: TT_OTHER_ACCOUNT, organizationId: OTHER, platform: "tiktok", handle: "open-id-other", displayName: "Other TikTok" },
+        ],
+      })
     })
   }, 300_000)
 
@@ -257,6 +317,7 @@ type MetaCall = { url: string; body: Record<string, unknown>; raw: string }
     meta = []
     metaRefuses = false
     metaRefusesFeed = false
+    tiktokRefuses = false
   })
 
   afterAll(async () => {
@@ -579,4 +640,66 @@ type MetaCall = { url: string; body: Record<string, unknown>; raw: string }
       expect((await board()).channels.map((c) => c.id)).not.toContain(wired.channelId)
     })
   })
+
+  it("shows TikTok comments to their own organization only, and answers them under the video", async () => {
+    await tiktokArrives(ORG, TT_ACCOUNT, "open-id-main", "Gobustone", { text: "Bu neçəyədir?" })
+    await tiktokArrives(OTHER, TT_OTHER_ACCOUNT, "open-id-other", "Other TikTok", { text: "Başqa şirkətin TikTok sualı" })
+
+    as(ORG, ADMIN)
+    const mine = await board()
+    const post = mine.posts.find((p) => p.platform === "tiktok")!
+    // A TikTok account is not a page: the post is named by the account and belongs to no channel config.
+    expect(post).toMatchObject({ channelName: "Gobustone", channelConfigId: null, isReel: true, total: 1, unanswered: 1 })
+    expect(mine.channels.some((c) => c.id === TT_ACCOUNT)).toBe(false)
+    const row = post.comments[0]
+    // The whole point of the section on TikTok: there is no private answer and no keyword message,
+    // because the direct-message permission is one the platform has stopped issuing.
+    expect(row).toMatchObject({ platform: "tiktok", privateReplyAvailable: false, conversationId: null, keyword: null })
+    expect(texts(mine)).not.toContain("Başqa şirkətin TikTok sualı")
+
+    // Another organization cannot answer it, and asks TikTok nothing.
+    as(OTHER, OTHER_ADMIN)
+    expect((await ttReply(row.id, "Salam")).status).toBe(404)
+    expect(tiktokCalls()).toEqual([])
+
+    as(ORG, ADMIN)
+    expect((await ttReply(row.id, "Salam, 25 AZN")).status).toBe(201)
+    const sent = tiktokCalls().find((call) => call.url.includes("/business/comment/reply/create/"))!
+    expect(sent.body).toMatchObject({ business_id: "open-id-main", video_id: TT_VIDEO, text: "Salam, 25 AZN" })
+    const after = await board()
+    const answered = comment(after, "Bu neçəyədir?")!
+    expect(answered.answered).toBe(true)
+    expect(answered.replies).toEqual([expect.objectContaining({ text: "Salam, 25 AZN", mode: "public", authorName: ADMIN })])
+  })
+
+  it("leaves a TikTok comment unanswered when TikTok refuses, in TikTok's own words", async () => {
+    const commentId = await tiktokArrives(ORG, TT_ACCOUNT, "open-id-main", "Gobustone", { text: "Çatdırılma var?", videoId: "tiktok-video-2" })
+    expect(commentId).toBeTruthy()
+    as(ORG, ADMIN)
+    const row = comment(await board(), "Çatdırılma var?")!
+
+    tiktokRefuses = true
+    const refused = await ttReply(row.id, "Bəli, var")
+    expect(refused.status).toBe(502)
+    // «Not eligible» and «comment deleted» are different problems; the person is told which.
+    expect((await refused.json()).error).toContain("Advanced Access")
+
+    const after = comment(await board(), "Çatdırılma var?")!
+    expect(after.answered).toBe(false)
+    expect(after.replies).toEqual([])
+  })
+
+  it("files the account's own reply as an answer, whoever typed it", async () => {
+    await tiktokArrives(ORG, TT_ACCOUNT, "open-id-main", "Gobustone", {
+      text: "Ölçüləri varmı?", videoId: "tiktok-video-3", ownerReply: "Bəli, hamısı var",
+    })
+    as(ORG, ADMIN)
+    const row = comment(await board(), "Ölçüləri varmı?")!
+    expect(row.answered).toBe(true)
+    // Typed in the TikTok app, not here: the board says so instead of naming a person.
+    expect(row.replies).toEqual([expect.objectContaining({ text: "Bəli, hamısı var", fromApp: true, authorName: null })])
+    // Nothing was sent anywhere to learn this.
+    expect(tiktokCalls()).toEqual([])
+  })
+
 })
