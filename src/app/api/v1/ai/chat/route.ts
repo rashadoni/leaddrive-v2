@@ -287,13 +287,20 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
       } catch { /* ignore handoff logging errors */ }
     }
 
-    // Smart AI Search — read-only list_* tools are gated by (1) the
-    // `ai_smart_search` org feature flag and (2) per-tool module-gating. Both
-    // derive from the SAME cached org context (features + modules), so no extra
-    // DB round-trip. `ai_smart_search` lives in Organization.features, which
-    // loadOrgContext surfaces as modules["ai_smart_search"].
+    // Da Vinci reads the CRM in every organization (owner, 2026-11-26: "Да,
+    // для всех"). Until then the read tools reached the model only behind the
+    // `ai_smart_search` flag, which no screen could set: on the day it was
+    // dropped Fanumsec and Zeytun Pharma had asked 45 questions in a month
+    // with no tool that could see a single record. What still decides who may
+    // read what: the role (below), the paid module and the role matrix per
+    // tool, hidden fields, and RLS - all checked again by the executors.
     const orgCtx = moduleContextForUser(await orgModulesRead, session)
-    const smartSearchEnabled = orgCtx.modules["ai_smart_search"] === true
+    // The list and summary builders count across the whole organization and
+    // do not apply record-sharing rules yet (read-tool-executor.ts says the
+    // same and refuses lower roles itself), so a salesperson would read other
+    // people's deals. Lower roles get them once each builder filters by the
+    // same sharing rules as the screen.
+    const crmReadsOffered = isManagerOrAbove(session.role)
     let analyticsTimezone: string
     const timezone = await timezoneRead
     if (timezone.ok) {
@@ -321,22 +328,21 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
 
     // Get tools from the routed agent's own config (write/CRM tools).
     let tools = agentConfig ? getEnabledToolsForAgent(agentConfig) : getEnabledTools([])
-    // Smart AI Search is a FLAG-gated capability, NOT a per-agent toolsEnabled
-    // setting: search must work on any active (or default) agent without each
-    // agent listing the read tools. So strip any read tools the agent config
-    // happened to include, then re-add the module-allowed ones iff the flag is on.
+    // Reading is NOT a per-agent toolsEnabled setting: search must work on any
+    // active (or default) agent without each agent listing the read tools. So
+    // strip any read tools the agent config happened to include, then re-add
+    // the module-allowed ones for a role that may read organization-wide.
     // Tenant scoping still holds (RLS + organizationId in every read builder).
     tools = tools.filter((t) => !READ_TOOL_NAMES.includes(t.name))
     // Пишущие действия — только те, на которые у роли есть право
     // (src/lib/ai/tool-permissions.ts). Исполнитель проверяет то же самое ещё
     // раз на каждом вызове; здесь — чтобы модель не предлагала недоступное.
     tools = tools.filter((t) => aiWriteToolOffered(session.role, t.name))
-    if (smartSearchEnabled) {
+    if (crmReadsOffered) {
       const allowedReadTools = READ_TOOLS.filter((t) => {
         const mod = READ_TOOL_MODULE[t.name]
         const permission = READ_TOOL_PERMISSION[t.name]
-        return isManagerOrAbove(session.role)
-          && Boolean(permission && canRead(session.role, permission))
+        return Boolean(permission && canRead(session.role, permission))
           && (!mod || hasModule(orgCtx, mod))
       })
       tools = [...tools, ...allowedReadTools]
@@ -352,7 +358,7 @@ export const POST = withRlsAuth("ai", "read", async (req, session) => {
     const voiceChatToolNames = (VOICE_SUMMARY_TOOLS as readonly string[]).filter(
       (name) => name !== "get_sales_in_period" && name !== "explain_section",
     )
-    const voiceChatTools = smartSearchEnabled && isManagerOrAbove(session.role)
+    const voiceChatTools = crmReadsOffered
       ? voiceTools(undefined, forceLang === "Russian" ? "ru" : forceLang === "English" ? "en" : "az")
           .filter((t) => voiceChatToolNames.includes(t.name))
           .map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters }))
