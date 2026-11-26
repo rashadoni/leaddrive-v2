@@ -4,8 +4,9 @@
  * These tools let the Da Vinci chat loop RETRIEVE records (invoices, deals,
  * tasks, tickets, contacts) and render them as a structured table, as opposed
  * to the write tools in `tools.ts` which mutate CRM data behind an approval
- * gate. Read tools never write, never need approval, and are gated behind the
- * `ai_smart_search` org feature flag.
+ * gate. Read tools never write and never need approval. The chat route offers
+ * them to managers and above in every organization (until 2026-11-26 only
+ * behind the `ai_smart_search` org flag).
  *
  * Anti-hallucination contract: each tool's filter object is a CLOSED whitelist
  * enforced by a Zod `.strict()` schema (see READ_TOOL_SCHEMAS). The LLM cannot

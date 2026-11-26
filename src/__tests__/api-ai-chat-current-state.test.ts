@@ -8,7 +8,7 @@
  * detector was correct, the tool schema was correct, the executor was correct,
  * and the turn still ended with nothing. So these cases drive the route itself.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { NextRequest, NextResponse } from "next/server"
 
 const { anthropicCreate, executeVoiceReadToolMock } = vi.hoisted(() => ({
@@ -255,5 +255,76 @@ describe("a report the question did not ask for", () => {
 
     const body = await (await ask("Hansı sövdələşmələrimiz var")).json()
     expect(body.data.reply).toContain("təsdiqləyə bilmədim")
+  })
+})
+
+/**
+ * Until 2026-11-26 the read tools reached the model only behind the
+ * `ai_smart_search` flag, which nothing in the product could switch on. On
+ * that day Fanumsec and Zeytun Pharma had asked Da Vinci 45 questions in a
+ * month with no tool able to see a single record. The owner: "Да, для всех".
+ */
+describe("reading the CRM without the old smart-search flag", () => {
+  const WITHOUT_FLAG = {
+    plan: "pro",
+    addons: ["ai"],
+    modules: { ai: true, crm: true, sales: true, support: true, leads: true, tasks: true },
+  }
+  const WITH_FLAG = { ...WITHOUT_FLAG, modules: { ...WITHOUT_FLAG.modules, ai_smart_search: true } }
+
+  beforeEach(async () => {
+    const { getOrgModuleContext } = await import("@/lib/api-auth")
+    vi.mocked(getOrgModuleContext).mockResolvedValue(WITHOUT_FLAG as never)
+  })
+
+  afterEach(async () => {
+    const { getOrgModuleContext } = await import("@/lib/api-auth")
+    vi.mocked(getOrgModuleContext).mockResolvedValue(WITH_FLAG as never)
+  })
+
+  function offeredTools(round = 0): string[] {
+    const tools = (anthropicCreate.mock.calls[round][0].tools ?? []) as Array<{ name: string }>
+    return tools.map((tool) => tool.name)
+  }
+
+  it("offers an admin the record and summary tools and answers which deals there are", async () => {
+    executeVoiceReadToolMock.mockResolvedValue({
+      body: { data: { stages: [{ stage: "Təklif", count: 1, deals: [{ name: "Fanum PBX" }] }] } },
+    })
+    anthropicCreate.mockImplementation(async () => anthropicCreate.mock.calls.length === 1
+      ? { content: [{ type: "tool_use", id: "tu_1", name: "get_pipeline_by_stage", input: {} }], usage: { input_tokens: 1, output_tokens: 1 } }
+      : { content: [{ type: "text", text: "Hazırda 1 sövdələşmə var: Fanum PBX." }], usage: { input_tokens: 1, output_tokens: 1 } })
+
+    const body = await (await ask("Hansı sövdələşmələrimiz var")).json()
+
+    expect(offeredTools()).toEqual(expect.arrayContaining([
+      "list_deals", "list_contacts", "list_tasks", "list_tickets",
+      "get_pipeline_by_stage", "find_record", "read_record",
+    ]))
+    expect(body.data.reply).toBe("Hazırda 1 sövdələşmə var: Fanum PBX.")
+    expect(body.data.queryError).toBeUndefined()
+  })
+
+  it("still keeps a module the tenant did not buy out of reach", async () => {
+    anthropicCreate.mockResolvedValue({ content: [{ type: "text", text: "Salam" }], usage: { input_tokens: 1, output_tokens: 1 } })
+    await ask("Salam")
+    // No finance module: no invoice list.
+    expect(offeredTools()).not.toContain("list_invoices")
+  })
+
+  it("does not offer organization-wide reads to a salesperson", async () => {
+    const SALES = { ...SESSION, role: "sales" }
+    vi.mocked(getSession).mockResolvedValue(SALES as never)
+    vi.mocked(requireAuth).mockResolvedValue(SALES as never)
+    anthropicCreate.mockResolvedValue({ content: [{ type: "text", text: "Salam" }], usage: { input_tokens: 1, output_tokens: 1 } })
+
+    await ask("Salam")
+
+    // The builders count across the whole organization without the
+    // record-sharing rules a salesperson's screens apply.
+    const offered = offeredTools()
+    for (const name of ["list_deals", "list_contacts", "get_pipeline_by_stage", "get_sales_by_manager", "read_record"]) {
+      expect(offered).not.toContain(name)
+    }
   })
 })

@@ -19,8 +19,8 @@ export const TOOL_META: Record<string, ToolMeta> = {
   create_deal: { riskLevel: "high", category: "deals", requiresApproval: true },
   send_email: { riskLevel: "high", category: "email", requiresApproval: true },
   update_contact: { riskLevel: "high", category: "contacts", requiresApproval: true },
-  // Smart AI Search — read-only tools (category "read", no approval). Gated by
-  // the `ai_smart_search` org flag in the chat route.
+  // Smart AI Search — read-only tools (category "read", no approval). The chat
+  // route offers them to managers and above in every organization.
   ...READ_TOOL_META,
 }
 
@@ -152,9 +152,9 @@ const WRITE_TOOLS: Tool[] = [
   },
 ]
 
-// Write tools + read-only Smart AI Search tools. Read tools are filtered out in
-// the chat route when the `ai_smart_search` flag is off, so registering them
-// here is safe (the flag gate is the rollout switch).
+// Write tools + read-only Smart AI Search tools. The chat route strips the read
+// tools from every agent config and re-adds the ones the caller's role and the
+// tenant's modules allow, so registering them here is safe.
 export const CRM_TOOLS: Tool[] = [...WRITE_TOOLS, ...READ_TOOLS]
 
 export const WRITE_TOOL_MODULE: Partial<Record<string, ModuleId>> = {
@@ -190,8 +190,8 @@ export function getEnabledTools(toolsEnabled: string[]): Tool[] {
 // Agent type → default tool sets for multi-agent orchestration.
 // Read-only Smart AI Search tools (list_*) are appended per agent type:
 // analyst + general get all five (retrieval is their core value); sales/support
-// get the reads relevant to their domain. Read tools only reach the LLM when the
-// `ai_smart_search` flag is on (filtered in the chat route).
+// get the reads relevant to their domain. Which read tools reach the LLM is
+// decided in the chat route (role + module), not by this list.
 const AGENT_TOOL_SETS: Record<string, string[]> = {
   sales: ["create_deal", "update_deal_stage", "log_activity", "add_note", "send_email", "create_task", "list_deals", "list_invoices", "list_contacts"],
   support: ["create_ticket", "add_note", "log_activity", "create_task", "list_tickets", "list_contacts"],
