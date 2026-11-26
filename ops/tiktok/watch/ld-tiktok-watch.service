@@ -1,0 +1,11 @@
+# Installed by scripts/tiktok/install-watch.sh.
+[Unit]
+Description=Watch TikTok's docs for the day Business Messaging access reopens
+OnFailure=ld-tiktok-watch-failed.service
+
+[Service]
+Type=oneshot
+ExecStart=@NODE@ @WATCH@
+# Two pages rendered in a headless browser; fifteen seconds in practice.
+TimeoutStartSec=5min
+Nice=10
