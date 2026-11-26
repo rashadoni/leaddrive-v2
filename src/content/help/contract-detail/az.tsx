@@ -210,6 +210,20 @@ export default function ContractDetailHelpAz() {
           </p>
         </HelpStep>
       </HelpSection>
+      <HelpSection title="Müqavilə üzrə pul">
+        <HelpStep n={1}>
+          <p>
+            Sənəd zəncirinin üstündə <strong>Müqavilə üzrə pul</strong> bloku var: müqavilə məbləği, nə qədər hesab-faktura
+            verilib (qaralamalar ayrıca), ödənilib, müştərinin borcu və onun nə qədəri gecikib, və nə qədər qalıb. Ləğv
+            edilmiş və qaytarılmış hesab-fakturalar sayılmır; başqa valyutada olanlar ayrıca sətirdə göstərilir.
+          </p>
+          <HelpCallout kind="see" label="Ekranda görəcəksiniz">
+            Qiymət protokolu olmadan hesab-faktura bütün məbləğə yox, qalan hissəyə yazılır. Müqavilə tam hesablananda
+            yeni hesab-faktura yaradılmır. Qaralama, razılaşmada, rədd edilmiş və ya ləğv edilmiş müqaviləyə hesab-faktura
+            verilmir.
+          </HelpCallout>
+        </HelpStep>
+      </HelpSection>
       <HelpSection title="Addım-addım: sənəd zənciri — protokol, hesab-faktura, akt">
         <HelpStep n={1}>
           <p>

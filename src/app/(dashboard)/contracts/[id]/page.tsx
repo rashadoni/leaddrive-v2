@@ -176,6 +176,7 @@ const defaultLevel = (): ApprovalLevelInput => ({
 export default function ContractDetailPage() {
   const t = useTranslations("contracts")
   const tc = useTranslations("common")
+  const tDocs = useTranslations("contractDocuments")
   const locale = useLocale()
 
   // ── AI panel label helpers ────────────────────────────────────────────────
@@ -1421,7 +1422,12 @@ export default function ContractDetailPage() {
         setCreatedInvoiceId(json.data.id)
         toast.success(t("createInvoiceSuccess"))
       } else {
-        toast.error(json.error ?? t("createInvoiceError"))
+        // The server's refusals in words (src/lib/clm/contract-money.ts), not its English.
+        toast.error(json.code === "FULLY_INVOICED"
+          ? tDocs("errFullyInvoiced")
+          : json.code === "CONTRACT_NOT_IN_FORCE"
+            ? tDocs("errInvoiceNotInForce")
+            : t("createInvoiceError"))
       }
     } catch {
       toast.error(t("createInvoiceError"))

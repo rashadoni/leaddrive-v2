@@ -207,6 +207,19 @@ export default function ContractDetailHelpEn() {
           </p>
         </HelpStep>
       </HelpSection>
+      <HelpSection title="Money on the contract">
+        <HelpStep n={1}>
+          <p>
+            Above the document chain is the <strong>Money on the contract</strong> block: the contract value, what is
+            invoiced (drafts apart), paid, what the customer owes and how much of it is overdue, and what is left to
+            invoice. Cancelled and refunded invoices don't count; invoices in another currency are a line of their own.
+          </p>
+          <HelpCallout kind="see" label="What you'll see">
+            An invoice without a price protocol is for what is left, not the whole value. Once the contract is fully
+            invoiced, no new invoice is made. A draft, a contract in approval, rejected or cancelled is not invoiced.
+          </HelpCallout>
+        </HelpStep>
+      </HelpSection>
       <HelpSection title="Step by step: the document chain — protocol, invoice, act">
         <HelpStep n={1}>
           <p>

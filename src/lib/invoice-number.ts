@@ -1,10 +1,18 @@
 import { prisma } from "@/lib/prisma"
 
-export async function generateInvoiceNumber(organizationId: string): Promise<string> {
+/**
+ * `client` — the transaction a caller holds, when it numbers an invoice inside one: the
+ * global client inside a transaction's callback runs outside it and, under RLS, sees no rows
+ * (it would number every invoice 00001).
+ */
+export async function generateInvoiceNumber(
+  organizationId: string,
+  client: { invoice: { findFirst: typeof prisma.invoice.findFirst } } = prisma,
+): Promise<string> {
   const year = new Date().getFullYear()
   const prefix = `INV-${year}-`
 
-  const lastInvoice = await prisma.invoice.findFirst({
+  const lastInvoice = await client.invoice.findFirst({
     where: {
       organizationId,
       invoiceNumber: { startsWith: prefix },

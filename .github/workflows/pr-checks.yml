@@ -662,6 +662,16 @@ jobs:
           CONTRACT_CLOSING_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           CONTRACT_CLOSING_DB_GATE: required
 
+      - name: Contract money database gate
+        # «Деньги по договору»: invoiced, paid, debt and left to invoice off
+        # real invoice rows; an invoice without a protocol is for what is left,
+        # none once nothing is, two presses at once make one; a contract that
+        # never took effect is not invoiced — real routes, tenant policy.
+        run: npx vitest run src/__tests__/contract-money-postgres.test.ts
+        env:
+          CONTRACT_MONEY_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          CONTRACT_MONEY_DB_GATE: required
+
       - name: Procurement database gate
         # Purchasing for a customer order (docs/sales-procurement/README.md):
         # the module and the role decide who reads and adds suppliers, nothing
