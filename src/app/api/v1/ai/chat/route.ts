@@ -67,6 +67,21 @@ function analyticsPeriodNeededReply(locale: unknown): string {
   return "Этот вопрос о прошедших событиях, поэтому нужен период. Какой взять — сегодня, эта неделя, этот месяц или конкретные даты?"
 }
 
+/**
+ * What the model reads when it reaches for a verified report the question did
+ * not ask for. Such a call is always refused (the evidence path only accepts
+ * the tool the server itself bound to the message), and until 2026-11-26 that
+ * refusal ended the turn: "Hansı sövdələşmələrimiz var" in Fanumsec got "CRM
+ * məlumatlarını təsdiqləyə bilmədim" with list_deals sitting unused beside it.
+ * Now the model is told to read the records instead and answer from them.
+ */
+const UNREQUESTED_ANALYTICS_GUIDANCE =
+  "Not used for this question: the verified period report, ranking, KPI arena and section guide answer only "
+  + "questions that ask for a figure over a period, a ranking, or what a CRM section is, and this question is none "
+  + "of those. Do not answer it from this tool. Read the records with the other read tools (list_*, find_record, "
+  + "read_record, the summaries) and answer from what they return. If none of them covers what the user asked, "
+  + "say plainly that you cannot see that data - never estimate."
+
 function splitAnalyticsQuestionReply(locale: unknown): string {
   if (locale === "az") return "Dəqiq cavab üçün bölmə izahını və hesabat sualını ayrı-ayrılıqda göndərin."
   if (locale === "en") return "For a verified answer, ask the section-help question and the reporting question separately."
@@ -411,6 +426,10 @@ Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown
     let latestNumericError: string | undefined
     let latestGuideError: string | undefined
     let stateEvidenceObserved = false
+    // A verified report the question did not ask for was refused, and whether
+    // the model then read anything real decides if its prose may stand.
+    let unrequestedAnalyticsRefused = false
+    let readEvidenceObserved = false
 
     // PII masking — load known names from CRM, mask messages + system prompt
     const piiMasker = new PiiMasker()
@@ -521,10 +540,16 @@ Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown
       for (const toolBlock of toolUseBlocks) {
         const isAnalyticsTool = isChatAnalyticsToolName(toolBlock.name)
         const isGuideTool = toolBlock.name === "explain_crm_section"
+        // The evidence path accepts only the tool the server bound to the
+        // message; with nothing bound, every analytics call is refused. That
+        // refusal is guidance for the model, not the end of the turn.
+        const unrequestedAnalytics = isAnalyticsTool && !requiredAnalyticsTool
         if (isAnalyticsTool) {
-          // From here the answer is the verified rendering, sent in `done`.
+          // From here the answer is decided in `done`: the verified rendering,
+          // or - after an unrequested call - prose only if it read real data.
           live?.stop()
-          if (isGuideTool) guideAnalyticsAttempted = true
+          if (unrequestedAnalytics) unrequestedAnalyticsRefused = true
+          else if (isGuideTool) guideAnalyticsAttempted = true
           else numericAnalyticsAttempted = true
         }
         const meta = isAnalyticsTool
@@ -545,6 +570,15 @@ Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown
             )
           ),
         )
+        if (unrequestedAnalytics) {
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: toolBlock.id,
+            content: JSON.stringify({ success: false, error: UNREQUESTED_ANALYTICS_GUIDANCE }),
+            is_error: true,
+          })
+          continue
+        }
         const isVoiceReadTool = voiceChatToolNames.includes(toolBlock.name)
         if (isVoiceReadTool) {
           const out = await executeVoiceReadTool({
@@ -572,6 +606,10 @@ Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown
             if (!refused && currentStateInputMatches(stateForced, toolBlock.input)) {
               stateEvidenceObserved = true
             }
+          }
+          {
+            const data = ((out.body ?? {}) as { data?: unknown }).data
+            if (data && !(typeof data === "object" && "error" in data)) readEvidenceObserved = true
           }
           toolResults.push({
             type: "tool_result",
@@ -642,6 +680,7 @@ Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown
             // queryResult / queryError are mutually exclusive — last read wins.
             queryResult = result.data as ReadResultData
             queryError = undefined
+            readEvidenceObserved = true
             toolResults.push({
               type: "tool_result",
               tool_use_id: toolBlock.id,
@@ -788,6 +827,12 @@ Reporting clock: ${requestNow.toISOString()} (local date ${localDate || "unknown
       // un-grounded number, which is the one thing this route promises never to
       // produce, so the state question fails closed exactly like the analytics
       // path it was routed away from.
+      textReply = analyticsUnavailableReply(locale)
+      queryError = "Verified CRM data is unavailable."
+    } else if (unrequestedAnalyticsRefused && !readEvidenceObserved) {
+      // The model wanted a verified figure, was refused, and then read
+      // nothing: whatever it wrote has no data under it. Same promise as the
+      // forced paths - no number without evidence.
       textReply = analyticsUnavailableReply(locale)
       queryError = "Verified CRM data is unavailable."
     } else if (!textReply) {

@@ -163,3 +163,97 @@ describe("a state question reaches a snapshot tool", () => {
     expect(body.data.queryError).toBe("This report needs a period.")
   })
 })
+
+/**
+ * 2026-11-26, Fanumsec: "Hansı sövdələşmələrimiz var" answered "CRM
+ * məlumatlarını təsdiqləyə bilmədim" and a failed-search card. Nothing bound
+ * the question to a tool, the model reached for the period report on its own,
+ * and that call - refused by design, since only a server-bound report counts -
+ * replaced the whole answer, with the record tools unused beside it. The same
+ * dead end waited behind any "which X do we have" question in any module.
+ */
+describe("a report the question did not ask for", () => {
+  /** Round 0: the model picks `first`; round 1: `second` (or text); then text. */
+  function modelPicks(first: { name: string; input: object }, second: { name: string; input: object } | null, text: string) {
+    anthropicCreate.mockImplementation(async () => {
+      const round = anthropicCreate.mock.calls.length
+      const call = round === 1 ? first : round === 2 ? second : null
+      if (call) {
+        return {
+          content: [{ type: "tool_use", id: `tu_${round}`, name: call.name, input: call.input }],
+          usage: { input_tokens: 10, output_tokens: 5 },
+        }
+      }
+      return { content: [{ type: "text", text }], usage: { input_tokens: 10, output_tokens: 5 } }
+    })
+  }
+
+  function toolResultsSentInRound(round: number): Array<{ content: string; is_error?: boolean }> {
+    const messages = anthropicCreate.mock.calls[round][0].messages as Array<{ role: string; content: unknown }>
+    const last = messages[messages.length - 1]
+    return last.content as Array<{ content: string; is_error?: boolean }>
+  }
+
+  it("lets the model read the deals after the refusal and keeps its answer", async () => {
+    executeVoiceReadToolMock.mockResolvedValue({
+      body: { data: { stages: [{ stage: "Təklif", count: 1, deals: [{ name: "Fanum PBX" }] }] } },
+    })
+    modelPicks(
+      { name: "get_crm_period_report", input: { metric: "deals_created", period: "this_month" } },
+      { name: "get_pipeline_by_stage", input: {} },
+      "Hazırda 1 sövdələşmə var: Fanum PBX, «Təklif» mərhələsində.",
+    )
+
+    const body = await (await ask("Hansı sövdələşmələrimiz var")).json()
+
+    expect(anthropicCreate.mock.calls[0][0].tool_choice).toBeUndefined()
+    // The refusal reached the model as guidance toward the record tools.
+    const refusal = toolResultsSentInRound(1)[0]
+    expect(refusal.is_error).toBe(true)
+    expect(refusal.content).toContain("Read the records with the other read tools")
+    expect(executeChatAnalyticsTool).not.toHaveBeenCalled()
+    expect(executeVoiceReadToolMock).toHaveBeenCalledWith(
+      expect.objectContaining({ toolName: "get_pipeline_by_stage" }),
+    )
+    expect(body.data.reply).toBe("Hazırda 1 sövdələşmə var: Fanum PBX, «Təklif» mərhələsində.")
+    expect(body.data.queryError).toBeUndefined()
+  })
+
+  it("works the same for another module", async () => {
+    executeVoiceReadToolMock.mockResolvedValue({ body: { data: { boards: [{ name: "Satış", open: 4 }] } } })
+    modelPicks(
+      { name: "get_crm_ranking", input: { metric: "tasks_completed", direction: "desc" } },
+      { name: "get_boards_summary", input: {} },
+      "Сейчас открыто 4 задачи на доске «Satış».",
+    )
+
+    const body = await (await ask("Какие у нас задачи", "ru")).json()
+    expect(body.data.reply).toBe("Сейчас открыто 4 задачи на доске «Satış».")
+    expect(body.data.queryError).toBeUndefined()
+  })
+
+  it("still refuses to speak when the model read nothing after the refusal", async () => {
+    modelPicks(
+      { name: "get_crm_period_report", input: { metric: "deals_created", period: "this_month" } },
+      null,
+      "Bu ay 12 sövdələşmə var.",
+    )
+
+    const body = await (await ask("Hansı sövdələşmələrimiz var")).json()
+    expect(body.data.reply).toContain("təsdiqləyə bilmədim")
+    expect(body.data.reply).not.toContain("12")
+    expect(body.data.queryError).toBe("Verified CRM data is unavailable.")
+  })
+
+  it("still refuses to speak when the read after the refusal was itself refused", async () => {
+    executeVoiceReadToolMock.mockResolvedValue({ body: { data: { error: "ACCESS_SCOPE_UNAVAILABLE" } } })
+    modelPicks(
+      { name: "get_crm_period_report", input: { metric: "deals_created", period: "this_month" } },
+      { name: "get_pipeline_by_stage", input: {} },
+      "Bu ay 12 sövdələşmə var.",
+    )
+
+    const body = await (await ask("Hansı sövdələşmələrimiz var")).json()
+    expect(body.data.reply).toContain("təsdiqləyə bilmədim")
+  })
+})
