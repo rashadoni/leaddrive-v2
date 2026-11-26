@@ -12,8 +12,22 @@ vi.mock("@/lib/prisma", () => ({
     task: { findMany: vi.fn().mockResolvedValue([]), count: vi.fn().mockResolvedValue(0) },
     ticket: { findMany: vi.fn().mockResolvedValue([]), count: vi.fn().mockResolvedValue(0) },
     contact: { findMany: vi.fn().mockResolvedValue([]), count: vi.fn().mockResolvedValue(0) },
+    sharingRule: { findMany: vi.fn().mockResolvedValue([]) },
+    fieldPermission: { findFirst: vi.fn().mockResolvedValue(null) },
+    user: { findMany: vi.fn().mockResolvedValue([]) },
   },
   logAudit: vi.fn(),
+}))
+
+// The task list's access builder (sharing rules + board access + department
+// isolation) is the task screen's own and is tested there; here it only has to
+// be applied.
+const { buildTaskListWhere } = vi.hoisted(() => ({
+  buildTaskListWhere: vi.fn(),
+}))
+vi.mock("@/lib/tasks/list-query", () => ({
+  buildTaskListWhere,
+  parseTaskListFilters: vi.fn().mockReturnValue({}),
 }))
 
 import { executeReadTool } from "@/lib/ai/read-tool-executor"
@@ -30,8 +44,13 @@ const MODELS: [string, keyof typeof prisma][] = [
   ["list_contacts", "contact"],
 ]
 
+const TASK_ACCESS = { organizationId: "org-1", OR: [{ assignedTo: "u-1" }, { divisionId: { in: ["board-1"] } }] }
+
 beforeEach(() => {
   vi.clearAllMocks()
+  buildTaskListWhere.mockResolvedValue({ where: TASK_ACCESS, blocked: false })
+  vi.mocked((prisma as any).sharingRule.findMany).mockResolvedValue([])
+  vi.mocked((prisma as any).fieldPermission.findFirst).mockResolvedValue(null)
 })
 
 describe("executeReadTool", () => {
@@ -127,13 +146,82 @@ describe("executeReadTool", () => {
     expect(res.success).toBe(false)
   })
 
-  it("fails closed without a role and for non-manager record scopes", async () => {
+  it("fails closed without a role", async () => {
     const missingRole = await executeReadTool("list_deals", {}, ORG, USER)
-    const salesRole = await executeReadTool("list_deals", {}, ORG, USER, "sales")
-
     expect(missingRole.success).toBe(false)
-    expect(salesRole.success).toBe(false)
-    expect(salesRole.error).toContain("manager")
     expect(prisma.deal.findMany).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Owner 2026-11-26: Da Vinci answers every employee "within their rights".
+ * Until then a salesperson got no list at all, because the builders read
+ * the whole organization. Now each list is narrowed by the screen's own rule.
+ */
+describe("executeReadTool for a role below manager", () => {
+  it("shows a salesperson only own deals and the shared intake queue, like the deal list", async () => {
+    const res = await executeReadTool("list_deals", { stage: "proposal" }, ORG, USER, "sales")
+    expect(res.success).toBe(true)
+    const where = vi.mocked(prisma.deal.findMany).mock.calls[0][0].where
+    expect(where).toEqual({
+      organizationId: ORG,
+      stage: "proposal",
+      OR: [{ assignedTo: USER }, { assignedTo: null }],
+    })
+    // The total is counted over the same narrowed set, not the organization.
+    expect(vi.mocked(prisma.deal.count).mock.calls[0][0].where).toEqual(where)
+  })
+
+  it("widens by an active sharing rule exactly as the screen does", async () => {
+    vi.mocked((prisma as any).sharingRule.findMany).mockResolvedValue([
+      { ruleType: "role", targetRole: "sales", sourceRole: "manager", isActive: true },
+    ])
+    vi.mocked((prisma as any).user.findMany).mockResolvedValue([{ id: "boss-1" }])
+    await executeReadTool("list_deals", {}, ORG, USER, "sales")
+    const where = vi.mocked(prisma.deal.findMany).mock.calls[0][0].where
+    expect(where.OR).toContainEqual({ OR: [{ assignedTo: { in: ["boss-1"] } }] })
+  })
+
+  it("keeps a search filter and the ownership rule together", async () => {
+    await executeReadTool("list_tickets", { status: "open" }, ORG, USER, "support")
+    const where = vi.mocked(prisma.ticket.findMany).mock.calls[0][0].where
+    expect(where.status).toBe("open")
+    expect(where.OR).toEqual([{ assignedTo: USER }, { createdBy: USER }, { assignedTo: null }])
+  })
+
+  it("applies the task screen's access rules to tasks", async () => {
+    await executeReadTool("list_tasks", { status: "todo" }, ORG, USER, "sales")
+    expect(buildTaskListWhere).toHaveBeenCalledWith(ORG, USER, "sales", {})
+    const where = vi.mocked(prisma.task.findMany).mock.calls[0][0].where
+    expect(where.status).toBe("todo")
+    expect(where.deletedAt).toBeNull()
+    expect(where.AND).toContainEqual(TASK_ACCESS)
+  })
+
+  it("applies board isolation to managers too, as the task screen does", async () => {
+    await executeReadTool("list_tasks", {}, ORG, USER, "manager")
+    expect(vi.mocked(prisma.task.findMany).mock.calls[0][0].where.AND).toContainEqual(TASK_ACCESS)
+  })
+
+  it("returns nothing when the task screen would show nothing", async () => {
+    buildTaskListWhere.mockResolvedValue({ where: TASK_ACCESS, blocked: true })
+    const res = await executeReadTool("list_tasks", {}, ORG, USER, "sales")
+    expect(res.success).toBe(true)
+    expect(res.data.total).toBe(0)
+    expect(prisma.task.findMany).not.toHaveBeenCalled()
+  })
+
+  it("gives no list at all to a role with a hidden field on that entity", async () => {
+    vi.mocked((prisma as any).fieldPermission.findFirst).mockResolvedValue({ id: "fp-1" })
+    const res = await executeReadTool("list_deals", {}, ORG, USER, "sales")
+    expect(res.success).toBe(false)
+    expect(res.error).toBe("ACCESS_SCOPE_UNAVAILABLE")
+    expect(prisma.deal.findMany).not.toHaveBeenCalled()
+  })
+
+  it("still refuses an entity the role may not read at all", async () => {
+    const res = await executeReadTool("list_invoices", {}, ORG, USER, "ticketing")
+    expect(res.success).toBe(false)
+    expect(prisma.invoice.findMany).not.toHaveBeenCalled()
   })
 })

@@ -312,7 +312,7 @@ describe("reading the CRM without the old smart-search flag", () => {
     expect(offeredTools()).not.toContain("list_invoices")
   })
 
-  it("does not offer organization-wide reads to a salesperson", async () => {
+  it("offers a salesperson the record lists, but not the organization-wide summaries", async () => {
     const SALES = { ...SESSION, role: "sales" }
     vi.mocked(getSession).mockResolvedValue(SALES as never)
     vi.mocked(requireAuth).mockResolvedValue(SALES as never)
@@ -320,10 +320,11 @@ describe("reading the CRM without the old smart-search flag", () => {
 
     await ask("Salam")
 
-    // The builders count across the whole organization without the
-    // record-sharing rules a salesperson's screens apply.
     const offered = offeredTools()
-    for (const name of ["list_deals", "list_contacts", "get_pipeline_by_stage", "get_sales_by_manager", "read_record"]) {
+    // Lists are narrowed to the salesperson's own screen by the executor.
+    expect(offered).toEqual(expect.arrayContaining(["list_deals", "list_contacts", "list_tasks", "list_tickets"]))
+    // Summaries and record cards still count the whole organization.
+    for (const name of ["get_pipeline_by_stage", "get_sales_by_manager", "read_record", "find_record", "get_daily_briefing"]) {
       expect(offered).not.toContain(name)
     }
   })

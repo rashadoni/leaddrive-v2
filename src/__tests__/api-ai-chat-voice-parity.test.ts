@@ -33,12 +33,12 @@ describe("chat/voice parity", () => {
     expect(CHAT_ROUTE).toContain('name !== "explain_section"')
   })
 
-  it("gates the voice toolset exactly like the record lists", () => {
-    // One switch for both: organization-wide reads for managers and above in
-    // every organization (the `ai_smart_search` flag was dropped 2026-11-26).
+  it("keeps the organization-wide voice toolset with managers", () => {
+    // The summaries count the whole organization, so they stay with managers
+    // and above in every organization (the `ai_smart_search` flag was dropped
+    // 2026-11-26); the record lists are narrowed per person by the executor.
     // Behaviour is pinned in api-ai-chat-current-state.test.ts.
     expect(CHAT_ROUTE).toMatch(/const crmReadsOffered = isManagerOrAbove\(session\.role\)/)
-    expect(CHAT_ROUTE).toMatch(/if \(crmReadsOffered\) \{\s*\n\s*const allowedReadTools/)
     expect(CHAT_ROUTE).toMatch(/const voiceChatTools = crmReadsOffered/)
     expect(CHAT_ROUTE).not.toMatch(/ai_smart_search"\]/)
   })
