@@ -1080,9 +1080,28 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
+        # A fresh `npm ci` on purpose (it catches a package.json edited
+        # without its lockfile), but without @prisma/client's postinstall:
+        # that is a complete `prisma generate`, and the step below generated
+        # the same client again. Measured 2026-11-25/26: «Install dependencies»
+        # 10–15 min, of which the postinstall generate is 2–13 (13 on GitHub's
+        # AWS-hosted runners), while the compiler itself takes 3–5.
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: npm ci --include=dev
 
+      - name: Restore generated Prisma client
+        # Restore only, never save: the next step but one rewrites
+        # index.d.ts in place, and this key is shared with static-checks and
+        # deploy.yml, which need the client exactly as generated.
+        uses: actions/cache/restore@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+
       - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
         run: npx prisma generate --schema prisma/schema.prisma
 
       - name: Rewrite the repeated Prisma input types as Omit<…> (exact)

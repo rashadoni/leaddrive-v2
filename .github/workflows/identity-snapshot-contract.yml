@@ -110,10 +110,31 @@ jobs:
           node scripts/ci/check-github-runner-policy.mjs
           node --test scripts/identity/preflight.test.mjs scripts/identity/snapshot.test.mjs scripts/identity/postgres-contract.test.mjs scripts/identity/compile-foundation.test.mjs
           git diff --check
+      # `npm ci` runs @prisma/client's postinstall, and that is a complete
+      # `prisma generate` of the whole schema — the step below then generated
+      # it a second time. Measured 2026-11-21…26: on GitHub's AWS-hosted
+      # runners one generate takes 12–15 min, so the job spent its 20 minutes
+      # generating the same client twice and was cancelled on every AWS run
+      # (22 of 22); Azure runs (2–5 min per generate) passed.
       - run: npm ci
-      - run: npx prisma validate && npx prisma generate
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: '1'
+      - run: npx prisma validate
         env:
           DATABASE_URL: postgresql://postgres:identity-contract-admin-only@127.0.0.1:${{ job.services.postgres.ports[5432] }}/identity_snapshot_contract_test
+      - name: Cache generated Prisma client
+        # The same key as `static-checks` in pr-checks.yml and `checks` in
+        # deploy.yml: the output depends only on the schema and the Prisma
+        # version pinned in the lockfile, so a pull request that leaves the
+        # schema alone restores the client main already generated.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
       - name: Identity release admission and real PostgreSQL drain
         run: node --test scripts/identity/release-contract.test.mjs scripts/booking/release-contract.test.mjs
         env:

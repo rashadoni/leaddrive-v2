@@ -80,8 +80,22 @@ jobs:
       - name: Install only the locked disposable TS runner
         run: npm ci --prefix ops/event-platform/driver --ignore-scripts
       - name: Install locked application test dependencies
+        # Without this, @prisma/client's postinstall generates the whole
+        # client inside `npm ci`, and the step below generates it again —
+        # 12–15 min each on GitHub's AWS-hosted runners (see
+        # identity-snapshot-contract.yml).
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: '1'
         run: npm ci --include=dev
+      - name: Cache generated Prisma client
+        # The key `static-checks` and deploy.yml use: schema + pinned Prisma.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
       - name: Generate the actual Prisma client (no application build)
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
         run: npx prisma generate --schema prisma/schema.prisma
       - name: Strictly typecheck the combined fixture against the actual client
         run: >-

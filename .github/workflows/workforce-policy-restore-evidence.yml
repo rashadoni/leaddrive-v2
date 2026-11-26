@@ -135,7 +135,24 @@ jobs:
           node-version: "20"
           cache: npm
       - name: Install candidate dependencies
+        # `npm ci` would otherwise run @prisma/client's postinstall — a full
+        # `prisma generate` — before the generate below. On GitHub's
+        # AWS-hosted runners one generate takes 12–15 min; this job did three
+        # (postinstall, then twice below from the same unchanged schema file)
+        # and was cancelled at 40 min on every AWS run of 2026-11-24…26.
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: npm ci
+      - name: Cache generated Prisma client
+        # The key `static-checks` and deploy.yml use: schema + pinned Prisma.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
       - name: Apply selected base schema, canonical guards and actual additive migration
         shell: bash
         run: |
@@ -144,7 +161,8 @@ jobs:
           git show "$WF_POLICY_RESTORE_BASE_SHA:prisma/schema.prisma" > prisma/workforce-restore-base.prisma
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
           DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --schema prisma/workforce-restore-base.prisma --skip-generate
-          npx prisma generate
+          # The client comes from the PR's prisma/schema.prisma (the step
+          # above), not from the base schema pushed here — as it always did.
           node scripts/ci/workforce-policy-restore-pre-anchor.mjs
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 --set=app_password="$WF_READ_PASSWORD" -f scripts/ci/fixtures/workforce-manager-today-browser.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f scripts/ci/fixtures/workforce-policy-version-browser.sql
@@ -153,8 +171,9 @@ jobs:
           node scripts/ci/workforce-policy-restore-base-row.mjs before
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261004073000_workforce_policy_restore_operation_anchor/migration.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 --set=restore_password="$WF_RESTORE_PASSWORD" -f scripts/ci/fixtures/workforce-policy-restore-writer.sql
+          # Nothing above rewrites prisma/schema.prisma, so the client generated
+          # before this step is already the one for it; only validate here.
           npx prisma validate
-          npx prisma generate
           node scripts/ci/workforce-policy-restore-base-row.mjs after
       - name: Align disposable runtime schema after historical migration proof
         # The before/after proof above must keep its historical schema. The
