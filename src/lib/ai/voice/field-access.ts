@@ -35,6 +35,8 @@ const MODEL_ENTITY_TYPE: Record<string, string> = {
   mtmVisit: "mtm_visit",
   mtmRoute: "mtm_route",
   mtmTask: "mtm_task",
+  // A field hidden on incoming bills hides the spoken bill figures too.
+  bill: "bill",
 }
 
 function supported(types: Array<string | undefined>): string[] {

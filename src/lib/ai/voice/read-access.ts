@@ -105,10 +105,12 @@ export function canAccessVoiceSection(
   org: VoiceOrgModuleContext,
   section: string,
 ): boolean {
-  const path = VOICE_SECTIONS[section]
-  if (!path) return false
+  // A tab's own data key (finance_bills) is visible exactly when its menu
+  // page is: the page decides, the key only names which table it reads.
+  const navKey = VOICE_SECTIONS[section] ? section : SECTION_DESCRIPTORS[section]?.navSection
+  if (!navKey || !VOICE_SECTIONS[navKey]) return false
 
-  const item = voiceSectionNavItem(section)
+  const item = voiceSectionNavItem(navKey)
   const visibleInNavigation = Boolean(item
     && isNavItemEnabled(org, item)
     && (!item.permissionScope || checkPermission(role, item.permissionScope, "read")))
