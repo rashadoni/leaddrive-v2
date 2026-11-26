@@ -737,7 +737,9 @@ pgDescribe("purchasing for a customer order on a real Postgres", () => {
     let rows = await bypass(() => prisma.dealLineItem.findMany({ where: { dealId: deal.id }, orderBy: { sortOrder: "asc" } }))
     expect(rows.map((row) => (row.plannedUnitCost === null ? null : Number(row.plannedUnitCost)))).toEqual([1100, 140, null])
     // What sales reads of its own lines carries no planned cost.
-    expect(JSON.stringify((await json(await lines.GET(request(linesUrl, "GET"), ctx(deal.id)))).body)).not.toMatch(/planned|1100/)
+    // 1100 as a value, not inside a record id: a cuid such as "cmwx8pt1100md…"
+    // carries the same digits and failed the production deploy on 2026-11-26.
+    expect(JSON.stringify((await json(await lines.GET(request(linesUrl, "GET"), ctx(deal.id)))).body)).not.toMatch(/planned|(?<!\w)1100(?!\w)/)
 
     // A request raised from the deal takes each product's unit.
     expect((await requests.POST(request(`${API}/requests`, "POST", { dealId: deal.id }))).status).toBe(201)
