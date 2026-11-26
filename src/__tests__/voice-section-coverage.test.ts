@@ -27,7 +27,9 @@ describe("voice section coverage", () => {
   it("classifies nothing that is not in the menu", () => {
     const menu = new Set<string>(VOICE_SECTION_KEYS)
     const ghosts = [...Object.keys(SECTION_DESCRIPTORS), ...Object.keys(NO_DATA_SECTIONS)]
-      .filter((k) => !menu.has(k))
+      // A tab's own data key belongs to a menu page instead (finance_bills on
+      // /finance); then that page must exist.
+      .filter((k) => !menu.has(k) && !menu.has(SECTION_DESCRIPTORS[k]?.navSection ?? ""))
     // A key here that the menu does not have is a rename nobody followed
     // through — it silently describes a page that no longer exists.
     expect(ghosts).toEqual([])
@@ -57,6 +59,25 @@ describe("voice section coverage", () => {
       .filter(([, d]) => !d.permission)
       .map(([k]) => k)
     expect(missing).toEqual([])
+  })
+
+  it("lets only a non-menu key name a parent page, and only one that is in the menu", () => {
+    const menu = new Set<string>(VOICE_SECTION_KEYS)
+    const broken = Object.entries(SECTION_DESCRIPTORS)
+      .filter(([k, d]) => d.navSection && (menu.has(k) || !menu.has(d.navSection)))
+      .map(([k]) => k)
+    expect(broken).toEqual([])
+  })
+
+  it("reads every module the owner asked for on 2026-11-26", () => {
+    // «он должен на все вопросы отвечать… по всем модулям»
+    for (const key of [
+      "finance_bills", "finance_payment-orders", "finance_funds",
+      "procurement_requests", "procurement_orders", "contracts_milestones",
+      "pharmacy-orders", "inbox_voip", "social_monitoring_mentions",
+    ]) {
+      expect(SECTION_DESCRIPTORS[key], key).toBeTruthy()
+    }
   })
 
   it("reports how much is still undescribed", () => {

@@ -59,6 +59,13 @@ export type SectionDescriptor = {
   currencyField?: string
   /** Immutable discriminator shared by every aggregate for this surface. */
   baseWhere?: Record<string, unknown>
+  /**
+   * For data that lives inside one menu page with several tabs (Finance shows
+   * funds, incoming bills and payment orders on /finance): the menu section
+   * whose visibility, module and role decide who may read this key. A key
+   * with `navSection` is not a menu entry of its own.
+   */
+  navSection?: string
 }
 
 /**
@@ -169,6 +176,96 @@ export const SECTION_DESCRIPTORS: Record<string, SectionDescriptor> = {
   segments: { model: "contactSegment", permission: "segments", module: "marketing", createdField: "createdAt" },
   journeys: { model: "journey", permission: "journeys", module: "marketing", statusField: "status", createdField: "createdAt" },
   events: { model: "event", permission: "events", module: "marketing", statusField: "status", createdField: "createdAt" },
+  // ── Added 2026-11-26 (owner: Da Vinci answers about every module) ──────
+  // Finance: /finance is one page with tabs; each tab's table is its own key.
+  "finance_bills": {
+    // Incoming bills from suppliers - what the company owes.
+    model: "bill",
+    permission: "finance", module: "finance",
+    navSection: "finance",
+    statusField: "status",
+    closedStatuses: ["paid", "cancelled"],
+    dueField: "dueDate",
+    createdField: "createdAt",
+    amountField: "totalAmount", currencyField: "currency",
+  },
+  "finance_payment-orders": {
+    model: "paymentOrder",
+    permission: "finance", module: "finance",
+    navSection: "finance",
+    statusField: "status",
+    closedStatuses: ["executed", "rejected", "cancelled"],
+    createdField: "createdAt",
+    amountField: "amount", currencyField: "currency",
+  },
+  "finance_funds": {
+    // Money: the sum of current balances in the dominant currency.
+    model: "fund",
+    permission: "finance", module: "finance",
+    navSection: "finance",
+    createdField: "createdAt",
+    amountField: "currentBalance", currencyField: "currency",
+    baseWhere: { isActive: true },
+  },
+  procurement_requests: {
+    model: "purchaseRequest",
+    permission: "purchase-requests", module: "procurement",
+    statusField: "status",
+    closedStatuses: ["ordered", "closed", "cancelled"],
+    assigneeField: "assignedToId",
+    dueField: "neededBy",
+    createdField: "createdAt",
+  },
+  procurement_orders: {
+    model: "purchaseOrder",
+    permission: "procurement", module: "procurement",
+    statusField: "status",
+    closedStatuses: ["received", "rejected", "cancelled"],
+    // Late = not delivered by the promised date.
+    dueField: "expectedDeliveryAt",
+    createdField: "createdAt",
+    amountField: "totalAmount", currencyField: "currency",
+  },
+  contracts_milestones: {
+    model: "contractMilestone",
+    permission: "contracts", module: "contracts",
+    statusField: "status",
+    closedStatuses: ["completed", "cancelled"],
+    assigneeField: "ownerUserId",
+    dueField: "dueAt",
+    createdField: "createdAt",
+  },
+  // Phone orders of the pharmacy line. Open = waiting for a manager's review.
+  "pharmacy-orders": {
+    model: "pharmacyPhoneOrder",
+    permission: "deals", module: "sales",
+    statusField: "status",
+    closedStatuses: ["confirmed", "rejected"],
+    createdField: "createdAt",
+    amountField: "totalAmount", currencyField: "currency",
+  },
+  // Calls: who took them and how they ended. No "open" calls - status is
+  // the outcome (completed, no-answer, busy, failed...).
+  inbox_voip: {
+    model: "callLog",
+    permission: "voip", module: "voip",
+    statusField: "status",
+    assigneeField: "userId",
+    createdField: "createdAt",
+  },
+  // Social monitoring findings. Open = nobody has looked at it yet.
+  social_monitoring_mentions: {
+    model: "socialMention",
+    permission: "social", module: "social",
+    statusField: "status",
+    closedStatuses: [
+      "reviewed", "replied", "ignored",
+      "converted_to_ticket", "converted_to_lead", "converted_to_task",
+    ],
+    createdField: "createdAt",
+    // Purged by the 30-day retention: the row stays, the finding is gone.
+    baseWhere: { purgedAt: null },
+  },
   inbox: {
     model: "socialConversation",
     permission: "inbox", module: "omnichannel",
@@ -231,8 +328,6 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   finance: "surface",
   pricing: "surface",
   procurement_suppliers: "surface",
-  procurement_requests: "surface",
-  procurement_orders: "surface",
   procurement_settings: "config",
   procurement_reports: "surface",
   mtm: "surface",
@@ -251,7 +346,6 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   mtm_settings: "config",
   social_monitoring_overview: "surface",
   social_monitoring_monitors: "surface",
-  social_monitoring_mentions: "surface",
   social_monitoring_replies: "surface",
   social_monitoring_sources: "surface",
   social_monitoring_scenarios: "config",
@@ -262,7 +356,6 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   social_monitoring_legal: "surface",
   voip_insights: "surface",
   support_voip: "surface",
-  inbox_voip: "surface",
   support_calendar: "surface",
   "knowledge-base": "config",
   "email-templates": "config",
@@ -283,7 +376,6 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   contracts_lifecycle: "surface",
   contracts_templates: "config",
   contracts_request: "config",
-  contracts_milestones: "pending",
   contracts_analytics: "surface",
   forecast: "bespoke",
   forecast_snapshots: "surface",
@@ -292,7 +384,6 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   campaigns: "bespoke",
   sequences: "pending",
   mtm_promotions: "pending",
-  "pharmacy-orders": "pending",
   mtm_photos: "pending",
   mtm_alerts: "pending",
   mtm_agents: "pending",
