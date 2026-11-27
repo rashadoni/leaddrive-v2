@@ -25155,3 +25155,5 @@ model DealChangeApproval {
   @@map("deal_change_approvals")
 }
 
+
+// TEMPORARY (#1781): forces a Prisma client cache miss to prove the generate path; removed in the next commit.
