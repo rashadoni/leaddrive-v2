@@ -36,7 +36,8 @@ import { GET, PUT } from "@/app/api/v1/settings/call-tasks/route"
 
 /** What the atomic flag-replacement helper was told to do. */
 function rawCall() {
-  const values = executeRaw.mock.calls[0].slice(1)
+  // Arrays only: the statement also carries the features normalisation as a nested Prisma.sql fragment.
+  const values = executeRaw.mock.calls[0].slice(1).filter((value: unknown) => Array.isArray(value))
   const [prefixes, additions] = values as [string[], string[]]
   return { prefixes: prefixes.map((p) => p.replace(/%$/, "")), additions }
 }
