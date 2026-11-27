@@ -697,7 +697,7 @@
     "socialMonitoringAgent": "AI agent",
     "socialMonitoringLegal": "Legal cases",
     "socialMonitoringSettings": "Monitoring settings",
-    "snippets": "Message Snippets",
+    "snippets": "Saved replies",
     "fieldPermissions": "Field Permissions",
     "voip": "VoIP",
     "voipCalls": "VoIP Calls",
@@ -7290,12 +7290,12 @@
       "newDesc": "When creating a template, include only variables the target workflow can actually fill and test the rendered output."
     },
     "messageSnippets": {
-      "headerTitle": "Saved inbox replies",
-      "headerDesc": "Snippets are short responses agents insert from the inbox by typing a slash shortcut. Keep them safe for the selected channels.",
-      "listTitle": "Shortcuts, channels, and usage",
-      "listDesc": "Review the shortcut, active status, channel badges, and usage count. Inactive snippets stay stored but are hidden from agents.",
-      "newTitle": "Create a channel-safe shortcut",
-      "newDesc": "Use one short shortcut, write the message, select channels only when wording is channel-specific, and keep variables reviewable."
+      "headerTitle": "Saved replies",
+      "headerDesc": "Answers you send often. Type / in a conversation, pick a reply — the customer's name fills in by itself.",
+      "listTitle": "Your replies",
+      "listDesc": "One reply per line: the word after /, its name and its text. A reply switched off is not deleted, only hidden from the list.",
+      "newTitle": "New reply",
+      "newDesc": "Three fields: what to type after /, a name and the text. Add the customer's name with a button — the right side shows what the customer reads."
     },
     "taskTemplatesSettings": {
       "headerTitle": "Reusable task templates",

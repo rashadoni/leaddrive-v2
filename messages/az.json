@@ -697,7 +697,7 @@
     "socialMonitoringAgent": "AI agent",
     "socialMonitoringLegal": "Hüquqi işlər",
     "socialMonitoringSettings": "Monitorinq ayarları",
-    "snippets": "Mesaj snippetləri",
+    "snippets": "Hazır cavablar",
     "fieldPermissions": "Sahə icazələri",
     "voip": "VoIP",
     "voipCalls": "VoIP Zənglər",
@@ -7290,12 +7290,12 @@
       "newDesc": "Yalnız hədəf prosesin real doldura biləcəyi dəyişənləri əlavə edin və nəticə məktubunu yoxlayın."
     },
     "messageSnippets": {
-      "headerTitle": "Inbox üçün hazır cavablar",
-      "headerDesc": "Snippet-lər agentlərin inbox-da slash qısayolu ilə daxil etdiyi qısa cavablardır. Mətn seçilən kanallar üçün təhlükəsiz olmalıdır.",
-      "listTitle": "Qısayollar, kanallar və istifadə",
-      "listDesc": "Qısayolu, aktiv statusu, kanal nişanlarını və istifadə sayını yoxlayın. Deaktiv snippet-lər saxlanılır, amma agentlərdən gizlədilir.",
-      "newTitle": "Kanal üçün təhlükəsiz qısayol yaradın",
-      "newDesc": "Qısa qısayol istifadə edin, mətni yazın, kanalları yalnız xüsusi ifadə lazımdırsa seçin və dəyişənləri yoxlanıla bilən saxlayın."
+      "headerTitle": "Hazır cavablar",
+      "headerDesc": "Müştərilərə tez-tez yazılan cavablar. Yazışmada / yazın, cavabı seçin — müştərinin adı özü yerinə düşür.",
+      "listTitle": "Sizin cavablarınız",
+      "listDesc": "Hər cavab bir sətirdir: / ilə yazılan söz, ad və mətn. Söndürülən cavab silinmir, sadəcə siyahıda görünmür.",
+      "newTitle": "Yeni cavab",
+      "newDesc": "Üç sahə: / ilə nə yazılacaq, ad və mətn. Müştərinin adını düymə ilə əlavə edin — sağda müştərinin görəcəyi mətn görünür."
     },
     "taskTemplatesSettings": {
       "headerTitle": "Təkrar istifadə olunan tapşırıq şablonları",
