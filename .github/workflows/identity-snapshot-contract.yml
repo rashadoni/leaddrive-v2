@@ -81,7 +81,10 @@ concurrency:
 jobs:
   postgres-contract:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # 30, not 20 (owner, 2026-11-27). On a pull request that changes the schema
+    # the Prisma generate alone is 12–15 min on GitHub's AWS-hosted runners, and
+    # with it the job took 18.3 of its 20 minutes (#1779); a cache hit is ~4.
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16

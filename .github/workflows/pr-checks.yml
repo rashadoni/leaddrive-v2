@@ -128,8 +128,15 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: python3 scripts/erp/check_progress.py --branch "$GITHUB_HEAD_REF" --base-ref "$BASE_SHA" --repo "$GITHUB_WORKSPACE"
 
-  static-checks:
+  static-checks-db:
     needs: pr-scope
+    # Every database gate and the rest of the static checks; the unit suite is
+    # static-checks-unit below, and the required context `static-checks` is
+    # green only when both succeed. Split on 2026-11-27: one job had grown to
+    # 24–40 min on a cache hit and was cancelled at its 45-min cap twice in a
+    # week. A new gate goes here (or into static-checks-unit if it needs no
+    # database) — never into the `static-checks` summary job.
+    #
     # Pull requests only. On a push to main this job proves nothing that
     # deploy.yml is not already proving on the identical commit: its
     # "Quality & security gates" job runs every gate below — the four
@@ -178,7 +185,12 @@ jobs:
     # Measured 2026-10-18/19 on the slower hosted runners (most runs): 28.5–
     # 29.4 min, of which `npm ci` 4.7 and `prisma generate` 4.0 — both now
     # restored from cache below when the lockfile and schema are unchanged.
-    timeout-minutes: 45
+    # Measured 2026-11-21…26 (48 runs, still with the unit suite inside):
+    # 24–40 min on a cache hit, 33–45 when the pull request changes the schema
+    # (Prisma generate 7–13 min; 12–15 on GitHub's AWS-hosted runners); two such
+    # runs were cancelled at 45. The 63 database gates alone take 15–24 min.
+    # 60 by the owner's decision of 2026-11-27, the same budget as typecheck.
+    timeout-minutes: 60
     env:
       # Hosted runners had 4 vCPU; the shared box has 8 and up to three general
       # jobs at once. Left to its default (one worker per core) each vitest
@@ -211,10 +223,9 @@ jobs:
 
       - name: Install dependencies
         if: steps.cache-deps.outputs.cache-hit != 'true'
-        # As deploy.yml's `checks`: a deps-cache miss means a new lockfile, so
-        # the Prisma client cache below misses too, and @prisma/client's
-        # postinstall would generate the client here and again below (12–15
-        # min each on GitHub's AWS-hosted runners).
+        # Without it @prisma/client's postinstall generates the whole client
+        # inside `npm ci`, and «Generate Prisma client» below would generate it
+        # again (see the typecheck job).
         env:
           PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: npm ci --include=dev
@@ -1041,6 +1052,62 @@ jobs:
           name: erp-tests
           path: erp-tests.json
 
+
+  static-checks-unit:
+    # The unit suite, split out of static-checks-db on 2026-11-27 so the two
+    # run side by side (owner: «оба» — raise the limit and split the steps).
+    # It needs no database: every test that wants one reads its own
+    # *_TEST_DATABASE_URL, and the steps that set those live in
+    # static-checks-db. Pull requests only, on pr-scope's reading, exactly as
+    # static-checks-db — see the comment there.
+    needs: pr-scope
+    if: ${{ github.event_name == 'pull_request' && needs.pr-scope.outputs.draft != 'true' && needs.pr-scope.outputs.code == 'true' }}
+    runs-on: ubuntu-24.04
+    # Measured 2026-11-21…26: the suite 8–14 min, plus 7–13 min of Prisma
+    # generate on a pull request that changes the schema. 60, as for its other
+    # half and typecheck: a budget for a hang, not a speed target.
+    timeout-minutes: 60
+    env:
+      VITEST_MAX_WORKERS: "4"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Cache node_modules
+        # The key static-checks-db and deploy.yml's `checks` use.
+        uses: actions/cache@v5
+        id: cache-deps
+        with:
+          path: node_modules
+          key: deps-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            deps-${{ runner.os }}-
+
+      - name: Install dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        # Without it @prisma/client's postinstall generates the whole client
+        # inside `npm ci`, and the step below would generate it again.
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
+        run: npm ci --include=dev
+
+      - name: Cache generated Prisma client
+        # The key static-checks-db and deploy.yml use: schema + pinned Prisma.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
+
       - name: Unit tests vs baseline (BLOCKING)
         # Was `npm test` with continue-on-error, carrying a TODO to make it
         # blocking "once baseline is clean". Waiting for a clean baseline meant
@@ -1056,6 +1123,30 @@ jobs:
         # Triaging the 34 is still worth doing. The difference is that the
         # suite now defends itself while that happens.
         run: node scripts/check-test-baseline.mjs
+
+  static-checks:
+    # The required context (scripts/ci/configure-main-protection.sh). It runs
+    # nothing itself: it is green only when both halves are `success`.
+    # `always()` is the whole point. Without it a red half would skip this job,
+    # and GitHub counts a skipped required check as passed — a failed test
+    # would merge. The pr-scope condition is the halves' own, so draft and
+    # documentation-only pull requests still skip all three, as before.
+    needs: [pr-scope, static-checks-db, static-checks-unit]
+    if: ${{ always() && github.event_name == 'pull_request' && needs.pr-scope.outputs.draft != 'true' && needs.pr-scope.outputs.code == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Both halves passed
+        env:
+          DB_RESULT: ${{ needs.static-checks-db.result }}
+          UNIT_RESULT: ${{ needs.static-checks-unit.result }}
+        run: |
+          echo "static-checks-db: $DB_RESULT"
+          echo "static-checks-unit: $UNIT_RESULT"
+          if [ "$DB_RESULT" != success ] || [ "$UNIT_RESULT" != success ]; then
+            echo "::error::static-checks passes only when static-checks-db and static-checks-unit both succeed (got db=$DB_RESULT, unit=$UNIT_RESULT)"
+            exit 1
+          fi
 
   typecheck:
     # The project type graph needs ~7 GiB («Memory used» at the end of the

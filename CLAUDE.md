@@ -865,6 +865,21 @@ CI живёт на **GitHub-hosted Linux в публичном репозито�
   нужен VPN до PBX. Больше туда ничего не направляй и не клади продовый секрет в
   workflow, которому только что поменял метки.
 
+**`static-checks` — сводная джоба над двумя половинами** (2026-11-27, владелец
+на «поднять предел или разнести шаги» — «оба»). Гейты идут параллельно в
+`static-checks-db` (все шаги на Postgres, 15–24 мин) и `static-checks-unit`
+(юнит-тесты против базлайна, 8–14 мин). Обязательный контекст `static-checks`
+зелёный, только если обе `success`; у него `if: always()`, иначе упавшая
+половина пропустила бы сводную, а пропуск GitHub засчитывает как успех. Новый
+гейт — в `static-checks-db` (или в `-unit`, если базе не нужен), не в сводную.
+Предел обеих половин — 60 мин, `postgres-contract` — 30. Тесно было из-за
+`prisma generate`: он идёт 12–15 мин на раннерах GitHub в AWS и 2–9 в Azure
+(облако — в шапке журнала задачи), а `npm ci` делал его лишний раз через
+postinstall `@prisma/client` (#1779). Новый workflow с `npm ci` и своим generate —
+`PRISMA_SKIP_POSTINSTALL_GENERATE=1` на `npm ci` и кеш `node_modules/.prisma/client`
+с ключом static-checks. Стерегут `scripts/ci/test-event-platform-assets.mjs` и
+`ci-static-checks-skipped-on-main.test.ts`.
+
 Деньги больше не главный ограничитель — **главное время и шум в ревью**.
 Ограничители сохраняются:
 
