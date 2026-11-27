@@ -131,7 +131,7 @@ export function PhoneOrderCard({ orderId }: { orderId: string }) {
     <div className="flex min-w-0 flex-col gap-4 px-4 py-5 sm:px-7">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <Link href="/pharmacy-orders" className="text-xs text-muted-foreground hover:text-foreground">{t("back")} › {order.label}</Link>
+          <Link href="/orders" className="text-xs text-muted-foreground hover:text-foreground">{t("back")} › {order.label}</Link>
           <div className="mt-1 flex flex-wrap items-center gap-3">
             <h1 className="text-[22px] font-bold tracking-tight">{order.label}</h1>
             <PhoneOrderStatus status={order.status} label={t(`status.${order.status}`)} />

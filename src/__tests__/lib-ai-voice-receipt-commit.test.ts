@@ -175,7 +175,7 @@ describe("confirm and commit one receipt", () => {
   it("reports every saved kind of record as saved, with a link to it", async () => {
     for (const [entityType, href] of [
       ["company", "/companies/c-1"], ["contact", "/contacts/c-1"], ["ticket", "/tickets/c-1"],
-      ["mtm_task", "/mtm/tasks/c-1"], ["phone_order", "/pharmacy-orders/c-1"],
+      ["mtm_task", "/mtm/tasks/c-1"], ["phone_order", "/orders/c-1"],
     ] as const) {
       fetchMock.mockReset()
       fetchMock

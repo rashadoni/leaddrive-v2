@@ -231,7 +231,7 @@ export const navItems: NavItem[] = [
   { module: "sales", href: "/leads", icon: UserPlus, tKey: "leads", group: "Sales" },
   { module: "sales", href: "/deals", icon: Handshake, tKey: "deals", group: "Sales" },
   // Owner, 2026-10-26: phone orders are sales («продажи»), not field work; rights as deals.
-  { module: "sales", feature: "pharmacy_phone_orders", href: "/pharmacy-orders", icon: PhoneIncoming, tKey: "pharmacyPhoneOrders", group: "Sales", permissionScope: "deals" },
+  { module: "sales", feature: "pharmacy_phone_orders", href: "/orders", icon: PhoneIncoming, tKey: "pharmacyPhoneOrders", group: "Sales", permissionScope: "deals" },
   { module: "sales", href: "/quotes", icon: FileBadge, tKey: "quotes", group: "Sales" },
   { module: "sales", href: "/sequences", icon: Zap, tKey: "sequences", group: "Sales" },
   { module: "sales", href: "/forecast", icon: TrendingUp, tKey: "forecast", group: "Sales" },

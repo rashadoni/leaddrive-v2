@@ -161,6 +161,10 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/inbox/v2", destination: "/inbox", permanent: false },
+      // Phone orders are a SaaS module for any tenant, not a pharmacy page (owner, 2026-11-27):
+      // the screen lives at /orders; links and bookmarks to the old address still land there.
+      { source: "/pharmacy-orders", destination: "/orders", permanent: true },
+      { source: "/pharmacy-orders/:path*", destination: "/orders/:path*", permanent: true },
     ]
   },
 }

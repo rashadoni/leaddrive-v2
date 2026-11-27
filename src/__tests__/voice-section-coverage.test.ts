@@ -74,7 +74,7 @@ describe("voice section coverage", () => {
     for (const key of [
       "finance_bills", "finance_payment-orders", "finance_funds",
       "procurement_requests", "procurement_orders", "contracts_milestones",
-      "pharmacy-orders", "inbox_voip", "social_monitoring_mentions",
+      "orders", "inbox_voip", "social_monitoring_mentions",
     ]) {
       expect(SECTION_DESCRIPTORS[key], key).toBeTruthy()
     }

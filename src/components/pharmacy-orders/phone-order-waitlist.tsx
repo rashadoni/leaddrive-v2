@@ -105,7 +105,7 @@ export function PhoneOrderWaitlist() {
                           : <span className="font-semibold">{row.pharmacyName ?? t("waitlistUnknownPharmacy")}</span>}
                         {row.orderId && row.orderNumber ? (
                           <div className="text-[11px] text-muted-foreground">
-                            <Link href={`/pharmacy-orders/${row.orderId}`} className="hover:underline">{t("waitlistFromOrder", { number: row.orderNumber })}</Link>
+                            <Link href={`/orders/${row.orderId}`} className="hover:underline">{t("waitlistFromOrder", { number: row.orderNumber })}</Link>
                           </div>
                         ) : null}
                       </td>

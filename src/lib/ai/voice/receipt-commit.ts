@@ -301,7 +301,7 @@ const RESULT_ROUTES: Record<AiVoiceActionEntityType, (id: string) => string> = {
   mtm_contact: (id) => `/mtm/contacts/${id}`,
   contact: (id) => `/contacts/${id}`,
   ticket: (id) => `/tickets/${id}`,
-  phone_order: (id) => `/pharmacy-orders/${id}`,
+  phone_order: (id) => `/orders/${id}`,
 }
 
 export function voiceResultHref(entityType: AiVoiceActionEntityType, entityId: string): string {

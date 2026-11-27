@@ -122,7 +122,7 @@ function safeLocalStorage(): Storage | null {
  * recordFromPath; сервер всё равно перечитывает заказ под организацией.
  */
 function phoneOrderOnScreen(pathname: string): string | null {
-  const match = /^\/pharmacy-orders\/([A-Za-z0-9_-]{6,64})$/.exec(pathname)
+  const match = /^\/orders\/([A-Za-z0-9_-]{6,64})$/.exec(pathname)
   return match ? match[1] : null
 }
 
