@@ -609,24 +609,56 @@ assert.ok(
 // The heavy jobs may be skipped for documentation-only PRs, but only through
 // pr-scope — and pr-scope must itself be required, because a failed detector
 // skips its dependants and GitHub counts a skip as a pass.
+// Since 2026-11-27 the required `static-checks` is a summary of two halves that
+// run side by side, static-checks-db and static-checks-unit. All four gated
+// jobs read pr-scope, and no other job does.
+const prChecksJob = (name) => {
+  const start = prChecksWorkflow.indexOf(`\n  ${name}:\n`)
+  if (start < 0) return ""
+  const rest = prChecksWorkflow.slice(start + 1)
+  const next = rest.slice(1).search(/\n {2}\S/u)
+  return next < 0 ? rest : rest.slice(0, next + 1)
+}
+const gatedPrJobs = ["static-checks-db", "static-checks-unit", "static-checks", "typecheck"]
 assert.ok(
   prChecksWorkflow.includes("  pr-scope:")
-    && /static-checks:\n    needs: pr-scope/u.test(prChecksWorkflow)
-    && /typecheck:[\s\S]{0,1200}?\n    needs: pr-scope/u.test(prChecksWorkflow)
-    && (prChecksWorkflow.match(/needs\.pr-scope\.outputs\.code == 'true'/g) ?? []).length === 2,
-  "static-checks and typecheck may skip only via pr-scope",
+    && gatedPrJobs.every((name) => {
+      const job = prChecksJob(name)
+      return /^ {4}needs: (pr-scope|\[pr-scope[,\]])/mu.test(job)
+        && /^ {4}if: .*needs\.pr-scope\.outputs\.code == 'true'/mu.test(job)
+    })
+    && (prChecksWorkflow.match(/needs\.pr-scope\.outputs\.code == 'true'/g) ?? []).length === gatedPrJobs.length,
+  "static-checks (both halves and the summary) and typecheck may skip only via pr-scope",
 )
+// The summary is green only when both halves succeeded. `always()` is what
+// makes that true: without it a failed half skips the summary, and a skipped
+// required check counts as a pass — a red test would merge. It runs no gate of
+// its own, so a gate added to it could not hide there either.
+{
+  const summary = prChecksJob("static-checks")
+  assert.ok(
+    /^ {4}needs: \[pr-scope, static-checks-db, static-checks-unit\]$/mu.test(summary)
+      && /^ {4}if: \$\{\{ always\(\) && /mu.test(summary)
+      && summary.includes("DB_RESULT: ${{ needs.static-checks-db.result }}")
+      && summary.includes("UNIT_RESULT: ${{ needs.static-checks-unit.result }}")
+      && summary.includes('if [ "$DB_RESULT" != success ] || [ "$UNIT_RESULT" != success ]; then')
+      && summary.includes("exit 1")
+      && (summary.match(/^ {6}- name: /gmu) ?? []).length === 1,
+    "static-checks must pass only when static-checks-db and static-checks-unit both succeed, even when one of them failed",
+  )
+}
 // The same goes for skipping a draft. `github.event.pull_request.draft` is a
 // snapshot: on 2026-10-09 (#639) a push followed at once by "ready for review"
 // produced a run whose event still said draft, both heavy jobs were skipped on
 // a ready pull request, and the skips counted as passes. pr-scope reads the
 // live pull request instead; no job may trust the event for it.
 assert.ok(
-  (prChecksWorkflow.match(/needs\.pr-scope\.outputs\.draft != 'true'/g) ?? []).length === 2
+  gatedPrJobs.every((name) => /^ {4}if: .*needs\.pr-scope\.outputs\.draft != 'true'/mu.test(prChecksJob(name)))
+    && (prChecksWorkflow.match(/needs\.pr-scope\.outputs\.draft != 'true'/g) ?? []).length === gatedPrJobs.length
     && !/^ {4}if: .*github\.event\.pull_request\.draft/mu.test(prChecksWorkflow)
     && prChecksWorkflow.includes("      draft: ${{ steps.draft.outputs.draft }}")
     && prChecksWorkflow.includes("        run: bash scripts/ci/pr-draft-state.sh"),
-  "static-checks and typecheck may skip a draft only on pr-scope's reading of the live pull request",
+  "static-checks (both halves and the summary) and typecheck may skip a draft only on pr-scope's reading of the live pull request",
 )
 assert.ok(
   requiredContexts.every((context) => mainProtectionScript.includes(`"context": "${context}"`))

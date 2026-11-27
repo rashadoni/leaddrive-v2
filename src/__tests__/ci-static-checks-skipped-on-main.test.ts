@@ -40,8 +40,14 @@ function jobIf(block: string): string {
 
 const prChecks = workflowText("pr-checks.yml")
 const deploy = workflowText("deploy.yml")
-const staticChecks = jobBlock(prChecks, "static-checks")
+// Since 2026-11-27 the required `static-checks` is a summary job; the gates run
+// in its two halves side by side. "static-checks" below means the halves.
+const staticChecksSummary = jobBlock(prChecks, "static-checks")
+const staticChecksHalves = ["static-checks-db", "static-checks-unit"].map((name) => jobBlock(prChecks, name))
+const staticChecks = staticChecksHalves.join("\n")
 const typecheck = jobBlock(prChecks, "typecheck")
+const PULL_REQUEST_ONLY =
+  "github.event_name == 'pull_request' && needs.pr-scope.outputs.draft != 'true' && needs.pr-scope.outputs.code == 'true'"
 
 /**
  * A merge into main triggers pr-checks.yml and deploy.yml on the same commit.
@@ -61,11 +67,20 @@ describe("pr-checks static-checks is redundant on a main push", () => {
     // для PR только с документацией джоба пропускается через детектор.
     // Пропуск засчитывается как успех — поэтому сам детектор тоже обязателен
     // (см. scripts/ci/configure-main-protection.sh).
-    expect(jobIf(staticChecks)).toBe(
-      "${{ github.event_name == 'pull_request' && needs.pr-scope.outputs.draft != 'true' && needs.pr-scope.outputs.code == 'true' }}",
-    )
-    expect(staticChecks).toMatch(/^ {4}needs: pr-scope$/m)
+    for (const half of staticChecksHalves) {
+      expect(jobIf(half)).toBe(`\${{ ${PULL_REQUEST_ONLY} }}`)
+      expect(half).toMatch(/^ {4}needs: pr-scope$/m)
+    }
     expect(prChecks).toMatch(/types:\s*\[[^\]]*ready_for_review[^\]]*\]/)
+  })
+
+  it("passes static-checks only when both halves succeeded, and runs no gate in the summary", () => {
+    // Same condition as the halves, plus `always()`: without it a failed half
+    // would skip the summary, and a skipped required check counts as passed.
+    expect(jobIf(staticChecksSummary)).toBe(`\${{ always() && ${PULL_REQUEST_ONLY} }}`)
+    expect(staticChecksSummary).toMatch(/^ {4}needs: \[pr-scope, static-checks-db, static-checks-unit\]$/m)
+    expect(stepNames(staticChecksSummary)).toEqual(["Both halves passed"])
+    expect(staticChecksSummary).toContain('if [ "$DB_RESULT" != success ] || [ "$UNIT_RESULT" != success ]; then')
   })
 
   it("lets only pr-scope say that a pull request is a draft", () => {
