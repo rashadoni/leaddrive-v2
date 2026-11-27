@@ -10,6 +10,7 @@ import { withRlsAuth } from "@/lib/with-rls"
 import { nonNegativeFinancialAmountSchema } from "@/lib/validation/numeric"
 import { SIGNED_COPY_PURPOSE, paperSignerUserId } from "@/lib/clm/paper-signature"
 import { TERMINATION_COPY_PURPOSE } from "@/lib/clm/contract-closing"
+import { releaseRenewalSource } from "@/lib/clm/contract-renewal"
 import { changedTerms, deleteRefusal, isContractNumberTaken, isSignedContract, needsReapproval, returnToDraftForReapproval } from "@/lib/clm/contract-safety"
 
 const updateContractSchema = z.object({
@@ -50,6 +51,13 @@ export const GET = withRlsAuth("contracts", "read", async (req, auth, { params }
         contact: { select: { id: true, fullName: true } },
         // FIX 2: org-filter tag reads — defense-in-depth vs implicit m2m
         tags: { where: { organizationId: orgId }, select: { id: true, name: true, color: true } },
+        // «Продление» (src/lib/clm/contract-renewal.ts): the contract this one renews, and its renewals.
+        renewalSource: { select: { id: true, contractNumber: true, status: true } },
+        renewedAs: {
+          where: { organizationId: orgId },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, contractNumber: true, status: true },
+        },
         approvalStages: {
           orderBy: { order: "asc" },
           select: {
@@ -323,11 +331,17 @@ export const DELETE = withRlsAuth("contracts", "delete", async (_req, auth, { pa
     // would take its signed versions and the e-sign trail with it (src/lib/clm/contract-safety.ts).
     const locked = deleteRefusal(contract)
     if (locked) return NextResponse.json({ error: locked, code: locked, status: contract.status }, { status: 409 })
-    // Guarded on what was read: a contract signed in the meantime is not deleted either.
-    const result = await prisma.contract.deleteMany({
-      where: { id, organizationId: orgId, status: contract.status, signedAt: null },
+    // Guarded on what was read: a contract signed in the meantime is not deleted either. A deleted
+    // renewal draft gives its source back: «Продлевается» → «Активный» (contract-renewal.ts).
+    const deleted = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const result = await tx.contract.deleteMany({
+        where: { id, organizationId: orgId, status: contract.status, signedAt: null },
+      })
+      if (result.count === 0) return false
+      await releaseRenewalSource(tx, { orgId, contractId: id, sourceId: contract.renewalSourceContractId ?? null })
+      return true
     })
-    if (result.count === 0) return NextResponse.json({ error: "CONTRACT_STATE_CHANGED", code: "CONTRACT_STATE_CHANGED" }, { status: 409 })
+    if (!deleted) return NextResponse.json({ error: "CONTRACT_STATE_CHANGED", code: "CONTRACT_STATE_CHANGED" }, { status: 409 })
 
     // Log deletion
     if (contract) {

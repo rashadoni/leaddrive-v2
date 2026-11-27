@@ -3372,6 +3372,24 @@
     "paperSignedLineNoName": "Kağızda imzalanıb {date}",
     "paperSignOpenScan": "Skanı aç",
     "paperSignScanLocked": "İmzalanmış müqavilənin skanını silmək olmaz: bu, müqavilənin qüvvədə olduğunun sübutudur.",
+    "renewal": {
+      "renewalOf": "Müqavilənin yenilənməsi",
+      "renewedAs": "Yeniləndi →",
+      "inProgress": "Yenilənir →",
+      "endsIn": "{date} tarixində bitir — {days} gün qalıb",
+      "renew": "Yenilə",
+      "renewHint": "Eyni tərəflər, mətn və şərtlərlə növbəti müqavilənin qaralamasını yaradır; o, adi qaydada razılaşdırılır və imzalanır.",
+      "title": "Müqaviləni yeniləmək",
+      "note": "Eyni tərəflər, mətn və şərtlərlə yeni müqavilənin qaralaması yaranacaq. O, adi qaydada razılaşdırılır və imzalanır; «Aktiv» olanda bu müqavilə «Yeniləndi» olacaq.",
+      "submit": "Yenilənmə qaralamasını yarat",
+      "errors": {
+        "RENEWAL_DATES_INVALID": "Başlama və bitmə tarixlərini göstərin; bitmə başlamadan əvvəl ola bilməz.",
+        "RENEWAL_EXISTS": "Müqavilənin artıq işdə olan yenilənməsi var:",
+        "NOT_RENEWABLE": "Yalnız qüvvədə olan və ya bitmiş müqavilə yenilənir.",
+        "USER_REQUIRED": "Bunu etmək üçün daxil olun.",
+        "FAILED": "Yenilənməni yaratmaq alınmadı. Yenidən cəhd edin."
+      }
+    },
     "safety": {
       "deleteLocked": "İmzalanmış müqavilə silinmir — onunla birlikdə imza və onun jurnalı itərdi. Ona xitam verin və ya ləğv edin.",
       "reapprovalWarning": "Məbləğ, valyuta və ya müddətlər dəyişib. Müqavilə qaralamaya qayıdacaq və yenidən razılaşmaya gedəcək.",

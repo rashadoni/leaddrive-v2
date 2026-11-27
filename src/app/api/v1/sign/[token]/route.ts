@@ -35,6 +35,8 @@ import { createNotification } from "@/lib/notifications"
 import { sendContractAlert } from "@/lib/integrations/contract-alerts"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { getContractSignatureEligibilityError } from "@/lib/clm/signature-eligibility"
+import { completeRenewalSource } from "@/lib/clm/contract-renewal"
+import { upsertRenewalAlerts } from "@/lib/contract-lifecycle/upsert-renewal-alerts"
 import type { EnvelopeStatus, SignerStatus } from "@/lib/esign/types"
 
 // ─── Token verify + DB constant-time check ───────────────────────────────────
@@ -762,6 +764,11 @@ export async function POST(
           if (contractCas.count !== 1) {
             throw new SignConflictError("Contract state changed concurrently, retry")
           }
+          // A renewal that takes effect: the contract it renews is «Продлён» now
+          // (owner 2026-11-26, «Продление»; src/lib/clm/contract-renewal.ts).
+          if (nextContractStatus === "active" && freshContract.status === "approved") {
+            await completeRenewalSource(tx, { orgId: contract.organizationId, contractId: contract.id })
+          }
 
           // ── FIX C: Mint canonical signed ContractVersion from the BOUND body.
           //
@@ -857,6 +864,20 @@ export async function POST(
       }
       console.error("[sign POST] $transaction failed:", e)
       return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    }
+  }
+
+  // A contract that took effect by e-signature gets its renewal reminders, as one signed on paper
+  // or created with an end date does — the wizard and templates never scheduled them.
+  if (envelopeCompleted && !document) {
+    const signed = await prisma.contract.findFirst({
+      where: { id: contract.id, organizationId: contract.organizationId },
+      select: { status: true, endDate: true },
+    }).catch(() => null)
+    if (signed?.status === "active" && signed.endDate) {
+      await upsertRenewalAlerts(contract.organizationId, contract.id, signed.endDate).catch((err) => {
+        console.error("[sign POST] renewal alerts not scheduled:", err)
+      })
     }
   }
 

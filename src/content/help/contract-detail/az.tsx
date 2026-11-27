@@ -217,6 +217,33 @@ export default function ContractDetailHelpAz() {
           </p>
         </HelpStep>
       </HelpSection>
+      <HelpSection title="Addım-addım: müqaviləni yenilə">
+        <HelpStep n={1}>
+          <p>
+            Bitməyə 90 gün qalmış qüvvədə olan müqavilənin başlığı altında «… tarixində bitir — N gün qalıb» sətri və{" "}
+            <HelpKey>Yenilə</HelpKey> düyməsi görünəcək; eyni düymə aktiv və bitmiş müqavilənin başlığında da var,
+            xatırlatma məktubunda isə bu pəncərəni açan keçid var.
+          </p>
+        </HelpStep>
+        <HelpStep n={2}>
+          <p>
+            Tarixləri və məbləği yoxlayın — onlar artıq doldurulub: eyni uzunluqda növbəti müddət və əvvəlki məbləğ.{" "}
+            <HelpKey>Yenilənmə qaralamasını yarat</HelpKey> düyməsini basın.
+          </p>
+          <HelpCallout kind="see" label="Nə görəcəksiniz">
+            Eyni tərəflər, mətn və şərtlərlə, «köhnə nömrə/il» nömrəli yeni müqavilənin qaralaması açılacaq. O, adi
+            qaydada razılaşdırılır və imzalanır. Köhnə müqavilə «Yenilənir» olacaq, yenisi «Aktiv» olanda isə —
+            «Yeniləndi», və onun üzrə xatırlatmalar dayanacaq. Yenilənmə qaralamasını ləğv etsəniz və ya silsəniz, köhnə
+            yenidən «Aktiv» olur. Bitmiş müqavilə yeniləndikdən sonra «Bitib» qalır.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={3}>
+          <p>
+            Yenilənmə xatırlatması müqaviləni yaradana gəlir — zəngə və poçta. Müəllif yoxdursa və ya artıq işləmirsə,
+            administratorlara və menecerlərə.
+          </p>
+        </HelpStep>
+      </HelpSection>
       <HelpSection title="Müqavilə üzrə pul">
         <HelpStep n={1}>
           <p>

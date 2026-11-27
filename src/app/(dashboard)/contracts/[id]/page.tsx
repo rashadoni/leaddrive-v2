@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useLocale, useTranslations } from "next-intl"
 import Link from "next/link"
@@ -15,6 +15,7 @@ import { Hint } from "@/components/hint"
 import { EsignSignatureSheet } from "@/components/contract-esign-signature-sheet"
 import { ContractPaperSignatureButton, ContractPaperSignatureRow, type PaperSignatureInfo } from "@/components/contracts/contract-paper-signature"
 import { deleteRefusal } from "@/lib/clm/contract-safety-rules"
+import { ContractRenewButton, ContractRenewDialog, ContractRenewalBanner, canRenew, type RenewalContract } from "@/components/contracts/contract-renewal"
 import { ContractCancelDialog, ContractClosingBanner, ContractReopenButton, ContractTerminateDialog, canCancel, canTerminate, type ContractClosingInfo } from "@/components/contracts/contract-closing"
 import { ContractDocumentsChain } from "@/components/contracts/contract-documents-chain"
 import { checkPermission, type Role } from "@/lib/permissions"
@@ -224,6 +225,11 @@ export default function ContractDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   // «Расторгнуть договор» / «Отменить договор» (src/components/contracts/contract-closing.tsx)
   const [terminateOpen, setTerminateOpen] = useState(false)
+  // «Продлить» (src/components/contracts/contract-renewal.tsx); the renewal e-mail links here with ?renew=1.
+  const [renewOpen, setRenewOpen] = useState(false)
+  const searchParams = useSearchParams()
+  const renewAsked = searchParams?.get("renew") === "1"
+  const [renewDismissed, setRenewDismissed] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const orgId = session?.user?.organizationId
 
@@ -1501,6 +1507,10 @@ export default function ContractDetailPage() {
         </div>
         {/* ── Header actions: 1 primary CTA + View Doc + ••• overflow ── */}
         <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+          {/* A contract in force or ended, with no renewal open, can be renewed. */}
+          {canRenew(contract as RenewalContract) && (
+            <ContractRenewButton onClick={() => setRenewOpen(true)} />
+          )}
           {/* A rejected contract goes back to draft to be fixed and sent again. */}
           {contract.status === "rejected" && (
             <ContractReopenButton contractId={contract.id} onDone={() => { void fetchContract() }} />
@@ -1656,6 +1666,13 @@ export default function ContractDetailPage() {
         }}
         info={(contract.closing as ContractClosingInfo | null) ?? null}
         onChanged={() => { void fetchContract() }}
+      />
+      <ContractRenewalBanner contract={contract as RenewalContract} onRenew={() => setRenewOpen(true)} />
+      <ContractRenewDialog
+        key={`renew-${contract.id}`}
+        open={renewOpen || (renewAsked && canRenew(contract as RenewalContract) && !renewDismissed)}
+        onOpenChange={(next) => { setRenewOpen(next); if (!next) setRenewDismissed(true) }}
+        contract={contract as RenewalContract}
       />
       <ContractTerminateDialog
         open={terminateOpen}
