@@ -141,7 +141,22 @@ jobs:
         with:
           node-version: 20
       - run: npm ci --include=dev
-      - run: npx prisma generate --schema prisma/schema.prisma
+        # Without this, @prisma/client's postinstall runs a complete `prisma
+        # generate` inside `npm ci`, and the client was generated again right
+        # after it: 12–15 min each on GitHub's AWS-hosted runners (see
+        # identity-snapshot-contract.yml).
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
+      - name: Cache generated Prisma client
+        # The key `static-checks` and deploy.yml use: schema + pinned Prisma.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
       - run: npx prisma generate --schema scripts/ci/fixtures/event-platform-legacy-client/schema.prisma
       - name: Prepare bounded diagnostics memory
         run: bash scripts/ci/prepare-hosted-build-runner.sh
@@ -261,6 +276,22 @@ jobs:
         run: bash scripts/ci/prepare-hosted-build-runner.sh
 
       - run: npm ci
+        # The client is generated (or restored) once, right below, in every
+        # target mode — where @prisma/client's postinstall used to generate it.
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
+
+      - name: Cache generated Prisma client
+        # The key `static-checks` and deploy.yml use: schema + pinned Prisma.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
 
       - name: Validate independent audit harness
         if: ${{ inputs.audit_acceptance }}
@@ -1353,7 +1384,6 @@ jobs:
             psql -U postgres -d support_ux_evidence -X -v ON_ERROR_STOP=1 \
               -c 'CREATE EXTENSION IF NOT EXISTS vector'
           npx prisma db push --skip-generate
-          npx prisma generate
           npx tsx scripts/seed-support-ux-evidence.ts
 
           closure_token="$(jq -r '.fixtures.closureToken // empty' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")"

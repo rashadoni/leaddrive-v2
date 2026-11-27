@@ -48,10 +48,26 @@ jobs:
           node-version: "20"
           cache: npm
 
-      - name: Install dependencies and generate Prisma client
-        run: |
-          npm ci
-          npx prisma generate
+      - name: Install dependencies
+        # Without this, @prisma/client's postinstall runs a complete `prisma
+        # generate` inside `npm ci`, and the client was generated again right
+        # after it: 12–15 min each on GitHub's AWS-hosted runners, against this
+        # job's 15 minutes (see identity-snapshot-contract.yml).
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
+        run: npm ci
+
+      - name: Cache generated Prisma client
+        # The key `static-checks` and deploy.yml use: schema + pinned Prisma.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
 
       - name: Validate translations
         run: npm run i18n:check
@@ -167,6 +183,10 @@ jobs:
           cache: npm
 
       - name: Install dependencies
+        # No postinstall generate: the client is generated (or restored) once,
+        # in «Generate candidate Prisma client» below.
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: npm ci
 
       - name: Create current-main database baseline
@@ -293,8 +313,19 @@ jobs:
           test "$(psql "$ADMIN_DATABASE_URL" -X -Atc \
             "SELECT rolsuper::int || ':' || rolbypassrls::int FROM pg_roles WHERE rolname = 'ld_queue_e2e'")" = "0:0"
 
+      - name: Cache generated Prisma client
+        # The candidate's prisma/schema.prisma names the key, the same key
+        # `static-checks` and deploy.yml use; the base schema above only shapes
+        # the database.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+
       - name: Generate candidate Prisma client
-        run: npx prisma generate
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium

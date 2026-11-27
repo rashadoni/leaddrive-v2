@@ -47,7 +47,18 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: npx prisma generate
+      - name: Cache generated Prisma client
+        # `npm ci --ignore-scripts` generates nothing; one generate is 12–15
+        # min on GitHub's AWS-hosted runners. The key `static-checks` and
+        # deploy.yml use: schema + pinned Prisma, so main's client is reused.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
       - name: Prove ownership fences, auth flow, parity and real immutable database guards
         env:
           MTM_DEMO_TEST_DATABASE_URL: postgresql://postgres:fixture-only@127.0.0.1:5432/postgres
