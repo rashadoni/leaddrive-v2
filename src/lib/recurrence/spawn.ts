@@ -31,7 +31,7 @@ interface SpawnArgs {
     priority: string
     dueDate: Date | null
     assignedTo: string | null
-    // «Tapşırığı verən» stays the same on every occurrence (lib/tasks/default-reporter.ts).
+    // «Tapşırığı verən» stays the same on every occurrence.
     reporterId?: string | null
     relatedType: string | null
     relatedId: string | null

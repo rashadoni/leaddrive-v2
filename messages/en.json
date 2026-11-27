@@ -33958,9 +33958,9 @@
     }
   },
   "boardTeams": {
-    "defaultReporter": "Reporter on every new task",
-    "defaultReporterHint": "Filled in on each new task; whoever makes the task can pick someone else. The reporter is notified of messages on the task.",
-    "defaultReporterNone": "Nobody",
+    "taskWatcher": "Follows every task",
+    "taskWatcherHint": "Follows every open and new task on the boards: gets a notification when a task is created, written in or finished. «Reporter» on each task stays whoever gives it.",
+    "taskWatcherNone": "Nobody",
     "title": "Teams and users",
     "teams": "Teams",
     "allTeams": "Everyone",

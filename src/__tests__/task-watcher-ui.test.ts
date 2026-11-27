@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 /**
- * «Tapşırığı verən» where a task is made (Nazrin, Zeytun, 2026-11-18: «bu
- * hissede reporter olmalidir… her defe meni secmesinler»; owner: «у админа на
- * всех задачах»). The board's «Yeni tapşırıq» window and the «Edit Task» form
- * show the organization's default filled in — also when she is not one of the
- * board's people — and leave it to the server unless the person picks another;
- * an edit keeps the task's own reporter untouched. The admin sets the default
- * on «Komandalar və istifadəçilər». Real components, Azerbaijani copy; only the
+ * «Tapşırığı verən» per task and the one person who follows every task (Zeytun,
+ * 2026-11-27 — Sabina: «tapşırığı verənin ayrı-ayrı olması lazımdır, çünki
+ * dizaynerə tapşırığı SMM verir»; Nazrin: «tag olunmasam belə hamısı mənə gələ
+ * bilməz?»). The board's «Yeni tapşırıq» window and the «Edit Task» form start
+ * with nobody under «Tapşırığı verən» and send only what the person picks; an
+ * edit keeps the task's own. The admin names the watcher of every task on
+ * «Komandalar və istifadəçilər». Real components, Azerbaijani copy; only the
  * network and the session are stubbed.
  */
 import { act, createElement } from "react"
@@ -41,14 +41,14 @@ const { default: TeamsAndUsersPage } = await import("@/app/(dashboard)/boards/te
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const NAZRIN = { id: "nazrin", name: "Nazrin Şirinova" }
-let defaultReporter: { id: string; name: string } | null = NAZRIN
+let watcher: { id: string; name: string } | null = null
 let sent: { method: string; url: string; body: Record<string, unknown> }[] = []
 let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
   sent = []
-  defaultReporter = NAZRIN
+  watcher = null
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -57,7 +57,9 @@ beforeEach(() => {
     const method = init?.method ?? "GET"
     if (method !== "GET") sent.push({ method, url, body: typeof init?.body === "string" ? JSON.parse(init.body) : {} })
     const json = (data: unknown, status = 200) => new Response(JSON.stringify({ success: true, data }), { status })
-    if (url.startsWith("/api/v1/tasks/default-reporter")) return json({ reporter: method === "PUT" ? NAZRIN : defaultReporter, canManage: true })
+    if (url.startsWith("/api/v1/tasks/watcher")) return json({ watcher: method === "PUT" ? NAZRIN : watcher, canManage: true, followed: 812 })
+    // No screen asks for the old default any more.
+    if (url.startsWith("/api/v1/tasks/default-reporter")) throw new Error("the default reporter is gone")
     // The board's people: Nazrin is an admin, not a member of this board.
     if (url.startsWith("/api/v1/users/assignable")) return json([{ id: "rashida", name: "Rəşidə Məmmədova" }, { id: "aytan", name: "Aytən Müşkürova" }])
     if (url === "/api/v1/users") return json([
@@ -103,12 +105,11 @@ describe("the board's «Yeni tapşırıq» window", () => {
     return sent.find((s) => s.url === "/api/v1/tasks" && s.method === "POST")!.body
   }
 
-  it("shows the default reporter under «Tapşırığı verən», though she is not one of the board's people", async () => {
+  it("starts with nobody under «Tapşırığı verən» and sends nothing untouched", async () => {
     await open()
     const box = select("board-create-reporter")
     expect(container.textContent).toContain("Tapşırığı verən")
-    expect(shown(box)).toBe("Nazrin Şirinova")
-    // Untouched, the server puts the default on — the window does not send its own copy.
+    expect(box.value).toBe("")
     expect(await create()).not.toHaveProperty("reporterId")
   })
 
@@ -124,8 +125,8 @@ describe("the board's «Yeni tapşırıq» window", () => {
     expect((await create()).reporterId).toBeNull()
   })
 
-  it("with no default set the box is empty", async () => {
-    defaultReporter = null
+  it("a watcher named for every task is not put in «Tapşırığı verən»", async () => {
+    watcher = NAZRIN
     await open()
     expect(select("board-create-reporter").value).toBe("")
   })
@@ -143,9 +144,10 @@ describe("the «Edit Task» form", () => {
     return sent.find((s) => s.method === "POST" || s.method === "PATCH")!
   }
 
-  it("a new task shows the default reporter and leaves it to the server", async () => {
+  it("a new task starts with nobody under «Tapşırığı verən»", async () => {
+    watcher = NAZRIN
     await render()
-    expect(shown(select("task-form-reporter"))).toBe("Nazrin Şirinova")
+    expect(select("task-form-reporter").value).toBe("")
     await type(document.querySelector('input[name="title"], input') as HTMLInputElement, "Afişa dekabr")
     const call = await save()
     expect(call.method).toBe("POST")
@@ -165,15 +167,19 @@ describe("the «Edit Task» form", () => {
 })
 
 describe("«Komandalar və istifadəçilər»", () => {
-  it("the admin picks the reporter of every new task", async () => {
-    defaultReporter = null
+  it("the admin names who follows every task, and can clear it", async () => {
     await act(async () => { root.render(createElement(TeamsAndUsersPage)) })
     await flush()
-    const box = container.querySelector("#teams-default-reporter-select") as HTMLSelectElement
-    expect(container.textContent).toContain("Bütün yeni tapşırıqlarda tapşırığı verən")
+    const section = container.querySelector('[data-testid="teams-task-watcher"]') as HTMLElement
+    const box = container.querySelector("#teams-task-watcher-select") as HTMLSelectElement
+    expect(section.textContent).toContain("Bütün tapşırıqları izləyir")
+    expect(section.textContent).toContain("yaradılanda, orada yazılanda və bağlananda bildiriş alır")
     expect(shown(box)).toBe("Heç kim")
     await pick(box, "nazrin")
-    expect(sent).toEqual([{ method: "PUT", url: "/api/v1/tasks/default-reporter", body: { reporterId: "nazrin" } }])
+    expect(sent).toEqual([{ method: "PUT", url: "/api/v1/tasks/watcher", body: { userId: "nazrin" } }])
     expect(shown(box)).toBe("Nazrin Şirinova")
+    sent = []
+    await pick(box, "")
+    expect(sent).toEqual([{ method: "PUT", url: "/api/v1/tasks/watcher", body: { userId: null } }])
   })
 })

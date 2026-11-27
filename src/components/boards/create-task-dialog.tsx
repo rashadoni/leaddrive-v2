@@ -71,21 +71,10 @@ export function CreateTaskDialog({
   const [priority, setPriority] = useState<string>("medium")
   const [category, setCategory] = useState<string>("")
   const [assignedTo, setAssignedTo] = useState<string>(defaultAssignee)
-  // «Tapşırığı verən»: undefined until touched — the organization's default
-  // stands (lib/tasks/default-reporter.ts; Zeytun: Nazrin, 2026-11-19); null is «nobody».
+  // «Tapşırığı verən»: whoever gives the task, picked per task (Sabina, 2026-11-27: «dizaynerə tapşırığı SMM verir»); untouched — none.
   const [reporterId, setReporterId] = useState<string | null | undefined>(undefined)
-  const [defaultReporter, setDefaultReporter] = useState<OrgUser | null>(null)
-  useEffect(() => {
-    let alive = true
-    fetch("/api/v1/tasks/default-reporter", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => { if (alive && j?.data?.reporter) setDefaultReporter(j.data.reporter) })
-      .catch(() => {})
-    return () => { alive = false }
-  }, [])
-  const reporterValue = reporterId === undefined ? (defaultReporter?.id ?? "") : (reporterId ?? "")
-  // The default reporter is offered even on a board she is not a member of (an admin sees every board).
-  const reporterOptions = defaultReporter && !users.some((u) => u.id === defaultReporter.id) ? [...users, defaultReporter] : users
+  const reporterValue = reporterId ?? ""
+  const reporterOptions = users
   const [dueDate, setDueDate] = useState<string>("")
   const [description, setDescription] = useState<string>("")
   const [saving, setSaving] = useState(false)
