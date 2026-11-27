@@ -22,7 +22,10 @@ permissions:
 jobs:
   verify-controller:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # 30, not 15 (owner, 2026-11-27). On a pull request that changes the schema
+    # the Prisma client cache misses, and one generate alone takes 12–15 min on
+    # GitHub's AWS-hosted runners: this job was cancelled at 15 in #1781.
+    timeout-minutes: 30
     concurrency:
       group: route-field-fixture-verify-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true

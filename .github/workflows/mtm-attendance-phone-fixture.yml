@@ -16,7 +16,11 @@ permissions:
 jobs:
   verify-controller:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # 30, not 15 (owner, 2026-11-27). On a pull request that changes the schema
+    # the Prisma client cache misses, and one generate alone takes 12–15 min on
+    # GitHub's AWS-hosted runners: the same job in mtm-route-field-fixture.yml
+    # was cancelled at 15 in #1781.
+    timeout-minutes: 30
     env:
       DATABASE_URL: postgresql://postgres:fixture-only@127.0.0.1:5432/postgres
     services:
