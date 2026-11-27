@@ -575,4 +575,58 @@ pgDescribe("WhatsApp messages and their tickets on a real Postgres with RLS", ()
       await bypass(() => prisma.channelConfig.update({ where: { id: SUPPORT_NUMBER.id }, data: { isActive: true } }))
     }
   })
+
+  /*
+   * A send that names no number (owner, 2026-11-27). A salon connects a second number just for
+   * bookings; everything else it sends without naming a number must stay on the number it has used
+   * all along. The newer number is inserted FIRST and carries the smaller id, so an unordered
+   * lookup — what this replaced — hands back the new number here.
+   */
+  describe("a send that names no number goes out from the oldest live one", () => {
+    const SALON = "org-salon"
+    const BOOKING_NUMBER = { id: "a-salon-booking", phoneNumberId: "200000000000001", createdAt: new Date("2026-11-20T09:00:00Z") }
+    const MAIN_NUMBER = { id: "z-salon-main", phoneNumberId: "200000000000002", createdAt: new Date("2026-10-01T09:00:00Z") }
+    let resolveWhatsAppConfig!: typeof import("@/lib/whatsapp").resolveWhatsAppConfig
+    const sender = (channelConfigId?: string) => tenant(SALON, () => resolveWhatsAppConfig(SALON, channelConfigId ? { channelConfigId } : {}))
+    const setNumber = (id: string, data: Prisma.ChannelConfigUpdateInput) => bypass(() => prisma.channelConfig.update({ where: { id }, data }))
+
+    beforeAll(async () => {
+      resolveWhatsAppConfig = (await import("@/lib/whatsapp")).resolveWhatsAppConfig
+      await bypass(() => prisma.organization.create({ data: { id: SALON, name: "Salon", slug: SALON } }))
+      for (const number of [BOOKING_NUMBER, MAIN_NUMBER]) {
+        await bypass(() => prisma.channelConfig.create({
+          data: { ...number, organizationId: SALON, channelType: "whatsapp", configName: number.id, isActive: true, accessToken: `token-${number.id}`, settings: {} },
+        }))
+      }
+    })
+
+    beforeEach(async () => {
+      for (const number of [BOOKING_NUMBER, MAIN_NUMBER]) {
+        await setNumber(number.id, { isActive: true, createdAt: number.createdAt, settings: {} })
+      }
+    })
+
+    it("answers with the number the organization had first, not the one connected for bookings", async () => {
+      expect(await sender()).toMatchObject({ id: MAIN_NUMBER.id, phoneNumberId: MAIN_NUMBER.phoneNumberId, accessToken: `token-${MAIN_NUMBER.id}` })
+    })
+
+    it("still sends from a number that is named", async () => {
+      expect(await sender(BOOKING_NUMBER.id)).toMatchObject({ id: BOOKING_NUMBER.id, phoneNumberId: BOOKING_NUMBER.phoneNumberId })
+    })
+
+    it("moves to the next oldest when the first number is disconnected", async () => {
+      await setNumber(MAIN_NUMBER.id, { isActive: false })
+      expect(await sender()).toMatchObject({ id: BOOKING_NUMBER.id })
+    })
+
+    it("holds the sends while Meta pauses the oldest number, instead of handing them to another", async () => {
+      await setNumber(MAIN_NUMBER.id, { settings: { cloudApiPaused: true } })
+      expect(await sender()).toBeNull()
+    })
+
+    it("answers the same on every call when two numbers share a timestamp", async () => {
+      await setNumber(MAIN_NUMBER.id, { createdAt: BOOKING_NUMBER.createdAt })
+      for (let call = 0; call < 3; call++) expect(await sender()).toMatchObject({ id: BOOKING_NUMBER.id })
+    })
+  })
 })
