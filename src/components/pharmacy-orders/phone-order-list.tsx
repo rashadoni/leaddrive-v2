@@ -71,7 +71,7 @@ export function PhoneOrderList() {
                 <tbody className="tabular-nums">
                   {rows.map(row => (
                     <tr key={row.id} className="border-t border-border">
-                      <td className="py-2.5 pl-4 font-semibold"><Link href={`/pharmacy-orders/${row.id}`} className="hover:underline">{row.label}</Link></td>
+                      <td className="py-2.5 pl-4 font-semibold"><Link href={`/orders/${row.id}`} className="hover:underline">{row.label}</Link></td>
                       <td className="py-2.5 text-muted-foreground">{formatOrderDate(row.callStartedAt, locale)}</td>
                       <td className="py-2.5">{row.pharmacyName ?? <span className="text-muted-foreground">{t(`identification.${row.pharmacyIdentification}`)}</span>}</td>
                       <td className="py-2.5">
@@ -81,7 +81,7 @@ export function PhoneOrderList() {
                       <td className="py-2.5 text-right font-semibold">{formatMoney(row.total, locale)} {row.currency}</td>
                       <td className="py-2.5 pl-6"><PhoneOrderStatus status={row.status} label={t(`status.${row.status}`)} /></td>
                       <td className="py-2.5 pr-4 text-right">
-                        <Link href={`/pharmacy-orders/${row.id}`} className="inline-flex h-8 items-center rounded-full border border-border bg-card px-4 text-xs font-medium hover:bg-muted/50">{t("open")}</Link>
+                        <Link href={`/orders/${row.id}`} className="inline-flex h-8 items-center rounded-full border border-border bg-card px-4 text-xs font-medium hover:bg-muted/50">{t("open")}</Link>
                       </td>
                     </tr>
                   ))}

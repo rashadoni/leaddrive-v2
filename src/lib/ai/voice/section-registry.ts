@@ -236,7 +236,7 @@ export const SECTION_DESCRIPTORS: Record<string, SectionDescriptor> = {
     createdField: "createdAt",
   },
   // Phone orders of the pharmacy line. Open = waiting for a manager's review.
-  "pharmacy-orders": {
+  orders: {
     model: "pharmacyPhoneOrder",
     permission: "deals", module: "sales",
     statusField: "status",

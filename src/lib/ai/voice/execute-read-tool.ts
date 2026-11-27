@@ -461,7 +461,7 @@ export async function executeVoiceReadTool(params: {
     // feature, the sales module and the role's right to deals.
     const phoneOrders: MissedPhoneOrdersAccess = orgCtx.modules?.[MISSED_PHONE_ORDERS_FEATURE] !== true
       ? "absent"
-      : canAccessVoiceSection(role, orgCtx, "pharmacy-orders") ? "allowed" : "denied"
+      : canAccessVoiceSection(role, orgCtx, "orders") ? "allowed" : "denied"
     if (!canSeeCalls && !canSeeChats && phoneOrders !== "allowed") {
       return { body: { data: { error: "ACCESS_SCOPE_UNAVAILABLE" } } }
     }

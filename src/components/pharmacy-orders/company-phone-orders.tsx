@@ -81,7 +81,7 @@ export function CompanyPhoneOrders({ company, onSaved }: { company: PharmacyComp
                   <tbody className="tabular-nums">
                     {data.orders.map(order => (
                       <tr key={order.id} className="border-t border-border">
-                        <td className="whitespace-nowrap py-2.5 pr-3 font-semibold"><Link href={`/pharmacy-orders/${order.id}`} className="text-primary hover:underline">{order.label}</Link></td>
+                        <td className="whitespace-nowrap py-2.5 pr-3 font-semibold"><Link href={`/orders/${order.id}`} className="text-primary hover:underline">{order.label}</Link></td>
                         <td className="whitespace-nowrap py-2.5 pr-3 text-muted-foreground">{formatOrderDate(order.createdAt, locale, false)}</td>
                         <td className="max-w-[340px] truncate py-2.5">{order.summary.map(readableProductName).join(", ")}</td>
                         <td className="whitespace-nowrap py-2.5 text-right font-semibold">{formatMoney(order.total, locale)} {order.currency}</td>

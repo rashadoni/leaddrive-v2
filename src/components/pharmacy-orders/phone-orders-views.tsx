@@ -4,10 +4,10 @@ import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 
 const VIEWS = [
-  { key: "orders", href: "/pharmacy-orders", label: "viewOrders" },
-  { key: "pharmacies", href: "/pharmacy-orders/pharmacies", label: "viewPharmacies" },
-  { key: "waitlist", href: "/pharmacy-orders/waitlist", label: "viewWaitlist" },
-  { key: "speech", href: "/pharmacy-orders/speech", label: "viewSpeech" },
+  { key: "orders", href: "/orders", label: "viewOrders" },
+  { key: "pharmacies", href: "/orders/pharmacies", label: "viewPharmacies" },
+  { key: "waitlist", href: "/orders/waitlist", label: "viewWaitlist" },
+  { key: "speech", href: "/orders/speech", label: "viewSpeech" },
 ] as const
 
 /** The views of phone orders: the orders, the pharmacies they come from, what they wait for, what the line says. */
