@@ -2578,6 +2578,9 @@ model Contract {
   @@index([templateId])
   @@index([renewalSourceContractId])
   @@index([signedAt])
+  /// One number, one contract, in an organization (owner 2026-11-26, «Опасные места»;
+  /// src/lib/clm/contract-safety.ts picks a free one for the numbers the system makes up).
+  @@unique([organizationId, contractNumber], map: "contracts_org_number_uniq")
   @@map("contracts")
 }
 

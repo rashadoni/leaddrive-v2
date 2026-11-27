@@ -22,7 +22,8 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     contractIntakeForm: { findFirst: vi.fn() },
     contractApprovalRule: { findMany: vi.fn() },
-    contract: { count: vi.fn(), create: vi.fn() },
+    // findMany: a made-up number is checked for being free (src/lib/clm/contract-safety.ts).
+    contract: { count: vi.fn(), create: vi.fn(), findMany: vi.fn(async () => []) },
     company: { findFirst: vi.fn() },
     deal: { findFirst: vi.fn() },
     user: { findMany: vi.fn() },

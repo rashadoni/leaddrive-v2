@@ -25,6 +25,7 @@ import { createHash } from "crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { serializeContractBody } from "@/lib/clm/serialize-body"
+import { returnToDraftForReapproval } from "@/lib/clm/contract-safety"
 
 /** Statuses whose body may be edited.
  * Terminal states expired/renewed/terminated/rejected/cancelled cannot be edited. */
@@ -54,6 +55,8 @@ export interface MintBodyVersionResult {
   versionNo: number
   contentHash: string
   renderedBody: string
+  /** The text of a contract in approval or approved changed: it went back to draft (contract-safety.ts). */
+  returnedToDraft: boolean
 }
 
 export async function mintBodyVersion(opts: {
@@ -65,6 +68,9 @@ export async function mintBodyVersion(opts: {
   source: string
   createdBy: string
   editableStatuses?: readonly string[]
+  /** The caller read a contract in approval or approved (contract-safety.ts): a changed text sends
+   *  it back to draft and approval, in this transaction. */
+  reapproveOnChange?: boolean
 }): Promise<MintBodyVersionResult> {
   const { orgId, contractId, cleanHtml, source, createdBy } = opts
   const editableStatuses = opts.editableStatuses ?? EDITABLE_STATUSES
@@ -74,7 +80,11 @@ export async function mintBodyVersion(opts: {
 
   for (let attempt = 0; attempt <= 3; attempt++) {
     try {
+      let returnedToDraft = false
       const version = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        const before = opts.reapproveOnChange
+          ? await tx.contract.findFirst({ where: { id: contractId, organizationId: orgId }, select: { renderedBody: true } })
+          : null
         const maxResult = await tx.$queryRaw<Array<{ max: number | null }>>`
           SELECT MAX("versionNo") as max
           FROM contract_versions
@@ -111,10 +121,21 @@ export async function mintBodyVersion(opts: {
           )
         }
 
+        // The approved text changed: approval again (owner 2026-11-26, «Опасные места»).
+        if (opts.reapproveOnChange && (before?.renderedBody ?? "") !== renderedBody) {
+          returnedToDraft = await returnToDraftForReapproval(tx, {
+            orgId,
+            contractId,
+            reason: "contract_changed",
+            actorUserId: createdBy && createdBy !== "unknown" ? createdBy : null,
+            at: new Date(),
+          })
+        }
+
         return newVersion
       })
 
-      return { versionNo: version.versionNo, contentHash, renderedBody }
+      return { versionNo: version.versionNo, contentHash, renderedBody, returnedToDraft }
     } catch (e) {
       if (e instanceof BodyVersionConflict) throw e
       // P2002 = unique(contractId, versionNo) race → retry the CAS; once retries

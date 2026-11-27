@@ -121,7 +121,7 @@ function req(body: unknown): NextRequest {
   })
 }
 
-let tx: { company: { updateMany: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> }; contract: { create: ReturnType<typeof vi.fn> }; contractVersion: { create: ReturnType<typeof vi.fn> } }
+let tx: { company: { updateMany: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> }; contract: { create: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn> }; contractVersion: { create: ReturnType<typeof vi.fn> } }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -136,7 +136,8 @@ beforeEach(() => {
   )
   tx = {
     company: { updateMany: vi.fn(async () => ({ count: 1 })), create: vi.fn(async ({ data }: { data: { name: string } }) => ({ id: "co-new", name: data.name })) },
-    contract: { create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ id: "ctr-1", ...data })) },
+    // findMany: the wizard's made-up number is checked for being free (src/lib/clm/contract-safety.ts).
+    contract: { create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ id: "ctr-1", ...data })), findMany: vi.fn(async () => []) },
     contractVersion: { create: vi.fn(async () => ({ id: "cv-1" })) },
   }
   db.$transaction.mockImplementation(async (cb: (t: typeof tx) => unknown) => cb(tx))

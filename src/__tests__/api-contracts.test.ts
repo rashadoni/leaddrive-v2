@@ -733,7 +733,8 @@ describe("DELETE /api/v1/contracts/:id", () => {
   })
 
   it("deletes contract and logs audit", async () => {
-    const contract = { id: "c1", title: "To Delete", organizationId: "org-1" }
+    // Only a contract never signed and never in force is deleted (src/lib/clm/contract-safety.ts).
+    const contract = { id: "c1", title: "To Delete", organizationId: "org-1", status: "draft", signedAt: null }
     vi.mocked(prisma.contract.findFirst).mockResolvedValue(contract as any)
     vi.mocked(prisma.contract.deleteMany).mockResolvedValue({ count: 1 } as any)
     vi.mocked(prisma.auditLog.create).mockResolvedValue({} as any)
@@ -748,6 +749,14 @@ describe("DELETE /api/v1/contracts/:id", () => {
     const auditCall = vi.mocked(prisma.auditLog.create).mock.calls[0][0] as any
     expect(auditCall.data.action).toBe("delete")
     expect(auditCall.data.entityType).toBe("contract")
+  })
+
+  it("refuses a signed contract: it is terminated or cancelled, not deleted", async () => {
+    vi.mocked(prisma.contract.findFirst).mockResolvedValue({ id: "c2", title: "Signed", organizationId: "org-1", status: "active", signedAt: new Date() } as any)
+    const res = await DELETE(makeReq("http://localhost:3000/api/v1/contracts/c2"), makeParams("c2"))
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe("CONTRACT_DELETE_LOCKED")
+    expect(prisma.contract.deleteMany).not.toHaveBeenCalled()
   })
 
   it("returns 404 when deleteMany count is 0", async () => {

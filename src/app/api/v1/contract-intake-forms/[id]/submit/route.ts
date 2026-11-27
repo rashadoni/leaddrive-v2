@@ -23,6 +23,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { freeContractNumber } from "@/lib/clm/contract-safety"
 import { orgHasModule, moduleDisabledResponse } from "@/lib/api-auth"
 import { withRlsSessionAuth } from "@/lib/with-rls"
 import { createNotification } from "@/lib/notifications"
@@ -245,7 +246,8 @@ export const POST = withRlsSessionAuth(async (req, session, { params }: { params
 
     // Generate a simple contract number for the intake-spawned draft.
     const contractCount = await prisma.contract.count({ where: { organizationId: orgId } })
-    const contractNumber = `INT-${String(contractCount + 1).padStart(5, "0")}`
+    // count + 1 repeats a number once a contract was deleted: take the next free one.
+    const contractNumber = await freeContractNumber(prisma, orgId, `INT-${String(contractCount + 1).padStart(5, "0")}`)
 
     const stage1DueAt =
       shouldAutoRoute && resolvedStages[0]?.slaHours

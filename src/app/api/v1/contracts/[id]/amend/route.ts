@@ -53,6 +53,7 @@ import { prisma } from "@/lib/prisma"
 import { orgHasModule, moduleDisabledResponse } from "@/lib/api-auth"
 import { withRlsAuth } from "@/lib/with-rls"
 import { countInFlightEnvelopes } from "@/lib/clm/envelope-guards"
+import { needsReapproval, returnToDraftForReapproval } from "@/lib/clm/contract-safety"
 
 // ─── Amendable statuses ───────────────────────────────────────────────────────
 
@@ -115,12 +116,13 @@ export const POST = withRlsAuth("contracts", "write", async (req, auth, { params
     organizationId: string
     title: string
     status: string
+    signedAt: Date | null
   } | null
 
   try {
     contract = await prisma.contract.findFirst({
       where: { id: contractId, organizationId: orgId },
-      select: { id: true, organizationId: true, title: true, status: true },
+      select: { id: true, organizationId: true, title: true, status: true, signedAt: true },
     })
   } catch (e) {
     console.error("[amend POST] contract lookup failed:", e)
@@ -175,6 +177,7 @@ export const POST = withRlsAuth("contracts", "write", async (req, auth, { params
   //   check above.
   for (let attempt = 0; attempt <= 3; attempt++) {
     try {
+      let returnedToDraft = false
       const version = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // CAS: read current MAX(versionNo) inside the tx
         const maxResult = await tx.$queryRaw<Array<{ max: number | null }>>`
@@ -228,6 +231,16 @@ export const POST = withRlsAuth("contracts", "write", async (req, auth, { params
           )
         }
 
+        // An amendment of a contract in approval or approved is approved again
+        // (owner 2026-11-26, «Опасные места»; src/lib/clm/contract-safety.ts).
+        if (needsReapproval(contract)) returnedToDraft = await returnToDraftForReapproval(tx, {
+          orgId,
+          contractId,
+          reason: "contract_changed",
+          actorUserId: userId ?? null,
+          at: new Date(),
+        })
+
         return newVersion
       })
 
@@ -265,6 +278,7 @@ export const POST = withRlsAuth("contracts", "write", async (req, auth, { params
             createdBy: version.createdBy,
             createdAt: version.createdAt,
           },
+          returnedToDraft,
         },
       })
     } catch (e) {

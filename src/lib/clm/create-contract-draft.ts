@@ -5,6 +5,7 @@
  * (`POST /api/v1/contracts/wizard`). Version 1 pins the text with its SHA-256,
  * as every later version does.
  */
+import { freeContractNumber } from "@/lib/clm/contract-safety"
 import crypto from "crypto"
 import type { Prisma } from "@prisma/client"
 
@@ -30,6 +31,9 @@ export interface ContractDraftInput {
   organizationId: string
   userId?: string | null
   contractNumber: string
+  /** The system made the number up: take the next free one if it is taken (contract-safety.ts).
+   *  A number a person typed is refused instead (the unique index, CONTRACT_NUMBER_TAKEN). */
+  numberGenerated?: boolean
   title: string
   type: string
   renderedBody: string
@@ -45,10 +49,13 @@ export interface ContractDraftInput {
 }
 
 export async function createContractDraft(tx: Prisma.TransactionClient, input: ContractDraftInput) {
+  const contractNumber = input.numberGenerated
+    ? await freeContractNumber(tx, input.organizationId, input.contractNumber)
+    : input.contractNumber
   const contract = await tx.contract.create({
     data: {
       organizationId: input.organizationId,
-      contractNumber: input.contractNumber,
+      contractNumber,
       title: input.title,
       type: input.type,
       status: "draft",

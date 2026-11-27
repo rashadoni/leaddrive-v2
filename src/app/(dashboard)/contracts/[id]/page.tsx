@@ -8,11 +8,13 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Pencil, Trash2, FileText, Calendar, DollarSign, Hash, Clock, AlertTriangle, CheckSquare, Plus, X, Sparkles, GitBranch, PenLine, Send, RefreshCw, Copy, Check, Users, ThumbsUp, ThumbsDown, FilePen, ShieldAlert, ListChecks, Flag, TrendingUp, ChevronDown, ChevronRight, MoreHorizontal, FileX, Ban } from "lucide-react"
+import { ArrowLeft, Pencil, Trash2, FileText, Calendar, DollarSign, Hash, Clock, AlertTriangle, CheckSquare, Plus, X, Sparkles, GitBranch, PenLine, Send, RefreshCw, Copy, Check, Users, ThumbsUp, ThumbsDown, FilePen, ShieldAlert, ListChecks, Flag, TrendingUp, ChevronDown, ChevronRight, MoreHorizontal, FileX, Ban, Lock } from "lucide-react"
 import { ColorStatCard } from "@/components/color-stat-card"
 import { InfoHint } from "@/components/info-hint"
+import { Hint } from "@/components/hint"
 import { EsignSignatureSheet } from "@/components/contract-esign-signature-sheet"
 import { ContractPaperSignatureButton, ContractPaperSignatureRow, type PaperSignatureInfo } from "@/components/contracts/contract-paper-signature"
+import { deleteRefusal } from "@/lib/clm/contract-safety-rules"
 import { ContractCancelDialog, ContractClosingBanner, ContractReopenButton, ContractTerminateDialog, canCancel, canTerminate, type ContractClosingInfo } from "@/components/contracts/contract-closing"
 import { ContractDocumentsChain } from "@/components/contracts/contract-documents-chain"
 import { checkPermission, type Role } from "@/lib/permissions"
@@ -1025,7 +1027,7 @@ export default function ContractDetailPage() {
       headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
     })
     const json = await res.json()
-    if (!json.success) throw new Error(json.error || tc("errorDeleteFailed"))
+    if (!json.success) throw new Error(json.code === "CONTRACT_DELETE_LOCKED" ? t("safety.deleteLocked") : tc("errorDeleteFailed"))
     router.push("/contracts")
   }
 
@@ -1313,6 +1315,8 @@ export default function ContractDetailPage() {
       setAmendOpen(false)
       await Promise.all([fetchContract(), fetchVersions()])
       toast.success(t("amendSuccess"))
+      // An amendment of a contract in approval or approved is approved again (contract-safety.ts).
+      if (json.data?.returnedToDraft) toast.info(t("safety.returnedToDraft"))
     } catch {
       setAmendError(t("amendError"))
     } finally {
@@ -1615,14 +1619,27 @@ export default function ContractDetailPage() {
                   </button>
                 </PopoverClose>
               )}
-              <PopoverClose asChild>
-                <button
-                  onClick={() => setDeleteOpen(true)}
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                >
-                  <Trash2 className="h-4 w-4" /> {tc("delete")}
-                </button>
-              </PopoverClose>
+              {deleteRefusal({ status: contract.status, signedAt: contract.signedAt ?? null }) ? (
+                // A signed contract — or one ever in force — is terminated or cancelled, not deleted.
+                <Hint text={t("safety.deleteLocked")}>
+                  <button
+                    onClick={() => toast.info(t("safety.deleteLocked"))}
+                    data-testid="contract-delete-locked"
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent transition-colors"
+                  >
+                    <Lock className="h-4 w-4" /> {tc("delete")}
+                  </button>
+                </Hint>
+              ) : (
+                <PopoverClose asChild>
+                  <button
+                    onClick={() => setDeleteOpen(true)}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" /> {tc("delete")}
+                  </button>
+                </PopoverClose>
+              )}
             </PopoverContent>
           </Popover>
         </div>
@@ -2119,7 +2136,9 @@ export default function ContractDetailPage() {
           valueAmount: contract.valueAmount || 0,
           currency: contract.currency || "USD",
           notes: contract.notes || "",
+          signedAt: contract.signedAt ?? null,
         }}
+        isAdmin={userRole === "admin" || userRole === "superadmin"}
       />
 
       <DeleteConfirmDialog

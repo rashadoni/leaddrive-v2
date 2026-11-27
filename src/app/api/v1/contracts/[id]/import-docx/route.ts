@@ -28,6 +28,7 @@ import {
   BodyVersionConflict,
   EDITABLE_STATUSES,
 } from "@/lib/clm/mint-body-version"
+import { needsReapproval } from "@/lib/clm/contract-safety-rules"
 import { countInFlightEnvelopes } from "@/lib/clm/envelope-guards"
 
 // mammoth needs Node APIs (jszip, Buffer) — never run on the edge runtime.
@@ -94,11 +95,11 @@ export const POST = withRlsAuth("contracts", "write", async (req: NextRequest, a
   }
 
   // ── Status guard (mirror PUT /body) ──────────────────────────────────────
-  let contract: { id: string; status: string } | null
+  let contract: { id: string; status: string; signedAt: Date | null } | null
   try {
     contract = await prisma.contract.findFirst({
       where: { id: contractId, organizationId: orgId },
-      select: { id: true, status: true },
+      select: { id: true, status: true, signedAt: true },
     })
   } catch (e) {
     console.error("[contracts/:id/import-docx POST] load", e)
@@ -187,17 +188,18 @@ export const POST = withRlsAuth("contracts", "write", async (req: NextRequest, a
   }
 
   try {
-    const { versionNo, contentHash } = await mintBodyVersion({
+    const { versionNo, contentHash, returnedToDraft } = await mintBodyVersion({
       orgId,
       contractId,
       cleanHtml,
       source: "import",
       createdBy: userId ?? "unknown",
       editableStatuses: EDITABLE_STATUSES,
+      reapproveOnChange: needsReapproval(contract),
     })
     return NextResponse.json({
       success: true,
-      data: { versionMinted: true, versionNo, contentHash, warnings },
+      data: { versionMinted: true, versionNo, contentHash, warnings, returnedToDraft },
     })
   } catch (e) {
     if (e instanceof BodyVersionConflict) {

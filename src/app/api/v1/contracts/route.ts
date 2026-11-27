@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { normalizeContractRow } from "@/lib/prisma-decimal"
 import { CONTRACT_STATUSES } from "@/lib/contract-lifecycle/types"
 import { upsertRenewalAlerts } from "@/lib/contract-lifecycle/upsert-renewal-alerts"
+import { isContractNumberTaken } from "@/lib/clm/contract-safety"
 import { withRlsAuth } from "@/lib/with-rls"
 import { nonNegativeFinancialAmountSchema } from "@/lib/validation/numeric"
 
@@ -226,6 +227,10 @@ export const POST = withRlsAuth("contracts", "write", async (req: NextRequest, a
     }
     return NextResponse.json({ success: true, data: normalizeContractRow(contract) }, { status: 201 })
   } catch (e) {
+    // One number, one contract, in an organization (src/lib/clm/contract-safety.ts).
+    if (isContractNumberTaken(e)) {
+      return NextResponse.json({ error: "CONTRACT_NUMBER_TAKEN", code: "CONTRACT_NUMBER_TAKEN" }, { status: 409 })
+    }
     console.error(e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }

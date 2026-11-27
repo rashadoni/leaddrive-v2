@@ -607,7 +607,11 @@ export default function ContractsPage() {
       method: "DELETE",
       headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
     })
-    if (!res.ok) throw new Error(tc("errorDeleteFailed"))
+    if (!res.ok) {
+      // A signed contract is terminated or cancelled, not deleted (src/lib/clm/contract-safety.ts).
+      const json = await res.json().catch(() => ({}))
+      throw new Error(json?.code === "CONTRACT_DELETE_LOCKED" ? t("safety.deleteLocked") : tc("errorDeleteFailed"))
+    }
     fetchContracts()
   }
 
@@ -1154,6 +1158,7 @@ export default function ContractsPage() {
         onOpenChange={(open) => { setShowForm(open); if (!open) setEditData(undefined) }}
         onSaved={fetchContracts}
         initialData={editData as any}
+        isAdmin={session?.user?.role === "admin" || session?.user?.role === "superadmin"}
         orgId={orgId}
       />
 

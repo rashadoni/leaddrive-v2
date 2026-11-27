@@ -10,6 +10,7 @@ import { withRlsAuth } from "@/lib/with-rls"
 import { nonNegativeFinancialAmountSchema } from "@/lib/validation/numeric"
 import { SIGNED_COPY_PURPOSE, paperSignerUserId } from "@/lib/clm/paper-signature"
 import { TERMINATION_COPY_PURPOSE } from "@/lib/clm/contract-closing"
+import { changedTerms, deleteRefusal, isContractNumberTaken, isSignedContract, needsReapproval, returnToDraftForReapproval } from "@/lib/clm/contract-safety"
 
 const updateContractSchema = z.object({
   contractNumber: z.string().optional(),
@@ -25,6 +26,8 @@ const updateContractSchema = z.object({
   currency: z.string().optional(),
   notes: z.string().optional(),
   tagIds: z.array(z.string()).optional(),
+  /** «Сохранить и вернуть в черновик»: the person saw that the contract goes back to approval. */
+  confirmReapproval: z.boolean().optional(),
 })
 
 export const GET = withRlsAuth("contracts", "read", async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
@@ -173,8 +176,19 @@ export const PUT = withRlsAuth("contracts", "write", async (req, auth, { params 
       }
     }
 
+    // «Опасные места» (src/lib/clm/contract-safety.ts): approved terms do not change past approval,
+    // signed terms change only by an administrator.
+    const terms = changedTerms(oldContract, parsed.data)
+    const reapprove = terms.length > 0 && needsReapproval(oldContract)
+    if (reapprove && parsed.data.confirmReapproval !== true) {
+      return NextResponse.json({ error: "REAPPROVAL_REQUIRED", code: "REAPPROVAL_REQUIRED", fields: terms }, { status: 409 })
+    }
+    if (terms.length > 0 && isSignedContract(oldContract) && auth.role !== "admin" && auth.role !== "superadmin") {
+      return NextResponse.json({ error: "SIGNED_EDIT_ADMIN_ONLY", code: "SIGNED_EDIT_ADMIN_ONLY", fields: terms }, { status: 403 })
+    }
+
     // Separate scalar data from tagIds (updateMany doesn't support relation writes)
-    const { tagIds: newTagIds, status: _ignoredStatus, ...scalarData } = parsed.data
+    const { tagIds: newTagIds, status: _ignoredStatus, confirmReapproval: _confirm, ...scalarData } = parsed.data
 
     // FIX 4: wrap scalar update + tag.set in ONE $transaction — prevents partial
     // apply where the scalar write commits but the tag write fails (or vice-versa).
@@ -192,12 +206,18 @@ export const PUT = withRlsAuth("contracts", "write", async (req, auth, { params 
         : undefined,
     }
 
-    const { updateCount } = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    let returnedToDraft = false
+    let updateCount = 0
+    try {
+    ;({ updateCount } = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const result = await tx.contract.updateMany({
         where: { id, organizationId: orgId, status: oldContract.status },
         data: scalarPayload,
       })
       if (result.count === 0) return { updateCount: 0 }
+      if (reapprove) {
+        returnedToDraft = await returnToDraftForReapproval(tx, { orgId, contractId: id, reason: "contract_changed", actorUserId: auth.userId ?? null, at: new Date() })
+      }
 
       // Tag assignment — use update (not updateMany) to support relation writes
       if (newTagIds !== undefined) {
@@ -209,7 +229,13 @@ export const PUT = withRlsAuth("contracts", "write", async (req, auth, { params 
         })
       }
       return { updateCount: result.count }
-    })
+    }))
+    } catch (e) {
+      if (isContractNumberTaken(e)) {
+        return NextResponse.json({ error: "CONTRACT_NUMBER_TAKEN", code: "CONTRACT_NUMBER_TAKEN" }, { status: 409 })
+      }
+      throw e
+    }
 
     if (updateCount === 0) {
       const stillExists = await prisma.contract.findFirst({
@@ -259,12 +285,13 @@ export const PUT = withRlsAuth("contracts", "write", async (req, auth, { params 
       await prisma.auditLog.create({
         data: {
           organizationId: orgId,
+          ...(auth.userId ? { userId: auth.userId } : {}),
           action: "update",
           entityType: "contract",
           entityId: id,
           entityName: updated?.title || oldContract.title,
           oldValue: changes,
-          newValue: parsed.data,
+          newValue: { ...parsed.data, ...(returnedToDraft ? { status: "draft", reason: "reapproval_required" } : {}) },
         },
       }).catch(() => {}) // non-critical
     }
@@ -278,7 +305,7 @@ export const PUT = withRlsAuth("contracts", "write", async (req, auth, { params 
       )
     }
 
-    return NextResponse.json({ success: true, data: updated ? normalizeContractRow(updated) : null })
+    return NextResponse.json({ success: true, data: updated ? normalizeContractRow(updated) : null, ...(returnedToDraft ? { returnedToDraft: true } : {}) })
   } catch (e) {
     console.error(e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -291,8 +318,16 @@ export const DELETE = withRlsAuth("contracts", "delete", async (_req, auth, { pa
 
   try {
     const contract = await prisma.contract.findFirst({ where: { id, organizationId: orgId } })
-    const result = await prisma.contract.deleteMany({ where: { id, organizationId: orgId } })
-    if (result.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    if (!contract) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    // A signed contract — or one ever in force — is terminated or cancelled, not deleted: the delete
+    // would take its signed versions and the e-sign trail with it (src/lib/clm/contract-safety.ts).
+    const locked = deleteRefusal(contract)
+    if (locked) return NextResponse.json({ error: locked, code: locked, status: contract.status }, { status: 409 })
+    // Guarded on what was read: a contract signed in the meantime is not deleted either.
+    const result = await prisma.contract.deleteMany({
+      where: { id, organizationId: orgId, status: contract.status, signedAt: null },
+    })
+    if (result.count === 0) return NextResponse.json({ error: "CONTRACT_STATE_CHANGED", code: "CONTRACT_STATE_CHANGED" }, { status: 409 })
 
     // Log deletion
     if (contract) {
