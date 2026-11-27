@@ -368,7 +368,6 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   loyalty_tiers: "config",
   "loyalty_earn-rules": "config",
   "loyalty_promo-codes": "config",
-  inbox_automation: "config",
   "inbox_business-hours": "config",
   "inbox_ai-agent": "config",
   "inbox_ai-training": "config",

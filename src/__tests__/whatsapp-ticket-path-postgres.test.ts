@@ -629,4 +629,83 @@ pgDescribe("WhatsApp messages and their tickets on a real Postgres with RLS", ()
       for (let call = 0; call < 3; call++) expect(await sender()).toMatchObject({ id: BOOKING_NUMBER.id })
     })
   })
+
+
+  /*
+   * «Автоответы» (owner, 2026-11-27): a rule answers by the words of a real WhatsApp delivery, with
+   * the customer's name in the reply, and hands the conversation to a person — on the real webhook,
+   * the real conversation row and the real notifications table, under the tenant policies.
+   */
+  describe("an auto-reply rule that hands the conversation to a person", () => {
+    const AGENT = "user-leyla"
+    const sentToMeta: string[] = []
+
+    beforeAll(async () => {
+      await bypass(() => prisma.user.create({ data: { id: AGENT, organizationId: ORG, email: "leyla@autoreply.test", name: "Leyla", passwordHash: "-", role: "support", isActive: true } }))
+      await bypass(() => prisma.organization.update({ where: { id: ORG }, data: { features: ["chatbotAutoReply"] } }))
+      await bypass(() => prisma.chatbotRule.create({ data: {
+        id: "rule-delivery", organizationId: ORG, name: "Çatdırılma", status: "active", triggerType: "contains",
+        triggerValue: "çatdırılma, доставка", responseText: "Salam, {{contact.first_name}}! Ünvanı yazın.", handoffUserIds: [AGENT],
+      } }))
+      // Meta accepts the bot's message; every other outbound request still fails the test.
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input instanceof Request ? input.url : input)
+        if (/graph\.facebook\.com\/.+\/messages$/.test(url)) {
+          sentToMeta.push(String(init?.body ?? ""))
+          return new Response(JSON.stringify({ messaging_product: "whatsapp", messages: [{ id: `wamid.bot.${sentToMeta.length}` }] }), { status: 200, headers: { "Content-Type": "application/json" } })
+        }
+        throw new Error(`unexpected outbound request to ${url}`)
+      })
+    })
+
+    afterAll(async () => {
+      vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+        throw new Error(`unexpected outbound request to ${String(input instanceof Request ? input.url : input)}`)
+      })
+      await bypass(() => prisma.organization.update({ where: { id: ORG }, data: { features: [] } }))
+      await bypass(() => prisma.chatbotRule.deleteMany({ where: { organizationId: ORG } }))
+    })
+
+    const conversationOf = (phone: string) => bypass(() => prisma.socialConversation.findFirst({
+      where: { organizationId: ORG, platform: "whatsapp", externalId: phone },
+      select: { id: true, assignedTo: true },
+    }))
+
+    it("answers with the customer's name, gives the conversation to the person and tells them", async () => {
+      const phone = "994551110009"
+      vi.mocked((await import("@/lib/notifications")).createNotification).mockClear()
+      await metaDelivers(CHAT_NUMBER, phone, "Salam, çatdirilma neçəyədir?")
+
+      expect(sentToMeta).toHaveLength(1)
+      expect(JSON.parse(sentToMeta[0]).text.body).toBe(`Salam, Customer! Ünvanı yazın.`)
+      const conversation = await conversationOf(phone)
+      expect(conversation?.assignedTo).toBe(AGENT)
+      const bot = await bypass(() => prisma.channelMessage.findMany({
+        where: { organizationId: ORG, conversationId: conversation!.id, direction: "outbound" },
+        select: { body: true, metadata: true },
+      }))
+      expect(bot).toEqual([{ body: "Salam, Customer! Ünvanı yazın.", metadata: expect.objectContaining({ autoReply: true, chatbotRuleId: "rule-delivery" }) }])
+      // Notifications are stubbed in this file (outbound side effects): the call is what is read.
+      const { createNotification } = await import("@/lib/notifications")
+      expect(vi.mocked(createNotification).mock.calls.map(([notice]) => notice)).toEqual([expect.objectContaining({
+        organizationId: ORG, userId: AGENT, entityId: conversation!.id, title: "Вам передана переписка", message: expect.stringContaining("«Çatdırılma»"),
+      })])
+      expect((await bypass(() => prisma.chatbotRule.findUnique({ where: { id: "rule-delivery" } })))?.matchCount).toBe(1)
+    })
+
+    it("leaves a conversation an operator already holds with that operator", async () => {
+      const phone = "994551110010"
+      await metaDelivers(CHAT_NUMBER, phone, "Salam")
+      const conversation = await conversationOf(phone)
+      const { createNotification } = await import("@/lib/notifications")
+      vi.mocked(createNotification).mockClear()
+      await bypass(() => prisma.socialConversation.update({ where: { id: conversation!.id }, data: { assignedTo: "someone-else" } }))
+
+      await metaDelivers(CHAT_NUMBER, phone, "доставка есть?")
+      expect((await conversationOf(phone))?.assignedTo).toBe("someone-else")
+      expect(sentToMeta.at(-1)).toContain("Ünvanı yazın")
+      // The holder still hears «New message» as always; nobody is told the conversation was handed over.
+      expect(vi.mocked(createNotification).mock.calls.map(([notice]) => notice.title)).not.toContain("Вам передана переписка")
+    })
+  })
 })

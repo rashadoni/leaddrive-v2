@@ -1,0 +1,200 @@
+/**
+ * Words of the «Автоответы» page (inbox/chatbot-rules) in the three languages, and the ready rules
+ * a workspace adds with one press. Kept beside the page, as «Готовые ответы» keeps its own: the
+ * page is the only reader.
+ */
+export type ArLocale = "en" | "ru" | "az"
+
+export const AR: Record<string, Record<ArLocale, string>> = {
+  heading: { az: "Avtomatik cavablar", ru: "Автоответы", en: "Auto-replies" },
+  sub: {
+    az: "Bot tez-tez verilən suallara özü cavab verir — müştərinin mesajındakı sözlərə görə. Qalanına AI agent və ya menecer cavab verir.",
+    ru: "Бот сам отвечает на частые вопросы — по словам в сообщении клиента. На остальное отвечает ИИ-агент или менеджер.",
+    en: "The bot answers frequent questions by itself — by the words in the customer's message. The AI agent or a manager answers the rest.",
+  },
+  newRule: { az: "Yeni qayda", ru: "Новое правило", en: "New rule" },
+  onTitle: { az: "Avtomatik cavablar açıqdır", ru: "Автоответы включены", en: "Auto-replies are on" },
+  offTitle: { az: "Avtomatik cavablar söndürülüb", ru: "Автоответы выключены", en: "Auto-replies are off" },
+  onHelp: { az: "Bot aşağıdakı qaydalarla seçilmiş kanallarda cavab verir.", ru: "Бот отвечает по правилам ниже в отмеченных каналах.", en: "The bot answers by the rules below in the channels marked." },
+  offHelp: { az: "Bot heç kimə cavab vermir, hətta açıq qaydalarla da.", ru: "Бот никому не отвечает, даже по включённым правилам.", en: "The bot answers nobody, not even by rules that are on." },
+  turnOn: { az: "Aç", ru: "Включить", en: "Turn on" },
+  turnOff: { az: "Söndür", ru: "Выключить", en: "Turn off" },
+  whichChannels: { az: "Hansı kanallarda", ru: "В каких каналах", en: "In which channels" },
+  chOn: { az: "açıq", ru: "вкл", en: "on" },
+  chOff: { az: "sönülü", ru: "выкл", en: "off" },
+  fallbackLead: { az: "Heç bir qayda uyğun gəlmədisə", ru: "Если ни одно правило не подошло", en: "If no rule fits" },
+  fallbackText: { az: "— AI agent və ya menecer cavab verir.", ru: "— отвечает ИИ-агент или менеджер.", en: "— the AI agent or a manager answers." },
+  fallbackLink: { az: "AI agenti tənzimlə →", ru: "Настроить ИИ-агента →", en: "Set up the AI agent →" },
+  testTitle: { az: "Yoxlayın: müştəri kimi yazın", ru: "Проверьте: напишите как клиент", en: "Try it: write as a customer" },
+  testHelp: {
+    az: "Hansı qaydanın işləyəcəyini və müştərinin nə alacağını görəcəksiniz. Heç nə göndərilmir.",
+    ru: "Увидите, какое правило сработает и что получит клиент. Ничего никуда не отправляется.",
+    en: "See which rule fires and what the customer gets. Nothing is sent.",
+  },
+  testHint: { az: "Məsələn: «çatdırılma neçəyədir?»", ru: "Например: «сколько стоит доставка?»", en: "For example: «how much is delivery?»" },
+  testPlaceholder: { az: "Müştərinin mesajı…", ru: "Сообщение клиента…", en: "Customer's message…" },
+  testButton: { az: "Yoxla", ru: "Проверить", en: "Check" },
+  testFirst: { az: "Bu, müştərinin ilk mesajıdır", ru: "Это первое сообщение клиента", en: "This is the customer's first message" },
+  testFired: { az: "«{name}» qaydası işlədi", ru: "Сработало правило «{name}»", en: "Rule «{name}» fired" },
+  testHanded: { az: "Yazışma verildi: {who}", ru: "Переписка передана: {who}", en: "Conversation handed to: {who}" },
+  testOnlyIn: { az: "Yalnız bu kanallarda işləyir: {ch}", ru: "Сработает только в: {ch}", en: "Works only in: {ch}" },
+  testOff: { az: "Avtomatik cavablar söndürülüb — bot susacaq", ru: "Автоответы выключены — бот промолчит", en: "Auto-replies are off — the bot stays silent" },
+  testNone: { az: "Heç bir qayda uyğun gəlmədi — AI agent və ya menecer cavab verəcək", ru: "Ни одно правило не подошло — ответит ИИ-агент или менеджер", en: "No rule fits — the AI agent or a manager answers" },
+  warnOff: {
+    az: "Avtomatik cavablar söndürülüb — aşağıdakı qaydalar indi heç kimə cavab vermir. Yuxarıdakı açarı yandırın.",
+    ru: "Автоответы выключены — правила ниже сейчас никому не отвечают. Включите переключатель вверху.",
+    en: "Auto-replies are off — the rules below answer nobody now. Switch them on above.",
+  },
+  rules: { az: "Qaydalar", ru: "Правила", en: "Rules" },
+  orderHelp: {
+    az: "Yuxarıdan aşağı yoxlanılır — ilk uyğun gələn işləyir. Sıranı oxlarla dəyişin.",
+    ru: "Проверяются сверху вниз — срабатывает первое подходящее. Порядок меняйте стрелками.",
+    en: "Checked top to bottom — the first that fits fires. Change the order with the arrows.",
+  },
+  up: { az: "Yuxarı", ru: "Выше", en: "Up" },
+  down: { az: "Aşağı", ru: "Ниже", en: "Down" },
+  ifWrites: { az: "Yazsalar", ru: "Если пишут", en: "If they write" },
+  ifExact: { az: "Mesaj tam belədirsə", ru: "Если сообщение точно", en: "If the message is exactly" },
+  ifStarts: { az: "Mesaj belə başlayırsa", ru: "Если сообщение начинается с", en: "If the message starts with" },
+  onFirst: { az: "Yazışmada ilk mesaja", ru: "На первое сообщение в переписке", en: "On the first message of a conversation" },
+  onAny: { az: "İstənilən mesaja", ru: "На любое сообщение", en: "On any message" },
+  answer: { az: "cavab ver", ru: "ответить", en: "reply" },
+  handTo: { az: "ver", ru: "передать", en: "hand to" },
+  allChannels: { az: "Bütün kanallar", ru: "Все каналы", en: "All channels" },
+  neverFired: { az: "hələ işləməyib", ru: "ещё не срабатывало", en: "not fired yet" },
+  firedTimes: { az: "{n} dəfə işləyib", ru: "сработало {n} {times}", en: "fired {n} times" },
+  ruleOn: { az: "Açıqdır", ru: "Включено", en: "On" },
+  ruleOff: { az: "Söndürülüb", ru: "Выключено", en: "Off" },
+  edit: { az: "Dəyiş", ru: "Изменить", en: "Edit" },
+  remove: { az: "Sil", ru: "Удалить", en: "Delete" },
+  removeTitle: { az: "Qayda silinsin?", ru: "Удалить правило?", en: "Delete this rule?" },
+  removeText: { az: "Bot bu qayda ilə artıq cavab verməyəcək.", ru: "Бот больше не будет отвечать по этому правилу.", en: "The bot will no longer answer by this rule." },
+  startersTitle: { az: "Hazır qaydalarla başlayın — bir kliklə əlavə edin", ru: "Начните с готовых — добавьте одним нажатием", en: "Start with ready ones — add with one click" },
+  add: { az: "Əlavə et", ru: "Добавить", en: "Add" },
+  added: { az: "Əlavə edildi", ru: "Добавлено", en: "Added" },
+  ownRule: { az: "Öz qaydanız lazımdır?", ru: "Нужно своё правило?", en: "Need your own rule?" },
+  createRule: { az: "Qayda yarat", ru: "Создать правило", en: "Create a rule" },
+  addedToast: { az: "«{name}» qaydası əlavə edildi və artıq işləyir", ru: "Правило «{name}» добавлено и уже работает", en: "Rule «{name}» added and already working" },
+  savedToast: { az: "«{name}» qaydası yadda saxlanıldı — yuxarıda yoxlayın", ru: "Правило «{name}» сохранено — проверьте его вверху", en: "Rule «{name}» saved — try it above" },
+  failed: { az: "Alınmadı. Yenidən cəhd edin.", ru: "Не получилось. Попробуйте ещё раз.", en: "That did not work. Try again." },
+  leadTitle: { az: "Yazışmadan müraciətlər — lövhəyə", ru: "Заявки из переписки — в доску", en: "Leads from conversations — to a board" },
+  leadHelp: {
+    az: "Müştəri ciddi maraqlanıb telefon nömrəsini yazıbsa, AI seçilmiş lövhədə lid və tapşırıq yaradır. Hər müştəri üçün bir dəfə.",
+    ru: "Если клиент всерьёз интересуется и оставил телефон, ИИ создаёт лид и задачу на выбранной доске. Один раз на клиента.",
+    en: "When a customer is seriously interested and leaves a phone number, the AI creates a lead and a task on the chosen board. Once per customer.",
+  },
+  leadBoard: { az: "Lövhə seçin", ru: "Выберите доску", en: "Choose a board" },
+  leadNeedBoard: { az: "Əvvəlcə lövhə seçin", ru: "Сначала выберите доску", en: "Choose a board first" },
+  // editor
+  editTitle: { az: "Qaydanı dəyiş", ru: "Изменить правило", en: "Edit rule" },
+  name: { az: "Ad", ru: "Название", en: "Name" },
+  namePh: { az: "Məsələn: Çatdırılma qiyməti", ru: "Например: Цена доставки", en: "For example: Delivery price" },
+  nameHelp: { az: "Yalnız əməkdaşlar görür.", ru: "Видят только сотрудники.", en: "Only your team sees it." },
+  when: { az: "Müştəri nə yazanda", ru: "Когда клиент пишет", en: "When the customer writes" },
+  whenContains: { az: "Sözlər var", ru: "Содержит слова", en: "Contains words" },
+  whenFirst: { az: "İlk mesaj", ru: "Первое сообщение", en: "First message" },
+  whenAny: { az: "İstənilən mesaj", ru: "Любое сообщение", en: "Any message" },
+  whenExact: { az: "Tam bu mətn", ru: "Точно такой текст", en: "Exactly this text" },
+  whenStarts: { az: "Belə başlayır", ru: "Начинается с", en: "Starts with" },
+  wordsPh: { az: "söz və Enter — məsələn: qiymət", ru: "слово и Enter — например: цена", en: "a word and Enter — e.g. price" },
+  wordsHelp: { az: "Bot müxtəlif yazılışları və səhvləri başa düşür: qiymət / qiymet / giymet.", ru: "Бот понимает разные написания и опечатки: qiymət / qiymet / giymet.", en: "The bot understands spellings and typos: qiymət / qiymet / giymet." },
+  textPh: { az: "Mətn", ru: "Текст", en: "Text" },
+  firstHelp: { az: "Yazışmada müştərinin ilk mesajına — nə yazırsa yazsın.", ru: "На самое первое сообщение клиента в переписке — что бы он ни написал.", en: "On the customer's very first message in a conversation — whatever it says." },
+  anyHelp: { az: "Hər mesaja, 5 dəqiqədə bir dəfədən çox yox.", ru: "На каждое сообщение, но не чаще раза в 5 минут.", en: "On every message, but not more than once in 5 minutes." },
+  reply: { az: "Cavab ver", ru: "Ответить", en: "Reply" },
+  replyPh: { az: "Müştəriyə cavabın mətni", ru: "Текст ответа клиенту", en: "Reply text to the customer" },
+  fromReady: { az: "«Hazır cavablar»dan götür", ru: "Взять из «Готовых ответов»", en: "Take from Saved replies" },
+  noReady: { az: "Hazır cavab hələ yoxdur", ru: "Готовых ответов пока нет", en: "No saved replies yet" },
+  readyHasAgent: { az: "botun adı yoxdur — «Mənim adım» olan cavab olmaz", ru: "у бота нет имени — ответ с «Моё имя» не подойдёт", en: "the bot has no name — a reply with «My name» will not do" },
+  customerName: { az: "+ Müştərinin adı", ru: "+ Имя клиента", en: "+ Customer's name" },
+  then: { az: "Sonra", ru: "Потом", en: "Then" },
+  thenNone: { az: "Heç nə — adi qaydada davam", ru: "Ничего — дальше как обычно", en: "Nothing — carry on as usual" },
+  thenPerson: { az: "Əməkdaşa ver", ru: "Передать сотруднику", en: "Hand to a person" },
+  thenNoneHelp: { az: "Müştəri yenə yazsa — AI agent və ya menecer cavab verəcək.", ru: "Если клиент напишет ещё — ответит ИИ-агент или менеджер.", en: "If the customer writes again — the AI agent or a manager answers." },
+  thenPersonHelp: {
+    az: "Yazışma seçilən əməkdaşa veriləcək və ona bildiriş gələcək; AI orada artıq cavab vermir. Bir neçə nəfər seçsəniz — açıq yazışması az olana.",
+    ru: "Переписка назначится на сотрудника, ему придёт уведомление; ИИ в ней больше не отвечает. Выбрали нескольких — достанется тому, у кого меньше открытых переписок.",
+    en: "The conversation is assigned to the person, who gets a notice; the AI no longer answers it. Several chosen — it goes to whoever has fewer open conversations.",
+  },
+  where: { az: "Harada", ru: "Где", en: "Where" },
+  everywhere: { az: "Bütün kanallarda", ru: "Во всех каналах", en: "In every channel" },
+  some: { az: "Yalnız seçilmişlərdə", ru: "Только в выбранных", en: "Only in chosen ones" },
+  pvTitle: { az: "Müştəri üçün belə görünür", ru: "Так это выглядит для клиента", en: "What the customer sees" },
+  pvHelp: { az: "Bu qayda üzrə yazışma nümunəsi.", ru: "Пример переписки по этому правилу.", en: "A sample conversation by this rule." },
+  pvWords: { az: "Salam, {w}?", ru: "Здравствуйте, {w}?", en: "Hello, {w}?" },
+  pvNoWords: { az: "Sözü olan müştəri mesajı…", ru: "Сообщение клиента со словом…", en: "A customer message with the word…" },
+  pvFirst: { az: "Salam!", ru: "Здравствуйте!", en: "Hello!" },
+  pvAny: { az: "Müştərinin istənilən mesajı", ru: "Любое сообщение клиента", en: "Any customer message" },
+  pvEmpty: { az: "Botun cavabı burada görünəcək…", ru: "Здесь появится ответ бота…", en: "The bot's reply appears here…" },
+  pvAfter: { az: "Sonra AI agent və ya menecer cavab verir", ru: "Дальше отвечает ИИ-агент или менеджер", en: "Then the AI agent or a manager answers" },
+  needName: { az: "Qaydaya ad verin", ru: "Дайте правилу название", en: "Give the rule a name" },
+  needWords: { az: "Ən azı bir söz əlavə edin", ru: "Добавьте хотя бы одно слово", en: "Add at least one word" },
+  needText: { az: "Mətni yazın", ru: "Напишите текст", en: "Write the text" },
+  needReply: { az: "Cavabı yazın", ru: "Напишите ответ", en: "Write the reply" },
+  needAgent: { az: "Botun adı yoxdur — «Mənim adım» sözünü silin", ru: "У бота нет имени — уберите «Моё имя»", en: "The bot has no name — remove «My name»" },
+  needKnown: { az: "{t} doldurulmayacaq — silin", ru: "{t} не заменится — удалите", en: "{t} will not be filled — remove it" },
+  needPerson: { az: "Kimə veriləcəyini seçin", ru: "Выберите, кому передать", en: "Choose who gets it" },
+  needChannel: { az: "Ən azı bir kanal seçin", ru: "Выберите хотя бы один канал", en: "Choose at least one channel" },
+  ready: { az: "Hazırdır — yadda saxlamaq olar", ru: "Готово — можно сохранять", en: "Ready to save" },
+  cancel: { az: "Ləğv et", ru: "Отмена", en: "Cancel" },
+  save: { az: "Qaydanı yadda saxla", ru: "Сохранить правило", en: "Save rule" },
+}
+
+export interface ArStarter {
+  key: string
+  name: Record<ArLocale, string>
+  triggerType: "contains" | "first_message"
+  words: string
+  reply: Record<ArLocale, string>
+}
+
+/**
+ * Ready rules safe to switch on as they are: nothing in them is the company's own fact (an
+ * address, a price) that would go to customers wrong before anybody edited it.
+ */
+export const AR_STARTERS: ArStarter[] = [
+  {
+    key: "greeting",
+    name: { az: "Salamlaşma", ru: "Приветствие", en: "Greeting" },
+    triggerType: "first_message",
+    words: "",
+    reply: {
+      az: "Salam, {{contact.first_name}}! Yazdığınız üçün təşəkkür edirik — tezliklə cavab verəcəyik.",
+      ru: "Здравствуйте, {{contact.first_name}}! Спасибо, что написали — скоро ответим.",
+      en: "Hello {{contact.first_name}}! Thanks for writing — we will answer shortly.",
+    },
+  },
+  {
+    key: "price",
+    name: { az: "Qiymət", ru: "Цена", en: "Price" },
+    triggerType: "contains",
+    words: "qiymət, neçəyə, цена, сколько стоит, price",
+    reply: {
+      az: "Zəhmət olmasa hansı məhsulla maraqlandığınızı yazın — menecer aktual qiyməti dərhal göndərəcək.",
+      ru: "Напишите, пожалуйста, какой товар вас интересует — менеджер сразу пришлёт актуальную цену.",
+      en: "Please tell us which product you are interested in — a manager will send the current price right away.",
+    },
+  },
+  {
+    key: "delivery",
+    name: { az: "Çatdırılma", ru: "Доставка", en: "Delivery" },
+    triggerType: "contains",
+    words: "çatdırılma, доставка, delivery",
+    reply: {
+      az: "Çatdırılma ünvanını yazın — menecer qiymətini və müddətini hesablayacaq.",
+      ru: "Напишите, пожалуйста, адрес доставки — менеджер рассчитает стоимость и срок.",
+      en: "Please send the delivery address — a manager will work out the price and time.",
+    },
+  },
+  {
+    key: "thanks",
+    name: { az: "Təşəkkür", ru: "Спасибо", en: "Thanks" },
+    triggerType: "contains",
+    words: "təşəkkür, sağ ol, спасибо, thanks",
+    reply: {
+      az: "Buyurun! Yenə müraciət edin 🙂",
+      ru: "Пожалуйста! Обращайтесь 🙂",
+      en: "You are welcome! Write any time 🙂",
+    },
+  },
+]

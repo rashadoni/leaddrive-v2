@@ -2383,6 +2383,27 @@ Telegram — `~/bin/notify-telegram`). Читает **браузером**: ст
   `inbox-page-agent-settings.test.ts` (чужая страница, сохранность токенов канала);
   привязку вебхука WhatsApp — `whatsapp-webhook-page-agent-wiring.test.ts`.
 
+## «Автоответы» — одна страница вместо двух (`/inbox/chatbot-rules`, 2026-11-27)
+
+Владелец: «Avtomatlaşdırma» «не интуитивный и не интерактивный» → «Слить с автоответами», макет — «Да, делай».
+Сценарии «Автоматизации» не запускались ни у одной организации: ждали флага `conversationFlowEvents`, который
+в CRM ничем не включался, а «Sönülü» на странице был неподвижным текстом. Пункт меню снят, `/inbox/automation`
+ведёт сюда; таблицы сценариев и очередей не тронуты.
+
+- **Правило бота** (`chatbot_rules`, движок `src/lib/chatbot-engine.ts`): слова / первое сообщение
+  (`first_message` — первое входящее переписки) / любое; ответ; «Потом: передать сотруднику»
+  (`handoffUserIds`, `src/lib/inbox/autoreply-handoff.ts`). Включатель и каналы — прежние флаги
+  `chatbotAutoReply` / `chatbotAutoReplyDisabled:<канал>` в `Organization.features`.
+- **Передача только после ушедшего ответа** и только неназначенной переписки (сравнение-и-замена по
+  `assignedTo: null`); несколько людей — тому, у кого меньше открытых переписок. Люди проверяются против
+  организации и при сохранении, и при срабатывании. Назначенная переписка — уже не ИИ (`assignedTo` ≠ null).
+- **Ответ бота подставляет `{{contact.*}}`** (те же слова, что «Готовые ответы»); `{{agent.name}}` и незнакомое
+  `{{…}}` отклоняет и экран, и API (`autoReplyTextProblem`) — у бота нет имени.
+- Порядок проверки — `priority` по убыванию; стрелки на странице переписывают его n…1.
+- Стерегут `auto-replies-ui.test.ts`, `lib-autoreply-handoff.test.ts`, `lib-chatbot-autoreply-handoff-wiring.test.ts`,
+  `api-chatbot-rules.test.ts` и блок «an auto-reply rule that hands the conversation» в
+  `whatsapp-ticket-path-postgres.test.ts` (настоящий вебхук WhatsApp; гейт в `static-checks` и в деплое).
+
 ## Обучение ИИ в инбоксе — `src/lib/inbox/learning`
 
 Владелец 2026-11-15 (макет одобрен словом «Давай»): канал в режиме «Обучение» — отвечают сотрудники,

@@ -575,11 +575,11 @@ export const HELP_REGISTRY: Record<HelpSlug, ArticleEntry> = {
     },
   },
   "chatbot-rules": {
-    title: { en: "Chatbot rules", ru: "Правила чат-бота", az: "Çatbot qaydaları" },
+    title: { en: "Auto-replies", ru: "Автоответы", az: "Avtomatik cavablar" },
     subtitle: {
-      en: "Keyword auto-reply rules that the bot answers with before a human steps in.",
-      ru: "Правила автоответа по ключевым словам, которыми бот отвечает до подключения человека.",
-      az: "Bot insandan əvvəl cavab verən açar-söz avtocavab qaydaları.",
+      en: "Rules by which the bot answers by itself and hands the conversation to the right person.",
+      ru: "Правила, по которым бот отвечает сам и передаёт переписку нужному человеку.",
+      az: "Botun özü cavab verdiyi və yazışmanı lazımi adama verdiyi qaydalar.",
     },
     content: {
       en: lazy(() => import("./chatbot-rules/en")),
