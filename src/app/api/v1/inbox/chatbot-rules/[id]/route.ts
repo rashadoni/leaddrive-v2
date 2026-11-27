@@ -4,6 +4,7 @@ import { withInboxSessionWrite } from "@/lib/inbox/route-auth"
 import {
   isChatbotTriggerType, isChatbotStatus, isChatbotChannel, triggerNeedsValue,
 } from "@/lib/chatbot-engine"
+import { autoReplyTextProblem, readHandoffUserIds } from "@/lib/inbox/autoreply-rule-input"
 
 /** Phase 7 slice-1 — update/delete an inbound auto-reply rule (org-scoped). */
 export const PATCH = withInboxSessionWrite(async (req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
@@ -22,7 +23,7 @@ export const PATCH = withInboxSessionWrite(async (req, { orgId }, { params }: { 
 
   const data: {
     name?: string; responseText?: string; status?: string; triggerType?: string;
-    triggerValue?: string | null; channelTypes?: string[]; priority?: number;
+    triggerValue?: string | null; channelTypes?: string[]; priority?: number; handoffUserIds?: string[];
   } = {}
 
   if (body.name !== undefined) {
@@ -33,6 +34,8 @@ export const PATCH = withInboxSessionWrite(async (req, { orgId }, { params }: { 
   if (body.responseText !== undefined) {
     const rt = typeof body.responseText === "string" ? body.responseText.trim() : ""
     if (!rt) return NextResponse.json({ error: "responseText cannot be empty" }, { status: 400 })
+    const textProblem = autoReplyTextProblem(rt)
+    if (textProblem) return NextResponse.json({ error: textProblem }, { status: 400 })
     data.responseText = rt
   }
   if (body.status !== undefined) {
@@ -52,6 +55,11 @@ export const PATCH = withInboxSessionWrite(async (req, { orgId }, { params }: { 
   if (body.priority !== undefined) {
     if (!Number.isInteger(body.priority)) return NextResponse.json({ error: "Invalid priority" }, { status: 400 })
     data.priority = body.priority
+  }
+  if (body.handoffUserIds !== undefined) {
+    const handoff = await readHandoffUserIds(orgId, body.handoffUserIds)
+    if ("error" in handoff) return NextResponse.json({ error: handoff.error }, { status: 400 })
+    data.handoffUserIds = handoff.ids
   }
   if (body.triggerValue !== undefined) {
     data.triggerValue = typeof body.triggerValue === "string" && body.triggerValue.trim()

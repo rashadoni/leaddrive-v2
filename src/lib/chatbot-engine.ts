@@ -9,7 +9,9 @@
  */
 import { featureFlagsToArray } from "@/lib/modules"
 
-export const CHATBOT_TRIGGER_TYPES = ["contains", "exact", "starts_with", "always"] as const
+// "first_message" (owner's «Автоответы», 2026-11-27): the customer's first message in the
+// conversation — a greeting rule, whatever the words.
+export const CHATBOT_TRIGGER_TYPES = ["contains", "exact", "starts_with", "always", "first_message"] as const
 export type ChatbotTriggerType = (typeof CHATBOT_TRIGGER_TYPES)[number]
 
 export const CHATBOT_STATUSES = ["draft", "active", "paused"] as const
@@ -40,11 +42,15 @@ export interface ChatbotRuleLike {
   responseText: string
   priority: number
   createdAt: string | Date
+  /** People the conversation is handed to after the reply (empty = nobody; see chatbot-autoreply). */
+  handoffUserIds?: string[]
 }
 
 export interface InboundContext {
   channelType: string
   text: string
+  /** This inbound is the customer's first message in the conversation. Unknown = not first. */
+  isFirstMessage?: boolean
 }
 
 export function isChatbotTriggerType(v: unknown): v is ChatbotTriggerType {
@@ -59,7 +65,7 @@ export function isChatbotChannel(v: unknown): v is (typeof CHATBOT_CHANNELS)[num
 
 /** A trigger type other than "always" needs a non-empty triggerValue to mean anything. */
 export function triggerNeedsValue(triggerType: string): boolean {
-  return triggerType !== "always"
+  return triggerType !== "always" && triggerType !== "first_message"
 }
 
 /**
@@ -121,10 +127,12 @@ function fuzzyTokenMatch(term: string, text: string): boolean {
 }
 
 /** Whether one rule's trigger fires for the given (already-normalized) inbound text. */
-function triggerFires(rule: ChatbotRuleLike, normText: string): boolean {
+function triggerFires(rule: ChatbotRuleLike, normText: string, ctx: InboundContext): boolean {
   switch (rule.triggerType) {
     case "always":
-      return true
+      return normText.length > 0
+    case "first_message":
+      return ctx.isFirstMessage === true
     case "exact":
       return normText === normalizeChatbotText(rule.triggerValue ?? "")
     case "starts_with": {
@@ -154,12 +162,14 @@ function triggerFires(rule: ChatbotRuleLike, normText: string): boolean {
  * a DB read whose ORDER BY isn't guaranteed to break a (priority, createdAt) tie.
  * Only status==="active" rules are considered (draft/paused never fire). A rule with
  * an empty channelTypes matches every channel; otherwise the inbound channel must be
- * listed. Empty/whitespace inbound text (e.g. a media-only message) never matches —
- * slice-1 auto-replies to text only.
+ * listed. Empty/whitespace inbound text (e.g. a media-only message) matches only a
+ * "first_message" rule, and only when it is the conversation's first message.
  */
 export function matchChatbotRule(rules: ChatbotRuleLike[], ctx: InboundContext): ChatbotRuleLike | null {
   const normText = normalizeChatbotText(ctx.text)
-  if (!normText) return null
+  // Text-less inbound (a photo, a voice note) can still be a conversation's first message:
+  // a greeting rule answers it; every other trigger needs words.
+  if (!normText && ctx.isFirstMessage !== true) return null
   const candidates = rules
     .filter((r) => r.status === "active")
     .filter((r) => r.channelTypes.length === 0 || r.channelTypes.includes(ctx.channelType))
@@ -173,5 +183,5 @@ export function matchChatbotRule(rules: ChatbotRuleLike[], ctx: InboundContext):
       if (av !== bv) return av - bv
       return a.id.localeCompare(b.id) // ultimate stable tiebreak — never input order
     })
-  return candidates.find((r) => triggerFires(r, normText)) ?? null
+  return candidates.find((r) => triggerFires(r, normText, ctx)) ?? null
 }

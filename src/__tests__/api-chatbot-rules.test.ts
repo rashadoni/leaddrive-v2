@@ -7,6 +7,7 @@ vi.mock("@/lib/prisma", () => ({
       findMany: vi.fn(), create: vi.fn(), findFirst: vi.fn(),
       updateMany: vi.fn(), deleteMany: vi.fn(),
     },
+    user: { findMany: vi.fn() },
   },
 }))
 vi.mock("@/lib/api-auth", () => {
@@ -121,5 +122,40 @@ describe("chatbot-rules API — auth + validation", () => {
     const res = await DELETE(del(), params("r"))
     expect(res.status).toBe(200)
     expect(prisma.chatbotRule.deleteMany).toHaveBeenCalledWith({ where: { id: "r", organizationId: "org_1" } })
+  })
+
+  // «Автоответы» (2026-11-27): «Потом: передать сотруднику» and the reply the bot can fill.
+  it("POST stores the people to hand the conversation to, once each is a working user of this org", async () => {
+    authed()
+    fn(prisma.user.findMany).mockResolvedValue([{ id: "leyla" }, { id: "rustam" }])
+    fn(prisma.chatbotRule.create).mockResolvedValue({ id: "r" })
+    const res = await POST(post({ name: "R", responseText: "hi", triggerType: "first_message", handoffUserIds: ["leyla", "rustam", "leyla"] }))
+    expect(res.status).toBe(201)
+    expect(fn(prisma.user.findMany).mock.calls[0][0].where).toMatchObject({ id: { in: ["leyla", "rustam"] }, organizationId: "org_1", isActive: true })
+    expect(fn(prisma.chatbotRule.create).mock.calls[0][0].data).toMatchObject({ triggerType: "first_message", triggerValue: null, handoffUserIds: ["leyla", "rustam"] })
+  })
+
+  it("POST 400 when a person to hand over to is not of this organization — nothing stored", async () => {
+    authed()
+    fn(prisma.user.findMany).mockResolvedValue([{ id: "leyla" }])
+    const res = await POST(post({ name: "R", responseText: "hi", triggerType: "always", handoffUserIds: ["leyla", "foreign"] }))
+    expect(res.status).toBe(400)
+    expect(prisma.chatbotRule.create).not.toHaveBeenCalled()
+  })
+
+  it("POST and PATCH 400 on «My name» in the reply: the bot has no name", async () => {
+    authed()
+    expect((await POST(post({ name: "R", responseText: "Меня зовут {{agent.name}}", triggerType: "always" }))).status).toBe(400)
+    fn(prisma.chatbotRule.findFirst).mockResolvedValue({ id: "r", organizationId: "org_1", triggerType: "always", triggerValue: null })
+    expect((await PATCH(patch({ responseText: "Я {{agent.name}}" }), params("r"))).status).toBe(400)
+    expect(prisma.chatbotRule.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("PATCH empties the hand-over list", async () => {
+    authed()
+    fn(prisma.chatbotRule.findFirst).mockResolvedValue({ id: "r", organizationId: "org_1", triggerType: "always", triggerValue: null })
+    fn(prisma.chatbotRule.updateMany).mockResolvedValue({ count: 1 })
+    expect((await PATCH(patch({ handoffUserIds: [] }), params("r"))).status).toBe(200)
+    expect(fn(prisma.chatbotRule.updateMany).mock.calls[0][0].data).toMatchObject({ handoffUserIds: [] })
   })
 })

@@ -3207,10 +3207,11 @@ model ChatbotRule {
   name           String
   status         String   @default("draft") // draft | active | paused — only "active" rules fire
   channelTypes   String[] @default([]) // empty = all channels; else subset of email/telegram/sms/whatsapp/facebook/instagram
-  triggerType    String   @default("contains") // contains | exact | starts_with | always
+  triggerType    String   @default("contains") // contains | exact | starts_with | always | first_message
   triggerValue   String? // contains: comma-separated terms (match ANY); ignored for "always"
-  responseText   String // the auto-reply body (plain text; richer responses are a later slice)
+  responseText   String // the auto-reply body; {{contact.name}} / {{contact.first_name}} / {{contact.email}} are filled when it is sent
   priority       Int      @default(0) // higher = evaluated first; ties broken by createdAt asc
+  handoffUserIds String[] @default([]) // after the reply: hand the conversation to one of these people (fewest open conversations)
   matchCount     Int      @default(0)
   createdBy      String?
   createdAt      DateTime @default(now())

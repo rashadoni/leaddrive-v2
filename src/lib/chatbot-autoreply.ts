@@ -20,6 +20,8 @@ import { isChatbotChannelEnabled, matchChatbotRule, type ChatbotRuleLike } from 
 import { maybeCreateQualifiedLeadTask } from "@/lib/inbox/lead-qualification"
 import { maybeClassifyCustomerStage } from "@/lib/inbox/customer-stage-classifier"
 import { sendConversationReply } from "@/lib/inbox/send-conversation-reply"
+import { applySnippetVariables } from "@/lib/inbox/snippet-vars"
+import { handOffAfterAutoReply } from "@/lib/inbox/autoreply-handoff"
 
 /** At most one auto-reply per conversation per this window (rate-limit + loop-guard). */
 export const AUTOREPLY_COOLDOWN_MS = 5 * 60_000
@@ -164,6 +166,48 @@ export function chatbotTookOwnership(r: MaybeAutoReplyResult): boolean {
   return r.sent || r.skipped === "send-unknown"
 }
 
+/**
+ * Whether this inbound is the customer's first message in the conversation — a «первое
+ * сообщение» rule answers only that. Callers persist and link the inbound before calling
+ * (see the module header), so the conversation holds exactly one inbound then. A failed read is
+ * «not first»: a greeting is not worth a guess.
+ */
+async function isFirstInbound(orgId: string, conversationId: string | null, inboundMessageId?: string | null): Promise<boolean> {
+  if (!conversationId) return false
+  try {
+    const earlier = await prisma.channelMessage.count({
+      where: {
+        organizationId: orgId,
+        conversationId,
+        direction: "inbound",
+        ...(inboundMessageId ? { NOT: { id: inboundMessageId } } : {}),
+      },
+    })
+    return inboundMessageId ? earlier === 0 : earlier <= 1
+  } catch {
+    return false
+  }
+}
+
+/**
+ * A rule's reply with the customer's data filled in — the same {{contact.*}} words a saved reply
+ * carries («Готовые ответы»), so a reply taken from there reads the same when the bot sends it.
+ * The bot has no name of its own: {{agent.name}} is refused when the rule is saved.
+ */
+async function fillRuleReply(text: string, orgId: string, contactId: string | null | undefined, conversationId: string | null): Promise<string> {
+  if (!text.includes("{{")) return text
+  const [contact, conversation] = await Promise.all([
+    contactId
+      ? prisma.contact.findFirst({ where: { id: contactId, organizationId: orgId }, select: { fullName: true, email: true } }).catch(() => null)
+      : null,
+    conversationId
+      ? prisma.socialConversation.findFirst({ where: { id: conversationId, organizationId: orgId }, select: { contactName: true } }).catch(() => null)
+      : null,
+  ])
+  const name = contact?.fullName?.trim() || conversation?.contactName?.trim() || null
+  return applySnippetVariables(text, { contact: { name, email: contact?.email ?? null } })
+}
+
 function keywordReplyDeliveryKey(opts: {
   orgId: string
   conversationId: string
@@ -250,9 +294,17 @@ export async function maybeAutoReply(opts: {
   })) as ChatbotRuleLike[]
   if (rules.length === 0) return { matched: false, sent: false, skipped: "no-rule" }
 
-  // 3. match.
-  const rule = matchChatbotRule(rules, { channelType, text: inboundText })
+  // 3. match. «First message» is read only when such a rule could fire.
+  const greetingRule = rules.some((candidate) => candidate.triggerType === "first_message")
+  const isFirstMessage = greetingRule ? await isFirstInbound(orgId, conversationId, opts.inboundMessageId) : false
+  const rule = matchChatbotRule(rules, { channelType, text: inboundText, isFirstMessage })
   if (!rule) return { matched: false, sent: false, skipped: "no-rule" }
+  const replyText = await fillRuleReply(rule.responseText, orgId, contactId, conversationId)
+  const handOff = async () => {
+    if (!conversationId || !rule.handoffUserIds?.length) return
+    const ruleName = (rule as ChatbotRuleLike & { name?: string }).name ?? ""
+    await handOffAfterAutoReply({ orgId, conversationId, ruleName, channelType, handoffUserIds: rule.handoffUserIds })
+  }
 
   // 4. rate-limit / loop-guard — REQUIRES a conversation to scope by. Without one we
   // can't bound replies, so we decline to send (don't take ownership) rather than risk
@@ -295,7 +347,7 @@ export async function maybeAutoReply(opts: {
       organizationId: orgId,
       channel: "tiktok",
       to,
-      body: rule.responseText,
+      body: replyText,
       contactId: contactId ?? null,
       conversationId,
       channelConfigId: opts.channelConfigId ?? null,
@@ -332,11 +384,12 @@ export async function maybeAutoReply(opts: {
       await prisma.chatbotRule
         .update({ where: { id: rule.id }, data: { matchCount: { increment: 1 } } })
         .catch((e: unknown) => console.error("[chatbot-autoreply] matchCount bump failed:", e))
+      await handOff()
     }
     return { matched: true, sent: true, ruleId: rule.id }
   }
 
-  const sendRes = await sendChannelReply({ orgId, channelType, to, text: rule.responseText, contactId, channelConfigId: opts.channelConfigId ?? null })
+  const sendRes = await sendChannelReply({ orgId, channelType, to, text: replyText, contactId, channelConfigId: opts.channelConfigId ?? null })
   if (sendRes.deliveryUnknown) {
     // The provider may have accepted the message. Persist an operator-visible
     // failed/unknown row and take ownership so the AI fallback cannot send a
@@ -349,7 +402,7 @@ export async function maybeAutoReply(opts: {
           direction: "outbound",
           from: "bot",
           to,
-          body: rule.responseText,
+          body: replyText,
           status: "failed",
           contactId: contactId ?? undefined,
           conversationId: conversationId ?? undefined,
@@ -371,7 +424,7 @@ export async function maybeAutoReply(opts: {
         direction: "outbound",
         from: "bot",
         to,
-        body: rule.responseText,
+        body: replyText,
         status: "sent",
         contactId: contactId ?? undefined,
         conversationId: conversationId ?? undefined,
@@ -382,6 +435,9 @@ export async function maybeAutoReply(opts: {
   await prisma.chatbotRule
     .update({ where: { id: rule.id }, data: { matchCount: { increment: 1 } } })
     .catch((e: unknown) => console.error("[chatbot-autoreply] matchCount bump failed:", e))
+  // «Потом: передать сотруднику» — only after the reply is out: the customer is never handed
+  // to a person in silence, and an unknown delivery above keeps the conversation unassigned.
+  await handOff()
 
   return { matched: true, sent: true, ruleId: rule.id }
 }

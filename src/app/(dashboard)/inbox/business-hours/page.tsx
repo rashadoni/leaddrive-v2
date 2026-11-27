@@ -547,7 +547,7 @@ export default function InboxBusinessHoursPage() {
               </div>
 
               <Link
-                href="/inbox/automation"
+                href="/inbox/chatbot-rules"
                 className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-orange-700 hover:text-orange-800 dark:text-orange-300"
               >
                 {t("businessHoursOpenAutomation")}

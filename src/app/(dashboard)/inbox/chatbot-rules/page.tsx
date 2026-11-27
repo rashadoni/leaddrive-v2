@@ -1,501 +1,789 @@
 "use client"
 
 /**
- * Phase 7 slice-1b — chatbot auto-reply admin. Direct-URL page (/inbox/chatbot-rules),
- * no nav link yet (same "verify before linking" stance as /inbox/v2 + /inbox/analytics).
+ * «Автоответы» — the one place the bot's automatic replies are set up (owner's clickable mock,
+ * 2026-11-27, «Да, делай»). It replaced two menu items: «Чат-бот автоответ» (this page's rules,
+ * which work) and «Автоматизация» (/inbox/automation — scenarios that no organization could switch
+ * on; that address now leads here).
  *
- * Built for NON-TECHNICAL users: plain-language sentence-style rule builder, fully
- * localized (ru/az/en via the `chatbotRules` message namespace), an inline "How it works"
- * guide, rotating "Did you know" tips, and an onboarding tour (`useAutoTour`).
+ * Top to bottom: the real switch and its channels, a box to write as a customer and see which rule
+ * fires (the same matcher the webhooks run, lib/chatbot-engine), the rules as sentences checked top
+ * to bottom, ready rules on the first visit, and «Заявки из переписки — в доску».
  *
- * Manages the inbound auto-reply rules (slice-1 API) + the org-level master enable flag
- * (reuses the standard ai-features toggle — "chatbotAutoReply" in Organization.features,
- * a string[] of flags). Until the master is ON, rules never fire (the banner says so).
+ * Storage is unchanged: rules in `chatbot_rules`, the switches in `Organization.features`
+ * (`chatbotAutoReply`, `chatbotAutoReplyDisabled:<channel>`, the lead-qualification flags).
  */
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react"
+import { useLocale } from "next-intl"
 import { useSession } from "next-auth/react"
-import { useTranslations } from "next-intl"
-import { cn } from "@/lib/utils"
+import Link from "next/link"
+import { ChevronDown, ChevronUp, Check, Loader2, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Bot, Loader2, Trash2, Plus, Power, Lightbulb, ChevronDown, MessageSquareReply, MessagesSquare, AlertTriangle, Pencil, X, Target } from "lucide-react"
-import { channelLabel } from "@/lib/inbox-channels"
-import {
-  CHATBOT_CHANNEL_DISABLED_PREFIX, CHATBOT_TRIGGER_TYPES, CHATBOT_STATUSES,
-  CHATBOT_CHANNELS, INBOX_QUALIFICATION_BOARD_PREFIX, INBOX_QUALIFICATION_FLAG,
-  isChatbotChannelEnabled, triggerNeedsValue,
-} from "@/lib/chatbot-engine"
+import { Switch } from "@/components/ui/switch"
+import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
+import { ConfirmDialog } from "@/components/delete-confirm-dialog"
+import { HelpButton } from "@/components/help/help-button"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
-import { HelpButton } from "@/components/help/help-button"
+import { AR, AR_STARTERS, type ArLocale, type ArStarter } from "@/components/inbox/auto-replies/auto-replies-copy"
+import { channelLabel } from "@/lib/inbox-channels"
+import { cn } from "@/lib/utils"
+import {
+  CHATBOT_CHANNELS, CHATBOT_CHANNEL_DISABLED_PREFIX, INBOX_QUALIFICATION_BOARD_PREFIX, INBOX_QUALIFICATION_FLAG,
+  isChatbotChannelEnabled, matchChatbotRule, type ChatbotRuleLike,
+} from "@/lib/chatbot-engine"
+import { replyVariableLabel, splitReplyText, unknownReplyTokens } from "@/lib/inbox/saved-reply-text"
+import { ReplyTextEditor, VARIABLE_CLASS, type ReplyTextEditorHandle } from "@/components/inbox/saved-replies/reply-text-editor"
 
 const ENABLE_FLAG = "chatbotAutoReply"
-// Channels the auto-reply engine can actually SEND on (sendChannelReply). The rule's
-// channel filter offers only these — offering email/sms would be a dead option.
-// tiktok IS sendable: replies bridge out through Chatwoot (sendChannelReply "tiktok" case),
-// and the chatwoot webhook runs the keyword engine for inbound TikTok DMs.
-const SENDABLE_CHANNELS = CHATBOT_CHANNELS.filter((c) =>
-  ["telegram", "whatsapp", "facebook", "instagram", "vkontakte", "tiktok"].includes(c),
-)
+/** Channels the bot can actually send on (sendChannelReply); offering others would be a dead choice. */
+const SENDABLE = CHATBOT_CHANNELS.filter((c) => ["whatsapp", "instagram", "facebook", "telegram", "vkontakte", "tiktok"].includes(c))
+const AGENT_TOKEN = /\{\{\s*agent\.name\s*\}\}/i
 
-interface Rule {
-  id: string
+interface Rule extends ChatbotRuleLike {
   name: string
-  status: string
-  channelTypes: string[]
-  triggerType: string
-  triggerValue: string | null
-  responseText: string
-  priority: number
   matchCount: number
-  createdAt: string
+  handoffUserIds: string[]
 }
-interface DivisionOption { id: string; name: string; key: string; isDepartment?: boolean; isActive?: boolean }
+interface Person { id: string; name: string | null; email?: string | null }
+interface Board { id: string; name: string; key: string; isDepartment?: boolean; isActive?: boolean }
+interface SavedReply { id: string; shortcut: string; title: string; body: string; isActive: boolean }
 
-const STATUS_TINT: Record<string, string> = {
-  active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-  draft: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  paused: "bg-muted text-foreground/60",
+type When = "contains" | "first_message" | "always" | "exact" | "starts_with"
+interface Form {
+  name: string
+  when: When
+  words: string[]
+  text: string
+  reply: string
+  handoff: boolean
+  people: string[]
+  someChannels: boolean
+  channels: string[]
+}
+const emptyForm: Form = { name: "", when: "contains", words: [], text: "", reply: "", handoff: false, people: [], someChannels: false, channels: [] }
+
+const splitWords = (value: string | null) => (value ?? "").split(",").map((w) => w.trim()).filter(Boolean)
+
+function russianTimes(n: number) {
+  const tens = n % 100
+  const ones = n % 10
+  return ones >= 2 && ones <= 4 && (tens < 10 || tens >= 20) ? "раза" : "раз"
 }
 
-const TIP_KEYS = ["tip1", "tip2", "tip3"] as const
-
-export default function ChatbotRulesPage() {
-  const t = useTranslations("chatbotRules")
+export default function AutoRepliesPage() {
+  const raw = useLocale()
+  const locale: ArLocale = raw === "ru" || raw === "az" ? raw : "en"
+  const t = useCallback((key: string, vars: Record<string, string | number> = {}) => {
+    let text = AR[key]?.[locale] ?? AR[key]?.en ?? key
+    for (const [name, value] of Object.entries(vars)) text = text.replaceAll(`{${name}}`, String(value))
+    return text
+  }, [locale])
+  useAutoTour("chatbotRules")
   const { data: session } = useSession()
   const orgId = session?.user?.organizationId
-  const headers = useMemo(
-    () => (orgId ? { "x-organization-id": String(orgId), "Content-Type": "application/json" } : { "Content-Type": "application/json" }) as Record<string, string>,
-    [orgId],
-  )
-  useAutoTour("chatbotRules")
+  const headers = useMemo<Record<string, string>>(() => {
+    const next: Record<string, string> = { "Content-Type": "application/json" }
+    if (orgId) next["x-organization-id"] = String(orgId)
+    return next
+  }, [orgId])
 
   const [rules, setRules] = useState<Rule[]>([])
-  const [enabled, setEnabled] = useState(false)
   const [features, setFeatures] = useState<string[]>([])
-  const [divisions, setDivisions] = useState<DivisionOption[]>([])
+  const [people, setPeople] = useState<Person[]>([])
+  const [boards, setBoards] = useState<Board[]>([])
+  const [savedReplies, setSavedReplies] = useState<SavedReply[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [guideOpen, setGuideOpen] = useState(false)
-  const [tipIdx, setTipIdx] = useState(0)
-
-  // create form
-  const [name, setName] = useState("")
-  const [triggerType, setTriggerType] = useState<string>("contains")
-  const [triggerValue, setTriggerValue] = useState("")
-  const [responseText, setResponseText] = useState("")
-  const [channelTypes, setChannelTypes] = useState<string[]>([])
-  const [priority, setPriority] = useState(0)
+  const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null)
+  const [adding, setAdding] = useState<string | null>(null)
+  const [removing, setRemoving] = useState<Rule | null>(null)
+  // tester
+  const [testText, setTestText] = useState("")
+  const [testFirst, setTestFirst] = useState(false)
+  const [testResult, setTestResult] = useState<{ text: string; rule: Rule | null } | null>(null)
+  // editor
+  const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState<Form>(emptyForm)
+  const [wordDraft, setWordDraft] = useState("")
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [editorKey, setEditorKey] = useState(0)
+  const replyEditor = useRef<ReplyTextEditorHandle | null>(null)
+
+  const say = useCallback((text: string, error = false) => {
+    setToast({ text, error })
+    window.setTimeout(() => setToast(null), 3200)
+  }, [])
 
   const load = useCallback(async () => {
-    setLoading(true)
+    if (!orgId) return
     try {
-      const [rRes, fRes, dRes] = await Promise.all([
+      const [rRes, fRes, pRes, bRes, sRes] = await Promise.all([
         fetch("/api/v1/inbox/chatbot-rules", { headers }),
         fetch("/api/v1/settings/ai-features", { headers }),
+        fetch("/api/v1/users/assignable", { headers }),
         fetch("/api/v1/divisions", { headers }),
+        fetch("/api/v1/message-snippets?includeInactive=1", { headers }),
       ])
-      const rJson = await rRes.json()
-      if (rJson.success) setRules(rJson.data || [])
-      const fJson = await fRes.json()
-      const feats: string[] = Array.isArray(fJson?.data?.features) ? fJson.data.features : []
-      setFeatures(feats)
-      setEnabled(feats.includes(ENABLE_FLAG))
-      const dJson = await dRes.json().catch(() => null)
-      setDivisions((dJson?.data?.divisions ?? []).filter(
-        (division: DivisionOption) => division.isActive !== false && !division.isDepartment,
-      ))
-    } catch (e) {
-      console.error(e)
+      const rJson = await rRes.json().catch(() => null)
+      if (rJson?.success) setRules((rJson.data ?? []).map((rule: Rule) => ({ ...rule, handoffUserIds: rule.handoffUserIds ?? [] })))
+      const fJson = await fRes.json().catch(() => null)
+      setFeatures(Array.isArray(fJson?.data?.features) ? fJson.data.features : [])
+      const pJson = await pRes.json().catch(() => null)
+      setPeople(Array.isArray(pJson?.data) ? pJson.data : [])
+      const bJson = await bRes.json().catch(() => null)
+      setBoards((bJson?.data?.divisions ?? []).filter((board: Board) => board.isActive !== false && !board.isDepartment))
+      const sJson = await sRes.json().catch(() => null)
+      setSavedReplies(Array.isArray(sJson?.data) ? sJson.data.filter((reply: SavedReply) => reply.isActive) : [])
+    } catch {
+      // Keep what the page shows; the next action reloads.
     } finally {
       setLoading(false)
     }
-  }, [headers])
+  }, [orgId, headers])
 
-  useEffect(() => { load() }, [load, session?.user?.id, session?.user?.organizationId])
+  useEffect(() => { void load() }, [load])
 
-  const toggleMaster = async () => {
+  const enabled = features.includes(ENABLE_FLAG)
+  const personName = (id: string) => people.find((person) => person.id === id)?.name || people.find((person) => person.id === id)?.email || "—"
+
+  async function patchFeature(feature: string, action: "add" | "remove") {
+    const response = await fetch("/api/v1/settings/ai-features", { method: "PATCH", headers, body: JSON.stringify({ feature, action }) })
+    const json = await response.json().catch(() => null)
+    if (!response.ok || !Array.isArray(json?.data?.features)) throw new Error("feature-failed")
+    setFeatures(json.data.features)
+    return json.data.features as string[]
+  }
+
+  async function run(action: () => Promise<unknown>, done?: string) {
     setBusy(true)
     try {
-      const res = await fetch("/api/v1/settings/ai-features", {
-        method: "PATCH", headers,
-        body: JSON.stringify({ feature: ENABLE_FLAG, action: enabled ? "remove" : "add" }),
-      })
-      const json = await res.json()
-      const feats: string[] = Array.isArray(json?.data?.features) ? json.data.features : []
-      setFeatures(feats)
-      setEnabled(feats.includes(ENABLE_FLAG))
-    } catch (e) {
-      console.error(e)
+      await action()
+      if (done) say(done)
+    } catch {
+      say(t("failed"), true)
     } finally {
       setBusy(false)
     }
   }
 
-  const canCreate = name.trim() && responseText.trim() && (!triggerNeedsValue(triggerType) || triggerValue.trim())
+  const toggleMaster = () => run(() => patchFeature(ENABLE_FLAG, enabled ? "remove" : "add"), enabled ? t("offTitle") : t("onTitle"))
+  const toggleChannel = (channel: string) => run(() =>
+    patchFeature(`${CHATBOT_CHANNEL_DISABLED_PREFIX}${channel}`, isChatbotChannelEnabled(features, channel) ? "add" : "remove"))
 
-  const resetForm = () => {
-    setName(""); setTriggerValue(""); setResponseText(""); setChannelTypes([])
-    setPriority(0); setTriggerType("contains"); setEditingId(null)
+  const boardFlag = features.find((feature) => feature.startsWith(INBOX_QUALIFICATION_BOARD_PREFIX))
+  const boardId = boardFlag?.slice(INBOX_QUALIFICATION_BOARD_PREFIX.length) ?? ""
+  const leadOn = features.includes(INBOX_QUALIFICATION_FLAG)
+  const chooseBoard = (id: string) => run(async () => {
+    if (boardFlag) await patchFeature(boardFlag, "remove")
+    if (id) await patchFeature(`${INBOX_QUALIFICATION_BOARD_PREFIX}${id}`, "add")
+  })
+  const toggleLead = () => {
+    if (!leadOn && !boardId) { say(t("leadNeedBoard"), true); return }
+    void run(() => patchFeature(INBOX_QUALIFICATION_FLAG, leadOn ? "remove" : "add"))
   }
 
-  const saveRule = async () => {
-    if (!canCreate) return
-    setBusy(true)
+  async function setRuleOn(rule: Rule, on: boolean) {
+    setRules((list) => list.map((item) => (item.id === rule.id ? { ...item, status: on ? "active" : "paused" } : item)))
     try {
-      const res = await fetch(editingId ? `/api/v1/inbox/chatbot-rules/${editingId}` : "/api/v1/inbox/chatbot-rules", {
-        method: editingId ? "PATCH" : "POST", headers,
+      const response = await fetch(`/api/v1/inbox/chatbot-rules/${rule.id}`, { method: "PATCH", headers, body: JSON.stringify({ status: on ? "active" : "paused" }) })
+      if (!response.ok) throw new Error("toggle-failed")
+    } catch {
+      setRules((list) => list.map((item) => (item.id === rule.id ? { ...item, status: rule.status } : item)))
+      say(t("failed"), true)
+    }
+  }
+
+  /** Order is priority: the list top to bottom gets n…1, and only rules whose number changed are written. */
+  async function move(index: number, by: -1 | 1) {
+    const next = rules.slice()
+    const [rule] = next.splice(index, 1)
+    next.splice(index + by, 0, rule)
+    const ranked = next.map((item, position) => ({ ...item, priority: next.length - position }))
+    const changed = ranked.filter((item) => rules.find((old) => old.id === item.id)?.priority !== item.priority)
+    setRules(ranked)
+    try {
+      for (const item of changed) {
+        const response = await fetch(`/api/v1/inbox/chatbot-rules/${item.id}`, { method: "PATCH", headers, body: JSON.stringify({ priority: item.priority }) })
+        if (!response.ok) throw new Error("order-failed")
+      }
+    } catch {
+      say(t("failed"), true)
+      await load()
+    }
+  }
+
+  async function addStarter(starter: ArStarter) {
+    setAdding(starter.key)
+    try {
+      const response = await fetch("/api/v1/inbox/chatbot-rules", {
+        method: "POST",
+        headers,
         body: JSON.stringify({
-          name: name.trim(), ...(!editingId ? { status: "active" } : {}), channelTypes, triggerType,
-          triggerValue: triggerNeedsValue(triggerType) ? triggerValue.trim() : null,
-          responseText: responseText.trim(), priority,
+          name: starter.name[locale],
+          status: "active",
+          triggerType: starter.triggerType,
+          triggerValue: starter.triggerType === "contains" ? starter.words : null,
+          responseText: starter.reply[locale],
+          channelTypes: [],
+          // A greeting answers before everything else; the rest go below what the team already has.
+          priority: starter.triggerType === "first_message" ? Math.max(0, ...rules.map((rule) => rule.priority)) + 1 : 0,
         }),
       })
-      if (res.ok) {
-        resetForm()
-        await load()
+      if (!response.ok) throw new Error("add-failed")
+      say(t("addedToast", { name: starter.name[locale] }))
+      await load()
+    } catch {
+      say(t("failed"), true)
+    } finally {
+      setAdding(null)
+    }
+  }
+
+  function runTest() {
+    const text = testText.trim()
+    if (!text) return
+    // Channel limits are shown, not applied: the box is no particular channel.
+    const loose = rules.map((rule) => ({ ...rule, channelTypes: [] }))
+    const hit = enabled ? matchChatbotRule(loose, { channelType: "whatsapp", text, isFirstMessage: testFirst }) : null
+    setTestResult({ text, rule: hit ? rules.find((rule) => rule.id === hit.id) ?? null : null })
+    setTestText("")
+  }
+
+  // ── editor ──
+  function openEditor(rule?: Rule) {
+    setEditingId(rule?.id ?? null)
+    setForm(rule
+      ? {
+        name: rule.name,
+        when: (["contains", "first_message", "always", "exact", "starts_with"].includes(rule.triggerType) ? rule.triggerType : "contains") as When,
+        words: rule.triggerType === "contains" ? splitWords(rule.triggerValue) : [],
+        text: rule.triggerType === "exact" || rule.triggerType === "starts_with" ? rule.triggerValue ?? "" : "",
+        reply: rule.responseText,
+        handoff: rule.handoffUserIds.length > 0,
+        people: rule.handoffUserIds,
+        someChannels: rule.channelTypes.length > 0,
+        channels: rule.channelTypes,
       }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setBusy(false)
+      : emptyForm)
+    setWordDraft("")
+    setPickerOpen(false)
+    setServerError(null)
+    setEditorKey((key) => key + 1)
+    setOpen(true)
+  }
+
+  const addWord = () => {
+    const word = wordDraft.trim().replace(/,+$/, "")
+    if (word && !form.words.some((w) => w.toLowerCase() === word.toLowerCase())) setForm((f) => ({ ...f, words: [...f.words, word] }))
+    setWordDraft("")
+  }
+  const onWordKey = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter" || event.key === ",") { event.preventDefault(); addWord() }
+    if (event.key === "Backspace" && !wordDraft && form.words.length) setForm((f) => ({ ...f, words: f.words.slice(0, -1) }))
+  }
+
+  const legacy = form.when === "exact" || form.when === "starts_with"
+  const whenOptions: Array<[When, string]> = [
+    ["contains", t("whenContains")], ["first_message", t("whenFirst")], ["always", t("whenAny")],
+    ...(legacy ? [["exact", t("whenExact")], ["starts_with", t("whenStarts")]] as Array<[When, string]> : []),
+  ]
+  const unknown = unknownReplyTokens(form.reply)
+  const problem = !form.name.trim() ? t("needName")
+    : form.when === "contains" && form.words.length === 0 && !wordDraft.trim() ? t("needWords")
+      : legacy && !form.text.trim() ? t("needText")
+        : !form.reply.trim() ? t("needReply")
+          : AGENT_TOKEN.test(form.reply) ? t("needAgent")
+            : unknown.length > 0 ? t("needKnown", { t: unknown.join(", ") })
+              : form.handoff && form.people.length === 0 ? t("needPerson")
+                : form.someChannels && form.channels.length === 0 ? t("needChannel")
+                  : null
+  const sample = locale === "ru" ? "Анна" : locale === "az" ? "Aysel" : "Anna"
+  const previewReply = form.reply.replace(/\{\{\s*contact\.first_name\s*\}\}/gi, sample).replace(/\{\{\s*contact\.name\s*\}\}/gi, `${sample} ${locale === "ru" ? "Каримова" : "Məmmədova"}`)
+
+  async function save() {
+    const words = wordDraft.trim() ? [...form.words, wordDraft.trim()] : form.words
+    if (problem) return
+    setSaving(true)
+    setServerError(null)
+    const body = {
+      name: form.name.trim(),
+      triggerType: form.when,
+      triggerValue: form.when === "contains" ? words.join(", ") : legacy ? form.text.trim() : null,
+      responseText: form.reply.trim(),
+      channelTypes: form.someChannels ? form.channels : [],
+      handoffUserIds: form.handoff ? form.people : [],
+      ...(editingId ? {} : { status: "active", priority: 0 }),
     }
-  }
-
-  const editRule = (rule: Rule) => {
-    setEditingId(rule.id)
-    setName(rule.name)
-    setTriggerType(rule.triggerType)
-    setTriggerValue(rule.triggerValue ?? "")
-    setResponseText(rule.responseText)
-    setChannelTypes(rule.channelTypes)
-    setPriority(rule.priority)
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  }
-
-  const toggleAutoReplyChannel = async (channel: string) => {
-    const currentlyEnabled = isChatbotChannelEnabled(features, channel)
-    const feature = `${CHATBOT_CHANNEL_DISABLED_PREFIX}${channel}`
-    setBusy(true)
     try {
-      const res = await fetch("/api/v1/settings/ai-features", {
-        method: "PATCH", headers,
-        body: JSON.stringify({ feature, action: currentlyEnabled ? "add" : "remove" }),
+      const response = await fetch(editingId ? `/api/v1/inbox/chatbot-rules/${editingId}` : "/api/v1/inbox/chatbot-rules", {
+        method: editingId ? "PATCH" : "POST", headers, body: JSON.stringify(body),
       })
-      const json = await res.json()
-      setFeatures(Array.isArray(json?.data?.features) ? json.data.features : features)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const patchFeature = async (feature: string, action: "add" | "remove") => {
-    const res = await fetch("/api/v1/settings/ai-features", {
-      method: "PATCH", headers, body: JSON.stringify({ feature, action }),
-    })
-    const json = await res.json()
-    const next = Array.isArray(json?.data?.features) ? json.data.features as string[] : features
-    setFeatures(next)
-    return next
-  }
-
-  const qualificationBoardFlag = features.find((feature) => feature.startsWith(INBOX_QUALIFICATION_BOARD_PREFIX))
-  const selectedQualificationBoardId = qualificationBoardFlag?.slice(INBOX_QUALIFICATION_BOARD_PREFIX.length) ?? ""
-  const qualificationEnabled = features.includes(INBOX_QUALIFICATION_FLAG)
-
-  const selectQualificationBoard = async (boardId: string) => {
-    setBusy(true)
-    try {
-      if (qualificationBoardFlag) await patchFeature(qualificationBoardFlag, "remove")
-      if (boardId) await patchFeature(`${INBOX_QUALIFICATION_BOARD_PREFIX}${boardId}`, "add")
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const toggleQualification = async () => {
-    if (!qualificationEnabled && !selectedQualificationBoardId) return
-    setBusy(true)
-    try {
-      await patchFeature(INBOX_QUALIFICATION_FLAG, qualificationEnabled ? "remove" : "add")
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const setStatus = async (id: string, status: string) => {
-    setBusy(true)
-    try {
-      await fetch(`/api/v1/inbox/chatbot-rules/${id}`, { method: "PATCH", headers, body: JSON.stringify({ status }) })
+      if (!response.ok) { setServerError(t("failed")); return }
+      setOpen(false)
+      say(t("savedToast", { name: body.name }))
       await load()
-    } catch (e) { console.error(e) } finally { setBusy(false) }
+    } catch {
+      setServerError(t("failed"))
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const remove = async (id: string) => {
-    setBusy(true)
-    try {
-      await fetch(`/api/v1/inbox/chatbot-rules/${id}`, { method: "DELETE", headers })
-      await load()
-    } catch (e) { console.error(e) } finally { setBusy(false) }
+  function sentence(rule: { triggerType: string; triggerValue: string | null; responseText: string; handoffUserIds?: string[] }) {
+    // Long replies are cut by the line clamp of the row, not here: cutting the text could split a {{token}}.
+    const reply = rule.responseText
+    return (
+      <>
+        {rule.triggerType === "contains" ? (
+          <>{t("ifWrites")} {splitWords(rule.triggerValue).map((word) => (
+            <span key={word} className="mr-1 rounded-md bg-indigo-50 px-1.5 py-0.5 text-xs font-semibold text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-200">{word}</span>
+          ))}</>
+        ) : rule.triggerType === "first_message" ? <b>{t("onFirst")}</b>
+          : rule.triggerType === "always" ? <b>{t("onAny")}</b>
+            : <>{rule.triggerType === "exact" ? t("ifExact") : t("ifStarts")} <b>«{rule.triggerValue}»</b></>}
+        {" → "}{t("answer")}{" "}
+        <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">«<ReplyWords body={reply} locale={locale} />»</span>
+        {rule.handoffUserIds && rule.handoffUserIds.length > 0 && (
+          <>{" → "}{t("handTo")}{" "}
+            <span className="rounded-md bg-orange-50 px-1.5 py-0.5 font-semibold text-orange-900 dark:bg-orange-950/40 dark:text-orange-200">
+              {rule.handoffUserIds.map(personName).join(", ")}
+            </span>
+          </>
+        )}
+      </>
+    )
   }
 
-  const toggleChannel = (ch: string) =>
-    setChannelTypes((prev) => (prev.includes(ch) ? prev.filter((c) => c !== ch) : [...prev, ch]))
+  const fired = (n: number) => n === 0 ? t("neverFired") : locale === "ru" ? t("firedTimes", { n, times: russianTimes(n) }) : t("firedTimes", { n })
+  const haveNames = new Set(rules.map((rule) => rule.name.trim().toLowerCase()))
+  const startersLeft = AR_STARTERS.filter((starter) => !haveNames.has(starter.name[locale].toLowerCase()))
+  const showStarters = rules.length < AR_STARTERS.length && startersLeft.length > 0
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-5">
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold flex items-center gap-2"><Bot className="h-5 w-5" /> {t("title")}<HelpButton slug="chatbot-rules" variant="label" /></h1>
-          <p className="text-xs text-muted-foreground mt-0.5 max-w-xl">{t("subtitle")}</p>
+    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold">
+            {t("heading")}
+            <HelpButton slug="chatbot-rules" variant="label" />
+            <TourReplayButton tourId="chatbotRules" />
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("sub")}</p>
         </div>
-        <TourReplayButton tourId="chatbotRules" />
-      </header>
-
-      {/* How it works — collapsible guide */}
-      <div className="border rounded-lg bg-muted/30">
-        <button
-          onClick={() => setGuideOpen((o) => !o)}
-          className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium"
-        >
-          <span className="flex items-center gap-2"><MessagesSquare className="h-4 w-4 text-primary" /> {t("guideTitle")}</span>
-          <ChevronDown className={cn("h-4 w-4 transition-transform", guideOpen && "rotate-180")} />
-        </button>
-        {guideOpen && (
-          <div className="px-4 pb-4 space-y-2 text-[13px] text-muted-foreground border-t pt-3">
-            <p>{t("guideIntro")}</p>
-            <ol className="space-y-1.5 list-none">
-              {["guideStep1", "guideStep2", "guideStep3", "guideStep4"].map((k, i) => (
-                <li key={k} className="flex gap-2">
-                  <span className="shrink-0 h-5 w-5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold grid place-items-center">{i + 1}</span>
-                  <span>{t(k)}</span>
-                </li>
-              ))}
-            </ol>
-            <div className="rounded-md bg-card border px-3 py-2 text-foreground/80 mt-2">
-              <span className="font-medium">{t("exampleLabel")}: </span>{t("exampleBody")}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Master enable */}
-      <div data-tour-id="cb-master" className={cn("border rounded-lg p-4 flex items-center justify-between gap-3", enabled ? "bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-900/40" : "bg-card")}>
-        <div className="flex items-center gap-3">
-          <Power className={cn("h-5 w-5 shrink-0", enabled ? "text-emerald-600" : "text-muted-foreground")} />
-          <div>
-            <div className="text-sm font-medium">{enabled ? t("masterOnTitle") : t("masterOffTitle")}</div>
-            <div className="text-[11px] text-muted-foreground">{enabled ? t("masterOnDesc") : t("masterOffDesc")}</div>
-          </div>
-        </div>
-        <Button onClick={toggleMaster} disabled={busy} variant={enabled ? "outline" : "default"} size="sm">
-          {enabled ? t("turnOff") : t("turnOn")}
+        <Button onClick={() => openEditor()} className="w-full shrink-0 sm:w-auto" data-tour-id="ar-new" data-testid="ar-new">
+          <Plus className="h-4 w-4" /> {t("newRule")}
         </Button>
       </div>
 
-      {enabled && (
-        <div className="rounded-lg border bg-card p-4 space-y-3">
-          <div>
-            <p className="text-sm font-medium">{t("channelSwitchesTitle")}</p>
-            <p className="text-[11px] text-muted-foreground">{t("channelSwitchesHint")}</p>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="rounded-2xl border bg-card p-5 shadow-sm" data-tour-id="ar-status" data-testid="ar-status">
+          <div className="flex items-start gap-3">
+            <Switch checked={enabled} onCheckedChange={() => void toggleMaster()} disabled={busy} aria-label={enabled ? t("turnOff") : t("turnOn")} className="mt-0.5" />
+            <div>
+              <p className={cn("text-base font-semibold", enabled ? "text-emerald-700 dark:text-emerald-400" : "")}>{enabled ? t("onTitle") : t("offTitle")}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">{enabled ? t("onHelp") : t("offHelp")}</p>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {SENDABLE_CHANNELS.map((channel) => {
-              const channelEnabled = isChatbotChannelEnabled(features, channel)
+          <p className="mt-4 text-sm font-semibold">{t("whichChannels")}</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {SENDABLE.map((channel) => {
+              const on = isChatbotChannelEnabled(features, channel)
               return (
                 <button
                   key={channel}
                   type="button"
-                  disabled={busy}
-                  onClick={() => toggleAutoReplyChannel(channel)}
-                  aria-pressed={channelEnabled}
+                  disabled={busy || !enabled}
+                  aria-pressed={on}
+                  data-crm-color-role="toggle"
+                  onClick={() => void toggleChannel(channel)}
                   className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50",
-                    channelEnabled
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
-                      : "text-muted-foreground",
+                    "rounded-full border px-3 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                    on ? "border-emerald-300 bg-emerald-50 font-semibold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200" : "border-input bg-card text-muted-foreground",
                   )}
                 >
-                  {channelLabel(channel)} · {channelEnabled ? t("channelOn") : t("channelOff")}
+                  {channelLabel(channel)} · {on ? t("chOn") : t("chOff")}
                 </button>
               )
             })}
           </div>
-        </div>
+          <p className="mt-4 border-t border-dashed pt-3 text-sm leading-relaxed">
+            <b>{t("fallbackLead")}</b> {t("fallbackText")}{" "}
+            <Link href="/inbox/ai-agent" className="font-semibold text-orange-700 hover:underline dark:text-orange-300">{t("fallbackLink")}</Link>
+          </p>
+        </section>
+
+        <section className="flex flex-col rounded-2xl border bg-card p-5 shadow-sm" data-tour-id="ar-tester">
+          <h2 className="text-base font-semibold">{t("testTitle")}</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t("testHelp")}</p>
+          <div className="mt-3 flex min-h-[150px] flex-1 flex-col justify-end gap-1.5 rounded-xl bg-[#efeae2] p-3 dark:bg-muted/40" data-testid="ar-test-chat">
+            {!testResult ? (
+              <span className="self-center rounded-md bg-white/70 px-2.5 py-1 text-xs text-muted-foreground dark:bg-card/70">{t("testHint")}</span>
+            ) : (
+              <>
+                <div className="max-w-[85%] self-start rounded-xl bg-white px-3 py-2 text-sm shadow-sm dark:bg-card">{testResult.text}</div>
+                {!enabled ? <Note>{t("testOff")}</Note> : !testResult.rule ? <Note>{t("testNone")}</Note> : (
+                  <>
+                    <Note>{t("testFired", { name: testResult.rule.name })}</Note>
+                    <div className="max-w-[85%] self-end whitespace-pre-wrap rounded-xl bg-[#dcf8c6] px-3 py-2 text-sm text-neutral-900 shadow-sm">
+                      {testResult.rule.responseText.replace(/\{\{\s*contact\.(first_)?name\s*\}\}/gi, sample).replace(/\{\{[^}]*\}\}/g, "")}
+                    </div>
+                    {testResult.rule.handoffUserIds.length > 0 && <Note>{t("testHanded", { who: testResult.rule.handoffUserIds.map(personName).join(", ") })}</Note>}
+                    {testResult.rule.channelTypes.length > 0 && <Note>{t("testOnlyIn", { ch: testResult.rule.channelTypes.map(channelLabel).join(", ") })}</Note>}
+                  </>
+                )}
+              </>
+            )}
+          </div>
+          <div className="mt-3 flex gap-2">
+            <Input
+              value={testText}
+              onChange={(event) => setTestText(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); runTest() } }}
+              placeholder={t("testPlaceholder")}
+              data-testid="ar-test-input"
+            />
+            <Button variant="outline" onClick={runTest} data-testid="ar-test-run">{t("testButton")}</Button>
+          </div>
+          <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <input type="checkbox" checked={testFirst} onChange={(event) => setTestFirst(event.target.checked)} data-testid="ar-test-first" />
+            {t("testFirst")}
+          </label>
+        </section>
+      </div>
+
+      {!enabled && rules.some((rule) => rule.status === "active") && (
+        <p className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200" data-testid="ar-warn-off">
+          {t("warnOff")}
+        </p>
       )}
 
-      <div className="rounded-lg border bg-card p-4 space-y-3">
-        <div className="flex items-start gap-2">
-          <Target className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" />
-          <div className="flex-1">
-            <p className="text-sm font-medium">{t("qualificationTitle")}</p>
-            <p className="text-[11px] text-muted-foreground">{t("qualificationHint")}</p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant={qualificationEnabled ? "outline" : "default"}
-            disabled={busy || (!qualificationEnabled && !selectedQualificationBoardId)}
-            onClick={toggleQualification}
-          >
-            {qualificationEnabled ? t("turnOff") : t("turnOn")}
-          </Button>
-        </div>
-        <label className="block space-y-1">
-          <span className="text-xs font-medium text-muted-foreground">{t("qualificationBoardLabel")}</span>
-          <select
-            value={selectedQualificationBoardId}
-            onChange={(event) => selectQualificationBoard(event.target.value)}
-            disabled={busy || qualificationEnabled}
-            className="h-9 w-full rounded-md border bg-background px-2 text-sm"
-          >
-            <option value="">{t("qualificationBoardPlaceholder")}</option>
-            {divisions.map((division) => (
-              <option key={division.id} value={division.id}>{division.key} — {division.name}</option>
-            ))}
-          </select>
-        </label>
-        <p className="text-[11px] text-muted-foreground">{t("qualificationRulesHint")}</p>
-      </div>
+      {loading ? (
+        <div className="flex justify-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
+      ) : (
+        <>
+          {rules.length > 0 && (
+            <section data-tour-id="ar-rules" data-testid="ar-rules">
+              <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+                <h2 className="text-lg font-semibold">{t("rules")} <span className="font-normal text-muted-foreground">· {rules.length}</span></h2>
+                <p className="text-xs text-muted-foreground">{t("orderHelp")}</p>
+              </div>
+              <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+                {rules.map((rule, index) => {
+                  const on = rule.status === "active"
+                  return (
+                    <div key={rule.id} data-testid={`ar-rule-${index}`} className="grid gap-3 border-t px-4 py-4 first:border-t-0 md:grid-cols-[28px_minmax(0,1fr)_auto_auto] md:items-center">
+                      <div className="flex gap-1 md:flex-col">
+                        <button type="button" aria-label={t("up")} title={t("up")} disabled={index === 0} onClick={() => void move(index, -1)} className="rounded-md border p-0.5 text-muted-foreground disabled:opacity-30"><ChevronUp className="h-3.5 w-3.5" /></button>
+                        <button type="button" aria-label={t("down")} title={t("down")} disabled={index === rules.length - 1} onClick={() => void move(index, 1)} className="rounded-md border p-0.5 text-muted-foreground disabled:opacity-30"><ChevronDown className="h-3.5 w-3.5" /></button>
+                      </div>
+                      <div className={cn("min-w-0", !on && "opacity-50")}>
+                        <p className="font-semibold">{rule.name}</p>
+                        <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{sentence(rule)}</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground md:text-right">
+                        {rule.channelTypes.length ? rule.channelTypes.map(channelLabel).join(", ") : t("allChannels")}<br />{fired(rule.matchCount)}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <Switch checked={on} onCheckedChange={(value) => void setRuleOn(rule, value)} aria-label={on ? t("ruleOn") : t("ruleOff")} title={on ? t("ruleOn") : t("ruleOff")} />
+                        <Button variant="ghost" size="sm" onClick={() => openEditor(rule)}>{t("edit")}</Button>
+                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setRemoving(rule)}>{t("remove")}</Button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          )}
 
-      {/* Create form — sentence-style */}
-      <div data-tour-id="cb-form" className="border rounded-lg bg-card p-4 space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-sm font-semibold flex items-center gap-1.5">
-              {editingId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-              {editingId ? t("editRule") : t("newRule")}
-            </div>
-            {editingId && (
-              <button type="button" onClick={resetForm} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                <X className="h-3.5 w-3.5" /> {t("cancelEdit")}
-              </button>
-            )}
-          </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">{t("nameLabel")}</label>
-          <Input placeholder={t("namePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} className="h-9 text-sm" />
-        </div>
-
-        {/* WHEN */}
-        <div data-tour-id="cb-trigger" className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5"><MessagesSquare className="h-3.5 w-3.5" /> {t("whenLabel")}</label>
-          <div className="flex flex-wrap gap-2 items-center text-sm">
-            <span className="text-muted-foreground">{t("whenPrefix")}</span>
-            <select value={triggerType} onChange={(e) => setTriggerType(e.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm font-medium">
-              {CHATBOT_TRIGGER_TYPES.map((tt) => <option key={tt} value={tt}>{t(`trigger_${tt}`)}</option>)}
-            </select>
-            {triggerNeedsValue(triggerType) && (
-              <Input
-                placeholder={t(triggerType === "contains" ? "keywordsPlaceholder" : "textPlaceholder")}
-                value={triggerValue} onChange={(e) => setTriggerValue(e.target.value)} className="h-9 text-sm flex-1 min-w-[200px]"
-              />
-            )}
-          </div>
-          {triggerType === "contains" && <p className="text-[11px] text-muted-foreground">{t("keywordsHint")}</p>}
-        </div>
-
-        {/* REPLY */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5"><MessageSquareReply className="h-3.5 w-3.5" /> {t("replyLabel")}</label>
-          <textarea
-            placeholder={t("replyPlaceholder")} value={responseText} onChange={(e) => setResponseText(e.target.value)}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm min-h-[64px]"
-          />
-        </div>
-
-        {/* CHANNELS */}
-        <div data-tour-id="cb-channels" className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">{t("channelsLabel")}</label>
-          <div className="flex flex-wrap items-center gap-2">
-            {SENDABLE_CHANNELS.map((ch) => (
-              <button
-                key={ch} onClick={() => toggleChannel(ch)} type="button"
-                className={cn("px-2.5 py-1 rounded-full text-[11px] border transition-colors",
-                  channelTypes.includes(ch) ? "crm-choice-selected  " : "text-muted-foreground hover:bg-muted")}
-              >
-                {channelLabel(ch)}
-              </button>
-            ))}
-            <span className="text-[11px] text-muted-foreground">{channelTypes.length === 0 ? t("channelsAll") : ""}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-3 pt-1">
-          <div className="flex items-center gap-2">
-            <label className="text-[11px] text-muted-foreground">{t("priorityLabel")}</label>
-            <Input type="number" value={priority} onChange={(e) => setPriority(parseInt(e.target.value, 10) || 0)} className="h-8 w-16 text-sm" title={t("priorityHint")} />
-          </div>
-          <Button onClick={saveRule} disabled={busy || !canCreate} size="sm">
-            {editingId ? t("saveRule") : t("createRule")}
-          </Button>
-        </div>
-      </div>
-
-      {/* Did you know */}
-      <div className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-900/10 px-4 py-2.5">
-        <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-        <div className="flex-1 text-[12px] text-amber-900/80 dark:text-amber-200/80">
-          <span className="font-semibold">{t("didYouKnow")}</span> {t(TIP_KEYS[tipIdx])}
-        </div>
-        <button onClick={() => setTipIdx((i) => (i + 1) % TIP_KEYS.length)} className="text-[11px] text-amber-700/70 hover:text-amber-700 shrink-0">
-          {t("nextTip")} →
-        </button>
-      </div>
-
-      {/* Rules list */}
-      <div data-tour-id="cb-rules" className="border rounded-lg bg-card">
-        <div className="px-4 py-3 border-b text-sm font-semibold">{t("rulesTitle")} ({rules.length})</div>
-        {loading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
-        ) : rules.length === 0 ? (
-          <div className="py-12 text-center text-xs text-muted-foreground/60">{t("noRules")}</div>
-        ) : (
-          <div className="divide-y">
-            {rules.map((r) => (
-              <div key={r.id} className="px-4 py-3 flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{r.name}</span>
-                    <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", STATUS_TINT[r.status] ?? "bg-muted")}>{t(`status_${r.status}`)}</span>
-                    {r.priority !== 0 && <span className="text-[10px] text-muted-foreground">{t("priorityShort")}{r.priority}</span>}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">
-                    <span>{t(`trigger_${r.triggerType}`)}{r.triggerValue ? ` "${r.triggerValue}"` : ""}</span>
-                    {" → "}{r.responseText.slice(0, 60)}{r.responseText.length > 60 ? "…" : ""}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground/70 mt-0.5">
-                    {r.channelTypes.length ? r.channelTypes.map(channelLabel).join(", ") : t("channelsAll")} · {t("matchedCount", { count: r.matchCount })}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => editRule(r)} disabled={busy} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title={t("editRule")}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <select
-                    value={r.status} onChange={(e) => setStatus(r.id, e.target.value)} disabled={busy}
-                    className="h-7 rounded-md border bg-background px-1.5 text-[11px]"
-                  >
-                    {CHATBOT_STATUSES.map((s) => <option key={s} value={s}>{t(`status_${s}`)}</option>)}
-                  </select>
-                  <button onClick={() => remove(r.id)} disabled={busy} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-red-600" title={t("delete")}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+          {showStarters && (
+            <section data-testid="ar-starters" {...(rules.length === 0 ? { "data-tour-id": "ar-rules" } : {})}>
+              <h2 className="mb-3 text-lg font-semibold">{t("startersTitle")}</h2>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {AR_STARTERS.map((starter) => {
+                  const have = haveNames.has(starter.name[locale].toLowerCase())
+                  return (
+                    <div key={starter.key} className={cn("flex flex-col items-start gap-3 rounded-2xl border bg-card p-4 shadow-sm sm:flex-row sm:items-center", have && "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/20")}>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold">{starter.name[locale]}</p>
+                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                          {sentence({ triggerType: starter.triggerType, triggerValue: starter.words, responseText: starter.reply[locale] })}
+                        </p>
+                      </div>
+                      {have ? (
+                        <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-emerald-700 dark:text-emerald-400"><Check className="h-4 w-4" /> {t("added")}</span>
+                      ) : (
+                        <Button variant="outline" size="sm" className="shrink-0" disabled={adding !== null} onClick={() => void addStarter(starter)} data-testid={`ar-starter-${starter.key}`}>
+                          {adding === starter.key ? <Loader2 className="h-4 w-4 animate-spin" /> : t("add")}
+                        </Button>
+                      )}
+                    </div>
+                  )
+                })}
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed bg-card p-4 md:col-span-2">
+                  <span className="text-sm">{t("ownRule")}</span>
+                  <Button variant="outline" size="sm" onClick={() => openEditor()}>{t("createRule")}</Button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </section>
+          )}
+        </>
+      )}
 
-      {/* Active rules exist but master is OFF — actionable nudge for the non-technical user. */}
-      {!enabled && rules.some((r) => r.status === "active") && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/15 px-4 py-2.5">
-          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-          <span className="text-[12px] text-amber-900/85 dark:text-amber-200/85">{t("masterOffWarning")}</span>
+      <section className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-sm md:flex-row md:items-center" data-testid="ar-lead">
+        <div className="flex-1">
+          <h2 className="text-base font-semibold">{t("leadTitle")}</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t("leadHelp")}</p>
+        </div>
+        <select
+          value={boardId}
+          disabled={busy || leadOn}
+          onChange={(event) => void chooseBoard(event.target.value)}
+          className="h-9 rounded-xl border border-input bg-background px-3 text-sm"
+          aria-label={t("leadBoard")}
+        >
+          <option value="">{t("leadBoard")}</option>
+          {boards.map((board) => <option key={board.id} value={board.id}>{board.key} — {board.name}</option>)}
+        </select>
+        <Switch checked={leadOn} onCheckedChange={toggleLead} disabled={busy} aria-label={t("leadTitle")} />
+      </section>
+
+      <Dialog open={open} onOpenChange={setOpen} widthClassName="max-w-5xl" maxHeightClassName="max-h-[92vh]">
+        <DialogHeader>
+          <DialogTitle>{editingId ? t("editTitle") : t("newRule")}</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+            <div className="space-y-5">
+              <div>
+                <label htmlFor="ar-name" className="mb-1.5 block text-sm font-semibold">{t("name")}</label>
+                <Input id="ar-name" value={form.name} placeholder={t("namePh")} onChange={(event) => setForm((f) => ({ ...f, name: event.target.value }))} />
+                <p className="mt-1.5 text-xs text-muted-foreground">{t("nameHelp")}</p>
+              </div>
+              <div>
+                <p className="mb-1.5 text-sm font-semibold">{t("when")}</p>
+                <Choice options={whenOptions} value={form.when} onChange={(when) => setForm((f) => ({ ...f, when }))} />
+                {form.when === "contains" && (
+                  <div className="mt-2">
+                    <div className="flex flex-wrap gap-1.5 rounded-xl border border-input bg-background p-1.5" data-testid="ar-words">
+                      {form.words.map((word) => (
+                        <span key={word} className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-200">
+                          {word}
+                          <button type="button" aria-label={`× ${word}`} onClick={() => setForm((f) => ({ ...f, words: f.words.filter((w) => w !== word) }))}><X className="h-3 w-3" /></button>
+                        </span>
+                      ))}
+                      <input
+                        value={wordDraft}
+                        onChange={(event) => setWordDraft(event.target.value)}
+                        onKeyDown={onWordKey}
+                        onBlur={addWord}
+                        placeholder={t("wordsPh")}
+                        data-testid="ar-word-input"
+                        className="min-w-[160px] flex-1 bg-transparent px-1.5 py-1 text-sm outline-none"
+                      />
+                    </div>
+                    <p className="mt-1.5 text-xs text-muted-foreground">{t("wordsHelp")}</p>
+                  </div>
+                )}
+                {legacy && (
+                  <Input className="mt-2" value={form.text} placeholder={t("textPh")} onChange={(event) => setForm((f) => ({ ...f, text: event.target.value }))} />
+                )}
+                {form.when === "first_message" && <p className="mt-1.5 text-xs text-muted-foreground">{t("firstHelp")}</p>}
+                {form.when === "always" && <p className="mt-1.5 text-xs text-muted-foreground">{t("anyHelp")}</p>}
+              </div>
+              <div>
+                <p className="mb-1.5 text-sm font-semibold">{t("reply")}</p>
+                <ReplyTextEditor
+                  ref={replyEditor}
+                  value={form.reply}
+                  resetKey={`${editingId ?? "new"}-${editorKey}`}
+                  locale={locale}
+                  placeholder={t("replyPh")}
+                  ariaLabel={t("reply")}
+                  invalid={AGENT_TOKEN.test(form.reply) || unknown.length > 0}
+                  onChange={(reply) => setForm((f) => ({ ...f, reply }))}
+                />
+                <div className="mt-1.5 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    data-testid="ar-insert-name"
+                    className="text-xs font-semibold text-orange-700 hover:underline dark:text-orange-300"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => replyEditor.current?.insertVariable("contact.first_name")}
+                  >
+                    {t("customerName")}
+                  </button>
+                  <button type="button" className="text-xs font-semibold text-orange-700 hover:underline dark:text-orange-300" onClick={() => setPickerOpen((v) => !v)} data-testid="ar-pick-ready">
+                    {t("fromReady")} ▾
+                  </button>
+                </div>
+                {pickerOpen && (
+                  <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border bg-card shadow-sm" data-testid="ar-ready-list">
+                    {savedReplies.length === 0 ? <p className="px-3 py-2 text-sm text-muted-foreground">{t("noReady")}</p> : savedReplies.map((reply) => {
+                      const hasAgent = AGENT_TOKEN.test(reply.body)
+                      return (
+                        <button
+                          key={reply.id}
+                          type="button"
+                          disabled={hasAgent}
+                          onClick={() => { setForm((f) => ({ ...f, reply: reply.body })); setEditorKey((key) => key + 1); setPickerOpen(false) }}
+                          className="block w-full border-t px-3 py-2 text-left first:border-t-0 hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <span className="font-mono text-sm font-semibold text-orange-700 dark:text-orange-300">/{reply.shortcut}</span>{" "}
+                          <span className="text-sm font-medium">{reply.title}</span>
+                          <span className="block truncate text-xs text-muted-foreground">{hasAgent ? t("readyHasAgent") : <ReplyWords body={reply.body} locale={locale} />}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="mb-1.5 text-sm font-semibold">{t("then")}</p>
+                <Choice options={[[false, t("thenNone")], [true, t("thenPerson")]]} value={form.handoff} onChange={(handoff) => setForm((f) => ({ ...f, handoff }))} />
+                {form.handoff && (
+                  <div className="mt-2 flex flex-wrap gap-1.5" data-testid="ar-people">
+                    {people.map((person) => {
+                      const on = form.people.includes(person.id)
+                      return (
+                        <Chip key={person.id} on={on} onClick={() => setForm((f) => ({ ...f, people: on ? f.people.filter((id) => id !== person.id) : [...f.people, person.id] }))}>
+                          {person.name || person.email}
+                        </Chip>
+                      )
+                    })}
+                  </div>
+                )}
+                <p className="mt-1.5 text-xs text-muted-foreground">{form.handoff ? t("thenPersonHelp") : t("thenNoneHelp")}</p>
+              </div>
+              <div>
+                <p className="mb-1.5 text-sm font-semibold">{t("where")}</p>
+                <Choice options={[[false, t("everywhere")], [true, t("some")]]} value={form.someChannels} onChange={(someChannels) => setForm((f) => ({ ...f, someChannels }))} />
+                {form.someChannels && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {SENDABLE.map((channel) => {
+                      const on = form.channels.includes(channel)
+                      return (
+                        <Chip key={channel} on={on} onClick={() => setForm((f) => ({ ...f, channels: on ? f.channels.filter((c) => c !== channel) : [...f.channels, channel] }))}>
+                          {channelLabel(channel)}
+                        </Chip>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* The sample sits at the top and stays in view while the fields scroll by. */}
+            <div className="flex flex-col self-start rounded-2xl bg-[#efeae2] p-5 lg:sticky lg:top-0 dark:bg-muted/40">
+              <p className="text-sm font-semibold">{t("pvTitle")}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{t("pvHelp")}</p>
+              <div className="mt-4 flex flex-col gap-1.5" data-testid="ar-preview">
+                <div className="max-w-[85%] self-start rounded-xl bg-white px-3 py-2 text-sm shadow-sm dark:bg-card">
+                  {form.when === "contains" ? (form.words[0] || wordDraft.trim() ? t("pvWords", { w: form.words[0] ?? wordDraft.trim() }) : t("pvNoWords"))
+                    : form.when === "first_message" ? t("pvFirst") : legacy ? (form.text || t("pvNoWords")) : t("pvAny")}
+                </div>
+                <div className="max-w-[92%] self-end whitespace-pre-wrap rounded-xl bg-[#dcf8c6] px-3 py-2 text-sm text-neutral-900 shadow-sm">
+                  {previewReply.trim() || t("pvEmpty")}
+                </div>
+                <span className="mt-1 self-center rounded-md bg-white/70 px-2.5 py-1 text-xs text-muted-foreground dark:bg-card/70">
+                  {form.handoff ? t("testHanded", { who: form.people.map(personName).join(", ") || "…" }) : t("pvAfter")}
+                </span>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+        <DialogFooter className="flex-col items-stretch sm:flex-row sm:items-center">
+          <span data-testid="ar-state" className={cn("text-sm sm:mr-auto", serverError || (problem && (AGENT_TOKEN.test(form.reply) || unknown.length > 0)) ? "text-destructive" : problem ? "text-muted-foreground" : "font-semibold text-emerald-700 dark:text-emerald-400")}>
+            {serverError ?? problem ?? t("ready")}
+          </span>
+          <Button variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button>
+          <Button onClick={() => void save()} disabled={Boolean(problem) || saving} data-testid="ar-save">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("save")}
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
+      <ConfirmDialog
+        open={removing !== null}
+        onOpenChange={(next) => { if (!next) setRemoving(null) }}
+        title={t("removeTitle")}
+        description={t("removeText")}
+        itemName={removing?.name}
+        confirmLabel={t("remove")}
+        confirmVariant="destructive"
+        onConfirm={async () => {
+          const target = removing
+          if (!target) return
+          const response = await fetch(`/api/v1/inbox/chatbot-rules/${target.id}`, { method: "DELETE", headers })
+          if (!response.ok) throw new Error("delete-failed")
+          setRemoving(null)
+          await load()
+        }}
+      />
+
+      {toast && (
+        <div role="status" className={cn("fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-xl px-4 py-2.5 text-sm text-white shadow-lg", toast.error ? "bg-destructive" : "bg-neutral-900")}>
+          {toast.text}
         </div>
       )}
     </div>
+  )
+}
+
+function Note({ children }: { children: ReactNode }) {
+  return <span className="self-center rounded-md bg-white/75 px-2.5 py-1 text-center text-xs text-neutral-700 dark:bg-card/70 dark:text-muted-foreground">{children}</span>
+}
+
+function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      data-crm-color-role="toggle"
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-3 py-1 text-xs transition-colors",
+        on ? "border-orange-400 bg-orange-50 font-semibold text-orange-900 dark:bg-orange-950/40 dark:text-orange-100" : "border-input bg-card text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+function Choice<T extends string | boolean>({ options, value, onChange }: { options: Array<[T, string]>; value: T; onChange: (value: T) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2" role="radiogroup">
+      {options.map(([option, label]) => (
+        <button
+          key={String(option)}
+          type="button"
+          role="radio"
+          aria-checked={value === option}
+          data-crm-color-role="toggle"
+          onClick={() => onChange(option)}
+          className={cn(
+            "rounded-xl border px-3 py-2 text-sm transition-colors",
+            value === option ? "border-orange-400 bg-orange-50 font-semibold text-orange-900 dark:bg-orange-950/40 dark:text-orange-100" : "border-input bg-card hover:bg-muted/50",
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** A reply as the page shows it: the customer's data as an orange word, not a {{token}}. */
+function ReplyWords({ body, locale }: { body: string; locale: ArLocale }) {
+  return (
+    <>
+      {splitReplyText(body).map((piece, index) => piece.kind === "text"
+        ? <span key={index}>{piece.text}</span>
+        : <span key={index} className={VARIABLE_CLASS}>{replyVariableLabel(piece.key, locale)}</span>)}
+    </>
   )
 }

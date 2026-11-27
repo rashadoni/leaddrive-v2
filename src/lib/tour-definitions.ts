@@ -17,13 +17,13 @@ interface TourDef {
 
 export const TOUR_DEFINITIONS: Record<string, TourDef> = {
   // ── Inbox — chatbot auto-reply ──
+  // «Автоответы» (2026-11-27): the switch, the try-it box, the rules, the new-rule button.
   chatbotRules: {
     steps: [
-      { targetId: "cb-master", titleKey: "masterTitle", descKey: "masterDesc" },
-      { targetId: "cb-form", titleKey: "formTitle", descKey: "formDesc" },
-      { targetId: "cb-trigger", titleKey: "triggerTitle", descKey: "triggerDesc" },
-      { targetId: "cb-channels", titleKey: "channelsTitle", descKey: "channelsDesc" },
-      { targetId: "cb-rules", titleKey: "rulesTitle", descKey: "rulesDesc" },
+      { targetId: "ar-status", titleKey: "statusTitle", descKey: "statusDesc" },
+      { targetId: "ar-tester", titleKey: "testerTitle", descKey: "testerDesc" },
+      { targetId: "ar-rules", titleKey: "rulesTitle", descKey: "rulesDesc" },
+      { targetId: "ar-new", titleKey: "newTitle", descKey: "newDesc" },
     ],
   },
 

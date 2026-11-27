@@ -312,7 +312,6 @@ export const navItems: NavItem[] = [
   { module: "omnichannel", href: "/settings/snippets", icon: Hash, tKey: "snippets", group: "Communication" },
   { module: "omnichannel", href: "/inbox/analytics", icon: BarChart3, tKey: "inboxAnalyticsNav", group: "Communication" },
   { module: "omnichannel", href: "/inbox/chatbot-rules", icon: Bot, tKey: "chatbotRulesNav", group: "Communication" },
-  { module: "omnichannel", href: "/inbox/automation", icon: Workflow, tKey: "inboxAutomationNav", group: "Communication" },
   { module: "omnichannel", href: "/inbox/business-hours", icon: Clock, tKey: "businessHoursNav", group: "Communication" },
   { module: "omnichannel", href: "/inbox/voip", icon: Phone, tKey: "voipCalls", group: "Communication", addon: "voip" },
   // ── Social Monitoring («Sosial monitorinq») ────────────────────────────────

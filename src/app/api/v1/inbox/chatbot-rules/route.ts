@@ -5,6 +5,7 @@ import { withInboxSessionWrite } from "@/lib/inbox/route-auth"
 import {
   isChatbotTriggerType, isChatbotStatus, isChatbotChannel, triggerNeedsValue,
 } from "@/lib/chatbot-engine"
+import { autoReplyTextProblem, readHandoffUserIds } from "@/lib/inbox/autoreply-rule-input"
 
 /**
  * Phase 7 slice-1 — inbound auto-reply rule management (store + CRUD only; the
@@ -30,6 +31,8 @@ export const POST = withInboxSessionWrite(async (req, { orgId, userId }) => {
 
   const responseText = typeof body.responseText === "string" ? body.responseText.trim() : ""
   if (!responseText) return NextResponse.json({ error: "responseText is required" }, { status: 400 })
+  const textProblem = autoReplyTextProblem(responseText)
+  if (textProblem) return NextResponse.json({ error: textProblem }, { status: 400 })
 
   const triggerType = body.triggerType ?? "contains"
   if (!isChatbotTriggerType(triggerType)) {
@@ -59,6 +62,9 @@ export const POST = withInboxSessionWrite(async (req, { orgId, userId }) => {
   }
   const priority = Number.isInteger(body.priority) ? body.priority : 0
 
+  const handoff = body.handoffUserIds === undefined ? { ids: [] as string[] } : await readHandoffUserIds(orgId, body.handoffUserIds)
+  if ("error" in handoff) return NextResponse.json({ error: handoff.error }, { status: 400 })
+
   const rule = await prisma.chatbotRule.create({
     data: {
       organizationId: orgId,
@@ -70,6 +76,7 @@ export const POST = withInboxSessionWrite(async (req, { orgId, userId }) => {
       triggerValue: triggerNeedsValue(triggerType) ? triggerValue : null,
       responseText,
       priority,
+      handoffUserIds: handoff.ids,
       createdBy: userId,
     },
   })
