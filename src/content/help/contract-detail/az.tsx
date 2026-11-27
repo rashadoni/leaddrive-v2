@@ -209,6 +209,13 @@ export default function ContractDetailHelpAz() {
             düzəldin və yenidən razılaşmaya göndərin — əvvəlki raund tarixçədə qalır.
           </p>
         </HelpStep>
+        <HelpStep n={4}>
+          <p>
+            <strong>Nə olmaz</strong>: imzalanmış müqaviləni silmək (yalnız xitam vermək və ya ləğv etmək); təsdiqlənmiş
+            müqavilənin məbləğini, müddətini və ya mətnini səssizcə dəyişmək — o, qaralamaya və razılaşmaya qayıdır;
+            administrator olmadan imzalanmışın şərtlərini dəyişmək; eyni nömrəli iki müqavilə.
+          </p>
+        </HelpStep>
       </HelpSection>
       <HelpSection title="Müqavilə üzrə pul">
         <HelpStep n={1}>

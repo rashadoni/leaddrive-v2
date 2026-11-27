@@ -39,6 +39,7 @@ import {
   timestampFieldFor,
 } from "@/lib/cpq/state-machine"
 import { buildSpawnedContractData } from "@/lib/cpq/spawn-contract"
+import { freeContractNumber } from "@/lib/clm/contract-safety"
 import { organizationLocale } from "@/lib/ticketing/customer-locale"
 import {
   encryptForTenantBoundOrNull,
@@ -383,8 +384,9 @@ export const PATCH = withRlsAuth("offers", "write", async (req, { orgId, userId 
           dealCompanyId: dealForContract?.companyId ?? null,
           createdByUserId: userId ?? null,
         })
+        // One number, one contract, in an organization (src/lib/clm/contract-safety.ts).
         const created = await tx.contract.create({
-          data: contractData,
+          data: { ...contractData, contractNumber: await freeContractNumber(tx, orgId, contractData.contractNumber) },
           select: { id: true, contractNumber: true },
         })
         spawnedContract = created

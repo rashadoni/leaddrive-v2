@@ -139,6 +139,7 @@ export const POST = withRlsAuth("contracts", "write", async (req: NextRequest, a
         organizationId: orgId,
         userId,
         contractNumber,
+        numberGenerated: parsed.data.contractNumber === undefined,
         title,
         type: contractType,
         templateId: template.id,
@@ -193,7 +194,7 @@ export const POST = withRlsAuth("contracts", "write", async (req: NextRequest, a
         return NextResponse.json({ error: "Referenced record not found" }, { status: 404 })
       }
       if (e.code === "P2002") {
-        return NextResponse.json({ error: "Contract number already exists" }, { status: 409 })
+        return NextResponse.json({ error: "Contract number already exists", code: "CONTRACT_NUMBER_TAKEN" }, { status: 409 })
       }
     }
     console.error("[contract-templates/:id/generate POST]", e)

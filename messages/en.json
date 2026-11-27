@@ -3372,6 +3372,15 @@
     "paperSignedLineNoName": "Signed on paper {date}",
     "paperSignOpenScan": "Open scan",
     "paperSignScanLocked": "The scan of the signed contract can't be deleted: it's the proof the contract is in force.",
+    "safety": {
+      "deleteLocked": "A signed contract isn't deleted: its signature and the signing log would go with it. Terminate or cancel it instead.",
+      "reapprovalWarning": "The amount, currency or dates changed. The contract will go back to draft and through approval again.",
+      "reapprovalSave": "Save and return to draft",
+      "signedLocked": "The amount, currency and dates of a signed contract are changed by an administrator or through an amendment.",
+      "numberTaken": "Number {number} already belongs to another contract.",
+      "saveFailed": "Couldn't save. Try again.",
+      "returnedToDraft": "The contract went back to draft — send it for approval again."
+    },
     "closing": {
       "terminateMenu": "Terminate contract",
       "terminateTitle": "Terminate the contract",
@@ -3487,6 +3496,9 @@
     "openEditor": "Open editor",
     "unresolvedVarsBlock": "Fill the remaining variables before sending for approval: {vars}",
     "editor": {
+      "reapprovalLocked": "The contract is «{status}». Editing its text sends it back to draft and through approval again.",
+      "reapprovalUnlock": "Edit the text — back to draft",
+      "returnedToDraft": "The text changed: the contract went back to draft — send it for approval again.",
       "toolbarLabel": "Formatting",
       "done": "Done",
       "saving": "Saving…",

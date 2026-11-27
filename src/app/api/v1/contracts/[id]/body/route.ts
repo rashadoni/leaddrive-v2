@@ -25,6 +25,7 @@ import { withRlsAuth } from "@/lib/with-rls"
 import { sanitizeContractBody } from "@/lib/sanitize"
 import { serializeContractBody } from "@/lib/clm/serialize-body"
 import { mintBodyVersion, BodyVersionConflict, EDITABLE_STATUSES } from "@/lib/clm/mint-body-version"
+import { needsReapproval } from "@/lib/clm/contract-safety-rules"
 import { countInFlightEnvelopes } from "@/lib/clm/envelope-guards"
 
 const bodySchema = z.object({
@@ -66,11 +67,11 @@ export const PUT = withRlsAuth("contracts", "write", async (req, auth, { params 
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   }
 
-  let contract: { id: string; status: string; renderedBody: string | null; bodyHtml: string | null } | null
+  let contract: { id: string; status: string; signedAt: Date | null; renderedBody: string | null; bodyHtml: string | null } | null
   try {
     contract = await prisma.contract.findFirst({
       where: { id: contractId, organizationId: orgId },
-      select: { id: true, status: true, renderedBody: true, bodyHtml: true },
+      select: { id: true, status: true, signedAt: true, renderedBody: true, bodyHtml: true },
     })
   } catch (e) {
     console.error("[contracts/:id/body PUT] load", e)
@@ -143,17 +144,18 @@ export const PUT = withRlsAuth("contracts", "write", async (req, auth, { params 
   // Same code path as the .docx import route — one source of truth for the
   // contentHash = sha256(renderedBody) binding (mirrors amend's mint).
   try {
-    const { versionNo, contentHash } = await mintBodyVersion({
+    const { versionNo, contentHash, returnedToDraft } = await mintBodyVersion({
       orgId,
       contractId,
       cleanHtml,
       source: "editor",
       createdBy: userId ?? "unknown",
       editableStatuses: EDITABLE_STATUSES,
+      reapproveOnChange: needsReapproval(contract),
     })
     return NextResponse.json({
       success: true,
-      data: { versionMinted: true, versionNo, contentHash },
+      data: { versionMinted: true, versionNo, contentHash, returnedToDraft },
     })
   } catch (e) {
     if (e instanceof BodyVersionConflict) {

@@ -206,6 +206,13 @@ export default function ContractDetailHelpEn() {
             and send it for approval again — the previous round stays in the history.
           </p>
         </HelpStep>
+        <HelpStep n={4}>
+          <p>
+            <strong>What isn't allowed</strong>: deleting a signed contract (terminate or cancel it); quietly changing
+            the amount, dates or text of an approved one — it goes back to draft and approval; changing a signed
+            contract's terms unless you're an administrator; two contracts with one number.
+          </p>
+        </HelpStep>
       </HelpSection>
       <HelpSection title="Money on the contract">
         <HelpStep n={1}>

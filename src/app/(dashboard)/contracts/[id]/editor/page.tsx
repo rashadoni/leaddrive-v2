@@ -120,7 +120,9 @@ export default function ContractEditorPage() {
   const [pendingImport, setPendingImport] = useState<File | null>(null) // confirm dialog
   const [leaveTo, setLeaveTo] = useState<string | null>(null) // exit-despite-failed-save dialog
   // null = editable; otherwise why the canvas is locked
-  const [readOnly, setReadOnly] = useState<null | "terminal" | "envelope">(null)
+  // "reapproval": the text of a contract in approval or approved — editing it sends the contract
+  // back to draft and approval (src/lib/clm/contract-safety.ts), so it opens only on «Изменить текст».
+  const [readOnly, setReadOnly] = useState<null | "terminal" | "envelope" | "reapproval">(null)
   // Phase 2 link dialog (toolbar Popover): URL input state
   const [linkOpen, setLinkOpen] = useState(false)
   const [imgUploading, setImgUploading] = useState(false) // Phase 3 image upload in flight
@@ -163,6 +165,11 @@ export default function ContractEditorPage() {
         if (res.ok) {
           dirtyRef.current = false
           setSaveState("saved")
+          const saved = await res.json().catch(() => ({}))
+          if (saved?.data?.returnedToDraft) {
+            setMeta((m) => (m ? { ...m, status: "draft" } : m))
+            toast.info(t("returnedToDraft"), { id: "contract-returned-to-draft" })
+          }
           return true
         }
         const j = await res.json().catch(() => ({}))
@@ -269,6 +276,7 @@ export default function ContractEditorPage() {
           // Truthful idle state: the canvas now equals the server's body.
           setSaveState("saved")
           if (!EDITABLE_STATUSES.includes(j.data.status)) setReadOnly("terminal")
+          else if (j.data.status === "pending_approval" || j.data.status === "approved") setReadOnly("reapproval")
         } else {
           toast.error(j.error ?? t("loadFailed"))
         }
@@ -589,9 +597,20 @@ export default function ContractEditorPage() {
 
       {/* ── Read-only banner ── */}
       {readOnly && meta && (
-        <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 shrink-0" data-testid="editor-readonly-banner">
           <Lock className="h-3.5 w-3.5 shrink-0" />
-          {readOnly === "terminal" ? t("readOnlyTerminal", { status: statusLabel(meta.status) }) : t("readOnlyEnvelope")}
+          <span className="min-w-0 flex-1">
+            {readOnly === "terminal"
+              ? t("readOnlyTerminal", { status: statusLabel(meta.status) })
+              : readOnly === "reapproval"
+                ? t("reapprovalLocked", { status: statusLabel(meta.status) })
+                : t("readOnlyEnvelope")}
+          </span>
+          {readOnly === "reapproval" && (
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setReadOnly(null)} data-testid="editor-reapproval-unlock">
+              {t("reapprovalUnlock")}
+            </Button>
+          )}
         </div>
       )}
 

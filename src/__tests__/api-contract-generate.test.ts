@@ -142,6 +142,8 @@ describe("POST /api/v1/contract-templates/[id]/generate", () => {
       const mockTx = {
         contract: {
           create: vi.fn().mockResolvedValue(createdContract),
+          // a made-up number is checked for being free (src/lib/clm/contract-safety.ts)
+          findMany: vi.fn().mockResolvedValue([]),
         },
         contractVersion: {
           create: vi.fn().mockResolvedValue({ id: "cv-1" }),
@@ -171,6 +173,7 @@ describe("POST /api/v1/contract-templates/[id]/generate", () => {
     const captureCreate = { contractArgs: null as any, versionArgs: null as any }
     await txCb({
       contract: {
+        findMany: vi.fn().mockResolvedValue([]),
         create: vi.fn().mockImplementation((args: any) => {
           captureCreate.contractArgs = args
           return createdContract
@@ -220,6 +223,7 @@ describe("POST /api/v1/contract-templates/[id]/generate", () => {
     mockTransaction().mockImplementation(async (cb: any) => {
       const mockTx = {
         contract: {
+          findMany: vi.fn().mockResolvedValue([]),
           create: vi.fn().mockImplementation((args: any) => {
             capturedContractData = args.data
             return { id: "ctr-2", status: "draft", company: null, deal: null, contact: null }
@@ -391,7 +395,7 @@ describe("POST /api/v1/contract-templates/[id]/generate", () => {
 
     mockTransaction().mockImplementation(async (cb: any) => {
       const mockTx = {
-        contract: { create: vi.fn().mockResolvedValue({ id: "ctr-fk", status: "draft", company: null, deal: null, contact: null }) },
+        contract: { findMany: vi.fn().mockResolvedValue([]), create: vi.fn().mockResolvedValue({ id: "ctr-fk", status: "draft", company: null, deal: null, contact: null }) },
         contractVersion: { create: vi.fn().mockResolvedValue({ id: "cv-fk" }) },
       }
       await cb(mockTx)

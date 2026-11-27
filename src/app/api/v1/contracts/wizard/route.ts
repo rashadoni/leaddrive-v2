@@ -26,6 +26,7 @@ import { companyWithVoen } from "@/lib/companies/voen-duplicate"
 import { BANK_FIELDS, bankRequisitesSchema, emptyBank, readBank } from "@/lib/companies/bank-requisites"
 import type { TemplateClause, TemplateVariable } from "@/lib/contract-lifecycle/types"
 import { createContractDraft, generateContractNumber } from "@/lib/clm/create-contract-draft"
+import { isContractNumberTaken } from "@/lib/clm/contract-safety"
 import {
   companyChanges,
   counterpartyParty,
@@ -283,6 +284,7 @@ export const POST = withRlsAuth("contracts", "write", async (req, { orgId, userI
         organizationId: orgId,
         userId,
         contractNumber: generateContractNumber(),
+        numberGenerated: true,
         title,
         type: template?.defaultContractType ?? "other",
         templateId: template?.id ?? null,
@@ -325,6 +327,9 @@ export const POST = withRlsAuth("contracts", "write", async (req, { orgId, userI
       { status: 201 },
     )
   } catch (e) {
+    if (isContractNumberTaken(e)) {
+      return NextResponse.json({ error: "CONTRACT_NUMBER_TAKEN", code: "CONTRACT_NUMBER_TAKEN" }, { status: 409 })
+    }
     console.error("[contracts/wizard POST]", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }

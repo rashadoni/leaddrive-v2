@@ -689,6 +689,16 @@ jobs:
           CONTRACT_MONEY_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           CONTRACT_MONEY_DB_GATE: required
 
+      - name: Contract safety database gate
+        # «Опасные места»: a signed contract is not deleted; approved terms or
+        # text change only back through approval; a signed contract's terms
+        # only by an administrator; one number, one contract — real routes on
+        # a real Postgres under the tenant policy.
+        run: npx vitest run src/__tests__/contract-safety-postgres.test.ts
+        env:
+          CONTRACT_SAFETY_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          CONTRACT_SAFETY_DB_GATE: required
+
       - name: Procurement database gate
         # Purchasing for a customer order (docs/sales-procurement/README.md):
         # the module and the role decide who reads and adds suppliers, nothing

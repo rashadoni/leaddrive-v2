@@ -3372,6 +3372,15 @@
     "paperSignedLineNoName": "Kağızda imzalanıb {date}",
     "paperSignOpenScan": "Skanı aç",
     "paperSignScanLocked": "İmzalanmış müqavilənin skanını silmək olmaz: bu, müqavilənin qüvvədə olduğunun sübutudur.",
+    "safety": {
+      "deleteLocked": "İmzalanmış müqavilə silinmir — onunla birlikdə imza və onun jurnalı itərdi. Ona xitam verin və ya ləğv edin.",
+      "reapprovalWarning": "Məbləğ, valyuta və ya müddətlər dəyişib. Müqavilə qaralamaya qayıdacaq və yenidən razılaşmaya gedəcək.",
+      "reapprovalSave": "Yadda saxla və qaralamaya qaytar",
+      "signedLocked": "İmzalanmış müqavilənin məbləğini, valyutasını və müddətlərini administrator və ya düzəliş dəyişir.",
+      "numberTaken": "{number} nömrəsi artıq başqa müqavilədədir.",
+      "saveFailed": "Yadda saxlamaq alınmadı. Yenidən cəhd edin.",
+      "returnedToDraft": "Müqavilə qaralamaya qayıtdı — onu yenidən razılaşmaya göndərin."
+    },
     "closing": {
       "terminateMenu": "Müqaviləyə xitam ver",
       "terminateTitle": "Müqaviləyə xitam vermək",
@@ -3487,6 +3496,9 @@
     "openEditor": "Redaktoru aç",
     "unresolvedVarsBlock": "Təsdiqə göndərməzdən əvvəl qalan dəyişənləri doldurun: {vars}",
     "editor": {
+      "reapprovalLocked": "Müqavilə «{status}». Mətnin düzəlişi onu qaralamaya və yenidən razılaşmaya qaytaracaq.",
+      "reapprovalUnlock": "Mətni düzəlt — müqavilə qaralamaya qayıdacaq",
+      "returnedToDraft": "Mətn dəyişib — müqavilə qaralamaya qayıtdı, onu yenidən razılaşmaya göndərin.",
       "toolbarLabel": "Formatlama",
       "done": "Hazır",
       "saving": "Saxlanılır…",

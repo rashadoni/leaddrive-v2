@@ -9,8 +9,10 @@ import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
 import { useTranslations } from "next-intl"
+import { Lock } from "lucide-react"
 import { CURRENCY_SYMBOLS } from "@/lib/constants"
 import { useCurrencyField } from "@/lib/use-org-default-currency"
+import { isSignedContract } from "@/lib/clm/contract-safety-rules"
 
 interface ContractFormData {
   contractNumber: string
@@ -49,11 +51,13 @@ interface ContractFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSaved: () => void
-  initialData?: Partial<ContractFormData> & { id?: string }
+  initialData?: Partial<ContractFormData> & { id?: string; signedAt?: string | null }
   orgId?: string
+  /** Administrators change the amount, currency and dates of a signed contract (contract-safety.ts). */
+  isAdmin?: boolean
 }
 
-export function ContractForm({ open, onOpenChange, onSaved, initialData, orgId }: ContractFormProps) {
+export function ContractForm({ open, onOpenChange, onSaved, initialData, orgId, isAdmin = false }: ContractFormProps) {
   const t = useTranslations("forms")
   const tc = useTranslations("common")
   const tct = useTranslations("contracts")
@@ -76,6 +80,7 @@ export function ContractForm({ open, onOpenChange, onSaved, initialData, orgId }
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [reapproval, setReapproval] = useState(false)
   const [companies, setCompanies] = useState<Company[]>([])
   const [deals, setDeals] = useState<DealOption[]>([])
   const [contacts, setContacts] = useState<ContactOption[]>([])
@@ -129,11 +134,16 @@ export function ContractForm({ open, onOpenChange, onSaved, initialData, orgId }
       })
       resetCurrency(initialData?.currency)
       setError("")
+      setReapproval(false)
     }
   }, [open, initialData, resetCurrency])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // «Опасные места»: a signed contract's terms change only by an administrator; the terms of one
+  // in approval or approved send it back to draft — the server says so first (REAPPROVAL_REQUIRED).
+  const termsLocked = Boolean(isEdit && initialData && !isAdmin && isSignedContract({ status: initialData.status || "draft", signedAt: initialData.signedAt ?? null }))
+
+  const handleSubmit = async (e: React.FormEvent | null, confirmReapproval = false) => {
+    e?.preventDefault()
     setSaving(true)
     setError("")
 
@@ -152,6 +162,7 @@ export function ContractForm({ open, onOpenChange, onSaved, initialData, orgId }
         currency,
         notes: form.notes,
         ...(isEdit ? {} : { status: "draft" }),
+        ...(confirmReapproval ? { confirmReapproval: true } : {}),
       }
       const res = await fetch(url, {
         method: isEdit ? "PUT" : "POST",
@@ -162,7 +173,13 @@ export function ContractForm({ open, onOpenChange, onSaved, initialData, orgId }
         body: JSON.stringify(payload),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || "Failed to save")
+      if (!res.ok) {
+        if (json.code === "REAPPROVAL_REQUIRED") { setReapproval(true); return }
+        if (json.code === "CONTRACT_NUMBER_TAKEN") throw new Error(tct("safety.numberTaken", { number: form.contractNumber }))
+        if (json.code === "SIGNED_EDIT_ADMIN_ONLY") throw new Error(tct("safety.signedLocked"))
+        throw new Error(tct("safety.saveFailed"))
+      }
+      setReapproval(false)
       onSaved()
       onOpenChange(false)
     } catch (err: any) {
@@ -181,7 +198,15 @@ export function ContractForm({ open, onOpenChange, onSaved, initialData, orgId }
       </DialogHeader>
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <DialogContent>
-          {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
+          {error && <div role="alert" className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
+          {reapproval && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200" data-testid="contract-reapproval-warning">
+              <span className="min-w-0 flex-1">{tct("safety.reapprovalWarning")}</span>
+              <Button type="button" size="sm" variant="outline" disabled={saving} onClick={() => handleSubmit(null, true)} data-testid="contract-reapproval-confirm">
+                {tct("safety.reapprovalSave")}
+              </Button>
+            </div>
+          )}
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -251,27 +276,30 @@ export function ContractForm({ open, onOpenChange, onSaved, initialData, orgId }
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="startDate">{tc("startDate")}</Label>
-                <Input id="startDate" type="date" value={form.startDate} onChange={(e) => update("startDate", e.target.value)} />
+                <Input id="startDate" type="date" value={form.startDate} disabled={termsLocked} onChange={(e) => update("startDate", e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="endDate">{tc("endDate")}</Label>
-                <Input id="endDate" type="date" value={form.endDate} onChange={(e) => update("endDate", e.target.value)} />
+                <Input id="endDate" type="date" value={form.endDate} disabled={termsLocked} onChange={(e) => update("endDate", e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="valueAmount">{tc("amount")}</Label>
-                <Input id="valueAmount" type="number" step="0.01" value={form.valueAmount} onChange={(e) => update("valueAmount", e.target.value)} />
+                <Input id="valueAmount" type="number" step="0.01" value={form.valueAmount} disabled={termsLocked} onChange={(e) => update("valueAmount", e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="currency">{tc("currency")}</Label>
-                <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                <Select value={currency} disabled={termsLocked} onChange={(e) => setCurrency(e.target.value)}>
                   {Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => (
                     <option key={code} value={code}>{code} ({sym})</option>
                   ))}
                 </Select>
               </div>
             </div>
+            {termsLocked && (
+              <p className="-mt-2 flex items-center gap-1 text-xs text-muted-foreground" data-testid="contract-terms-locked"><Lock className="h-3 w-3 shrink-0" /> {tct("safety.signedLocked")}</p>
+            )}
             <div>
               <Label htmlFor="notes">{tc("notes")}</Label>
               <Textarea id="notes" value={form.notes} onChange={(e) => update("notes", e.target.value)} rows={3} />
