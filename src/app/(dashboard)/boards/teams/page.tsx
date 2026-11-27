@@ -54,16 +54,16 @@ export default function TeamsAndUsersPage() {
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
-  // «Tapşırığı verən» on every new task (lib/tasks/default-reporter.ts): "" = nobody.
-  const [defaultReporter, setDefaultReporter] = useState("")
+  // Who follows every task on the boards (lib/tasks/task-watcher.ts): "" = nobody.
+  const [watcher, setWatcher] = useState("")
 
   const load = useCallback(async () => {
     const [teamsRes, usersRes, reporterRes] = await Promise.all([
       fetch("/api/v1/tasks/teams", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch("/api/v1/users", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/v1/tasks/default-reporter", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/v1/tasks/watcher", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ])
-    setDefaultReporter(reporterRes?.data?.reporter?.id ?? "")
+    setWatcher(reporterRes?.data?.watcher?.id ?? "")
     if (!teamsRes) { setError("load"); setTeams([]); return }
     setTeams(teamsRes.data.teams)
     setCanManage(teamsRes.data.canManage === true)
@@ -115,9 +115,9 @@ export default function TeamsAndUsersPage() {
     const teamId = membership.get(userId)?.teamId
     if (teamId && await send("/api/v1/tasks/teams/members", "PUT", { userId, teamId, role })) await load()
   }
-  const saveDefaultReporter = async (id: string) => {
-    setDefaultReporter(id)
-    if (!(await send("/api/v1/tasks/default-reporter", "PUT", { reporterId: id || null }))) await load()
+  const saveWatcher = async (id: string) => {
+    setWatcher(id)
+    if (!(await send("/api/v1/tasks/watcher", "PUT", { userId: id || null }))) await load()
   }
   const setReports = async (person: Person, open: boolean) => {
     setPeople((list) => list.map((p) => (p.id === person.id ? { ...p, boardReportsHidden: !open } : p)))
@@ -243,18 +243,18 @@ export default function TeamsAndUsersPage() {
             )}
           </div>
         </nav>
-        {/* Nazrin, Zeytun, 2026-11-18: «men default butun tasklarda reporter olum… her defe meni secmesinler»; owner: «у админа на всех задачах». */}
-        <section className={cn("mt-6 border-t pt-4", line)} data-testid="teams-default-reporter">
-          <label htmlFor="teams-default-reporter-select" className="mb-1 block px-3 text-sm font-semibold">{t("defaultReporter")}</label>
-          <p className="mb-2 px-3 text-xs leading-5 text-muted-foreground">{t("defaultReporterHint")}</p>
+        {/* Nazrin, Zeytun, 2026-11-27: «tag olunmasam belə hamısı mənə gələ bilməz? Default?» — she follows every task (task-watcher.ts). */}
+        <section className={cn("mt-6 border-t pt-4", line)} data-testid="teams-task-watcher">
+          <label htmlFor="teams-task-watcher-select" className="mb-1 block px-3 text-sm font-semibold">{t("taskWatcher")}</label>
+          <p className="mb-2 px-3 text-xs leading-5 text-muted-foreground">{t("taskWatcherHint")}</p>
           <div className="relative">
             <select
-              id="teams-default-reporter-select"
-              value={defaultReporter}
-              onChange={(e) => void saveDefaultReporter(e.target.value)}
+              id="teams-task-watcher-select"
+              value={watcher}
+              onChange={(e) => void saveWatcher(e.target.value)}
               className={cn("h-10 w-full cursor-pointer appearance-none truncate rounded-lg border border-input bg-background pl-3 pr-9 text-sm", ring)}
             >
-              <option value="">{t("defaultReporterNone")}</option>
+              <option value="">{t("taskWatcherNone")}</option>
               {active.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
             </select>
             <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />

@@ -33942,9 +33942,9 @@
     }
   },
   "boardTeams": {
-    "defaultReporter": "Bütün yeni tapşırıqlarda tapşırığı verən",
-    "defaultReporterHint": "Hər yeni tapşırıqda avtomatik seçilir, tapşırığı yaradan başqasını seçə bilər. Tapşırığı verənə tapşırıqdakı mesajlar barədə bildiriş gəlir.",
-    "defaultReporterNone": "Heç kim",
+    "taskWatcher": "Bütün tapşırıqları izləyir",
+    "taskWatcherHint": "Lövhələrdəki bütün açıq və yeni tapşırıqların izləyicisi olur: tapşırıq yaradılanda, orada yazılanda və bağlananda bildiriş alır. Hər tapşırığın «Tapşırığı verən»i onu verən şəxs olaraq qalır.",
+    "taskWatcherNone": "Heç kim",
     "title": "Komandalar və istifadəçilər",
     "teams": "Komandalar",
     "allTeams": "Hamısı",

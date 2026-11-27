@@ -20,7 +20,7 @@ import {
   isHierarchyConstraintViolation,
 } from "@/lib/tasks/board-hierarchy"
 import { isValidTaskType, isValidEventType } from "@/lib/tasks/task-types"
-import { resolveDefaultReporter } from "@/lib/tasks/default-reporter"
+import { resolveTaskWatcher } from "@/lib/tasks/task-watcher"
 import { follow } from "@/lib/tasks/task-notify"
 import type { CrmCommandActorContext } from "../actor-context"
 import {
@@ -167,8 +167,7 @@ export async function createTaskCommand(
     }
   }
 
-  // «Tapşırığı verən»: the one picked, or — when the maker picked nothing — the
-  // organization's default (Zeytun: Nazrin on every task, 2026-11-19).
+  // «Tapşırığı verən»: whoever the maker picked; nobody picked — none (the card still names its author).
   let reporterId: string | null = null
   if (input.reporterId) {
     const reporter = await db.user.findFirst({
@@ -177,9 +176,9 @@ export async function createTaskCommand(
     })
     if (!reporter) throw validationError("reporterId must be an active member of this organization")
     reporterId = reporter.id
-  } else if (input.reporterId === undefined) {
-    reporterId = (await resolveDefaultReporter(db, orgId))?.id ?? null
   }
+  // The person who follows every board task (task-watcher.ts).
+  const watcher = input.divisionId ? await resolveTaskWatcher(db, orgId) : null
 
   const baseData = {
     organizationId: orgId,
@@ -247,6 +246,7 @@ export async function createTaskCommand(
       // The reporter follows the task from its first minute — the point of
       // being it is hearing what happens there (as a later change of reporter does).
       if (reporterId) await follow(tx, orgId, created.id, [reporterId])
+      if (watcher) await follow(tx, orgId, created.id, [watcher.id])
       return created
     }
 
@@ -307,6 +307,21 @@ export async function createTaskCommand(
         email: Boolean(createdTask.assignedTo) && createdTask.assignedTo !== userId,
       })
     })().catch(() => {})
+    // The person who follows every task hears of a new one — unless she made it or it is hers to do.
+    if (watcher && watcher.id !== userId && watcher.id !== createdTask.assignedTo) {
+      const text = taskNotificationText("created", taskNotificationLocale(watcher.preferredLanguage, actor.locale), createdTask)
+      createNotification({
+        organizationId: orgId,
+        userId: watcher.id,
+        type: urgent ? "warning" : "info",
+        title: text.title,
+        message: text.message,
+        entityType: "task",
+        entityId: createdTask.id,
+        push: true,
+        kind: "task.created",
+      }).catch(() => {})
+    }
   })
 
   return { entity: createdTask }

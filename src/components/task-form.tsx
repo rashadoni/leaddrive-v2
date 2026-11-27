@@ -97,10 +97,8 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
       : "",
   )
   // «Tapşırığı verən» (Nazrin, Zeytun, 2026-11-18: «bu hissede reporter olmalidir»).
-  // undefined = untouched: a new task gets the organization's default
-  // (lib/tasks/default-reporter.ts), an edited one keeps its own. null = nobody.
+  // undefined = untouched: a new task has none, an edited one keeps its own. null = nobody.
   const [reporterId, setReporterId] = useState<string | null | undefined>(undefined)
-  const [defaultReporter, setDefaultReporter] = useState<{ id: string; name: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [blockedTaskId, setBlockedTaskId] = useState<string | null>(null)
@@ -148,12 +146,6 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
       })
       setCollaboratorIds((initialData?.collaborators ?? []).map((c: any) => c?.user?.id ?? c?.id).filter(Boolean))
       setReporterId(undefined)
-      if (!isEdit && !defaultReporter) {
-        fetch("/api/v1/tasks/default-reporter", { headers: orgId ? { "x-organization-id": orgId } : {} as Record<string, string> })
-          .then(r => (r.ok ? r.json() : null))
-          .then(j => { if (j?.data?.reporter) setDefaultReporter(j.data.reporter) })
-          .catch(() => {})
-      }
       // Load users for assignee dropdown
       if (users.length === 0) {
         setUsersLoading(true)
@@ -329,11 +321,11 @@ export function TaskForm({ open, onOpenChange, onSaved, initialData, orgId }: Ta
     }).catch(() => {})
   }
 
-  // What the reporter box shows: a touched choice, else the task's own (edit) or the organization's default (new).
+  // What the reporter box shows: a touched choice, else the task's own (edit) or nobody (new).
   const reporterValue = reporterId !== undefined
     ? (reporterId ?? "")
-    : isEdit ? ((initialData?.reporterId as string | null | undefined) ?? "") : (defaultReporter?.id ?? "")
-  const reporterOptions = defaultReporter && !users.some(user => user.id === defaultReporter.id) ? [...users, defaultReporter] : users
+    : isEdit ? ((initialData?.reporterId as string | null | undefined) ?? "") : ""
+  const reporterOptions = users
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

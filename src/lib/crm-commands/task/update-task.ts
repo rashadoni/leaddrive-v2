@@ -7,6 +7,7 @@ import { applyRecordFilter } from "@/lib/sharing-rules"
 import { executeWorkflows } from "@/lib/workflow-engine"
 import { createNotification } from "@/lib/notifications"
 import { taskNotificationLocale, taskNotificationText } from "@/lib/tasks/task-notification-text"
+import { resolveTaskWatcher } from "@/lib/tasks/task-watcher"
 import { resolveRelated } from "@/lib/resolve-related"
 import { validateRequiredCustomFields } from "@/lib/custom-fields-validation"
 import { recalcProjectCompletion } from "@/lib/project-rollup"
@@ -472,6 +473,25 @@ export async function updateTaskCommand(
         entityType: "task",
         entityId: taskId,
       }).catch(() => {})
+      // The person who follows every board task hears it is finished (task-watcher.ts) — unless she finished it.
+      if (task.divisionId) {
+        void (async () => {
+          const watcher = await resolveTaskWatcher(prisma, orgId)
+          if (!watcher || watcher.id === userId) return
+          const own = taskNotificationText("completed", taskNotificationLocale(watcher.preferredLanguage, actor.locale), task)
+          await createNotification({
+            organizationId: orgId,
+            userId: watcher.id,
+            type: "success",
+            title: own.title,
+            message: own.message,
+            entityType: "task",
+            entityId: taskId,
+            push: true,
+            kind: "task.completed",
+          })
+        })().catch(() => {})
+      }
     }
     // Project rollup. Triggered when:
     //   • status changed (done/undone shifts the percentage), OR
