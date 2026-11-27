@@ -145,6 +145,22 @@ jobs:
         env:
           LEADDRIVE_BUILD_MIN_BUDGET_KIB: '16777216'
       - run: npm ci
+        # Without this, @prisma/client's postinstall runs a complete `prisma
+        # generate` inside `npm ci`, and the client was generated again below
+        # from the same schema: 12–15 min each on GitHub's AWS-hosted runners
+        # (see identity-snapshot-contract.yml).
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: '1'
+      - name: Cache generated Prisma client
+        # The key `static-checks` and deploy.yml use: schema + pinned Prisma.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
       - name: Check role assertions and actual crypto fixture after dependencies
         run: node --test scripts/booking/role-browser-checks.test.mjs
       - name: Create disposable schema and actual Booking constraints
@@ -158,7 +174,6 @@ jobs:
             psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f "prisma/migrations/$migration/migration.sql"
           done
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 --set=app_password="$BOOKING_DB_PASSWORD" -f scripts/ci/fixtures/booking-role-sandbox.sql
-          npx prisma generate
       - name: Keep Next build-worker trace events out of IPC
         run: node scripts/ci/patch-next-build-worker-trace.mjs
       - name: Compile complete isolated production bundle

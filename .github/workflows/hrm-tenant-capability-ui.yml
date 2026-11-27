@@ -140,13 +140,28 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm ci
+        # Without this, @prisma/client's postinstall runs a complete `prisma
+        # generate` inside `npm ci`, and the client was generated again below
+        # from the same schema: 12–15 min each on GitHub's AWS-hosted runners
+        # (see identity-snapshot-contract.yml).
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
+      - name: Cache generated Prisma client
+        # The key `static-checks` and deploy.yml use: schema + pinned Prisma.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
       - name: Create disposable schema and restricted fixture role
         shell: bash
         run: |
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
           DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --skip-generate
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 --set=app_password="$HRM_UI_DATABASE_PASSWORD" -f scripts/ci/fixtures/hrm-tenant-capability-ui.sql
-          npx prisma generate
       - name: Targeted regressions and translations
         env:
           VITEST_MAX_WORKERS: "1"
@@ -220,7 +235,18 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm ci
-      - run: npx prisma generate
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
+      - name: Cache generated Prisma client
+        # HRM_UI_HEAD_SHA's own schema and lockfile name the key.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
       - name: Prepare existing hosted typecheck budget
         run: bash scripts/ci/prepare-hosted-build-runner.sh
         env:

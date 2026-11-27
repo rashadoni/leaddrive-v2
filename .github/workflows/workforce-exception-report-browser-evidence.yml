@@ -174,7 +174,25 @@ jobs:
           cache: npm
 
       - name: Install candidate dependencies
+        # Without this, @prisma/client's postinstall runs a complete `prisma
+        # generate` inside `npm ci`, and the client was generated again from
+        # the same schema: 12–15 min each on GitHub's AWS-hosted runners (see
+        # identity-snapshot-contract.yml).
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: npm ci
+
+      - name: Cache generated Prisma client
+        # The key `static-checks` and deploy.yml use: schema + pinned Prisma.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
 
       - name: Create candidate schema and restricted application role
         shell: bash
@@ -187,7 +205,6 @@ jobs:
             -f scripts/ci/fixtures/workforce-manager-today-browser.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
             -f scripts/ci/fixtures/workforce-exception-report-browser.sql
-          npx prisma generate
 
       - name: Install Chromium on hosted Ubuntu
         run: npx playwright install --with-deps chromium
@@ -357,7 +374,20 @@ jobs:
           cache: npm
 
       - name: Install candidate dependencies
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: npm ci
+
+      - name: Cache generated Prisma client
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
 
       - name: Create candidate schema and restricted application role
         shell: bash
@@ -370,7 +400,6 @@ jobs:
             -f scripts/ci/fixtures/workforce-manager-today-browser.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
             -f scripts/ci/fixtures/workforce-exception-classification-browser.sql
-          npx prisma generate
 
       - name: Install Chromium on hosted Ubuntu
         run: npx playwright install --with-deps chromium
@@ -541,7 +570,20 @@ jobs:
           cache: npm
 
       - name: Install candidate dependencies
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: npm ci
+
+      - name: Cache generated Prisma client
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
 
       - name: Create candidate schema and restricted application role
         shell: bash
@@ -554,7 +596,6 @@ jobs:
             -f scripts/ci/fixtures/workforce-manager-today-browser.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
             -f scripts/ci/fixtures/workforce-employee-exception-browser.sql
-          npx prisma generate
 
       - name: Existing ownership, operation and privacy refusal tests
         run: >-
@@ -673,10 +714,20 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm ci
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
+      - name: Cache generated Prisma client
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
       - name: Validate and generate existing schema clients
         run: |
           npx prisma validate
-          npx prisma generate
           npx prisma generate --schema scripts/ci/fixtures/event-platform-legacy-client/schema.prisma
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/event_platform_test
@@ -731,7 +782,17 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm ci
-      - run: npx prisma generate
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
+      - name: Cache generated Prisma client
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
       - name: Prepare bounded hosted compiler memory
         run: bash scripts/ci/prepare-hosted-build-runner.sh
         env:
@@ -784,7 +845,17 @@ jobs:
           cache: npm
       - run: bash scripts/ci/prepare-hosted-build-runner.sh
       - run: npm ci
-      - run: npx prisma generate
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
+      - name: Cache generated Prisma client
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
       - name: Keep Next build-worker trace events out of IPC
         # Without it the server compiler's result outgrows V8's string limit
         # over the build worker's IPC and the build hangs. See the script.
@@ -919,7 +990,20 @@ jobs:
           cache: npm
 
       - name: Install candidate dependencies
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: npm ci
+
+      - name: Cache generated Prisma client
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
 
       - name: Create candidate schema and restricted application role
         shell: bash
@@ -932,7 +1016,6 @@ jobs:
             -f scripts/ci/fixtures/workforce-manager-today-browser.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
             -f scripts/ci/fixtures/workforce-employee-correction-browser.sql
-          npx prisma generate
 
       - name: Separate target and existing self-request refusal tests
         run: |
@@ -1117,7 +1200,20 @@ jobs:
           cache: npm
 
       - name: Install candidate dependencies
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: npm ci
+
+      - name: Cache generated Prisma client
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
 
       - name: Create candidate schema and restricted application role
         shell: bash
@@ -1130,7 +1226,6 @@ jobs:
             -f scripts/ci/fixtures/workforce-manager-today-browser.sql
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
             -f scripts/ci/fixtures/workforce-employee-correction-browser.sql
-          npx prisma generate
 
       - name: Separate target and existing self-request refusal tests
         run: |

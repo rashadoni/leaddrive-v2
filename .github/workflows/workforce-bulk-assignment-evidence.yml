@@ -111,14 +111,29 @@ jobs:
           } >> "$GITHUB_ENV"
           mkdir -p "$WF_BULK_OUTPUT"
       - name: Install locked dependencies
+        # Without this, @prisma/client's postinstall runs a complete `prisma
+        # generate` inside `npm ci`, and the client was generated again from
+        # the same schema: 12–15 min each on GitHub's AWS-hosted runners (see
+        # identity-snapshot-contract.yml).
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: '1'
         run: npm ci
+      - name: Cache generated Prisma client
+        # The key `static-checks` and deploy.yml use: schema + pinned Prisma.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
       - name: Prepare candidate schema and exact scoped migration guards
         shell: bash
         run: |
           set -euo pipefail
           psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
           DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --skip-generate
-          npx prisma generate
           node scripts/workforce-bulk-fixture.mjs
       - name: Verify PostgreSQL and React behavior
         shell: bash

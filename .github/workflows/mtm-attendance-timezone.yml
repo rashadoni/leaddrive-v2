@@ -54,8 +54,23 @@ jobs:
           echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:$PG_PORT/attendance_timezone_test" >> "$GITHUB_ENV"
           echo "MTM_ATTENDANCE_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:$PG_PORT/attendance_timezone_test" >> "$GITHUB_ENV"
       - run: npm ci --include=dev
+        # Without this, @prisma/client's postinstall runs a complete `prisma
+        # generate` inside `npm ci`, and the client was generated again below
+        # from the same schema: 12–15 min each on GitHub's AWS-hosted runners
+        # (see identity-snapshot-contract.yml).
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
       - run: npx prisma validate --schema prisma/schema.prisma
-      - run: npx prisma generate --schema prisma/schema.prisma
+      - name: Cache generated Prisma client
+        # The key `static-checks` and deploy.yml use: schema + pinned Prisma.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('prisma/schema.prisma', 'package-lock.json') }}
+      - name: Generate Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        run: npx prisma generate --schema prisma/schema.prisma
       - name: Observe the production writer reject non-UTC canonical marks
         run: |
           set -euo pipefail

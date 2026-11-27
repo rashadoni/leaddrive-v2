@@ -125,7 +125,25 @@ jobs:
         run: bash controller/scripts/ci/prepare-hosted-build-runner.sh
       - name: Install exact runtime dependencies
         working-directory: runtime
+        # Without this, @prisma/client's postinstall runs a complete `prisma
+        # generate` inside `npm ci`, and the fixture step generated the client
+        # again from the same schema: 12–15 min each on GitHub's AWS-hosted
+        # runners (see identity-snapshot-contract.yml).
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: npm ci
+      - name: Cache the runtime's generated Prisma client
+        # Its own schema and lockfile name the key, the one `static-checks`
+        # and deploy.yml use.
+        uses: actions/cache@v5
+        id: cache-prisma-client
+        with:
+          path: runtime/node_modules/.prisma/client
+          key: prisma-client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('runtime/prisma/schema.prisma', 'runtime/package-lock.json') }}
+      - name: Generate the runtime's Prisma client
+        if: steps.cache-prisma-client.outputs.cache-hit != 'true'
+        working-directory: runtime
+        run: npx prisma generate --schema prisma/schema.prisma
       - name: Copy measurement tools without changing application sources
         run: |
           mkdir runtime/.support-ux-historical-control
@@ -148,7 +166,6 @@ jobs:
         run: |
           docker exec "${{ job.services.postgres.id }}" psql -U postgres -d support_ux_historical_layout -X -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS vector'
           npx prisma db push --skip-generate
-          npx prisma generate
           node .support-ux-historical-control/support-ux-historical-layout-fixture.mjs
       - name: Install isolated Chromium
         working-directory: runtime
