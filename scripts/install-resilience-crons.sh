@@ -280,14 +280,17 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # ever ran on this host. All three act only inside the organization:
   # - ai-daily-briefing: one AI summary a day by e-mail and in-app notice to
   #   the organization's admins and managers (or its digest subscribers);
-  #   ten people in four organizations. 04:00 UTC is 08:00 in Baku — on the
-  #   old host it went out at 12:00 Baku time.
+  #   ten people in four organizations. The server's clock is Central European
+  #   (the deploy SUMMARY prints 23:45 at 22:45 UTC), not UTC: «0 4» sent it at
+  #   07:01 in Baku on 2026-11-27. 05:00 is 08:00 in Baku in winter and 07:00
+  #   in summer, when that clock moves an hour; on the old host it went out at
+  #   12:00 Baku time.
   # - ai-anomaly-detection: rows in ai_alerts, shown only on «Da Vinci Центр»;
   #   no AI call, the same alert at most once a day. Half-hourly as written.
   # - lead-scoring: re-scores open leads for age and recency (saving a lead
   #   scores it on the spot; this is the sweep for what moves on its own).
   # Minutes chosen so no minute of the day starts more than fifteen jobs.
-  printf '%s\n' "0 4 * * * $TRIGGER /api/cron/ai-daily-briefing >> $LOG 2>&1"
+  printf '%s\n' "0 5 * * * $TRIGGER /api/cron/ai-daily-briefing >> $LOG 2>&1"
   printf '%s\n' "5,35 * * * * $TRIGGER /api/cron/ai-anomaly-detection >> $LOG 2>&1"
   printf '%s\n' "47 */6 * * * $TRIGGER /api/cron/lead-scoring >> $LOG 2>&1"
   # Social Monitoring, trimmed to what produces something (owner, 2026-11-08:

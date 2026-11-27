@@ -31,8 +31,8 @@ const LEAD_SCORING = "/api/cron/lead-scoring"
 const EXPECTED: Record<string, string> = {
   [AUTO_ACTIONS]: "2-59/10 * * * *",
   [RENEWAL]: "35 2 * * *",
-  // 08:00 in Baku.
-  [BRIEFING]: "0 4 * * *",
+  // 08:00 in Baku in winter: the server's clock is Central European, not UTC.
+  [BRIEFING]: "0 5 * * *",
   [ANOMALIES]: "5,35 * * * *",
   [LEAD_SCORING]: "47 */6 * * *",
 }
