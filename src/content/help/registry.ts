@@ -2034,11 +2034,11 @@ export const HELP_REGISTRY: Record<HelpSlug, ArticleEntry> = {
     },
   },
   "message-snippets": {
-    title: { en: "Message Snippets", ru: "Сниппеты сообщений", az: "Mesaj snippetləri" },
+    title: { en: "Saved replies", ru: "Готовые ответы", az: "Hazır cavablar" },
     subtitle: {
-      en: "Create saved inbox replies that agents insert with a /shortcut.",
-      ru: "Создавайте готовые ответы для инбокса, которые агенты вставляют через /ярлык.",
-      az: "Agentlərin inbox-da /qısayol ilə daxil etdiyi hazır cavabları yaradın.",
+      en: "Answers you send often: type / in a conversation and pick one.",
+      ru: "Частые ответы клиентам: наберите / в переписке и выберите нужный.",
+      az: "Tez-tez yazılan cavablar: yazışmada / yazın və lazım olanı seçin.",
     },
     content: {
       en: lazy(() => import("./message-snippets/en")),
