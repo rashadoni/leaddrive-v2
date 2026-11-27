@@ -1296,6 +1296,10 @@ jobs:
           LEADDRIVE_BUILD_MIN_BUDGET_KIB: "16777216"
 
       - name: Install dependencies from lockfile
+        # Mirrors deploy.yml's `build`: the client is generated once, in the
+        # next step, not first by @prisma/client's postinstall as well.
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: |
           npm ci
           npm cache clean --force

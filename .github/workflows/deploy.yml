@@ -344,6 +344,12 @@ jobs:
 
       - name: Install dependencies
         if: steps.cache-deps.outputs.cache-hit != 'true'
+        # A deps-cache miss means a new lockfile, so the Prisma client cache
+        # below misses too: @prisma/client's postinstall would generate the
+        # client here and «Generate Prisma client» again (12–15 min each on
+        # GitHub's AWS-hosted runners). Nothing before that step uses it.
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: npm ci
 
       - name: Support UX read-only readiness diagnostic tests
@@ -1253,6 +1259,12 @@ jobs:
         # Intentionally do not restore node_modules or .next/cache here. A
         # previously interrupted webpack cache grew to 24 GiB on the server;
         # a clean external runner gives this build a deterministic footprint.
+        # The Prisma client is generated once, in the next step: without this
+        # variable @prisma/client's postinstall generated the same client here
+        # first — on every deploy, 12–15 min on GitHub's AWS-hosted runners.
+        # production-build in pr-checks.yml mirrors this job; change both.
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: |
           npm ci
           npm cache clean --force
