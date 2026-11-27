@@ -52,6 +52,18 @@ export interface CreateWhatsAppTemplateInput {
  * first with legacy aliases as fallback for the transition period. Returns
  * null when the tenant has no whatsapp row or the essential creds are
  * missing — callers must treat null as "not configured".
+ *
+ * **Without a named channel the answer is the organization's OLDEST live number** (owner,
+ * 2026-11-27: «Да, делай»). An organization may connect several numbers — a second one just for
+ * bookings, say, picked on «Встречи → WhatsApp ilə yazılış». The lookup used to be an unordered
+ * `findFirst`, so with two numbers every send that names none (reminders, notices, invoices…) went
+ * out from whichever row Postgres returned first: connecting a number for bookings could move the
+ * organization's other messages to it — a sender its customers do not know, often in a WABA where
+ * those templates are not approved. The oldest is the number that has been sending all along; with
+ * one number nothing changes. The id breaks a tie in `createdAt`, so every call answers the same.
+ * A disconnected row is not live and drops out; the oldest one paused by Meta answers null (sends
+ * are held) rather than handing its messages to another number. Phone orders and the demo pick
+ * their sender the same way or by name (pharmacy-orders/manager-notice, demo-center/whatsapp-number).
  */
 export async function resolveWhatsAppConfig(
   organizationId: string,
@@ -59,11 +71,14 @@ export async function resolveWhatsAppConfig(
 ): Promise<WhatsAppConfig | null> {
   if (!organizationId) return null
 
-  const row = await prisma.channelConfig.findFirst({
-    where: opts.channelConfigId
-      ? { id: opts.channelConfigId, organizationId, channelType: "whatsapp", isActive: true }
-      : { organizationId, channelType: "whatsapp", isActive: true },
-  })
+  const row = opts.channelConfigId
+    ? await prisma.channelConfig.findFirst({
+      where: { id: opts.channelConfigId, organizationId, channelType: "whatsapp", isActive: true },
+    })
+    : await prisma.channelConfig.findFirst({
+      where: { organizationId, channelType: "whatsapp", isActive: true },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    })
   if (!row) return null
 
   // Meta has told us this number's Cloud API side is temporarily down — a coexistence client who
