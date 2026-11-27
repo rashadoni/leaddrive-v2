@@ -699,6 +699,17 @@ jobs:
           CONTRACT_SAFETY_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
           CONTRACT_SAFETY_DB_GATE: required
 
+      - name: Contract renewal database gate
+        # «Продление»: «Продлить» makes a linked draft and the old contract is
+        # «Продлевается»; the renewal in force makes it «Продлён» and stops its
+        # reminders; a renewal cancelled or deleted gives it back; the reminder
+        # goes to the contract's author — real routes and the real reminder job
+        # on a real Postgres under the tenant policy.
+        run: npx vitest run src/__tests__/contract-renewal-postgres.test.ts
+        env:
+          CONTRACT_RENEWAL_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          CONTRACT_RENEWAL_DB_GATE: required
+
       - name: Procurement database gate
         # Purchasing for a customer order (docs/sales-procurement/README.md):
         # the module and the role decide who reads and adds suppliers, nothing

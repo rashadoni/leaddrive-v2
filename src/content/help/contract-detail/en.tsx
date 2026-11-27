@@ -214,6 +214,33 @@ export default function ContractDetailHelpEn() {
           </p>
         </HelpStep>
       </HelpSection>
+      <HelpSection title="Step by step: renew the contract">
+        <HelpStep n={1}>
+          <p>
+            90 days before the end, a line «Ends on … — in N days» with <HelpKey>Renew</HelpKey> appears under the header
+            of a contract in force; the same button is in the header of an active or expired contract, and the reminder
+            e-mail has a link that opens this window.
+          </p>
+        </HelpStep>
+        <HelpStep n={2}>
+          <p>
+            Check the dates and amount — they are filled in: the next term of the same length and the same amount. Press{" "}
+            <HelpKey>Create the renewal draft</HelpKey>.
+          </p>
+          <HelpCallout kind="see" label="What you'll see">
+            A draft of the new contract opens, with the same parties, text and terms and the number «old number/year». It
+            is approved and signed as usual. The old contract becomes «Renewing», and when the new one is «Active» —
+            «Renewed», and its reminders stop. Cancel or delete the renewal draft and the old one is «Active» again. An
+            expired contract stays «Expired» after its renewal.
+          </HelpCallout>
+        </HelpStep>
+        <HelpStep n={3}>
+          <p>
+            The renewal reminder goes to the person who made the contract — in the bell and by e-mail. When there is no
+            author, or they no longer work here, to the administrators and managers.
+          </p>
+        </HelpStep>
+      </HelpSection>
       <HelpSection title="Money on the contract">
         <HelpStep n={1}>
           <p>

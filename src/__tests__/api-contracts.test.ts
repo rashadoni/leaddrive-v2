@@ -71,6 +71,8 @@ beforeEach(() => {
       contract: {
         updateMany: vi.mocked(prisma.contract.updateMany),
         update: vi.mocked(prisma.contract.update),
+        deleteMany: vi.mocked(prisma.contract.deleteMany),
+        count: vi.mocked(prisma.contract.count),
       },
     }
     return cb(txPrisma)

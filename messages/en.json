@@ -3372,6 +3372,24 @@
     "paperSignedLineNoName": "Signed on paper {date}",
     "paperSignOpenScan": "Open scan",
     "paperSignScanLocked": "The scan of the signed contract can't be deleted: it's the proof the contract is in force.",
+    "renewal": {
+      "renewalOf": "Renewal of contract",
+      "renewedAs": "Renewed as",
+      "inProgress": "Being renewed →",
+      "endsIn": "Ends on {date} — {days, plural, one {in # day} other {in # days}}",
+      "renew": "Renew",
+      "renewHint": "Makes a draft of the next contract with the same parties, text and terms; it is approved and signed as usual.",
+      "title": "Renew the contract",
+      "note": "A draft of the new contract appears with the same parties, text and terms. It is approved and signed as usual; once it is Active, this contract becomes Renewed.",
+      "submit": "Create the renewal draft",
+      "errors": {
+        "RENEWAL_DATES_INVALID": "Enter the start and end dates; the end can't be before the start.",
+        "RENEWAL_EXISTS": "This contract already has a renewal in progress:",
+        "NOT_RENEWABLE": "Only an active or ended contract is renewed.",
+        "USER_REQUIRED": "Sign in to do this.",
+        "FAILED": "Couldn't create the renewal. Try again."
+      }
+    },
     "safety": {
       "deleteLocked": "A signed contract isn't deleted: its signature and the signing log would go with it. Terminate or cancel it instead.",
       "reapprovalWarning": "The amount, currency or dates changed. The contract will go back to draft and through approval again.",

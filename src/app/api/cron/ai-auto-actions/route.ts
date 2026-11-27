@@ -1502,6 +1502,19 @@ async function executeApprovedShadowActions(now: Date): Promise<number> {
             },
           })
           if (!existingDeal) {
+            // The organization's own first open stage, not a hard-coded "PROPOSAL" its pipeline may
+            // not have (owner 2026-11-26, «Продление»; CLAUDE.md: stage names are never hard-coded).
+            const pipeline = await prisma.pipeline.findFirst({
+              where: { organizationId: action.organizationId, isDefault: true, isActive: true },
+              select: { id: true },
+            })
+            const firstOpenStage = pipeline
+              ? await prisma.pipelineStage.findFirst({
+                  where: { organizationId: action.organizationId, pipelineId: pipeline.id, isActive: true, isWon: false, isLost: false, name: { notIn: closedStages } },
+                  orderBy: { sortOrder: "asc" },
+                  select: { name: true },
+                })
+              : null
             await withDealEvents(prisma, action.organizationId, [], async (tx) => {
               const created = await tx.deal.create({
                 data: {
@@ -1509,7 +1522,8 @@ async function executeApprovedShadowActions(now: Date): Promise<number> {
                   companyId: payload.companyId || null,
                   contactId: payload.contactId || null,
                   name: `Renewal — ${payload.companyName || payload.contractNumber || "contract"}`,
-                  stage: "PROPOSAL",
+                  ...(pipeline ? { pipelineId: pipeline.id } : {}),
+                  stage: firstOpenStage?.name ?? "LEAD",
                   valueAmount: Number(payload.proposedValue) || 0,
                   currency: payload.currency || "USD",
                   probability: 60,

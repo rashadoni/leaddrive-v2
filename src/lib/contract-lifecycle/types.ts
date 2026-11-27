@@ -66,7 +66,8 @@ export const CONTRACT_TRANSITIONS: Readonly<Record<ContractStatus, readonly Cont
   pending_approval: ["approved", "rejected", "cancelled"],
   approved: ["active", "cancelled"],
   active: ["renewing", "expired", "terminated"],
-  renewing: ["renewed", "expired", "terminated"],
+  // «active» again when its renewal draft is cancelled or deleted (src/lib/clm/contract-renewal.ts).
+  renewing: ["active", "renewed", "expired", "terminated"],
   renewed: [],
   expired: [],
   terminated: [],

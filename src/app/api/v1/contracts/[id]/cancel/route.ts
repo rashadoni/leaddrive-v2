@@ -15,6 +15,7 @@ import { prisma, logAudit } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { EnvelopeVoidConflict, voidOpenEnvelopes } from "@/lib/clm/void-open-envelopes"
 import { planCancellation } from "@/lib/clm/contract-closing"
+import { releaseRenewalSource } from "@/lib/clm/contract-renewal"
 
 class Conflict extends Error {}
 
@@ -30,7 +31,7 @@ export const POST = withRlsAuth("contracts", "write", async (req, auth, { params
   const body = await req.json().catch(() => ({})) as { reason?: unknown }
   const contract = await prisma.contract.findFirst({
     where: { id, organizationId: orgId },
-    select: { id: true, title: true, status: true },
+    select: { id: true, title: true, status: true, renewalSourceContractId: true },
   })
   if (!contract) return NextResponse.json({ error: "Not found" }, { status: 404 })
   const plan = planCancellation(contract.status, body.reason)
@@ -53,6 +54,8 @@ export const POST = withRlsAuth("contracts", "write", async (req, auth, { params
         where: { contractId: id, organizationId: orgId, status: "pending" },
         data: { status: "superseded" },
       })
+      // A cancelled renewal gives its source back: «Продлевается» → «Активный» (contract-renewal.ts).
+      const releasedSource = await releaseRenewalSource(tx, { orgId, contractId: id, sourceId: contract.renewalSourceContractId })
       const voidedEnvelopes = await voidOpenEnvelopes(tx, {
         orgId,
         contractId: id,
@@ -65,7 +68,7 @@ export const POST = withRlsAuth("contracts", "write", async (req, auth, { params
       })
       await logAudit(orgId, "update", "contract", id, contract.title, {
         oldValue: { status: { old: contract.status, new: "cancelled" } },
-        newValue: { status: "cancelled", reason: "cancelled", note: plan.note, supersededStages: stages.count, voidedEnvelopes },
+        newValue: { status: "cancelled", reason: "cancelled", note: plan.note, supersededStages: stages.count, voidedEnvelopes, releasedSource },
         userId,
       }, tx)
     })

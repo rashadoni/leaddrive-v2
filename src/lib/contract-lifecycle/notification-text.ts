@@ -18,6 +18,8 @@ import { formatDate } from "@/lib/format-date"
 const TEXT: Record<Locale, {
   renewalTitle: (contract: string) => string
   renewalBody: (days: number, endDate: string) => string
+  /** The link in the renewal e-mail (owner 2026-11-26, «Продление»). */
+  renewalAction: string
   approvalTitle: (contract: string, stage: string) => string
   approvalBody: (stage: string, contract: string, level: number) => string
   approvalAssigneeTitle: (stage: string) => string
@@ -40,6 +42,7 @@ const TEXT: Record<Locale, {
   az: {
     renewalTitle: (contract) => `Müqavilənin müddəti bitir: ${contract}`,
     renewalBody: (days, endDate) => `${endDate} tarixində bitir — ${days} gün qalıb.`,
+    renewalAction: "Yenilə",
     approvalTitle: (contract, stage) => `Təsdiq gecikir: ${contract} — «${stage}» mərhələsi`,
     approvalBody: (stage, contract, level) => `«${contract}» müqaviləsində «${stage}» mərhələsinin təsdiq vaxtı keçib (eskalasiya səviyyəsi ${level}). Qərar verin.`,
     approvalAssigneeTitle: (stage) => `Qərarınız gözlənilir: «${stage}»`,
@@ -62,6 +65,7 @@ const TEXT: Record<Locale, {
   ru: {
     renewalTitle: (contract) => `Срок договора истекает: ${contract}`,
     renewalBody: (days, endDate) => `Заканчивается ${endDate} — осталось ${days} дн.`,
+    renewalAction: "Продлить",
     approvalTitle: (contract, stage) => `Согласование просрочено: ${contract} — этап «${stage}»`,
     approvalBody: (stage, contract, level) => `Этап «${stage}» по договору «${contract}» просрочен (уровень эскалации ${level}). Примите решение.`,
     approvalAssigneeTitle: (stage) => `Ждёт вашего решения: «${stage}»`,
@@ -84,6 +88,7 @@ const TEXT: Record<Locale, {
   en: {
     renewalTitle: (contract) => `Contract ending: ${contract}`,
     renewalBody: (days, endDate) => `Ends on ${endDate} — ${days} days left.`,
+    renewalAction: "Renew",
     approvalTitle: (contract, stage) => `Approval overdue: ${contract} — stage «${stage}»`,
     approvalBody: (stage, contract, level) => `Approval stage «${stage}» on contract «${contract}» is overdue (escalation level ${level}). Please decide.`,
     approvalAssigneeTitle: (stage) => `Your decision is needed: «${stage}»`,
@@ -143,6 +148,18 @@ export function renewalAlertText(locale: Locale, input: { contractNumber: string
   return {
     title: text.renewalTitle(input.contractNumber),
     message: [named, text.renewalBody(input.daysBeforeExpiry, contractDate(input.endDate, locale))].filter(Boolean).join(" — "),
+  }
+}
+
+/**
+ * The renewal reminder as an e-mail: the bell's own words and one link, «Продлить», that opens the
+ * contract's renewal window. Values are escaped — a contract title is a person's text.
+ */
+export function renewalAlertEmail(locale: Locale, alert: { title: string; message: string }, link: string): { subject: string; html: string } {
+  const esc = (value: string) => value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!)
+  return {
+    subject: alert.title,
+    html: `<p>${esc(alert.message)}</p><p><a href="${esc(link)}">${esc(TEXT[locale].renewalAction)}</a></p>`,
   }
 }
 

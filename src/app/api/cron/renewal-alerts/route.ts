@@ -15,7 +15,9 @@ import { prisma } from "@/lib/prisma"
 import { requireCronAuth } from "@/lib/cron-auth"
 import { createNotification } from "@/lib/notifications"
 import { runWithRlsBypass } from "@/lib/rls-context"
-import { contractRecipientLocale, renewalAlertText, renewalAlertType } from "@/lib/contract-lifecycle/notification-text"
+import { contractRecipientLocale, renewalAlertEmail, renewalAlertText, renewalAlertType } from "@/lib/contract-lifecycle/notification-text"
+import { sendEmail } from "@/lib/email"
+import { APP_URL } from "@/lib/domains"
 
 export const dynamic = "force-dynamic"
 
@@ -49,6 +51,7 @@ export async function POST(req: NextRequest) {
             contractNumber: true,
             title: true,
             endDate: true,
+            createdBy: true,
             company: { select: { name: true } },
           },
         },
@@ -67,19 +70,31 @@ export async function POST(req: NextRequest) {
 
     for (const [orgId, alerts] of byOrg) {
       // Notify all admins + managers in this org
-      const recipients: { id: string; preferredLanguage: string | null }[] = await prisma.user.findMany({
+      // Who is told (owner 2026-11-26, «Продление»): the person who made the contract, when that
+      // person still works here; otherwise — and most contracts on prod have no author — the
+      // organization's admins and managers, as before.
+      type Recipient = { id: string; email: string | null; preferredLanguage: string | null }
+      const recipients: Recipient[] = await prisma.user.findMany({
         where: {
           organizationId: orgId,
           role: { in: ["admin", "manager"] },
           isActive: true,
         },
-        select: { id: true, preferredLanguage: true },
+        select: { id: true, email: true, preferredLanguage: true },
       })
+      const authorIds = [...new Set(alerts.map((a: { contract?: { createdBy?: string | null } | null }) => a.contract?.createdBy)
+        .filter((v: string | null | undefined): v is string => Boolean(v)))]
+      const authors: Recipient[] = authorIds.length
+        ? await prisma.user.findMany({
+            where: { organizationId: orgId, id: { in: authorIds }, isActive: true },
+            select: { id: true, email: true, preferredLanguage: true },
+          })
+        : []
       const organization = await prisma.organization.findUnique({ where: { id: orgId }, select: { settings: true } })
 
       // No active admin/manager recipients — skip entire org's alerts,
       // leave them pending so they retry tomorrow (or after user is added).
-      if (recipients.length === 0) {
+      if (recipients.length === 0 && authors.length === 0) {
         console.warn(`[renewal-alerts] org ${orgId} has no active admin/manager users — skipping ${alerts.length} alert(s)`)
         continue
       }
@@ -101,8 +116,11 @@ export async function POST(req: NextRequest) {
           // Send in-app notification to each recipient.
           // createNotification swallows errors and returns null on failure —
           // count only successful deliveries.
+          const author = authors.find((u) => u.id === contract?.createdBy)
+          const told = author ? [author] : recipients
+          if (told.length === 0) continue
           const deliveryResults = await Promise.all(
-            recipients.map((r) =>
+            told.map((r) =>
               createNotification({
                 organizationId: orgId,
                 userId: r.id,
@@ -115,6 +133,17 @@ export async function POST(req: NextRequest) {
             ),
           )
           const delivered = deliveryResults.filter((r) => r !== null).length
+          // And by e-mail, with «Продлить» — the bell is seen only inside the CRM.
+          let emailed = 0
+          for (const r of told) {
+            if (!r.email) continue
+            const locale = contractRecipientLocale(r.preferredLanguage, organization?.settings)
+            const mail = renewalAlertEmail(locale, textFor(r.preferredLanguage), `${APP_URL}/contracts/${alert.contractId}?renew=1`)
+            const sent = await sendEmail({ to: r.email, subject: mail.subject, html: mail.html, organizationId: orgId, transactional: true })
+              .then((r: { success?: boolean } | undefined) => Boolean(r?.success))
+              .catch((err: unknown) => { console.error(`[renewal-alerts] e-mail for alert ${alert.id} failed:`, err); return false })
+            if (sent) emailed++
+          }
 
           // Only mark 'sent' if at least one notification reached the DB.
           // Zero deliveries → leave pending so it retries tomorrow.
@@ -131,7 +160,7 @@ export async function POST(req: NextRequest) {
             where: { id: alert.id },
             data: {
               status: "sent",
-              deliveredVia: "in_app",
+              deliveredVia: emailed > 0 ? "in_app+email" : "in_app",
               deliveredAt: new Date(),
             },
           })

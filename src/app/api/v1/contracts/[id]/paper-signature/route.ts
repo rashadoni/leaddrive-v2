@@ -28,6 +28,7 @@ import { validateUploadBytes } from "@/lib/upload-security"
 import { runtimePublicUploadDirectory } from "@/lib/runtime-paths"
 import { sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 import { EnvelopeVoidConflict, voidOpenEnvelopes } from "@/lib/clm/void-open-envelopes"
+import { completeRenewalSource } from "@/lib/clm/contract-renewal"
 import { upsertRenewalAlerts } from "@/lib/contract-lifecycle/upsert-renewal-alerts"
 import {
   PAPER_SIGNED_BY_PREFIX,
@@ -115,9 +116,12 @@ export const POST = withRlsAuth("contracts", "write", async (req, auth, { params
         userAgent: req.headers.get("user-agent"),
       })
 
+      // A renewal that takes effect: the contract it renews is «Продлён» now (contract-renewal.ts).
+      const renewedSourceId = await completeRenewalSource(tx, { orgId, contractId: id })
+
       await logAudit(orgId, "update", "contract", id, contract.title, {
         oldValue: { status: { old: contract.status, new: "active" } },
-        newValue: { status: "active", reason: "signed_on_paper", signedAt: signedAt.day, fileId: scan.id, voidedEnvelopes },
+        newValue: { status: "active", reason: "signed_on_paper", signedAt: signedAt.day, fileId: scan.id, voidedEnvelopes, renewedSourceId },
         userId,
       }, tx)
       return scan
