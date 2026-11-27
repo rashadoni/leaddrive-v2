@@ -1,7 +1,7 @@
-import { mkdir, readdir, rename, stat, unlink, writeFile } from "node:fs/promises"
+import { mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises"
 import path from "node:path"
 
-import { openTenantFileStream, sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
+import { openTenantFileBytes, openTenantFileStream, sealTenantFile } from "@/lib/crypto/tenant-file-encryption"
 import { ensureTenantDataKeys } from "@/lib/crypto/tenant-data-keys"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
@@ -68,6 +68,19 @@ export async function openStationRecording(orgId: string, callLogId: string) {
   const info = await stat(file).catch(() => null)
   if (!info?.isFile()) return null
   return openTenantFileStream(orgId, file, info.size)
+}
+
+/**
+ * The whole recording, decrypted, for playback that seeks. A browser's audio
+ * player jumps by asking for a byte range; a stream can only start at zero, so
+ * the player could not rewind or skip (owner, 2026-11-27). Recordings are at
+ * most MAX_RECORDING_BYTES, so holding one in memory is fine.
+ */
+export async function readStationRecording(orgId: string, callLogId: string): Promise<Buffer | null> {
+  const file = recordingPath(orgId, callLogId)
+  const stored = await readFile(file).catch(() => null)
+  if (!stored) return null
+  return openTenantFileBytes(orgId, stored)
 }
 
 /**
