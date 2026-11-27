@@ -17,7 +17,13 @@ beforeEach(() => executeRaw.mockClear())
 function captured() {
   const call = executeRaw.mock.calls[0]
   const strings = call[0] as unknown as string[] // TemplateStringsArray
-  return { sql: strings.join(" ? "), values: call.slice(1) }
+  const values = call.slice(1)
+  // A nested Prisma.sql fragment (the features normalisation) is inlined as its SQL text;
+  // a bound parameter shows as "?".
+  const fragment = (value: unknown) =>
+    value && typeof value === "object" && typeof (value as { sql?: unknown }).sql === "string" ? (value as { sql: string }).sql : "?"
+  const sql = strings.map((part, i) => (i < values.length ? part + fragment(values[i]) : part)).join("")
+  return { sql, values }
 }
 
 describe("setOrgFeatureFlag", () => {
