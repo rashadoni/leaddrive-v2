@@ -29146,7 +29146,7 @@
     "sendMetaWindowClosedHours": "{app} cavabı qəbul etmədi: müştəri sonuncu dəfə {hours} saat əvvəl yazıb, {app} isə CRM-dən müştərinin mesajından sonra yalnız 24 saat ərzində cavab verməyə icazə verir. Cavabı {app} tətbiqindən göndərin — mətn sahədə qalıb.",
     "sendMetaWindowClosedDays": "{app} cavabı qəbul etmədi: müştəri sonuncu dəfə {days} gün əvvəl yazıb — bu qədər gec {app} CRM-dən cavaba icazə vermir. Ona {app} tətbiqindən yazın — mətn sahədə qalıb.",
     "sendFailed": "Göndərilmədi: {error}",
-    "attach": "Fayl əlavə et",
+    "attach": "Fayl əlavə et — və ya şəkli Ctrl+V / ⌘V ilə yapışdırın",
     "attachWaTgOnly": "Qoşmalar WhatsApp, Telegram, Instagram və Facebook-da işləyir",
     "uploadFailed": "Faylı yükləmək alınmadı",
     "bulkSelectAria": "Söhbəti seç",

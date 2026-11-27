@@ -94,6 +94,7 @@ import { threadHeaderActionInline, threadHeaderTier, type ThreadHeaderAction } f
 import { inboxListBesideThread, inboxPanelBesideThread, inboxRailFolded } from "@/lib/inbox/inbox-columns"
 import { importChipLabel, WhatsAppImportBanner, WhatsAppImportPanel } from "@/components/inbox/whatsapp-import-screen"
 import { convMatchesAssignee, inboxAssigneeOptions, inboxTransferTargets, type InboxAssigneeHolder, type InboxAssigneeOption } from "@/lib/inbox/assignee-filter"
+import { pastedImage } from "@/lib/inbox/pasted-image"
 import {
   CHANNELS, ChannelIcon, channelColor, channelLabel,
   avatarTint, initials, extractQuickReplies, appendTag, dropTag, convStatusTab, convMatchesView, extractAttachments,
@@ -3997,6 +3998,20 @@ export default function InboxV2Page() {
                       setMentionQuery(composerTab === "note" ? (v.match(/@([^\s@]*)$/)?.[1] ?? null) : null)
                       // E3.1b — "/" snippet typeahead — only in the contact-reply tab; track trailing "/<query>".
                       setSnippetQuery(composerTab !== "note" ? (v.match(/(?:^|\s)\/([^\s/]*)$/)?.[1] ?? null) : null)
+                    }}
+                    onPaste={(e) => {
+                      // A picture on the clipboard (a screenshot, «Copy image») becomes the attachment, as if
+                      // picked with the paperclip; a paste with text in it stays text (pastedImage).
+                      if (composerTab === "note") return
+                      const image = pastedImage(e.clipboardData)
+                      if (!image) return
+                      e.preventDefault()
+                      if (!ATTACH_CHANNELS.has(replyChannel)) {
+                        setSendError(t("attachWaTgOnly"))
+                        return
+                      }
+                      if (uploading) return
+                      void handleAttach(image)
                     }}
                     onKeyDown={(e) => {
                       // Shift+Enter is a new line; so is Enter while an input method is composing a word.

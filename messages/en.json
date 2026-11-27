@@ -29150,7 +29150,7 @@
     "sendMetaWindowClosedHours": "{app} did not accept the reply: the customer last wrote {hours} hours ago, and {app} lets the CRM answer only within 24 hours of the customer's message. Send the reply in the {app} app — your text is still in the box.",
     "sendMetaWindowClosedDays": "{app} did not accept the reply: the customer last wrote {days} days ago — that is too long ago for {app} to take a reply from the CRM. Write to them in the {app} app — your text is still in the box.",
     "sendFailed": "Couldn't send: {error}",
-    "attach": "Attach a file",
+    "attach": "Attach a file — or paste a picture with Ctrl+V / ⌘V",
     "attachWaTgOnly": "Attachments work on WhatsApp, Telegram, Instagram & Facebook",
     "uploadFailed": "Couldn't upload the file",
     "bulkSelectAria": "Select conversation",
