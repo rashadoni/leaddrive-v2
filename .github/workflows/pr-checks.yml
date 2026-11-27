@@ -211,6 +211,12 @@ jobs:
 
       - name: Install dependencies
         if: steps.cache-deps.outputs.cache-hit != 'true'
+        # As deploy.yml's `checks`: a deps-cache miss means a new lockfile, so
+        # the Prisma client cache below misses too, and @prisma/client's
+        # postinstall would generate the client here and again below (12–15
+        # min each on GitHub's AWS-hosted runners).
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: npm ci --include=dev
 
       - name: Support UX read-only readiness diagnostic tests
@@ -1178,6 +1184,10 @@ jobs:
           LEADDRIVE_BUILD_MIN_BUDGET_KIB: "16777216"
 
       - name: Install dependencies from lockfile
+        # Mirrors deploy.yml's `build`: the client is generated once, in the
+        # next step, not first by @prisma/client's postinstall as well.
+        env:
+          PRISMA_SKIP_POSTINSTALL_GENERATE: "1"
         run: |
           npm ci
           npm cache clean --force
