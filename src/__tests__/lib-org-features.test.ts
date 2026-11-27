@@ -27,7 +27,7 @@ describe("setOrgFeatureFlag", () => {
     const { sql, values } = captured()
     expect(sql).toContain("||") // jsonb concat
     expect(sql).toContain("@>") // containment guard → idempotent, no dup
-    expect(sql).not.toContain("features - ") // not the remove branch
+    expect(sql).not.toContain("END) - ") // not the remove branch
     expect(values).toContain("inboxFollowUp")
     expect(values).toContain("org_1")
   })
@@ -36,9 +36,22 @@ describe("setOrgFeatureFlag", () => {
     await setOrgFeatureFlag("org_1", "inboxFollowUp", false)
     expect(executeRaw).toHaveBeenCalledTimes(1)
     const { sql, values } = captured()
-    expect(sql).toContain("features - ") // jsonb array minus a text element
+    expect(sql).toContain("END) - ") // jsonb array (normalized) minus a text element
     expect(sql).not.toContain("||")
     expect(values).toContain("inboxFollowUp")
     expect(values).toContain("org_1")
+  })
+
+  // Zeytun, 2026-11-26: features stored as a jsonb STRING of JSON text; `string || [flag]` wrapped the
+  // whole old list into one element and every module vanished. Each statement must read the column
+  // through the string-to-array normalisation, for add, remove and value-flag replacement alike.
+  it("reads a jsonb-string features column as the array it holds, in every statement", async () => {
+    for (const enabled of [true, false]) {
+      executeRaw.mockClear()
+      await setOrgFeatureFlag("org_1", "ai_semantic_search", enabled)
+      const { sql } = captured()
+      expect(sql).toContain("jsonb_typeof(features) = 'string'")
+      expect(sql).toContain("(features #>> '{}')::jsonb")
+    }
   })
 })
