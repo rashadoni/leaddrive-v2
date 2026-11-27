@@ -215,6 +215,12 @@ jobs:
           if [ "$task_import_columns" = "0" ] && [ -f prisma/migrations/20261127090000_task_external_import/migration.sql ]; then
             psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f prisma/migrations/20261127090000_task_external_import/migration.sql
           fi
+          # «Опасные места» of a contract: one number, one contract in an
+          # organization — a unique index on contracts. The real migration is
+          # idempotent (IF NOT EXISTS); it fails, as it should, on a repeated number.
+          if [ -f prisma/migrations/20270103090000_contract_number_unique/migration.sql ]; then
+            psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f prisma/migrations/20270103090000_contract_number_unique/migration.sql
+          fi
           DATABASE_URL="$ADMIN_DATABASE_URL" npx prisma db push --schema prisma/schema.prisma --skip-generate
           # Auth.js now reads the irreversible identity marker. The restricted
           # role was granted before this table existed in the historical base.
