@@ -429,7 +429,8 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(body).not.toHaveProperty("contextWindow")
     // The two rules the general policies held that the line's own did not.
     expect(body.prompt).toContain("never answer in Turkish")
-    expect(body.prompt).toContain("read back and asked, never guessed")
+    expect(body.prompt).toContain("Never guess what you did not hear clearly — the pharmacy's or a product's name")
+    expect(body.prompt).toContain("never written as 1")
     // The station's own bridge reads the answer as it comes: lean, and its note is the short one.
     const script = `
 import importlib.util, json, sys
