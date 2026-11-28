@@ -127,6 +127,20 @@ function hintNames(catalog: InboundPilotCatalog, learned: LearnedNames | null, l
   }
   return [...names]
 }
+/**
+ * The station recognizer's hints (it takes 400): worked out once per reading of the orders and catalog,
+ * never per call — with 1C's best sellers in the list (2026-11-28) that is up to 2 000 lookups, ~40 ms
+ * a call start would otherwise wait for.
+ */
+const stationHintCache = new WeakMap<LearnedNames, { version: string; names: string[] }>()
+function stationHints(catalog: InboundPilotCatalog, learned: LearnedNames | null): string[] {
+  if (!learned) return []
+  const known = stationHintCache.get(learned)
+  if (known?.version === catalog.version) return known.names
+  const names = hintNames(catalog, learned)
+  stationHintCache.set(learned, { version: catalog.version, names })
+  return names
+}
 /** The second ear's hints (chirp_3 takes 1000): the same names, worked out once per reading of the orders, never per phrase. */
 const chirpHintCache = new WeakMap<LearnedNames, { version: string; names: string[] }>()
 function chirpHints(catalog: InboundPilotCatalog, learned: LearnedNames | null): string[] {
@@ -895,7 +909,7 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
           ...(hearing ? { utterance: true } : {}),
           // The line's rules alone, and a one-line language note per caller turn (2026-11-28; the station's LEAN_LANGUAGE_NOTE).
           ...(line ? { lean: true } : {}),
-          maxSeconds: seconds, expiresAt: config.expiresAt, vocabulary: line ? hintNames(catalog, dependencies.learnedNames?.(config) ?? null) : [] })
+          maxSeconds: seconds, expiresAt: config.expiresAt, vocabulary: line ? stationHints(catalog, dependencies.learnedNames?.(config) ?? null) : [] })
       }
       if (input.action === "order") {
         const orderOrganizationId = config.orderOrganizationId

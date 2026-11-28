@@ -2,11 +2,12 @@ import { createHash } from "node:crypto"
 import { chmod, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { createInboundPilotHost } from "@/lib/voice-agent/pharmacy/zeytun-inbound-host"
 import { type InboundPilotCall, type InboundPilotConfig } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { type ZeytunCallDatabase } from "@/lib/voice-agent/pharmacy/zeytun-call-loader"
 import { ZeytunSnapshotStore } from "@/lib/voice-agent/pharmacy/zeytun-snapshot-store"
+import { SalesHistoryStore } from "@/lib/voice-agent/pharmacy/zeytun-sales-history"
 import { getRlsContext, runWithRlsBypass } from "@/lib/rls-context"
 import { payload } from "./fixtures/zeytun-balances"
 import { clientRow, clientsXml } from "./fixtures/zeytun-clients"
@@ -88,6 +89,24 @@ describe("private inbound pilot host", () => {
     const catalog = await f.host.loadCatalog(line)
     expect(catalog.version).toMatch(/^[a-f0-9]{64}$/)
   })
+  // Owner 2026-11-28: «Smekta» heard as «Demək olar» — the line's own orders gave the recognizer a handful of hints.
+  it("hints the recognizer with what 1C sold most, also before the line has any order of its own", async () => {
+    const f = await fixture()
+    const orders = { pharmacyPhoneOrderLine: { findMany: async () => [] } }
+    const host = createInboundPilotHost({ ...f.options, orders: orders as never })
+    const line: InboundPilotConfig = { version: 1, enabled: true, purpose: "zeytun_line", id: "eeeeeeee-1111-4111-8111-111111111111",
+      organizationId: f.config.organizationId, channelConfigId: f.config.channelConfigId, issuedAt: f.config.issuedAt,
+      expiresAt: "2026-10-29T12:00:00Z", approvalReference: "owner", orderOrganizationId: "org-zeytun",
+      approvedSource: { organizationId: f.config.approvedSource.organizationId, scopeKey: f.config.approvedSource.scopeKey } }
+    const pharmacy = "3ed36d74-0000-11e9-80cb-0894ef5e9ba2", sold = "05bf4b43-5c22-11e9-80c5-0894ef5e9ba2"
+    const store = new SalesHistoryStore(f.options.snapshotDirectory, "org-zeytun")
+    await store.save(pharmacy, new Map([["ZN1", { date: new Date().toISOString().slice(0, 10), products: [sold] }]]))
+    await store.saveIndex({ [pharmacy]: { at: Date.now(), complete: true } })
+    // The first call starts both readings in the background and waits for neither.
+    expect(host.learnedNames!(line)).toBeNull()
+    await vi.waitFor(() => expect(host.learnedNames!(line)?.ordered(5)).toEqual([sold]))
+  })
+
   it("runs the line in the organization that holds its number, and the rehearsal only in the default one", async () => {
     const f = await fixture()
     // Owner, 2026-10-26: «переноси линию Зейтуна в его организацию».
