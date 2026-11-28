@@ -139,6 +139,19 @@ describe("private inbound pilot host", () => {
     expect(await host.findPharmacies!(line, "+994500000009")).toEqual([])
     // The rehearsal grant has no pharmacy list.
     expect(await host.findPharmacies!(f.config, "+994500000001")).toEqual([])
+
+    // Owner 2026-11-28: an operator's own number orders for the pilot pharmacies it is bound to,
+    // in the file's order; a GUID the 1C list no longer has is left out.
+    await writeFile(join(f.root, "zeytun-operator-phones.json"), JSON.stringify({ phones: {
+      "+994500000007": ["66666666-6666-4777-8888-999999999999", "33333333-4444-4555-8666-777777777777", "77777777-6666-4777-8888-999999999999"],
+    } }), { mode: 0o600 })
+    const withOperator = createInboundPilotHost(f.options)
+    expect((await withOperator.findPharmacies!(line, "+994500000007")).map((p) => p.name)).toEqual(["Səfa", "Sınaq aptek"])
+    // Every other number is read from 1C as before.
+    expect((await withOperator.findPharmacies!(line, "+994500000002")).map((p) => p.name).sort()).toEqual(["Nur Aptek", "Səfa"])
+    // A file that is not the expected shape binds nothing.
+    await writeFile(join(f.root, "zeytun-operator-phones.json"), JSON.stringify({ phones: { "+994500000007": ["not-a-guid"] } }), { mode: 0o600 })
+    expect(await createInboundPilotHost(f.options).findPharmacies!(line, "+994500000007")).toEqual([])
   })
   it("reads only the snapshot header to learn whether it changed", async () => {
     const f = await fixture()

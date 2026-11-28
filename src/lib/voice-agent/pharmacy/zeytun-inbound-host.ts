@@ -20,6 +20,7 @@ import { callPharmacy, lastPharmacyOrder } from "./zeytun-pharmacy-history"
 import { markWaitlistArrivals, pharmacyArrivals, recordCallWaitlist } from "./zeytun-waitlist"
 import { recoveredOrderLines } from "./zeytun-transcript-recovery"
 import { CALLBACK_MARKER, callbackMarker, callbackReaches, waitlistCallbackSettings } from "./zeytun-waitlist-callback"
+import { operatorPharmacies, parseOperatorPhones, ZEYTUN_OPERATOR_PHONES_FILE } from "./zeytun-operator-phones"
 import { combineAssortment, confirmedOrdersSource, createCallAssortments, type AssortmentSource,
   type LoadedAssortment } from "./zeytun-pharmacy-assortment"
 import { salesHistorySource } from "./zeytun-sales-history"
@@ -115,6 +116,17 @@ export function createInboundPilotHost(options: {
     pharmacies.hints ??= pharmacyHintWords(pharmacies.all.map((pharmacy) => pharmacy.name))
     return { all: pharmacies.all, hints: pharmacies.hints }
   }
+  // Operators' numbers: a private file beside the grant, read at most once a minute; none when absent or malformed.
+  let operatorPhones: { at: number; phones: Map<string, string[]> } | null = null
+  async function loadOperatorPhones(): Promise<Map<string, string[]>> {
+    if (!options.configFile) return new Map()
+    if (!operatorPhones || Date.now() - operatorPhones.at >= 60_000) {
+      const phones = await readPrivate(join(dirname(options.configFile), ZEYTUN_OPERATOR_PHONES_FILE), 8192)
+        .then(parseOperatorPhones).catch(() => new Map<string, string[]>())
+      operatorPhones = { at: Date.now(), phones }
+    }
+    return operatorPhones.phones
+  }
   async function findPharmacies(config: InboundPilotConfig, phoneE164: string): Promise<PharmacyCandidate[]> {
     if (!isLineGrant(config) || !config.pharmacySource || !/^\+[1-9]\d{7,14}$/.test(phoneE164)) return []
     const source = config.pharmacySource, key = `${source.organizationId}:${source.scopeKey}`
@@ -131,6 +143,9 @@ export function createInboundPilotHost(options: {
     }
     const summary = pharmacies.directory.summary(source.organizationId)
     if (summary.source !== "live" || Date.now() - Date.parse(summary.observedAt) > PHARMACY_DIRECTORY_MAX_AGE_MS) return []
+    // An operator's number stands for the pharmacies it orders for (zeytun-operator-phones.ts).
+    const operator = operatorPharmacies(await loadOperatorPhones(), phoneE164, knownPharmacies(config)?.all ?? [])
+    if (operator) return operator
     return pharmacies.directory.findByPhone(source.organizationId, phoneE164).candidates
       .map((client) => ({ guid: client.counterpartyGuid, name: client.name, address: client.address || null }))
   }
