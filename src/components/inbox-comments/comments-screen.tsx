@@ -316,7 +316,8 @@ function CommentCard({ comment, onSent }: { comment: BoardComment; onSent: () =>
       const res = await fetch("/api/v1/inbox/ai-assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "suggest", lastInbound: comment.text }),
+        // With the conversation the draft is the page AI's own answer (lib/inbox/ai-suggest-reply).
+        body: JSON.stringify({ action: "suggest", lastInbound: comment.text, conversationId: comment.conversationId || undefined }),
       })
       const json = (await res.json().catch(() => null)) as { data?: { suggestion?: string } } | null
       const suggestion = res.ok ? json?.data?.suggestion?.trim() : ""

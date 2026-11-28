@@ -1413,12 +1413,23 @@ export default function InboxV2Page() {
       const res = await fetch("/api/v1/inbox/ai-assist", {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ action, draft: replyText, lastInbound, lang: locale }),
+        // «Suggest» on a conversation answers it as the page's AI would: its character, its knowledge,
+        // the whole thread (lib/inbox/ai-suggest-reply). The other actions work on the typed draft.
+        body: JSON.stringify({ action, draft: replyText, lastInbound, lang: locale, conversationId: selectedConvo?.socialConversationId || undefined }),
       })
       const j = await res.json().catch(() => ({}))
       if (res.ok && j.success && j.data?.suggestion) {
         setReplyText(j.data.suggestion)
         replyInputRef.current?.focus()
+        if (j.data.unverifiedOffer) {
+          setSendError(locale === "ru"
+            ? "В ответе ИИ цена или скидка, которой нет в знаниях, — проверьте перед отправкой"
+            : locale === "az"
+              ? "AI cavabında biliklərdə olmayan qiymət və ya endirim var — göndərməzdən əvvəl yoxlayın"
+              : "The AI reply names a price or discount that is not in the knowledge — check it before sending")
+        }
+      } else if (j.error === "no_customer_message") {
+        setSendError(locale === "ru" ? "В переписке нет сообщения клиента, на которое отвечать" : locale === "az" ? "Söhbətdə cavablanacaq müştəri mesajı yoxdur" : "There is no customer message to answer")
       } else if (res.status === 429) {
         setSendError(locale === "ru" ? "Дневной лимит ИИ исчерпан" : locale === "az" ? "Günlük AI limiti bitib" : "Daily AI budget reached")
       } else {
@@ -4173,17 +4184,28 @@ export default function InboxV2Page() {
                         </button>
                         {showAiAssist && (
                           <div className="absolute bottom-full left-0 mb-2 z-10 w-44 rounded-lg border bg-popover p-1 shadow-lg">
-                            {AI_ASSIST_ORDER.map((a) => (
+                            {AI_ASSIST_ORDER.map((a) => {
+                              // Rewrite/shorten/polite/translate change the typed text: with nothing
+                              // typed they have nothing to work on (owner 2026-11-28: «AI köməyi alınmadı»).
+                              const needsDraft = a !== "suggest" && !replyText.trim()
+                              return (
                               <button
                                 key={a}
                                 type="button"
+                                data-testid={`inbox-ai-assist-${a}`}
+                                disabled={needsDraft}
+                                title={needsDraft ? (locale === "ru" ? "Сначала напишите текст" : locale === "az" ? "Əvvəlcə mətn yazın" : "Type a message first") : undefined}
                                 onClick={() => assistCompose(a)}
-                                className="w-full text-left rounded-md px-2.5 py-1.5 text-xs hover:bg-muted flex items-center gap-2"
+                                className={cn(
+                                  "w-full text-left rounded-md px-2.5 py-1.5 text-xs flex items-center gap-2",
+                                  needsDraft ? "opacity-40 cursor-not-allowed" : "hover:bg-muted",
+                                )}
                               >
                                 <Sparkles className="h-3 w-3 text-muted-foreground shrink-0" />
                                 {AI_ASSIST_LABELS[a][(locale as "en" | "ru" | "az")] ?? AI_ASSIST_LABELS[a].en}
                               </button>
-                            ))}
+                              )
+                            })}
                           </div>
                         )}
                       </div>
