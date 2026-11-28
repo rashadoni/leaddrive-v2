@@ -150,6 +150,9 @@ threading.Thread(target=relay_errors, daemon=True).start()
 # audio, its first transcript text and its first tool call: whether the TTS waits for text that
 # lags the model's own audio (owner's queue task 4, 2026-11-07).
 turn_clock = {"end": None, "audio": None, "text": None, "tool": None}
+# What Gemini's own transcription had of the caller's phrase, and when (2026-11-28, «поиск заранее»):
+# a lookup made before the model asks for it needs the phrase's words by the time the phrase closes.
+heard = {"text": "", "last": None, "at_end": None}
 
 
 def note_turn(msg):
@@ -158,6 +161,10 @@ def note_turn(msg):
         return
     now = time.monotonic()
     content = msg.get("serverContent") or {}
+    piece = (content.get("inputTranscription") or {}).get("text")
+    if piece:
+        heard["text"] += piece
+        heard["last"] = now
     parts = (content.get("modelTurn") or {}).get("parts") or []
     if turn_clock["audio"] is None and any(isinstance(p, dict) and p.get("inlineData") for p in parts):
         turn_clock["audio"] = round((now - end) * 1000)
@@ -165,8 +172,14 @@ def note_turn(msg):
         turn_clock["text"] = round((now - end) * 1000)
     if turn_clock["tool"] is None and msg.get("toolCall"):
         turn_clock["tool"] = round((now - end) * 1000)
+        turn_clock["heard_at_tool"] = heard["text"].strip()
+        calls = msg["toolCall"].get("functionCalls") or []
+        turn_clock["asked"] = [((c.get("args") or {}).get("text") or c.get("name")) for c in calls if isinstance(c, dict)]
     if turn_clock["audio"] is not None and turn_clock["text"] is not None:
-        stand({"turn_timing": {k: turn_clock[k] for k in ("audio", "text", "tool")}})
+        stand({"turn_timing": {**{k: turn_clock[k] for k in ("audio", "text", "tool")},
+                               "heard_at_end": turn_clock.get("heard_at_end"),
+                               "heard_last_ms": None if heard["last"] is None else round((heard["last"] - end) * 1000),
+                               "heard_at_tool": turn_clock.get("heard_at_tool"), "asked": turn_clock.get("asked")}})
         turn_clock["end"] = None
 
 
@@ -215,9 +228,12 @@ class RelayWebSocket:
             self.inbox.put({"ev": "closed", "code": 1008})
             stand({"forced": "resume_refused"})
             return
+        if isinstance(event, dict) and (event.get("realtimeInput") or {}).get("activityStart") is not None:
+            heard.update(text="", last=None)
         if isinstance(event, dict) and (event.get("realtimeInput") or {}).get("activityEnd") is not None:
             # Where the caller's phrase closed: what follows is timed from here (turn_timing).
-            turn_clock.update(end=time.monotonic(), audio=None, text=None, tool=None)
+            turn_clock.update(end=time.monotonic(), audio=None, text=None, tool=None, heard_at_end=heard["text"].strip(),
+                              heard_at_tool=None, asked=None)
         relay_send({"op": "send", "id": self.n, "msg": event})
 
     def drop(self):

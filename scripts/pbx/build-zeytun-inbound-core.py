@@ -19,6 +19,13 @@ def build(source, bridge):
             raise ValueError("ambiguous_patch_anchor")
         text = text.replace(old, new, 1)
     replace("class GeminiLiveSession(RealtimeSession):", bridge + "\n\nclass GeminiLiveSession(RealtimeSession):")
+    replace("            if activity_open:\n                ws.send_json(self._language_turn_event())\n",
+            "            if activity_open:\n"
+            "                # A lean line session sends the bridge's one-line note (2026-11-28): the core's own\n"
+            "                # stays in the context every caller turn and is re-read on every later pass.\n"
+            "                lean_note = (self.pharmacy_bridge.language_note()\n"
+            "                             if self.pharmacy_preview and self.pharmacy_bridge is not None else None)\n"
+            "                ws.send_json(lean_note or self._language_turn_event())\n")
     replace("        self.is_demo_call = False\n", "        self.is_demo_call = False\n        self.pharmacy_preview = False\n        self.pharmacy_bridge = None\n"
             "        self.pharmacy_whatsapp = False\n")
     start = text.index("        # Started before the prompt fetch so the two CRM round-trips overlap;")
@@ -57,7 +64,8 @@ def build(source, bridge):
             self.pharmacy_whatsapp = zeytun_whatsapp_call(self.call_id)
             if self.pharmacy_whatsapp:
                 latency("zeytun_channel", self.call_id, channel="whatsapp")
-            self.instruction = demo_instruction("", pilot["prompt"])
+            # A lean session (2026-11-28) reads the line's rules alone, without the core's general policies.
+            self.instruction = pilot["prompt"] if self.pharmacy_bridge.lean else demo_instruction("", pilot["prompt"])
             self.crm_opening_text = pilot["opening"]
             self.crm_max_seconds = pilot["maxSeconds"]
             if pilot.get("closing"):
@@ -81,7 +89,7 @@ def build(source, bridge):
         else:
 '''
     text = text[:start] + pilot + "".join("    " + line if line.strip() else line for line in normal.splitlines(True)) + text[end:]
-    replace('        return {"setup": setup}\n', '        if self.pharmacy_preview:\n            # A phone agent session may name no tool at all (2026-11-22): then none is declared.\n            pharmacy_tools = self.pharmacy_bridge.tools()\n            if pharmacy_tools:\n                setup["tools"] = pharmacy_tools\n            setup["inputAudioTranscription"] = self.pharmacy_bridge.transcription()\n            language, voice = self.pharmacy_bridge.speech_language(), self.pharmacy_bridge.speech_voice()\n            if language:\n                setup["generationConfig"]["speechConfig"]["languageCode"] = language\n            if voice:\n                setup["generationConfig"]["speechConfig"]["voiceConfig"]["prebuiltVoiceConfig"]["voiceName"] = voice\n        return {"setup": setup}\n')
+    replace('        return {"setup": setup}\n', '        if self.pharmacy_preview:\n            # A phone agent session may name no tool at all (2026-11-22): then none is declared.\n            pharmacy_tools = self.pharmacy_bridge.tools()\n            if pharmacy_tools:\n                setup["tools"] = pharmacy_tools\n            setup["inputAudioTranscription"] = self.pharmacy_bridge.transcription()\n            language, voice = self.pharmacy_bridge.speech_language(), self.pharmacy_bridge.speech_voice()\n            if language:\n                setup["generationConfig"]["speechConfig"]["languageCode"] = language\n            if voice:\n                setup["generationConfig"]["speechConfig"]["voiceConfig"]["prebuiltVoiceConfig"]["voiceName"] = voice\n            # The CRM\'s sliding window (2026-11-27): a long order reads a bounded context on every turn.\n            window = self.pharmacy_bridge.context_window()\n            if window:\n                setup["contextWindowCompression"] = window\n        return {"setup": setup}\n')
     method = '''    def _pharmacy_open_early(self, early):
         opened = time.monotonic()
         try:

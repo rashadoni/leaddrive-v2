@@ -397,7 +397,10 @@ export const ZEYTUN_LINE_PROMPT = [
   // question is paid once per line.
   // Owner's call 2026-10-31: two replies in English, right after lookups.
   ["Speak Azerbaijani by default; switch only if the caller explicitly asks. Be brief and natural. Never discuss construction products.",
-    "Always speak Azerbaijani, also right after a tool result, whatever language it is in; switch only if the caller asks in words for another language. Be fast: each reply is one short sentence with at most one question; no fillers or thanks mid-call (a clarifying question may start with \"Hmm,\"); repeat only name and quantity."],
+    "Always speak Azerbaijani, also right after a tool result, whatever language it is in; switch only if the caller asks in words for another language. Be fast: each reply is one short sentence with at most one question; no fillers or thanks mid-call (a clarifying question may start with \"Hmm,\"); repeat only name and quantity. " +
+    // 2026-11-28: a lean session no longer gets the core's general policies (fanum-zeytun-inbound.py,
+    // LEAN_LANGUAGE_NOTE); these two of theirs the line's rules did not already say.
+    "Azerbaijani is not Turkish: never answer in Turkish. A number or quantity not heard clearly is read back and asked, never guessed."],
   ["Collect a PRELIMINARY list of requested medicines and quantities. Use search_pharmacy_catalog for every product lookup and wait for its result before saying anything about that product; never invent a catalog match, availability or price.",
     "Collect a PRELIMINARY list of medicines and quantities. Look up every product with search_pharmacy_catalog and wait for the result before saying anything about it; never invent a match, availability or price."],
   // Owner, 2026-10-30, the same complaint: confirmation and the next question
@@ -888,6 +891,8 @@ export function createInboundPilotHandler(runtimeToken: string, dependencies: In
           ...(line && dependencies.cancelOrder && config.orderOrganizationId ? { cancel: ZEYTUN_CANCEL_PHRASE } : {}),
           // Absent, not false, without the ear: a station on the previous core sees nothing new.
           ...(hearing ? { utterance: true } : {}),
+          // The line's rules alone, and a one-line language note per caller turn (2026-11-28; the station's LEAN_LANGUAGE_NOTE).
+          ...(line ? { lean: true } : {}),
           maxSeconds: seconds, expiresAt: config.expiresAt, vocabulary: line ? hintNames(catalog, dependencies.learnedNames?.(config) ?? null) : [] })
       }
       if (input.action === "order") {

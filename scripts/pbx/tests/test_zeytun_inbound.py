@@ -757,6 +757,61 @@ class TransportTests(unittest.TestCase):
         unknown = opened({"voice": "Kore'); drop", "pinSpeechLanguage": "no"})
         self.assertEqual((unknown.speech_voice(), unknown.speech_language()), (None, "az-AZ"))
 
+    def test_crm_may_bound_the_context_a_turn_reads(self):
+        # Owner, 2026-11-27: a long order re-read its whole conversation on every turn.
+        def opened(extra):
+            def request(body):
+                return {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": "Test rules",
+                        "opening": "Test greeting", "maxSeconds": 60, **extra}
+            bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, request, lambda: self.now)
+            bridge.open()
+            return bridge
+        window = opened({"contextWindow": {"triggerTokens": 16000, "targetTokens": 9000}}).context_window()
+        self.assertEqual(window, {"triggerTokens": 16000, "slidingWindow": {"targetTokens": 9000}})
+        # Without it — the CRM before this change — the setup keeps Google's default.
+        self.assertIsNone(opened({}).context_window())
+        # A value the station cannot bound is ignored; the call is never refused for it.
+        for bad in ({"triggerTokens": 7999, "targetTokens": 4000}, {"triggerTokens": 200000, "targetTokens": 9000},
+                    {"triggerTokens": 16000, "targetTokens": 16000}, {"triggerTokens": 16000, "targetTokens": 3999},
+                    {"triggerTokens": 16000.0, "targetTokens": 9000}, {"triggerTokens": True, "targetTokens": 9000},
+                    {"triggerTokens": 16000, "targetTokens": 9000, "extra": 1}, [16000, 9000], "16000"):
+            self.assertIsNone(opened({"contextWindow": bad}).context_window(), bad)
+        # Each setup gets its own copy: nothing of one session's setup leaks into the next.
+        bridge = opened({"contextWindow": {"triggerTokens": 16000, "targetTokens": 9000}})
+        bridge.context_window()["slidingWindow"]["targetTokens"] = 1
+        self.assertEqual(bridge.context_window()["slidingWindow"]["targetTokens"], 9000)
+
+    def test_a_lean_session_has_the_short_language_note_and_only_on_the_line(self):
+        # Owner, 2026-11-28: the core's ~900-character note before every caller turn stayed in the
+        # context and was re-read on every later pass.
+        def opened(extra):
+            def request(body):
+                return {"enabled": True, "variant": "pharmacy_inbound_preview", "prompt": "Test rules",
+                        "opening": "Test greeting", "maxSeconds": 60, **extra}
+            bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, request, lambda: self.now)
+            bridge.open()
+            return bridge
+        lean = opened({"lean": True})
+        self.assertTrue(lean.lean)
+        note = lean.language_note()
+        self.assertEqual(note["clientContent"]["turnComplete"], False)
+        self.assertEqual(note["clientContent"]["turns"][0]["parts"][0]["text"], bridge_module.ZeytunInboundBridge.LEAN_LANGUAGE_NOTE)
+        self.assertLess(len(bridge_module.ZeytunInboundBridge.LEAN_LANGUAGE_NOTE), 200)
+        # Without the mark, or with anything but a plain true, the core's own note and policies stay.
+        for extra in ({}, {"lean": "yes"}, {"lean": 1}):
+            bridge = opened(extra)
+            self.assertFalse(bridge.lean, extra)
+            self.assertIsNone(bridge.language_note())
+
+    def test_a_phone_agent_session_is_never_lean(self):
+        def request(body):
+            return {"enabled": True, "variant": "agent_tools", "prompt": "Clinic rules", "opening": "Salam",
+                    "maxSeconds": 60, "tools": [], "lean": True}
+        bridge = bridge_module.ZeytunInboundBridge(URL, "t" * 48, CALL, request, lambda: self.now)
+        bridge.open()
+        self.assertFalse(bridge.lean)
+        self.assertIsNone(bridge.language_note())
+
     def test_bad_args_never_start_network(self):
         for index, args in enumerate([{}, {"text": "x", "customerGuid": CALL}, {"url": "http://bad.test"},
                 {"text": "x" * 241}, {"text": 1}, {"externalId": "bad"}]):
@@ -3203,6 +3258,16 @@ class ArtifactTests(unittest.TestCase):
         loop = "".join(lines)
         self.assertEqual(ast.dump(ast.parse(loop).body[0]), ast.dump(new_methods["playback_loop"]))
         differences.discard("playback_loop")
+        # The note before a caller turn: a lean line session's is the bridge's one line (2026-11-28).
+        activity = textwrap.dedent(ast.get_source_segment(text, old_methods["_send_gemini_activity"], padded=True)).replace(
+            "        if activity_open:\n            ws.send_json(self._language_turn_event())\n",
+            "        if activity_open:\n"
+            "            lean_note = (self.pharmacy_bridge.language_note()\n"
+            "                         if self.pharmacy_preview and self.pharmacy_bridge is not None else None)\n"
+            "            ws.send_json(lean_note or self._language_turn_event())\n", 1)
+        self.assertIn("lean_note or self._language_turn_event()", activity)
+        self.assertEqual(ast.dump(ast.parse(activity).body[0]), ast.dump(new_methods["_send_gemini_activity"]))
+        differences.discard("_send_gemini_activity")
         # A dropped session is resumed by its handle before the core's own
         # recovery, on a transport error only; nothing else in the loop changes.
         receive = textwrap.dedent(ast.get_source_segment(text, old_methods["receive_loop"], padded=True)).replace(
@@ -3300,6 +3365,11 @@ class ArtifactTests(unittest.TestCase):
         self.assertLess(start.index("self.greeting_sent = True"),
                         start.index("relay.prefill(self.crm_opening_text, self.gemini_ws_epoch)"))
         self.assertIn("self.pharmacy_preview = True", start)
+        # A lean session reads the line's rules alone (2026-11-28); any other keeps the core's policies.
+        self.assertIn("pilot['prompt'] if self.pharmacy_bridge.lean else demo_instruction('', pilot['prompt'])", start)
+        activity = ast.unparse(new_methods["_send_gemini_activity"])
+        self.assertIn("self.pharmacy_bridge.language_note()", activity)
+        self.assertIn("ws.send_json(lean_note or self._language_turn_event())", activity)
         self.assertIn("self.closing_keys = tuple(", start)
         self.assertNotIn("self.is_demo_call = True", start)
 
@@ -3318,8 +3388,11 @@ class ArtifactTests(unittest.TestCase):
         self.assertNotIn("languageCode", setup["setup"]["generationConfig"]["speechConfig"])
         obj.pharmacy_bridge = SimpleNamespace(tools=lambda: ["synthetic-declaration"],
                                               transcription=lambda: {"languageCodes": ["az-AZ"]},
-                                              speech_language=lambda: "az-AZ", speech_voice=lambda: None)
+                                              speech_language=lambda: "az-AZ", speech_voice=lambda: None,
+                                              context_window=lambda: None)
         pharmacy = globals_["_setup_event"](obj)["setup"]
+        # No window from the CRM: the core's own sliding window, Google's default trigger.
+        self.assertEqual(pharmacy["contextWindowCompression"], {"slidingWindow": {}})
         self.assertEqual(pharmacy["tools"], ["synthetic-declaration"])
         self.assertEqual(pharmacy["inputAudioTranscription"], {"languageCodes": ["az-AZ"]})
         self.assertEqual(pharmacy["generationConfig"]["speechConfig"]["languageCode"], "az-AZ")
@@ -3334,6 +3407,12 @@ class ArtifactTests(unittest.TestCase):
         # cannot silently fall back to per-turn language detection.
         self.assertEqual(globals_["_setup_event"](obj, "resume-handle")["setup"]["inputAudioTranscription"],
                          {"languageCodes": ["az-AZ"]})
+        # The CRM's window goes into every setup of the call, a resumed session's too.
+        window = {"triggerTokens": 16000, "slidingWindow": {"targetTokens": 9000}}
+        obj.pharmacy_bridge.context_window = lambda: dict(window)
+        self.assertEqual(globals_["_setup_event"](obj)["setup"]["contextWindowCompression"], window)
+        self.assertEqual(globals_["_setup_event"](obj, "resume-handle")["setup"]["contextWindowCompression"], window)
+        obj.pharmacy_bridge.context_window = lambda: None
         # The early socket and the kill switch, as patched.
         early_names = ("_pharmacy_open_early", "_pharmacy_take_early", "_pharmacy_drop_early",
                        "_pharmacy_kill_switch", "_pharmacy_await_kill_switch",
