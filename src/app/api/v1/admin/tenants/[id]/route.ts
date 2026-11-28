@@ -128,7 +128,8 @@ export async function PUT(
       const workforceKey = "workforce-hrm"
       const features = withRequiredModules(body.features).filter((feature) => feature !== workforceKey)
       if (featuresToStringArray(existing.features).includes(workforceKey)) features.push(workforceKey)
-      updateData.features = JSON.stringify(features)
+      // An array, never JSON text: a jsonb string here breaks every later `features || [flag]` (org-features.ts).
+      updateData.features = features
       // `features` is authoritative for module visibility, but `hasModule` also
       // merges the `modules` JSON column (written by Advisor Suite / capability
       // grants). Keep that column in sync so a superadmin toggling a group-module
@@ -137,7 +138,7 @@ export async function PUT(
       updateData.modules = reconcileModulesWithFeatures(features, existing.modules)
       if (body.capabilityChanges !== undefined) {
         const patch = reconcileTenantEditorEntitlements(features, existing, body.capabilityChanges)
-        updateData.features = JSON.stringify(patch.features)
+        updateData.features = patch.features
         updateData.modules = patch.modules
       }
     }

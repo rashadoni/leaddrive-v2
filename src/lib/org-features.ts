@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 
 /**
@@ -10,18 +11,25 @@ import { prisma } from "@/lib/prisma"
  *   • remove → `features - 'flag'` (jsonb minus a text removes all matching array elements).
  * Both are serialized by Postgres row-locking, so no concurrent save can lose a flag.
  *
- * features is jsonb (verified on prod) → the `||` / `-` / `@>` operators apply directly.
+ * features is jsonb, but older writers stored the list as a jsonb STRING holding JSON text
+ * (`JSON.stringify(array)` into a Json column). `string || array` in Postgres does not merge:
+ * it makes `[ "<whole old list as text>", "flag" ]`, and every module in the old list is gone.
+ * That took Zeytun's phone orders, MTM and VoIP down on 2026-11-26 when «Ağıllı axtarış» was
+ * switched on. So every statement here first reads the column through FEATURES_ARRAY, which
+ * turns such a string back into the array it holds.
  */
+const FEATURES_ARRAY = Prisma.sql`(CASE WHEN jsonb_typeof(features) = 'string' THEN (features #>> '{}')::jsonb WHEN jsonb_typeof(features) = 'array' THEN features ELSE '[]'::jsonb END)`
+
 export async function setOrgFeatureFlag(orgId: string, flag: string, enabled: boolean): Promise<void> {
   if (enabled) {
     await prisma.$executeRaw`
       UPDATE organizations
-      SET features = features || to_jsonb(ARRAY[${flag}]::text[])
-      WHERE id = ${orgId} AND NOT (features @> to_jsonb(ARRAY[${flag}]::text[]))`
+      SET features = ${FEATURES_ARRAY} || to_jsonb(ARRAY[${flag}]::text[])
+      WHERE id = ${orgId} AND NOT (${FEATURES_ARRAY} @> to_jsonb(ARRAY[${flag}]::text[]))`
   } else {
     await prisma.$executeRaw`
       UPDATE organizations
-      SET features = features - ${flag}
+      SET features = ${FEATURES_ARRAY} - ${flag}
       WHERE id = ${orgId}`
   }
 }
@@ -42,7 +50,7 @@ export function replaceOrgValueFlags(orgId: string, prefixes: string[], addition
     UPDATE organizations
     SET features = (
       SELECT COALESCE(jsonb_agg(f.value), '[]'::jsonb)
-      FROM jsonb_array_elements(features) AS f(value)
+      FROM jsonb_array_elements(${FEATURES_ARRAY}) AS f(value)
       WHERE jsonb_typeof(f.value) <> 'string'
          OR NOT (f.value #>> '{}' LIKE ANY(${patterns}::text[]))
     ) || to_jsonb(${additions}::text[])
