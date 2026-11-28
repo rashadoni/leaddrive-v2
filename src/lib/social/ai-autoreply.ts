@@ -490,7 +490,13 @@ export async function generateChannelAiReply(opts: {
    * customer would get. Nothing is written to the AI chat session, the reply is not scored, and the
    * caller sends nothing. `history` is the conversation as it stood when the person answered.
    */
-  shadow?: { history: Array<{ role: "user" | "assistant"; content: string }>; asOf: Date }
+  shadow?: {
+    history: Array<{ role: "user" | "assistant"; content: string }>
+    asOf: Date
+    /** "assist": an operator pressed «Предложить ответ» — the reply goes into their box, not to the
+     *  customer. Spent and logged as inbox assist; the reviewed-by-person rules apply. Default: training. */
+    purpose?: "learning" | "assist"
+  }
   /**
    * The channel sends unsure replies to an employee's Telegram (ChannelConfig.settings.telegramDrafts):
    * the AI never promises a manager, and a reply the price rule would rewrite is kept for the employee.
@@ -500,7 +506,9 @@ export async function generateChannelAiReply(opts: {
   const { orgId, channel, externalId, userMessage, senderName, contactId, conversationId } = opts
   const shadow = opts.shadow ?? null
   const persistAssistant = opts.persistAssistant !== false && !shadow
-  const reviewedByPerson = opts.reviewedByPerson === true && !shadow
+  const assist = shadow?.purpose === "assist"
+  // An operator's suggestion is read by that operator before anything is sent — a training draft is not.
+  const reviewedByPerson = opts.reviewedByPerson === true && (!shadow || assist)
   if (!orgId || !externalId || !userMessage?.trim()) return { reply: null, escalate: false, skipped: "missing_input" }
   if (!(await anthropicAvailable(orgId))) return { reply: null, escalate: false, skipped: "no_api_key" }
 
@@ -750,7 +758,7 @@ export async function generateChannelAiReply(opts: {
   const maskedSystemPrompt = pii.mask(systemPrompt)
 
   try {
-    const client = await anthropicFor(opts.orgId, shadow ? "inbox-learning" : "inbox-reply", { agentId: agent?.id })
+    const client = await anthropicFor(opts.orgId, assist ? "inbox-assist" : shadow ? "inbox-learning" : "inbox-reply", { agentId: agent?.id })
     const masked = clean.map((m: { role: "user" | "assistant"; content: string }) => ({ ...m, content: pii.mask(m.content) }))
     const startTime = Date.now()
     const res = await client.messages.create({
@@ -909,7 +917,7 @@ export async function generateChannelAiReply(opts: {
           costUsd: calculateAiCost(model, usage?.input_tokens ?? 0, usage?.output_tokens ?? 0),
           model,
           // A training draft is nobody's reply: its own type keeps it out of every count of AI replies.
-          agentType: shadow ? "inbox_learning" : "social_monitoring",
+          agentType: assist ? "inbox_assist" : shadow ? "inbox_learning" : "social_monitoring",
           qualityScore: scored?.ok ? scored.score.total : undefined,
           kbArticlesUsed: kbSources, // A5 — which KB articles fed the reply
         },

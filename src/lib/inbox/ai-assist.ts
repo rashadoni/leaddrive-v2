@@ -65,7 +65,7 @@ function buildPrompt(
     case "translate":
       return `${common}\nTranslate the draft into ${label}. Preserve tone and meaning.${draftBlock}`
     case "suggest":
-      return `${common}\nWrite a helpful, concise reply to the customer's last message, in ${label}. Do not invent facts or make promises you can't keep. If knowledge-base context is present and relevant, use it; if it is insufficient, do not pretend it answers the customer.${inboundBlock}${draftBlock}${kbBlock}`
+      return `${common}\nWrite a helpful, concise reply to the customer's last message, in ${label}. Do not invent facts or make promises you can't keep. You are writing to the customer, never to the support agent: do not ask the agent for anything or comment on the request. If the customer's message is very short or unclear (for example just "+"), write a short friendly reply in ${label} asking what they are interested in. If knowledge-base context is present and relevant, use it; if it is insufficient, do not pretend it answers the customer.${inboundBlock}${draftBlock}${kbBlock}`
   }
 }
 
