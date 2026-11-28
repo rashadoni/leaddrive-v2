@@ -360,6 +360,36 @@ export function rankSalesProducts(sales: PharmacySales, now = Date.now()): strin
   return [...counts].sort(([a, x], [b, y]) => y.count - x.count || y.last.localeCompare(x.last) || a.localeCompare(b)).map(([id]) => id)
 }
 
+/**
+ * What pharmacies buy most, across every pharmacy the job has read (owner 2026-11-28: the recognizer's
+ * hints came only from the line's own orders — a handful — and «Smekta» kept coming back as «Demək
+ * olar»). A product counts once per pharmacy that bought it in HISTORY_DAYS; ties by how many sales
+ * held it. GUIDs, most bought first; empty when the job has stored nothing. Reads only the job's files.
+ */
+export async function popularSalesProducts(cacheDir: string, organizationId: string, now = Date.now(), limit = 3000): Promise<string[]> {
+  if (!cacheDir || !isAbsolute(cacheDir)) return []
+  const store = new SalesHistoryStore(cacheDir, organizationId)
+  const since = new Date(now - HISTORY_DAYS * DAY_MS).toISOString().slice(0, 10)
+  const counts = new Map<string, { pharmacies: number; sales: number }>()
+  for (const pharmacy of Object.keys(await store.loadIndex())) {
+    const sales = await store.load(pharmacy)
+    if (!sales) continue
+    const bought = new Map<string, number>()
+    for (const sale of sales.values()) {
+      if (sale.date < since) continue
+      for (const id of sale.products) bought.set(id, (bought.get(id) ?? 0) + 1)
+    }
+    for (const [id, times] of bought) {
+      const known = counts.get(id) ?? { pharmacies: 0, sales: 0 }
+      known.pharmacies++
+      known.sales += times
+      counts.set(id, known)
+    }
+  }
+  return [...counts].sort(([a, x], [b, y]) => y.pharmacies - x.pharmacies || y.sales - x.sales || a.localeCompare(b))
+    .slice(0, limit).map(([id]) => id)
+}
+
 /** The line's source (zeytun-pharmacy-assortment.ts): the calling pharmacy's 1C sales, as the job stored them. */
 export function salesHistorySource(cacheDir: string, clock: () => number = Date.now): AssortmentSource {
   return {

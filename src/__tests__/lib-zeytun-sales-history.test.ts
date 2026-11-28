@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   bakuNight, HISTORY_DAYS, nextNightStart, REQUEST_GAP_MS, salesReadOpen,
   decodeSalesSoap, parseValueTable, productsOfSale, rankSalesProducts, refreshZeytunSalesHistory, salesFromSettlements,
-  salesHistorySource, SalesHistoryStore, ZEYTUN_SALES_CONNECTION_FILE, type SalesFetch,
+  popularSalesProducts, salesHistorySource, SalesHistoryStore, ZEYTUN_SALES_CONNECTION_FILE, type SalesFetch,
 } from "@/lib/voice-agent/pharmacy/zeytun-sales-history"
 
 // Owner 2026-11-11 («Да, подключай»): what 1C sold a pharmacy, for the line's ear.
@@ -16,6 +16,7 @@ import {
 const ORG = "tenant-test"
 const PHARMACY = "3ed36d74-0000-11e9-80cb-0894ef5e9ba2"
 const A = "05bf4b43-5c22-11e9-80c5-0894ef5e9ba2", B = "15bf4b43-5c22-11e9-80c5-0894ef5e9ba2", C = "25bf4b43-5c22-11e9-80c5-0894ef5e9ba2"
+const D = "35bf4b43-5c22-11e9-80c5-0894ef5e9ba2"
 // 23:00 in Baku: the job reads 1C only at night.
 const NOW = Date.parse("2026-11-11T19:00:00Z")
 
@@ -90,6 +91,24 @@ describe("a pharmacy's 1C sales history", () => {
     expect(await source.products({ organizationId: "other", catalogScopeKey: "x", pharmacy: { companyId: null, guid: PHARMACY } })).toEqual([])
     expect(await source.products({ organizationId: ORG, catalogScopeKey: "x", pharmacy: { companyId: "c1", guid: null } })).toEqual([])
     expect(await salesHistorySource("", () => NOW).products({ organizationId: ORG, catalogScopeKey: "x", pharmacy: { companyId: null, guid: PHARMACY } })).toEqual([])
+  })
+
+  // Owner 2026-11-28: the recognizer's hints came only from the line's own orders, a handful.
+  it("counts what pharmacies buy most across every pharmacy the job read, once per pharmacy", async () => {
+    const store = new SalesHistoryStore(root, ORG)
+    const P2 = "22222222-2222-4222-8222-222222222222", P3 = "33333333-3333-4333-8333-333333333333"
+    // A in three pharmacies, B in two (bought many times by one), C in one, D only long ago.
+    await store.save(PHARMACY, new Map([["ZN1", { date: "2026-11-10", products: [A, B] }], ["ZN2", { date: "2026-11-09", products: [B] }],
+      ["ZN3", { date: "2026-11-08", products: [B] }], ["ZN4", { date: "2025-01-01", products: [D] }]]))
+    await store.save(P2, new Map([["ZN5", { date: "2026-11-10", products: [A, C] }]]))
+    await store.save(P3, new Map([["ZN6", { date: "2026-11-10", products: [A, B] }]]))
+    await store.saveIndex({ [PHARMACY]: { at: NOW, complete: true }, [P2]: { at: NOW, complete: true }, [P3]: { at: NOW, complete: true } })
+    expect(await popularSalesProducts(root, ORG, NOW)).toEqual([A, B, C])
+    expect(await popularSalesProducts(root, ORG, NOW, 2)).toEqual([A, B])
+    // Another organization's files, a relative or empty folder, or nothing read yet: nothing.
+    expect(await popularSalesProducts(root, "other", NOW)).toEqual([])
+    expect(await popularSalesProducts("", ORG, NOW)).toEqual([])
+    expect(await popularSalesProducts("relative/dir", ORG, NOW)).toEqual([])
   })
 
   describe("the job", () => {

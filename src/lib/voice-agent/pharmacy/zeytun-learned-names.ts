@@ -41,6 +41,28 @@ export function learnNames(lines: ConfirmedLine[], written: string[] = lines.map
   }
 }
 
+/**
+ * The line's own orders first, then what 1C sold most (popularSalesProducts, zeytun-sales-history.ts):
+ * the recognizer's hints. Wordings are still taught only by confirmed lines.
+ */
+export function withPopular(learned: LearnedNames | null, popular: readonly string[]): LearnedNames | null {
+  if (!popular.length) return learned
+  const own = learned ?? learnNames([], [])
+  return {
+    productFor: (text) => own.productFor(text),
+    ordered(limit) {
+      const ids = own.ordered(limit)
+      if (ids.length >= limit) return ids
+      const seen = new Set(ids)
+      for (const id of popular) {
+        if (ids.length >= limit) break
+        if (!seen.has(id)) { seen.add(id); ids.push(id) }
+      }
+      return ids
+    },
+  }
+}
+
 const AZ_LATIN: Record<string, string> = {
   а: "a", б: "b", в: "v", г: "q", д: "d", е: "e", ё: "yo", ж: "j", з: "z", и: "i", й: "y", к: "k", л: "l", м: "m",
   н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "x", ц: "ts", ч: "ç", ш: "ş", щ: "ş", ъ: "",

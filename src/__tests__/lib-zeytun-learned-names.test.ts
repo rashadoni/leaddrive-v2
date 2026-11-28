@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { learnNames, spokenProductName } from "@/lib/voice-agent/pharmacy/zeytun-learned-names"
+import { learnNames, spokenProductName, withPopular } from "@/lib/voice-agent/pharmacy/zeytun-learned-names"
 
 // Owner, 2026-11-03 («товаров 9к»): the line learns from orders its managers
 // confirmed — a rule for every product, not a fix per product.
@@ -44,5 +44,26 @@ describe("names the line learns from confirmed orders", () => {
     expect(spokenProductName({ name: "Но-шпа  40 мг № 24 (Таблетки)", nameAz: "Drotaverin hidroxlorid 40 mq" })).toBe("No-şpa")
     expect(spokenProductName({ name: "Mezim forte № 20", nameAz: null })).toBe("Mezim")
     expect(spokenProductName({ name: "5-НОК № 50", nameAz: null })).toBeNull()
+  })
+})
+
+// Owner, 2026-11-28: «Smekta» heard as «Demək olar» — the recognizer had a handful of hints.
+describe("the hints: the line's own orders first, then what 1C sold most", () => {
+  const OWN = "own-guid", SOLD1 = "sold-1", SOLD2 = "sold-2"
+
+  it("keeps the line's own orders first and adds the best sellers it lacks, up to the limit", () => {
+    const hints = withPopular(learnNames([{ spoken: "Adefa", externalId: OWN }]), [SOLD1, OWN, SOLD2])!
+    expect(hints.ordered(10)).toEqual([OWN, SOLD1, SOLD2])
+    expect(hints.ordered(2)).toEqual([OWN, SOLD1])
+    // Wordings are still taught only by confirmed lines.
+    expect(hints.productFor("Adefa")).toBe(OWN)
+  })
+
+  it("gives the best sellers alone when the line has no orders yet, and changes nothing without them", () => {
+    expect(withPopular(null, [SOLD1, SOLD2])!.ordered(5)).toEqual([SOLD1, SOLD2])
+    expect(withPopular(null, [SOLD1])!.productFor("anything")).toBeNull()
+    const learned = learnNames([{ spoken: "Adefa", externalId: OWN }])
+    expect(withPopular(learned, [])).toBe(learned)
+    expect(withPopular(null, [])).toBeNull()
   })
 })

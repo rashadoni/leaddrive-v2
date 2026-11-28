@@ -15,7 +15,7 @@ import { ZeytunClientsDirectory } from "./zeytun-clients-directory"
 import { identifyPharmacy, matchPharmacyName, pharmacyHintWords, type PharmacyCandidate,
   type PharmacyIdentity } from "./zeytun-pharmacy-identity"
 import { readLineSpeech } from "./zeytun-line-speech"
-import { learnNames, type LearnedNames } from "./zeytun-learned-names"
+import { learnNames, withPopular, type LearnedNames } from "./zeytun-learned-names"
 import { callPharmacy, lastPharmacyOrder } from "./zeytun-pharmacy-history"
 import { markWaitlistArrivals, pharmacyArrivals, recordCallWaitlist } from "./zeytun-waitlist"
 import { recoveredOrderLines } from "./zeytun-transcript-recovery"
@@ -23,7 +23,7 @@ import { CALLBACK_MARKER, callbackMarker, callbackReaches, waitlistCallbackSetti
 import { operatorPharmacies, parseOperatorPhones, ZEYTUN_OPERATOR_PHONES_FILE } from "./zeytun-operator-phones"
 import { combineAssortment, confirmedOrdersSource, createCallAssortments, type AssortmentSource,
   type LoadedAssortment } from "./zeytun-pharmacy-assortment"
-import { salesHistorySource } from "./zeytun-sales-history"
+import { popularSalesProducts, salesHistorySource } from "./zeytun-sales-history"
 import { CHIRP_KEY_FILE, createChirpRecognizer, createZeytunSecondEar, type ZeytunSecondEar } from "./zeytun-chirp"
 import { journalPlatformAiCall } from "@/lib/ai/gateway/access"
 import { perMinuteCostUsd, UNIT_PRICING } from "@/lib/ai/gateway/pricing"
@@ -43,6 +43,8 @@ function callerNumber(value: string) {
 }
 /** How far back confirmed orders teach the line, and how long one reading of them is used. */
 const LEARNED_SINCE_MS = 365 * 24 * 60 * 60_000, LEARNED_FOR_MS = 10 * 60_000, LEARNED_MAX_LINES = 20_000
+/** How long one count of what 1C sold most is used (popularSalesProducts: ~1 200 small files; the job reads 1C at night). */
+const POPULAR_FOR_MS = 6 * 60 * 60_000
 /** A directory older than this is not used to name a caller: 1C stopped answering. */
 const PHARMACY_DIRECTORY_MAX_AGE_MS = 7 * 24 * 60 * 60_000
 
@@ -74,7 +76,25 @@ export function createInboundPilotHost(options: {
   const allowedOrganization = async (config: InboundPilotConfig) => config.organizationId === options.runtimeOrganizationId
     || (isLineGrant(config) && Boolean(options.holdsLine) && await options.holdsLine!(config.organizationId, config.channelConfigId))
   let catalog: { key: string; at: number; value: ReturnType<InboundPilotDependencies["loadCatalog"]>; next?: Promise<void> } | null = null
-  const learned = new Map<string, { at: number; value: LearnedNames | null; loading: boolean }>()
+  const learned = new Map<string, { at: number; base: LearnedNames | null; value: LearnedNames | null; loading: boolean }>()
+  // What 1C sold most across the pharmacies (owner 2026-11-28, «Smekta» heard as «Demək olar» while the
+  // line's own orders gave the recognizer a handful of hints): after the line's own orders, in the hints.
+  const popular = new Map<string, { at: number; ids: string[]; loading: boolean }>()
+  function popularFor(orgId: string, changed: (ids: string[]) => void): string[] {
+    const known = popular.get(orgId)
+    if (options.snapshotDirectory && (!known || (!known.loading && Date.now() - known.at >= POPULAR_FOR_MS))) {
+      const entry = known ?? { at: 0, ids: [] as string[], loading: false }
+      entry.loading = true
+      popular.set(orgId, entry)
+      void popularSalesProducts(options.snapshotDirectory, orgId)
+        .then((ids) => {
+          entry.ids = ids
+          console.log("[zeytun-line] popular", JSON.stringify({ products: ids.length }))
+          changed(ids)
+        }).catch(() => undefined).finally(() => { entry.at = Date.now(); entry.loading = false })
+    }
+    return known?.ids ?? []
+  }
   // Owner, 2026-11-03 («товаров 9к»): the line learns from the orders its
   // managers confirmed and hints the products pharmacies ask for. Read in the
   // background, never on a spoken request: until the first reading is there,
@@ -85,15 +105,20 @@ export function createInboundPilotHost(options: {
     if (!options.orders || !isLineGrant(config) || !orgId) return null
     const key = `${orgId}:${config.approvedSource.scopeKey}`
     const known = learned.get(key)
+    const sold = popularFor(orgId, (ids) => {
+      const entry = learned.get(key)
+      if (entry) entry.value = withPopular(entry.base, ids)
+    })
     if (!known || (!known.loading && Date.now() - known.at >= LEARNED_FOR_MS)) {
-      const entry = known ?? { at: 0, value: null as LearnedNames | null, loading: false }
+      const entry = known ?? { at: 0, base: null as LearnedNames | null, value: withPopular(null, sold), loading: false }
       entry.loading = true
       learned.set(key, entry)
       const scope = { organizationId: orgId, catalogScopeKey: config.approvedSource.scopeKey,
         since: new Date(Date.now() - LEARNED_SINCE_MS), limit: LEARNED_MAX_LINES }
       void Promise.all([confirmedPhoneOrderLines(options.orders, scope), orderedPhoneOrderProducts(options.orders, scope)])
         .then(([lines, ordered]) => {
-          entry.value = learnNames(lines, ordered)
+          entry.base = learnNames(lines, ordered)
+          entry.value = withPopular(entry.base, popular.get(orgId)?.ids ?? [])
           console.log("[zeytun-line] learned", JSON.stringify({ lines: lines.length, ordered: ordered.length }))
         }).catch(() => undefined).finally(() => { entry.at = Date.now(); entry.loading = false })
     }
