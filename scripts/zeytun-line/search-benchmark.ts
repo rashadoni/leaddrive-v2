@@ -12,6 +12,7 @@
  *
  *   node --import tsx scripts/zeytun-line/search-benchmark.ts <snapshot> [--misses]
  *   node --import tsx scripts/zeytun-line/search-benchmark.ts <snapshot> --forms [--misses]
+ *   node --import tsx scripts/zeytun-line/search-benchmark.ts <snapshot> --typed [--misses]   (written, not said)
  *
  * The snapshot is the line's own file on prod (/var/lib/leaddrive-v2/…/*.snapshot,
  * a JSON header line, then 1C's AvailableBalances response). It is the
@@ -215,7 +216,10 @@ const strengths = (label: string) => new Set([...label.matchAll(STRENGTH_IN)].ma
  * şam 50"). Right = an item of that brand and form (and strength) comes first
  * / is among the five.
  */
-function formsRun(feed: ZeytunAvailableBalances, org: string, goods: { Номенклатура: { Наименование: string; Guid: string; ВидНоменклатуры: { Наименование: string } } }[], misses: boolean) {
+type Goods = { Номенклатура: { Наименование: string; Guid: string; ВидНоменклатуры: { Наименование: string } } }[]
+
+/** Every item's brand, form and strengths, and the forms (with strengths) each brand is sold in. */
+function brandForms(goods: Goods) {
   const items = new Map<string, { brand: string; form: string | null; strengths: Set<number> }>()
   const brands = new Map<string, Map<string, Set<number>>>()
   for (const row of goods) {
@@ -227,6 +231,11 @@ function formsRun(feed: ZeytunAvailableBalances, org: string, goods: { Номе�
     forms.set(form, new Set([...(forms.get(form) ?? []), ...amounts]))
     brands.set(brand, forms)
   }
+  return { items, brands }
+}
+
+function formsRun(feed: ZeytunAvailableBalances, org: string, goods: Goods, misses: boolean) {
+  const { items, brands } = brandForms(goods)
   type Tally = { first: number; five: number; n: number; misses: string[] }
   const tally = new Map<string, Tally>()
   const count = (key: string, query: string, right: (id: string) => boolean) => {
@@ -271,10 +280,114 @@ function formsRun(feed: ZeytunAvailableBalances, org: string, goods: { Номе�
   }
 }
 
+// A name typed in Latin by someone who reads it the Russian way (Цитрамон → tsitramon, Шалфей → shalfey,
+// «г» → g): not the Azerbaijani spelling the speech side assumes.
+const RU_LATIN: Record<string, string> = {
+  а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y", к: "k", л: "l", м: "m",
+  н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "kh", ц: "ts", ч: "ch", ш: "sh", щ: "sch", ъ: "",
+  ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
+}
+// Azerbaijani letters typed on a keyboard that has none.
+const PLAIN: Record<string, string> = { ə: "e", ş: "s", ç: "c", ı: "i", ğ: "g", ö: "o", ü: "u" }
+const KEY_ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"]
+/** The key to the right on a phone keyboard (to the left at a row's end): a thumb's commonest slip. */
+const neighbourKey = (ch: string) => {
+  for (const row of KEY_ROWS) {
+    const at = row.indexOf(ch)
+    if (at >= 0) return row[at + 1] ?? row[at - 1]
+  }
+  return ch
+}
+const plain = (word: string) => Array.from(word, (ch) => PLAIN[ch] ?? ch).join("")
+const ruLatin = (word: string) => Array.from(word.toLowerCase(), (ch) => RU_LATIN[ch] ?? ch).join("")
+const isCyrillic = (word: string) => /[Ѐ-ӿ]/u.test(word)
+
+/** One name as a pharmacy might type it in a chat: the script, the transliteration, slips and shortcuts. */
+function typed(word: string): Record<string, string> {
+  const az = latin(word), at = Math.floor(az.length / 2)
+  const variants: Record<string, string> = { "az latin": az }
+  if (isCyrillic(word)) {
+    const mid = Math.floor(word.length / 2)
+    variants.cyrillic = word
+    variants["cyrillic, letter dropped"] = word.slice(0, mid) + word.slice(mid + 1)
+    variants["russian-style latin"] = ruLatin(word)
+  }
+  variants["no az letters"] = plain(az)
+  variants["next key"] = az.slice(0, at) + neighbourKey(az[at]) + az.slice(at + 1)
+  variants["two swapped"] = az.slice(0, at - 1) + az[at] + az[at - 1] + az.slice(at + 1)
+  variants["letter doubled"] = az.slice(0, at) + az[at] + az.slice(at)
+  variants["letter dropped"] = az.slice(0, at) + az.slice(at + 1)
+  if (az.length >= 7) variants["first five letters"] = az.slice(0, 5)
+  const third = Math.floor(az.length / 3), twoThirds = Math.floor((2 * az.length) / 3)
+  if (twoThirds - third >= 2) {
+    variants["two slips"] = az.slice(0, third) + neighbourKey(az[third]) + az.slice(third + 1, twoThirds) + az.slice(twoThirds + 1)
+  }
+  variants["with quantity"] = `${az} 10`
+  // A variant equal to the plain Latin name measures nothing new.
+  for (const [kind, text] of Object.entries(variants)) if (kind !== "az latin" && text === az) delete variants[kind]
+  return variants
+}
+
+// Form words a chat has and speech does not: shortcuts, and the whole word without Azerbaijani
+// letters. Each is compared with the word as SAID (above) for the same brand and form.
+const TYPED_FORMS: Record<string, string[]> = {
+  tablet: ["tab", "tabl", "heb", "таб"], capsule: ["kaps", "caps", "капс"], ampoule: ["amp", "амп"],
+  suppository: ["sam", "supp", "свеч"], drops: ["damci"], syrup: ["serbet", "sir"], suspension: ["susp"],
+  powder: ["poroshok"], sachet: ["sase"], ointment: ["melhem", "maz"], solution: ["mehlul", "р-р"], vial: ["flak"],
+}
+
+/**
+ * `--typed`: the names as written in a chat instead of said (owner 2026-11-28, before orders over
+ * WhatsApp are built: «если будут писать как попало — будет ли распознавать»). The search alone,
+ * called with the word exactly as typed — the model reading the message may still repair a word, so
+ * this is the floor. Names: a product of that name first / among the five candidates. Forms: a brand
+ * sold in several forms, asked with a typed form word, against the spoken word of the same form.
+ */
+function typedRun(feed: ZeytunAvailableBalances, org: string, names: Map<string, string>, goods: Goods, misses: boolean) {
+  type Tally = { first: number; five: number; n: number; misses: string[] }
+  const tally = new Map<string, Tally>()
+  const add = (key: string, query: string, first: boolean, five: boolean, got: () => string) => {
+    const entry = tally.get(key) ?? { first: 0, five: 0, n: 0, misses: [] }
+    tally.set(key, entry)
+    entry.n++
+    if (first) entry.first++
+    if (five) entry.five++
+    else if (entry.misses.length < 8) entry.misses.push(`${query} -> ${got()}`)
+  }
+  for (const [word] of names) {
+    for (const [kind, query] of Object.entries(typed(word))) {
+      const got = feed.search(org, { text: query }).candidates.map((candidate) => nameWord(candidate.name))
+      add(`name: ${kind}`, query, got[0] === word, got.includes(word), () => `(${word}) ${got.slice(0, 3).join(", ")}`)
+    }
+  }
+  const { items, brands } = brandForms(goods)
+  for (const [brand, forms] of brands) {
+    if (forms.size < 2) continue
+    for (const form of forms.keys()) {
+      const of = (id: string) => { const item = items.get(id); return item?.brand === brand && item.form === form }
+      const ask = (key: string, word: string) => {
+        const query = `${latin(brand)} ${word}`
+        const ids = feed.search(org, { text: query }).candidates.map((candidate) => candidate.externalId)
+        add(key, query, ids[0] !== undefined && of(ids[0]), ids.some(of),
+          () => ids.slice(0, 3).map((id) => { const item = items.get(id)!; return `${item.brand}/${item.form}` }).join(", "))
+      }
+      if (!TYPED_FORMS[form] || !SAID[form]) continue
+      ask("form: as said", SAID[form][0])
+      for (const word of TYPED_FORMS[form]) ask(`form typed: ${word}`, word)
+    }
+  }
+  const line = (label: string, entry: Tally) =>
+    `${label.padEnd(34)} first ${(100 * entry.first / entry.n).toFixed(1).padStart(5)}%  in five ${(100 * entry.five / entry.n).toFixed(1).padStart(5)}%  (${entry.n})`
+  for (const [key, entry] of tally) {
+    console.log(line(key, entry))
+    if (misses) for (const miss of entry.misses) console.log(`    ${miss}`)
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2)
   const [path, flag] = args
-  if (!path) throw new Error("usage: search-benchmark.ts <snapshot> [--misses | --forms [--misses] | --assortment [size] | --calls <labels.jsonl> <ordered-by-call.txt>]")
+  if (!path) throw new Error("usage: search-benchmark.ts <snapshot> [--misses | --forms [--misses] | --typed [--misses] | --assortment [size] | --calls <labels.jsonl> <ordered-by-call.txt>]")
   const raw = readFileSync(path), newline = raw.indexOf(10)
   const goods = (JSON.parse(raw.subarray(newline + 1).toString()) as
     { data: { goods: { Номенклатура: { Наименование: string; Guid: string; ВидНоменклатуры: { Наименование: string } } }[] } }).data.goods
@@ -287,6 +400,7 @@ async function main() {
   }
   if (flag === "--calls") return callsRun(feed, org, args[2], args[3])
   if (flag === "--forms") return formsRun(feed, org, goods, args[2] === "--misses")
+  if (flag === "--typed") return typedRun(feed, org, names, goods, args[2] === "--misses")
   if (flag === "--assortment") {
     const itemsByWord = new Map<string, string[]>(), allIds: string[] = []
     for (const item of feed.labels(org)) {
