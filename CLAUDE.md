@@ -2004,6 +2004,10 @@ kimi açıq qalmasın»; на проде 9 дней агента из 11 не з
   `crm_confirmed`) и 1С сама не зовёт. Подключение —
   `zeytun-1c-sales.json` рядом с разрешением линии (схема как у
   `zeytun-1c-clients.json`); нет файла — крон ничего не делает.
+  **Файлы лежат под организацией источника 1С** (`organizationId` подключения,
+  на проде `zeytun-api-inspection` = `approvedSource.organizationId`), а не под
+  организацией заказов: до 2026-11-28 линия искала их под второй и на проде ни
+  разу их не нашла (`sourceOrganizationId` в `AssortmentSource`).
 - Стережёт `pharmacy-phone-orders-postgres.test.ts` (гейт в `static-checks` и в деплое).
 
 ## Ночью ИИ принял обращения, утром рассказал — `src/lib/voice-agent/inbound-call-follow-up.ts`

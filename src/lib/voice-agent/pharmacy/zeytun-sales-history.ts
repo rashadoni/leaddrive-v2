@@ -394,9 +394,11 @@ export async function popularSalesProducts(cacheDir: string, organizationId: str
 export function salesHistorySource(cacheDir: string, clock: () => number = Date.now): AssortmentSource {
   return {
     name: "1c_sales",
-    async products({ organizationId, pharmacy }) {
-      if (!cacheDir || !pharmacy.guid) return []
-      const sales = await new SalesHistoryStore(cacheDir, organizationId).load(pharmacy.guid)
+    // Under the 1C source's organization, as the job writes (zeytun-1c-sales.json); until 2026-11-28 this
+    // read the order organization's folder, which nothing writes, and found no pharmacy's sales on prod.
+    async products({ sourceOrganizationId, pharmacy }) {
+      if (!cacheDir || !pharmacy.guid || !sourceOrganizationId) return []
+      const sales = await new SalesHistoryStore(cacheDir, sourceOrganizationId).load(pharmacy.guid)
       return sales ? rankSalesProducts(sales, clock()) : []
     },
   }

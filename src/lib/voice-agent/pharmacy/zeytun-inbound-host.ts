@@ -105,7 +105,9 @@ export function createInboundPilotHost(options: {
     if (!options.orders || !isLineGrant(config) || !orgId) return null
     const key = `${orgId}:${config.approvedSource.scopeKey}`
     const known = learned.get(key)
-    const sold = popularFor(orgId, (ids) => {
+    // The sales job's files are under the 1C source's organization, not the order organization (2026-11-28:
+    // the first count on prod read the empty folder of the latter and found 0 products).
+    const sold = popularFor(config.approvedSource.organizationId, (ids) => {
       const entry = learned.get(key)
       if (entry) entry.value = withPopular(entry.base, ids)
     })
@@ -118,7 +120,7 @@ export function createInboundPilotHost(options: {
       void Promise.all([confirmedPhoneOrderLines(options.orders, scope), orderedPhoneOrderProducts(options.orders, scope)])
         .then(([lines, ordered]) => {
           entry.base = learnNames(lines, ordered)
-          entry.value = withPopular(entry.base, popular.get(orgId)?.ids ?? [])
+          entry.value = withPopular(entry.base, popular.get(config.approvedSource.organizationId)?.ids ?? [])
           console.log("[zeytun-line] learned", JSON.stringify({ lines: lines.length, ordered: ordered.length }))
         }).catch(() => undefined).finally(() => { entry.at = Date.now(); entry.loading = false })
     }
@@ -190,7 +192,8 @@ export function createInboundPilotHost(options: {
       numberPharmacyGuid: byNumber.length === 1 ? byNumber[0].guid : null })
     if (!pharmacy) return { pharmacy: "none", assortment: null }
     const lists = await Promise.all(assortmentSources.map(async (source) => ({ source: source.name,
-      products: await source.products({ organizationId: orgId, catalogScopeKey: config.approvedSource.scopeKey, pharmacy }).catch(() => []) })))
+      products: await source.products({ organizationId: orgId, sourceOrganizationId: config.approvedSource.organizationId,
+        catalogScopeKey: config.approvedSource.scopeKey, pharmacy }).catch(() => []) })))
     const assortment = combineAssortment(lists)
     // How many products and from where, never which: the call's station id, as the search log.
     console.log("[zeytun-line] assortment", JSON.stringify({ call: call.providerCallId, products: assortment?.ordered.length ?? 0,
