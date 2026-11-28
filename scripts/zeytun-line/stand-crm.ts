@@ -41,16 +41,26 @@ export const foldLatin = (text: string) => text.toLowerCase().replaceAll("i̇", 
 export const PRICE = { textIn: 0.75, audioIn: 3, textOut: 4.5, audioOut: 12 }
 export type Usage = { promptTokenCount?: number; responseTokenCount?: number; thoughtsTokenCount?: number
   promptTokensDetails?: { modality?: string; tokenCount?: number }[]; responseTokensDetails?: { modality?: string; tokenCount?: number }[] }
-/** One usageMetadata in USD. Tokens without a modality are priced as audio: an estimate errs high, never low. */
+/**
+ * One usageMetadata in USD, by the rule the CRM prices the line with (src/lib/ai/gateway/pricing.ts,
+ * liveUsageCostUsd: reconciled with Google's bill for 1–22 November 2026): tokens Google reports with
+ * no modality are priced as text, not audio. Until 2026-11-27 the stand priced them as audio, 17–25 %
+ * above the bill.
+ */
 export function usageCost(usage: Usage) {
   const split = (details: Usage["promptTokensDetails"], total = 0) => {
-    const text = (details ?? []).filter((d) => d.modality === "TEXT").reduce((sum, d) => sum + (d.tokenCount ?? 0), 0)
-    return { text, audio: Math.max(0, total - text) }
+    const sum = (modality: string) => (details ?? []).filter((d) => d.modality === modality).reduce((n, d) => n + (d.tokenCount ?? 0), 0)
+    const text = sum("TEXT"), audio = sum("AUDIO")
+    return { text, audio, other: Math.max(0, total - text - audio) }
   }
   const input = split(usage.promptTokensDetails, usage.promptTokenCount)
   const output = split(usage.responseTokensDetails, usage.responseTokenCount)
-  const tokens = { textIn: input.text, audioIn: input.audio, textOut: output.text + (usage.thoughtsTokenCount ?? 0), audioOut: output.audio }
-  const usd = (tokens.textIn * PRICE.textIn + tokens.audioIn * PRICE.audioIn + tokens.textOut * PRICE.textOut + tokens.audioOut * PRICE.audioOut) / 1e6
+  const tokens = {
+    textIn: input.text, audioIn: input.audio, otherIn: input.other,
+    textOut: output.text + (usage.thoughtsTokenCount ?? 0), audioOut: output.audio, otherOut: output.other,
+  }
+  const usd = ((tokens.textIn + tokens.otherIn) * PRICE.textIn + tokens.audioIn * PRICE.audioIn
+    + (tokens.textOut + tokens.otherOut) * PRICE.textOut + tokens.audioOut * PRICE.audioOut) / 1e6
   return { tokens, usd }
 }
 /* ---------- the station's bridge ---------- */

@@ -149,7 +149,7 @@ type Options = { core: string; liveModel: string; voice: string; vertexKey: stri
 async function playCall(scenario: VoiceScenario, catalog: InboundPilotCatalog, options: Options) {
   const saves: Save[] = []
   let current: Turn | undefined, dead = false, opened = false, toolsPending = 0, stopped: string | undefined
-  const spend = { usd: 0, generations: 0, sessions: 0, swaps: 0, tokens: { textIn: 0, audioIn: 0, textOut: 0, audioOut: 0 }, tts: 0, ttsCached: 0, chirp: 0 }
+  const spend = { usd: 0, generations: 0, sessions: 0, swaps: 0, tokens: { textIn: 0, audioIn: 0, otherIn: 0, textOut: 0, audioOut: 0, otherOut: 0 }, tts: 0, ttsCached: 0, chirp: 0 }
   // What Chirp heard of each phrase goes to the phrase's turn (the CRM never says it).
   const chirp = options.secondEarKey ? createChirpRecognizer({ keyFile: options.secondEarKey }) : undefined
   const recognizer: ChirpRecognizer | undefined = chirp && { enabled: () => chirp.enabled(), warm: () => chirp.warm(),

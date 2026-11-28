@@ -34,7 +34,7 @@
  *
  *   JITI_ALIAS='{"@":"'$PWD'/src"}' node_modules/.bin/jiti scripts/zeytun-line/line-stand.ts <snapshot> --core <base core>
  *     [--builder <build-zeytun-inbound-core.py of another revision>] [--station <fanum-zeytun-inbound.py>]
- *     [--manners polite,quick,overlap,pauses,noisy] [--steps N] [--scenario scripts/zeytun-line/voice-scenario.json]
+ *     [--manners polite,quick,overlap,pauses,noisy] [--pause-ms 800] [--no-lean] [--steps N] [--scenario scripts/zeytun-line/voice-scenario.json]
  *     [--stop-at 0.6] [--out ~/inbox/zeytun-recordings/line-stand/<time>] [--departed-from <older snapshot>]
  *     [--drop-after-step N] (after step N's answer: Google drops the session and refuses its resumption,
  *      so the core restores the call in a fresh session — call ac5ccd37 lost its unsaved lines there)
@@ -171,6 +171,10 @@ class StandCrm {
   results: CallResult[] = []
   unknown: string[] = []
   policy = ""
+  /** --context-window: "off" drops the CRM's window from the session; a value replaces it; undefined keeps the CRM's. */
+  contextWindow?: "off" | { triggerTokens: number; targetTokens: number }
+  /** --no-lean: the session without the CRM's lean mark (the comparison run). */
+  noLean = false
   private crm: (body: Json) => Promise<unknown>
   private server: http.Server
   proxy: http.Server
@@ -213,7 +217,19 @@ class StandCrm {
     try {
       if (path === "/api/internal/voice-agent/pharmacy-inbound") {
         const body = JSON.parse(raw) as Json
-        const answer = await this.crm(body)
+        let answer = await this.crm(body)
+        // --context-window: the same call with another sliding window, or with none (Google's default).
+        if (body.action === "session" && this.contextWindow !== undefined && answer && typeof answer === "object" && (answer as Json).enabled === true) {
+          const rest: Json = { ...(answer as Json) }
+          delete rest.contextWindow
+          answer = this.contextWindow === "off" ? rest : { ...rest, contextWindow: this.contextWindow }
+        }
+        // --no-lean: the same session without the lean mark — the core's general policies and its long language note.
+        if (body.action === "session" && this.noLean && answer && typeof answer === "object" && (answer as Json).enabled === true) {
+          const rest: Json = { ...(answer as Json) }
+          delete rest.lean
+          answer = rest
+        }
         this.events.push({ t: Date.now(), action: String(body.action ?? "?"), body: body.action === "utterance" ? { action: "utterance" } : body, answer })
         return reply(200, answer)
       }
@@ -240,7 +256,8 @@ type Latency = { t: number; event: string; call_id?: string | null; [key: string
 class Core {
   private child: ChildProcessWithoutNullStreams
   latency: Latency[] = []
-  usage: { t: number; usd: number }[] = []
+  /** Every usageMetadata: what the turn cost and how much context it read (promptTokenCount). */
+  usage: { t: number; usd: number; prompt: number }[] = []
   relay: string[] = []
   ready: Promise<{ ready: number; policy: string }>
   log: string[] = []
@@ -257,7 +274,7 @@ class Core {
       } else if (line.startsWith("STAND ")) {
         const event = JSON.parse(line.slice(6)) as Json
         if (typeof event.ready === "number") resolveReady({ ready: event.ready, policy: String(event.policy) })
-        else if (event.usage) this.usage.push({ t: Date.now(), usd: usageCost(event.usage as Usage).usd })
+        else if (event.usage) this.usage.push({ t: Date.now(), usd: usageCost(event.usage as Usage).usd, prompt: (event.usage as Usage).promptTokenCount ?? 0 })
         else if (event.relay) this.relay.push(JSON.stringify(event))
         else if (event.error) rejectReady(new Error(String(event.error)))
       }
@@ -277,6 +294,8 @@ type CallRun = {
   /** ms from the call's start: when the room's other voice was talking ("room"). */
   roomSpans: Span[]
   usd: number; notes: string[]
+  /** The call's Live turns: how many, the context each read (first, largest), all input tokens. */
+  turns: { count: number; firstPrompt: number; maxPrompt: number; inputTokens: number; seconds: number }
 }
 
 async function playCall(scenario: Scenario, steps: Step[], manner: Manner, port: number, core: Core, opts: Options): Promise<CallRun> {
@@ -369,7 +388,7 @@ async function playCall(scenario: Scenario, steps: Step[], manner: Manner, port:
         if (spent() >= opts.stopAt) { stopped = `бюджет: Live набрал $${spent().toFixed(3)} (порог $${opts.stopAt})`; break }
         const clip = speak(phrase.say, scenario.voice, opts.vertexKey, opts.cache)
         let pcm: Buffer = wavPcm(clip.file)
-        if (manner === "pauses") pcm = withPauses(pcm, phrase.say, 800)
+        if (manner === "pauses") pcm = withPauses(pcm, phrase.say, opts.pauseMs)
         // When to speak: after the assistant's reply in the manner of this call.
         let overlapped = false
         if (manner === "overlap") {
@@ -416,7 +435,10 @@ async function playCall(scenario: Scenario, steps: Step[], manner: Manner, port:
   if (stopped) notes.push(`звонок остановлен — ${stopped}`)
   const agentTrack = Buffer.alloc(callerFrames.length * FRAME)
   for (const [index, pcm] of agentFrames) pcm.copy(agentTrack, Math.min(index * FRAME, Math.max(0, agentTrack.length - pcm.length)))
-  return { manner, callId, phrases, caller: Buffer.concat(callerFrames), agent: agentTrack, stopped, usd: spent(), notes, roomSpans }
+  const read = core.usage.slice(usage0).map((u) => u.prompt).filter((n) => n > 0)
+  const turns = { count: read.length, firstPrompt: read[0] ?? 0, maxPrompt: Math.max(0, ...read), inputTokens: read.reduce((a, b) => a + b, 0),
+    seconds: Math.round((Date.now() - t0) / 1000) }
+  return { manner, callId, phrases, caller: Buffer.concat(callerFrames), agent: agentTrack, stopped, usd: spent(), notes, roomSpans, turns }
 }
 
 /* ---------- the report ---------- */
@@ -426,7 +448,21 @@ type Options = { snapshot: string; core: string; builder?: string; station?: str
   dropAfterStep?: number
   /** Product words of the stand pharmacy's history: each word's first catalog candidate is "ordered" (--usual a,b,c). */
   usual?: string[]
+  /** The sliding window of every call: "off" (Google's default), "T/G" (triggerTokens/targetTokens); absent — the CRM's (--context-window). */
+  contextWindow?: "off" | { triggerTokens: number; targetTokens: number }
+  /** The silence the "pauses" manner puts at each comma of a phrase (--pause-ms; 800 by default). */
+  pauseMs: number
+  /** --no-lean: run without the CRM's lean session mark, for comparison. */
+  noLean: boolean
   stopAt: number; out: string; departedFrom?: string; standDir: string; vertexKey: string; secondEarKey?: string; cache: string }
+
+function contextWindowOption(text: string | undefined): Options["contextWindow"] {
+  if (text === undefined) return undefined
+  if (text === "off") return "off"
+  const match = /^(\d+)\/(\d+)$/.exec(text)
+  if (!match) throw new Error("--context-window: off or <triggerTokens>/<targetTokens>")
+  return { triggerTokens: Number(match[1]), targetTokens: Number(match[2]) }
+}
 
 function options(argv: string[]): Options {
   const value = (name: string) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : undefined }
@@ -440,6 +476,9 @@ function options(argv: string[]): Options {
   return { snapshot, core, builder: value("--builder"), station: value("--station"), manners, steps: value("--steps") ? Number(value("--steps")) : undefined,
     dropAfterStep: value("--drop-after-step") ? Number(value("--drop-after-step")) : undefined,
     usual: value("--usual")?.split(",").map((word) => word.trim()).filter(Boolean),
+    contextWindow: contextWindowOption(value("--context-window")),
+    pauseMs: Number(value("--pause-ms") ?? 800),
+    noLean: argv.includes("--no-lean"),
     scenario: value("--scenario") ?? join(HERE, "voice-scenario.json"), stopAt: Number(value("--stop-at") ?? 0.6),
     out: value("--out") ?? join(recordings, "line-stand", stamp), departedFrom: value("--departed-from"),
     standDir: value("--stand-dir") ?? join(homedir(), ".cache", "zeytun-core-stand"),
@@ -491,7 +530,7 @@ function verdict(run: CallRun, scenario: Scenario, steps: Step[], crm: StandCrm,
 
 const MANNER_TEXT: Record<Manner, string> = {
   polite: "вежливо: через 1 с после ассистента", quick: "быстро: через 0,25 с после ассистента",
-  overlap: "внахлёст: пока ассистент ещё говорит", pauses: "с паузами 0,8 с на запятых", noisy: "в шумной комнате",
+  overlap: "внахлёст: пока ассистент ещё говорит", pauses: "с паузами на запятых (--pause-ms, 800 мс по умолчанию)", noisy: "в шумной комнате",
   room: "в комнате, где рядом говорят",
 }
 const pct = (values: number[], p: number) => {
@@ -513,6 +552,9 @@ function report(verdicts: Verdict[], meta: Json) {
     lines.push("", `## ${MANNER_TEXT[v.manner]}`, "", `Запись: \`${v.manner}.wav\` (слева аптека, справа линия).`, "")
     if (v.missed.length) lines.push("**Не услышано:** " + v.missed.join("; "), "")
     if (v.run.notes.length) lines.push(...v.run.notes.map((n) => `- ${n}`), "")
+    const tu = v.run.turns
+    lines.push(`Live: ${tu.count} ходов за ${tu.seconds} с, прочитано ${tu.inputTokens} токенов; контекст хода — первый ${tu.firstPrompt}, `
+      + `наибольший ${tu.maxPrompt}; $${v.run.usd.toFixed(3)}.`, "")
     if (v.finalChecks.some((f) => !f.ok)) lines.push("**Нет в итоговом заказе:** " + v.finalChecks.filter((f) => !f.ok).map((f) => f.label).join("; "), "")
     lines.push("Счётчики станции: " + Object.entries(v.counters).map(([k, n]) => `${k} — ${n}`).join("; "), "")
     lines.push("Поиски: " + (v.searches.join(" · ") || "нет"), "")
@@ -539,6 +581,8 @@ async function main() {
   const usual = opts.usual?.flatMap((word) => catalog.search({ text: word }).candidates.slice(0, 1).map((item) => item.externalId))
   if (opts.usual) process.stderr.write(`usual: ${opts.usual.length} words → ${usual?.length ?? 0} products\n`)
   const crm = new StandCrm(catalog, saves, opts.secondEarKey, certificates(work), usual)
+  crm.contextWindow = opts.contextWindow
+  crm.noLean = opts.noLean
   const proxyPort = await crm.listen()
   const corePort = 20000 + Math.floor(Math.random() * 20000)
   const core = new Core(["--source", opts.core, "--port", String(corePort), "--vendor", join(opts.standDir, "vendor"),

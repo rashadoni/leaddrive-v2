@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
+import { execFileSync } from "node:child_process"
 import { composeLinePrompt, LINE_NOTES_MAX_CHARS, LINE_PROMPT_MAX_CHARS, createInboundPilotHandler, ZEYTUN_CANCEL_PHRASE, ZEYTUN_INBOUND_CLOSING, ZEYTUN_INBOUND_OPENING, ZEYTUN_INBOUND_PROMPT, ZEYTUN_LINE_OPENING, ZEYTUN_LINE_PROMPT, ZEYTUN_LINE_RETURN_OPENING, ZEYTUN_TRANSFER_PHRASE, type InboundPilotConfig, type InboundPilotCall, type InboundPilotCatalog } from "@/lib/voice-agent/pharmacy/zeytun-inbound-pilot"
 import { isPharmacyInboundPreview } from "@/lib/voice-agent/pharmacy/zeytun-inbound-audit"
 import { EMPTY_LINE_SPEECH, readLineSpeech, type LineSpeech } from "@/lib/voice-agent/pharmacy/zeytun-line-speech"
@@ -418,6 +419,32 @@ describe("the line: every inbound call on it is Zeytun's order desk", () => {
     expect(BRIDGE.callSeconds).toBe(900)
     const body = await (await lineFixture().handle(request())).json()
     expect(body.maxSeconds).toBe(BRIDGE.callSeconds)
+  })
+
+  it("asks the station for a lean session: the line's rules alone and a one-line language note", async () => {
+    // Owner, 2026-11-28: the core's general policies and its per-turn language note were re-read on
+    // every pass of a call, a quarter of the fixed part and about a seventh of all input.
+    const body = await (await lineFixture().handle(request())).json()
+    expect(body.lean).toBe(true)
+    expect(body).not.toHaveProperty("contextWindow")
+    // The two rules the general policies held that the line's own did not.
+    expect(body.prompt).toContain("never answer in Turkish")
+    expect(body.prompt).toContain("read back and asked, never guessed")
+    // The station's own bridge reads the answer as it comes: lean, and its note is the short one.
+    const script = `
+import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location("bridge", "scripts/pbx/fanum-zeytun-inbound.py")
+module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+answer = json.load(sys.stdin)
+bridge = module.ZeytunInboundBridge("https://app.leaddrivecrm.org/api/internal/voice-agent/runtime-config", "t" * 48,
+    "bbbbbbbb-1111-4111-8111-111111111111", lambda body: answer, lambda: 100)
+bridge.open()
+print(json.dumps({"lean": bridge.lean, "note": bridge.language_note()}))
+`
+    const opened = JSON.parse(execFileSync("python3", ["-I", "-c", script], { input: JSON.stringify(body), encoding: "utf8" }))
+    expect(opened.lean).toBe(true)
+    expect(opened.note.clientContent.turnComplete).toBe(false)
+    expect(opened.note.clientContent.turns[0].parts[0].text.length).toBeLessThan(200)
   })
 
   it("answers any caller with the line's opening and claims each call by itself", async () => {

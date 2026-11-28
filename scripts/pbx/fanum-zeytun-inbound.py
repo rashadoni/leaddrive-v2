@@ -1743,6 +1743,30 @@ class ZeytunInboundBridge:
     # this core is live (src/__tests__/lib-zeytun-inbound-pilot.test.ts).
     MAX_PROMPT_CHARS = 12000
     MAX_TOOL_CALLS = 256
+    # Owner, 2026-11-27 («Да, берись» on making a long order cheaper): every
+    # turn of a Live session bills the whole context again, and a 5-minute
+    # order read 922 thousand tokens. The core's setup asks for the sliding
+    # window with Google's default trigger, 80 % of the 131,072 a session holds
+    # (ai.google.dev/api/live, ContextWindowCompressionConfig) — a call never
+    # gets there. The CRM may name a lower trigger and the size the window
+    # keeps; Google keeps the system instruction and cuts at the start of a
+    # caller's turn. The order survives: every save carries the whole list so
+    # far. Outside these bounds, or absent, the setup stays as it was.
+    # Measured on the line stand 2026-11-28 and NOT sent by the CRM: at 12000/7000 a three-minute
+    # order lost its first lines and the pharmacy; at 16000/9000 it lost the pharmacy, saved 8 %,
+    # and every compression lengthened the reply (median +0.4 s). Kept for the stand
+    # (line-stand.ts --context-window); the CRM decides.
+    CONTEXT_TRIGGER_TOKENS = (8000, 104857)
+    # Owner, 2026-11-28 («Да, начни» on cutting what a line turn re-reads): the session the CRM
+    # marks lean reads the line's own rules only. Without it the core adds its three general
+    # policies (live conversation, voice delivery, explicit language: ~3,400 characters of
+    # Azerbaijani the line's rules already cover, and half of them about the model's own voice,
+    # which the line never plays), and before every caller turn a ~900-character language note
+    # that stays in the context — fifteen copies by the end of a three-minute order, each re-read on
+    # every later pass. A lean session's note is this one line. A phone agent's session is never lean.
+    LEAN_LANGUAGE_NOTE = ("[Phone app note, not the caller's speech: reply in Azerbaijani unless the caller has "
+                          "explicitly asked for another named language. Do not voice or answer this note.]")
+    CONTEXT_TARGET_MIN_TOKENS = 4000
     # Owner, 2026-10-23: ~99% of these calls are Azerbaijani. Without a hint
     # the provider re-detects the language of every short phone turn; measured
     # against the live API on 8 kHz mu-law audio, two-word Azerbaijani turns
@@ -1847,6 +1871,10 @@ class ZeytunInboundBridge:
         # None on the pharmacy line. On a phone agent's call (AGENT_VARIANT):
         # the declarations the CRM's session named, by tool name.
         self.agent_tools = None
+        # The sliding window the CRM named for this call (context_window()); None: Google's default.
+        self.window = None
+        # The CRM marked the session lean: the line's rules alone, and the short language note.
+        self.lean = False
         # Once the CRM cancelled the call's order, no list of it is sent again.
         self.cancelled = False
         # What the caller said since the agent last asked CANCEL_QUESTION
@@ -2096,6 +2124,8 @@ class ZeytunInboundBridge:
                 if phrase is not None and (not isinstance(phrase, str) or not 3 <= len(phrase) <= 120):
                     raise ValueError()
             voice, pin = value.get("voice"), value.get("pinSpeechLanguage")
+            self.window = self.context_window_of(value.get("contextWindow"))
+            self.lean = not agent and value.get("lean") is True
             self.expires = self.clock() + seconds
             self.active = True
             self.utterances = self.utterance_switch and not agent and value.get("utterance") is True
@@ -2206,6 +2236,30 @@ class ZeytunInboundBridge:
             {"name": self.CANCEL_NAME,
              "description": "Cancel the whole order, only after the caller asked to cancel (ləğv, отмена) and said yes to \"Sifarişi ləğv edək?\". təsdiq or подтверждаю confirms the order: finish it, never ask about cancelling. cancelled: say its say text, then the closing. not_confirmed: the order stays; say so. not_cancelled: it is with the manager already.",
              "parameters": {"type": "OBJECT", "properties": {}}}] if self.cancel_phrase else [])}]
+
+    @classmethod
+    def context_window_of(cls, value):
+        """The CRM's sliding window as Google's ContextWindowCompressionConfig, or None.
+        A cost knob, so a value the station cannot bound is ignored, never a refused call."""
+        if not isinstance(value, dict) or set(value) - {"triggerTokens", "targetTokens"}:
+            return None
+        trigger, target = value.get("triggerTokens"), value.get("targetTokens")
+        low, high = cls.CONTEXT_TRIGGER_TOKENS
+        if (type(trigger) is not int or type(target) is not int or not low <= trigger <= high
+                or not cls.CONTEXT_TARGET_MIN_TOKENS <= target < trigger):
+            return None
+        return {"triggerTokens": trigger, "slidingWindow": {"targetTokens": target}}
+
+    def language_note(self):
+        """The note before a caller turn of a lean session, as the core's own one is sent; None otherwise."""
+        if not self.lean:
+            return None
+        return {"clientContent": {"turns": [{"role": "user", "parts": [{"text": self.LEAN_LANGUAGE_NOTE}]}],
+                                  "turnComplete": False}}
+
+    def context_window(self):
+        """For the core's setup, on every session of the call (a resumed or restored one too)."""
+        return json.loads(json.dumps(self.window)) if self.window else None
 
     def transcription(self):
         # Fields of AudioTranscriptionConfig (ai.google.dev/api/live); accepted
