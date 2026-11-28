@@ -87,10 +87,14 @@ describe("a pharmacy's 1C sales history", () => {
     const store = new SalesHistoryStore(root, ORG)
     await store.save(PHARMACY, new Map([["ZN1", { date: "2026-11-10", products: [B, A] }], ["ZN2", { date: "2026-11-09", products: [A] }]]))
     const source = salesHistorySource(root, () => NOW)
-    expect(await source.products({ organizationId: ORG, catalogScopeKey: "x", pharmacy: { companyId: null, guid: PHARMACY } })).toEqual([A, B])
-    expect(await source.products({ organizationId: "other", catalogScopeKey: "x", pharmacy: { companyId: null, guid: PHARMACY } })).toEqual([])
-    expect(await source.products({ organizationId: ORG, catalogScopeKey: "x", pharmacy: { companyId: "c1", guid: null } })).toEqual([])
-    expect(await salesHistorySource("", () => NOW).products({ organizationId: ORG, catalogScopeKey: "x", pharmacy: { companyId: null, guid: PHARMACY } })).toEqual([])
+    // The job's files are under the 1C source's organization; the order organization is another one (prod, 2026-11-28).
+    const asked = (sourceOrganizationId: string | undefined, pharmacy = { companyId: null, guid: PHARMACY as string | null }) =>
+      source.products({ organizationId: "order-org", sourceOrganizationId, catalogScopeKey: "x", pharmacy })
+    expect(await asked(ORG)).toEqual([A, B])
+    expect(await asked("other")).toEqual([])
+    expect(await asked(undefined)).toEqual([])
+    expect(await asked(ORG, { companyId: "c1", guid: null } as never)).toEqual([])
+    expect(await salesHistorySource("", () => NOW).products({ organizationId: "order-org", sourceOrganizationId: ORG, catalogScopeKey: "x", pharmacy: { companyId: null, guid: PHARMACY } })).toEqual([])
   })
 
   // Owner 2026-11-28: the recognizer's hints came only from the line's own orders, a handful.
@@ -144,7 +148,7 @@ describe("a pharmacy's 1C sales history", () => {
       // The list, then the two sales inside the window: the 2025 one is never asked.
       expect(download).toHaveBeenCalledTimes(3)
       expect(download.mock.calls.map(([, options]) => /<g:CodeSales>([^<]*)</.exec(String(options.body))![1])).toEqual(["", "ZN000000002", "ZN000000001"])
-      expect(await salesHistorySource(root, () => NOW).products({ organizationId: ORG, catalogScopeKey: "x", pharmacy: { companyId: null, guid: PHARMACY } }))
+      expect(await salesHistorySource(root, () => NOW).products({ organizationId: "order-org", sourceOrganizationId: ORG, catalogScopeKey: "x", pharmacy: { companyId: null, guid: PHARMACY } }))
         .toEqual([A, B])
 
       // Six hours on: the list again, one new sale, and ZN…1 is gone from 1C.

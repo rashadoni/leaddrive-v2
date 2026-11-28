@@ -99,7 +99,9 @@ describe("private inbound pilot host", () => {
       expiresAt: "2026-10-29T12:00:00Z", approvalReference: "owner", orderOrganizationId: "org-zeytun",
       approvedSource: { organizationId: f.config.approvedSource.organizationId, scopeKey: f.config.approvedSource.scopeKey } }
     const pharmacy = "3ed36d74-0000-11e9-80cb-0894ef5e9ba2", sold = "05bf4b43-5c22-11e9-80c5-0894ef5e9ba2"
-    const store = new SalesHistoryStore(f.options.snapshotDirectory, "org-zeytun")
+    // The nightly job writes under the 1C source's organization, not the order organization (prod, 2026-11-28).
+    const store = new SalesHistoryStore(f.options.snapshotDirectory, line.approvedSource.organizationId)
+    await new SalesHistoryStore(f.options.snapshotDirectory, "org-zeytun").saveIndex({})
     await store.save(pharmacy, new Map([["ZN1", { date: new Date().toISOString().slice(0, 10), products: [sold] }]]))
     await store.saveIndex({ [pharmacy]: { at: Date.now(), complete: true } })
     // The first call starts both readings in the background and waits for neither.

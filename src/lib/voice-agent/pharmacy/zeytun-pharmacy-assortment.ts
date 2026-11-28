@@ -37,7 +37,13 @@ export interface PharmacyAssortment {
 export interface AssortmentSource {
   readonly name: string
   /** The pharmacy's products, most ordered first; empty when it has none. */
-  products(input: { organizationId: string; catalogScopeKey: string; pharmacy: CallPharmacy }): Promise<string[]>
+  products(input: {
+    /** The CRM organization that takes the line's orders (confirmed orders live there). */
+    organizationId: string
+    /** The 1C source's organization (the grant's approvedSource): the nightly sales job keeps its files under it. */
+    sourceOrganizationId?: string
+    catalogScopeKey: string; pharmacy: CallPharmacy
+  }): Promise<string[]>
 }
 
 /** How far back a pharmacy's confirmed orders count. */
